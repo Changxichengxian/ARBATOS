@@ -1,0 +1,26 @@
+; *************************************************************
+; *** Custom Scatter-Loading Description File (with CCM RAM)  ***
+; *************************************************************
+;
+; STM32F407IGHx:
+; - IROM1: 1MB @ 0x0800_0000
+; - IRAM1: 128KB SRAM @ 0x2000_0000 (DMA-capable)
+; - IRAM2: 64KB CCM RAM @ 0x1000_0000 (CPU-only, NO DMA)
+
+LR_IROM1 0x08000000 0x00100000  {    ; load region size_region
+  ER_IROM1 0x08000000 0x00100000  {  ; load address = execution address
+   *.o (RESET, +First)
+   *(InRoot$$Sections)
+   .ANY (+RO)
+   .ANY (+XO)
+  }
+
+  RW_IRAM2 0x10000000 0x00010000  {  ; CCM RAM (no DMA)
+   *(.ccmram)
+  }
+
+  RW_IRAM1 0x20000000 0x00020000  {  ; RW data (DMA-capable SRAM)
+   ; ARMCC5 maps __RAM_FUNC via file-level placement, not a named .RamFunc section.
+   .ANY (+RW +ZI)
+  }
+}

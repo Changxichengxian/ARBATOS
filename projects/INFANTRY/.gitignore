@@ -1,0 +1,38 @@
+# Keil uVision (MDK-ARM)
+MDK-ARM/Objects/
+MDK-ARM/Listings/
+MDK-ARM/*.uvoptx
+MDK-ARM/*.uvoptx.*
+MDK-ARM/*.uvguix.*
+MDK-ARM/*.dep
+MDK-ARM/*.d
+MDK-ARM/*.o
+MDK-ARM/*.axf
+MDK-ARM/*.hex
+MDK-ARM/*.bin
+MDK-ARM/*.map
+MDK-ARM/*.lst
+MDK-ARM/*.crf
+MDK-ARM/*.lnp
+MDK-ARM/*.bak
+MDK-ARM/*.tra
+
+# Common build artifacts
+Debug/
+Release/
+build/
+*.elf
+*.map
+*.o
+*.d
+*.su
+
+# Editor/OS
+.vscode/
+*.swp
+*.swo
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+
