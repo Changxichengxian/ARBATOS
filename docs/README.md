@@ -4,8 +4,7 @@
 
 优先看这些文件：
 - `../README.md`
-- `realtime_architecture_roadmap.md`
-- `task_family_architecture.md`
+- `architecture_remaining_tasks.md`
 - `board_port_config.md`
 - `pitch_cali_model.md`
 

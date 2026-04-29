@@ -12,7 +12,7 @@ ARBATOS 是一套面向 RoboMaster 类机器人的 STM32 / FreeRTOS 下位机控
 - 先把实时性框架定住：高频控制链路要短、稳、可测。
 - 再做更高级的模块化：配置、诊断、日志、上位机、裁判系统这些放到低频链路里，不污染 1ms / 2ms 控制任务。
 
-详细路线见 `docs/realtime_architecture_roadmap.md`。
+剩余架构任务见 `docs/architecture_remaining_tasks.md`。
 
 ## 授权和商用
 
@@ -195,16 +195,7 @@ rc_sbus_task      elrs_task      host_link_task      板载按键
 - 状态灯、蜂鸣器、调试观察。
 - 设备在线检测。
 
-近期建议先做这些事：
-
-1. 加实时性统计，先测最大耗时和超时次数。
-2. 把 `chassis_control_task` 从 `vTaskDelay` 改成 `vTaskDelayUntil`。
-3. 降低高频任务里的日志和 watch 成本。
-4. 给 CAN 接收处理加时间预算或数量预算。
-5. 整理高频控制参数快照。
-6. 数据证明需要时，再考虑统一 `control_executor_task`。
-
-详细说明见 `docs/realtime_architecture_roadmap.md`。
+已完成的基础改造不再放路线文档里重复写。后续只看 `docs/architecture_remaining_tasks.md` 里的剩余任务。
 
 ## 共享模块入口
 
@@ -291,8 +282,7 @@ ARBATOS/
 ## 更多文档
 
 - `docs/README.md`：文档导航。
-- `docs/realtime_architecture_roadmap.md`：实时性优先架构路线。
-- `docs/task_family_architecture.md`：任务家族设计。
+- `docs/architecture_remaining_tasks.md`：还没完成的架构任务。
 - `docs/board_port_config.md`：板级口子配置说明。
 - `docs/pitch_cali_model.md`：pitch 校准模型。
 - `projects/README.md`：项目入口说明。

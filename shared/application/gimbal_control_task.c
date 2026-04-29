@@ -491,12 +491,9 @@ void gimbal_control_task(void const *pvParameters)
         // watch 输出：观察最终下发电流（含测试模式、安全模式及方向翻转后的值）
         gimbal_watch_yaw_current = yaw_can_set_current;
         gimbal_watch_pitch_current = pitch_can_set_current;
-        taskENTER_CRITICAL();
-
-        actuator_cmd_set_trigger_current_can1(shoot_can_set_current);
-        actuator_cmd_set_yaw_current_can1(yaw_can_set_current);
-        actuator_cmd_set_pitch_current_can1(pitch_can_set_current);
-        taskEXIT_CRITICAL();
+        actuator_cmd_set_trigger_current(shoot_can_set_current);
+        actuator_cmd_set_yaw_current(yaw_can_set_current);
+        actuator_cmd_set_pitch_current(pitch_can_set_current);
 
         {
             sdlog_gimbal_base_sample_t sample = {0};

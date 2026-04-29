@@ -537,12 +537,10 @@ void chassis_control_task(void const *pvParameters)
             chassis_move.vy_set = 0.0f;
             chassis_move.wz_set = 0.0f;
 
-            taskENTER_CRITICAL();
             for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
             {
-                actuator_cmd_set_chassis_current_can1(i, 0);
+                actuator_cmd_set_chassis_current(i, 0);
             }
-            taskEXIT_CRITICAL();
 
             rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
             vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
@@ -581,12 +579,10 @@ void chassis_control_task(void const *pvParameters)
             }
         }
 
-        taskENTER_CRITICAL();
         for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
         {
-            actuator_cmd_set_chassis_current_can1(i, chassis_current_cmd[i]);
+            actuator_cmd_set_chassis_current(i, chassis_current_cmd[i]);
         }
-        taskEXIT_CRITICAL();
 
         chassis_loop_counter++;
         {

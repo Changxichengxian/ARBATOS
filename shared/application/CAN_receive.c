@@ -12,10 +12,19 @@
 #include "cmsis_os2.h"
 
 #include "bsp_can.h"
+#include "actuator_cmd.h"
+#include "can_mit_motor_driver.h"
 #include "detect_task.h"
 #include "motor_config.h"
 #include "sdlog.h"
 #include "watch.h"
+
+#include <string.h>
+
+#define CAN_RX_TWO_PI 6.28318530718f
+#define CAN_RX_RADPS_TO_RPM 9.54929659f
+#define CAN_RX_RPM_TO_RADPS 0.104719755f
+#define CAN_RX_ECD_RANGE_F 8191.0f
 
 static motor_measure_t motor_chassis[4];
 static motor_measure_t motor_yaw;
@@ -30,6 +39,186 @@ __weak uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t 
 static int16_t can_rx_read_s16_be(const uint8_t *ptr)
 {
     return (int16_t)(((uint16_t)ptr[0] << 8) | (uint16_t)ptr[1]);
+}
+
+static fp32 can_rx_wrap_0_2pi(fp32 angle)
+{
+    int32_t turns;
+
+    if (angle > CAN_RX_TWO_PI || angle < -CAN_RX_TWO_PI)
+    {
+        turns = (int32_t)(angle / CAN_RX_TWO_PI);
+        angle -= (fp32)turns * CAN_RX_TWO_PI;
+    }
+    while (angle < 0.0f)
+    {
+        angle += CAN_RX_TWO_PI;
+    }
+    while (angle >= CAN_RX_TWO_PI)
+    {
+        angle -= CAN_RX_TWO_PI;
+    }
+    return angle;
+}
+
+static uint16_t can_rx_position_to_ecd(fp32 position)
+{
+    const fp32 wrapped = can_rx_wrap_0_2pi(position);
+    uint32_t ecd = (uint32_t)((wrapped * CAN_RX_ECD_RANGE_F / CAN_RX_TWO_PI) + 0.5f);
+
+    if (ecd > 8191u)
+    {
+        ecd = 8191u;
+    }
+    return (uint16_t)ecd;
+}
+
+static int16_t can_rx_float_to_i16_saturated(fp32 x)
+{
+    if (x > 32767.0f)
+    {
+        return 32767;
+    }
+    if (x < -32768.0f)
+    {
+        return -32768;
+    }
+    return (int16_t)x;
+}
+
+static int16_t can_rx_torque_to_current_like(const can_mit_motor_limits_t *limits, fp32 torque)
+{
+    fp32 scaled;
+
+    if (limits == NULL || limits->torque_max <= 0.0f)
+    {
+        return 0;
+    }
+
+    scaled = torque * 32767.0f / limits->torque_max;
+    return can_rx_float_to_i16_saturated(scaled);
+}
+
+static void can_rx_update_actuator_feedback_from_measure(actuator_id_e actuator_id,
+                                                         uint8_t bus,
+                                                         uint16_t std_id,
+                                                         uint8_t dlc,
+                                                         const motor_measure_t *measure)
+{
+    actuator_feedback_t prev;
+    actuator_feedback_t fb;
+    uint32_t prev_rx_count = 0u;
+
+    if ((uint32_t)actuator_id >= (uint32_t)ACTUATOR_ID__COUNT || measure == NULL)
+    {
+        return;
+    }
+
+    (void)memset(&fb, 0, sizeof(fb));
+    if (actuator_feedback_get_copy(actuator_id, &prev) != 0u)
+    {
+        prev_rx_count = prev.rx_count;
+    }
+    fb.online = 1u;
+    fb.bus = bus;
+    fb.rx_dlc = dlc;
+    fb.transport = (uint8_t)ACTUATOR_TRANSPORT_CAN;
+    fb.rx_id = std_id;
+    fb.rx_count = prev_rx_count + 1u;
+    fb.last_rx_tick = osKernelGetTickCount();
+    fb.ecd = measure->ecd;
+    fb.speed_rpm = measure->speed_rpm;
+    fb.current = measure->given_current;
+    fb.temperature = measure->temperate;
+    fb.position = ((fp32)measure->ecd) * CAN_RX_TWO_PI / CAN_RX_ECD_RANGE_F;
+    fb.velocity = ((fp32)measure->speed_rpm) * CAN_RX_RPM_TO_RADPS;
+    fb.torque = (fp32)measure->given_current;
+    actuator_feedback_update(actuator_id, &fb);
+}
+
+static void can_rx_synthesize_measure_from_mit(motor_measure_t *measure,
+                                               const can_mit_motor_limits_t *limits,
+                                               const can_mit_motor_feedback_t *mit)
+{
+    if (measure == NULL || limits == NULL || mit == NULL)
+    {
+        return;
+    }
+
+    measure->last_ecd = measure->ecd;
+    measure->ecd = can_rx_position_to_ecd(mit->position);
+    measure->speed_rpm = can_rx_float_to_i16_saturated(mit->velocity * CAN_RX_RADPS_TO_RPM);
+    measure->given_current = can_rx_torque_to_current_like(limits, mit->torque);
+    measure->temperate = 0u;
+}
+
+static uint8_t can_rx_process_mit_node_frame(motor_measure_t *measure,
+                                             const motor_node_param_t *node,
+                                             uint8_t bus,
+                                             uint16_t std_id,
+                                             uint8_t dlc,
+                                             const uint8_t data[8],
+                                             actuator_id_e actuator_id,
+                                             uint8_t detect_toe,
+                                             uint8_t use_detect)
+{
+    const can_mit_motor_limits_t *limits;
+    can_mit_motor_feedback_t mit;
+    actuator_feedback_t prev;
+    actuator_feedback_t fb;
+    uint32_t prev_rx_count = 0u;
+
+    if (node == NULL)
+    {
+        return 0u;
+    }
+
+    limits = motor_cfg_mit_limits(node);
+    if (limits == NULL)
+    {
+        return 0u;
+    }
+
+    (void)memset(&mit, 0, sizeof(mit));
+    if (can_mit_motor_update_feedback(std_id, node->can_id, limits, dlc, data, &mit) == 0u)
+    {
+        return 0u;
+    }
+
+    can_rx_synthesize_measure_from_mit(measure, limits, &mit);
+
+    if ((uint32_t)actuator_id < (uint32_t)ACTUATOR_ID__COUNT)
+    {
+        (void)memset(&fb, 0, sizeof(fb));
+        if (actuator_feedback_get_copy(actuator_id, &prev) != 0u)
+        {
+            prev_rx_count = prev.rx_count;
+        }
+        fb.online = 1u;
+        fb.bus = bus;
+        fb.rx_dlc = dlc;
+        fb.transport = (uint8_t)ACTUATOR_TRANSPORT_CAN;
+        fb.rx_id = std_id;
+        fb.rx_count = prev_rx_count + 1u;
+        fb.last_rx_tick = mit.last_rx_tick;
+        fb.position = mit.position;
+        fb.velocity = mit.velocity;
+        fb.torque = mit.torque;
+        if (measure != NULL)
+        {
+            fb.ecd = measure->ecd;
+            fb.speed_rpm = measure->speed_rpm;
+            fb.current = measure->given_current;
+            fb.temperature = measure->temperate;
+        }
+        actuator_feedback_update(actuator_id, &fb);
+    }
+
+    if (use_detect != 0u)
+    {
+        detect_hook(detect_toe);
+    }
+    return 1u;
 }
 
 static void can_rx_unpack_motor_measure(motor_measure_t *measure, motor_model_e model, const uint8_t data[8])
@@ -99,7 +288,8 @@ static uint8_t can_rx_process_node_frame(motor_measure_t *measure,
                                          uint8_t dlc,
                                          const uint8_t data[8],
                                          uint8_t detect_toe,
-                                         uint8_t use_detect)
+                                         uint8_t use_detect,
+                                         actuator_id_e actuator_id)
 {
     if (node == NULL)
     {
@@ -113,6 +303,20 @@ static uint8_t can_rx_process_node_frame(motor_measure_t *measure,
         {
             detect_hook(detect_toe);
         }
+        can_rx_update_actuator_feedback_from_measure(actuator_id, bus, std_id, dlc, measure);
+        return 1u;
+    }
+
+    if (can_rx_process_mit_node_frame(measure,
+                                      node,
+                                      bus,
+                                      std_id,
+                                      dlc,
+                                      data,
+                                      actuator_id,
+                                      detect_toe,
+                                      use_detect) != 0u)
+    {
         return 1u;
     }
 
@@ -153,7 +357,8 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
                                             dlc,
                                             data,
                                             (uint8_t)(CHASSIS_MOTOR1_TOE + idx),
-                                            1u);
+                                            1u,
+                                            actuator_id_chassis(idx));
             return;
         }
         if (std_id == motor_cfg_feedback_id(&g_config.motor.yaw))
@@ -165,7 +370,8 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
                                             dlc,
                                             data,
                                             YAW_GIMBAL_MOTOR_TOE,
-                                            1u);
+                                            1u,
+                                            ACTUATOR_ID_YAW);
             return;
         }
         if (std_id == motor_cfg_feedback_id(&g_config.motor.yaw_upper))
@@ -177,7 +383,8 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
                                             dlc,
                                             data,
                                             0u,
-                                            0u);
+                                            0u,
+                                            ACTUATOR_ID_YAW_UPPER);
             return;
         }
         if (std_id == motor_cfg_feedback_id(&g_config.motor.trigger))
@@ -189,7 +396,8 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
                                             dlc,
                                             data,
                                             TRIGGER_MOTOR_TOE,
-                                            1u);
+                                            1u,
+                                            ACTUATOR_ID_TRIGGER);
             return;
         }
         if (std_id == motor_cfg_feedback_id(&g_config.motor.pitch))
@@ -201,7 +409,8 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
                                             dlc,
                                             data,
                                             PITCH_GIMBAL_MOTOR_TOE,
-                                            1u);
+                                            1u,
+                                            ACTUATOR_ID_PITCH);
             return;
         }
     }
@@ -217,7 +426,8 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
                                             dlc,
                                             data,
                                             0u,
-                                            0u);
+                                            0u,
+                                            actuator_id_friction(idx));
             return;
         }
     }

@@ -381,12 +381,10 @@ static void shoot_clear_fric_output(void)
         shoot_control.fric_current_set[i] = 0;
     }
 
-    taskENTER_CRITICAL();
     for (uint8_t i = 0; i < FRIC_MOTOR_NUM; i++)
     {
-        actuator_cmd_set_friction_current_can2(i, 0);
+        actuator_cmd_set_friction_current(i, 0);
     }
-    taskEXIT_CRITICAL();
 
     shoot_control.fric_speed_ramp.out = SHOOT_FRIC_SPEED_OFF_RPM;
     shoot_control.fric_speed_set = SHOOT_FRIC_SPEED_OFF_RPM;
@@ -614,9 +612,8 @@ int16_t shoot_control_loop(void)
 
         for (uint8_t i = 0; i < FRIC_MOTOR_NUM; i++)
         {
-            actuator_cmd_set_friction_current_can2(i, fric_current_cmd[i]);
+            actuator_cmd_set_friction_current(i, fric_current_cmd[i]);
         }
-        taskEXIT_CRITICAL();
     }
     return shoot_control.given_current;
 }
