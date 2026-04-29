@@ -20,6 +20,7 @@
 
 #include "arm_motion.h"
 #include "can_mit_motor_driver.h"
+#include "mit_motor.h"
 #include "unitree_motor_driver.h"
 
 #include <string.h>
@@ -61,10 +62,12 @@ static fp32 arm_j0_unitree_output_to_rotor_torque(const arm_j0_unitree_config_t 
 static fp32 arm_j0_unitree_output_to_rotor_kp(const arm_j0_unitree_config_t *cfg, fp32 output_kp);
 static fp32 arm_j0_unitree_output_to_rotor_kd(const arm_j0_unitree_config_t *cfg, fp32 output_kd);
 static void arm_build_j0_unitree_config(unitree_motor_config_t *out, const arm_j0_unitree_config_t *cfg);
-static uint8_t arm_build_j0_unitree_cmd_from_actuator(const arm_j0_unitree_config_t *cfg,
-                                                      unitree_motor_cmd_t *out,
-                                                      fp32 *output_speed_rad_s,
-                                                      fp32 *output_kd);
+static uint8_t arm_build_j0_mit_cmd_from_actuator(mit_motor_cmd_t *out,
+                                                  fp32 *output_speed_rad_s,
+                                                  fp32 *output_kd);
+static void arm_j0_unitree_cmd_from_mit(const arm_j0_unitree_config_t *cfg,
+                                        const mit_motor_cmd_t *src,
+                                        unitree_motor_cmd_t *out);
 static void arm_update_j0_actuator_feedback_from_unitree(void);
 static void arm_write_j0_unitree_cmd(uint8_t move_key, uint8_t reverse, uint8_t ctrl_held);
 static void arm_sync_j0_unitree_state(void);
@@ -230,7 +233,7 @@ static void arm_send_can_mit_from_actuator(const arm_motor_entry_t *entry,
                                            const can_mit_motor_limits_t *limits)
 {
     actuator_cmd_t src;
-    can_mit_motor_cmd_t cmd;
+    mit_motor_cmd_t cmd;
 
     if (entry == NULL || limits == NULL)
     {
@@ -305,10 +308,9 @@ static fp32 arm_j0_unitree_output_to_rotor_kd(const arm_j0_unitree_config_t *cfg
     return output_kd / (ratio * ratio);
 }
 
-static uint8_t arm_build_j0_unitree_cmd_from_actuator(const arm_j0_unitree_config_t *cfg,
-                                                      unitree_motor_cmd_t *out,
-                                                      fp32 *output_speed_rad_s,
-                                                      fp32 *output_kd)
+static uint8_t arm_build_j0_mit_cmd_from_actuator(mit_motor_cmd_t *out,
+                                                  fp32 *output_speed_rad_s,
+                                                  fp32 *output_kd)
 {
     actuator_cmd_t src;
 
@@ -337,20 +339,20 @@ static uint8_t arm_build_j0_unitree_cmd_from_actuator(const arm_j0_unitree_confi
     case ACTUATOR_CMD_MODE_STATE_TORQUE:
     case ACTUATOR_CMD_MODE_POS_VEL:
     case ACTUATOR_CMD_MODE_FORCE_POS:
-        out->position_rad = arm_j0_unitree_output_to_rotor_position(cfg, src.position);
-        out->speed_rad_s = arm_j0_unitree_output_to_rotor_speed(cfg, src.velocity);
-        out->kp = arm_j0_unitree_output_to_rotor_kp(cfg, src.kp);
-        out->kd = arm_j0_unitree_output_to_rotor_kd(cfg, src.kd);
-        out->torque_nm = arm_j0_unitree_output_to_rotor_torque(cfg, src.torque);
+        out->position = src.position;
+        out->velocity = src.velocity;
+        out->kp = src.kp;
+        out->kd = src.kd;
+        out->torque = src.torque;
         break;
     case ACTUATOR_CMD_MODE_SPEED:
-        out->speed_rad_s = arm_j0_unitree_output_to_rotor_speed(cfg, src.velocity);
-        out->kd = arm_j0_unitree_output_to_rotor_kd(cfg, src.kd);
-        out->torque_nm = arm_j0_unitree_output_to_rotor_torque(cfg, src.torque);
+        out->velocity = src.velocity;
+        out->kd = src.kd;
+        out->torque = src.torque;
         break;
     case ACTUATOR_CMD_MODE_CURRENT:
     default:
-        out->torque_nm = arm_j0_unitree_output_to_rotor_torque(cfg, src.torque);
+        out->torque = src.torque;
         break;
     }
 
@@ -363,6 +365,22 @@ static uint8_t arm_build_j0_unitree_cmd_from_actuator(const arm_j0_unitree_confi
         *output_kd = src.kd;
     }
     return 1u;
+}
+
+static void arm_j0_unitree_cmd_from_mit(const arm_j0_unitree_config_t *cfg,
+                                        const mit_motor_cmd_t *src,
+                                        unitree_motor_cmd_t *out)
+{
+    if (src == NULL || out == NULL)
+    {
+        return;
+    }
+
+    out->position_rad = arm_j0_unitree_output_to_rotor_position(cfg, src->position);
+    out->speed_rad_s = arm_j0_unitree_output_to_rotor_speed(cfg, src->velocity);
+    out->kp = arm_j0_unitree_output_to_rotor_kp(cfg, src->kp);
+    out->kd = arm_j0_unitree_output_to_rotor_kd(cfg, src->kd);
+    out->torque_nm = arm_j0_unitree_output_to_rotor_torque(cfg, src->torque);
 }
 
 static void arm_build_j0_unitree_config(unitree_motor_config_t *out, const arm_j0_unitree_config_t *cfg)
@@ -471,6 +489,7 @@ static void arm_step_j0_unitree(void)
     const uint16_t period_ms = (cfg->control_period_ms == 0u) ? 5u : cfg->control_period_ms;
     const uint32_t now_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
     unitree_motor_config_t driver_cfg;
+    mit_motor_cmd_t mit_cmd = {0};
     unitree_motor_cmd_t cmd = {0};
     fp32 output_speed = 0.0f;
     fp32 output_kd = 0.0f;
@@ -503,7 +522,7 @@ static void arm_step_j0_unitree(void)
         return;
     }
 
-    if (arm_build_j0_unitree_cmd_from_actuator(cfg, &cmd, &output_speed, &output_kd) == 0u)
+    if (arm_build_j0_mit_cmd_from_actuator(&mit_cmd, &output_speed, &output_kd) == 0u)
     {
         g_arm_j0_unitree_cmd_output_speed_rad_s = 0.0f;
         g_arm_j0_unitree_cmd_output_kd = 0.0f;
@@ -511,6 +530,7 @@ static void arm_step_j0_unitree(void)
         return;
     }
 
+    arm_j0_unitree_cmd_from_mit(cfg, &mit_cmd, &cmd);
     g_arm_j0_unitree_cmd_output_speed_rad_s = output_speed;
     g_arm_j0_unitree_cmd_output_kd = output_kd;
     (void)unitree_motor_send_cmd(&driver_cfg, &cmd);

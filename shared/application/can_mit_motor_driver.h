@@ -2,30 +2,11 @@
 
 #include <stdint.h>
 
-#include "motor_model_db.h"
+#include "mit_motor.h"
 
-typedef motor_model_mit_limits_t can_mit_motor_limits_t;
-
-typedef struct
-{
-    fp32 position;
-    fp32 velocity;
-    fp32 kp;
-    fp32 kd;
-    fp32 torque;
-} can_mit_motor_cmd_t;
-
-typedef struct
-{
-    uint8_t online;
-    uint8_t rx_dlc;
-    uint16_t rx_id;
-    uint32_t rx_count;
-    uint32_t last_rx_tick;
-    fp32 position;
-    fp32 velocity;
-    fp32 torque;
-} can_mit_motor_feedback_t;
+typedef mit_motor_limits_t can_mit_motor_limits_t;
+typedef mit_motor_cmd_t can_mit_motor_cmd_t;
+typedef mit_motor_feedback_t can_mit_motor_feedback_t;
 
 void can_mit_motor_send_cmd(uint8_t bus,
                             uint16_t std_id,

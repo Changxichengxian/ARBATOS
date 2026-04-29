@@ -95,6 +95,19 @@ static uint8_t can_tx_cmd_nonzero(const actuator_cmd_t *cmd)
     return 0u;
 }
 
+static int16_t can_tx_fp32_to_i16_saturated(fp32 x)
+{
+    if (x > 32767.0f)
+    {
+        return 32767;
+    }
+    if (x < -32768.0f)
+    {
+        return -32768;
+    }
+    return (int16_t)x;
+}
+
 static uint8_t can_tx_node_bus(uint8_t fallback_bus, const motor_node_param_t *node)
 {
     if (node != NULL && (node->can_bus == 1u || node->can_bus == 2u))
@@ -102,6 +115,64 @@ static uint8_t can_tx_node_bus(uint8_t fallback_bus, const motor_node_param_t *n
         return node->can_bus;
     }
     return fallback_bus;
+}
+
+static uint8_t can_tx_cmd_is_state_mode(const actuator_cmd_t *cmd)
+{
+    if (cmd == NULL || cmd->active == 0u)
+    {
+        return 0u;
+    }
+
+    switch ((actuator_cmd_mode_e)cmd->mode)
+    {
+    case ACTUATOR_CMD_MODE_STATE_TORQUE:
+    case ACTUATOR_CMD_MODE_POS_VEL:
+    case ACTUATOR_CMD_MODE_SPEED:
+    case ACTUATOR_CMD_MODE_FORCE_POS:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+
+static int16_t can_tx_build_rm_current_from_actuator(const can_tx_item_t *item)
+{
+    actuator_cmd_t cmd;
+    actuator_feedback_t fb;
+    fp32 current;
+
+    if (item == NULL || item->node == NULL)
+    {
+        return 0;
+    }
+
+    if (actuator_cmd_get_copy(item->actuator_id, &cmd) == 0u ||
+        can_tx_cmd_is_state_mode(&cmd) == 0u ||
+        actuator_feedback_get_copy(item->actuator_id, &fb) == 0u)
+    {
+        return motor_cfg_limit_current_node(item->node, item->current);
+    }
+
+    // RM motors receive current. For MIT-style commands, kp/kd/torque are current-like terms here.
+    switch ((actuator_cmd_mode_e)cmd.mode)
+    {
+    case ACTUATOR_CMD_MODE_STATE_TORQUE:
+    case ACTUATOR_CMD_MODE_POS_VEL:
+    case ACTUATOR_CMD_MODE_FORCE_POS:
+        current = cmd.kp * (cmd.position - fb.position) +
+                  cmd.kd * (cmd.velocity - fb.velocity) +
+                  cmd.torque;
+        break;
+    case ACTUATOR_CMD_MODE_SPEED:
+        current = cmd.kd * (cmd.velocity - fb.velocity) + cmd.torque;
+        break;
+    default:
+        current = (fp32)item->current;
+        break;
+    }
+
+    return motor_cfg_limit_current_node(item->node, can_tx_fp32_to_i16_saturated(current));
 }
 
 static fp32 can_tx_current_to_mit_torque(const motor_node_param_t *node,
@@ -131,11 +202,11 @@ static fp32 can_tx_current_to_mit_torque(const motor_node_param_t *node,
     return can_tx_clamp_fp32(torque, -limits->torque_max, limits->torque_max);
 }
 
-static void can_tx_build_can_mit_cmd(const motor_node_param_t *node,
-                                     const actuator_cmd_t *src,
-                                     int16_t current,
-                                     const can_mit_motor_limits_t *limits,
-                                     can_mit_motor_cmd_t *out)
+static void can_tx_build_mit_cmd_from_actuator(const motor_node_param_t *node,
+                                               const actuator_cmd_t *src,
+                                               int16_t current,
+                                               const can_mit_motor_limits_t *limits,
+                                               mit_motor_cmd_t *out)
 {
     uint8_t mode = (uint8_t)ACTUATOR_CMD_MODE_CURRENT;
 
@@ -182,7 +253,7 @@ static uint8_t can_tx_process_can_mit_item(uint8_t bus,
     static uint8_t mit_enabled[ACTUATOR_ID__COUNT];
     const can_mit_motor_limits_t *limits;
     actuator_cmd_t cmd;
-    can_mit_motor_cmd_t mit_cmd;
+    mit_motor_cmd_t mit_cmd;
     uint8_t have_cmd;
     uint16_t std_id;
 
@@ -227,7 +298,7 @@ static uint8_t can_tx_process_can_mit_item(uint8_t bus,
         return 1u;
     }
 
-    can_tx_build_can_mit_cmd(node, &cmd, current, limits, &mit_cmd);
+    can_tx_build_mit_cmd_from_actuator(node, &cmd, current, limits, &mit_cmd);
     can_mit_motor_send_cmd(bus, std_id, limits, &mit_cmd);
     return 1u;
 }
@@ -294,13 +365,14 @@ static void can_tx_pack_rm_frames(uint8_t bus,
             continue;
         }
         const uint16_t can_id = motor_cfg_can_id(items[i].node);
+        const int16_t current = can_tx_build_rm_current_from_actuator(&items[i]);
         if (can_id >= 0x201u && can_id <= 0x204u)
         {
-            out_200[can_id - 0x201u] = items[i].current;
+            out_200[can_id - 0x201u] = current;
         }
         else if (can_id >= 0x205u && can_id <= 0x208u)
         {
-            out_1ff[can_id - 0x205u] = items[i].current;
+            out_1ff[can_id - 0x205u] = current;
         }
     }
 }
