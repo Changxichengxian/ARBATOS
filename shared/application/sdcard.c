@@ -14,7 +14,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 #include "bsp_time.h"
 #include "fatfs/ff.h"
 

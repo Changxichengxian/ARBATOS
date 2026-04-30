@@ -9,7 +9,7 @@
 
 #include "arm_task.h"
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 
 #include "manual_input.h"
 #include "watch.h"

@@ -11,7 +11,7 @@
 
 #include "bsp_ist8310_port.h"
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 #include "bsp_delay.h"
 #include "i2c.h"
 

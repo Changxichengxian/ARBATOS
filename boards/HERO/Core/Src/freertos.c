@@ -42,6 +42,7 @@
 #include "voltage_task.h"
 #include "servo_task.h"
 #include "sdlog_task.h"
+#include "startup_service_task.h"
 #include "app_watch.h"
 /* USER CODE END Includes */
 
@@ -88,14 +89,14 @@ __attribute__((section(".ccmram"))) __attribute__((aligned(8))) uint8_t ucHeap[c
 #endif
 
 /* USER CODE END Variables */
-osThreadId testHandle;
+osThreadId startupHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
    
 /* USER CODE END FunctionPrototypes */
 
-void test_task(void const * argument);
+void startup_service_task(void const * argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -105,7 +106,7 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   static StackType_t name##_stack[(stack_words)]; \
   osThreadStaticDef(name, entry, priority, 0, stack_words, name##_stack, &name##_tcb)
 
-APP_STATIC_THREAD(test, test_task, osPriorityNormal, 512);
+APP_STATIC_THREAD(startup, startup_service_task, osPriorityNormal, 512);
 APP_STATIC_THREAD(cali, calibrate_task, osPriorityNormal, 512);
 APP_STATIC_THREAD(ChassisTask, chassis_task, osPriorityAboveNormal, 512);
 APP_STATIC_THREAD(CANTX, can_tx_task, osPriorityAboveNormal, 256);
@@ -181,10 +182,10 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of test */
+  /* definition and creation of startup */
   // CubeMX default thread: runs MX_USB_DEVICE_Init().
   // USB init uses noticeable stack; keep this larger to avoid overflow.
-  testHandle = osThreadCreate(osThread(test), NULL);
+  startupHandle = osThreadCreate(osThread(startup), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -230,24 +231,24 @@ void MX_FREERTOS_Init(void) {
 
 }
 
-/* USER CODE BEGIN Header_test_task */
+/* USER CODE BEGIN Header_startup_service_task */
 /**
-  * @brief  Function implementing the test thread.
+  * @brief  Function implementing the startup service thread.
   * @param  argument: Not used 
   * @retval None
   */
-/* USER CODE END Header_test_task */
-__weak void test_task(void const * argument)
+/* USER CODE END Header_startup_service_task */
+__weak void startup_service_task(void const * argument)
 {
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
-  /* USER CODE BEGIN test_task */
+  /* USER CODE BEGIN startup_service_task */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END test_task */
+  /* USER CODE END startup_service_task */
 }
 
 /* Private application code --------------------------------------------------*/

@@ -9,7 +9,7 @@
 
 
 #include "startup_service_task.h"
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 #include "bsp_buzzer.h"
 #include "bsp_usb.h"
 #include "config.h"

@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 
 #include "bsp_buzzer.h"
 #include "bsp_laser.h"

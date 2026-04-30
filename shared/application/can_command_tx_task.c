@@ -11,7 +11,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 
 #include "CAN_receive.h"
 #include "actuator_cmd.h"

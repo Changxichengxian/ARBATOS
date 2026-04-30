@@ -12,7 +12,7 @@
 
 #include <stdbool.h>
 #include <string.h>
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "arm_math.h"
@@ -30,6 +30,7 @@
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
 #include "shoot.h"
+#include "bsp_time.h"
 #include "bsp_usart.h"
 #include "battery_monitor_task.h"
 #include "referee.h"
@@ -1542,7 +1543,7 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
     switch (sig)
     {
     case AUX_TELEM_SIG_SYS_TICK_MS:
-        return (fp32)osKernelGetSysTimerCount();
+        return (fp32)bsp_time_get_tick_ms();
     case AUX_TELEM_SIG_SYS_AUX_CMD_SEQ:
         return (fp32)aux_cmd_seq;
     case AUX_TELEM_SIG_SYS_BATTERY_VOLT:

@@ -10,7 +10,7 @@
 
 #include "calibrate_task.h"
 #include "string.h"
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 
 #include "bsp_adc.h"
 #include "bsp_buzzer.h"

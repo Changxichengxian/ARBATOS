@@ -11,7 +11,7 @@
 
 #include <string.h>
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 
 void host_link_task(void const *argument)
 {

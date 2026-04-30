@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 
 #define SD_SPI_SECTOR_SIZE 512u
 

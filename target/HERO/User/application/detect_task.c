@@ -10,7 +10,7 @@
 
 
 #include "detect_task.h"
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 #include "config.h"
 #include "watch.h"
 #include "sdlog.h"

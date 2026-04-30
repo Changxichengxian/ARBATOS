@@ -11,7 +11,7 @@
 #include "chassis_behaviour.h"
 #include "gimbal_behaviour.h"
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 
 #include <math.h>
 

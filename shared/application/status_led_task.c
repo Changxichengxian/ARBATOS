@@ -10,7 +10,7 @@
 
 #include "status_led_task.h"
 #include "bsp_led.h"
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 #include "detect_task.h"
 #include "config.h"
 #include "INS_task.h"
@@ -87,5 +87,4 @@ void status_led_task(void const *argument)
         osDelay(gap_ms);
     }
 }
-
 

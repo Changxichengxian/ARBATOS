@@ -9,7 +9,7 @@
 
 
 #include "battery_monitor_task.h"
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 
 #include "bsp_adc.h"
 #include "user_lib.h"

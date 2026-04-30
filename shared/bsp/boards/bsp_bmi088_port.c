@@ -9,7 +9,7 @@
 
 #include "bsp_bmi088_port.h"
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 #include "bsp_delay.h"
 #include <bsp_bmi088_cfg.h>
 #include "spi.h"

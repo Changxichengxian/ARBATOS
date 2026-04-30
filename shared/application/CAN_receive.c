@@ -9,9 +9,10 @@
 
 #include "CAN_receive.h"
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 
 #include "bsp_can.h"
+#include "bsp_time.h"
 #include "actuator_cmd.h"
 #include "can_mit_motor_driver.h"
 #include "detect_task.h"
@@ -131,7 +132,7 @@ static void can_rx_update_actuator_feedback_from_measure(actuator_id_e actuator_
     fb.transport = (uint8_t)ACTUATOR_TRANSPORT_CAN;
     fb.rx_id = std_id;
     fb.rx_count = prev_rx_count + 1u;
-    fb.last_rx_tick = osKernelGetTickCount();
+    fb.last_rx_tick = bsp_time_get_tick_ms();
     fb.ecd = measure->ecd;
     fb.speed_rpm = measure->speed_rpm;
     fb.current = measure->given_current;

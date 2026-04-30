@@ -9,7 +9,7 @@
 
 #include "sdlog_task.h"
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 
 #include "config.h"
 #include "bsp_time.h"

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+﻿<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
 <Project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="project_projx.xsd">
 
   <SchemaVersion>2.1</SchemaVersion>
@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F407xx,USE_HAL_DRIVER,STM32F407xx,ARM_MATH_CM4,__FPU_USED=1U,__FPU_PRESENT=1U,__CC_ARM,ARM_MATH_MATRIX_CHECK,ARM_MATH_ROUNDING</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../../../shared/User/common;../../../target/HERO/User/application;../../../target/HERO/User/bsp/boards;../../../target/HERO/User/components/support;../User/application;../User/bsp/boards;../../../shared/User/bsp/boards;../User/components/devices;../../../shared/User/components/devices;../../../shared/User/components/algorithm;../../../shared/User/components/algorithm/Include;../../../shared/User/components/support;../../../shared/User/application/protocol;../../../shared/User/components/controller;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../USB_DEVICE/App;../USB_DEVICE/Target;../../../shared/User/application</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../../../shared/common;../../../target/HERO/User/application;../../../target/HERO/User/bsp/boards;../../../target/HERO/User/components/support;../User/application;../User/bsp/boards;../../../shared/bsp/boards;../User/components/devices;../../../shared/components/devices;../../../shared/components/algorithm;../../../shared/components/algorithm/Include;../../../shared/components/support;../../../shared/application/protocol;../../../shared/components/controller;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../USB_DEVICE/App;../USB_DEVICE/Target;../../../shared/application</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -407,72 +407,72 @@
             <File>
               <FileName>bsp_adc.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_adc.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_adc.c</FilePath>
             </File>
             <File>
               <FileName>bsp_buzzer.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_buzzer.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_buzzer.c</FilePath>
             </File>
             <File>
               <FileName>bsp_can.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_can.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_can.c</FilePath>
             </File>
             <File>
               <FileName>bsp_crc32.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_crc32.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_crc32.c</FilePath>
             </File>
             <File>
               <FileName>bsp_delay.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_delay.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_delay.c</FilePath>
             </File>
             <File>
               <FileName>bsp_dwt.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_dwt.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_dwt.c</FilePath>
             </File>
             <File>
               <FileName>bsp_flash.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_flash.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_flash.c</FilePath>
             </File>
             <File>
               <FileName>bsp_fric.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_fric.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_fric.c</FilePath>
             </File>
             <File>
               <FileName>bsp_imu_pwm.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_imu_pwm.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_imu_pwm.c</FilePath>
             </File>
             <File>
               <FileName>bsp_i2c.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_i2c.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_i2c.c</FilePath>
             </File>
             <File>
               <FileName>bsp_laser.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_laser.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_laser.c</FilePath>
             </File>
             <File>
               <FileName>bsp_led.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_led.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_led.c</FilePath>
             </File>
             <File>
               <FileName>bsp_key.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_key.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_key.c</FilePath>
             </File>
             <File>
               <FileName>bsp_rc.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_rc.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_rc.c</FilePath>
             </File>
             <File>
               <FileName>bsp_rc_port.c</FileName>
@@ -482,52 +482,52 @@
             <File>
               <FileName>bsp_spi.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_spi.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_spi.c</FilePath>
             </File>
             <File>
               <FileName>bsp_usart.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_usart.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_usart.c</FilePath>
             </File>
             <File>
               <FileName>bsp_pwr.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_pwr.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_pwr.c</FilePath>
             </File>
             <File>
               <FileName>bsp_shoot_trig.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_shoot_trig.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_shoot_trig.c</FilePath>
             </File>
             <File>
               <FileName>bsp_time.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_time.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_time.c</FilePath>
             </File>
             <File>
               <FileName>bsp_usb.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_usb.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_usb.c</FilePath>
             </File>
             <File>
               <FileName>bsp_servo_pwm.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_servo_pwm.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_servo_pwm.c</FilePath>
             </File>
             <File>
               <FileName>bsp_bmi088_port.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_bmi088_port.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_bmi088_port.c</FilePath>
             </File>
             <File>
               <FileName>bsp_ist8310_port.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_ist8310_port.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_ist8310_port.c</FilePath>
             </File>
             <File>
               <FileName>bsp_sd_spi_port.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\bsp\\boards\\bsp_sd_spi_port.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_sd_spi_port.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -537,47 +537,47 @@
             <File>
               <FileName>calibrate_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\calibrate_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\calibrate_task.c</FilePath>
             </File>
             <File>
               <FileName>CAN_receive.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\CAN_receive.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\CAN_receive.c</FilePath>
             </File>
             <File>
               <FileName>actuator_cmd.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\actuator_cmd.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\actuator_cmd.c</FilePath>
             </File>
             <File>
               <FileName>motor_model_db.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\motor_model_db.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\motor_model_db.c</FilePath>
             </File>
             <File>
-              <FileName>can_tx_task.c</FileName>
+              <FileName>can_command_tx_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\can_tx_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\can_command_tx_task.c</FilePath>
             </File>
             <File>
-              <FileName>can_rx_task.c</FileName>
+              <FileName>can_feedback_rx_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\can_rx_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\can_feedback_rx_task.c</FilePath>
             </File>
             <File>
               <FileName>chassis_behaviour.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\chassis_behaviour.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\chassis_behaviour.c</FilePath>
             </File>
             <File>
               <FileName>chassis_power_control.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\chassis_power_control.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\chassis_power_control.c</FilePath>
             </File>
             <File>
-              <FileName>chassis_task.c</FileName>
+              <FileName>chassis_control_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\chassis_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\chassis_control_task.c</FilePath>
             </File>
             <File>
               <FileName>detect_task.c</FileName>
@@ -587,22 +587,22 @@
             <File>
               <FileName>cpu_usage.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\cpu_usage.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\cpu_usage.c</FilePath>
             </File>
             <File>
               <FileName>gimbal_behaviour.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\gimbal_behaviour.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\gimbal_behaviour.c</FilePath>
             </File>
             <File>
-              <FileName>gimbal_task.c</FileName>
+              <FileName>gimbal_control_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\gimbal_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\gimbal_control_task.c</FilePath>
             </File>
             <File>
               <FileName>pitch_cali.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\pitch_cali.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\pitch_cali.c</FilePath>
             </File>
             <File>
               <FileName>INS_task.c</FileName>
@@ -612,62 +612,62 @@
             <File>
               <FileName>referee.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\referee.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\referee.c</FilePath>
             </File>
             <File>
-              <FileName>referee_usart_task.c</FileName>
+              <FileName>referee_rx_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\referee_usart_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\referee_rx_task.c</FilePath>
             </File>
             <File>
-              <FileName>remote_control.c</FileName>
+              <FileName>manual_input.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\remote_control.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\manual_input.c</FilePath>
             </File>
             <File>
               <FileName>rc_sbus_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\rc_sbus_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\rc_sbus_task.c</FilePath>
             </File>
             <File>
               <FileName>buzzer_file_player.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\buzzer_file_player.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\buzzer_file_player.c</FilePath>
             </File>
             <File>
               <FileName>shoot.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\shoot.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\shoot.c</FilePath>
             </File>
             <File>
-              <FileName>test_task.c</FileName>
+              <FileName>startup_service_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\test_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\startup_service_task.c</FilePath>
             </File>
             <File>
               <FileName>elrs_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\elrs_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\elrs_task.c</FilePath>
             </File>
             <File>
-              <FileName>usb_task.c</FileName>
+              <FileName>host_link_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\usb_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\host_link_task.c</FilePath>
             </File>
             <File>
-              <FileName>voltage_task.c</FileName>
+              <FileName>battery_monitor_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\voltage_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\battery_monitor_task.c</FilePath>
             </File>
             <File>
-              <FileName>led_flow_task.c</FileName>
+              <FileName>status_led_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\led_flow_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\status_led_task.c</FilePath>
             </File>
             <File>
-              <FileName>servo_task.c</FileName>
+              <FileName>servo_control_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\servo_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\servo_control_task.c</FilePath>
             </File>
             <File>
               <FileName>config.c</FileName>
@@ -675,29 +675,29 @@
               <FilePath>..\\..\\..\\target\\HERO\\User\\application\\config.c</FilePath>
             </File>
             <File>
-              <FileName>app_input.c</FileName>
+              <FileName>control_input.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\app_input.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\control_input.c</FilePath>
             </File>
             <File>
-              <FileName>app_watch.c</FileName>
+              <FileName>watch.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\app_watch.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\watch.c</FilePath>
             </File>
             <File>
               <FileName>sdcard.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\sdcard.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\sdcard.c</FilePath>
             </File>
             <File>
               <FileName>sdlog.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\sdlog.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\sdlog.c</FilePath>
             </File>
             <File>
               <FileName>sdlog_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\application\\sdlog_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\sdlog_task.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -707,17 +707,17 @@
             <File>
               <FileName>BMI088driver.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\devices\BMI088driver.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\devices\BMI088driver.c</FilePath>
             </File>
             <File>
               <FileName>ist8310driver.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\devices\ist8310driver.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\devices\ist8310driver.c</FilePath>
             </File>
             <File>
               <FileName>sd_spi.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\devices\sd_spi.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\devices\sd_spi.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -727,27 +727,27 @@
             <File>
               <FileName>AHRS.lib</FileName>
               <FileType>4</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\algorithm\AHRS.lib</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\algorithm\AHRS.lib</FilePath>
             </File>
             <File>
               <FileName>AHRS_middleware.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\algorithm\AHRS_middleware.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\algorithm\AHRS_middleware.c</FilePath>
             </File>
             <File>
               <FileName>arm_cortexM4lf_math.lib</FileName>
               <FileType>4</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\algorithm\arm_cortexM4lf_math.lib</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\algorithm\arm_cortexM4lf_math.lib</FilePath>
             </File>
             <File>
               <FileName>user_lib.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\algorithm\user_lib.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\algorithm\user_lib.c</FilePath>
             </File>
             <File>
               <FileName>kalman_filter.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\algorithm\kalman_filter.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\algorithm\kalman_filter.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -757,27 +757,27 @@
             <File>
               <FileName>CRC8_CRC16.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\support\CRC8_CRC16.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\support\CRC8_CRC16.c</FilePath>
             </File>
             <File>
               <FileName>fifo.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\support\fifo.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\support\fifo.c</FilePath>
             </File>
             <File>
               <FileName>mem_mang4.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\support\mem_mang4.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\support\mem_mang4.c</FilePath>
             </File>
             <File>
               <FileName>ff.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\support\\fatfs\\ff.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\support\\fatfs\\ff.c</FilePath>
             </File>
             <File>
               <FileName>ffunicode.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\support\\fatfs\\ffunicode.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\support\\fatfs\\ffunicode.c</FilePath>
             </File>
             <File>
               <FileName>diskio.c</FileName>
@@ -787,7 +787,7 @@
             <File>
               <FileName>ffsystem.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\support\\fatfs\\ffsystem.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\support\\fatfs\\ffsystem.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -797,27 +797,27 @@
             <File>
               <FileName>pid.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\controller\pid.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\controller\pid.c</FilePath>
             </File>
             <File>
               <FileName>pid_advanced.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\controller\pid_advanced.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\controller\pid_advanced.c</FilePath>
             </File>
             <File>
               <FileName>chassis_power_limiter.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\controller\chassis_power_limiter.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\controller\chassis_power_limiter.c</FilePath>
             </File>
             <File>
               <FileName>axis_current_conditioner.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\controller\axis_current_conditioner.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\controller\axis_current_conditioner.c</FilePath>
             </File>
             <File>
               <FileName>gimbal_pid.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\User\\components\\controller\gimbal_pid.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\controller\gimbal_pid.c</FilePath>
             </File>
           </Files>
         </Group>

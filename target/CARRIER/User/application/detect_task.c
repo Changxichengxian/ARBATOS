@@ -11,7 +11,7 @@
 
 #include "config.h"
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 #include "main.h"
 
 #include "sdlog.h"

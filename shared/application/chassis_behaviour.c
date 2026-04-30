@@ -10,10 +10,11 @@
 
 
 #include "chassis_behaviour.h"
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 #include "chassis_control_task.h"
 #include "arm_math.h"
 
+#include "bsp_time.h"
 #include "gimbal_behaviour.h"
 #include "control_input.h"
 #include "detect_task.h"
@@ -527,7 +528,7 @@ static uint32_t chassis_swing_rng_next(chassis_swing_state_t *st)
     uint32_t x = st->rng_state;
     if (x == 0u)
     {
-        x = osKernelGetSysTimerCount() ^ 0x9E3779B9u;
+        x = bsp_time_get_tick_ms() ^ 0x9E3779B9u;
         if (x == 0u)
         {
             x = 0x6C8E9CF5u;
@@ -574,7 +575,7 @@ static void chassis_swing_control(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, c
         -0.7853981633974483f,
     };
     const fp32 center_step_rad = 1.5707963267948966f;
-    const uint32_t now_ms = osKernelGetSysTimerCount();
+    const uint32_t now_ms = bsp_time_get_tick_ms();
     const chassis_control_snapshot_t *fast = &chassis_move_rc_to_vector->fast;
 
     chassis_rc_to_control_vector(vx_set, vy_set, chassis_move_rc_to_vector);
@@ -748,7 +749,7 @@ static void chassis_gyro_spin_var_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_s
     const fp32 spin_wz_base = *wz_set;
     const fp32 sign = (spin_wz_base >= 0.0f) ? 1.0f : -1.0f;
     const fp32 base_abs = fabsf(spin_wz_base);
-    const uint32_t now_ms = osKernelGetSysTimerCount();
+    const uint32_t now_ms = bsp_time_get_tick_ms();
     const fp32 t = (fp32)now_ms * 0.001f;
 
     static uint32_t s_rng = 0u;

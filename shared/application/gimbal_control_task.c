@@ -9,7 +9,7 @@
 
 #include "gimbal_control_task.h"
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 
 #include "arm_math.h"
 #include "CAN_receive.h"

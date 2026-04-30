@@ -9,7 +9,7 @@
 
 
 #include "servo_control_task.h"
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 #include "bsp_servo_pwm.h"
 #include "manual_input.h"
 

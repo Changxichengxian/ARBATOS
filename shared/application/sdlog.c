@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 #include "bsp_time.h"
 #include "sdcard.h"
 #include "rt_profiler.h"
