@@ -28,41 +28,41 @@
 /* USER CODE BEGIN Includes */
 
 #include "calibrate_task.h"
-#include "can_tx_task.h"
-#include "can_rx_task.h"
-#include "chassis_task.h"
+#include "can_command_tx_task.h"
+#include "can_feedback_rx_task.h"
+#include "chassis_control_task.h"
 #include "detect_task.h"
-#include "gimbal_task.h"
+#include "gimbal_control_task.h"
 #include "INS_task.h"
-#include "led_flow_task.h"
+#include "status_led_task.h"
 #include "rc_sbus_task.h"
-#include "referee_usart_task.h"
-#include "usb_task.h"
+#include "referee_rx_task.h"
+#include "host_link_task.h"
 #include "elrs_task.h"
-#include "voltage_task.h"
-#include "servo_task.h"
+#include "battery_monitor_task.h"
+#include "servo_control_task.h"
 #include "sdlog_task.h"
 #include "startup_service_task.h"
-#include "app_watch.h"
+#include "watch.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
 osThreadId calibrate_tast_handle;
-osThreadId can_tx_task_handle;
-osThreadId can_rx_task_handle;
+osThreadId can_command_tx_task_handle;
+osThreadId can_feedback_rx_task_handle;
 osThreadId chassisTaskHandle;
 osThreadId detect_handle;
 osThreadId gimbalTaskHandle;
 osThreadId imuTaskHandle;
 osThreadId led_RGB_flow_handle;
 osThreadId rc_sbus_task_handle;
-osThreadId referee_usart_task_handle;
-osThreadId usb_task_handle;
+osThreadId referee_rx_task_handle;
+osThreadId host_link_task_handle;
 osThreadId uart1_elrs_thread_handle;
 osThreadId battery_voltage_handle;
-osThreadId servo_task_handle;
+osThreadId servo_control_task_handle;
 osThreadId sdlog_task_handle;
 
 
@@ -108,19 +108,19 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 APP_STATIC_THREAD(startup, startup_service_task, osPriorityNormal, 512);
 APP_STATIC_THREAD(cali, calibrate_task, osPriorityNormal, 512);
-APP_STATIC_THREAD(ChassisTask, chassis_task, osPriorityAboveNormal, 512);
-APP_STATIC_THREAD(CANTX, can_tx_task, osPriorityAboveNormal, 256);
-APP_STATIC_THREAD(CANRX, can_rx_task, osPriorityHigh, 256);
+APP_STATIC_THREAD(ChassisTask, chassis_control_task, osPriorityAboveNormal, 512);
+APP_STATIC_THREAD(CANTX, can_command_tx_task, osPriorityAboveNormal, 256);
+APP_STATIC_THREAD(CANRX, can_feedback_rx_task, osPriorityHigh, 256);
 APP_STATIC_THREAD(RCSBUS, rc_sbus_task, osPriorityAboveNormal, 256);
 APP_STATIC_THREAD(DETECT, detect_task, osPriorityNormal, 256);
-APP_STATIC_THREAD(gimbalTask, gimbal_task, osPriorityHigh, 1024);
+APP_STATIC_THREAD(gimbalTask, gimbal_control_task, osPriorityHigh, 1024);
 APP_STATIC_THREAD(imuTask, INS_task, osPriorityRealtime, 1024);
-APP_STATIC_THREAD(led, led_RGB_flow_task, osPriorityNormal, 256);
-APP_STATIC_THREAD(REFEREE, referee_usart_task, osPriorityNormal, 128);
-APP_STATIC_THREAD(USBTask, usb_task, osPriorityNormal, 128);
+APP_STATIC_THREAD(led, status_led_task, osPriorityNormal, 256);
+APP_STATIC_THREAD(REFEREE, referee_rx_task, osPriorityNormal, 128);
+APP_STATIC_THREAD(USBTask, host_link_task, osPriorityNormal, 128);
 APP_STATIC_THREAD(UART1_ELRS, uart1_elrs_task, osPriorityAboveNormal, 256);
-APP_STATIC_THREAD(BATTERY_VOLTAGE, battery_voltage_task, osPriorityNormal, 128);
-APP_STATIC_THREAD(SERVO, servo_task, osPriorityNormal, 128);
+APP_STATIC_THREAD(BATTERY_VOLTAGE, battery_monitor_task, osPriorityNormal, 128);
+APP_STATIC_THREAD(SERVO, servo_control_task, osPriorityNormal, 128);
 APP_STATIC_THREAD(SDLOG, sdlog_task, osPriorityLow, 512);
 
 /* GetIdleTaskMemory prototype (linked to static allocation support) */
@@ -193,10 +193,10 @@ void MX_FREERTOS_Init(void) {
 
     chassisTaskHandle = osThreadCreate(osThread(ChassisTask), NULL);
 
-    can_tx_task_handle = osThreadCreate(osThread(CANTX), NULL);
+    can_command_tx_task_handle = osThreadCreate(osThread(CANTX), NULL);
 
     // CAN RX dispatcher: consume ISR ring, update motor measures and offline detect.
-    can_rx_task_handle = osThreadCreate(osThread(CANRX), NULL);
+    can_feedback_rx_task_handle = osThreadCreate(osThread(CANRX), NULL);
 
     // USART3 SBUS/DBUS RX: consume ISR ring, parse frames, update RC_ctrl_t.
     rc_sbus_task_handle = osThreadCreate(osThread(RCSBUS), NULL);
@@ -210,17 +210,17 @@ void MX_FREERTOS_Init(void) {
     led_RGB_flow_handle = osThreadCreate(osThread(led), NULL);
 
 
-    referee_usart_task_handle = osThreadCreate(osThread(REFEREE), NULL);
+    referee_rx_task_handle = osThreadCreate(osThread(REFEREE), NULL);
 
 
-    usb_task_handle = osThreadCreate(osThread(USBTask), NULL);
+    host_link_task_handle = osThreadCreate(osThread(USBTask), NULL);
 
     // UART1 ELRS(CRSF) RX: high-priority, interrupt-driven parser (updates RC_ctrl_t).
     uart1_elrs_thread_handle = osThreadCreate(osThread(UART1_ELRS), NULL);
 
     battery_voltage_handle = osThreadCreate(osThread(BATTERY_VOLTAGE), NULL);
 
-    servo_task_handle = osThreadCreate(osThread(SERVO), NULL);
+    servo_control_task_handle = osThreadCreate(osThread(SERVO), NULL);
 
     // TF/SD logger: low priority, flush buffered binary records to FatFs.
     sdlog_task_handle = osThreadCreate(osThread(SDLOG), NULL);
@@ -257,18 +257,18 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
   (void)xTask;
 
-  g_app_watch.rtos.fatal_reason = 1U;
-  g_app_watch.rtos.fatal_task_handle = (uint32_t)xTask;
-  for (uint32_t i = 0; i < (uint32_t)sizeof(g_app_watch.rtos.fatal_task_name); i++)
+  g_watch.rtos.fatal_reason = 1U;
+  g_watch.rtos.fatal_task_handle = (uint32_t)xTask;
+  for (uint32_t i = 0; i < (uint32_t)sizeof(g_watch.rtos.fatal_task_name); i++)
   {
     const char c = (pcTaskName != NULL) ? pcTaskName[i] : '\0';
-    g_app_watch.rtos.fatal_task_name[i] = c;
+    g_watch.rtos.fatal_task_name[i] = c;
     if (c == '\0')
     {
       break;
     }
   }
-  g_app_watch.rtos.fatal_task_name[sizeof(g_app_watch.rtos.fatal_task_name) - 1] = '\0';
+  g_watch.rtos.fatal_task_name[sizeof(g_watch.rtos.fatal_task_name) - 1] = '\0';
 
   if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)
   {
@@ -284,20 +284,20 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 
 void vApplicationMallocFailedHook(void)
 {
-  g_app_watch.rtos.fatal_reason = 2U;
-  g_app_watch.rtos.fatal_task_handle = (uint32_t)xTaskGetCurrentTaskHandle();
+  g_watch.rtos.fatal_reason = 2U;
+  g_watch.rtos.fatal_task_handle = (uint32_t)xTaskGetCurrentTaskHandle();
   {
     const char *name = pcTaskGetTaskName(NULL);
-    for (uint32_t i = 0; i < (uint32_t)sizeof(g_app_watch.rtos.fatal_task_name); i++)
+    for (uint32_t i = 0; i < (uint32_t)sizeof(g_watch.rtos.fatal_task_name); i++)
     {
       const char c = (name != NULL) ? name[i] : '\0';
-      g_app_watch.rtos.fatal_task_name[i] = c;
+      g_watch.rtos.fatal_task_name[i] = c;
       if (c == '\0')
       {
         break;
       }
     }
-    g_app_watch.rtos.fatal_task_name[sizeof(g_app_watch.rtos.fatal_task_name) - 1] = '\0';
+    g_watch.rtos.fatal_task_name[sizeof(g_watch.rtos.fatal_task_name) - 1] = '\0';
   }
 
   if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)

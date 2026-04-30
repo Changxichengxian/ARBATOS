@@ -31,10 +31,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "config.h"
-#include "app_watch.h"
+#include "watch.h"
 #include "bsp_buzzer.h"
 #include "bsp_can.h"
-#include "remote_control.h"
+#include "manual_input.h"
 
 /* USER CODE END Includes */
 
@@ -88,12 +88,12 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_HAL_INIT_DONE);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_HAL_INIT_DONE);
 
   /* USER CODE END Init */
 
   /* Configure the system clock */
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_SYS_CLOCK_OSC);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_SYS_CLOCK_OSC);
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
@@ -101,50 +101,50 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_GPIO_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_GPIO_INIT);
   MX_GPIO_Init();
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_DMA_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_DMA_INIT);
   MX_DMA_Init();
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_CAN1_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_CAN1_INIT);
   MX_CAN1_Init();
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_CAN2_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_CAN2_INIT);
   MX_CAN2_Init();
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_USART1_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_USART1_INIT);
   MX_USART1_UART_Init();
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_USART3_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_USART3_INIT);
   MX_USART3_UART_Init();
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_USART6_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_USART6_INIT);
   MX_USART6_UART_Init();
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_UART7_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_UART7_INIT);
   MX_UART7_Init();
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_UART8_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_UART8_INIT);
   MX_UART8_Init();
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_SPI5_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_SPI5_INIT);
   MX_SPI5_Init();
 #if BOARD_SD_ENABLE
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_SDIO_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_SDIO_INIT);
   MX_SDIO_SD_Init();
 #endif
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_TIM3_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_TIM3_INIT);
   MX_TIM3_Init();
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_TIM12_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_TIM12_INIT);
   MX_TIM12_Init();
   /* USER CODE BEGIN 2 */
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_CAN_FILTER_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_CAN_FILTER_INIT);
   can_filter_init();
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_BUZZER_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_BUZZER_INIT);
   buzzer_set_enable(g_config.buzzer.enable);
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_REMOTE_CONTROL_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_REMOTE_CONTROL_INIT);
   remote_control_init();
 
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in cmsis_os2.c) */
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_FREERTOS_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_FREERTOS_INIT);
   MX_FREERTOS_Init();
 
   /* Start scheduler */
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_SCHEDULER_START);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_SCHEDULER_START);
   osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
@@ -185,7 +185,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLN = 168;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 7;
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_SYS_CLOCK_OSC);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_SYS_CLOCK_OSC);
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -200,7 +200,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_SYS_CLOCK_BUS);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_SYS_CLOCK_BUS);
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     Error_Handler();
@@ -241,7 +241,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  app_watch_diag_mark_error_handler(HAL_GetTick(), __get_IPSR());
+  watch_diag_mark_error_handler(HAL_GetTick(), __get_IPSR());
   __disable_irq();
   while (1)
   {

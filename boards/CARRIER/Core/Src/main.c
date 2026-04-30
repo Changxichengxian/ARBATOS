@@ -33,7 +33,7 @@
 #include "config.h"
 #include "bsp_buzzer.h"
 #include "bsp_can.h"
-#include "remote_control.h"
+#include "manual_input.h"
 
 /* USER CODE END Includes */
 

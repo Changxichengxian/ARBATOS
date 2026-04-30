@@ -21,7 +21,7 @@
 #include "sdio.h"
 
 /* USER CODE BEGIN 0 */
-#include "app_watch.h"
+#include "watch.h"
 
 /* USER CODE END 0 */
 
@@ -48,16 +48,16 @@ void MX_SDIO_SD_Init(void)
   hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
   hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
   hsd.Init.ClockDiv = 0;
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_SDIO_CARD_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_SDIO_CARD_INIT);
   if (HAL_SD_Init(&hsd) != HAL_OK)
   {
-    app_watch_diag_set_error_args((uint32_t)hsd.ErrorCode, (uint32_t)HAL_SD_GetCardState(&hsd));
+    watch_diag_set_error_args((uint32_t)hsd.ErrorCode, (uint32_t)HAL_SD_GetCardState(&hsd));
     Error_Handler();
   }
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_SDIO_WIDE_BUS);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_SDIO_WIDE_BUS);
   if (HAL_SD_ConfigWideBusOperation(&hsd, SDIO_BUS_WIDE_4B) != HAL_OK)
   {
-    app_watch_diag_set_error_args((uint32_t)hsd.ErrorCode, (uint32_t)HAL_SD_GetCardState(&hsd));
+    watch_diag_set_error_args((uint32_t)hsd.ErrorCode, (uint32_t)HAL_SD_GetCardState(&hsd));
     Error_Handler();
   }
   /* USER CODE BEGIN SDIO_Init 2 */
@@ -105,7 +105,7 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
 
     /* SDIO DMA Init */
     /* SDIO_RX Init */
-    app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_SDIO_DMA_RX_INIT);
+    watch_diag_set_boot_stage(WATCH_BOOT_STAGE_SDIO_DMA_RX_INIT);
     hdma_sdio_rx.Instance = DMA2_Stream3;
     hdma_sdio_rx.Init.Channel = DMA_CHANNEL_4;
     hdma_sdio_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
@@ -118,14 +118,14 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
     hdma_sdio_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
     if (HAL_DMA_Init(&hdma_sdio_rx) != HAL_OK)
     {
-      app_watch_diag_set_error_args((uint32_t)hdma_sdio_rx.ErrorCode, (uint32_t)DMA2_Stream3_BASE);
+      watch_diag_set_error_args((uint32_t)hdma_sdio_rx.ErrorCode, (uint32_t)DMA2_Stream3_BASE);
       Error_Handler();
     }
 
     __HAL_LINKDMA(sdHandle,hdmarx,hdma_sdio_rx);
 
     /* SDIO_TX Init */
-    app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_SDIO_DMA_TX_INIT);
+    watch_diag_set_boot_stage(WATCH_BOOT_STAGE_SDIO_DMA_TX_INIT);
     hdma_sdio_tx.Instance = DMA2_Stream6;
     hdma_sdio_tx.Init.Channel = DMA_CHANNEL_4;
     hdma_sdio_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
@@ -138,7 +138,7 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
     hdma_sdio_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
     if (HAL_DMA_Init(&hdma_sdio_tx) != HAL_OK)
     {
-      app_watch_diag_set_error_args((uint32_t)hdma_sdio_tx.ErrorCode, (uint32_t)DMA2_Stream6_BASE);
+      watch_diag_set_error_args((uint32_t)hdma_sdio_tx.ErrorCode, (uint32_t)DMA2_Stream6_BASE);
       Error_Handler();
     }
 

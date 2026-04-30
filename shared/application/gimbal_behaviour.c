@@ -257,13 +257,13 @@ bool_t gimbal_turnaround_get_frame_yaw_relative(fp32 *out_yaw_relative)
 }
 
 /**
-  * @brief          the function is called by gimbal_set_mode function in gimbal_task.c
+  * @brief          the function is called by gimbal_set_mode function in gimbal_control_task.c
   *                 the function set gimbal_behaviour variable, and set motor mode.
   * @param[in]      gimbal_mode_set: gimbal data
   * @retval         none
   */
 /**
-  * @brief          被gimbal_set_mode函数调用在gimbal_task.c,云台行为状态机以及电机状态机设置
+  * @brief          被gimbal_set_mode函数调用在gimbal_control_task.c,云台行为状态机以及电机状态机设置
   * @param[out]     gimbal_mode_set: 云台数据指针
   * @retval         none
   */
@@ -317,7 +317,7 @@ void gimbal_behaviour_mode_set(gimbal_control_t *gimbal_mode_set)
 }
 
 /**
-  * @brief          the function is called by gimbal_set_contorl function in gimbal_task.c
+  * @brief          the function is called by gimbal_set_contorl function in gimbal_control_task.c
   *                 accoring to the gimbal_behaviour variable, call the corresponding function
   * @param[out]     add_yaw:yaw axis increment angle, unit rad
   * @param[out]     add_pitch:pitch axis increment angle,unit rad

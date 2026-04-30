@@ -28,7 +28,7 @@
 #include <string.h>
 
 #include "config.h"
-#include "app_watch.h"
+#include "watch.h"
 #include "sdlog.h"
 
 
@@ -236,14 +236,14 @@ void INS_task(void const *pvParameters)
     }
     while (mpu6500_init() != 0)
     {
-        app_watch_task_error(APP_WATCH_TASK_IMU);
+        watch_task_error(WATCH_TASK_IMU);
         osDelay(100);
     }
 
     mpu6500_raw_t raw = {0};
     while (mpu6500_read_raw(&raw) != 0)
     {
-        app_watch_task_error(APP_WATCH_TASK_IMU);
+        watch_task_error(WATCH_TASK_IMU);
         osDelay(10);
     }
 
@@ -290,7 +290,7 @@ void INS_task(void const *pvParameters)
     {
         if (imu_drdy_sem != NULL)
         {
-            app_watch_task_wait(APP_WATCH_TASK_IMU);
+            watch_task_wait(WATCH_TASK_IMU);
             (void)xSemaphoreTake(imu_drdy_sem, portMAX_DELAY);
         }
 
@@ -304,7 +304,7 @@ void INS_task(void const *pvParameters)
         const int dma_start = mpu6500_read_raw_dma_start();
         if (dma_start == 0)
         {
-            app_watch_task_wait(APP_WATCH_TASK_IMU);
+            watch_task_wait(WATCH_TASK_IMU);
             if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(2u)) != 0u && mpu6500_dma_last_status == 0)
             {
                 got_raw = (mpu6500_read_raw_dma_finish(&raw) == 0) ? 1 : 0;
@@ -333,7 +333,7 @@ void INS_task(void const *pvParameters)
 
         if (got_raw)
         {
-            app_watch_task_beat(APP_WATCH_TASK_IMU);
+            watch_task_beat(WATCH_TASK_IMU);
             detect_hook(BOARD_GYRO_TOE);
             detect_hook(BOARD_ACCEL_TOE);
 
@@ -413,11 +413,11 @@ void INS_task(void const *pvParameters)
         }
         else if (raw_timeout)
         {
-            app_watch_task_timeout(APP_WATCH_TASK_IMU);
+            watch_task_timeout(WATCH_TASK_IMU);
         }
         else if (raw_error)
         {
-            app_watch_task_error(APP_WATCH_TASK_IMU);
+            watch_task_error(WATCH_TASK_IMU);
         }
     }
 }

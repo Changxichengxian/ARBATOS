@@ -41,7 +41,7 @@ static volatile uint32_t can2_tx_count = 0u;
 static volatile uint32_t can1_tx_fail = 0u;
 static volatile uint32_t can2_tx_fail = 0u;
 
-static TaskHandle_t can_rx_task_handle = NULL;
+static TaskHandle_t can_feedback_rx_task_handle = NULL;
 
 static volatile uint32_t can1_last_error = BSP_CAN_ERR_NONE;
 static volatile uint32_t can2_last_error = BSP_CAN_ERR_NONE;
@@ -121,7 +121,7 @@ static void bsp_can_rx_push_common(uint8_t bus, uint16_t std_id, uint8_t dlc, co
 
 static void bsp_can_rx_notify_from_isr(void)
 {
-    if (can_rx_task_handle == NULL)
+    if (can_feedback_rx_task_handle == NULL)
     {
         return;
     }
@@ -131,7 +131,7 @@ static void bsp_can_rx_notify_from_isr(void)
     }
 
     BaseType_t hpw = pdFALSE;
-    vTaskNotifyGiveFromISR(can_rx_task_handle, &hpw);
+    vTaskNotifyGiveFromISR(can_feedback_rx_task_handle, &hpw);
     portYIELD_FROM_ISR(hpw);
 }
 
@@ -379,7 +379,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
 void bsp_can_rx_attach_task(TaskHandle_t task)
 {
-    can_rx_task_handle = task;
+    can_feedback_rx_task_handle = task;
 }
 
 int bsp_can_rx_pop(bsp_can_frame_t *out)

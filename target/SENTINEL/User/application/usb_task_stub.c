@@ -7,11 +7,13 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#include "usb_task.h"
+#include "host_link_task.h"
+
+#include <string.h>
 
 #include "cmsis_os.h"
 
-void usb_task(void const *argument)
+void host_link_task(void const *argument)
 {
     (void)argument;
     for (;;)
@@ -26,9 +28,35 @@ bool vision_take_latest(VisionToGimbal *out)
     return false;
 }
 
-void vision_usb_rx_callback(uint8_t *buf, uint32_t len)
+bool image_remote_get_state(image_remote_state_t *out)
+{
+    if (out != NULL)
+    {
+        memset(out, 0, sizeof(*out));
+    }
+    return false;
+}
+
+bool image_remote_auto_aim_requested(void)
+{
+    return false;
+}
+
+bool image_remote_aux_fire_requested(void)
+{
+    return false;
+}
+
+void vision_link_rx_callback(uint8_t *buf, uint32_t len)
 {
     (void)buf;
     (void)len;
 }
 
+void image_remote_link_get_stats(sdlog_image_link_stats_t *out)
+{
+    if (out != NULL)
+    {
+        memset(out, 0, sizeof(*out));
+    }
+}

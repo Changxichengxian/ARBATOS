@@ -24,7 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "spi.h"
-#include "app_watch.h"
+#include "watch.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -255,32 +255,32 @@ void HardFault_HandlerC(uint32_t *stack, uint32_t exc_return)
     }
   }
 
-  g_app_watch.fault.hardfault_valid = 1U;
-  g_app_watch.fault.hardfault_r0 = g_hardfault_info.r0;
-  g_app_watch.fault.hardfault_r1 = g_hardfault_info.r1;
-  g_app_watch.fault.hardfault_r2 = g_hardfault_info.r2;
-  g_app_watch.fault.hardfault_r3 = g_hardfault_info.r3;
-  g_app_watch.fault.hardfault_r12 = g_hardfault_info.r12;
-  g_app_watch.fault.hardfault_lr = g_hardfault_info.lr;
-  g_app_watch.fault.hardfault_pc = g_hardfault_info.pc;
-  g_app_watch.fault.hardfault_psr = g_hardfault_info.psr;
-  g_app_watch.fault.hardfault_exc_return = g_hardfault_info.exc_return;
-  g_app_watch.fault.hardfault_msp = g_hardfault_info.msp;
-  g_app_watch.fault.hardfault_psp = g_hardfault_info.psp;
-  g_app_watch.fault.hardfault_cfsr = g_hardfault_info.cfsr;
-  g_app_watch.fault.hardfault_hfsr = g_hardfault_info.hfsr;
-  g_app_watch.fault.hardfault_dfsr = g_hardfault_info.dfsr;
-  g_app_watch.fault.hardfault_afsr = g_hardfault_info.afsr;
-  g_app_watch.fault.hardfault_mmfar = g_hardfault_info.mmfar;
-  g_app_watch.fault.hardfault_bfar = g_hardfault_info.bfar;
-  g_app_watch.fault.hardfault_icsr = g_hardfault_info.icsr;
-  g_app_watch.fault.hardfault_shcsr = g_hardfault_info.shcsr;
-  g_app_watch.fault.hardfault_control = g_hardfault_info.control;
-  g_app_watch.fault.hardfault_stack_ptr = g_hardfault_info.stack_ptr;
-  g_app_watch.fault.hardfault_basic_ptr = g_hardfault_info.basic_ptr;
-  for (uint32_t i = 0; i < (uint32_t)(sizeof(g_app_watch.fault.hardfault_stack_dump) / sizeof(g_app_watch.fault.hardfault_stack_dump[0])); i++)
+  g_watch.fault.hardfault_valid = 1U;
+  g_watch.fault.hardfault_r0 = g_hardfault_info.r0;
+  g_watch.fault.hardfault_r1 = g_hardfault_info.r1;
+  g_watch.fault.hardfault_r2 = g_hardfault_info.r2;
+  g_watch.fault.hardfault_r3 = g_hardfault_info.r3;
+  g_watch.fault.hardfault_r12 = g_hardfault_info.r12;
+  g_watch.fault.hardfault_lr = g_hardfault_info.lr;
+  g_watch.fault.hardfault_pc = g_hardfault_info.pc;
+  g_watch.fault.hardfault_psr = g_hardfault_info.psr;
+  g_watch.fault.hardfault_exc_return = g_hardfault_info.exc_return;
+  g_watch.fault.hardfault_msp = g_hardfault_info.msp;
+  g_watch.fault.hardfault_psp = g_hardfault_info.psp;
+  g_watch.fault.hardfault_cfsr = g_hardfault_info.cfsr;
+  g_watch.fault.hardfault_hfsr = g_hardfault_info.hfsr;
+  g_watch.fault.hardfault_dfsr = g_hardfault_info.dfsr;
+  g_watch.fault.hardfault_afsr = g_hardfault_info.afsr;
+  g_watch.fault.hardfault_mmfar = g_hardfault_info.mmfar;
+  g_watch.fault.hardfault_bfar = g_hardfault_info.bfar;
+  g_watch.fault.hardfault_icsr = g_hardfault_info.icsr;
+  g_watch.fault.hardfault_shcsr = g_hardfault_info.shcsr;
+  g_watch.fault.hardfault_control = g_hardfault_info.control;
+  g_watch.fault.hardfault_stack_ptr = g_hardfault_info.stack_ptr;
+  g_watch.fault.hardfault_basic_ptr = g_hardfault_info.basic_ptr;
+  for (uint32_t i = 0; i < (uint32_t)(sizeof(g_watch.fault.hardfault_stack_dump) / sizeof(g_watch.fault.hardfault_stack_dump[0])); i++)
   {
-    g_app_watch.fault.hardfault_stack_dump[i] = g_hardfault_info.stack_dump[i];
+    g_watch.fault.hardfault_stack_dump[i] = g_hardfault_info.stack_dump[i];
   }
 
   if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)

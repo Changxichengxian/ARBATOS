@@ -67,18 +67,18 @@ projects/<TARGET>/
 
 | 板级工程 | 芯片 | 说明 |
 |---|---|---|
-| `DJI_C_F407` | STM32F407 | DJI C 板硬件层 |
-| `DJI_A_F427` | STM32F427 | DJI A 板硬件层 |
-| `DM_MC02_H7` | STM32H723 | H7 实验端口 |
+| `DJI_C_F407` | STM32F407 | DJI C 开发板 |
+| `DJI_A_F427` | STM32F427 | DJI A 开发板 |
+| `DM_MC02_H7` | STM32H723 | 达妙 MC02开发板 |
 
-### 目标配置
+### 车型配置
 
 | Target | 说明 |
 |---|---|
-| `HERO` | 云台 / 射击主目标 |
-| `INFANTRY` | 步兵目标 |
-| `SENTINEL` | 哨兵目标 |
-| `CARRIER` | 当前默认只启底盘 |
+| `HERO` |西北农林科技大学英雄机器人 |
+| `INFANTRY` | 西北农林科技大学步兵机器人 |
+| `SENTINEL` | 西北农林科技大学哨兵机器人 |
+| `CARRIER` | 西北农林科技大学工程机器人 |
 | `MC02_BASE` | H7 接板和机械臂实验 |
 
 每个 `target/<TARGET>/User/application/` 当前至少提供：
@@ -98,30 +98,10 @@ shared/
 `-- common/        # 通用类型定义
 ```
 
-## 工程入口
 
-| Target | Keil 工程 | 板级工程 | 说明 |
-|---|---|---|---|
-| `HERO` | `projects/HERO/MDK-ARM/HERO.uvprojx` | `DJI_C_F407` | 云台 / 射击主入口 |
-| `INFANTRY` | `projects/INFANTRY/MDK-ARM/INFANTRY.uvprojx` | `DJI_A_F427` | 步兵目标 |
-| `SENTINEL` | `projects/SENTINEL/MDK-ARM/SENTINEL.uvprojx` | `DJI_A_F427` | 哨兵目标 |
-| `CARRIER` | `projects/CARRIER/MDK-ARM/CARRIER.uvprojx` | `DJI_A_F427` | 当前默认只启底盘 |
-| `MC02_BASE` | `boards/DM_MC02_H7/MDK-ARM/MC02_BASE.uvprojx` | `DM_MC02_H7` | H7 接板和机械臂实验 |
+## 控制链路
 
-常用打开入口：
-
-```text
-open_HERO.cmd
-open_INFANTRY.cmd
-open_SENTINEL.cmd
-open_CARRIER.cmd
-```
-
-`MC02_BASE` 当前直接打开 `boards/DM_MC02_H7/MDK-ARM/MC02_BASE.uvprojx`。
-
-## 当前控制链路
-
-当前主线采用“多源输入先汇总，再由各控制任务各自闭环”的结构。
+采用“多源输入先汇总，再由各控制任务各自闭环”的结构。
 
 ```text
 rc_sbus_task      elrs_task      host_link_task      板载按键
@@ -156,7 +136,7 @@ rc_sbus_task      elrs_task      host_link_task      板载按键
 - `vision_link.c`：视觉链路协议处理，当前由 USB CDC 接入。
 - `image_remote_link.c`：图传遥控输入和遥测处理，实际串口由 AUX 口配置决定。
 
-物理接口仍然包括 USB CDC 和 AUX 口。老 C 板上的 AUX 口当前是 UART1，但业务代码不应直接依赖这个细节。
+物理接口仍然包括 USB CDC 和 AUX 口。
 
 ### 控制和执行
 
@@ -290,6 +270,8 @@ ARBATOS/
 |-- docs/
 `-- tools/
 ```
+
+注意：这里没有 `shared/User/`。如果看到旧文档或旧工程里还写这个路径，那就是过期引用。
 
 ## 更多文档
 

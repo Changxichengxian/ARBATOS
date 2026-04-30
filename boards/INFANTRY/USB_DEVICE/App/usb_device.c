@@ -27,7 +27,7 @@
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN Includes */
-#include "app_watch.h"
+#include "watch.h"
 
 /* USER CODE END Includes */
 
@@ -69,22 +69,22 @@ void MX_USB_DEVICE_Init(void)
   /* USER CODE END USB_DEVICE_Init_PreTreatment */
 
   /* Init Device Library, add supported class and start the library. */
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_USB_DEVICE_USBD_INIT);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_USB_DEVICE_USBD_INIT);
   if (USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS) != USBD_OK)
   {
     Error_Handler();
   }
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_USB_DEVICE_REGISTER_CLASS);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_USB_DEVICE_REGISTER_CLASS);
   if (USBD_RegisterClass(&hUsbDeviceFS, &USBD_CDC) != USBD_OK)
   {
     Error_Handler();
   }
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_USB_DEVICE_REGISTER_IF);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_USB_DEVICE_REGISTER_IF);
   if (USBD_CDC_RegisterInterface(&hUsbDeviceFS, &USBD_Interface_fops_FS) != USBD_OK)
   {
     Error_Handler();
   }
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_USB_DEVICE_START);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_USB_DEVICE_START);
   if (USBD_Start(&hUsbDeviceFS) != USBD_OK)
   {
     Error_Handler();

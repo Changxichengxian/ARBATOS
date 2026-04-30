@@ -29,14 +29,14 @@
 #include "rc_sbus_task.h"
 #include "detect_task.h"
 #include "sdlog_task.h"
-#include "can_rx_task.h"
-#include "can_tx_task.h"
-#include "chassis_task.h"
-#include "gimbal_task.h"
+#include "can_feedback_rx_task.h"
+#include "can_command_tx_task.h"
+#include "chassis_control_task.h"
+#include "gimbal_control_task.h"
 #include "INS_task.h"
-#include "usb_task.h"
+#include "host_link_task.h"
 #include "elrs_task.h"
-#include "app_watch.h"
+#include "watch.h"
 
 /* USER CODE END Includes */
 
@@ -73,8 +73,8 @@ osThreadId defaultTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-static const char *app_watch_rtos_task_name_from_handle(TaskHandle_t xTask, const char *fallback_name);
-static void app_watch_rtos_copy_task_name(char *dst, uint32_t dst_size, const char *src);
+static const char *watch_rtos_task_name_from_handle(TaskHandle_t xTask, const char *fallback_name);
+static void watch_rtos_copy_task_name(char *dst, uint32_t dst_size, const char *src);
 
 /* USER CODE END FunctionPrototypes */
 
@@ -158,19 +158,19 @@ void MX_FREERTOS_Init(void) {
   sdlogTaskHandle = osThreadCreate(osThread(sdlogTask), NULL);
 #endif
 
-  osThreadDef(canTxTask, can_tx_task, osPriorityAboveNormal, 0, 256);
+  osThreadDef(canTxTask, can_command_tx_task, osPriorityAboveNormal, 0, 256);
   canTxTaskHandle = osThreadCreate(osThread(canTxTask), NULL);
 
-  osThreadDef(canRxTask, can_rx_task, osPriorityHigh, 0, 256);
+  osThreadDef(canRxTask, can_feedback_rx_task, osPriorityHigh, 0, 256);
   canRxTaskHandle = osThreadCreate(osThread(canRxTask), NULL);
 
-  osThreadDef(chassisTask, chassis_task, osPriorityAboveNormal, 0, 512);
+  osThreadDef(chassisTask, chassis_control_task, osPriorityAboveNormal, 0, 512);
   chassisTaskHandle = osThreadCreate(osThread(chassisTask), NULL);
 
-  osThreadDef(gimbalTask, gimbal_task, osPriorityHigh, 0, 1024);
+  osThreadDef(gimbalTask, gimbal_control_task, osPriorityHigh, 0, 1024);
   gimbalTaskHandle = osThreadCreate(osThread(gimbalTask), NULL);
 
-  osThreadDef(usbTask, usb_task, osPriorityNormal, 0, 128);
+  osThreadDef(usbTask, host_link_task, osPriorityNormal, 0, 128);
   usbTaskHandle = osThreadCreate(osThread(usbTask), NULL);
 
   osThreadDef(uart1ElrsTask, uart1_elrs_task, osPriorityAboveNormal, 0, 256);
@@ -193,14 +193,14 @@ void StartDefaultTask(void const * argument)
 {
   (void)argument;
   /* init code for USB_DEVICE */
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_DEFAULT_TASK_START);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_DEFAULT_TASK_START);
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN StartDefaultTask */
-  app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_RUN);
+  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_RUN);
   /* Infinite loop */
   for(;;)
   {
-    app_watch_task_beat(APP_WATCH_TASK_DEFAULT);
+    watch_task_beat(WATCH_TASK_DEFAULT);
     osDelay(1);
   }
   /* USER CODE END StartDefaultTask */
@@ -209,7 +209,7 @@ void StartDefaultTask(void const * argument)
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 
-static const char *app_watch_rtos_task_name_from_handle(TaskHandle_t xTask, const char *fallback_name)
+static const char *watch_rtos_task_name_from_handle(TaskHandle_t xTask, const char *fallback_name)
 {
   if (xTask == (TaskHandle_t)defaultTaskHandle)
   {
@@ -266,7 +266,7 @@ static const char *app_watch_rtos_task_name_from_handle(TaskHandle_t xTask, cons
   return "?";
 }
 
-static void app_watch_rtos_copy_task_name(char *dst, uint32_t dst_size, const char *src)
+static void watch_rtos_copy_task_name(char *dst, uint32_t dst_size, const char *src)
 {
   if (dst == NULL || dst_size == 0u)
   {
@@ -282,11 +282,11 @@ static void app_watch_rtos_copy_task_name(char *dst, uint32_t dst_size, const ch
 
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
-  g_app_watch.rtos.fatal_reason = 1U;
-  g_app_watch.rtos.fatal_task_handle = (uint32_t)xTask;
-  app_watch_rtos_copy_task_name(g_app_watch.rtos.fatal_task_name,
-                                (uint32_t)sizeof(g_app_watch.rtos.fatal_task_name),
-                                app_watch_rtos_task_name_from_handle(xTask, pcTaskName));
+  g_watch.rtos.fatal_reason = 1U;
+  g_watch.rtos.fatal_task_handle = (uint32_t)xTask;
+  watch_rtos_copy_task_name(g_watch.rtos.fatal_task_name,
+                                (uint32_t)sizeof(g_watch.rtos.fatal_task_name),
+                                watch_rtos_task_name_from_handle(xTask, pcTaskName));
 
   if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)
   {
@@ -304,11 +304,11 @@ void vApplicationMallocFailedHook(void)
 {
   const TaskHandle_t current_task = xTaskGetCurrentTaskHandle();
 
-  g_app_watch.rtos.fatal_reason = 2U;
-  g_app_watch.rtos.fatal_task_handle = (uint32_t)current_task;
-  app_watch_rtos_copy_task_name(g_app_watch.rtos.fatal_task_name,
-                                (uint32_t)sizeof(g_app_watch.rtos.fatal_task_name),
-                                app_watch_rtos_task_name_from_handle(current_task,
+  g_watch.rtos.fatal_reason = 2U;
+  g_watch.rtos.fatal_task_handle = (uint32_t)current_task;
+  watch_rtos_copy_task_name(g_watch.rtos.fatal_task_name,
+                                (uint32_t)sizeof(g_watch.rtos.fatal_task_name),
+                                watch_rtos_task_name_from_handle(current_task,
                                                                      pcTaskGetTaskName(NULL)));
 
   if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)

@@ -28,10 +28,10 @@
 #include "rc_sbus_task.h"
 #include "detect_task.h"
 #include "sdlog_task.h"
-#include "can_rx_task.h"
-#include "can_tx_task.h"
-#include "chassis_task.h"
-#include "gimbal_task.h"
+#include "can_feedback_rx_task.h"
+#include "can_command_tx_task.h"
+#include "chassis_control_task.h"
+#include "gimbal_control_task.h"
 #include "INS_task.h"
 #include "config.h"
 
@@ -68,7 +68,7 @@ osThreadId defaultTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-static uint8_t carrier_need_gimbal_task(void);
+static uint8_t carrier_need_gimbal_control_task(void);
 
 /* USER CODE END FunctionPrototypes */
 
@@ -152,18 +152,18 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(sdlogTask, sdlog_task, osPriorityLow, 0, 512);
   sdlogTaskHandle = osThreadCreate(osThread(sdlogTask), NULL);
 
-  osThreadDef(canTxTask, can_tx_task, osPriorityAboveNormal, 0, 256);
+  osThreadDef(canTxTask, can_command_tx_task, osPriorityAboveNormal, 0, 256);
   canTxTaskHandle = osThreadCreate(osThread(canTxTask), NULL);
 
-  osThreadDef(canRxTask, can_rx_task, osPriorityHigh, 0, 256);
+  osThreadDef(canRxTask, can_feedback_rx_task, osPriorityHigh, 0, 256);
   canRxTaskHandle = osThreadCreate(osThread(canRxTask), NULL);
 
-  osThreadDef(chassisTask, chassis_task, osPriorityAboveNormal, 0, 512);
+  osThreadDef(chassisTask, chassis_control_task, osPriorityAboveNormal, 0, 512);
   chassisTaskHandle = osThreadCreate(osThread(chassisTask), NULL);
 
-  if (carrier_need_gimbal_task())
+  if (carrier_need_gimbal_control_task())
   {
-    osThreadDef(gimbalTask, gimbal_task, osPriorityHigh, 0, 512);
+    osThreadDef(gimbalTask, gimbal_control_task, osPriorityHigh, 0, 512);
     gimbalTaskHandle = osThreadCreate(osThread(gimbalTask), NULL);
   }
   else
@@ -199,7 +199,7 @@ void StartDefaultTask(void const * argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-static uint8_t carrier_need_gimbal_task(void)
+static uint8_t carrier_need_gimbal_control_task(void)
 {
   uint32_t i;
 
