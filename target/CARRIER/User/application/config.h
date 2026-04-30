@@ -416,6 +416,7 @@ typedef enum
     MOTOR_MODEL_DM_J8009_2EC_V10,
     MOTOR_MODEL_DM_J8006_2EC_V11,
     MOTOR_MODEL_DM_J8006_2EC_V10,
+    MOTOR_MODEL_UNITREE_GO_M8010_6,
     MOTOR_MODEL__COUNT
 } motor_model_e;
 
@@ -426,6 +427,7 @@ typedef enum
     MOTOR_PROTOCOL_DM_3MODE,
     MOTOR_PROTOCOL_DM_EXT_V1,
     MOTOR_PROTOCOL_DM_EXT_V2,
+    MOTOR_PROTOCOL_UNITREE_RS485,
 } motor_protocol_e;
 
 typedef enum
@@ -438,6 +440,13 @@ typedef enum
     MOTOR_CONTROL_MODE_FORCE_POS,
 } motor_control_mode_e;
 
+typedef enum
+{
+    MOTOR_TRANSPORT_INHERIT = 0,
+    MOTOR_TRANSPORT_CAN,
+    MOTOR_TRANSPORT_RS485,
+} motor_transport_e;
+
 typedef struct
 {
     uint16_t can_id_base;   // base ID (0x200 for most, 0x204 for 6020)
@@ -448,11 +457,15 @@ typedef struct
 typedef struct
 {
     motor_model_e model;
-    uint8_t can_id; // DIP id (1..8)
+    uint8_t can_id; // motor id; CAN uses DIP id (1..8), RS485 uses device id
     uint8_t can_bus; // 0=legacy path decides bus, otherwise 1/2
     uint8_t protocol; // motor_protocol_e, 0=inherit from model table
     uint8_t control_mode; // motor_control_mode_e, 0=inherit from model/protocol
     uint16_t master_id; // feedback ID for motors with separate rx/tx IDs
+    uint8_t transport; // motor_transport_e, 0=CAN/default
+    uint8_t rs485_port; // RS485 port when transport=RS485
+    uint32_t baudrate; // RS485 baudrate, 0=driver/default
+    uint16_t rx_timeout_ms; // RS485 offline timeout, 0=driver/default
 } motor_node_param_t;
 
 typedef struct
@@ -889,13 +902,13 @@ typedef struct
 typedef struct
 {
     uint8_t enable;             // [800] 1=enable Unitree RS485 executor
-    uint8_t rs485_port;         // [801] 0=USART2 RS485_0, 1=USART3 RS485_1
-    uint8_t motor_id;           // [802] GO-M8010-6 motor id
+    uint8_t rs485_port;         // [801] legacy fallback; prefer motor node rs485_port
+    uint8_t motor_id;           // [802] legacy fallback; prefer motor node can_id
     uint8_t reserved0;
-    uint32_t baudrate;          // [803] RS485 baudrate, local reference uses 4000000
+    uint32_t baudrate;          // [803] legacy fallback; prefer motor node baudrate
     uint16_t control_period_ms; // [804] executor period
-    uint16_t rx_timeout_ms;     // [805] offline timeout after last valid reply
-    fp32 reduction_ratio;       // [806] output-side -> rotor-side ratio
+    uint16_t rx_timeout_ms;     // [805] legacy fallback; prefer motor node rx_timeout_ms
+    fp32 reduction_ratio;       // [806] legacy fallback; prefer motor model reduction_ratio
     fp32 key_speed_rad_s;       // [807] bringup key speed on output side
     fp32 hold_kd;               // [808] damping when no key is pressed
     fp32 drive_kd;              // [809] damping when key is pressed

@@ -26,10 +26,37 @@ static inline const motor_model_param_t *motor_cfg_model(motor_model_e model)
     return &g_motor_config.model[model];
 }
 
+static inline motor_transport_e motor_cfg_transport(const motor_node_param_t *node)
+{
+    if (node == NULL || node->transport == (uint8_t)MOTOR_TRANSPORT_INHERIT)
+    {
+        return MOTOR_TRANSPORT_CAN;
+    }
+    return (motor_transport_e)node->transport;
+}
+
+static inline uint8_t motor_cfg_node_id(const motor_node_param_t *node)
+{
+    return (node != NULL) ? node->can_id : 0u;
+}
+
+static inline uint8_t motor_cfg_can_bus(uint8_t fallback_bus, const motor_node_param_t *node)
+{
+    if (node != NULL && (node->can_bus == 1u || node->can_bus == 2u))
+    {
+        return node->can_bus;
+    }
+    return fallback_bus;
+}
+
 // 把“轴上的电机编号”换成真正的 CAN 标准帧 ID；返回 0 表示这个轴未启用。
 static inline uint16_t motor_cfg_can_id(const motor_node_param_t *node)
 {
     if (node == NULL)
+    {
+        return 0u;
+    }
+    if (motor_cfg_transport(node) != MOTOR_TRANSPORT_CAN)
     {
         return 0u;
     }

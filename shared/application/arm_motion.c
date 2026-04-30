@@ -46,6 +46,10 @@ static fp32 arm_motion_clamp_fp32(fp32 x, fp32 x_min, fp32 x_max);
 static uint8_t arm_key_active(const arm_motor_entry_t *entry, uint16_t key_mask);
 static uint8_t arm_any_keys_active(uint16_t key_mask);
 static uint8_t arm_any_mit_keys_active(uint16_t key_mask);
+static const arm_motor_entry_t *arm_j0_entry(void);
+static uint8_t arm_entry_can_bus(const arm_motor_entry_t *entry);
+static uint8_t arm_entry_is_unitree_rs485(const arm_motor_entry_t *entry);
+static uint8_t arm_j0_unitree_enabled(const arm_motor_entry_t *entry);
 static uint16_t arm_mit_std_id(const arm_motor_entry_t *entry);
 static const can_mit_motor_limits_t *arm_mit_limits(const arm_motor_entry_t *entry);
 static void arm_copy_mit_feedback(uint8_t index);
@@ -55,23 +59,39 @@ static void arm_send_can_mit_from_actuator(const arm_motor_entry_t *entry,
                                            actuator_id_e actuator_id,
                                            const can_mit_motor_limits_t *limits);
 static void arm_refresh_j0_feedback(void);
-static fp32 arm_j0_unitree_ratio_safe(const arm_j0_unitree_config_t *cfg);
-static fp32 arm_j0_unitree_output_to_rotor_position(const arm_j0_unitree_config_t *cfg, fp32 output_position_rad);
-static fp32 arm_j0_unitree_output_to_rotor_speed(const arm_j0_unitree_config_t *cfg, fp32 output_speed_rad_s);
-static fp32 arm_j0_unitree_output_to_rotor_torque(const arm_j0_unitree_config_t *cfg, fp32 output_torque_nm);
-static fp32 arm_j0_unitree_output_to_rotor_kp(const arm_j0_unitree_config_t *cfg, fp32 output_kp);
-static fp32 arm_j0_unitree_output_to_rotor_kd(const arm_j0_unitree_config_t *cfg, fp32 output_kd);
-static void arm_build_j0_unitree_config(unitree_motor_config_t *out, const arm_j0_unitree_config_t *cfg);
+static fp32 arm_j0_unitree_ratio_safe(const arm_motor_entry_t *entry, const arm_j0_unitree_config_t *cfg);
+static fp32 arm_j0_unitree_output_to_rotor_position(const arm_motor_entry_t *entry,
+                                                    const arm_j0_unitree_config_t *cfg,
+                                                    fp32 output_position_rad);
+static fp32 arm_j0_unitree_output_to_rotor_speed(const arm_motor_entry_t *entry,
+                                                 const arm_j0_unitree_config_t *cfg,
+                                                 fp32 output_speed_rad_s);
+static fp32 arm_j0_unitree_output_to_rotor_torque(const arm_motor_entry_t *entry,
+                                                  const arm_j0_unitree_config_t *cfg,
+                                                  fp32 output_torque_nm);
+static fp32 arm_j0_unitree_output_to_rotor_kp(const arm_motor_entry_t *entry,
+                                              const arm_j0_unitree_config_t *cfg,
+                                              fp32 output_kp);
+static fp32 arm_j0_unitree_output_to_rotor_kd(const arm_motor_entry_t *entry,
+                                              const arm_j0_unitree_config_t *cfg,
+                                              fp32 output_kd);
+static void arm_build_j0_unitree_config(unitree_motor_config_t *out,
+                                        const arm_motor_entry_t *entry,
+                                        const arm_j0_unitree_config_t *cfg);
 static uint8_t arm_build_j0_mit_cmd_from_actuator(mit_motor_cmd_t *out,
                                                   fp32 *output_speed_rad_s,
                                                   fp32 *output_kd);
-static void arm_j0_unitree_cmd_from_mit(const arm_j0_unitree_config_t *cfg,
+static void arm_j0_unitree_cmd_from_mit(const arm_motor_entry_t *entry,
+                                        const arm_j0_unitree_config_t *cfg,
                                         const mit_motor_cmd_t *src,
                                         unitree_motor_cmd_t *out);
 static void arm_update_j0_actuator_feedback_from_unitree(void);
-static void arm_write_j0_unitree_cmd(uint8_t move_key, uint8_t reverse, uint8_t ctrl_held);
+static void arm_write_j0_unitree_cmd(const arm_motor_entry_t *entry,
+                                     uint8_t move_key,
+                                     uint8_t reverse,
+                                     uint8_t ctrl_held);
 static void arm_sync_j0_unitree_state(void);
-static void arm_step_j0_unitree(void);
+static void arm_step_j0_unitree(const arm_motor_entry_t *entry);
 static void arm_step_j0(const arm_motor_entry_t *entry, uint16_t key_mask);
 static void arm_step_mit(uint16_t key_mask);
 
@@ -134,6 +154,39 @@ static uint8_t arm_any_mit_keys_active(uint16_t key_mask)
     return 0u;
 }
 
+static const arm_motor_entry_t *arm_j0_entry(void)
+{
+    return &g_arm_motor_table[ARM_J0_INDEX];
+}
+
+static uint8_t arm_entry_can_bus(const arm_motor_entry_t *entry)
+{
+    if (entry == NULL)
+    {
+        return 0u;
+    }
+    return motor_cfg_can_bus(entry->bus, &entry->node);
+}
+
+static uint8_t arm_entry_is_unitree_rs485(const arm_motor_entry_t *entry)
+{
+    if (entry == NULL)
+    {
+        return 0u;
+    }
+    if (motor_cfg_transport(&entry->node) != MOTOR_TRANSPORT_RS485)
+    {
+        return 0u;
+    }
+    return (motor_cfg_protocol(&entry->node) == MOTOR_PROTOCOL_UNITREE_RS485) ? 1u : 0u;
+}
+
+static uint8_t arm_j0_unitree_enabled(const arm_motor_entry_t *entry)
+{
+    return (g_config.arm_j0_unitree.enable != 0u &&
+            arm_entry_is_unitree_rs485(entry) != 0u) ? 1u : 0u;
+}
+
 static uint16_t arm_mit_std_id(const arm_motor_entry_t *entry)
 {
     if (entry == NULL)
@@ -185,7 +238,7 @@ static void arm_copy_mit_feedback(uint8_t index)
     {
         (void)memset(&fb, 0, sizeof(fb));
         fb.online = src->online;
-        fb.bus = entry->bus;
+        fb.bus = arm_entry_can_bus(entry);
         fb.rx_dlc = src->rx_dlc;
         fb.transport = (uint8_t)ACTUATOR_TRANSPORT_CAN;
         fb.rx_id = src->rx_id;
@@ -224,7 +277,7 @@ static void arm_send_mit_stop_all(void)
             continue;
         }
 
-        can_mit_motor_send_stop(entry->bus, arm_mit_std_id(entry), arm_mit_limits(entry));
+        can_mit_motor_send_stop(arm_entry_can_bus(entry), arm_mit_std_id(entry), arm_mit_limits(entry));
     }
 }
 
@@ -266,44 +319,73 @@ static void arm_send_can_mit_from_actuator(const arm_motor_entry_t *entry,
         }
     }
 
-    can_mit_motor_send_cmd(entry->bus, arm_mit_std_id(entry), limits, &cmd);
+    can_mit_motor_send_cmd(arm_entry_can_bus(entry), arm_mit_std_id(entry), limits, &cmd);
 }
 
-static fp32 arm_j0_unitree_ratio_safe(const arm_j0_unitree_config_t *cfg)
+static fp32 arm_j0_unitree_ratio_safe(const arm_motor_entry_t *entry, const arm_j0_unitree_config_t *cfg)
 {
-    if (cfg == NULL || cfg->reduction_ratio <= 0.0f)
+    if (entry != NULL)
     {
-        return 1.0f;
+        const motor_model_param_t *model = motor_cfg_model(entry->node.model);
+
+        if (model != NULL && model->reduction_ratio > 0.0f)
+        {
+            return model->reduction_ratio;
+        }
+    }
+    if (cfg != NULL && cfg->reduction_ratio > 0.0f)
+    {
+        return cfg->reduction_ratio;
     }
 
-    return cfg->reduction_ratio;
+    return 1.0f;
 }
 
-static fp32 arm_j0_unitree_output_to_rotor_position(const arm_j0_unitree_config_t *cfg, fp32 output_position_rad)
+static fp32 arm_j0_unitree_output_to_rotor_position(const arm_motor_entry_t *entry,
+                                                    const arm_j0_unitree_config_t *cfg,
+                                                    fp32 output_position_rad)
 {
-    return output_position_rad * arm_j0_unitree_ratio_safe(cfg);
+    return output_position_rad * arm_j0_unitree_ratio_safe(entry, cfg);
 }
 
-static fp32 arm_j0_unitree_output_to_rotor_speed(const arm_j0_unitree_config_t *cfg, fp32 output_speed_rad_s)
+static fp32 arm_j0_unitree_output_to_rotor_speed(const arm_motor_entry_t *entry,
+                                                 const arm_j0_unitree_config_t *cfg,
+                                                 fp32 output_speed_rad_s)
 {
-    return output_speed_rad_s * arm_j0_unitree_ratio_safe(cfg);
+    return output_speed_rad_s * arm_j0_unitree_ratio_safe(entry, cfg);
 }
 
-static fp32 arm_j0_unitree_output_to_rotor_torque(const arm_j0_unitree_config_t *cfg, fp32 output_torque_nm)
+static fp32 arm_j0_unitree_output_to_rotor_torque(const arm_motor_entry_t *entry,
+                                                  const arm_j0_unitree_config_t *cfg,
+                                                  fp32 output_torque_nm)
 {
-    return output_torque_nm / arm_j0_unitree_ratio_safe(cfg);
+    return output_torque_nm / arm_j0_unitree_ratio_safe(entry, cfg);
 }
 
-static fp32 arm_j0_unitree_output_to_rotor_kp(const arm_j0_unitree_config_t *cfg, fp32 output_kp)
+static fp32 arm_j0_unitree_output_to_rotor_kp(const arm_motor_entry_t *entry,
+                                              const arm_j0_unitree_config_t *cfg,
+                                              fp32 output_kp)
 {
-    const fp32 ratio = arm_j0_unitree_ratio_safe(cfg);
+    const fp32 ratio = arm_j0_unitree_ratio_safe(entry, cfg);
+
+    if (ratio <= 0.0f)
+    {
+        return output_kp;
+    }
 
     return output_kp / (ratio * ratio);
 }
 
-static fp32 arm_j0_unitree_output_to_rotor_kd(const arm_j0_unitree_config_t *cfg, fp32 output_kd)
+static fp32 arm_j0_unitree_output_to_rotor_kd(const arm_motor_entry_t *entry,
+                                              const arm_j0_unitree_config_t *cfg,
+                                              fp32 output_kd)
 {
-    const fp32 ratio = arm_j0_unitree_ratio_safe(cfg);
+    const fp32 ratio = arm_j0_unitree_ratio_safe(entry, cfg);
+
+    if (ratio <= 0.0f)
+    {
+        return output_kd;
+    }
 
     return output_kd / (ratio * ratio);
 }
@@ -367,7 +449,8 @@ static uint8_t arm_build_j0_mit_cmd_from_actuator(mit_motor_cmd_t *out,
     return 1u;
 }
 
-static void arm_j0_unitree_cmd_from_mit(const arm_j0_unitree_config_t *cfg,
+static void arm_j0_unitree_cmd_from_mit(const arm_motor_entry_t *entry,
+                                        const arm_j0_unitree_config_t *cfg,
                                         const mit_motor_cmd_t *src,
                                         unitree_motor_cmd_t *out)
 {
@@ -376,14 +459,16 @@ static void arm_j0_unitree_cmd_from_mit(const arm_j0_unitree_config_t *cfg,
         return;
     }
 
-    out->position_rad = arm_j0_unitree_output_to_rotor_position(cfg, src->position);
-    out->speed_rad_s = arm_j0_unitree_output_to_rotor_speed(cfg, src->velocity);
-    out->kp = arm_j0_unitree_output_to_rotor_kp(cfg, src->kp);
-    out->kd = arm_j0_unitree_output_to_rotor_kd(cfg, src->kd);
-    out->torque_nm = arm_j0_unitree_output_to_rotor_torque(cfg, src->torque);
+    out->position_rad = arm_j0_unitree_output_to_rotor_position(entry, cfg, src->position);
+    out->speed_rad_s = arm_j0_unitree_output_to_rotor_speed(entry, cfg, src->velocity);
+    out->kp = arm_j0_unitree_output_to_rotor_kp(entry, cfg, src->kp);
+    out->kd = arm_j0_unitree_output_to_rotor_kd(entry, cfg, src->kd);
+    out->torque_nm = arm_j0_unitree_output_to_rotor_torque(entry, cfg, src->torque);
 }
 
-static void arm_build_j0_unitree_config(unitree_motor_config_t *out, const arm_j0_unitree_config_t *cfg)
+static void arm_build_j0_unitree_config(unitree_motor_config_t *out,
+                                        const arm_motor_entry_t *entry,
+                                        const arm_j0_unitree_config_t *cfg)
 {
     if (out == NULL)
     {
@@ -397,11 +482,17 @@ static void arm_build_j0_unitree_config(unitree_motor_config_t *out, const arm_j
         return;
     }
 
-    out->enable = cfg->enable;
-    out->rs485_port = cfg->rs485_port;
-    out->motor_id = cfg->motor_id;
-    out->baudrate = cfg->baudrate;
-    out->rx_timeout_ms = cfg->rx_timeout_ms;
+    out->enable = arm_j0_unitree_enabled(entry);
+    out->rs485_port = (entry != NULL) ? entry->node.rs485_port : cfg->rs485_port;
+    out->motor_id = (entry != NULL && motor_cfg_node_id(&entry->node) != 0u) ?
+        motor_cfg_node_id(&entry->node) :
+        cfg->motor_id;
+    out->baudrate = (entry != NULL && entry->node.baudrate != 0u) ?
+        entry->node.baudrate :
+        cfg->baudrate;
+    out->rx_timeout_ms = (entry != NULL && entry->node.rx_timeout_ms != 0u) ?
+        entry->node.rx_timeout_ms :
+        cfg->rx_timeout_ms;
 }
 
 static void arm_update_j0_actuator_feedback_from_unitree(void)
@@ -424,8 +515,10 @@ static void arm_update_j0_actuator_feedback_from_unitree(void)
 
 static void arm_sync_j0_unitree_state(void)
 {
+    const arm_motor_entry_t *entry = arm_j0_entry();
     const arm_j0_unitree_config_t *cfg = &g_config.arm_j0_unitree;
     const unitree_motor_state_t *state = unitree_motor_get_state();
+    unitree_motor_config_t driver_cfg;
 
     if (state == NULL)
     {
@@ -434,9 +527,11 @@ static void arm_sync_j0_unitree_state(void)
         return;
     }
 
-    g_arm_j0_unitree_state.enabled = cfg->enable;
-    g_arm_j0_unitree_state.rs485_port = cfg->rs485_port;
-    g_arm_j0_unitree_state.motor_id = (state->motor_id != 0u) ? state->motor_id : cfg->motor_id;
+    arm_build_j0_unitree_config(&driver_cfg, entry, cfg);
+
+    g_arm_j0_unitree_state.enabled = driver_cfg.enable;
+    g_arm_j0_unitree_state.rs485_port = driver_cfg.rs485_port;
+    g_arm_j0_unitree_state.motor_id = (state->motor_id != 0u) ? state->motor_id : driver_cfg.motor_id;
     g_arm_j0_unitree_state.online = state->online;
     g_arm_j0_unitree_state.last_mode = state->last_mode;
     g_arm_j0_unitree_state.motor_error = state->motor_error;
@@ -456,11 +551,14 @@ static void arm_sync_j0_unitree_state(void)
     arm_update_j0_actuator_feedback_from_unitree();
 }
 
-static void arm_write_j0_unitree_cmd(uint8_t move_key, uint8_t reverse, uint8_t ctrl_held)
+static void arm_write_j0_unitree_cmd(const arm_motor_entry_t *entry,
+                                     uint8_t move_key,
+                                     uint8_t reverse,
+                                     uint8_t ctrl_held)
 {
     const arm_j0_unitree_config_t *cfg = &g_config.arm_j0_unitree;
 
-    if (cfg->enable == 0u)
+    if (arm_j0_unitree_enabled(entry) == 0u)
     {
         actuator_cmd_set_speed(ACTUATOR_ID_ARM_J0, 0.0f, 0.0f, 0.0f);
         return;
@@ -483,7 +581,7 @@ static void arm_write_j0_unitree_cmd(uint8_t move_key, uint8_t reverse, uint8_t 
     }
 }
 
-static void arm_step_j0_unitree(void)
+static void arm_step_j0_unitree(const arm_motor_entry_t *entry)
 {
     const arm_j0_unitree_config_t *cfg = &g_config.arm_j0_unitree;
     const uint16_t period_ms = (cfg->control_period_ms == 0u) ? 5u : cfg->control_period_ms;
@@ -494,10 +592,10 @@ static void arm_step_j0_unitree(void)
     fp32 output_speed = 0.0f;
     fp32 output_kd = 0.0f;
 
-    arm_build_j0_unitree_config(&driver_cfg, cfg);
+    arm_build_j0_unitree_config(&driver_cfg, entry, cfg);
     unitree_motor_refresh(&driver_cfg);
 
-    if (cfg->enable == 0u)
+    if (driver_cfg.enable == 0u)
     {
         unitree_motor_stop();
         g_arm_j0_unitree_cmd_output_speed_rad_s = 0.0f;
@@ -530,7 +628,7 @@ static void arm_step_j0_unitree(void)
         return;
     }
 
-    arm_j0_unitree_cmd_from_mit(cfg, &mit_cmd, &cmd);
+    arm_j0_unitree_cmd_from_mit(entry, cfg, &mit_cmd, &cmd);
     g_arm_j0_unitree_cmd_output_speed_rad_s = output_speed;
     g_arm_j0_unitree_cmd_output_kd = output_kd;
     (void)unitree_motor_send_cmd(&driver_cfg, &cmd);
@@ -539,9 +637,10 @@ static void arm_step_j0_unitree(void)
 
 static void arm_refresh_j0_feedback(void)
 {
+    const arm_motor_entry_t *entry = arm_j0_entry();
     arm_motor_feedback_t *feedback = &g_arm_feedback[ARM_J0_INDEX];
 
-    if (g_config.arm_j0_unitree.enable != 0u)
+    if (arm_j0_unitree_enabled(entry) != 0u)
     {
         const arm_j0_unitree_state_t *state;
 
@@ -588,10 +687,10 @@ static void arm_step_j0(const arm_motor_entry_t *entry, uint16_t key_mask)
     const uint8_t reverse = ((key_mask & KEY_PRESSED_OFFSET_SHIFT) != 0u) ? 1u : 0u;
     const uint8_t move_key = arm_key_active(entry, key_mask);
 
-    arm_write_j0_unitree_cmd(move_key, reverse, ctrl_held);
-    arm_step_j0_unitree();
+    arm_write_j0_unitree_cmd(entry, move_key, reverse, ctrl_held);
+    arm_step_j0_unitree(entry);
 
-    if (g_config.arm_j0_unitree.enable != 0u)
+    if (arm_j0_unitree_enabled(entry) != 0u)
     {
         g_arm_can1_yaw_override_active = 0u;
         actuator_cmd_set_yaw_current(0);
@@ -662,7 +761,7 @@ static void arm_step_mit(uint16_t key_mask)
                 continue;
             }
 
-            can_mit_motor_send_enable(entry->bus, arm_mit_std_id(entry));
+            can_mit_motor_send_enable(arm_entry_can_bus(entry), arm_mit_std_id(entry));
         }
         g_arm_mit_armed = 1u;
     }
@@ -762,7 +861,7 @@ uint8_t arm_motion_process_can_feedback(uint8_t bus, uint16_t std_id, uint8_t dl
         {
             continue;
         }
-        if (entry->bus != bus)
+        if (arm_entry_can_bus(entry) != bus)
         {
             continue;
         }

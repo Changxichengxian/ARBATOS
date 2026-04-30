@@ -28,7 +28,10 @@
 #include <string.h>
 
 __weak uint8_t can_tx_allow_can1_yaw_override(void);
-__weak uint8_t can_tx_process_extra_item(uint8_t bus, const motor_node_param_t *node, int16_t current);
+__weak uint8_t can_tx_process_extra_item(uint8_t bus,
+                                         actuator_id_e actuator_id,
+                                         const motor_node_param_t *node,
+                                         int16_t current);
 
 static int16_t s_can_tx_chassis_cmd[4];
 static int16_t s_can_tx_friction_cmd[4];
@@ -107,11 +110,7 @@ static inline uint8_t can_tx_cmd_nonzero(const actuator_cmd_t *cmd)
 // 轴配置里可以指定 CAN 总线；没指定时使用该轴的默认总线。
 static inline uint8_t can_tx_node_bus(uint8_t fallback_bus, const motor_node_param_t *node)
 {
-    if (node != NULL && (node->can_bus == 1u || node->can_bus == 2u))
-    {
-        return node->can_bus;
-    }
-    return fallback_bus;
+    return motor_cfg_can_bus(fallback_bus, node);
 }
 
 // 旧控制链常给“电流”，MIT 电机要力矩，这里按型号量程换成力矩。
@@ -382,16 +381,25 @@ static void can_tx_clear_rm_frames(void)
     do                                                                            \
     {                                                                             \
         const uint8_t fallback_bus__ = (uint8_t)(fallback_bus_);                   \
+        const actuator_id_e actuator_id__ = (actuator_id_);                         \
         const motor_node_param_t *node__ = (node_expr_);                           \
         const int16_t current__ = (int16_t)(current_expr_);                        \
-        if ((is_rm_expr_) == 0u)                                                   \
+        if (motor_cfg_transport(node__) == MOTOR_TRANSPORT_RS485)                  \
+        {                                                                         \
+            const uint8_t port__ = (node__ != NULL) ? node__->rs485_port : 0u;      \
+            if (can_tx_process_extra_item(port__, actuator_id__, node__, current__) == 0u) \
+            {                                                                     \
+                watch_task_error(WATCH_TASK_CAN_COMMAND_TX);                      \
+            }                                                                     \
+        }                                                                         \
+        else if ((is_rm_expr_) == 0u)                                              \
         {                                                                         \
             const uint8_t node_bus__ = can_tx_node_bus(fallback_bus__, node__);    \
             if (can_tx_process_can_mit_item(node_bus__,                            \
-                                            (actuator_id_),                        \
+                                            actuator_id__,                         \
                                             node__,                                \
                                             current__) == 0u &&                    \
-                can_tx_process_extra_item(node_bus__, node__, current__) == 0u)    \
+                can_tx_process_extra_item(node_bus__, actuator_id__, node__, current__) == 0u) \
             {                                                                     \
                 watch_task_error(WATCH_TASK_CAN_COMMAND_TX);                      \
             }                                                                     \
@@ -601,9 +609,13 @@ __weak uint8_t can_tx_allow_can1_yaw_override(void)
 }
 
 // 目标工程可在这里接入非大疆、非 MIT 的特殊电机发送逻辑。
-__weak uint8_t can_tx_process_extra_item(uint8_t bus, const motor_node_param_t *node, int16_t current)
+__weak uint8_t can_tx_process_extra_item(uint8_t bus,
+                                         actuator_id_e actuator_id,
+                                         const motor_node_param_t *node,
+                                         int16_t current)
 {
     (void)bus;
+    (void)actuator_id;
     (void)node;
     (void)current;
     return 0u;
