@@ -5,7 +5,7 @@
 ## 当前入口
 
 - H7 板级实验入口：`MDK-ARM/MC02_BASE.uvprojx`
-- `MDK-ARM/CARRIER.uvprojx` 还在，但它当前也是实验工程，不是根目录快捷方式入口
+- `MDK-ARM/CARRIER.uvprojx` 也是 H7 板级实验工程，不是根目录快捷方式入口
 - 根目录 `open_SENTINEL.cmd` 和 `open_CARRIER.cmd` 现在分别打开 `projects/SENTINEL/MDK-ARM/SENTINEL.uvprojx` 和 `projects/CARRIER/MDK-ARM/CARRIER.uvprojx`
 
 ## 这一层负责什么
@@ -36,8 +36,9 @@
 
 ## 当前状态
 
-- `MDK-ARM/MC02_BASE.uvprojx` 当前使用 `target/MC02_BASE/User/application/config.c`
-- `MDK-ARM/CARRIER.uvprojx` 现在也还是连到 `target/MC02_BASE/User/application/config.c`，属于实验残留
+- `MDK-ARM/MC02_BASE.uvprojx` 使用 `target/MC02_BASE/User/application/config.c`
+- `MDK-ARM/CARRIER.uvprojx` 也使用 `target/MC02_BASE/User/application/config.c`，只是另一个 H7 实验工程入口
+- 配置入口统一是 `config.c` / `config.h`，没有单独的板子配置文件名
 - H7 板级启动、任务挂接和 BMI088 IMU 已有 ARBATOS 自己的实现
 - AUX 口调参、ELRS 和 USB 业务任务在这套 H7 板级入口里还没有默认接上
 - 如果你要看当前能直接打开编译的 `SENTINEL` / `CARRIER` 主入口，去 `projects/`，别看这里

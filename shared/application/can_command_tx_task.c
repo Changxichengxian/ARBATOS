@@ -42,12 +42,14 @@ static int16_t s_can_tx_can1_1ff[4];
 static int16_t s_can_tx_can2_200[4];
 static int16_t s_can_tx_can2_1ff[4];
 
+// 测试模式会限制底盘输出，避免只测云台或射击时底盘误动。
 static inline bool_t can_tx_allow_chassis(void)
 {
     const test_mode_e mode = (test_mode_e)g_config.test.mode;
     return (mode == TEST_MODE_NONE) || (mode == TEST_MODE_ENTERTAIN) || (mode == TEST_MODE_CHASSIS_ONLY);
 }
 
+// 按任务周期换算日志间隔，避免每个 CAN 周期都写 SD 卡。
 static uint8_t can_tx_log_due(void)
 {
     static uint16_t skip = 0u;
@@ -83,6 +85,7 @@ static inline uint8_t can_tx_actuator_id_valid(actuator_id_e id)
     return ((uint32_t)id < (uint32_t)ACTUATOR_ID__COUNT) ? 1u : 0u;
 }
 
+// 判断执行器命令是否真正带输出；MIT 电机第一次有输出前不急着使能。
 static inline uint8_t can_tx_cmd_nonzero(const actuator_cmd_t *cmd)
 {
     if (cmd == NULL || cmd->active == 0u)
@@ -101,6 +104,7 @@ static inline uint8_t can_tx_cmd_nonzero(const actuator_cmd_t *cmd)
     return 0u;
 }
 
+// 轴配置里可以指定 CAN 总线；没指定时使用该轴的默认总线。
 static inline uint8_t can_tx_node_bus(uint8_t fallback_bus, const motor_node_param_t *node)
 {
     if (node != NULL && (node->can_bus == 1u || node->can_bus == 2u))
@@ -110,6 +114,7 @@ static inline uint8_t can_tx_node_bus(uint8_t fallback_bus, const motor_node_par
     return fallback_bus;
 }
 
+// 旧控制链常给“电流”，MIT 电机要力矩，这里按型号量程换成力矩。
 static inline fp32 can_tx_current_to_mit_torque(const motor_node_param_t *node,
                                                 int16_t current,
                                                 const can_mit_motor_limits_t *limits)
@@ -137,6 +142,7 @@ static inline fp32 can_tx_current_to_mit_torque(const motor_node_param_t *node,
     return can_tx_clamp_fp32(torque, -limits->torque_max, limits->torque_max);
 }
 
+// 把通用执行器命令翻译成 MIT 命令；没有新命令时退回电流转力矩。
 static inline void can_tx_build_mit_cmd_from_actuator(const motor_node_param_t *node,
                                                       const actuator_cmd_t *src,
                                                       int16_t current,
@@ -180,6 +186,7 @@ static inline void can_tx_build_mit_cmd_from_actuator(const motor_node_param_t *
     }
 }
 
+// 处理单个 MIT 轴：必要时先使能，再发送本周期命令。
 static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
                                                   actuator_id_e actuator_id,
                                                   const motor_node_param_t *node,
@@ -267,6 +274,7 @@ static void can_tx_limit_friction_cmds(void)
     }
 }
 
+// 遥控离线时只保留允许的安全输出，例如娱乐模式摩擦轮或调试 yaw。
 static void can_tx_collect_offline_cmds(void)
 {
     const test_mode_e mode = (test_mode_e)g_config.test.mode;
@@ -289,6 +297,7 @@ static void can_tx_collect_offline_cmds(void)
     can_tx_limit_friction_cmds();
 }
 
+// 遥控在线时从 actuator_cmd 快照收集所有轴的本周期电流命令。
 static void can_tx_collect_online_cmds(void)
 {
     const bool_t allow_chassis = can_tx_allow_chassis();
@@ -341,6 +350,7 @@ static void can_tx_log_online_cmds(void)
     can_tx_log_actuator_current(&log);
 }
 
+// 清空大疆组帧缓存，后续按 CAN ID 填进 0x200 或 0x1FF 的四个槽位。
 static void can_tx_clear_rm_frames(void)
 {
     (void)memset(s_can_tx_can1_200, 0, sizeof(s_can_tx_can1_200));
@@ -349,7 +359,7 @@ static void can_tx_clear_rm_frames(void)
     (void)memset(s_can_tx_can2_1ff, 0, sizeof(s_can_tx_can2_1ff));
 }
 
-// Axis functions stay parameterless; these macros expand the common send body.
+// 每个轴的发送函数保持无参数，宏里统一处理协议分流和大疆组帧缓存。
 #define CAN_TX_STORE_RM_CURRENT(fallback_bus_, can_id_expr_, current_expr_)        \
     do                                                                            \
     {                                                                             \
@@ -526,6 +536,7 @@ static inline void can_tx_exec_friction3(void)
                      s_can_tx_friction_cmd[3]);
 }
 
+// 离线分支只执行被允许的轴，其他轴保持 0 输出。
 static void can_tx_exec_offline_axes(void)
 {
     can_tx_clear_rm_frames();
@@ -536,6 +547,7 @@ static void can_tx_exec_offline_axes(void)
     can_tx_exec_friction3();
 }
 
+// 在线分支执行全部已配置轴；每个轴内部再决定走大疆、MIT 或扩展处理。
 static void can_tx_exec_online_axes(void)
 {
     can_tx_clear_rm_frames();
@@ -553,6 +565,7 @@ static void can_tx_exec_online_axes(void)
     can_tx_exec_friction3();
 }
 
+// 把已经缓存好的大疆 0x200/0x1FF 四电机电流帧一次性发出去。
 static void can_tx_emit_rm_frames(void)
 {
     CAN_cmd_rm_group(1u,
@@ -581,11 +594,13 @@ static void can_tx_emit_rm_frames(void)
                      s_can_tx_can2_1ff[3]);
 }
 
+// 目标工程可以打开这个口子，在遥控离线时仍允许 yaw 调试输出。
 __weak uint8_t can_tx_allow_can1_yaw_override(void)
 {
     return 0u;
 }
 
+// 目标工程可在这里接入非大疆、非 MIT 的特殊电机发送逻辑。
 __weak uint8_t can_tx_process_extra_item(uint8_t bus, const motor_node_param_t *node, int16_t current)
 {
     (void)bus;
@@ -594,6 +609,7 @@ __weak uint8_t can_tx_process_extra_item(uint8_t bus, const motor_node_param_t *
     return 0u;
 }
 
+// CAN 命令发送任务：收集各轴命令，按轴装配表转换协议并统一发出。
 void can_command_tx_task(void const *pvParameters)
 {
     (void)pvParameters;

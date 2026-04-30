@@ -83,8 +83,8 @@ projects/<TARGET>/
 
 每个 `target/<TARGET>/User/application/` 当前至少提供：
 
-- `config.h`：参数结构、输入映射、遥测信号枚举。
-- `config.c`：默认参数和全局变量 `g_config`。
+- `config.h`：参数结构、输入映射、遥测信号枚举和轴电机装配结构。
+- `config.c`：默认参数、全局变量 `g_config` 和只读电机型号表 `g_motor_config`。
 - `detect_task.c`：目标设备在线检测。
 - 目标私有补充文件，例如 `INS_task.c`、`host_link_task_stub.c`、机械臂装配表等。
 
@@ -165,8 +165,8 @@ rc_sbus_task      elrs_task      host_link_task      板载按键
 - `shoot.c`：摩擦轮、拨弹和热量相关控制。
 - `arm_task.c`：机械臂任务入口，只管顶层运动节奏。
 - `arm_motion.c`：机械臂运动抽象，把按键和安全条件转换成关节动作。
-- `motor_model_db.c`、`motor_config.h`、`can_mit_motor_driver.c`、`unitree_motor_driver.c`：通用电机型号表、参数查询和共享电机驱动。
-- `target/MC02_BASE/User/application/arm_motor_table.c`：机械臂关节装配表，只描述关节、型号、CAN 号、方向和按键；MIT 范围等型号参数放在 `motor_model_db.c`。
+- `motor_config.h`、`motor_model_db.c`、`can_mit_motor_driver.c`、`unitree_motor_driver.c`：电机参数查询、协议能力表和共享电机驱动。
+- `target/MC02_BASE/User/application/arm_motor_table.c`：机械臂关节装配表，只描述关节、型号、CAN 号、方向和按键；协议能力和 MIT 控制范围放在 `motor_model_db.c`。
 - `can_feedback_rx_task.c`：接收电机反馈。
 - `can_command_tx_task.c`：统一读取 `actuator_cmd` 并发送 CAN 电流指令。
 
@@ -212,7 +212,8 @@ rc_sbus_task      elrs_task      host_link_task      板载按键
 | 云台控制 | `shared/application/gimbal_control_task.c` |
 | 射击控制 | `shared/application/shoot.c` |
 | 机械臂运动 | `shared/application/arm_motion.c` |
-| 电机型号表 | `shared/application/motor_model_db.c`、`shared/application/motor_config.h` |
+| 电机参数查询 | `shared/application/motor_config.h` |
+| 电机协议能力表 | `shared/application/motor_model_db.c` |
 | 共享电机驱动 | `shared/application/can_mit_motor_driver.c`、`shared/application/unitree_motor_driver.c` |
 | CAN 接收 | `shared/application/can_feedback_rx_task.c` |
 | CAN 发送 | `shared/application/can_command_tx_task.c` |
@@ -225,6 +226,16 @@ rc_sbus_task      elrs_task      host_link_task      板载按键
 
 `config.h` 定义当前主线使用的配置结构，运行时通过 `g_config` 访问。每个目标在自己的 `config.c` 里给出默认值。
 
+`g_config` 里既有运行中可调的参数，也有启动前确定的装配信息。AUX 调参能改哪些字段，只看 `config.c` 里的调参表；没有放进调参表的字段就不会被 AUX 改。
+
+电机相关边界现在按下面分：
+
+- `g_motor_config` 是只读电机型号表，记录每种电机的 CAN 基址、最大电流和减速比。
+- `motor_model_db.c` 是共享能力表，记录协议类型、控制方式、MIT 控制范围和反馈解析方式。
+- `g_config.motor` 是当前目标的轴装配表，记录底盘、摩擦轮、yaw、pitch、trigger 等轴分别装什么电机、用哪个 CAN ID。
+- `g_config.motor` 没放进 AUX 调参表；需要换电机或换接线时，改对应 target 的 `config.c`。
+- 底盘、云台、射击和机械臂只对“轴”发命令，通过 `motor_config.h` 查询电机差异，不在业务控制里写板子或电机特例。
+
 主要配置块包括：
 
 - `test_config_t`：测试模式。
@@ -234,7 +245,8 @@ rc_sbus_task      elrs_task      host_link_task      板载按键
 - `power_config_t`：功率限制。
 - `detect_config_t`：设备在线检测。
 - `imu_config_t`：融合模式和温控参数。
-- `motor_config_t`：电机型号和 CAN ID；MIT 范围等型号参数由 `motor_model_db.c` 统一给出。
+- `motor_config_t`：只读电机型号表，对应 `g_motor_config`。
+- `motor_mount_config_t`：轴电机装配表，对应 `g_config.motor`。
 - `manual_input_config_t`：输入源选择和合并策略。
 - `input_config_t`：语义轴和开关映射。
 
@@ -248,7 +260,7 @@ rc_sbus_task      elrs_task      host_link_task      板载按键
 
 1. 安装 Keil MDK-ARM v5 和对应 STM32F4 / STM32H7 芯片包。
 2. 打开上表中的目标工程。
-3. 确认当前 target 的 `config.c` 符合硬件接线。
+3. 确认当前 target 的 `config.c` 符合硬件接线，尤其是 `g_config.motor`。
 4. 编译并下载到对应板卡。
 
 ## 目录结构

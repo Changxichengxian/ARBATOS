@@ -29,12 +29,14 @@ typedef struct
 
 __weak uint8_t can_tx_allow_can1_yaw_override(void);
 
+// 测试模式会限制底盘输出，避免只测云台或射击时底盘误动。
 static bool_t can_tx_allow_chassis(void)
 {
     const test_mode_e mode = (test_mode_e)g_config.test.mode;
     return (mode == TEST_MODE_NONE) || (mode == TEST_MODE_ENTERTAIN) || (mode == TEST_MODE_CHASSIS_ONLY);
 }
 
+// 摩擦轮方向为 0 表示该路未启用，发送前直接清零。
 static void can_tx_limit_friction_currents(int16_t fric[4])
 {
     for (uint8_t i = 0u; i < 4u; i++)
@@ -46,6 +48,7 @@ static void can_tx_limit_friction_currents(int16_t fric[4])
     }
 }
 
+// 按轴配置把大疆电机电流塞进 0x200 或 0x1FF 四电机帧。
 static void can_tx_pack_rm_frames(const can_tx_rm_item_t *items,
                                   uint32_t count,
                                   int16_t out_200[4],
@@ -77,11 +80,13 @@ static void can_tx_pack_rm_frames(const can_tx_rm_item_t *items,
     }
 }
 
+// 目标工程可以打开这个口子，在遥控离线时仍允许 yaw 调试输出。
 __weak uint8_t can_tx_allow_can1_yaw_override(void)
 {
     return 0u;
 }
 
+// CAN 发送任务：收集各轴电流，按 g_config.motor 组帧后统一发出。
 void can_tx_task(void const *pvParameters)
 {
     (void)pvParameters;

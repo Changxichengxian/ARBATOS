@@ -502,6 +502,7 @@ config_t g_config = {
          },
  };
 
+// 这些函数只判断某个参数块当前是否有效，不负责修改配置内容。
 static uint8_t config_block_active_always(void)
 {
     return 1u;
@@ -537,6 +538,7 @@ static uint8_t config_block_active_arm(void)
     return (uint8_t)(g_config.profile.arm_family != ARM_FAMILY_NONE);
 }
 
+// AUX 调参表：只有列在这里的块能被运行时改，g_config.motor 这种装配信息不放进来。
 static const config_block_desc_t g_config_blocks[] = {
     {CONFIG_BLOCK_PROFILE, "profile", "", &g_config.profile, sizeof(g_config.profile), config_block_active_always},
     {CONFIG_BLOCK_GIMBAL_SINGLE, "gimbal.single", "001-022,026-061,350-368", &g_config.gimbal, sizeof(g_config.gimbal), config_block_active_gimbal_single},
@@ -558,6 +560,7 @@ static const config_block_desc_t g_config_blocks[] = {
     {CONFIG_BLOCK_COMMON_TEST, "common.test", "244", &g_config.test, sizeof(g_config.test), config_block_active_always},
 };
 
+// 返回调参块表，同时可选返回块数量。
 const config_block_desc_t *config_get_block_table(uint32_t *count)
 {
     if (count != NULL)
@@ -567,6 +570,7 @@ const config_block_desc_t *config_get_block_table(uint32_t *count)
     return g_config_blocks;
 }
 
+// 按块 ID 查找调参块描述；找不到返回 NULL。
 const config_block_desc_t *config_find_block(config_block_id_e id)
 {
     for (uint32_t i = 0u; i < (uint32_t)(sizeof(g_config_blocks) / sizeof(g_config_blocks[0])); i++)
@@ -579,6 +583,7 @@ const config_block_desc_t *config_find_block(config_block_id_e id)
     return NULL;
 }
 
+// 对外判断某个调参块当前是否启用。
 uint8_t config_block_is_active(config_block_id_e id)
 {
     const config_block_desc_t *block = config_find_block(id);

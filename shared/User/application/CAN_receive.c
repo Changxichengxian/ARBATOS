@@ -33,11 +33,13 @@ static uint8_t can1_trigger_log_decim;
 
 __weak uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8]);
 
+// 大疆反馈帧里 16 位整数是高字节在前，这里统一做一次读取。
 static int16_t can_rx_read_s16_be(const uint8_t *ptr)
 {
     return (int16_t)(((uint16_t)ptr[0] << 8) | (uint16_t)ptr[1]);
 }
 
+// 按电机型号的反馈描述拆包，避免把不同电机的字段位置写死在任务里。
 static void can_rx_unpack_motor_measure(motor_measure_t *measure, motor_model_e model, const uint8_t data[8])
 {
     const motor_model_rx_desc_t *rx = motor_cfg_rx_desc(model);
@@ -76,6 +78,7 @@ static void can_rx_unpack_motor_measure(motor_measure_t *measure, motor_model_e 
     }
 }
 
+// 在一组轴装配里按反馈 ID 找命中的轴，下标返回给调用者。
 static uint8_t can_match_nodes(uint16_t std_id, const motor_node_param_t *nodes, uint8_t count, uint8_t *out_idx)
 {
     if (nodes == NULL || count == 0u)
@@ -98,6 +101,7 @@ static uint8_t can_match_nodes(uint16_t std_id, const motor_node_param_t *nodes,
     return 0u;
 }
 
+// 按固定分频抽样记录 CAN 帧，避免高频电机反馈把日志写满。
 static uint8_t can_rx_log_decim_hit(uint8_t *counter, uint8_t div)
 {
     if (counter == NULL || div <= 1u)
@@ -115,6 +119,7 @@ static uint8_t can_rx_log_decim_hit(uint8_t *counter, uint8_t div)
     return 1u;
 }
 
+// 判断这帧是否需要写日志；不同轴按带宽和调试价值使用不同抽样频率。
 static uint8_t can_should_log_frame(uint8_t bus, uint16_t std_id)
 {
     if (bus == 1u)
@@ -147,6 +152,7 @@ static uint8_t can_should_log_frame(uint8_t bus, uint16_t std_id)
     return 0u;
 }
 
+// 留给目标工程扩展特殊反馈帧；默认不处理。
 __weak uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8])
 {
     (void)bus;
@@ -156,6 +162,7 @@ __weak uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t 
     return 0u;
 }
 
+// CAN 接收总入口：先按总线和轴装配找到归属，再按电机型号拆反馈。
 void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8])
 {
     if (data == NULL)
@@ -222,6 +229,7 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
     (void)CAN_rx_process_extra_frame(bus, std_id, dlc, data);
 }
 
+// 发送大疆一组四电机电流帧；输出位置由电机 CAN ID 自动放进 0x200 或 0x1FF。
 void CAN_cmd_rm_group(uint8_t bus,
                       uint16_t group_id,
                       int16_t motor1,

@@ -36,11 +36,13 @@ static volatile uint8_t last_can1ff_status = 0u;
 
 __weak uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8]);
 
+// 大疆反馈帧里 16 位整数是高字节在前，这里统一做一次读取。
 static int16_t can_rx_read_s16_be(const uint8_t *ptr)
 {
     return (int16_t)(((uint16_t)ptr[0] << 8) | (uint16_t)ptr[1]);
 }
 
+// 把连续角度折回 [0, 2pi)，用于伪造旧编码器计数。
 static fp32 can_rx_wrap_0_2pi(fp32 angle)
 {
     int32_t turns;
@@ -61,6 +63,7 @@ static fp32 can_rx_wrap_0_2pi(fp32 angle)
     return angle;
 }
 
+// MIT 电机返回弧度位置，旧控制代码仍看 ecd，所以这里转换成 0..8191。
 static uint16_t can_rx_position_to_ecd(fp32 position)
 {
     const fp32 wrapped = can_rx_wrap_0_2pi(position);
@@ -73,6 +76,7 @@ static uint16_t can_rx_position_to_ecd(fp32 position)
     return (uint16_t)ecd;
 }
 
+// 浮点量写回旧结构前做 int16 饱和，避免溢出反号。
 static int16_t can_rx_float_to_i16_saturated(fp32 x)
 {
     if (x > 32767.0f)
@@ -86,6 +90,7 @@ static int16_t can_rx_float_to_i16_saturated(fp32 x)
     return (int16_t)x;
 }
 
+// 把 MIT 力矩反馈映射成“类似电流”的数值，兼容旧观察和日志字段。
 static int16_t can_rx_torque_to_current_like(const can_mit_motor_limits_t *limits, fp32 torque)
 {
     fp32 scaled;
@@ -99,6 +104,7 @@ static int16_t can_rx_torque_to_current_like(const can_mit_motor_limits_t *limit
     return can_rx_float_to_i16_saturated(scaled);
 }
 
+// 把大疆类反馈帧同步到通用执行器反馈，供新控制链按轴读取。
 static void can_rx_update_actuator_feedback_from_measure(actuator_id_e actuator_id,
                                                          uint8_t bus,
                                                          uint16_t std_id,
@@ -136,6 +142,7 @@ static void can_rx_update_actuator_feedback_from_measure(actuator_id_e actuator_
     actuator_feedback_update(actuator_id, &fb);
 }
 
+// MIT 反馈没有旧 ecd/rpm/current 格式，这里合成一份给老任务继续用。
 static void can_rx_synthesize_measure_from_mit(motor_measure_t *measure,
                                                const can_mit_motor_limits_t *limits,
                                                const can_mit_motor_feedback_t *mit)
@@ -152,6 +159,7 @@ static void can_rx_synthesize_measure_from_mit(motor_measure_t *measure,
     measure->temperate = 0u;
 }
 
+// 尝试按 MIT 协议解析某个轴；成功后同时更新旧 measure 和通用执行器反馈。
 static uint8_t can_rx_process_mit_node_frame(motor_measure_t *measure,
                                              const motor_node_param_t *node,
                                              uint8_t bus,
@@ -221,6 +229,7 @@ static uint8_t can_rx_process_mit_node_frame(motor_measure_t *measure,
     return 1u;
 }
 
+// 按电机型号的反馈描述拆包，避免把不同电机的字段位置写死在任务里。
 static void can_rx_unpack_motor_measure(motor_measure_t *measure, motor_model_e model, const uint8_t data[8])
 {
     const motor_model_rx_desc_t *rx = motor_cfg_rx_desc(model);
@@ -259,6 +268,7 @@ static void can_rx_unpack_motor_measure(motor_measure_t *measure, motor_model_e 
     }
 }
 
+// 在一组轴装配里按反馈 ID 找命中的轴，下标返回给调用者。
 static uint8_t can_match_nodes(uint16_t std_id, const motor_node_param_t *nodes, uint8_t count, uint8_t *out_idx)
 {
     if (nodes == NULL || count == 0u)
@@ -281,6 +291,7 @@ static uint8_t can_match_nodes(uint16_t std_id, const motor_node_param_t *nodes,
     return 0u;
 }
 
+// 按轴配置决定怎么处理反馈：大疆电流帧直接拆，MIT 帧走 MIT 解析，其他交给扩展口。
 static uint8_t can_rx_process_node_frame(motor_measure_t *measure,
                                          const motor_node_param_t *node,
                                          uint8_t bus,
@@ -329,6 +340,7 @@ static uint8_t can_rx_process_node_frame(motor_measure_t *measure,
     return 1u;
 }
 
+// 留给目标工程扩展特殊反馈帧；默认不处理。
 __weak uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8])
 {
     (void)bus;
@@ -338,6 +350,7 @@ __weak uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t 
     return 0u;
 }
 
+// CAN 接收总入口：先按总线和轴装配找到归属，再交给对应协议解析。
 void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8])
 {
     if (data == NULL)
@@ -435,6 +448,7 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
     (void)CAN_rx_process_extra_frame(bus, std_id, dlc, data);
 }
 
+// 发送大疆一组四电机电流帧；MIT 等非大疆协议不会走这里。
 void CAN_cmd_rm_group(uint8_t bus,
                       uint16_t group_id,
                       int16_t motor1,

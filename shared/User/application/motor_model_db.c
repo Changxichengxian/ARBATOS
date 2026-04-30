@@ -9,6 +9,7 @@
 
 #include "motor_model_db.h"
 
+// 不同电机反馈帧字段位置不同，这张表描述每种反馈格式怎么拆。
 static const motor_model_rx_desc_t s_motor_model_rx_desc[MOTOR_MODEL_RX_FMT__COUNT] =
 {
     [MOTOR_MODEL_RX_FMT_NONE] =
@@ -45,6 +46,7 @@ static const motor_model_rx_desc_t s_motor_model_rx_desc[MOTOR_MODEL_RX_FMT__COU
         },
 };
 
+// 跨 target 共享的电机能力表：协议、控制方式和反馈格式都放这里。
 static const motor_model_db_entry_t s_motor_model_db[MOTOR_MODEL__COUNT] =
 {
     [MOTOR_MODEL_3508] =
@@ -178,6 +180,7 @@ static const motor_model_db_entry_t s_motor_model_db[MOTOR_MODEL__COUNT] =
         },
 };
 
+// 按电机型号取共享能力描述；型号无效时返回 NULL。
 const motor_model_db_entry_t *motor_model_db_get(motor_model_e model)
 {
     if ((uint32_t)model >= (uint32_t)MOTOR_MODEL__COUNT)
@@ -188,6 +191,7 @@ const motor_model_db_entry_t *motor_model_db_get(motor_model_e model)
     return &s_motor_model_db[model];
 }
 
+// 按电机型号取反馈解析描述；格式无效时退回大疆标准反馈格式。
 const motor_model_rx_desc_t *motor_model_db_get_rx_desc(motor_model_e model)
 {
     const motor_model_db_entry_t *entry = motor_model_db_get(model);
