@@ -12,7 +12,7 @@
 #define REMOTE_CONTROL_H
 #include "struct_typedef.h"
 #include "bsp_rc.h"
-#include "app_config.h"
+#include "config.h"
 
 #define SBUS_RX_BUF_NUM BSP_RC_SBUS_RX_BUF_NUM
 
@@ -149,7 +149,7 @@ extern void remote_control_init(void);
 extern void remote_control_on_sbus_frame(const uint8_t frame[RC_FRAME_LENGTH]);
 extern const RC_ctrl_t *get_remote_control_point(void);
 extern void remote_control_set_rc(const RC_ctrl_t *rc);
-// Update a specific manual input source (see MANUAL_INPUT_SRC_* in app_config.h).
+// Update a specific manual input source (see MANUAL_INPUT_SRC_* in config.h).
 // NOTE: get_remote_control_point() always returns the same pointer; this updates its contents.
 extern void remote_control_set_rc_source(uint8_t source, const RC_ctrl_t *rc);
 extern void remote_control_log_raw_source(uint8_t source,

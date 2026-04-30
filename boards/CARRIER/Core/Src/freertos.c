@@ -33,7 +33,7 @@
 #include "chassis_task.h"
 #include "gimbal_task.h"
 #include "INS_task.h"
-#include "app_config.h"
+#include "config.h"
 
 /* USER CODE END Includes */
 
@@ -203,18 +203,18 @@ static uint8_t carrier_need_gimbal_task(void)
 {
   uint32_t i;
 
-  if (g_app_config.motor.yaw.can_id != 0u ||
-      g_app_config.motor.yaw_upper.can_id != 0u ||
-      g_app_config.motor.pitch.can_id != 0u ||
-      g_app_config.motor.trigger.can_id != 0u)
+  if (g_config.motor.yaw.can_id != 0u ||
+      g_config.motor.yaw_upper.can_id != 0u ||
+      g_config.motor.pitch.can_id != 0u ||
+      g_config.motor.trigger.can_id != 0u)
   {
     return 1u;
   }
 
   for (i = 0u; i < 4u; ++i)
   {
-    if (g_app_config.motor.friction[i].can_id != 0u &&
-        g_app_config.shoot.fric_motor_dir[i] != 0)
+    if (g_config.motor.friction[i].can_id != 0u &&
+        g_config.shoot.fric_motor_dir[i] != 0)
     {
       return 1u;
     }

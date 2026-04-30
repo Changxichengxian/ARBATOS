@@ -8,7 +8,7 @@
  */
 
 
-  
+
 #include "detect_task.h"
 #include "cmsis_os2.h"
 #include "config.h"
@@ -187,7 +187,7 @@ void detect_task(void const *pvParameters)
     static sdlog_detect_summary_t detect_log;
     static uint8_t toe_last_lost[ERROR_LIST_LENGHT] = {0};
     static uint8_t toe_last_data_err[ERROR_LIST_LENGHT] = {0};
-    static uint8_t config_buf[sizeof(sdlog_app_config_header_t) + sizeof(g_config)];
+    static uint8_t config_buf[sizeof(sdlog_config_header_t) + sizeof(g_config)];
 
     uint8_t sd_mounted_last = (uint8_t)sdcard_is_mounted();
     uint8_t config_logged = 0u;
@@ -240,7 +240,7 @@ void detect_task(void const *pvParameters)
                 {
                     error_num_display = i;
                 }
-                
+
 
                 error_list[ERROR_LIST_LENGHT].is_lost = 1;
                 error_list[ERROR_LIST_LENGHT].error_exist = 1;
@@ -370,14 +370,14 @@ void detect_task(void const *pvParameters)
         {
             const uint16_t cfg_size = (uint16_t)sizeof(config_buf);
             taskENTER_CRITICAL();
-            sdlog_app_config_header_t *cfg_hdr = (sdlog_app_config_header_t *)config_buf;
-            cfg_hdr->version = SDLOG_APP_CONFIG_VERSION;
+            sdlog_config_header_t *cfg_hdr = (sdlog_config_header_t *)config_buf;
+            cfg_hdr->version = SDLOG_CONFIG_VERSION;
             cfg_hdr->header_size = (uint16_t)sizeof(*cfg_hdr);
             cfg_hdr->config_size = (uint16_t)sizeof(g_config);
             cfg_hdr->flags = 0u;
             memcpy(config_buf + sizeof(*cfg_hdr), &g_config, sizeof(g_config));
             taskEXIT_CRITICAL();
-            sdlog_write(SDLOG_TAG_APP_CONFIG, config_buf, cfg_size);
+            sdlog_write(SDLOG_TAG_CONFIG, config_buf, cfg_size);
             config_logged = 1u;
         }
 
@@ -470,13 +470,13 @@ void detect_hook(uint8_t toe)
 {
     error_list[toe].last_time = error_list[toe].new_time;
     error_list[toe].new_time = xTaskGetTickCount();
-    
+
     if (error_list[toe].is_lost)
     {
         error_list[toe].is_lost = 0;
         error_list[toe].work_time = error_list[toe].new_time;
     }
-    
+
     if (error_list[toe].data_is_error_fun != NULL)
     {
         if (error_list[toe].data_is_error_fun())

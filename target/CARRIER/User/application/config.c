@@ -22,14 +22,51 @@
  * - AUX 口只改 RAM 里的 g_config，重启后会回到这里的默认值。
  */
 
-// 默认配置表：这里写编译期默认值。
-// 右侧带 [ID] 的项属于动态配置；不带 [ID] 的项属于稳定配置。
+// 电机型号表：每种电机的固定参数。
+const motor_config_t g_motor_config =
+{
+    .model =
+        {
+            [MOTOR_MODEL_3508] = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 19.0f},
+            [MOTOR_MODEL_3510] = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 19.0f},
+            [MOTOR_MODEL_2006] = {.can_id_base = 0x200u, .max_current = 10000, .reduction_ratio = 25.0f},
+            [MOTOR_MODEL_6020] = {.can_id_base = 0x204u, .max_current = 30000, .reduction_ratio = 1.0f},
+            [MOTOR_MODEL_6623] = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 1.0f},
+            [MOTOR_MODEL_DM_J4310_2EC_V11] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 10.0f},
+            [MOTOR_MODEL_DM_J4310_2EC_V12] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 10.0f},
+            [MOTOR_MODEL_DM_J8009_2EC_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 9.0f},
+            [MOTOR_MODEL_DM_J8006_2EC_V11] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.0f},
+            [MOTOR_MODEL_DM_J8006_2EC_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.0f},
+        },
+};
+
 config_t g_config = {
     .profile =
         {
             .locomotion_family = LOCOMOTION_FAMILY_CLASSIC_CHASSIS,
             .gimbal_family = GIMBAL_FAMILY_NONE,
             .arm_family = ARM_FAMILY_NONE,
+        },
+    .motor =
+        {
+            .chassis =
+                {
+                    {MOTOR_MODEL_3508, 1u},
+                    {MOTOR_MODEL_3508, 2u},
+                    {MOTOR_MODEL_3508, 7u},
+                    {MOTOR_MODEL_3508, 5u},
+                },
+            .friction =
+                {
+                    {MOTOR_MODEL_3510, 1u},
+                    {MOTOR_MODEL_3510, 2u},
+                    {MOTOR_MODEL_3510, 3u},
+                    {MOTOR_MODEL_3510, 4u},
+                },
+            .yaw = {MOTOR_MODEL_6020, 2u},
+            .yaw_upper = {MOTOR_MODEL_6020, 0u},
+            .pitch = {MOTOR_MODEL_3510, 3u},
+            .trigger = {MOTOR_MODEL_3510, 4u},
         },
     // 云台配置
     .gimbal =
@@ -353,41 +390,6 @@ config_t g_config = {
     // 测试模式（单组件）
     // ===== 稳定配置：硬件归属 / 输入语义 / 调试默认值，只在代码里改 =====
     // 这些项不会出现在 AUX 动态参数表里。
-    .motor =
-        {
-            .model =
-                {
-                    [MOTOR_MODEL_3508] = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 19.0f},
-                    [MOTOR_MODEL_3510] = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 19.0f},
-                    [MOTOR_MODEL_2006] = {.can_id_base = 0x200u, .max_current = 10000, .reduction_ratio = 25.0f},
-                    [MOTOR_MODEL_6020] = {.can_id_base = 0x204u, .max_current = 30000, .reduction_ratio = 1.0f},
-                    [MOTOR_MODEL_6623] = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 1.0f},
-                    [MOTOR_MODEL_DM_J4310_2EC_V11] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 10.0f},
-                    [MOTOR_MODEL_DM_J4310_2EC_V12] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 10.0f},
-                    [MOTOR_MODEL_DM_J8009_2EC_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 9.0f},
-                    [MOTOR_MODEL_DM_J8006_2EC_V11] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.0f},
-                    [MOTOR_MODEL_DM_J8006_2EC_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.0f},
-                },
-            .chassis =
-                {
-                    {MOTOR_MODEL_3508, 1u},
-                    {MOTOR_MODEL_3508, 2u},
-                    {MOTOR_MODEL_3508, 7u},
-                    {MOTOR_MODEL_3508, 5u},
-                },
-            .friction =
-                {
-                    {MOTOR_MODEL_3510, 1u},
-                    {MOTOR_MODEL_3510, 2u},
-                    {MOTOR_MODEL_3510, 3u},
-                    {MOTOR_MODEL_3510, 4u},
-                },
-            .yaw = {MOTOR_MODEL_6020, 2u},
-            .yaw_upper = {MOTOR_MODEL_6020, 0u},
-            .pitch = {MOTOR_MODEL_3510, 3u},
-            .trigger = {MOTOR_MODEL_3510, 4u},
-        },
-
     .manual_input =
         {
             .active_source = MANUAL_INPUT_SRC_AUTO,     // 默认自动选择最近活跃输入源
@@ -550,7 +552,6 @@ static const config_block_desc_t g_config_blocks[] = {
     {CONFIG_BLOCK_COMMON_VOLTAGE, "common.voltage", "221-223", &g_config.voltage, sizeof(g_config.voltage), config_block_active_always},
     {CONFIG_BLOCK_COMMON_BUZZER, "common.buzzer", "224-237", &g_config.buzzer, sizeof(g_config.buzzer), config_block_active_always},
     {CONFIG_BLOCK_COMMON_LED, "common.led", "238-240", &g_config.led, sizeof(g_config.led), config_block_active_always},
-    {CONFIG_BLOCK_COMMON_MOTOR, "common.motor", "", &g_config.motor, sizeof(g_config.motor), config_block_active_always},
     {CONFIG_BLOCK_COMMON_MANUAL_INPUT, "common.manual_input", "300-309,317-318,369-378", &g_config.manual_input, sizeof(g_config.manual_input), config_block_active_always},
     {CONFIG_BLOCK_COMMON_INPUT, "common.input", "310-316,320-347", &g_config.input, sizeof(g_config.input), config_block_active_always},
     {CONFIG_BLOCK_COMMON_AUX_TELEM, "common.aux_telem", "241-243", &g_config.aux_telem, sizeof(g_config.aux_telem), config_block_active_always},

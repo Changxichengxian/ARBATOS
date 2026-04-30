@@ -70,7 +70,7 @@ static void cali_data_write(void);
 /**
   * @brief          "head" sensor cali function
   * @param[in][out] cali:the point to head data. when cmd == CALI_FUNC_CMD_INIT, param is [in],cmd == CALI_FUNC_CMD_ON, param is [out]
-  * @param[in]      cmd: 
+  * @param[in]      cmd:
                     CALI_FUNC_CMD_INIT: means to use cali data to initialize original data
                     CALI_FUNC_CMD_ON: means need to calibrate
   * @retval         0:means cali task has not been done
@@ -79,7 +79,7 @@ static void cali_data_write(void);
 /**
   * @brief          "head"设备校准
   * @param[in][out] cali:指针指向head数据,当cmd为CALI_FUNC_CMD_INIT, 参数是输入,CALI_FUNC_CMD_ON,参数是输出
-  * @param[in]      cmd: 
+  * @param[in]      cmd:
                     CALI_FUNC_CMD_INIT: 代表用校准数据初始化原始数据
                     CALI_FUNC_CMD_ON: 代表需要校准
   * @retval         0:校准任务还没有完
@@ -90,7 +90,7 @@ static bool_t cali_head_hook(uint32_t *cali, bool_t cmd);   //header device cali
 /**
   * @brief          gyro cali function
   * @param[in][out] cali:the point to gyro data, when cmd == CALI_FUNC_CMD_INIT, param is [in],cmd == CALI_FUNC_CMD_ON, param is [out]
-  * @param[in]      cmd: 
+  * @param[in]      cmd:
                     CALI_FUNC_CMD_INIT: means to use cali data to initialize original data
                     CALI_FUNC_CMD_ON: means need to calibrate
   * @retval         0:means cali task has not been done
@@ -99,7 +99,7 @@ static bool_t cali_head_hook(uint32_t *cali, bool_t cmd);   //header device cali
 /**
   * @brief          陀螺仪设备校准
   * @param[in][out] cali:指针指向陀螺仪数据,当cmd为CALI_FUNC_CMD_INIT, 参数是输入,CALI_FUNC_CMD_ON,参数是输出
-  * @param[in]      cmd: 
+  * @param[in]      cmd:
                     CALI_FUNC_CMD_INIT: 代表用校准数据初始化原始数据
                     CALI_FUNC_CMD_ON: 代表需要校准
   * @retval         0:校准任务还没有完
@@ -110,7 +110,7 @@ static bool_t cali_gyro_hook(uint32_t *cali, bool_t cmd);   //gyro device cali f
 /**
   * @brief          gimbal cali function
   * @param[in][out] cali:the point to gimbal data, when cmd == CALI_FUNC_CMD_INIT, param is [in],cmd == CALI_FUNC_CMD_ON, param is [out]
-  * @param[in]      cmd: 
+  * @param[in]      cmd:
                     CALI_FUNC_CMD_INIT: means to use cali data to initialize original data
                     CALI_FUNC_CMD_ON: means need to calibrate
   * @retval         0:means cali task has not been done
@@ -119,7 +119,7 @@ static bool_t cali_gyro_hook(uint32_t *cali, bool_t cmd);   //gyro device cali f
 /**
   * @brief          云台设备校准
   * @param[in][out] cali:指针指向云台数据,当cmd为CALI_FUNC_CMD_INIT, 参数是输入,CALI_FUNC_CMD_ON,参数是输出
-  * @param[in]      cmd: 
+  * @param[in]      cmd:
                     CALI_FUNC_CMD_INIT: 代表用校准数据初始化原始数据
                     CALI_FUNC_CMD_ON: 代表需要校准
   * @retval         0:校准任务还没有完
@@ -163,7 +163,7 @@ static imu_cali_t      mag_cali;        //mag cali data
 
 static uint8_t flash_write_buf[FLASH_WRITE_BUF_LENGHT];
 
-cali_sensor_t cali_sensor[CALI_LIST_LENGHT]; 
+cali_sensor_t cali_sensor[CALI_LIST_LENGHT];
 
 static const uint8_t cali_name[CALI_LIST_LENGHT][3] = {"HD", "GM", "GYR", "ACC", "MAG"};
 
@@ -209,7 +209,7 @@ static uint8_t boot_sound_note_on = 0u;
 void calibrate_task(void const *pvParameters)
 {
     static uint8_t i = 0;
-    
+
 
     while (1)
     {
@@ -278,7 +278,7 @@ static uint8_t boot_sound_manual_online(void)
 
 static uint8_t boot_sound_volume(void)
 {
-    uint8_t volume = (uint8_t)g_app_config.buzzer.pcm.volume;
+    uint8_t volume = (uint8_t)g_config.buzzer.pcm.volume;
     if (volume == 0u)
     {
         volume = 255u;
@@ -397,12 +397,12 @@ int8_t get_control_temperature(void)
 
 /**
   * @brief          get latitude, default 22.0f
-  * @param[out]     latitude: the point to fp32 
+  * @param[out]     latitude: the point to fp32
   * @retval         none
   */
 /**
   * @brief          获取纬度,默认22.0f
-  * @param[out]     latitude:fp32指针 
+  * @param[out]     latitude:fp32指针
   * @retval         none
   */
 void get_flash_latitude(float *latitude)
@@ -468,7 +468,7 @@ static void RC_cmd_to_calibrate(void)
     }
     else if (rc_action_flag == GIMBAL_FLAG && rc_cmd_time > RC_CMD_LONG_TIME)
     {
-        //gimbal cali, 
+        //gimbal cali,
         rc_action_flag = 0;
         rc_cmd_time = 0;
         cali_sensor[CALI_GIMBAL].cali_cmd = 1;
@@ -500,12 +500,12 @@ static void RC_cmd_to_calibrate(void)
         cali_buzzer_off();
     }
 
-    const int16_t cali_ch0 = app_input_axis(APP_AXIS_CALIB_0);
-    const int16_t cali_ch1 = app_input_axis(APP_AXIS_CALIB_1);
-    const int16_t cali_ch2 = app_input_axis(APP_AXIS_CALIB_2);
-    const int16_t cali_ch3 = app_input_axis(APP_AXIS_CALIB_3);
-    const uint8_t cali_sw_l = app_input_switch(APP_SW_CALIB_L);
-    const uint8_t cali_sw_r = app_input_switch(APP_SW_CALIB_R);
+    const int16_t cali_ch0 = app_input_axis(INPUT_AXIS_CALIB_0);
+    const int16_t cali_ch1 = app_input_axis(INPUT_AXIS_CALIB_1);
+    const int16_t cali_ch2 = app_input_axis(INPUT_AXIS_CALIB_2);
+    const int16_t cali_ch3 = app_input_axis(INPUT_AXIS_CALIB_3);
+    const uint8_t cali_sw_l = app_input_switch(INPUT_SW_CALIB_L);
+    const uint8_t cali_sw_r = app_input_switch(INPUT_SW_CALIB_R);
 
     if (cali_ch0 < -RC_CALI_VALUE_HOLE && cali_ch1 < -RC_CALI_VALUE_HOLE && cali_ch2 > RC_CALI_VALUE_HOLE && cali_ch3 < -RC_CALI_VALUE_HOLE && switch_is_down(cali_sw_l) && switch_is_down(cali_sw_r) && rc_action_flag == 0)
     {
@@ -561,7 +561,7 @@ static void RC_cmd_to_calibrate(void)
     {
         buzzer_time++;
     }
-    
+
     if (buzzer_time > RCCALI_BUZZER_CYCLE_TIME && rc_action_flag != 0)
     {
         buzzer_time = 0;
@@ -601,7 +601,7 @@ void cali_param_init(void)
         {
             if (cali_sensor[i].cali_hook != NULL)
             {
-                //if has been calibrated, set to init 
+                //if has been calibrated, set to init
                 cali_sensor[i].cali_hook(cali_sensor_buf[i], CALI_FUNC_CMD_INIT);
             }
         }
@@ -626,19 +626,19 @@ static void cali_data_read(void)
     for (i = 0; i < CALI_LIST_LENGHT; i++)
     {
 
-        //read the data in flash, 
+        //read the data in flash,
         cali_flash_read(FLASH_USER_ADDR + offset, cali_sensor[i].flash_buf, cali_sensor[i].flash_len);
-        
+
         offset += cali_sensor[i].flash_len * 4;
 
         //read the name and cali flag,
         cali_flash_read(FLASH_USER_ADDR + offset, (uint32_t *)flash_read_buf, CALI_SENSOR_HEAD_LEGHT);
-        
+
         cali_sensor[i].name[0] = flash_read_buf[0];
         cali_sensor[i].name[1] = flash_read_buf[1];
         cali_sensor[i].name[2] = flash_read_buf[2];
         cali_sensor[i].cali_done = flash_read_buf[3];
-        
+
         offset += CALI_SENSOR_HEAD_LEGHT * 4;
 
         if (cali_sensor[i].cali_done != CALIED_FLAG && cali_sensor[i].cali_hook != NULL)
@@ -686,7 +686,7 @@ static void cali_data_write(void)
 /**
   * @brief          "head" sensor cali function
   * @param[in][out] cali:the point to head data. when cmd == CALI_FUNC_CMD_INIT, param is [in],cmd == CALI_FUNC_CMD_ON, param is [out]
-  * @param[in]      cmd: 
+  * @param[in]      cmd:
                     CALI_FUNC_CMD_INIT: means to use cali data to initialize original data
                     CALI_FUNC_CMD_ON: means need to calibrate
   * @retval         0:means cali task has not been done
@@ -695,7 +695,7 @@ static void cali_data_write(void)
 /**
   * @brief          "head"设备校准
   * @param[in][out] cali:指针指向head数据,当cmd为CALI_FUNC_CMD_INIT, 参数是输入,CALI_FUNC_CMD_ON,参数是输出
-  * @param[in]      cmd: 
+  * @param[in]      cmd:
                     CALI_FUNC_CMD_INIT: 代表用校准数据初始化原始数据
                     CALI_FUNC_CMD_ON: 代表需要校准
   * @retval         0:校准任务还没有完
@@ -719,9 +719,9 @@ static bool_t cali_head_hook(uint32_t *cali, bool_t cmd)
     {
         local_cali_t->temperature = (int8_t)(GYRO_CONST_MAX_TEMP);
     }
-    
+
     local_cali_t->firmware_version = FIRMWARE_VERSION;
-    //shenzhen latitude 
+    //shenzhen latitude
     local_cali_t->latitude = 22.0f;
 
     return 1;
@@ -730,7 +730,7 @@ static bool_t cali_head_hook(uint32_t *cali, bool_t cmd)
 /**
   * @brief          gyro cali function
   * @param[in][out] cali:the point to gyro data, when cmd == CALI_FUNC_CMD_INIT, param is [in],cmd == CALI_FUNC_CMD_ON, param is [out]
-  * @param[in]      cmd: 
+  * @param[in]      cmd:
                     CALI_FUNC_CMD_INIT: means to use cali data to initialize original data
                     CALI_FUNC_CMD_ON: means need to calibrate
   * @retval         0:means cali task has not been done
@@ -739,7 +739,7 @@ static bool_t cali_head_hook(uint32_t *cali, bool_t cmd)
 /**
   * @brief          陀螺仪设备校准
   * @param[in][out] cali:指针指向陀螺仪数据,当cmd为CALI_FUNC_CMD_INIT, 参数是输入,CALI_FUNC_CMD_ON,参数是输出
-  * @param[in]      cmd: 
+  * @param[in]      cmd:
                     CALI_FUNC_CMD_INIT: 代表用校准数据初始化原始数据
                     CALI_FUNC_CMD_ON: 代表需要校准
   * @retval         0:校准任务还没有完
@@ -751,7 +751,7 @@ static bool_t cali_gyro_hook(uint32_t *cali, bool_t cmd)
     if (cmd == CALI_FUNC_CMD_INIT)
     {
         gyro_set_cali(local_cali_t->scale, local_cali_t->offset);
-        
+
         return 0;
     }
     else if (cmd == CALI_FUNC_CMD_ON)
@@ -769,7 +769,7 @@ static bool_t cali_gyro_hook(uint32_t *cali, bool_t cmd)
         {
             gyro_cali_disable_control(); //disable the remote control to make robot no move
             imu_start_buzzer();
-            
+
             return 0;
         }
     }
@@ -780,7 +780,7 @@ static bool_t cali_gyro_hook(uint32_t *cali, bool_t cmd)
 /**
   * @brief          gimbal cali function
   * @param[in][out] cali:the point to gimbal data, when cmd == CALI_FUNC_CMD_INIT, param is [in],cmd == CALI_FUNC_CMD_ON, param is [out]
-  * @param[in]      cmd: 
+  * @param[in]      cmd:
                     CALI_FUNC_CMD_INIT: means to use cali data to initialize original data
                     CALI_FUNC_CMD_ON: means need to calibrate
   * @retval         0:means cali task has not been done
@@ -789,7 +789,7 @@ static bool_t cali_gyro_hook(uint32_t *cali, bool_t cmd)
 /**
   * @brief          云台设备校准
   * @param[in][out] cali:指针指向云台数据,当cmd为CALI_FUNC_CMD_INIT, 参数是输入,CALI_FUNC_CMD_ON,参数是输出
-  * @param[in]      cmd: 
+  * @param[in]      cmd:
                     CALI_FUNC_CMD_INIT: 代表用校准数据初始化原始数据
                     CALI_FUNC_CMD_ON: 代表需要校准
   * @retval         0:校准任务还没有完
@@ -804,7 +804,7 @@ static bool_t cali_gimbal_hook(uint32_t *cali, bool_t cmd)
         set_cali_gimbal_hook(local_cali_t->yaw_offset, local_cali_t->pitch_offset,
                              local_cali_t->yaw_max_angle, local_cali_t->yaw_min_angle,
                              local_cali_t->pitch_max_angle, local_cali_t->pitch_min_angle);
-        
+
         return 0;
     }
     else if (cmd == CALI_FUNC_CMD_ON)
@@ -814,16 +814,16 @@ static bool_t cali_gimbal_hook(uint32_t *cali, bool_t cmd)
                                  &local_cali_t->pitch_max_angle, &local_cali_t->pitch_min_angle))
         {
             cali_buzzer_off();
-            
+
             return 1;
         }
         else
         {
             gimbal_start_buzzer();
-            
+
             return 0;
         }
     }
-    
+
     return 0;
 }

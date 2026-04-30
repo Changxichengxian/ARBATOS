@@ -11,7 +11,7 @@
 #ifndef INS_Task_H
 #define INS_Task_H
 #include "struct_typedef.h"
-#include "app_config.h"
+#include "config.h"
 
 #define SPI_DMA_GYRO_LENGHT       8
 #define SPI_DMA_ACCEL_LENGHT      9
@@ -31,17 +31,17 @@
 #define IST8310_RX_BUF_DATA_OFFSET 16
 
 
-#define TEMPERATURE_PID_KP (g_app_config.imu.temperature_pid.kp) //温度控制PID的kp
-#define TEMPERATURE_PID_KI (g_app_config.imu.temperature_pid.ki)    //温度控制PID的ki
-#define TEMPERATURE_PID_KD (g_app_config.imu.temperature_pid.kd)    //温度控制PID的kd
+#define TEMPERATURE_PID_KP (g_config.imu.temperature_pid.kp) //温度控制PID的kp
+#define TEMPERATURE_PID_KI (g_config.imu.temperature_pid.ki)    //温度控制PID的ki
+#define TEMPERATURE_PID_KD (g_config.imu.temperature_pid.kd)    //温度控制PID的kd
 
-#define TEMPERATURE_PID_MAX_OUT   (g_app_config.imu.temperature_pid_max_out) //温度控制PID的max_out
-#define TEMPERATURE_PID_MAX_IOUT  (g_app_config.imu.temperature_pid_max_iout)  //温度控制PID的max_iout
+#define TEMPERATURE_PID_MAX_OUT   (g_config.imu.temperature_pid_max_out) //温度控制PID的max_out
+#define TEMPERATURE_PID_MAX_IOUT  (g_config.imu.temperature_pid_max_iout)  //温度控制PID的max_iout
 
-#define MPU6500_TEMP_PWM_MAX (g_app_config.imu.imu_temp_pwm_max) //mpu6500控制温度的设置TIM的重载值，即给PWM最大为 MPU6500_TEMP_PWM_MAX - 1
+#define MPU6500_TEMP_PWM_MAX (g_config.imu.imu_temp_pwm_max) //mpu6500控制温度的设置TIM的重载值，即给PWM最大为 MPU6500_TEMP_PWM_MAX - 1
 
 
-#define INS_TASK_INIT_TIME (g_app_config.imu.task_init_time_ms) //任务开始初期 delay 一段时间
+#define INS_TASK_INIT_TIME (g_config.imu.task_init_time_ms) //任务开始初期 delay 一段时间
 
 #define INS_YAW_ADDRESS_OFFSET    0
 #define INS_ROLL_ADDRESS_OFFSET   1
@@ -82,7 +82,7 @@ extern void INS_task(void const *pvParameters);
   * @brief          calculate gyro zero drift
   * @param[out]     cali_scale:scale, default 1.0
   * @param[out]     cali_offset:zero drift, collect the gyro ouput when in still
-  * @param[out]     time_count: time, when call gyro_offset_calc 
+  * @param[out]     time_count: time, when call gyro_offset_calc
   * @retval         none
   */
 /**
@@ -97,7 +97,7 @@ extern void INS_cali_gyro(fp32 cali_scale[3], fp32 cali_offset[3], uint16_t *tim
 /**
   * @brief          get gyro zero drift from flash
   * @param[in]      cali_scale:scale, default 1.0
-  * @param[in]      cali_offset:zero drift, 
+  * @param[in]      cali_offset:zero drift,
   * @retval         none
   */
 /**

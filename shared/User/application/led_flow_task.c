@@ -12,7 +12,7 @@
 #include "bsp_led.h"
 #include "cmsis_os.h"
 #include "detect_task.h"
-#include "app_config.h"
+#include "config.h"
 #include "INS_task.h"
 
 // 0xAA_RR_GG_BB: AA 为整体亮度，必须非 0 才能真正点亮
@@ -32,9 +32,9 @@
 void led_RGB_flow_task(void const *argument)
 {
     const error_t *errors = get_error_list_point();
-    const uint16_t on_ms = g_app_config.led.slot_on_ms;
-    const uint16_t off_ms = g_app_config.led.slot_off_ms;
-    const uint16_t gap_ms = g_app_config.led.slot_gap_ms;
+    const uint16_t on_ms = g_config.led.slot_on_ms;
+    const uint16_t off_ms = g_config.led.slot_off_ms;
+    const uint16_t gap_ms = g_config.led.slot_gap_ms;
 
     while (1)
     {

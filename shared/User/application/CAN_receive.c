@@ -120,17 +120,17 @@ static uint8_t can_should_log_frame(uint8_t bus, uint16_t std_id)
     if (bus == 1u)
     {
         uint8_t idx = 0u;
-        if (can_match_nodes(std_id, g_app_config.motor.chassis, 4u, &idx) != 0u)
+        if (can_match_nodes(std_id, g_config.motor.chassis, 4u, &idx) != 0u)
         {
             return can_rx_log_decim_hit(&can1_chassis_log_decim[idx], CAN_RX_LOG_DIV_CHASSIS);
         }
-        if (std_id == motor_cfg_feedback_id(&g_app_config.motor.yaw) ||
-            std_id == motor_cfg_feedback_id(&g_app_config.motor.yaw_upper) ||
-            std_id == motor_cfg_feedback_id(&g_app_config.motor.pitch))
+        if (std_id == motor_cfg_feedback_id(&g_config.motor.yaw) ||
+            std_id == motor_cfg_feedback_id(&g_config.motor.yaw_upper) ||
+            std_id == motor_cfg_feedback_id(&g_config.motor.pitch))
         {
             return 1u;
         }
-        if (std_id == motor_cfg_feedback_id(&g_app_config.motor.trigger))
+        if (std_id == motor_cfg_feedback_id(&g_config.motor.trigger))
         {
             return can_rx_log_decim_hit(&can1_trigger_log_decim, CAN_RX_LOG_DIV_FRICTION_TRIGGER);
         }
@@ -138,7 +138,7 @@ static uint8_t can_should_log_frame(uint8_t bus, uint16_t std_id)
     else if (bus == 2u)
     {
         uint8_t idx = 0u;
-        if (can_match_nodes(std_id, g_app_config.motor.friction, 4u, &idx) != 0u)
+        if (can_match_nodes(std_id, g_config.motor.friction, 4u, &idx) != 0u)
         {
             return can_rx_log_decim_hit(&can2_friction_log_decim[idx], CAN_RX_LOG_DIV_FRICTION_TRIGGER);
         }
@@ -179,32 +179,32 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
     if (bus == 1u)
     {
         uint8_t idx = 0u;
-        if (can_match_nodes(std_id, g_app_config.motor.chassis, 4u, &idx) != 0u)
+        if (can_match_nodes(std_id, g_config.motor.chassis, 4u, &idx) != 0u)
         {
-            can_rx_unpack_motor_measure(&motor_chassis[idx], g_app_config.motor.chassis[idx].model, data);
+            can_rx_unpack_motor_measure(&motor_chassis[idx], g_config.motor.chassis[idx].model, data);
             detect_hook(CHASSIS_MOTOR1_TOE + idx);
             return;
         }
-        if (std_id == motor_cfg_feedback_id(&g_app_config.motor.yaw))
+        if (std_id == motor_cfg_feedback_id(&g_config.motor.yaw))
         {
-            can_rx_unpack_motor_measure(&motor_yaw, g_app_config.motor.yaw.model, data);
+            can_rx_unpack_motor_measure(&motor_yaw, g_config.motor.yaw.model, data);
             detect_hook(YAW_GIMBAL_MOTOR_TOE);
             return;
         }
-        if (std_id == motor_cfg_feedback_id(&g_app_config.motor.yaw_upper))
+        if (std_id == motor_cfg_feedback_id(&g_config.motor.yaw_upper))
         {
-            can_rx_unpack_motor_measure(&motor_yaw_upper, g_app_config.motor.yaw_upper.model, data);
+            can_rx_unpack_motor_measure(&motor_yaw_upper, g_config.motor.yaw_upper.model, data);
             return;
         }
-        if (std_id == motor_cfg_feedback_id(&g_app_config.motor.trigger))
+        if (std_id == motor_cfg_feedback_id(&g_config.motor.trigger))
         {
-            can_rx_unpack_motor_measure(&motor_trigger, g_app_config.motor.trigger.model, data);
+            can_rx_unpack_motor_measure(&motor_trigger, g_config.motor.trigger.model, data);
             detect_hook(TRIGGER_MOTOR_TOE);
             return;
         }
-        if (std_id == motor_cfg_feedback_id(&g_app_config.motor.pitch))
+        if (std_id == motor_cfg_feedback_id(&g_config.motor.pitch))
         {
-            can_rx_unpack_motor_measure(&motor_pitch, g_app_config.motor.pitch.model, data);
+            can_rx_unpack_motor_measure(&motor_pitch, g_config.motor.pitch.model, data);
             detect_hook(PITCH_GIMBAL_MOTOR_TOE);
             return;
         }
@@ -212,9 +212,9 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
     else if (bus == 2u)
     {
         uint8_t idx = 0u;
-        if (can_match_nodes(std_id, g_app_config.motor.friction, 4u, &idx) != 0u)
+        if (can_match_nodes(std_id, g_config.motor.friction, 4u, &idx) != 0u)
         {
-            can_rx_unpack_motor_measure(&motor_friction[idx], g_app_config.motor.friction[idx].model, data);
+            can_rx_unpack_motor_measure(&motor_friction[idx], g_config.motor.friction[idx].model, data);
             return;
         }
     }

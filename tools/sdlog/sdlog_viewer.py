@@ -38,7 +38,7 @@ TAG_NAMES: dict[int, str] = {
     0x0032: "DETECT_STATUS",
     0x0033: "CHASSIS_POWER_LIMIT",
     0x0034: "GIMBAL_LIMIT",
-    0x0040: "APP_CONFIG",
+    0x0040: "CONFIG",
     0x0041: "SYS_STATS",
     0x0042: "EVENT",
     0x0043: "VISION_RX",
@@ -1011,7 +1011,7 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
             )
         ]
 
-    if tag == 0x0040:  # APP_CONFIG
+    if tag == 0x0040:  # CONFIG
         return [
             (
                 name,

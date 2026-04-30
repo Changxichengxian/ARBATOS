@@ -12,7 +12,7 @@
 
 #include <stdint.h>
 
-#include "app_config.h"
+#include "config.h"
 
 typedef enum
 {

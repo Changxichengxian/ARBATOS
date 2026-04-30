@@ -15,6 +15,7 @@
 // 说明：
 // - 本文件集中管理可调参数，作为配置源；默认值在 config.c 内填写。
 // - 运行时读取方式：直接使用 g_config.xxx
+// - 电机型号表使用 const g_motor_config；轴电机装配在 g_config.motor，启动后不改。
 // - 若需从 Flash/裁判数据覆盖，可在启动时拷贝到 RAM 并按需修改。
 
 // 通用 PID 参数
@@ -355,7 +356,7 @@ typedef struct
 // Buzzer PCM playback config (PWM+DMA, u8 samples on TF/SD).
 // - name/path: if it contains ':' treat as absolute path (e.g. "0:/YOU_12K.U8"),
 //              otherwise prefix "0:/" at runtime.
-#define APP_CONFIG_BUZZER_MUSIC_NAME_MAX 32u
+#define CONFIG_BUZZER_MUSIC_NAME_MAX 32u
 
 typedef struct
 {
@@ -366,8 +367,8 @@ typedef struct
     uint8_t loop;            // loop (0/1)
     uint16_t gain_q8;        // extra digital gain (Q8, 256=1.0x, 512=2.0x), saturates to 8-bit output
 
-    char mid_file[APP_CONFIG_BUZZER_MUSIC_NAME_MAX];  // ENTERTAIN: RC switch MID music file name/path
-    char down_file[APP_CONFIG_BUZZER_MUSIC_NAME_MAX]; // ENTERTAIN: RC switch DOWN music file name/path
+    char mid_file[CONFIG_BUZZER_MUSIC_NAME_MAX];  // ENTERTAIN: RC switch MID music file name/path
+    char down_file[CONFIG_BUZZER_MUSIC_NAME_MAX]; // ENTERTAIN: RC switch DOWN music file name/path
 } buzzer_pcm_config_t;
 
 // 蜂鸣器参数
@@ -456,13 +457,17 @@ typedef struct
 typedef struct
 {
     motor_model_param_t model[MOTOR_MODEL__COUNT];
+} motor_config_t;
+
+typedef struct
+{
     motor_node_param_t chassis[4];
     motor_node_param_t friction[4];
     motor_node_param_t yaw;
     motor_node_param_t yaw_upper;
     motor_node_param_t pitch;
     motor_node_param_t trigger;
-} motor_config_t;
+} motor_mount_config_t;
 
 // AUX telemetry signal IDs.
 // - AUX JustFloat telemetry (VOFA+/FireWater): N * float32 (little-endian) + tail 0x7F800000 (INF).
@@ -913,7 +918,6 @@ typedef enum
     CONFIG_BLOCK_COMMON_VOLTAGE,
     CONFIG_BLOCK_COMMON_BUZZER,
     CONFIG_BLOCK_COMMON_LED,
-    CONFIG_BLOCK_COMMON_MOTOR,
     CONFIG_BLOCK_COMMON_MANUAL_INPUT,
     CONFIG_BLOCK_COMMON_INPUT,
     CONFIG_BLOCK_COMMON_AUX_TELEM,
@@ -936,6 +940,7 @@ typedef struct
 typedef struct
 {
     task_profile_t profile;
+    motor_mount_config_t motor;
     gimbal_config_t gimbal;
     dual_gimbal_config_t dual_gimbal;
     chassis_config_t chassis;
@@ -949,7 +954,6 @@ typedef struct
     voltage_config_t voltage;
     buzzer_config_t buzzer;
     led_config_t led;
-    motor_config_t motor;
     manual_input_config_t manual_input;
     input_config_t input;
     aux_telem_config_t aux_telem;
@@ -957,6 +961,7 @@ typedef struct
 } config_t;
 
 extern config_t g_config;
+extern const motor_config_t g_motor_config;
 const config_block_desc_t *config_get_block_table(uint32_t *count);
 const config_block_desc_t *config_find_block(config_block_id_e id);
 uint8_t config_block_is_active(config_block_id_e id);

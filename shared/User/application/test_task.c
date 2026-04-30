@@ -12,7 +12,7 @@
 #include "cmsis_os.h"
 #include "bsp_buzzer.h"
 #include "bsp_usb.h"
-#include "app_config.h"
+#include "config.h"
 #include "detect_task.h"
 #include "INS_task.h"
 #include "referee.h"
@@ -21,8 +21,8 @@
 #define TEST_TASK_PERIOD_MS 2U
 #define SOFT_BEEP_GAP_MS 100U
 #define SOFT_BEEP_GAP_TICKS ((SOFT_BEEP_GAP_MS + TEST_TASK_PERIOD_MS - 1U) / TEST_TASK_PERIOD_MS)
-#define SOFT_BEEP_PSC (g_app_config.buzzer.soft_beep_psc)
-#define SOFT_BEEP_DURATION_MS (g_app_config.buzzer.soft_beep_duration_ms)
+#define SOFT_BEEP_PSC (g_config.buzzer.soft_beep_psc)
+#define SOFT_BEEP_DURATION_MS (g_config.buzzer.soft_beep_duration_ms)
 
 static void buzzer_schedule(uint8_t times);
 static void buzzer_tick(void);

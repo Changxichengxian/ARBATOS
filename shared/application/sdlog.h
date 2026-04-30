@@ -112,7 +112,7 @@ typedef enum
     SDLOG_TAG_REF_ROBOT_INTERACTIVE = 0x003Au,
 
     // Configuration / system / events
-    SDLOG_TAG_APP_CONFIG = 0x0040u, // payload: sdlog_app_config_header_t + raw config bytes
+    SDLOG_TAG_CONFIG = 0x0040u, // payload: sdlog_config_header_t + raw config bytes
     SDLOG_TAG_SYS_STATS = 0x0041u,
     SDLOG_TAG_EVENT = 0x0042u,
 
@@ -194,15 +194,15 @@ typedef struct __attribute__((packed))
     char cmd[1]; // NUL-terminated ASCII line (variable-length payload)
 } sdlog_aux_tune_t;
 
-#define SDLOG_APP_CONFIG_VERSION 1u
+#define SDLOG_CONFIG_VERSION 1u
 
 typedef struct __attribute__((packed))
 {
-    uint16_t version;     // SDLOG_APP_CONFIG_VERSION
-    uint16_t header_size; // sizeof(sdlog_app_config_header_t)
+    uint16_t version;     // SDLOG_CONFIG_VERSION
+    uint16_t header_size; // sizeof(sdlog_config_header_t)
     uint16_t config_size; // raw config bytes copied after the header
     uint16_t flags;       // reserved
-} sdlog_app_config_header_t;
+} sdlog_config_header_t;
 
 typedef struct __attribute__((packed))
 {

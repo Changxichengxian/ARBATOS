@@ -14,7 +14,7 @@
 #include <float.h>
 #include <math.h>
 #include "detect_task.h"
-#include "app_config.h"
+#include "config.h"
 #include "sdlog.h"
 #include "chassis_power_limiter.h"
 
@@ -25,7 +25,7 @@
 #define CHASSIS_POWER_MOTION_BASE_SCALE        0.15f
 #define CHASSIS_POWER_CONTROL_MIN_PERIOD_S     0.001f
 
-static const power_config_t *const power_cfg = &g_app_config.power;
+static const power_config_t *const power_cfg = &g_config.power;
 
 typedef struct
 {
@@ -69,7 +69,7 @@ static fp32 chassis_power_lowpass(fp32 prev, fp32 input, fp32 dt, fp32 tau)
 
 static fp32 chassis_power_get_control_period_s(void)
 {
-    fp32 dt = (fp32)g_app_config.chassis.control_period_ms * 0.001f;
+    fp32 dt = (fp32)g_config.chassis.control_period_ms * 0.001f;
     if (dt < CHASSIS_POWER_CONTROL_MIN_PERIOD_S)
     {
         dt = CHASSIS_POWER_CONTROL_MIN_PERIOD_S;
@@ -234,7 +234,7 @@ void chassis_power_control_apply_speed_limit(chassis_move_t *chassis_power_contr
 
 /**
   * @brief          limit the power, mainly limit motor current
-  * @param[in]      chassis_power_control: chassis data 
+  * @param[in]      chassis_power_control: chassis data
   * @retval         none
   */
 /**
@@ -265,7 +265,7 @@ void chassis_power_control(chassis_move_t *chassis_power_control)
     for (uint8_t i = 0u; i < 4u; i++)
     {
         currents[i] = chassis_power_control->motor_speed_pid[i].out;
-        power_model_currents[i] = currents[i] * (fp32)g_app_config.chassis.motor_dir[i];
+        power_model_currents[i] = currents[i] * (fp32)g_config.chassis.motor_dir[i];
         wheel_rpm[i] = (chassis_power_control->motor_chassis[i].chassis_motor_measure != NULL) ?
                            chassis_power_control->motor_chassis[i].chassis_motor_measure->speed_rpm :
                            0;
@@ -281,7 +281,7 @@ void chassis_power_control(chassis_move_t *chassis_power_control)
     }
     else
     {
-        const uint8_t power_model_ready = chassis_power_limiter_is_power_model_ready(g_app_config.motor.chassis);
+        const uint8_t power_model_ready = chassis_power_limiter_is_power_model_ready(g_config.motor.chassis);
 
         get_chassis_power_and_buffer((fp32 *)0, &chassis_power_buffer);
         runtime_power_limit = (fp32)get_chassis_power_limit();
@@ -296,7 +296,7 @@ void chassis_power_control(chassis_move_t *chassis_power_control)
             // 2026 裁判协议不再下发实时底盘功率，这里先用电机模型估算当前功率，
             // 再直接算出可用功率预算，最后只执行一次按功率缩放。
             (void)chassis_power_limiter_scale_currents_by_power_model(power_model_currents,
-                                                                      g_app_config.motor.chassis,
+                                                                      g_config.motor.chassis,
                                                                       wheel_rpm,
                                                                       FLT_MAX,
                                                                       &chassis_power);
@@ -314,7 +314,7 @@ void chassis_power_control(chassis_move_t *chassis_power_control)
             }
 
             power_scale = chassis_power_limiter_scale_currents_by_power_model(power_model_currents,
-                                                                              g_app_config.motor.chassis,
+                                                                              g_config.motor.chassis,
                                                                               wheel_rpm,
                                                                               power_budget,
                                                                               NULL);

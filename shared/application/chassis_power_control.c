@@ -430,7 +430,7 @@ void chassis_power_control_apply_speed_limit(chassis_move_t *chassis_power_contr
 
 /**
   * @brief          limit the power, mainly limit motor current
-  * @param[in]      chassis_power_control: chassis data 
+  * @param[in]      chassis_power_control: chassis data
   * @retval         none
   */
 /**

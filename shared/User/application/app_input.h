@@ -11,13 +11,13 @@
 
 #include <stdint.h>
 
-#include "app_config.h"
+#include "config.h"
 #include "remote_control.h"
 
 typedef struct
 {
-    int16_t axis[APP_AXIS_COUNT];
-    uint8_t sw[APP_SW_COUNT];
+    int16_t axis[INPUT_AXIS_COUNT];
+    uint8_t sw[INPUT_SW_COUNT];
 } app_input_t;
 
 void app_input_update_from_rc(const RC_ctrl_t *rc);

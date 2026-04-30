@@ -106,7 +106,7 @@ typedef enum
     SDLOG_TAG_GIMBAL_LIMIT = 0x0034u,
 
     // Configuration / system / events
-    SDLOG_TAG_APP_CONFIG = 0x0040u, // payload: raw bytes of g_app_config
+    SDLOG_TAG_CONFIG = 0x0040u, // payload: raw bytes of g_config
     SDLOG_TAG_SYS_STATS = 0x0041u,
     SDLOG_TAG_EVENT = 0x0042u,
 
@@ -198,6 +198,16 @@ typedef struct __attribute__((packed))
     float voltage;
     float percent; // 0..1
 } sdlog_battery_t;
+
+#define SDLOG_CONFIG_VERSION 1u
+
+typedef struct __attribute__((packed))
+{
+    uint16_t version;     // SDLOG_CONFIG_VERSION
+    uint16_t header_size; // sizeof(sdlog_config_header_t)
+    uint16_t config_size; // raw config bytes copied after the header
+    uint16_t flags;       // reserved
+} sdlog_config_header_t;
 
 typedef struct __attribute__((packed))
 {

@@ -122,7 +122,7 @@ static void gimbal_mode_change_control_transit(gimbal_control_t *mode_change);
   */
 static fp32 motor_ecd_to_angle_change(uint16_t ecd, uint16_t offset_ecd);
 /**
-  * @brief          set gimbal control set-point, control set-point is set by "gimbal_behaviour_control_set".         
+  * @brief          set gimbal control set-point, control set-point is set by "gimbal_behaviour_control_set".
   * @param[out]     gimbal_set_control: "gimbal_control" valiable point
   * @retval         none
   */
@@ -133,7 +133,7 @@ static fp32 motor_ecd_to_angle_change(uint16_t ecd, uint16_t offset_ecd);
   */
 static void gimbal_set_control(gimbal_control_t *set_control);
 /**
-  * @brief          control loop, according to control set-point, calculate motor current, 
+  * @brief          control loop, according to control set-point, calculate motor current,
   *                 motor current will be sent to motor
   * @param[out]     gimbal_control_loop: "gimbal_control" valiable point
   * @retval         none
@@ -147,7 +147,7 @@ static void gimbal_control_loop(gimbal_control_t *control_loop);
 static void gimbal_angle_limit(gimbal_motor_t *gimbal_motor, fp32 add);
 
 /**
-  * @brief          gimbal control mode :GIMBAL_MOTOR_ENCONDE, use the encode angle to control. 
+  * @brief          gimbal control mode :GIMBAL_MOTOR_ENCONDE, use the encode angle to control.
   * @param[out]     gimbal_motor: yaw motor or pitch motor
   * @retval         none
   */
@@ -158,7 +158,7 @@ static void gimbal_angle_limit(gimbal_motor_t *gimbal_motor, fp32 add);
   */
 static void gimbal_motor_angle_control(gimbal_motor_t *gimbal_motor);
 /**
-  * @brief          gimbal control mode :GIMBAL_MOTOR_RAW, current  is sent to CAN bus. 
+  * @brief          gimbal control mode :GIMBAL_MOTOR_RAW, current  is sent to CAN bus.
   * @param[out]     gimbal_motor: yaw motor or pitch motor
   * @retval         none
   */
@@ -277,7 +277,7 @@ gimbal_control_t gimbal_control;
 // 调试计数：确认 gimbal_task 主循环是否在运行
 volatile uint32_t gimbal_loop_counter = 0;
 
-//motor current 
+//motor current
 //发送的电机电流
 static int16_t yaw_can_set_current = 0, pitch_can_set_current = 0, shoot_can_set_current = 0;
 // 调试 watch：记录最终下发的 yaw/pitch 电流，便于 easy test 等模式观察
@@ -336,7 +336,7 @@ static void sdlog_pack_gimbal_pid(sdlog_pid_runtime_t *out, uint16_t pid_id, con
 
 static test_mode_e current_test_mode(void)
 {
-    return (test_mode_e)g_app_config.test.mode;
+    return (test_mode_e)g_config.test.mode;
 }
 
 static void gimbal_apply_test_mode(int16_t *yaw_current, int16_t *pitch_current)
@@ -383,7 +383,7 @@ static void gimbal_apply_test_mode(int16_t *yaw_current, int16_t *pitch_current)
 }
 
 /**
-  * @brief          gimbal task, osDelay GIMBAL_CONTROL_TIME (1ms) 
+  * @brief          gimbal task, osDelay GIMBAL_CONTROL_TIME (1ms)
   * @param[in]      pvParameters: null
   * @retval         none
   */
@@ -441,9 +441,9 @@ void gimbal_task(void const *pvParameters)
 
         gimbal_apply_test_mode(&yaw_can_set_current, &pitch_can_set_current);
 
-        yaw_can_set_current = motor_cfg_limit_current_node(&g_app_config.motor.yaw, yaw_can_set_current);
-        pitch_can_set_current = motor_cfg_limit_current_node(&g_app_config.motor.pitch, pitch_can_set_current);
-        shoot_can_set_current = motor_cfg_limit_current_node(&g_app_config.motor.trigger, shoot_can_set_current);
+        yaw_can_set_current = motor_cfg_limit_current_node(&g_config.motor.yaw, yaw_can_set_current);
+        pitch_can_set_current = motor_cfg_limit_current_node(&g_config.motor.pitch, pitch_can_set_current);
+        shoot_can_set_current = motor_cfg_limit_current_node(&g_config.motor.trigger, shoot_can_set_current);
 
         sdlog_gimbal_loop_t log = {0};
         log.loop_cnt = gimbal_loop_counter;
@@ -640,7 +640,7 @@ static void calc_gimbal_cali(const gimbal_step_cali_t *gimbal_cali, uint16_t *ya
             temp_ecd += ECD_RANGE;
         }
         temp_ecd = gimbal_cali->max_yaw_ecd - (temp_ecd / 2);
-        
+
         ecd_format(temp_ecd);
         *yaw_offset = temp_ecd;
         *max_yaw = motor_ecd_to_angle_change(gimbal_cali->max_yaw_ecd, *yaw_offset);
@@ -798,8 +798,8 @@ static void gimbal_init(gimbal_control_t *init)
     //清除所有PID
     gimbal_total_pid_clear(init);
 
-    // yaw 编码器中位（车身对齐）：常用调参项，统一放到 app_config 里
-    init->gimbal_yaw_motor.offset_ecd = g_app_config.gimbal.yaw_middle_ecd;
+    // yaw 编码器中位（车身对齐）：常用调参项，统一放到 config 里
+    init->gimbal_yaw_motor.offset_ecd = g_config.gimbal.yaw_middle_ecd;
 
     gimbal_feedback_update(init);
 
@@ -820,7 +820,7 @@ static void gimbal_init(gimbal_control_t *init)
         init->gimbal_yaw_motor.min_angle = -PI;
     }
 
-    // pitch 软限位：优先用 app_config（配置允许不按大小排序）；若未配置则沿用校准值/兜底放开
+    // pitch 软限位：优先用 config（配置允许不按大小排序）；若未配置则沿用校准值/兜底放开
     {
         const fp32 cfg_up = PITCH_SOFT_LIMIT_UP;
         const fp32 cfg_down = PITCH_SOFT_LIMIT_DOWN;
@@ -996,7 +996,7 @@ static void gimbal_mode_change_control_transit(gimbal_control_t *gimbal_mode_cha
     gimbal_mode_change->gimbal_pitch_motor.last_gimbal_motor_mode = gimbal_mode_change->gimbal_pitch_motor.gimbal_motor_mode;
 }
 /**
-  * @brief          set gimbal control set-point, control set-point is set by "gimbal_behaviour_control_set".         
+  * @brief          set gimbal control set-point, control set-point is set by "gimbal_behaviour_control_set".
   * @param[out]     gimbal_set_control: "gimbal_control" valiable point
   * @retval         none
   */
@@ -1098,7 +1098,7 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
     {
         return;
     }
-    
+
     if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_RAW)
     {
         gimbal_motor_raw_angle_control(&control_loop->gimbal_yaw_motor);
@@ -1119,7 +1119,7 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
 }
 
 /**
-  * @brief          gimbal control mode :GIMBAL_MOTOR_ENCONDE, use the encode angle to control. 
+  * @brief          gimbal control mode :GIMBAL_MOTOR_ENCONDE, use the encode angle to control.
   * @param[out]     gimbal_motor: yaw motor or pitch motor
   * @retval         none
   */
@@ -1202,7 +1202,7 @@ static void gimbal_motor_angle_control(gimbal_motor_t *gimbal_motor)
 }
 
 /**
-  * @brief          gimbal control mode :GIMBAL_MOTOR_RAW, current  is sent to CAN bus. 
+  * @brief          gimbal control mode :GIMBAL_MOTOR_RAW, current  is sent to CAN bus.
   * @param[out]     gimbal_motor: yaw motor or pitch motor
   * @retval         none
   */

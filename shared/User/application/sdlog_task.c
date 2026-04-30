@@ -11,7 +11,7 @@
 
 #include "cmsis_os.h"
 
-#include "app_config.h"
+#include "config.h"
 #include "bsp_time.h"
 #include "sdcard.h"
 #include "sdlog.h"
@@ -54,7 +54,7 @@ void sdlog_task(void const *argument)
         }
     }
 
-    if ((test_mode_e)g_app_config.test.mode != TEST_MODE_ENTERTAIN)
+    if ((test_mode_e)g_config.test.mode != TEST_MODE_ENTERTAIN)
     {
         sdlog_wait_boot_delay_ms(2000u);
         (void)sdlog_start();
@@ -62,7 +62,7 @@ void sdlog_task(void const *argument)
 
     while (1)
     {
-        if ((test_mode_e)g_app_config.test.mode == TEST_MODE_ENTERTAIN)
+        if ((test_mode_e)g_config.test.mode == TEST_MODE_ENTERTAIN)
         {
             sdlog_stop();
             osDelay(SDLOG_TASK_IDLE_DELAY_MS);

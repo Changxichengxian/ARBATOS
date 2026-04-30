@@ -27,7 +27,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "app_config.h"
+#include "config.h"
 #include "app_watch.h"
 #include "sdlog.h"
 
@@ -72,7 +72,7 @@ __weak int8_t get_control_temperature(void)
 
 
 /**
-  * @brief          rotate the gyro, accel and mag, and calculate the zero drift, because sensors have 
+  * @brief          rotate the gyro, accel and mag, and calculate the zero drift, because sensors have
   *                 different install derection.
   * @param[out]     gyro: after plus zero drift and rotate
   * @param[out]     accel: after plus zero drift and rotate
@@ -113,7 +113,7 @@ fp32 accel_scale_factor[3][3] = {IMU_BOARD_INSTALL_SPIN_MATRIX};
 fp32 accel_offset[3];
 
 static uint8_t first_temperate;
-static const imu_config_t *const imu_cfg = &g_app_config.imu;
+static const imu_config_t *const imu_cfg = &g_config.imu;
 static pid_type_def imu_temp_pid;
 
 static const float timing_time = 0.001f;   //tast run time , unit s.任务运行的时间 单位 s
@@ -426,7 +426,7 @@ void INS_task(void const *pvParameters)
 
 
 /**
-  * @brief          rotate the gyro, accel and mag, and calculate the zero drift, because sensors have 
+  * @brief          rotate the gyro, accel and mag, and calculate the zero drift, because sensors have
   *                 different install derection.
   * @param[out]     gyro: after plus zero drift and rotate
   * @param[out]     accel: after plus zero drift and rotate
@@ -528,7 +528,7 @@ void gyro_offset_calc(fp32 gyro_offset[3], fp32 gyro[3], uint16_t *offset_time_c
   * @brief          calculate gyro zero drift
   * @param[out]     cali_scale:scale, default 1.0
   * @param[out]     cali_offset:zero drift, collect the gyro ouput when in still
-  * @param[out]     time_count: time, when call gyro_offset_calc 
+  * @param[out]     time_count: time, when call gyro_offset_calc
   * @retval         none
   */
 /**
@@ -560,7 +560,7 @@ void INS_cali_gyro(fp32 cali_scale[3], fp32 cali_offset[3], uint16_t *time_count
 /**
   * @brief          get gyro zero drift from flash
   * @param[in]      cali_scale:scale, default 1.0
-  * @param[in]      cali_offset:zero drift, 
+  * @param[in]      cali_offset:zero drift,
   * @retval         none
   */
 /**

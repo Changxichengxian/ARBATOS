@@ -670,9 +670,9 @@
               <FilePath>..\\..\\..\\shared\\User\\application\\servo_task.c</FilePath>
             </File>
             <File>
-              <FileName>app_config.c</FileName>
+              <FileName>config.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\target\\HERO\\User\\application\\app_config.c</FilePath>
+              <FilePath>..\\..\\..\\target\\HERO\\User\\application\\config.c</FilePath>
             </File>
             <File>
               <FileName>app_input.c</FileName>

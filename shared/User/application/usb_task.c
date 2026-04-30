@@ -18,7 +18,7 @@
 #include "arm_math.h"
 #include "detect_task.h"
 #include "INS_task.h"
-#include "app_config.h"
+#include "config.h"
 #include "app_watch.h"
 #include "user_lib.h"
 #include "chassis_task.h"
@@ -88,7 +88,7 @@ static uint32_t vision_usb_rx_stream_len = 0u;
 // Extra backoff applied when cfg->period_ms==0 (auto). This is intentionally
 // conservative for wireless UART bridges that may buffer/retransmit and have
 // lower effective throughput than the UART baud rate.
-#define UART1_TELEM_AUTO_EXTRA_BACKOFF_PCT 50u
+#define AUX_TELEM_AUTO_EXTRA_BACKOFF_PCT 50u
 
 typedef struct
 {
@@ -102,7 +102,7 @@ typedef struct
     const chassis_move_t *chassis;
     const motor_measure_t *trigger_meas;
     const motor_measure_t *fric_meas[FRIC_MOTOR_NUM];
-} uart1_telem_ctx_t;
+} aux_telem_ctx_t;
 
 typedef struct __attribute__((packed))
 {
@@ -134,9 +134,9 @@ static volatile uint16_t uart1_rx_len = 0;
 static char uart1_cmd_line[UART1_TUNE_RX_LINE_MAX];
 static volatile bool_t uart1_cmd_ready = 0;
 
-static uint32_t uart1_telem_tick = 0;
+static uint32_t aux_telem_tick = 0;
 static volatile uint32_t uart1_cmd_seq = 0;
-static uint8_t uart1_vofa_frame[(UART1_TELEM_MAX_CH + 1u) * 4u];
+static uint8_t uart1_vofa_frame[(AUX_TELEM_MAX_CH + 1u) * 4u];
 static uint8_t uart1_image_dma_rx_buf[UART1_IMAGE_DMA_RX_BUF_SIZE];
 static volatile uint16_t uart1_image_dma_pos = 0u;
 static uint16_t uart1_image_dma_last_pos = 0u;
@@ -168,230 +168,230 @@ static uart1_image_remote_state_t uart1_image_remote_state = {0};
 // Default list (legacy full list with reduced bandwidth):
 // - Remove per-signal offline/mode/err channels
 // - Keep PACK_MODE / PACK_OFFLINE for status
-static const uart1_telem_sig_e uart1_telem_default_list[] =
+static const aux_telem_sig_e aux_telem_default_list[] =
 {
-    UART1_TELEM_SIG_SYS_TICK_MS,
-    UART1_TELEM_SIG_SYS_UART1_CMD_SEQ,
-    UART1_TELEM_SIG_SYS_BATTERY_VOLT,
-    UART1_TELEM_SIG_SYS_BATTERY_PERCENT,
-    UART1_TELEM_SIG_RC_CH0,
-    UART1_TELEM_SIG_RC_CH1,
-    UART1_TELEM_SIG_RC_CH2,
-    UART1_TELEM_SIG_RC_CH3,
-    UART1_TELEM_SIG_RC_CH4,
-    UART1_TELEM_SIG_RC_S0,
-    UART1_TELEM_SIG_RC_S1,
-    UART1_TELEM_SIG_RC_MOUSE_X,
-    UART1_TELEM_SIG_RC_MOUSE_Y,
-    UART1_TELEM_SIG_RC_MOUSE_Z,
-    UART1_TELEM_SIG_RC_MOUSE_L,
-    UART1_TELEM_SIG_RC_MOUSE_R,
-    UART1_TELEM_SIG_RC_KEY,
-    UART1_TELEM_SIG_RC_ERROR,
-    UART1_TELEM_SIG_IMU_Q0,
-    UART1_TELEM_SIG_IMU_Q1,
-    UART1_TELEM_SIG_IMU_Q2,
-    UART1_TELEM_SIG_IMU_Q3,
-    UART1_TELEM_SIG_IMU_ANGLE_YAW_RAD,
-    UART1_TELEM_SIG_IMU_ANGLE_ROLL_RAD,
-    UART1_TELEM_SIG_IMU_ANGLE_PITCH_RAD,
-    UART1_TELEM_SIG_IMU_ANGLE_YAW_DEG,
-    UART1_TELEM_SIG_IMU_ANGLE_ROLL_DEG,
-    UART1_TELEM_SIG_IMU_ANGLE_PITCH_DEG,
-    UART1_TELEM_SIG_IMU_GYRO_X_RAD_S,
-    UART1_TELEM_SIG_IMU_GYRO_Y_RAD_S,
-    UART1_TELEM_SIG_IMU_GYRO_Z_RAD_S,
-    UART1_TELEM_SIG_IMU_GYRO_X_DPS,
-    UART1_TELEM_SIG_IMU_GYRO_Y_DPS,
-    UART1_TELEM_SIG_IMU_GYRO_Z_DPS,
-    UART1_TELEM_SIG_IMU_ACCEL_X,
-    UART1_TELEM_SIG_IMU_ACCEL_Y,
-    UART1_TELEM_SIG_IMU_ACCEL_Z,
-    UART1_TELEM_SIG_PACK_MODE,
-    UART1_TELEM_SIG_GIMBAL_YAW_ANGLE,
-    UART1_TELEM_SIG_GIMBAL_YAW_ANGLE_SET,
-    UART1_TELEM_SIG_GIMBAL_YAW_GYRO,
-    UART1_TELEM_SIG_GIMBAL_YAW_GYRO_SET,
-    UART1_TELEM_SIG_GIMBAL_YAW_MOTOR_SPEED,
-    UART1_TELEM_SIG_GIMBAL_YAW_CURRENT_SET,
-    UART1_TELEM_SIG_GIMBAL_YAW_GIVEN_CURRENT,
-    UART1_TELEM_SIG_GIMBAL_YAW_RAW_CMD_CURRENT,
-    UART1_TELEM_SIG_GIMBAL_YAW_ECD,
-    UART1_TELEM_SIG_GIMBAL_YAW_OFFSET_ECD,
-    UART1_TELEM_SIG_GIMBAL_YAW_RPM,
-    UART1_TELEM_SIG_GIMBAL_YAW_CURRENT_FB,
-    UART1_TELEM_SIG_GIMBAL_YAW_TEMP,
-    UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE,
-    UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE_SET,
-    UART1_TELEM_SIG_GIMBAL_PITCH_GYRO,
-    UART1_TELEM_SIG_GIMBAL_PITCH_GYRO_SET,
-    UART1_TELEM_SIG_GIMBAL_PITCH_MOTOR_SPEED,
-    UART1_TELEM_SIG_GIMBAL_PITCH_CURRENT_SET,
-    UART1_TELEM_SIG_GIMBAL_PITCH_GIVEN_CURRENT,
-    UART1_TELEM_SIG_GIMBAL_PITCH_RAW_CMD_CURRENT,
-    UART1_TELEM_SIG_GIMBAL_PITCH_ECD,
-    UART1_TELEM_SIG_GIMBAL_PITCH_OFFSET_ECD,
-    UART1_TELEM_SIG_GIMBAL_PITCH_RPM,
-    UART1_TELEM_SIG_GIMBAL_PITCH_CURRENT_FB,
-    UART1_TELEM_SIG_GIMBAL_PITCH_TEMP,
-    UART1_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_SET,
-    UART1_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_GET,
-    UART1_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_POUT,
-    UART1_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_IOUT,
-    UART1_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_DOUT,
-    UART1_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_OUT,
-    UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_SET,
-    UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_GET,
-    UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_POUT,
-    UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_IOUT,
-    UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_DOUT,
-    UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_OUT,
-    UART1_TELEM_SIG_GIMBAL_YAW_SPEED_PID_SET,
-    UART1_TELEM_SIG_GIMBAL_YAW_SPEED_PID_FDB,
-    UART1_TELEM_SIG_GIMBAL_YAW_SPEED_PID_DBUF0,
-    UART1_TELEM_SIG_GIMBAL_YAW_SPEED_PID_POUT,
-    UART1_TELEM_SIG_GIMBAL_YAW_SPEED_PID_IOUT,
-    UART1_TELEM_SIG_GIMBAL_YAW_SPEED_PID_DOUT,
-    UART1_TELEM_SIG_GIMBAL_YAW_SPEED_PID_OUT,
-    UART1_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_SET,
-    UART1_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_FDB,
-    UART1_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_DBUF0,
-    UART1_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_POUT,
-    UART1_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_IOUT,
-    UART1_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_DOUT,
-    UART1_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_OUT,
-    UART1_TELEM_SIG_CHASSIS_VX_SET,
-    UART1_TELEM_SIG_CHASSIS_VY_SET,
-    UART1_TELEM_SIG_CHASSIS_WZ_SET,
-    UART1_TELEM_SIG_CHASSIS_VX,
-    UART1_TELEM_SIG_CHASSIS_VY,
-    UART1_TELEM_SIG_CHASSIS_WZ,
-    UART1_TELEM_SIG_CHASSIS_YAW_OFFSET,
-    UART1_TELEM_SIG_CHASSIS_YAW_OFFSET_SET,
-    UART1_TELEM_SIG_CHASSIS_YAW_SET,
-    UART1_TELEM_SIG_CHASSIS_YAW,
-    UART1_TELEM_SIG_CHASSIS_PITCH,
-    UART1_TELEM_SIG_CHASSIS_ROLL,
-    UART1_TELEM_SIG_CHASSIS_SWING_KEY,
-    UART1_TELEM_SIG_CHASSIS_M0_RPM,
-    UART1_TELEM_SIG_CHASSIS_M0_CURRENT_CMD,
-    UART1_TELEM_SIG_CHASSIS_M0_CURRENT_FB,
-    UART1_TELEM_SIG_CHASSIS_M0_SPEED_SET,
-    UART1_TELEM_SIG_CHASSIS_M0_SPEED,
-    UART1_TELEM_SIG_CHASSIS_M0_ACCEL,
-    UART1_TELEM_SIG_CHASSIS_M0_ECD,
-    UART1_TELEM_SIG_CHASSIS_M0_TEMP,
-    UART1_TELEM_SIG_CHASSIS_M1_RPM,
-    UART1_TELEM_SIG_CHASSIS_M1_CURRENT_CMD,
-    UART1_TELEM_SIG_CHASSIS_M1_CURRENT_FB,
-    UART1_TELEM_SIG_CHASSIS_M1_SPEED_SET,
-    UART1_TELEM_SIG_CHASSIS_M1_SPEED,
-    UART1_TELEM_SIG_CHASSIS_M1_ACCEL,
-    UART1_TELEM_SIG_CHASSIS_M1_ECD,
-    UART1_TELEM_SIG_CHASSIS_M1_TEMP,
-    UART1_TELEM_SIG_CHASSIS_M2_RPM,
-    UART1_TELEM_SIG_CHASSIS_M2_CURRENT_CMD,
-    UART1_TELEM_SIG_CHASSIS_M2_CURRENT_FB,
-    UART1_TELEM_SIG_CHASSIS_M2_SPEED_SET,
-    UART1_TELEM_SIG_CHASSIS_M2_SPEED,
-    UART1_TELEM_SIG_CHASSIS_M2_ACCEL,
-    UART1_TELEM_SIG_CHASSIS_M2_ECD,
-    UART1_TELEM_SIG_CHASSIS_M2_TEMP,
-    UART1_TELEM_SIG_CHASSIS_M3_RPM,
-    UART1_TELEM_SIG_CHASSIS_M3_CURRENT_CMD,
-    UART1_TELEM_SIG_CHASSIS_M3_CURRENT_FB,
-    UART1_TELEM_SIG_CHASSIS_M3_SPEED_SET,
-    UART1_TELEM_SIG_CHASSIS_M3_SPEED,
-    UART1_TELEM_SIG_CHASSIS_M3_ACCEL,
-    UART1_TELEM_SIG_CHASSIS_M3_ECD,
-    UART1_TELEM_SIG_CHASSIS_M3_TEMP,
-    UART1_TELEM_SIG_CHASSIS_FOLLOW_PID_SET,
-    UART1_TELEM_SIG_CHASSIS_FOLLOW_PID_FDB,
-    UART1_TELEM_SIG_CHASSIS_FOLLOW_PID_DBUF0,
-    UART1_TELEM_SIG_CHASSIS_FOLLOW_PID_POUT,
-    UART1_TELEM_SIG_CHASSIS_FOLLOW_PID_IOUT,
-    UART1_TELEM_SIG_CHASSIS_FOLLOW_PID_DOUT,
-    UART1_TELEM_SIG_CHASSIS_FOLLOW_PID_OUT,
-    UART1_TELEM_SIG_CHASSIS_M0_SPD_PID_SET,
-    UART1_TELEM_SIG_CHASSIS_M0_SPD_PID_FDB,
-    UART1_TELEM_SIG_CHASSIS_M0_SPD_PID_DBUF0,
-    UART1_TELEM_SIG_CHASSIS_M0_SPD_PID_POUT,
-    UART1_TELEM_SIG_CHASSIS_M0_SPD_PID_IOUT,
-    UART1_TELEM_SIG_CHASSIS_M0_SPD_PID_DOUT,
-    UART1_TELEM_SIG_CHASSIS_M0_SPD_PID_OUT,
-    UART1_TELEM_SIG_CHASSIS_M1_SPD_PID_SET,
-    UART1_TELEM_SIG_CHASSIS_M1_SPD_PID_FDB,
-    UART1_TELEM_SIG_CHASSIS_M1_SPD_PID_DBUF0,
-    UART1_TELEM_SIG_CHASSIS_M1_SPD_PID_POUT,
-    UART1_TELEM_SIG_CHASSIS_M1_SPD_PID_IOUT,
-    UART1_TELEM_SIG_CHASSIS_M1_SPD_PID_DOUT,
-    UART1_TELEM_SIG_CHASSIS_M1_SPD_PID_OUT,
-    UART1_TELEM_SIG_CHASSIS_M2_SPD_PID_SET,
-    UART1_TELEM_SIG_CHASSIS_M2_SPD_PID_FDB,
-    UART1_TELEM_SIG_CHASSIS_M2_SPD_PID_DBUF0,
-    UART1_TELEM_SIG_CHASSIS_M2_SPD_PID_POUT,
-    UART1_TELEM_SIG_CHASSIS_M2_SPD_PID_IOUT,
-    UART1_TELEM_SIG_CHASSIS_M2_SPD_PID_DOUT,
-    UART1_TELEM_SIG_CHASSIS_M2_SPD_PID_OUT,
-    UART1_TELEM_SIG_CHASSIS_M3_SPD_PID_SET,
-    UART1_TELEM_SIG_CHASSIS_M3_SPD_PID_FDB,
-    UART1_TELEM_SIG_CHASSIS_M3_SPD_PID_DBUF0,
-    UART1_TELEM_SIG_CHASSIS_M3_SPD_PID_POUT,
-    UART1_TELEM_SIG_CHASSIS_M3_SPD_PID_IOUT,
-    UART1_TELEM_SIG_CHASSIS_M3_SPD_PID_DOUT,
-    UART1_TELEM_SIG_CHASSIS_M3_SPD_PID_OUT,
-    UART1_TELEM_SIG_SHOOT_FRIC_SPEED_SET,
-    UART1_TELEM_SIG_SHOOT_TRIGGER_SPEED_SET,
-    UART1_TELEM_SIG_SHOOT_TRIGGER_SPEED,
-    UART1_TELEM_SIG_SHOOT_TRIGGER_ANGLE,
-    UART1_TELEM_SIG_SHOOT_TRIGGER_ANGLE_SET,
-    UART1_TELEM_SIG_SHOOT_TRIGGER_GIVEN_CURRENT,
-    UART1_TELEM_SIG_SHOOT_TRIGGER_ECD_COUNT,
-    UART1_TELEM_SIG_SHOOT_PRESS_L,
-    UART1_TELEM_SIG_SHOOT_PRESS_R,
-    UART1_TELEM_SIG_SHOOT_KEY,
-    UART1_TELEM_SIG_SHOOT_HEAT_LIMIT,
-    UART1_TELEM_SIG_SHOOT_HEAT,
-    UART1_TELEM_SIG_SHOOT_FRIC0_RPM,
-    UART1_TELEM_SIG_SHOOT_FRIC0_CURRENT_FB,
-    UART1_TELEM_SIG_SHOOT_FRIC0_TEMP,
-    UART1_TELEM_SIG_SHOOT_FRIC0_CURRENT_CMD,
-    UART1_TELEM_SIG_SHOOT_FRIC1_RPM,
-    UART1_TELEM_SIG_SHOOT_FRIC1_CURRENT_FB,
-    UART1_TELEM_SIG_SHOOT_FRIC1_TEMP,
-    UART1_TELEM_SIG_SHOOT_FRIC1_CURRENT_CMD,
-    UART1_TELEM_SIG_SHOOT_FRIC2_RPM,
-    UART1_TELEM_SIG_SHOOT_FRIC2_CURRENT_FB,
-    UART1_TELEM_SIG_SHOOT_FRIC2_TEMP,
-    UART1_TELEM_SIG_SHOOT_FRIC2_CURRENT_CMD,
-    UART1_TELEM_SIG_SHOOT_FRIC3_RPM,
-    UART1_TELEM_SIG_SHOOT_FRIC3_CURRENT_FB,
-    UART1_TELEM_SIG_SHOOT_FRIC3_TEMP,
-    UART1_TELEM_SIG_SHOOT_FRIC3_CURRENT_CMD,
-    UART1_TELEM_SIG_SHOOT_TRIGGER_RPM,
-    UART1_TELEM_SIG_SHOOT_TRIGGER_ECD,
-    UART1_TELEM_SIG_SHOOT_TRIGGER_TEMP,
-    UART1_TELEM_SIG_SHOOT_TRIGGER_CURRENT_FB,
-    UART1_TELEM_SIG_DIAG_CAN1_0X200_M1,
-    UART1_TELEM_SIG_DIAG_CAN1_0X200_M2,
-    UART1_TELEM_SIG_DIAG_CAN1_0X200_PITCH,
-    UART1_TELEM_SIG_DIAG_CAN1_0X200_TRIGGER,
-    UART1_TELEM_SIG_DIAG_CAN1_0X1FF_M4,
-    UART1_TELEM_SIG_DIAG_CAN1_0X1FF_YAW,
-    UART1_TELEM_SIG_DIAG_CAN1_0X1FF_M3,
-    UART1_TELEM_SIG_DIAG_CAN1_1FF_STATUS,
-    UART1_TELEM_SIG_DIAG_CAN1_ERR,
-    UART1_TELEM_SIG_PACK_OFFLINE,
-    UART1_TELEM_SIG_DIAG_ZERO_FORCE,
-    UART1_TELEM_SIG_SHOOT_TRIGGER_PID_IOUT,
-    UART1_TELEM_SIG_SHOOT_TRIGGER_PID_OUT,
-    UART1_TELEM_SIG_MEM_HEAP_FREE,
-    UART1_TELEM_SIG_MEM_HEAP_EVER_FREE,
-    UART1_TELEM_SIG_BOARD_KEY_DOWN,
-    UART1_TELEM_SIG_BOARD_KEY_PRESS_CNT,
+    AUX_TELEM_SIG_SYS_TICK_MS,
+    AUX_TELEM_SIG_SYS_AUX_CMD_SEQ,
+    AUX_TELEM_SIG_SYS_BATTERY_VOLT,
+    AUX_TELEM_SIG_SYS_BATTERY_PERCENT,
+    AUX_TELEM_SIG_RC_CH0,
+    AUX_TELEM_SIG_RC_CH1,
+    AUX_TELEM_SIG_RC_CH2,
+    AUX_TELEM_SIG_RC_CH3,
+    AUX_TELEM_SIG_RC_CH4,
+    AUX_TELEM_SIG_RC_S0,
+    AUX_TELEM_SIG_RC_S1,
+    AUX_TELEM_SIG_RC_MOUSE_X,
+    AUX_TELEM_SIG_RC_MOUSE_Y,
+    AUX_TELEM_SIG_RC_MOUSE_Z,
+    AUX_TELEM_SIG_RC_MOUSE_L,
+    AUX_TELEM_SIG_RC_MOUSE_R,
+    AUX_TELEM_SIG_RC_KEY,
+    AUX_TELEM_SIG_RC_ERROR,
+    AUX_TELEM_SIG_IMU_Q0,
+    AUX_TELEM_SIG_IMU_Q1,
+    AUX_TELEM_SIG_IMU_Q2,
+    AUX_TELEM_SIG_IMU_Q3,
+    AUX_TELEM_SIG_IMU_ANGLE_YAW_RAD,
+    AUX_TELEM_SIG_IMU_ANGLE_ROLL_RAD,
+    AUX_TELEM_SIG_IMU_ANGLE_PITCH_RAD,
+    AUX_TELEM_SIG_IMU_ANGLE_YAW_DEG,
+    AUX_TELEM_SIG_IMU_ANGLE_ROLL_DEG,
+    AUX_TELEM_SIG_IMU_ANGLE_PITCH_DEG,
+    AUX_TELEM_SIG_IMU_GYRO_X_RAD_S,
+    AUX_TELEM_SIG_IMU_GYRO_Y_RAD_S,
+    AUX_TELEM_SIG_IMU_GYRO_Z_RAD_S,
+    AUX_TELEM_SIG_IMU_GYRO_X_DPS,
+    AUX_TELEM_SIG_IMU_GYRO_Y_DPS,
+    AUX_TELEM_SIG_IMU_GYRO_Z_DPS,
+    AUX_TELEM_SIG_IMU_ACCEL_X,
+    AUX_TELEM_SIG_IMU_ACCEL_Y,
+    AUX_TELEM_SIG_IMU_ACCEL_Z,
+    AUX_TELEM_SIG_PACK_MODE,
+    AUX_TELEM_SIG_GIMBAL_YAW_ANGLE,
+    AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_SET,
+    AUX_TELEM_SIG_GIMBAL_YAW_GYRO,
+    AUX_TELEM_SIG_GIMBAL_YAW_GYRO_SET,
+    AUX_TELEM_SIG_GIMBAL_YAW_MOTOR_SPEED,
+    AUX_TELEM_SIG_GIMBAL_YAW_CURRENT_SET,
+    AUX_TELEM_SIG_GIMBAL_YAW_GIVEN_CURRENT,
+    AUX_TELEM_SIG_GIMBAL_YAW_RAW_CMD_CURRENT,
+    AUX_TELEM_SIG_GIMBAL_YAW_ECD,
+    AUX_TELEM_SIG_GIMBAL_YAW_OFFSET_ECD,
+    AUX_TELEM_SIG_GIMBAL_YAW_RPM,
+    AUX_TELEM_SIG_GIMBAL_YAW_CURRENT_FB,
+    AUX_TELEM_SIG_GIMBAL_YAW_TEMP,
+    AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE,
+    AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE_SET,
+    AUX_TELEM_SIG_GIMBAL_PITCH_GYRO,
+    AUX_TELEM_SIG_GIMBAL_PITCH_GYRO_SET,
+    AUX_TELEM_SIG_GIMBAL_PITCH_MOTOR_SPEED,
+    AUX_TELEM_SIG_GIMBAL_PITCH_CURRENT_SET,
+    AUX_TELEM_SIG_GIMBAL_PITCH_GIVEN_CURRENT,
+    AUX_TELEM_SIG_GIMBAL_PITCH_RAW_CMD_CURRENT,
+    AUX_TELEM_SIG_GIMBAL_PITCH_ECD,
+    AUX_TELEM_SIG_GIMBAL_PITCH_OFFSET_ECD,
+    AUX_TELEM_SIG_GIMBAL_PITCH_RPM,
+    AUX_TELEM_SIG_GIMBAL_PITCH_CURRENT_FB,
+    AUX_TELEM_SIG_GIMBAL_PITCH_TEMP,
+    AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_SET,
+    AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_GET,
+    AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_POUT,
+    AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_IOUT,
+    AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_DOUT,
+    AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_OUT,
+    AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_SET,
+    AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_GET,
+    AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_POUT,
+    AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_IOUT,
+    AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_DOUT,
+    AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_OUT,
+    AUX_TELEM_SIG_GIMBAL_YAW_SPEED_PID_SET,
+    AUX_TELEM_SIG_GIMBAL_YAW_SPEED_PID_FDB,
+    AUX_TELEM_SIG_GIMBAL_YAW_SPEED_PID_DBUF0,
+    AUX_TELEM_SIG_GIMBAL_YAW_SPEED_PID_POUT,
+    AUX_TELEM_SIG_GIMBAL_YAW_SPEED_PID_IOUT,
+    AUX_TELEM_SIG_GIMBAL_YAW_SPEED_PID_DOUT,
+    AUX_TELEM_SIG_GIMBAL_YAW_SPEED_PID_OUT,
+    AUX_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_SET,
+    AUX_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_FDB,
+    AUX_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_DBUF0,
+    AUX_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_POUT,
+    AUX_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_IOUT,
+    AUX_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_DOUT,
+    AUX_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_OUT,
+    AUX_TELEM_SIG_CHASSIS_VX_SET,
+    AUX_TELEM_SIG_CHASSIS_VY_SET,
+    AUX_TELEM_SIG_CHASSIS_WZ_SET,
+    AUX_TELEM_SIG_CHASSIS_VX,
+    AUX_TELEM_SIG_CHASSIS_VY,
+    AUX_TELEM_SIG_CHASSIS_WZ,
+    AUX_TELEM_SIG_CHASSIS_YAW_OFFSET,
+    AUX_TELEM_SIG_CHASSIS_YAW_OFFSET_SET,
+    AUX_TELEM_SIG_CHASSIS_YAW_SET,
+    AUX_TELEM_SIG_CHASSIS_YAW,
+    AUX_TELEM_SIG_CHASSIS_PITCH,
+    AUX_TELEM_SIG_CHASSIS_ROLL,
+    AUX_TELEM_SIG_CHASSIS_SWING_KEY,
+    AUX_TELEM_SIG_CHASSIS_M0_RPM,
+    AUX_TELEM_SIG_CHASSIS_M0_CURRENT_CMD,
+    AUX_TELEM_SIG_CHASSIS_M0_CURRENT_FB,
+    AUX_TELEM_SIG_CHASSIS_M0_SPEED_SET,
+    AUX_TELEM_SIG_CHASSIS_M0_SPEED,
+    AUX_TELEM_SIG_CHASSIS_M0_ACCEL,
+    AUX_TELEM_SIG_CHASSIS_M0_ECD,
+    AUX_TELEM_SIG_CHASSIS_M0_TEMP,
+    AUX_TELEM_SIG_CHASSIS_M1_RPM,
+    AUX_TELEM_SIG_CHASSIS_M1_CURRENT_CMD,
+    AUX_TELEM_SIG_CHASSIS_M1_CURRENT_FB,
+    AUX_TELEM_SIG_CHASSIS_M1_SPEED_SET,
+    AUX_TELEM_SIG_CHASSIS_M1_SPEED,
+    AUX_TELEM_SIG_CHASSIS_M1_ACCEL,
+    AUX_TELEM_SIG_CHASSIS_M1_ECD,
+    AUX_TELEM_SIG_CHASSIS_M1_TEMP,
+    AUX_TELEM_SIG_CHASSIS_M2_RPM,
+    AUX_TELEM_SIG_CHASSIS_M2_CURRENT_CMD,
+    AUX_TELEM_SIG_CHASSIS_M2_CURRENT_FB,
+    AUX_TELEM_SIG_CHASSIS_M2_SPEED_SET,
+    AUX_TELEM_SIG_CHASSIS_M2_SPEED,
+    AUX_TELEM_SIG_CHASSIS_M2_ACCEL,
+    AUX_TELEM_SIG_CHASSIS_M2_ECD,
+    AUX_TELEM_SIG_CHASSIS_M2_TEMP,
+    AUX_TELEM_SIG_CHASSIS_M3_RPM,
+    AUX_TELEM_SIG_CHASSIS_M3_CURRENT_CMD,
+    AUX_TELEM_SIG_CHASSIS_M3_CURRENT_FB,
+    AUX_TELEM_SIG_CHASSIS_M3_SPEED_SET,
+    AUX_TELEM_SIG_CHASSIS_M3_SPEED,
+    AUX_TELEM_SIG_CHASSIS_M3_ACCEL,
+    AUX_TELEM_SIG_CHASSIS_M3_ECD,
+    AUX_TELEM_SIG_CHASSIS_M3_TEMP,
+    AUX_TELEM_SIG_CHASSIS_FOLLOW_PID_SET,
+    AUX_TELEM_SIG_CHASSIS_FOLLOW_PID_FDB,
+    AUX_TELEM_SIG_CHASSIS_FOLLOW_PID_DBUF0,
+    AUX_TELEM_SIG_CHASSIS_FOLLOW_PID_POUT,
+    AUX_TELEM_SIG_CHASSIS_FOLLOW_PID_IOUT,
+    AUX_TELEM_SIG_CHASSIS_FOLLOW_PID_DOUT,
+    AUX_TELEM_SIG_CHASSIS_FOLLOW_PID_OUT,
+    AUX_TELEM_SIG_CHASSIS_M0_SPD_PID_SET,
+    AUX_TELEM_SIG_CHASSIS_M0_SPD_PID_FDB,
+    AUX_TELEM_SIG_CHASSIS_M0_SPD_PID_DBUF0,
+    AUX_TELEM_SIG_CHASSIS_M0_SPD_PID_POUT,
+    AUX_TELEM_SIG_CHASSIS_M0_SPD_PID_IOUT,
+    AUX_TELEM_SIG_CHASSIS_M0_SPD_PID_DOUT,
+    AUX_TELEM_SIG_CHASSIS_M0_SPD_PID_OUT,
+    AUX_TELEM_SIG_CHASSIS_M1_SPD_PID_SET,
+    AUX_TELEM_SIG_CHASSIS_M1_SPD_PID_FDB,
+    AUX_TELEM_SIG_CHASSIS_M1_SPD_PID_DBUF0,
+    AUX_TELEM_SIG_CHASSIS_M1_SPD_PID_POUT,
+    AUX_TELEM_SIG_CHASSIS_M1_SPD_PID_IOUT,
+    AUX_TELEM_SIG_CHASSIS_M1_SPD_PID_DOUT,
+    AUX_TELEM_SIG_CHASSIS_M1_SPD_PID_OUT,
+    AUX_TELEM_SIG_CHASSIS_M2_SPD_PID_SET,
+    AUX_TELEM_SIG_CHASSIS_M2_SPD_PID_FDB,
+    AUX_TELEM_SIG_CHASSIS_M2_SPD_PID_DBUF0,
+    AUX_TELEM_SIG_CHASSIS_M2_SPD_PID_POUT,
+    AUX_TELEM_SIG_CHASSIS_M2_SPD_PID_IOUT,
+    AUX_TELEM_SIG_CHASSIS_M2_SPD_PID_DOUT,
+    AUX_TELEM_SIG_CHASSIS_M2_SPD_PID_OUT,
+    AUX_TELEM_SIG_CHASSIS_M3_SPD_PID_SET,
+    AUX_TELEM_SIG_CHASSIS_M3_SPD_PID_FDB,
+    AUX_TELEM_SIG_CHASSIS_M3_SPD_PID_DBUF0,
+    AUX_TELEM_SIG_CHASSIS_M3_SPD_PID_POUT,
+    AUX_TELEM_SIG_CHASSIS_M3_SPD_PID_IOUT,
+    AUX_TELEM_SIG_CHASSIS_M3_SPD_PID_DOUT,
+    AUX_TELEM_SIG_CHASSIS_M3_SPD_PID_OUT,
+    AUX_TELEM_SIG_SHOOT_FRIC_SPEED_SET,
+    AUX_TELEM_SIG_SHOOT_TRIGGER_SPEED_SET,
+    AUX_TELEM_SIG_SHOOT_TRIGGER_SPEED,
+    AUX_TELEM_SIG_SHOOT_TRIGGER_ANGLE,
+    AUX_TELEM_SIG_SHOOT_TRIGGER_ANGLE_SET,
+    AUX_TELEM_SIG_SHOOT_TRIGGER_GIVEN_CURRENT,
+    AUX_TELEM_SIG_SHOOT_TRIGGER_ECD_COUNT,
+    AUX_TELEM_SIG_SHOOT_PRESS_L,
+    AUX_TELEM_SIG_SHOOT_PRESS_R,
+    AUX_TELEM_SIG_SHOOT_KEY,
+    AUX_TELEM_SIG_SHOOT_HEAT_LIMIT,
+    AUX_TELEM_SIG_SHOOT_HEAT,
+    AUX_TELEM_SIG_SHOOT_FRIC0_RPM,
+    AUX_TELEM_SIG_SHOOT_FRIC0_CURRENT_FB,
+    AUX_TELEM_SIG_SHOOT_FRIC0_TEMP,
+    AUX_TELEM_SIG_SHOOT_FRIC0_CURRENT_CMD,
+    AUX_TELEM_SIG_SHOOT_FRIC1_RPM,
+    AUX_TELEM_SIG_SHOOT_FRIC1_CURRENT_FB,
+    AUX_TELEM_SIG_SHOOT_FRIC1_TEMP,
+    AUX_TELEM_SIG_SHOOT_FRIC1_CURRENT_CMD,
+    AUX_TELEM_SIG_SHOOT_FRIC2_RPM,
+    AUX_TELEM_SIG_SHOOT_FRIC2_CURRENT_FB,
+    AUX_TELEM_SIG_SHOOT_FRIC2_TEMP,
+    AUX_TELEM_SIG_SHOOT_FRIC2_CURRENT_CMD,
+    AUX_TELEM_SIG_SHOOT_FRIC3_RPM,
+    AUX_TELEM_SIG_SHOOT_FRIC3_CURRENT_FB,
+    AUX_TELEM_SIG_SHOOT_FRIC3_TEMP,
+    AUX_TELEM_SIG_SHOOT_FRIC3_CURRENT_CMD,
+    AUX_TELEM_SIG_SHOOT_TRIGGER_RPM,
+    AUX_TELEM_SIG_SHOOT_TRIGGER_ECD,
+    AUX_TELEM_SIG_SHOOT_TRIGGER_TEMP,
+    AUX_TELEM_SIG_SHOOT_TRIGGER_CURRENT_FB,
+    AUX_TELEM_SIG_DIAG_CAN1_0X200_M1,
+    AUX_TELEM_SIG_DIAG_CAN1_0X200_M2,
+    AUX_TELEM_SIG_DIAG_CAN1_0X200_PITCH,
+    AUX_TELEM_SIG_DIAG_CAN1_0X200_TRIGGER,
+    AUX_TELEM_SIG_DIAG_CAN1_0X1FF_M4,
+    AUX_TELEM_SIG_DIAG_CAN1_0X1FF_YAW,
+    AUX_TELEM_SIG_DIAG_CAN1_0X1FF_M3,
+    AUX_TELEM_SIG_DIAG_CAN1_1FF_STATUS,
+    AUX_TELEM_SIG_DIAG_CAN1_ERR,
+    AUX_TELEM_SIG_PACK_OFFLINE,
+    AUX_TELEM_SIG_DIAG_ZERO_FORCE,
+    AUX_TELEM_SIG_SHOOT_TRIGGER_PID_IOUT,
+    AUX_TELEM_SIG_SHOOT_TRIGGER_PID_OUT,
+    AUX_TELEM_SIG_MEM_HEAP_FREE,
+    AUX_TELEM_SIG_MEM_HEAP_EVER_FREE,
+    AUX_TELEM_SIG_BOARD_KEY_DOWN,
+    AUX_TELEM_SIG_BOARD_KEY_PRESS_CNT,
 };
 
-typedef char _check_uart1_telem_default_list_fits[(sizeof(uart1_telem_default_list) / sizeof(uart1_telem_default_list[0]) <= UART1_TELEM_MAX_CH) ? 1 : -1];
+typedef char _check_aux_telem_default_list_fits[(sizeof(aux_telem_default_list) / sizeof(aux_telem_default_list[0]) <= AUX_TELEM_MAX_CH) ? 1 : -1];
 
 static const fp32 *ins_quat;
 static const fp32 *ins_angle;
@@ -427,8 +427,8 @@ static bool_t uart1_tune_parse_fp32(const char *s, fp32 *out);
 static bool_t uart1_tune_parse_u16(const char *s, uint16_t *out);
 static bool_t uart1_tune_parse_u32(const char *s, uint32_t *out);
 static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value);
-static uint16_t uart1_telem_min_period_ms(uint16_t channel_num);
-static fp32 uart1_telem_get_value(const uart1_telem_ctx_t *ctx, uart1_telem_sig_e sig);
+static uint16_t aux_telem_min_period_ms(uint16_t channel_num);
+static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig);
 static void uart1_image_link_start(void);
 static void uart1_image_link_stop(void);
 static void uart1_image_link_poll(void);
@@ -1359,7 +1359,7 @@ static void uart1_tune_rx_start(void)
 
 static void uart1_tune_try_send_telem(void)
 {
-    const uart1_telem_config_t *cfg = &g_app_config.uart1_telem;
+    const aux_telem_config_t *cfg = &g_config.aux_telem;
     const uint8_t want_uart_justfloat = ((cfg->enable == 1u) || (cfg->enable == 4u)) ? 1u : 0u;
     // UART1 telemetry only runs in the dedicated tuning mode.
     const uint8_t uart1_can_tx = uart1_port_is_tune_mode(bsp_usart1_get_baudrate());
@@ -1376,11 +1376,11 @@ static void uart1_tune_try_send_telem(void)
     if (channel_num == 0u)
     {
         use_default_list = 1u;
-        channel_num = (uint16_t)(sizeof(uart1_telem_default_list) / sizeof(uart1_telem_default_list[0]));
+        channel_num = (uint16_t)(sizeof(aux_telem_default_list) / sizeof(aux_telem_default_list[0]));
     }
-    if (channel_num > UART1_TELEM_MAX_CH)
+    if (channel_num > AUX_TELEM_MAX_CH)
     {
-        channel_num = UART1_TELEM_MAX_CH;
+        channel_num = AUX_TELEM_MAX_CH;
     }
     if (channel_num == 0u)
     {
@@ -1388,10 +1388,10 @@ static void uart1_tune_try_send_telem(void)
     }
 
     uint16_t period_ms = cfg->period_ms;
-    const uint16_t min_period_ms = uart1_telem_min_period_ms(channel_num);
+    const uint16_t min_period_ms = aux_telem_min_period_ms(channel_num);
     if (period_ms == 0u)
     {
-        uint32_t auto_ms = ((uint32_t)min_period_ms * (100u + UART1_TELEM_AUTO_EXTRA_BACKOFF_PCT) + 99u) / 100u;
+        uint32_t auto_ms = ((uint32_t)min_period_ms * (100u + AUX_TELEM_AUTO_EXTRA_BACKOFF_PCT) + 99u) / 100u;
         if (auto_ms < 1u)
         {
             auto_ms = 1u;
@@ -1408,7 +1408,7 @@ static void uart1_tune_try_send_telem(void)
     }
 
     const uint32_t now = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
-    if ((uint32_t)(now - uart1_telem_tick) < period_ms)
+    if ((uint32_t)(now - aux_telem_tick) < period_ms)
     {
         return;
     }
@@ -1419,7 +1419,7 @@ static void uart1_tune_try_send_telem(void)
         return;
     }
 
-    uart1_telem_ctx_t ctx = {0};
+    aux_telem_ctx_t ctx = {0};
     ctx.rc = get_remote_control_point();
     ctx.quat = ins_quat;
     ctx.angle = ins_angle;
@@ -1438,8 +1438,8 @@ static void uart1_tune_try_send_telem(void)
     {
         for (uint32_t i = 0; i < channel_num; i++)
         {
-            const uart1_telem_sig_e sig = uart1_telem_default_list[i];
-            const fp32 v = uart1_telem_get_value(&ctx, sig);
+            const aux_telem_sig_e sig = aux_telem_default_list[i];
+            const fp32 v = aux_telem_get_value(&ctx, sig);
             memcpy(&uart1_vofa_frame[i * 4u], &v, 4u);
         }
     }
@@ -1448,12 +1448,12 @@ static void uart1_tune_try_send_telem(void)
         for (uint32_t i = 0; i < channel_num; i++)
         {
             uint16_t sig_id = cfg->channel_map[i];
-            if (sig_id >= (uint16_t)UART1_TELEM_SIG__COUNT)
+            if (sig_id >= (uint16_t)AUX_TELEM_SIG__COUNT)
             {
                 sig_id = 0u;
             }
-            const uart1_telem_sig_e sig = (uart1_telem_sig_e)sig_id;
-            const fp32 v = uart1_telem_get_value(&ctx, sig);
+            const aux_telem_sig_e sig = (aux_telem_sig_e)sig_id;
+            const fp32 v = aux_telem_get_value(&ctx, sig);
             memcpy(&uart1_vofa_frame[i * 4u], &v, 4u);
         }
     }
@@ -1464,7 +1464,7 @@ static void uart1_tune_try_send_telem(void)
     const uint16_t frame_len = (uint16_t)((channel_num + 1u) * 4u);
     if (bsp_usart1_tx_dma(uart1_vofa_frame, frame_len) == 0)
     {
-        uart1_telem_tick = now;
+        aux_telem_tick = now;
     }
 }
 
@@ -1488,7 +1488,7 @@ static bool_t uart1_tune_handle_line(const char *line)
         }
     }
 
-    // Fast path: "<id>:<value>" sets one app_config parameter by numeric ID.
+    // Fast path: "<id>:<value>" sets one config parameter by numeric ID.
     char *colon = strchr(buf, ':');
     if (colon != NULL)
     {
@@ -1748,7 +1748,7 @@ static bool_t uart1_tune_handle_line(const char *line)
     return 0;
 }
 
-static uint16_t uart1_telem_min_period_ms(uint16_t channel_num)
+static uint16_t aux_telem_min_period_ms(uint16_t channel_num)
 {
     const uint32_t baud = bsp_usart1_get_baudrate();
     if (baud == 0u)
@@ -1772,7 +1772,7 @@ static uint16_t uart1_telem_min_period_ms(uint16_t channel_num)
     return (uint16_t)ms;
 }
 
-static fp32 uart1_telem_pid_field(const pid_type_def *pid, uint8_t field)
+static fp32 aux_telem_pid_field(const pid_type_def *pid, uint8_t field)
 {
     if (pid == NULL)
     {
@@ -1799,7 +1799,7 @@ static fp32 uart1_telem_pid_field(const pid_type_def *pid, uint8_t field)
     }
 }
 
-static fp32 uart1_telem_gimbal_pid_field(const gimbal_PID_t *pid, uint8_t field)
+static fp32 aux_telem_gimbal_pid_field(const gimbal_PID_t *pid, uint8_t field)
 {
     if (pid == NULL)
     {
@@ -1824,7 +1824,7 @@ static fp32 uart1_telem_gimbal_pid_field(const gimbal_PID_t *pid, uint8_t field)
     }
 }
 
-static fp32 uart1_telem_get_value(const uart1_telem_ctx_t *ctx, uart1_telem_sig_e sig)
+static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
 {
     if (ctx == NULL)
     {
@@ -1832,71 +1832,71 @@ static fp32 uart1_telem_get_value(const uart1_telem_ctx_t *ctx, uart1_telem_sig_
     }
 
     // Decode repeated groups to keep the switch small.
-    if (sig >= UART1_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_SET && sig <= UART1_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_OUT)
+    if (sig >= AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_SET && sig <= AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_OUT)
     {
         static const uint8_t s_gimbal_angle_pid_map[] = {3u, 4u, 8u, 9u, 10u, 11u}; // set/get/p/i/d/out
-        const uint8_t off = (uint8_t)(sig - UART1_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_SET);
+        const uint8_t off = (uint8_t)(sig - AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_SET);
         if (off < (uint8_t)(sizeof(s_gimbal_angle_pid_map) / sizeof(s_gimbal_angle_pid_map[0])))
         {
-            return uart1_telem_gimbal_pid_field(ctx->yaw ? &ctx->yaw->gimbal_motor_angle_pid : NULL, s_gimbal_angle_pid_map[off]);
+            return aux_telem_gimbal_pid_field(ctx->yaw ? &ctx->yaw->gimbal_motor_angle_pid : NULL, s_gimbal_angle_pid_map[off]);
         }
         return 0.0f;
     }
-    if (sig >= UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_SET && sig <= UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_OUT)
+    if (sig >= AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_SET && sig <= AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_OUT)
     {
         static const uint8_t s_gimbal_angle_pid_map[] = {3u, 4u, 8u, 9u, 10u, 11u}; // set/get/p/i/d/out
-        const uint8_t off = (uint8_t)(sig - UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_SET);
+        const uint8_t off = (uint8_t)(sig - AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE_PID_SET);
         if (off < (uint8_t)(sizeof(s_gimbal_angle_pid_map) / sizeof(s_gimbal_angle_pid_map[0])))
         {
-            return uart1_telem_gimbal_pid_field(ctx->pitch ? &ctx->pitch->gimbal_motor_angle_pid : NULL, s_gimbal_angle_pid_map[off]);
+            return aux_telem_gimbal_pid_field(ctx->pitch ? &ctx->pitch->gimbal_motor_angle_pid : NULL, s_gimbal_angle_pid_map[off]);
         }
         return 0.0f;
     }
-    if (sig >= UART1_TELEM_SIG_GIMBAL_YAW_SPEED_PID_SET && sig <= UART1_TELEM_SIG_GIMBAL_YAW_SPEED_PID_OUT)
+    if (sig >= AUX_TELEM_SIG_GIMBAL_YAW_SPEED_PID_SET && sig <= AUX_TELEM_SIG_GIMBAL_YAW_SPEED_PID_OUT)
     {
         static const uint8_t s_pid_map[] = {5u, 6u, 9u, 10u, 11u, 12u, 13u}; // set/fdb/dbuf0/p/i/d/out
-        const uint8_t off = (uint8_t)(sig - UART1_TELEM_SIG_GIMBAL_YAW_SPEED_PID_SET);
+        const uint8_t off = (uint8_t)(sig - AUX_TELEM_SIG_GIMBAL_YAW_SPEED_PID_SET);
         if (off < (uint8_t)(sizeof(s_pid_map) / sizeof(s_pid_map[0])))
         {
-            return uart1_telem_pid_field(ctx->yaw ? &ctx->yaw->gimbal_motor_gyro_pid : NULL, s_pid_map[off]);
+            return aux_telem_pid_field(ctx->yaw ? &ctx->yaw->gimbal_motor_gyro_pid : NULL, s_pid_map[off]);
         }
         return 0.0f;
     }
-    if (sig >= UART1_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_SET && sig <= UART1_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_OUT)
+    if (sig >= AUX_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_SET && sig <= AUX_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_OUT)
     {
         static const uint8_t s_pid_map[] = {5u, 6u, 9u, 10u, 11u, 12u, 13u}; // set/fdb/dbuf0/p/i/d/out
-        const uint8_t off = (uint8_t)(sig - UART1_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_SET);
+        const uint8_t off = (uint8_t)(sig - AUX_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_SET);
         if (off < (uint8_t)(sizeof(s_pid_map) / sizeof(s_pid_map[0])))
         {
-            return uart1_telem_pid_field(ctx->pitch ? &ctx->pitch->gimbal_motor_gyro_pid : NULL, s_pid_map[off]);
+            return aux_telem_pid_field(ctx->pitch ? &ctx->pitch->gimbal_motor_gyro_pid : NULL, s_pid_map[off]);
         }
         return 0.0f;
     }
-    if (sig >= UART1_TELEM_SIG_CHASSIS_FOLLOW_PID_SET && sig <= UART1_TELEM_SIG_CHASSIS_FOLLOW_PID_OUT)
+    if (sig >= AUX_TELEM_SIG_CHASSIS_FOLLOW_PID_SET && sig <= AUX_TELEM_SIG_CHASSIS_FOLLOW_PID_OUT)
     {
         static const uint8_t s_pid_map[] = {5u, 6u, 9u, 10u, 11u, 12u, 13u}; // set/fdb/dbuf0/p/i/d/out
-        const uint8_t off = (uint8_t)(sig - UART1_TELEM_SIG_CHASSIS_FOLLOW_PID_SET);
+        const uint8_t off = (uint8_t)(sig - AUX_TELEM_SIG_CHASSIS_FOLLOW_PID_SET);
         if (off < (uint8_t)(sizeof(s_pid_map) / sizeof(s_pid_map[0])))
         {
-            return uart1_telem_pid_field(ctx->chassis ? &ctx->chassis->chassis_angle_pid : NULL, s_pid_map[off]);
+            return aux_telem_pid_field(ctx->chassis ? &ctx->chassis->chassis_angle_pid : NULL, s_pid_map[off]);
         }
         return 0.0f;
     }
-    if (sig >= UART1_TELEM_SIG_CHASSIS_M0_SPD_PID_SET && sig <= UART1_TELEM_SIG_CHASSIS_M3_SPD_PID_OUT)
+    if (sig >= AUX_TELEM_SIG_CHASSIS_M0_SPD_PID_SET && sig <= AUX_TELEM_SIG_CHASSIS_M3_SPD_PID_OUT)
     {
         static const uint8_t s_pid_map[] = {5u, 6u, 9u, 10u, 11u, 12u, 13u}; // set/fdb/dbuf0/p/i/d/out
-        const uint32_t off = (uint32_t)(sig - UART1_TELEM_SIG_CHASSIS_M0_SPD_PID_SET);
+        const uint32_t off = (uint32_t)(sig - AUX_TELEM_SIG_CHASSIS_M0_SPD_PID_SET);
         const uint8_t motor = (uint8_t)(off / 7u);
         const uint8_t field = (uint8_t)(off % 7u);
         if (motor < 4u && ctx->chassis)
         {
-            return uart1_telem_pid_field(&ctx->chassis->motor_speed_pid[motor], s_pid_map[field]);
+            return aux_telem_pid_field(&ctx->chassis->motor_speed_pid[motor], s_pid_map[field]);
         }
         return 0.0f;
     }
-    if (sig >= UART1_TELEM_SIG_CHASSIS_M0_RPM && sig <= UART1_TELEM_SIG_CHASSIS_M3_TEMP)
+    if (sig >= AUX_TELEM_SIG_CHASSIS_M0_RPM && sig <= AUX_TELEM_SIG_CHASSIS_M3_TEMP)
     {
-        const uint32_t off = (uint32_t)(sig - UART1_TELEM_SIG_CHASSIS_M0_RPM);
+        const uint32_t off = (uint32_t)(sig - AUX_TELEM_SIG_CHASSIS_M0_RPM);
         const uint8_t motor = (uint8_t)(off / 8u);
         const uint8_t field = (uint8_t)(off % 8u);
         if (motor < 4u && ctx->chassis)
@@ -1918,9 +1918,9 @@ static fp32 uart1_telem_get_value(const uart1_telem_ctx_t *ctx, uart1_telem_sig_
         }
         return 0.0f;
     }
-    if (sig >= UART1_TELEM_SIG_SHOOT_FRIC0_RPM && sig <= UART1_TELEM_SIG_SHOOT_FRIC3_CURRENT_CMD)
+    if (sig >= AUX_TELEM_SIG_SHOOT_FRIC0_RPM && sig <= AUX_TELEM_SIG_SHOOT_FRIC3_CURRENT_CMD)
     {
-        const uint32_t off = (uint32_t)(sig - UART1_TELEM_SIG_SHOOT_FRIC0_RPM);
+        const uint32_t off = (uint32_t)(sig - AUX_TELEM_SIG_SHOOT_FRIC0_RPM);
         const uint8_t motor = (uint8_t)(off / 4u);
         const uint8_t field = (uint8_t)(off % 4u);
         if (motor < FRIC_MOTOR_NUM)
@@ -1942,165 +1942,165 @@ static fp32 uart1_telem_get_value(const uart1_telem_ctx_t *ctx, uart1_telem_sig_
 
     switch (sig)
     {
-    case UART1_TELEM_SIG_SYS_TICK_MS:
+    case AUX_TELEM_SIG_SYS_TICK_MS:
         return (fp32)osKernelSysTick();
-    case UART1_TELEM_SIG_SYS_UART1_CMD_SEQ:
+    case AUX_TELEM_SIG_SYS_AUX_CMD_SEQ:
         return (fp32)uart1_cmd_seq;
-    case UART1_TELEM_SIG_SYS_BATTERY_VOLT:
+    case AUX_TELEM_SIG_SYS_BATTERY_VOLT:
         return battery_voltage;
-    case UART1_TELEM_SIG_SYS_BATTERY_PERCENT:
+    case AUX_TELEM_SIG_SYS_BATTERY_PERCENT:
         return electricity_percentage * 100.0f;
 
-    case UART1_TELEM_SIG_RC_CH0:
-    case UART1_TELEM_SIG_RC_CH1:
-    case UART1_TELEM_SIG_RC_CH2:
-    case UART1_TELEM_SIG_RC_CH3:
-    case UART1_TELEM_SIG_RC_CH4:
+    case AUX_TELEM_SIG_RC_CH0:
+    case AUX_TELEM_SIG_RC_CH1:
+    case AUX_TELEM_SIG_RC_CH2:
+    case AUX_TELEM_SIG_RC_CH3:
+    case AUX_TELEM_SIG_RC_CH4:
         if (ctx->rc)
         {
-            const uint8_t idx = (uint8_t)(sig - UART1_TELEM_SIG_RC_CH0);
+            const uint8_t idx = (uint8_t)(sig - AUX_TELEM_SIG_RC_CH0);
             return (idx < 5u) ? (fp32)ctx->rc->rc.ch[idx] : 0.0f;
         }
         return 0.0f;
-    case UART1_TELEM_SIG_RC_S0:
+    case AUX_TELEM_SIG_RC_S0:
         return ctx->rc ? (fp32)ctx->rc->rc.s[0] : 0.0f;
-    case UART1_TELEM_SIG_RC_S1:
+    case AUX_TELEM_SIG_RC_S1:
         return ctx->rc ? (fp32)ctx->rc->rc.s[1] : 0.0f;
-    case UART1_TELEM_SIG_RC_MOUSE_X:
+    case AUX_TELEM_SIG_RC_MOUSE_X:
         return ctx->rc ? (fp32)ctx->rc->mouse.x : 0.0f;
-    case UART1_TELEM_SIG_RC_MOUSE_Y:
+    case AUX_TELEM_SIG_RC_MOUSE_Y:
         return ctx->rc ? (fp32)ctx->rc->mouse.y : 0.0f;
-    case UART1_TELEM_SIG_RC_MOUSE_Z:
+    case AUX_TELEM_SIG_RC_MOUSE_Z:
         return ctx->rc ? (fp32)ctx->rc->mouse.z : 0.0f;
-    case UART1_TELEM_SIG_RC_MOUSE_L:
+    case AUX_TELEM_SIG_RC_MOUSE_L:
         return ctx->rc ? (fp32)ctx->rc->mouse.press_l : 0.0f;
-    case UART1_TELEM_SIG_RC_MOUSE_R:
+    case AUX_TELEM_SIG_RC_MOUSE_R:
         return ctx->rc ? (fp32)ctx->rc->mouse.press_r : 0.0f;
-    case UART1_TELEM_SIG_RC_KEY:
+    case AUX_TELEM_SIG_RC_KEY:
         return ctx->rc ? (fp32)ctx->rc->key.v : 0.0f;
-    case UART1_TELEM_SIG_RC_ERROR:
+    case AUX_TELEM_SIG_RC_ERROR:
         return (fp32)RC_data_is_error();
 
-    case UART1_TELEM_SIG_IMU_Q0:
-    case UART1_TELEM_SIG_IMU_Q1:
-    case UART1_TELEM_SIG_IMU_Q2:
-    case UART1_TELEM_SIG_IMU_Q3:
+    case AUX_TELEM_SIG_IMU_Q0:
+    case AUX_TELEM_SIG_IMU_Q1:
+    case AUX_TELEM_SIG_IMU_Q2:
+    case AUX_TELEM_SIG_IMU_Q3:
         if (ctx->quat)
         {
-            const uint8_t idx = (uint8_t)(sig - UART1_TELEM_SIG_IMU_Q0);
+            const uint8_t idx = (uint8_t)(sig - AUX_TELEM_SIG_IMU_Q0);
             return (idx < 4u) ? ctx->quat[idx] : 0.0f;
         }
         return 0.0f;
-    case UART1_TELEM_SIG_IMU_ANGLE_YAW_RAD:
+    case AUX_TELEM_SIG_IMU_ANGLE_YAW_RAD:
         return ctx->angle ? ctx->angle[INS_YAW_ADDRESS_OFFSET] : 0.0f;
-    case UART1_TELEM_SIG_IMU_ANGLE_ROLL_RAD:
+    case AUX_TELEM_SIG_IMU_ANGLE_ROLL_RAD:
         return ctx->angle ? ctx->angle[INS_ROLL_ADDRESS_OFFSET] : 0.0f;
-    case UART1_TELEM_SIG_IMU_ANGLE_PITCH_RAD:
+    case AUX_TELEM_SIG_IMU_ANGLE_PITCH_RAD:
         return ctx->angle ? ctx->angle[INS_PITCH_ADDRESS_OFFSET] : 0.0f;
-    case UART1_TELEM_SIG_IMU_ANGLE_YAW_DEG:
+    case AUX_TELEM_SIG_IMU_ANGLE_YAW_DEG:
         return ctx->angle ? (ctx->angle[INS_YAW_ADDRESS_OFFSET] * rad2deg) : 0.0f;
-    case UART1_TELEM_SIG_IMU_ANGLE_ROLL_DEG:
+    case AUX_TELEM_SIG_IMU_ANGLE_ROLL_DEG:
         return ctx->angle ? (ctx->angle[INS_ROLL_ADDRESS_OFFSET] * rad2deg) : 0.0f;
-    case UART1_TELEM_SIG_IMU_ANGLE_PITCH_DEG:
+    case AUX_TELEM_SIG_IMU_ANGLE_PITCH_DEG:
         return ctx->angle ? (ctx->angle[INS_PITCH_ADDRESS_OFFSET] * rad2deg) : 0.0f;
-    case UART1_TELEM_SIG_IMU_GYRO_X_RAD_S:
+    case AUX_TELEM_SIG_IMU_GYRO_X_RAD_S:
         return ctx->gyro ? ctx->gyro[INS_GYRO_X_ADDRESS_OFFSET] : 0.0f;
-    case UART1_TELEM_SIG_IMU_GYRO_Y_RAD_S:
+    case AUX_TELEM_SIG_IMU_GYRO_Y_RAD_S:
         return ctx->gyro ? ctx->gyro[INS_GYRO_Y_ADDRESS_OFFSET] : 0.0f;
-    case UART1_TELEM_SIG_IMU_GYRO_Z_RAD_S:
+    case AUX_TELEM_SIG_IMU_GYRO_Z_RAD_S:
         return ctx->gyro ? ctx->gyro[INS_GYRO_Z_ADDRESS_OFFSET] : 0.0f;
-    case UART1_TELEM_SIG_IMU_GYRO_X_DPS:
+    case AUX_TELEM_SIG_IMU_GYRO_X_DPS:
         return ctx->gyro ? (ctx->gyro[INS_GYRO_X_ADDRESS_OFFSET] * rad2deg) : 0.0f;
-    case UART1_TELEM_SIG_IMU_GYRO_Y_DPS:
+    case AUX_TELEM_SIG_IMU_GYRO_Y_DPS:
         return ctx->gyro ? (ctx->gyro[INS_GYRO_Y_ADDRESS_OFFSET] * rad2deg) : 0.0f;
-    case UART1_TELEM_SIG_IMU_GYRO_Z_DPS:
+    case AUX_TELEM_SIG_IMU_GYRO_Z_DPS:
         return ctx->gyro ? (ctx->gyro[INS_GYRO_Z_ADDRESS_OFFSET] * rad2deg) : 0.0f;
-    case UART1_TELEM_SIG_IMU_ACCEL_X:
+    case AUX_TELEM_SIG_IMU_ACCEL_X:
         return ctx->accel ? ctx->accel[INS_ACCEL_X_ADDRESS_OFFSET] : 0.0f;
-    case UART1_TELEM_SIG_IMU_ACCEL_Y:
+    case AUX_TELEM_SIG_IMU_ACCEL_Y:
         return ctx->accel ? ctx->accel[INS_ACCEL_Y_ADDRESS_OFFSET] : 0.0f;
-    case UART1_TELEM_SIG_IMU_ACCEL_Z:
+    case AUX_TELEM_SIG_IMU_ACCEL_Z:
         return ctx->accel ? ctx->accel[INS_ACCEL_Z_ADDRESS_OFFSET] : 0.0f;
 
-    case UART1_TELEM_SIG_GIMBAL_YAW_ANGLE:
+    case AUX_TELEM_SIG_GIMBAL_YAW_ANGLE:
         return ctx->yaw ? ctx->yaw->angle : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_YAW_ANGLE_SET:
+    case AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_SET:
         return ctx->yaw ? ctx->yaw->angle_set : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_YAW_GYRO:
+    case AUX_TELEM_SIG_GIMBAL_YAW_GYRO:
         return ctx->yaw ? ctx->yaw->motor_gyro : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_YAW_GYRO_SET:
+    case AUX_TELEM_SIG_GIMBAL_YAW_GYRO_SET:
         return ctx->yaw ? ctx->yaw->motor_gyro_set : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_YAW_MOTOR_SPEED:
+    case AUX_TELEM_SIG_GIMBAL_YAW_MOTOR_SPEED:
         return ctx->yaw ? ctx->yaw->motor_speed : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_YAW_CURRENT_SET:
+    case AUX_TELEM_SIG_GIMBAL_YAW_CURRENT_SET:
         return ctx->yaw ? ctx->yaw->current_set : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_YAW_GIVEN_CURRENT:
+    case AUX_TELEM_SIG_GIMBAL_YAW_GIVEN_CURRENT:
         return ctx->yaw ? (fp32)ctx->yaw->given_current : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_YAW_RAW_CMD_CURRENT:
+    case AUX_TELEM_SIG_GIMBAL_YAW_RAW_CMD_CURRENT:
         return ctx->yaw ? ctx->yaw->raw_cmd_current : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_YAW_ECD:
+    case AUX_TELEM_SIG_GIMBAL_YAW_ECD:
         return (ctx->yaw && ctx->yaw->gimbal_motor_measure) ? (fp32)ctx->yaw->gimbal_motor_measure->ecd : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_YAW_OFFSET_ECD:
+    case AUX_TELEM_SIG_GIMBAL_YAW_OFFSET_ECD:
         return ctx->yaw ? (fp32)ctx->yaw->offset_ecd : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_YAW_RPM:
+    case AUX_TELEM_SIG_GIMBAL_YAW_RPM:
         return (ctx->yaw && ctx->yaw->gimbal_motor_measure) ? (fp32)ctx->yaw->gimbal_motor_measure->speed_rpm : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_YAW_CURRENT_FB:
+    case AUX_TELEM_SIG_GIMBAL_YAW_CURRENT_FB:
         return (ctx->yaw && ctx->yaw->gimbal_motor_measure) ? (fp32)ctx->yaw->gimbal_motor_measure->given_current : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_YAW_TEMP:
+    case AUX_TELEM_SIG_GIMBAL_YAW_TEMP:
         return (ctx->yaw && ctx->yaw->gimbal_motor_measure) ? (fp32)ctx->yaw->gimbal_motor_measure->temperate : 0.0f;
 
-    case UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE:
         return ctx->pitch ? ctx->pitch->angle : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_PITCH_ANGLE_SET:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_ANGLE_SET:
         return ctx->pitch ? ctx->pitch->angle_set : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_PITCH_GYRO:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_GYRO:
         return ctx->pitch ? ctx->pitch->motor_gyro : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_PITCH_GYRO_SET:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_GYRO_SET:
         return ctx->pitch ? ctx->pitch->motor_gyro_set : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_PITCH_MOTOR_SPEED:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_MOTOR_SPEED:
         return ctx->pitch ? ctx->pitch->motor_speed : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_PITCH_CURRENT_SET:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_CURRENT_SET:
         return ctx->pitch ? ctx->pitch->current_set : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_PITCH_GIVEN_CURRENT:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_GIVEN_CURRENT:
         return ctx->pitch ? (fp32)ctx->pitch->given_current : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_PITCH_RAW_CMD_CURRENT:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_RAW_CMD_CURRENT:
         return ctx->pitch ? ctx->pitch->raw_cmd_current : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_PITCH_ECD:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_ECD:
         return (ctx->pitch && ctx->pitch->gimbal_motor_measure) ? (fp32)ctx->pitch->gimbal_motor_measure->ecd : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_PITCH_OFFSET_ECD:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_OFFSET_ECD:
         return ctx->pitch ? (fp32)ctx->pitch->offset_ecd : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_PITCH_RPM:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_RPM:
         return (ctx->pitch && ctx->pitch->gimbal_motor_measure) ? (fp32)ctx->pitch->gimbal_motor_measure->speed_rpm : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_PITCH_CURRENT_FB:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_CURRENT_FB:
         return (ctx->pitch && ctx->pitch->gimbal_motor_measure) ? (fp32)ctx->pitch->gimbal_motor_measure->given_current : 0.0f;
-    case UART1_TELEM_SIG_GIMBAL_PITCH_TEMP:
+    case AUX_TELEM_SIG_GIMBAL_PITCH_TEMP:
         return (ctx->pitch && ctx->pitch->gimbal_motor_measure) ? (fp32)ctx->pitch->gimbal_motor_measure->temperate : 0.0f;
 
-    case UART1_TELEM_SIG_CHASSIS_VX_SET:
+    case AUX_TELEM_SIG_CHASSIS_VX_SET:
         return ctx->chassis ? ctx->chassis->vx_set : 0.0f;
-    case UART1_TELEM_SIG_CHASSIS_VY_SET:
+    case AUX_TELEM_SIG_CHASSIS_VY_SET:
         return ctx->chassis ? ctx->chassis->vy_set : 0.0f;
-    case UART1_TELEM_SIG_CHASSIS_WZ_SET:
+    case AUX_TELEM_SIG_CHASSIS_WZ_SET:
         return ctx->chassis ? ctx->chassis->wz_set : 0.0f;
-    case UART1_TELEM_SIG_CHASSIS_VX:
+    case AUX_TELEM_SIG_CHASSIS_VX:
         return ctx->chassis ? ctx->chassis->vx : 0.0f;
-    case UART1_TELEM_SIG_CHASSIS_VY:
+    case AUX_TELEM_SIG_CHASSIS_VY:
         return ctx->chassis ? ctx->chassis->vy : 0.0f;
-    case UART1_TELEM_SIG_CHASSIS_WZ:
+    case AUX_TELEM_SIG_CHASSIS_WZ:
         return ctx->chassis ? ctx->chassis->wz : 0.0f;
-    case UART1_TELEM_SIG_CHASSIS_YAW_OFFSET:
+    case AUX_TELEM_SIG_CHASSIS_YAW_OFFSET:
         return ctx->chassis ? ctx->chassis->chassis_yaw_offset : 0.0f;
-    case UART1_TELEM_SIG_CHASSIS_YAW_OFFSET_SET:
+    case AUX_TELEM_SIG_CHASSIS_YAW_OFFSET_SET:
         return ctx->chassis ? ctx->chassis->chassis_yaw_offset_set : 0.0f;
-    case UART1_TELEM_SIG_CHASSIS_YAW_SET:
+    case AUX_TELEM_SIG_CHASSIS_YAW_SET:
         return ctx->chassis ? ctx->chassis->chassis_yaw_set : 0.0f;
-    case UART1_TELEM_SIG_CHASSIS_YAW:
+    case AUX_TELEM_SIG_CHASSIS_YAW:
         return ctx->chassis ? ctx->chassis->chassis_yaw : 0.0f;
-    case UART1_TELEM_SIG_CHASSIS_PITCH:
+    case AUX_TELEM_SIG_CHASSIS_PITCH:
         return ctx->chassis ? ctx->chassis->chassis_pitch : 0.0f;
-    case UART1_TELEM_SIG_CHASSIS_ROLL:
+    case AUX_TELEM_SIG_CHASSIS_ROLL:
         return ctx->chassis ? ctx->chassis->chassis_roll : 0.0f;
-    case UART1_TELEM_SIG_CHASSIS_SWING_KEY:
+    case AUX_TELEM_SIG_CHASSIS_SWING_KEY:
         if (ctx->chassis && ctx->chassis->chassis_RC)
         {
             const uint16_t sw = (uint16_t)ctx->chassis->chassis_RC->rc.s[CHASSIS_MODE_CHANNEL];
@@ -2111,62 +2111,62 @@ static fp32 uart1_telem_get_value(const uart1_telem_ctx_t *ctx, uart1_telem_sig_
             return swing ? 1.0f : 0.0f;
         }
         return 0.0f;
-    case UART1_TELEM_SIG_SHOOT_FRIC_SPEED_SET:
+    case AUX_TELEM_SIG_SHOOT_FRIC_SPEED_SET:
         return shoot_control.fric_speed_set;
-    case UART1_TELEM_SIG_SHOOT_TRIGGER_SPEED_SET:
+    case AUX_TELEM_SIG_SHOOT_TRIGGER_SPEED_SET:
         return shoot_control.trigger_speed_set;
-    case UART1_TELEM_SIG_SHOOT_TRIGGER_SPEED:
+    case AUX_TELEM_SIG_SHOOT_TRIGGER_SPEED:
         return shoot_control.speed;
-    case UART1_TELEM_SIG_SHOOT_TRIGGER_ANGLE:
+    case AUX_TELEM_SIG_SHOOT_TRIGGER_ANGLE:
         return shoot_control.angle;
-    case UART1_TELEM_SIG_SHOOT_TRIGGER_ANGLE_SET:
+    case AUX_TELEM_SIG_SHOOT_TRIGGER_ANGLE_SET:
         return shoot_control.set_angle;
-    case UART1_TELEM_SIG_SHOOT_TRIGGER_GIVEN_CURRENT:
+    case AUX_TELEM_SIG_SHOOT_TRIGGER_GIVEN_CURRENT:
         return (fp32)shoot_control.given_current;
-    case UART1_TELEM_SIG_SHOOT_TRIGGER_ECD_COUNT:
+    case AUX_TELEM_SIG_SHOOT_TRIGGER_ECD_COUNT:
         return (fp32)shoot_control.ecd_count;
-    case UART1_TELEM_SIG_SHOOT_PRESS_L:
+    case AUX_TELEM_SIG_SHOOT_PRESS_L:
         return (fp32)shoot_control.press_l;
-    case UART1_TELEM_SIG_SHOOT_PRESS_R:
+    case AUX_TELEM_SIG_SHOOT_PRESS_R:
         return (fp32)shoot_control.press_r;
-    case UART1_TELEM_SIG_SHOOT_KEY:
+    case AUX_TELEM_SIG_SHOOT_KEY:
         return (fp32)shoot_control.key;
-    case UART1_TELEM_SIG_SHOOT_HEAT_LIMIT:
+    case AUX_TELEM_SIG_SHOOT_HEAT_LIMIT:
         return (fp32)shoot_control.heat_limit;
-    case UART1_TELEM_SIG_SHOOT_HEAT:
+    case AUX_TELEM_SIG_SHOOT_HEAT:
         return (fp32)shoot_control.heat;
 
-    case UART1_TELEM_SIG_SHOOT_TRIGGER_RPM:
+    case AUX_TELEM_SIG_SHOOT_TRIGGER_RPM:
         return ctx->trigger_meas ? (fp32)ctx->trigger_meas->speed_rpm : 0.0f;
-    case UART1_TELEM_SIG_SHOOT_TRIGGER_ECD:
+    case AUX_TELEM_SIG_SHOOT_TRIGGER_ECD:
         return ctx->trigger_meas ? (fp32)ctx->trigger_meas->ecd : 0.0f;
-    case UART1_TELEM_SIG_SHOOT_TRIGGER_TEMP:
+    case AUX_TELEM_SIG_SHOOT_TRIGGER_TEMP:
         return ctx->trigger_meas ? (fp32)ctx->trigger_meas->temperate : 0.0f;
-    case UART1_TELEM_SIG_SHOOT_TRIGGER_CURRENT_FB:
+    case AUX_TELEM_SIG_SHOOT_TRIGGER_CURRENT_FB:
         return ctx->trigger_meas ? (fp32)ctx->trigger_meas->given_current : 0.0f;
 
-    case UART1_TELEM_SIG_DIAG_CAN1_0X200_M1:
+    case AUX_TELEM_SIG_DIAG_CAN1_0X200_M1:
         return (fp32)actuator_cmd_get_chassis_current_can1(0);
-    case UART1_TELEM_SIG_DIAG_CAN1_0X200_M2:
+    case AUX_TELEM_SIG_DIAG_CAN1_0X200_M2:
         return (fp32)actuator_cmd_get_chassis_current_can1(1);
-    case UART1_TELEM_SIG_DIAG_CAN1_0X200_PITCH:
+    case AUX_TELEM_SIG_DIAG_CAN1_0X200_PITCH:
         return (fp32)actuator_cmd_get_pitch_current_can1();
-    case UART1_TELEM_SIG_DIAG_CAN1_0X200_TRIGGER:
+    case AUX_TELEM_SIG_DIAG_CAN1_0X200_TRIGGER:
         return (fp32)actuator_cmd_get_trigger_current_can1();
-    case UART1_TELEM_SIG_DIAG_CAN1_0X1FF_M4:
+    case AUX_TELEM_SIG_DIAG_CAN1_0X1FF_M4:
         return (fp32)actuator_cmd_get_chassis_current_can1(3);
-    case UART1_TELEM_SIG_DIAG_CAN1_0X1FF_YAW:
+    case AUX_TELEM_SIG_DIAG_CAN1_0X1FF_YAW:
         return (fp32)actuator_cmd_get_yaw_current_can1();
-    case UART1_TELEM_SIG_DIAG_CAN1_0X1FF_M3:
+    case AUX_TELEM_SIG_DIAG_CAN1_0X1FF_M3:
         return (fp32)actuator_cmd_get_chassis_current_can1(2);
-    case UART1_TELEM_SIG_DIAG_CAN1_1FF_STATUS:
+    case AUX_TELEM_SIG_DIAG_CAN1_1FF_STATUS:
         return (fp32)CAN_get_last_1ff_status();
-    case UART1_TELEM_SIG_DIAG_CAN1_ERR:
+    case AUX_TELEM_SIG_DIAG_CAN1_ERR:
         return (fp32)CAN_get_last_can1_error();
-    case UART1_TELEM_SIG_DIAG_ZERO_FORCE:
+    case AUX_TELEM_SIG_DIAG_ZERO_FORCE:
         return (gimbal_behaviour_watch == GIMBAL_ZERO_FORCE) ? 1.0f : 0.0f;
 
-    case UART1_TELEM_SIG_PACK_MODE:
+    case AUX_TELEM_SIG_PACK_MODE:
     {
         const uint32_t gimbal_behaviour = (uint32_t)gimbal_behaviour_watch;
         const uint32_t yaw_motor_mode = (ctx->yaw != NULL) ? (uint32_t)ctx->yaw->gimbal_motor_mode : 0u;
@@ -2183,7 +2183,7 @@ static fp32 uart1_telem_get_value(const uart1_telem_ctx_t *ctx, uart1_telem_sig_
                                 shoot_mode * 100000u;
         return (fp32)packed;
     }
-    case UART1_TELEM_SIG_PACK_OFFLINE:
+    case AUX_TELEM_SIG_PACK_OFFLINE:
     {
         uint32_t mask = 0u;
         if (toe_is_error(DBUS_TOE))           mask |= 1u << 0;
@@ -2203,19 +2203,19 @@ static fp32 uart1_telem_get_value(const uart1_telem_ctx_t *ctx, uart1_telem_sig_
         return (fp32)mask;
     }
 
-    case UART1_TELEM_SIG_MEM_HEAP_FREE:
+    case AUX_TELEM_SIG_MEM_HEAP_FREE:
         return (fp32)heap_get_free();
-    case UART1_TELEM_SIG_MEM_HEAP_EVER_FREE:
+    case AUX_TELEM_SIG_MEM_HEAP_EVER_FREE:
         return (fp32)heap_get_ever_free();
 
-    case UART1_TELEM_SIG_BOARD_KEY_DOWN:
+    case AUX_TELEM_SIG_BOARD_KEY_DOWN:
         return (fp32)bsp_key_read_raw_down();
-    case UART1_TELEM_SIG_BOARD_KEY_PRESS_CNT:
+    case AUX_TELEM_SIG_BOARD_KEY_PRESS_CNT:
         return (fp32)bsp_key_get_press_cnt();
 
-    case UART1_TELEM_SIG_SHOOT_TRIGGER_PID_IOUT:
+    case AUX_TELEM_SIG_SHOOT_TRIGGER_PID_IOUT:
         return shoot_control.trigger_motor_pid.Iout;
-    case UART1_TELEM_SIG_SHOOT_TRIGGER_PID_OUT:
+    case AUX_TELEM_SIG_SHOOT_TRIGGER_PID_OUT:
         return shoot_control.trigger_motor_pid.out;
 
     default:
@@ -2458,11 +2458,11 @@ static void uart1_tune_apply_shoot_fric_speed_pid(void)
     for (uint8_t i = 0; i < FRIC_MOTOR_NUM; i++)
     {
         pid_type_def *dst = &shoot_control.fric_speed_pid[i];
-        dst->Kp = g_app_config.shoot.fric_speed_pid.kp;
-        dst->Ki = g_app_config.shoot.fric_speed_pid.ki;
-        dst->Kd = g_app_config.shoot.fric_speed_pid.kd;
-        dst->max_out = g_app_config.shoot.fric_speed_pid.max_out;
-        dst->max_iout = g_app_config.shoot.fric_speed_pid.max_iout;
+        dst->Kp = g_config.shoot.fric_speed_pid.kp;
+        dst->Ki = g_config.shoot.fric_speed_pid.ki;
+        dst->Kd = g_config.shoot.fric_speed_pid.kd;
+        dst->max_out = g_config.shoot.fric_speed_pid.max_out;
+        dst->max_iout = g_config.shoot.fric_speed_pid.max_iout;
         PID_clear(dst);
     }
     taskEXIT_CRITICAL();
@@ -2471,9 +2471,9 @@ static void uart1_tune_apply_shoot_fric_speed_pid(void)
 static void uart1_tune_apply_shoot_trigger_pid(void)
 {
     taskENTER_CRITICAL();
-    shoot_control.trigger_motor_pid.Kp = g_app_config.shoot.trigger_angle_pid.kp;
-    shoot_control.trigger_motor_pid.Ki = g_app_config.shoot.trigger_angle_pid.ki;
-    shoot_control.trigger_motor_pid.Kd = g_app_config.shoot.trigger_angle_pid.kd;
+    shoot_control.trigger_motor_pid.Kp = g_config.shoot.trigger_angle_pid.kp;
+    shoot_control.trigger_motor_pid.Ki = g_config.shoot.trigger_angle_pid.ki;
+    shoot_control.trigger_motor_pid.Kd = g_config.shoot.trigger_angle_pid.kd;
     PID_clear(&shoot_control.trigger_motor_pid);
     taskEXIT_CRITICAL();
 }
@@ -2482,42 +2482,42 @@ static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value)
 {
     if (id >= 1u && id <= 5u)
     {
-        if (!uart1_tune_set_pid_field(&g_app_config.gimbal.yaw_speed_pid, (uint8_t)(id - 1u), value))
+        if (!uart1_tune_set_pid_field(&g_config.gimbal.yaw_speed_pid, (uint8_t)(id - 1u), value))
         {
             return 0;
         }
-        gimbal_tune_set_yaw_speed_pid(&g_app_config.gimbal.yaw_speed_pid, 1);
+        gimbal_tune_set_yaw_speed_pid(&g_config.gimbal.yaw_speed_pid, 1);
         return 1;
     }
     if (id >= 6u && id <= 10u)
     {
-        (void)uart1_tune_set_pid_field(&g_app_config.gimbal.pitch_speed_pid, (uint8_t)(id - 6u), value);
-        gimbal_tune_set_pitch_speed_pid(&g_app_config.gimbal.pitch_speed_pid, 1);
+        (void)uart1_tune_set_pid_field(&g_config.gimbal.pitch_speed_pid, (uint8_t)(id - 6u), value);
+        gimbal_tune_set_pitch_speed_pid(&g_config.gimbal.pitch_speed_pid, 1);
         return 1;
     }
     if (id >= 11u && id <= 15u)
     {
-        (void)uart1_tune_set_pid_field(&g_app_config.gimbal.yaw_encode_angle_pid, (uint8_t)(id - 11u), value);
-        gimbal_tune_set_yaw_angle_pid(&g_app_config.gimbal.yaw_encode_angle_pid, 1);
+        (void)uart1_tune_set_pid_field(&g_config.gimbal.yaw_encode_angle_pid, (uint8_t)(id - 11u), value);
+        gimbal_tune_set_yaw_angle_pid(&g_config.gimbal.yaw_encode_angle_pid, 1);
         return 1;
     }
     if (id >= 16u && id <= 20u)
     {
-        (void)uart1_tune_set_pid_field(&g_app_config.gimbal.pitch_encode_angle_pid, (uint8_t)(id - 16u), value);
-        gimbal_tune_set_pitch_angle_pid(&g_app_config.gimbal.pitch_encode_angle_pid, 1);
+        (void)uart1_tune_set_pid_field(&g_config.gimbal.pitch_encode_angle_pid, (uint8_t)(id - 16u), value);
+        gimbal_tune_set_pitch_angle_pid(&g_config.gimbal.pitch_encode_angle_pid, 1);
         return 1;
     }
 
     if (id >= 66u && id <= 70u)
     {
-        (void)uart1_tune_set_pid_field(&g_app_config.chassis.motor_speed_pid, (uint8_t)(id - 66u), value);
-        chassis_tune_set_motor_speed_pid(&g_app_config.chassis.motor_speed_pid, 1);
+        (void)uart1_tune_set_pid_field(&g_config.chassis.motor_speed_pid, (uint8_t)(id - 66u), value);
+        chassis_tune_set_motor_speed_pid(&g_config.chassis.motor_speed_pid, 1);
         return 1;
     }
     if (id >= 71u && id <= 75u)
     {
-        (void)uart1_tune_set_pid_field(&g_app_config.chassis.follow_gimbal_pid, (uint8_t)(id - 71u), value);
-        chassis_tune_set_follow_pid(&g_app_config.chassis.follow_gimbal_pid, 1);
+        (void)uart1_tune_set_pid_field(&g_config.chassis.follow_gimbal_pid, (uint8_t)(id - 71u), value);
+        chassis_tune_set_follow_pid(&g_config.chassis.follow_gimbal_pid, 1);
         return 1;
     }
     if (id >= 76u && id <= 79u)
@@ -2527,13 +2527,13 @@ static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value)
         {
             return 0;
         }
-        g_app_config.chassis.motor_dir[idx] = uart1_tune_to_i8(value, -1, 1);
+        g_config.chassis.motor_dir[idx] = uart1_tune_to_i8(value, -1, 1);
         return 1;
     }
 
     if (id >= 117u && id <= 121u)
     {
-        (void)uart1_tune_set_pid_field(&g_app_config.shoot.fric_speed_pid, (uint8_t)(id - 117u), value);
+        (void)uart1_tune_set_pid_field(&g_config.shoot.fric_speed_pid, (uint8_t)(id - 117u), value);
         uart1_tune_apply_shoot_fric_speed_pid();
         return 1;
     }
@@ -2544,12 +2544,12 @@ static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value)
         {
             return 0;
         }
-        g_app_config.shoot.fric_motor_dir[idx] = uart1_tune_to_i8(value, -1, 1);
+        g_config.shoot.fric_motor_dir[idx] = uart1_tune_to_i8(value, -1, 1);
         return 1;
     }
     if (id >= 151u && id <= 153u)
     {
-        (void)uart1_tune_set_pid_field(&g_app_config.shoot.trigger_angle_pid, (uint8_t)(id - 151u), value);
+        (void)uart1_tune_set_pid_field(&g_config.shoot.trigger_angle_pid, (uint8_t)(id - 151u), value);
         uart1_tune_apply_shoot_trigger_pid();
         return 1;
     }
@@ -2564,7 +2564,7 @@ static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value)
             return 0;
         }
 
-        detect_item_t *it = &g_app_config.detect.items[item];
+        detect_item_t *it = &g_config.detect.items[item];
         switch (field)
         {
         case 0:
@@ -2587,7 +2587,7 @@ static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value)
         const uint16_t off = (uint16_t)(id - 320u);
         const uint8_t axis = (uint8_t)(off / 2u);
         const uint8_t field = (uint8_t)(off % 2u);
-        if (axis >= (uint8_t)APP_AXIS_COUNT)
+        if (axis >= (uint8_t)INPUT_AXIS_COUNT)
         {
             return 0;
         }
@@ -2599,11 +2599,11 @@ static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value)
             {
                 ch = 4u;
             }
-            g_app_config.input.axis[axis].rc_ch = ch;
+            g_config.input.axis[axis].rc_ch = ch;
         }
         else
         {
-            g_app_config.input.axis[axis].invert = (uart1_tune_to_u8(value) != 0u) ? 1u : 0u;
+            g_config.input.axis[axis].invert = (uart1_tune_to_u8(value) != 0u) ? 1u : 0u;
         }
 
         remote_control_refresh();
@@ -2614,7 +2614,7 @@ static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value)
         const uint16_t off = (uint16_t)(id - 338u);
         const uint8_t sw = (uint8_t)(off / 2u);
         const uint8_t field = (uint8_t)(off % 2u);
-        if (sw >= (uint8_t)APP_SW_COUNT)
+        if (sw >= (uint8_t)INPUT_SW_COUNT)
         {
             return 0;
         }
@@ -2626,11 +2626,11 @@ static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value)
             {
                 idx = 1u;
             }
-            g_app_config.input.sw[sw].rc_sw = idx;
+            g_config.input.sw[sw].rc_sw = idx;
         }
         else
         {
-            g_app_config.input.sw[sw].invert = (uart1_tune_to_u8(value) != 0u) ? 1u : 0u;
+            g_config.input.sw[sw].invert = (uart1_tune_to_u8(value) != 0u) ? 1u : 0u;
         }
 
         remote_control_refresh();
@@ -2641,117 +2641,117 @@ static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value)
     {
     // ===== gimbal =====
     case 22:
-        g_app_config.gimbal.control_period_ms = uart1_tune_to_u16(value);
+        g_config.gimbal.control_period_ms = uart1_tune_to_u16(value);
         return 1;
     case 23:
-        g_app_config.gimbal.channel_yaw = uart1_tune_to_u8(value);
+        g_config.gimbal.channel_yaw = uart1_tune_to_u8(value);
         return 1;
     case 24:
-        g_app_config.gimbal.channel_pitch = uart1_tune_to_u8(value);
+        g_config.gimbal.channel_pitch = uart1_tune_to_u8(value);
         return 1;
     case 25:
-        g_app_config.gimbal.channel_mode = uart1_tune_to_u8(value);
+        g_config.gimbal.channel_mode = uart1_tune_to_u8(value);
         return 1;
     case 26:
-        g_app_config.gimbal.yaw_rc_sen = value;
+        g_config.gimbal.yaw_rc_sen = value;
         return 1;
     case 27:
-        g_app_config.gimbal.pitch_rc_sen = value;
+        g_config.gimbal.pitch_rc_sen = value;
         return 1;
     case 28:
-        g_app_config.gimbal.yaw_mouse_sen = value;
+        g_config.gimbal.yaw_mouse_sen = value;
         return 1;
     case 29:
-        g_app_config.gimbal.pitch_mouse_sen = value;
+        g_config.gimbal.pitch_mouse_sen = value;
         return 1;
     case 30:
-        g_app_config.gimbal.yaw_encode_sen = value;
+        g_config.gimbal.yaw_encode_sen = value;
         return 1;
     case 31:
-        g_app_config.gimbal.pitch_encode_sen = value;
+        g_config.gimbal.pitch_encode_sen = value;
         return 1;
     case 32:
-        g_app_config.gimbal.rc_deadband = uart1_tune_to_u16(value);
+        g_config.gimbal.rc_deadband = uart1_tune_to_u16(value);
         return 1;
     case 41:
-        g_app_config.gimbal.pitch_kick_up_current = value;
+        g_config.gimbal.pitch_kick_up_current = value;
         return 1;
     case 42:
-        g_app_config.gimbal.pitch_kick_down_current = value;
+        g_config.gimbal.pitch_kick_down_current = value;
         return 1;
     case 43:
-        g_app_config.gimbal.pitch_soft_limit_up = value;
+        g_config.gimbal.pitch_soft_limit_up = value;
         return 1;
     case 44:
-        g_app_config.gimbal.pitch_soft_limit_down = value;
+        g_config.gimbal.pitch_soft_limit_down = value;
         return 1;
     case 45:
-        g_app_config.gimbal.pitch_current_limit = value;
+        g_config.gimbal.pitch_current_limit = value;
         return 1;
     case 48:
-        g_app_config.gimbal.motor_ecd_to_rad = value;
+        g_config.gimbal.motor_ecd_to_rad = value;
         return 1;
     case 49:
-        g_app_config.gimbal.cali_redundant_angle = value;
+        g_config.gimbal.cali_redundant_angle = value;
         return 1;
     case 50:
-        g_app_config.gimbal.cali_motor_set = uart1_tune_to_u16(value);
+        g_config.gimbal.cali_motor_set = uart1_tune_to_u16(value);
         return 1;
     case 51:
-        g_app_config.gimbal.cali_step_time_ms = uart1_tune_to_u16(value);
+        g_config.gimbal.cali_step_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 52:
-        g_app_config.gimbal.cali_gyro_limit = value;
+        g_config.gimbal.cali_gyro_limit = value;
         return 1;
     case 53:
-        g_app_config.gimbal.cali_pitch_max_step = uart1_tune_to_u8(value);
+        g_config.gimbal.cali_pitch_max_step = uart1_tune_to_u8(value);
         return 1;
     case 54:
-        g_app_config.gimbal.cali_pitch_min_step = uart1_tune_to_u8(value);
+        g_config.gimbal.cali_pitch_min_step = uart1_tune_to_u8(value);
         return 1;
     case 55:
-        g_app_config.gimbal.cali_yaw_max_step = uart1_tune_to_u8(value);
+        g_config.gimbal.cali_yaw_max_step = uart1_tune_to_u8(value);
         return 1;
     case 56:
-        g_app_config.gimbal.cali_yaw_min_step = uart1_tune_to_u8(value);
+        g_config.gimbal.cali_yaw_min_step = uart1_tune_to_u8(value);
         return 1;
     case 57:
-        g_app_config.gimbal.cali_start_step = uart1_tune_to_u8(value);
+        g_config.gimbal.cali_start_step = uart1_tune_to_u8(value);
         return 1;
     case 58:
-        g_app_config.gimbal.cali_end_step = uart1_tune_to_u8(value);
+        g_config.gimbal.cali_end_step = uart1_tune_to_u8(value);
         return 1;
     case 59:
-        g_app_config.gimbal.motionless_rc_deadline = value;
+        g_config.gimbal.motionless_rc_deadline = value;
         return 1;
     case 60:
-        g_app_config.gimbal.motionless_time_max_ms = uart1_tune_to_u16(value);
+        g_config.gimbal.motionless_time_max_ms = uart1_tune_to_u16(value);
         return 1;
     case 61:
-        g_app_config.gimbal.turn_speed = value;
+        g_config.gimbal.turn_speed = value;
         return 1;
     case 62:
-        g_app_config.gimbal.turn_key_mask = uart1_tune_to_u16(value);
+        g_config.gimbal.turn_key_mask = uart1_tune_to_u16(value);
         return 1;
     case 63:
-        g_app_config.gimbal.test_key_mask = uart1_tune_to_u16(value);
+        g_config.gimbal.test_key_mask = uart1_tune_to_u16(value);
         return 1;
     case 64:
-        g_app_config.gimbal.yaw_turn = uart1_tune_to_u8(value);
+        g_config.gimbal.yaw_turn = uart1_tune_to_u8(value);
         return 1;
     case 65:
-        g_app_config.gimbal.pitch_turn = uart1_tune_to_u8(value);
+        g_config.gimbal.pitch_turn = uart1_tune_to_u8(value);
         return 1;
 
     // ===== pitch cali (SD) =====
     case 350:
-        g_app_config.gimbal.pitch_cali.enable = (uart1_tune_to_u8(value) != 0u) ? 1u : 0u;
+        g_config.gimbal.pitch_cali.enable = (uart1_tune_to_u8(value) != 0u) ? 1u : 0u;
         return 1;
     case 351:
-        g_app_config.gimbal.pitch_cali.angle_points = uart1_tune_to_u8(value);
+        g_config.gimbal.pitch_cali.angle_points = uart1_tune_to_u8(value);
         return 1;
     case 352:
-        g_app_config.gimbal.pitch_cali.bullet_points = uart1_tune_to_u8(value);
+        g_config.gimbal.pitch_cali.bullet_points = uart1_tune_to_u8(value);
         return 1;
     case 353:
     {
@@ -2760,387 +2760,387 @@ static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value)
         {
             v = (uint8_t)PITCH_CALI_BULLET_SRC_REFEREE;
         }
-        g_app_config.gimbal.pitch_cali.bullet_source = v;
+        g_config.gimbal.pitch_cali.bullet_source = v;
         return 1;
     }
     case 354:
-        g_app_config.gimbal.pitch_cali.bullet_min = uart1_tune_to_u16(value);
+        g_config.gimbal.pitch_cali.bullet_min = uart1_tune_to_u16(value);
         return 1;
     case 355:
-        g_app_config.gimbal.pitch_cali.bullet_max = uart1_tune_to_u16(value);
+        g_config.gimbal.pitch_cali.bullet_max = uart1_tune_to_u16(value);
         return 1;
     case 356:
-        g_app_config.gimbal.pitch_cali.bullet_manual = uart1_tune_to_u16(value);
+        g_config.gimbal.pitch_cali.bullet_manual = uart1_tune_to_u16(value);
         return 1;
     case 357:
-        g_app_config.gimbal.pitch_cali.angle_margin = value;
+        g_config.gimbal.pitch_cali.angle_margin = value;
         return 1;
     case 358:
-        g_app_config.gimbal.pitch_cali.stable_angle_err = value;
+        g_config.gimbal.pitch_cali.stable_angle_err = value;
         return 1;
     case 359:
-        g_app_config.gimbal.pitch_cali.stable_gyro_err = value;
+        g_config.gimbal.pitch_cali.stable_gyro_err = value;
         return 1;
     case 360:
-        g_app_config.gimbal.pitch_cali.stable_time_ms = uart1_tune_to_u16(value);
+        g_config.gimbal.pitch_cali.stable_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 368:
-        g_app_config.gimbal.pitch_cali.seek_k = value;
+        g_config.gimbal.pitch_cali.seek_k = value;
         return 1;
     case 361:
-        g_app_config.gimbal.pitch_cali.hold_avg_time_ms = uart1_tune_to_u16(value);
+        g_config.gimbal.pitch_cali.hold_avg_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 362:
-        g_app_config.gimbal.pitch_cali.breakaway_step_current = uart1_tune_to_u16(value);
+        g_config.gimbal.pitch_cali.breakaway_step_current = uart1_tune_to_u16(value);
         return 1;
     case 363:
-        g_app_config.gimbal.pitch_cali.breakaway_step_period_ms = uart1_tune_to_u16(value);
+        g_config.gimbal.pitch_cali.breakaway_step_period_ms = uart1_tune_to_u16(value);
         return 1;
     case 364:
-        g_app_config.gimbal.pitch_cali.breakaway_max_extra_current = uart1_tune_to_u16(value);
+        g_config.gimbal.pitch_cali.breakaway_max_extra_current = uart1_tune_to_u16(value);
         return 1;
     case 365:
-        g_app_config.gimbal.pitch_cali.breakaway_gyro_threshold = value;
+        g_config.gimbal.pitch_cali.breakaway_gyro_threshold = value;
         return 1;
     case 366:
-        g_app_config.gimbal.pitch_cali.breakaway_angle_threshold = value;
+        g_config.gimbal.pitch_cali.breakaway_angle_threshold = value;
         return 1;
     case 367:
-        g_app_config.gimbal.pitch_cali.recover_time_ms = uart1_tune_to_u16(value);
+        g_config.gimbal.pitch_cali.recover_time_ms = uart1_tune_to_u16(value);
         return 1;
 
     // ===== chassis =====
     case 81:
-        g_app_config.chassis.control_period_ms = uart1_tune_to_u16(value);
+        g_config.chassis.control_period_ms = uart1_tune_to_u16(value);
         return 1;
     case 82:
-        g_app_config.chassis.channel_vx = uart1_tune_to_u8(value);
+        g_config.chassis.channel_vx = uart1_tune_to_u8(value);
         return 1;
     case 83:
-        g_app_config.chassis.channel_vy = uart1_tune_to_u8(value);
+        g_config.chassis.channel_vy = uart1_tune_to_u8(value);
         return 1;
     case 84:
-        g_app_config.chassis.channel_wz = uart1_tune_to_u8(value);
+        g_config.chassis.channel_wz = uart1_tune_to_u8(value);
         return 1;
     case 85:
-        g_app_config.chassis.channel_mode = uart1_tune_to_u8(value);
+        g_config.chassis.channel_mode = uart1_tune_to_u8(value);
         return 1;
     case 86:
-        g_app_config.chassis.vx_rc_sen = value;
+        g_config.chassis.vx_rc_sen = value;
         return 1;
     case 87:
-        g_app_config.chassis.vy_rc_sen = value;
+        g_config.chassis.vy_rc_sen = value;
         return 1;
     case 88:
-        g_app_config.chassis.angle_z_rc_sen = value;
+        g_config.chassis.angle_z_rc_sen = value;
         return 1;
     case 89:
-        g_app_config.chassis.wz_rc_sen = value;
+        g_config.chassis.wz_rc_sen = value;
         return 1;
     case 90:
-        g_app_config.chassis.accel_x_first_order = value;
+        g_config.chassis.accel_x_first_order = value;
         return 1;
     case 91:
-        g_app_config.chassis.accel_y_first_order = value;
+        g_config.chassis.accel_y_first_order = value;
         return 1;
     case 92:
-        g_app_config.chassis.rc_deadband = uart1_tune_to_u16(value);
+        g_config.chassis.rc_deadband = uart1_tune_to_u16(value);
         return 1;
     case 93:
-        g_app_config.chassis.motor_speed_to_chassis_vx = value;
+        g_config.chassis.motor_speed_to_chassis_vx = value;
         return 1;
     case 94:
-        g_app_config.chassis.motor_speed_to_chassis_vy = value;
+        g_config.chassis.motor_speed_to_chassis_vy = value;
         return 1;
     case 95:
-        g_app_config.chassis.motor_speed_to_chassis_wz = value;
+        g_config.chassis.motor_speed_to_chassis_wz = value;
         return 1;
     case 96:
-        g_app_config.chassis.motor_distance_to_center = value;
+        g_config.chassis.motor_distance_to_center = value;
         return 1;
     case 97:
-        g_app_config.chassis.rpm_to_vector = value;
+        g_config.chassis.rpm_to_vector = value;
         return 1;
     case 98:
-        g_app_config.chassis.max_wheel_speed = value;
+        g_config.chassis.max_wheel_speed = value;
         return 1;
     case 99:
-        g_app_config.chassis.max_vx_forward = value;
+        g_config.chassis.max_vx_forward = value;
         return 1;
     case 100:
-        g_app_config.chassis.max_vx_backward = value;
+        g_config.chassis.max_vx_backward = value;
         return 1;
     case 101:
-        g_app_config.chassis.max_vy_left = value;
+        g_config.chassis.max_vy_left = value;
         return 1;
     case 102:
-        g_app_config.chassis.max_vy_right = value;
+        g_config.chassis.max_vy_right = value;
         return 1;
     case 103:
-        g_app_config.chassis.wz_set_scale = value;
+        g_config.chassis.wz_set_scale = value;
         return 1;
     case 104:
-        g_app_config.chassis.swing_no_move_angle = value;
+        g_config.chassis.swing_no_move_angle = value;
         return 1;
     case 105:
-        g_app_config.chassis.swing_move_angle = value;
+        g_config.chassis.swing_move_angle = value;
         return 1;
     case 106:
-        g_app_config.chassis.max_motor_can_current = value;
+        g_config.chassis.max_motor_can_current = value;
         return 1;
     case 107:
-        g_app_config.chassis.swing_key_mask = uart1_tune_to_u16(value);
+        g_config.chassis.swing_key_mask = uart1_tune_to_u16(value);
         return 1;
     case 108:
-        g_app_config.chassis.key_front_mask = uart1_tune_to_u16(value);
+        g_config.chassis.key_front_mask = uart1_tune_to_u16(value);
         return 1;
     case 109:
-        g_app_config.chassis.key_back_mask = uart1_tune_to_u16(value);
+        g_config.chassis.key_back_mask = uart1_tune_to_u16(value);
         return 1;
     case 110:
-        g_app_config.chassis.key_left_mask = uart1_tune_to_u16(value);
+        g_config.chassis.key_left_mask = uart1_tune_to_u16(value);
         return 1;
     case 111:
-        g_app_config.chassis.key_right_mask = uart1_tune_to_u16(value);
+        g_config.chassis.key_right_mask = uart1_tune_to_u16(value);
         return 1;
 
     // ===== shoot =====
     case 112:
-        g_app_config.shoot.fric_speed_up_rpm = value;
+        g_config.shoot.fric_speed_up_rpm = value;
         return 1;
     case 113:
-        g_app_config.shoot.fric_speed_down_rpm = value;
+        g_config.shoot.fric_speed_down_rpm = value;
         return 1;
     case 114:
-        g_app_config.shoot.fric_speed_off_rpm = value;
+        g_config.shoot.fric_speed_off_rpm = value;
         return 1;
     case 115:
-        g_app_config.shoot.fric_speed_step_rpm_s = value;
+        g_config.shoot.fric_speed_step_rpm_s = value;
         return 1;
     case 116:
-        g_app_config.shoot.fric_ready_ratio = value;
+        g_config.shoot.fric_ready_ratio = value;
         return 1;
     case 126:
-        g_app_config.shoot.rc_mode_channel = uart1_tune_to_u8(value);
+        g_config.shoot.rc_mode_channel = uart1_tune_to_u8(value);
         return 1;
     case 127:
-        g_app_config.shoot.control_period_ms = uart1_tune_to_u16(value);
+        g_config.shoot.control_period_ms = uart1_tune_to_u16(value);
         return 1;
     case 128:
-        g_app_config.shoot.key_on_mask = uart1_tune_to_u16(value);
+        g_config.shoot.key_on_mask = uart1_tune_to_u16(value);
         return 1;
     case 129:
-        g_app_config.shoot.key_off_mask = uart1_tune_to_u16(value);
+        g_config.shoot.key_off_mask = uart1_tune_to_u16(value);
         return 1;
     case 130:
-        g_app_config.shoot.shoot_done_key_off_time_ms = uart1_tune_to_u16(value);
+        g_config.shoot.shoot_done_key_off_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 131:
-        g_app_config.shoot.press_long_time_ms = uart1_tune_to_u16(value);
+        g_config.shoot.press_long_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 132:
-        g_app_config.shoot.rc_s_long_time_ms = uart1_tune_to_u16(value);
+        g_config.shoot.rc_s_long_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 133:
-        g_app_config.shoot.up_add_time_ms = uart1_tune_to_u16(value);
+        g_config.shoot.up_add_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 136:
-        g_app_config.shoot.motor_rpm_to_speed = value;
+        g_config.shoot.motor_rpm_to_speed = value;
         return 1;
     case 137:
-        g_app_config.shoot.motor_ecd_to_angle = value;
+        g_config.shoot.motor_ecd_to_angle = value;
         return 1;
     case 138:
-        g_app_config.shoot.full_count = uart1_tune_to_u8(value);
+        g_config.shoot.full_count = uart1_tune_to_u8(value);
         return 1;
     case 139:
-        g_app_config.shoot.trigger_speed_single = value;
+        g_config.shoot.trigger_speed_single = value;
         return 1;
     case 140:
-        g_app_config.shoot.trigger_speed_continuous = value;
+        g_config.shoot.trigger_speed_continuous = value;
         return 1;
     case 141:
-        g_app_config.shoot.trigger_speed_ready = value;
+        g_config.shoot.trigger_speed_ready = value;
         return 1;
     case 142:
-        g_app_config.shoot.key_off_judge_time_ms = uart1_tune_to_u16(value);
+        g_config.shoot.key_off_judge_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 143:
-        g_app_config.shoot.switch_trigger_on = uart1_tune_to_u8(value);
+        g_config.shoot.switch_trigger_on = uart1_tune_to_u8(value);
         return 1;
     case 144:
-        g_app_config.shoot.switch_trigger_off = uart1_tune_to_u8(value);
+        g_config.shoot.switch_trigger_off = uart1_tune_to_u8(value);
         return 1;
     case 145:
-        g_app_config.shoot.block_trigger_speed = value;
+        g_config.shoot.block_trigger_speed = value;
         return 1;
     case 146:
-        g_app_config.shoot.block_time_ms = uart1_tune_to_u16(value);
+        g_config.shoot.block_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 147:
-        g_app_config.shoot.reverse_time_ms = uart1_tune_to_u16(value);
+        g_config.shoot.reverse_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 148:
-        g_app_config.shoot.reverse_speed_limit = value;
+        g_config.shoot.reverse_speed_limit = value;
         return 1;
     case 149:
-        g_app_config.shoot.pi_over_four = value;
+        g_config.shoot.pi_over_four = value;
         return 1;
     case 150:
-        g_app_config.shoot.pi_over_ten = value;
+        g_config.shoot.pi_over_ten = value;
         return 1;
     case 156:
-        g_app_config.shoot.trigger_bullet_pid_max_out = value;
+        g_config.shoot.trigger_bullet_pid_max_out = value;
         return 1;
     case 157:
-        g_app_config.shoot.trigger_bullet_pid_max_iout = value;
+        g_config.shoot.trigger_bullet_pid_max_iout = value;
         return 1;
     case 158:
-        g_app_config.shoot.trigger_ready_pid_max_out = value;
+        g_config.shoot.trigger_ready_pid_max_out = value;
         return 1;
     case 159:
-        g_app_config.shoot.trigger_ready_pid_max_iout = value;
+        g_config.shoot.trigger_ready_pid_max_iout = value;
         return 1;
     case 160:
-        g_app_config.shoot.heat_remain_value = uart1_tune_to_u16(value);
+        g_config.shoot.heat_remain_value = uart1_tune_to_u16(value);
         return 1;
 
     // ===== power =====
     case 161:
-        g_app_config.power.power_limit = value;
+        g_config.power.power_limit = value;
         return 1;
     case 162:
-        g_app_config.power.warning_power = value;
+        g_config.power.warning_power = value;
         return 1;
     case 163:
-        g_app_config.power.warning_power_buffer = value;
+        g_config.power.warning_power_buffer = value;
         return 1;
     case 164:
-        g_app_config.power.no_judge_total_current_limit = value;
+        g_config.power.no_judge_total_current_limit = value;
         return 1;
     case 165:
-        g_app_config.power.buffer_total_current_limit = value;
+        g_config.power.buffer_total_current_limit = value;
         return 1;
     case 166:
-        g_app_config.power.power_total_current_limit = value;
+        g_config.power.power_total_current_limit = value;
         return 1;
 
     // ===== detect =====
     case 209:
-        g_app_config.detect.enable_mask = uart1_tune_to_u16(value);
+        g_config.detect.enable_mask = uart1_tune_to_u16(value);
         return 1;
     case 211:
-        g_app_config.detect.control_period_ms = uart1_tune_to_u16(value);
+        g_config.detect.control_period_ms = uart1_tune_to_u16(value);
         return 1;
 
     // ===== imu =====
     case 218:
-        g_app_config.imu.fusion_mode = (imu_fusion_mode_e)uart1_tune_to_i8(value, 0, (int8_t)IMU_FUSION_AHRS_9AXIS);
+        g_config.imu.fusion_mode = (imu_fusion_mode_e)uart1_tune_to_i8(value, 0, (int8_t)IMU_FUSION_AHRS_9AXIS);
         return 1;
     case 219:
-        g_app_config.imu.imu_temp_pwm_max = uart1_tune_to_u16(value);
+        g_config.imu.imu_temp_pwm_max = uart1_tune_to_u16(value);
         return 1;
 
     // ===== voltage =====
     case 221:
-        g_app_config.voltage.full_battery_voltage = value;
+        g_config.voltage.full_battery_voltage = value;
         return 1;
     case 222:
-        g_app_config.voltage.low_battery_voltage = value;
+        g_config.voltage.low_battery_voltage = value;
         return 1;
     case 223:
-        g_app_config.voltage.voltage_drop = value;
+        g_config.voltage.voltage_drop = value;
         return 1;
 
     // ===== buzzer =====
     case 224:
-        g_app_config.buzzer.soft_beep_psc = uart1_tune_to_u16(value);
+        g_config.buzzer.soft_beep_psc = uart1_tune_to_u16(value);
         return 1;
     case 225:
-        g_app_config.buzzer.soft_beep_duration_ms = uart1_tune_to_u16(value);
+        g_config.buzzer.soft_beep_duration_ms = uart1_tune_to_u16(value);
         return 1;
     case 226:
-        g_app_config.buzzer.enable = uart1_tune_to_u8(value);
+        g_config.buzzer.enable = uart1_tune_to_u8(value);
         return 1;
     case 227:
-        g_app_config.buzzer.gimbal_warn_psc = uart1_tune_to_u16(value);
+        g_config.buzzer.gimbal_warn_psc = uart1_tune_to_u16(value);
         return 1;
     case 228:
-        g_app_config.buzzer.gimbal_warn_pwm = uart1_tune_to_u16(value);
+        g_config.buzzer.gimbal_warn_pwm = uart1_tune_to_u16(value);
         return 1;
     case 229:
-        g_app_config.buzzer.imu_cali_psc = uart1_tune_to_u16(value);
+        g_config.buzzer.imu_cali_psc = uart1_tune_to_u16(value);
         return 1;
     case 230:
-        g_app_config.buzzer.imu_cali_pwm = uart1_tune_to_u16(value);
+        g_config.buzzer.imu_cali_pwm = uart1_tune_to_u16(value);
         return 1;
     case 231:
-        g_app_config.buzzer.gimbal_cali_psc = uart1_tune_to_u16(value);
+        g_config.buzzer.gimbal_cali_psc = uart1_tune_to_u16(value);
         return 1;
     case 232:
-        g_app_config.buzzer.gimbal_cali_pwm = uart1_tune_to_u16(value);
+        g_config.buzzer.gimbal_cali_pwm = uart1_tune_to_u16(value);
         return 1;
     case 233:
-        g_app_config.buzzer.rc_cali_middle_time_ms = uart1_tune_to_u16(value);
+        g_config.buzzer.rc_cali_middle_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 234:
-        g_app_config.buzzer.rc_cali_start_time_ms = uart1_tune_to_u16(value);
+        g_config.buzzer.rc_cali_start_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 235:
-        g_app_config.buzzer.rc_cali_cycle_time_ms = uart1_tune_to_u16(value);
+        g_config.buzzer.rc_cali_cycle_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 236:
-        g_app_config.buzzer.rc_cali_pause_time_ms = uart1_tune_to_u16(value);
+        g_config.buzzer.rc_cali_pause_time_ms = uart1_tune_to_u16(value);
         return 1;
     case 237:
-        g_app_config.buzzer.rc_cmd_long_time_ms = uart1_tune_to_u16(value);
+        g_config.buzzer.rc_cmd_long_time_ms = uart1_tune_to_u16(value);
         return 1;
 
     // ===== led =====
     case 238:
-        g_app_config.led.slot_on_ms = uart1_tune_to_u16(value);
+        g_config.led.slot_on_ms = uart1_tune_to_u16(value);
         return 1;
     case 239:
-        g_app_config.led.slot_off_ms = uart1_tune_to_u16(value);
+        g_config.led.slot_off_ms = uart1_tune_to_u16(value);
         return 1;
     case 240:
-        g_app_config.led.slot_gap_ms = uart1_tune_to_u16(value);
+        g_config.led.slot_gap_ms = uart1_tune_to_u16(value);
         return 1;
 
-    // ===== uart1_telem =====
+    // ===== aux_telem =====
     case 241:
-        g_app_config.uart1_telem.enable = uart1_tune_to_u8(value);
+        g_config.aux_telem.enable = uart1_tune_to_u8(value);
         return 1;
     case 242:
-        g_app_config.uart1_telem.period_ms = uart1_tune_to_u16(value);
+        g_config.aux_telem.period_ms = uart1_tune_to_u16(value);
         return 1;
     case 243:
-        g_app_config.uart1_telem.channel_num = uart1_tune_to_u16(value);
+        g_config.aux_telem.channel_num = uart1_tune_to_u16(value);
         return 1;
 
     // ===== test =====
     case 244:
-        g_app_config.test.mode = (test_mode_e)uart1_tune_to_i8(value, 0, (int8_t)TEST_MODE_PITCH_CALI);
+        g_config.test.mode = (test_mode_e)uart1_tune_to_i8(value, 0, (int8_t)TEST_MODE_PITCH_CALI);
         return 1;
 
     // ===== chassis swing =====
     case 245:
-        g_app_config.chassis.swing_amp_rad = value;
+        g_config.chassis.swing_amp_rad = value;
         return 1;
     case 246:
-        g_app_config.chassis.swing_half_period_ms = uart1_tune_to_u16(value);
+        g_config.chassis.swing_half_period_ms = uart1_tune_to_u16(value);
         return 1;
     case 247:
-        g_app_config.chassis.swing_center_hold_min_ms = uart1_tune_to_u16(value);
+        g_config.chassis.swing_center_hold_min_ms = uart1_tune_to_u16(value);
         return 1;
     case 248:
-        g_app_config.chassis.swing_center_hold_max_ms = uart1_tune_to_u16(value);
+        g_config.chassis.swing_center_hold_max_ms = uart1_tune_to_u16(value);
         return 1;
     case 249:
-        g_app_config.chassis.swing_mode_key_mask = uart1_tune_to_u16(value);
+        g_config.chassis.swing_mode_key_mask = uart1_tune_to_u16(value);
         return 1;
     case 250:
-        g_app_config.chassis.gyro_spin_var_key_mask = uart1_tune_to_u16(value);
+        g_config.chassis.gyro_spin_var_key_mask = uart1_tune_to_u16(value);
         return 1;
 
     // ===== manual_input =====
@@ -3151,7 +3151,7 @@ static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value)
         {
             v = (uint8_t)MANUAL_INPUT_SRC_AUTO;
         }
-        g_app_config.manual_input.active_source = v;
+        g_config.manual_input.active_source = v;
         remote_control_refresh();
         return 1;
     }
@@ -3162,48 +3162,48 @@ static bool_t uart1_tune_set_app_param(uint16_t id, fp32 value)
         {
             v = (uint8_t)MANUAL_INPUT_MIX_SELECT_LATEST;
         }
-        g_app_config.manual_input.mix_mode = v;
+        g_config.manual_input.mix_mode = v;
         remote_control_refresh();
         return 1;
     }
     case 302:
-        g_app_config.manual_input.source_timeout_ms = uart1_tune_to_u16(value);
+        g_config.manual_input.source_timeout_ms = uart1_tune_to_u16(value);
         remote_control_refresh();
         return 1;
 
     // ===== app_input: ELRS mapping =====
     case 310:
-        g_app_config.input.elrs_ch_map[0] = uart1_tune_to_u8(value);
+        g_config.input.elrs_ch_map[0] = uart1_tune_to_u8(value);
         remote_control_refresh();
         return 1;
     case 311:
-        g_app_config.input.elrs_ch_map[1] = uart1_tune_to_u8(value);
+        g_config.input.elrs_ch_map[1] = uart1_tune_to_u8(value);
         remote_control_refresh();
         return 1;
     case 312:
-        g_app_config.input.elrs_ch_map[2] = uart1_tune_to_u8(value);
+        g_config.input.elrs_ch_map[2] = uart1_tune_to_u8(value);
         remote_control_refresh();
         return 1;
     case 313:
-        g_app_config.input.elrs_ch_map[3] = uart1_tune_to_u8(value);
+        g_config.input.elrs_ch_map[3] = uart1_tune_to_u8(value);
         remote_control_refresh();
         return 1;
     case 314:
-        g_app_config.input.elrs_ch_map[4] = uart1_tune_to_u8(value);
+        g_config.input.elrs_ch_map[4] = uart1_tune_to_u8(value);
         remote_control_refresh();
         return 1;
     case 315:
-        g_app_config.input.elrs_sw_map[0] = uart1_tune_to_u8(value);
+        g_config.input.elrs_sw_map[0] = uart1_tune_to_u8(value);
         remote_control_refresh();
         return 1;
     case 316:
-        g_app_config.input.elrs_sw_map[1] = uart1_tune_to_u8(value);
+        g_config.input.elrs_sw_map[1] = uart1_tune_to_u8(value);
         remote_control_refresh();
         return 1;
 
     // ===== manual_input: board key =====
     case 317:
-        g_app_config.manual_input.board_key_key_mask = uart1_tune_to_u16(value);
+        g_config.manual_input.board_key_key_mask = uart1_tune_to_u16(value);
         remote_control_refresh();
         return 1;
 

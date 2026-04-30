@@ -11,7 +11,7 @@
 
 static app_input_t g_app_input;
 
-static int16_t app_input_map_axis(const app_axis_map_t *map, const RC_ctrl_t *rc)
+static int16_t app_input_map_axis(const input_axis_map_t *map, const RC_ctrl_t *rc)
 {
     if (map == NULL || rc == NULL)
     {
@@ -30,7 +30,7 @@ static int16_t app_input_map_axis(const app_axis_map_t *map, const RC_ctrl_t *rc
     return value;
 }
 
-static uint8_t app_input_map_switch(const app_switch_map_t *map, const RC_ctrl_t *rc)
+static uint8_t app_input_map_switch(const input_switch_map_t *map, const RC_ctrl_t *rc)
 {
     if (map == NULL || rc == NULL)
     {
@@ -60,24 +60,24 @@ void app_input_update_from_rc(const RC_ctrl_t *rc)
 {
     if (rc == NULL)
     {
-        for (uint32_t i = 0u; i < (uint32_t)APP_AXIS_COUNT; i++)
+        for (uint32_t i = 0u; i < (uint32_t)INPUT_AXIS_COUNT; i++)
         {
             g_app_input.axis[i] = 0;
         }
-        for (uint32_t i = 0u; i < (uint32_t)APP_SW_COUNT; i++)
+        for (uint32_t i = 0u; i < (uint32_t)INPUT_SW_COUNT; i++)
         {
             g_app_input.sw[i] = RC_SW_UP;
         }
         return;
     }
 
-    for (uint32_t i = 0u; i < (uint32_t)APP_AXIS_COUNT; i++)
+    for (uint32_t i = 0u; i < (uint32_t)INPUT_AXIS_COUNT; i++)
     {
-        g_app_input.axis[i] = app_input_map_axis(&g_app_config.input.axis[i], rc);
+        g_app_input.axis[i] = app_input_map_axis(&g_config.input.axis[i], rc);
     }
-    for (uint32_t i = 0u; i < (uint32_t)APP_SW_COUNT; i++)
+    for (uint32_t i = 0u; i < (uint32_t)INPUT_SW_COUNT; i++)
     {
-        g_app_input.sw[i] = app_input_map_switch(&g_app_config.input.sw[i], rc);
+        g_app_input.sw[i] = app_input_map_switch(&g_config.input.sw[i], rc);
     }
 }
 
@@ -88,7 +88,7 @@ const app_input_t *app_input_get(void)
 
 int16_t app_input_axis(app_axis_e axis)
 {
-    if ((uint32_t)axis >= (uint32_t)APP_AXIS_COUNT)
+    if ((uint32_t)axis >= (uint32_t)INPUT_AXIS_COUNT)
     {
         return 0;
     }
@@ -97,7 +97,7 @@ int16_t app_input_axis(app_axis_e axis)
 
 uint8_t app_input_switch(app_switch_e sw)
 {
-    if ((uint32_t)sw >= (uint32_t)APP_SW_COUNT)
+    if ((uint32_t)sw >= (uint32_t)INPUT_SW_COUNT)
     {
         return RC_SW_UP;
     }

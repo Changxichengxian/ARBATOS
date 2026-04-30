@@ -26,7 +26,7 @@
 
 #include "calibrate_task.h"
 #include "detect_task.h"
-#include "app_config.h"
+#include "config.h"
 #include "bsp_key.h"
 #include "AHRS.h"
 #include "sdlog.h"
@@ -78,7 +78,7 @@
 
 
 /**
-  * @brief          rotate the gyro, accel and mag, and calculate the zero drift, because sensors have 
+  * @brief          rotate the gyro, accel and mag, and calculate the zero drift, because sensors have
   *                 different install derection.
   * @param[out]     gyro: after plus zero drift and rotate
   * @param[out]     accel: after plus zero drift and rotate
@@ -189,7 +189,7 @@ fp32 mag_offset[3];
 fp32 mag_cali_offset[3];
 
 static uint8_t first_temperate;
-static const imu_config_t *const imu_cfg = &g_app_config.imu;
+static const imu_config_t *const imu_cfg = &g_config.imu;
 static pid_type_def imu_temp_pid;
 
 static const float timing_time = 0.001f;   //tast run time , unit s.任务运行的时间 单位 s
@@ -275,7 +275,7 @@ void INS_task(void const *pvParameters)
     gyro_boot_calibrating = 0;
     gyro_boot_initial_result = gyro_boot_calibrated ? INS_GYRO_BOOT_INIT_SUCCESS : INS_GYRO_BOOT_INIT_FAILED;
 
-    //rotate and zero drift 
+    //rotate and zero drift
     imu_cali_slove(INS_gyro, INS_accel, INS_mag, &bmi088_real_data, &ist8310_real_data);
 
     const fp32 imu_temp_PID[3] = {imu_cfg->temperature_pid.kp, imu_cfg->temperature_pid.ki, imu_cfg->temperature_pid.kd};
@@ -294,7 +294,7 @@ void INS_task(void const *pvParameters)
 
     //set spi frequency
     hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
-    
+
     if (HAL_SPI_Init(&hspi1) != HAL_OK)
     {
         Error_Handler();
@@ -304,7 +304,7 @@ void INS_task(void const *pvParameters)
     SPI1_DMA_init((uint32_t)gyro_dma_tx_buf, (uint32_t)gyro_dma_rx_buf, SPI_DMA_GYRO_LENGHT);
 
     imu_start_dma_flag = 1;
-    
+
     while (1)
     {
         //wait spi DMA tansmit done
@@ -341,7 +341,7 @@ void INS_task(void const *pvParameters)
             ist8310_read_mag(ist8310_real_data.mag);
         }
 
-        //rotate and zero drift 
+        //rotate and zero drift
         imu_cali_slove(INS_gyro, INS_accel, INS_mag, &bmi088_real_data, &ist8310_real_data);
 
 
@@ -445,7 +445,7 @@ void INS_task(void const *pvParameters)
 
 
 /**
-  * @brief          rotate the gyro, accel and mag, and calculate the zero drift, because sensors have 
+  * @brief          rotate the gyro, accel and mag, and calculate the zero drift, because sensors have
   *                 different install derection.
   * @param[out]     gyro: after plus zero drift and rotate
   * @param[out]     accel: after plus zero drift and rotate
@@ -548,7 +548,7 @@ void gyro_offset_calc(fp32 gyro_offset[3], fp32 gyro[3], uint16_t *offset_time_c
   * @brief          calculate gyro zero drift
   * @param[out]     cali_scale:scale, default 1.0
   * @param[out]     cali_offset:zero drift, collect the gyro ouput when in still
-  * @param[out]     time_count: time, when call gyro_offset_calc 
+  * @param[out]     time_count: time, when call gyro_offset_calc
   * @retval         none
   */
 /**
@@ -580,7 +580,7 @@ void INS_cali_gyro(fp32 cali_scale[3], fp32 cali_offset[3], uint16_t *time_count
 /**
   * @brief          get gyro zero drift from flash
   * @param[in]      cali_scale:scale, default 1.0
-  * @param[in]      cali_offset:zero drift, 
+  * @param[in]      cali_offset:zero drift,
   * @retval         none
   */
 /**
@@ -744,7 +744,7 @@ static void imu_cmd_spi_dma(void)
         taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
         return;
     }
-    
+
 
 
 
@@ -778,7 +778,7 @@ void DMA2_Stream2_IRQHandler(void)
             gyro_update_flag |= (1 << IMU_UPDATE_SHFITS);
 
             HAL_GPIO_WritePin(CS1_GYRO_GPIO_Port, CS1_GYRO_Pin, GPIO_PIN_SET);
-            
+
         }
 
         //accel read over
@@ -799,7 +799,7 @@ void DMA2_Stream2_IRQHandler(void)
 
             HAL_GPIO_WritePin(CS1_ACCEL_GPIO_Port, CS1_ACCEL_Pin, GPIO_PIN_SET);
         }
-        
+
         imu_cmd_spi_dma();
 
         if(gyro_update_flag & (1 << IMU_UPDATE_SHFITS))

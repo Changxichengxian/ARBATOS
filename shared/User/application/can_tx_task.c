@@ -13,7 +13,7 @@
 
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
-#include "app_config.h"
+#include "config.h"
 #include "app_watch.h"
 #include "detect_task.h"
 #include "motor_config.h"
@@ -31,7 +31,7 @@ __weak uint8_t can_tx_allow_can1_yaw_override(void);
 
 static bool_t can_tx_allow_chassis(void)
 {
-    const test_mode_e mode = (test_mode_e)g_app_config.test.mode;
+    const test_mode_e mode = (test_mode_e)g_config.test.mode;
     return (mode == TEST_MODE_NONE) || (mode == TEST_MODE_ENTERTAIN) || (mode == TEST_MODE_CHASSIS_ONLY);
 }
 
@@ -39,7 +39,7 @@ static void can_tx_limit_friction_currents(int16_t fric[4])
 {
     for (uint8_t i = 0u; i < 4u; i++)
     {
-        if (g_app_config.shoot.fric_motor_dir[i] == 0)
+        if (g_config.shoot.fric_motor_dir[i] == 0)
         {
             fric[i] = 0;
         }
@@ -91,9 +91,9 @@ void can_tx_task(void const *pvParameters)
     while (1)
     {
         app_watch_task_beat(APP_WATCH_TASK_CAN_TX);
-        const uint16_t period_ms = (g_app_config.chassis.control_period_ms == 0U) ? 1U : g_app_config.chassis.control_period_ms;
+        const uint16_t period_ms = (g_config.chassis.control_period_ms == 0U) ? 1U : g_config.chassis.control_period_ms;
         const bool_t dbus_offline = toe_is_error(DBUS_TOE);
-        const test_mode_e mode = (test_mode_e)g_app_config.test.mode;
+        const test_mode_e mode = (test_mode_e)g_config.test.mode;
         const bool_t allow_friction_offline = (mode == TEST_MODE_ENTERTAIN);
 
         if (dbus_offline)
@@ -127,7 +127,7 @@ void can_tx_task(void const *pvParameters)
             CAN_cmd_rm_group(1u, (uint16_t)CAN_CHASSIS_ALL_ID, 0, 0, 0, 0);
             {
                 const can_tx_rm_item_t can1_items[] = {
-                    {&g_app_config.motor.yaw, yaw},
+                    {&g_config.motor.yaw, yaw},
                 };
                 int16_t can1_200[4] = {0};
                 int16_t can1_1ff[4] = {0};
@@ -185,20 +185,20 @@ void can_tx_task(void const *pvParameters)
 
             {
                 const can_tx_rm_item_t can1_items[] = {
-                    {&g_app_config.motor.chassis[0], chassis[0]},
-                    {&g_app_config.motor.chassis[1], chassis[1]},
-                    {&g_app_config.motor.chassis[2], chassis[2]},
-                    {&g_app_config.motor.chassis[3], chassis[3]},
-                    {&g_app_config.motor.yaw, yaw},
-                    {&g_app_config.motor.yaw_upper, yaw_upper},
-                    {&g_app_config.motor.pitch, pitch},
-                    {&g_app_config.motor.trigger, trigger},
+                    {&g_config.motor.chassis[0], chassis[0]},
+                    {&g_config.motor.chassis[1], chassis[1]},
+                    {&g_config.motor.chassis[2], chassis[2]},
+                    {&g_config.motor.chassis[3], chassis[3]},
+                    {&g_config.motor.yaw, yaw},
+                    {&g_config.motor.yaw_upper, yaw_upper},
+                    {&g_config.motor.pitch, pitch},
+                    {&g_config.motor.trigger, trigger},
                 };
                 const can_tx_rm_item_t can2_items[] = {
-                    {&g_app_config.motor.friction[0], fric[0]},
-                    {&g_app_config.motor.friction[1], fric[1]},
-                    {&g_app_config.motor.friction[2], fric[2]},
-                    {&g_app_config.motor.friction[3], fric[3]},
+                    {&g_config.motor.friction[0], fric[0]},
+                    {&g_config.motor.friction[1], fric[1]},
+                    {&g_config.motor.friction[2], fric[2]},
+                    {&g_config.motor.friction[3], fric[3]},
                 };
 
                 int16_t can1_200[4] = {0};

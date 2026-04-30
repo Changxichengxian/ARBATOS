@@ -30,7 +30,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "app_config.h"
+#include "config.h"
 #include "app_watch.h"
 #include "bsp_buzzer.h"
 #include "bsp_can.h"
@@ -133,7 +133,7 @@ int main(void)
   app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_CAN_FILTER_INIT);
   can_filter_init();
   app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_BUZZER_INIT);
-  buzzer_set_enable(g_app_config.buzzer.enable);
+  buzzer_set_enable(g_config.buzzer.enable);
   app_watch_diag_set_boot_stage(APP_WATCH_BOOT_STAGE_REMOTE_CONTROL_INIT);
   remote_control_init();
 

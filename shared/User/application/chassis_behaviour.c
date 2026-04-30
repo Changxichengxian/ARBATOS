@@ -7,7 +7,7 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-  
+
 
 #include "chassis_behaviour.h"
 #include "cmsis_os.h"
@@ -160,7 +160,7 @@ static void chassis_open_set_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, c
 
 
 
-//highlight, the variable chassis behaviour mode 
+//highlight, the variable chassis behaviour mode
 //留意，这个底盘行为模式变量
 chassis_behaviour_e chassis_behaviour_mode = CHASSIS_ZERO_FORCE;
 
@@ -222,7 +222,7 @@ void chassis_behaviour_mode_set(chassis_move_t *chassis_move_mode)
         return;
     }
 
-    const uint8_t chassis_sw = app_input_switch(APP_SW_CHASSIS_MODE);
+    const uint8_t chassis_sw = app_input_switch(INPUT_SW_CHASSIS_MODE);
     const uint16_t chassis_sw_effective = chassis_get_effective_switch(chassis_sw, toe_is_error(DBUS_TOE) ? 0u : 1u);
 
     // 优先级最高的安全模式：拨杆上档立即停转所有底盘电机
@@ -234,7 +234,7 @@ void chassis_behaviour_mode_set(chassis_move_t *chassis_move_mode)
     }
 
     // chassis-only test mode: ignore gimbal follow and always use yaw stick to rotate chassis
-    if (((test_mode_e)g_app_config.test.mode) == TEST_MODE_CHASSIS_ONLY)
+    if (((test_mode_e)g_config.test.mode) == TEST_MODE_CHASSIS_ONLY)
     {
         chassis_behaviour_mode = CHASSIS_NO_FOLLOW_YAW;
         chassis_move_mode->chassis_mode = CHASSIS_VECTOR_NO_FOLLOW_YAW;
@@ -293,15 +293,15 @@ void chassis_behaviour_mode_set(chassis_move_t *chassis_move_mode)
     //根据行为模式选择一个底盘控制模式
     if (chassis_behaviour_mode == CHASSIS_ZERO_FORCE)
     {
-        chassis_move_mode->chassis_mode = CHASSIS_VECTOR_RAW; 
+        chassis_move_mode->chassis_mode = CHASSIS_VECTOR_RAW;
     }
     else if (chassis_behaviour_mode == CHASSIS_NO_MOVE)
     {
-        chassis_move_mode->chassis_mode = CHASSIS_VECTOR_NO_FOLLOW_YAW; 
+        chassis_move_mode->chassis_mode = CHASSIS_VECTOR_NO_FOLLOW_YAW;
     }
     else if (chassis_behaviour_mode == CHASSIS_INFANTRY_FOLLOW_GIMBAL_YAW)
     {
-        chassis_move_mode->chassis_mode = CHASSIS_VECTOR_FOLLOW_GIMBAL_YAW; 
+        chassis_move_mode->chassis_mode = CHASSIS_VECTOR_FOLLOW_GIMBAL_YAW;
     }
     else if (chassis_behaviour_mode == CHASSIS_SWING)
     {
@@ -806,7 +806,7 @@ static void chassis_engineer_follow_chassis_yaw_control(fp32 *vx_set, fp32 *vy_s
 
     chassis_rc_to_control_vector(vx_set, vy_set, chassis_move_rc_to_vector);
 
-    *angle_set = rad_format(chassis_move_rc_to_vector->chassis_yaw_set - CHASSIS_ANGLE_Z_RC_SEN * app_input_axis(APP_AXIS_CHASSIS_WZ));
+    *angle_set = rad_format(chassis_move_rc_to_vector->chassis_yaw_set - CHASSIS_ANGLE_Z_RC_SEN * app_input_axis(INPUT_AXIS_CHASSIS_WZ));
 }
 
 /**
@@ -836,7 +836,7 @@ static void chassis_no_follow_yaw_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_s
     }
 
     chassis_rc_to_control_vector(vx_set, vy_set, chassis_move_rc_to_vector);
-    *wz_set = -CHASSIS_WZ_RC_SEN * app_input_axis(APP_AXIS_CHASSIS_WZ);
+    *wz_set = -CHASSIS_WZ_RC_SEN * app_input_axis(INPUT_AXIS_CHASSIS_WZ);
 }
 
 /**
@@ -864,8 +864,8 @@ static void chassis_open_set_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, c
         return;
     }
 
-    *vx_set = app_input_axis(APP_AXIS_CHASSIS_X) * CHASSIS_OPEN_RC_SCALE;
-    *vy_set = -app_input_axis(APP_AXIS_CHASSIS_Y) * CHASSIS_OPEN_RC_SCALE;
-    *wz_set = -app_input_axis(APP_AXIS_CHASSIS_WZ) * CHASSIS_OPEN_RC_SCALE;
+    *vx_set = app_input_axis(INPUT_AXIS_CHASSIS_X) * CHASSIS_OPEN_RC_SCALE;
+    *vy_set = -app_input_axis(INPUT_AXIS_CHASSIS_Y) * CHASSIS_OPEN_RC_SCALE;
+    *wz_set = -app_input_axis(INPUT_AXIS_CHASSIS_WZ) * CHASSIS_OPEN_RC_SCALE;
     return;
 }

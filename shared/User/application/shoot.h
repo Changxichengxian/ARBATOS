@@ -17,75 +17,75 @@
 #include "pid.h"
 #include "remote_control.h"
 #include "user_lib.h"
-#include "app_config.h"
+#include "config.h"
 
 
 
 //射击发射开关通道数据
-#define SHOOT_RC_MODE_CHANNEL       (g_app_config.shoot.rc_mode_channel)
+#define SHOOT_RC_MODE_CHANNEL       (g_config.shoot.rc_mode_channel)
 //云台模式使用的开关通道
 
-#define SHOOT_CONTROL_TIME          (g_app_config.shoot.control_period_ms)
+#define SHOOT_CONTROL_TIME          (g_config.shoot.control_period_ms)
 
 // 摩擦轮：CAN2 电流斜坡（不再使用 PWM）
 #define FRIC_MOTOR_NUM               (4u)
-#define SHOOT_FRIC_SPEED_UP_RPM      (g_app_config.shoot.fric_speed_up_rpm)
-#define SHOOT_FRIC_SPEED_DOWN_RPM    (g_app_config.shoot.fric_speed_down_rpm)
-#define SHOOT_FRIC_SPEED_OFF_RPM     (g_app_config.shoot.fric_speed_off_rpm)
-#define SHOOT_FRIC_SPEED_STEP_RPM_S  (g_app_config.shoot.fric_speed_step_rpm_s)
-#define SHOOT_FRIC_READY_RATIO       (g_app_config.shoot.fric_ready_ratio)
-#define SHOOT_FRIC_DIR(i)            (g_app_config.shoot.fric_motor_dir[(i) & 0x03])
+#define SHOOT_FRIC_SPEED_UP_RPM      (g_config.shoot.fric_speed_up_rpm)
+#define SHOOT_FRIC_SPEED_DOWN_RPM    (g_config.shoot.fric_speed_down_rpm)
+#define SHOOT_FRIC_SPEED_OFF_RPM     (g_config.shoot.fric_speed_off_rpm)
+#define SHOOT_FRIC_SPEED_STEP_RPM_S  (g_config.shoot.fric_speed_step_rpm_s)
+#define SHOOT_FRIC_READY_RATIO       (g_config.shoot.fric_ready_ratio)
+#define SHOOT_FRIC_DIR(i)            (g_config.shoot.fric_motor_dir[(i) & 0x03])
 
 //射击摩擦轮激光打开 关闭
-#define SHOOT_ON_KEYBOARD           (g_app_config.shoot.key_on_mask)
-#define SHOOT_OFF_KEYBOARD          (g_app_config.shoot.key_off_mask)
+#define SHOOT_ON_KEYBOARD           (g_config.shoot.key_on_mask)
+#define SHOOT_OFF_KEYBOARD          (g_config.shoot.key_off_mask)
 
 //射击完成后 子弹弹出去后，判断时间，以防误触发
-#define SHOOT_DONE_KEY_OFF_TIME     (g_app_config.shoot.shoot_done_key_off_time_ms)
+#define SHOOT_DONE_KEY_OFF_TIME     (g_config.shoot.shoot_done_key_off_time_ms)
 //鼠标长按判断
-#define PRESS_LONG_TIME             (g_app_config.shoot.press_long_time_ms)
+#define PRESS_LONG_TIME             (g_config.shoot.press_long_time_ms)
 //遥控器射击开关打下档一段时间后 连续发射子弹 用于清单
-#define RC_S_LONG_TIME              (g_app_config.shoot.rc_s_long_time_ms)
+#define RC_S_LONG_TIME              (g_config.shoot.rc_s_long_time_ms)
 //摩擦轮高速 加速 时间
-#define UP_ADD_TIME                 (g_app_config.shoot.up_add_time_ms)
+#define UP_ADD_TIME                 (g_config.shoot.up_add_time_ms)
 //电机反馈码盘值范围
 #define HALF_ECD_RANGE              4096
 #define ECD_RANGE                   8191
 //电机rmp 变化成 旋转速度的比例
-#define MOTOR_RPM_TO_SPEED          (g_app_config.shoot.motor_rpm_to_speed)
-#define MOTOR_ECD_TO_ANGLE          (g_app_config.shoot.motor_ecd_to_angle)
-#define FULL_COUNT                  (g_app_config.shoot.full_count)
+#define MOTOR_RPM_TO_SPEED          (g_config.shoot.motor_rpm_to_speed)
+#define MOTOR_ECD_TO_ANGLE          (g_config.shoot.motor_ecd_to_angle)
+#define FULL_COUNT                  (g_config.shoot.full_count)
 //拨弹速度
-#define TRIGGER_SPEED               (g_app_config.shoot.trigger_speed_single)
-#define CONTINUE_TRIGGER_SPEED      (g_app_config.shoot.trigger_speed_continuous)
-#define READY_TRIGGER_SPEED         (g_app_config.shoot.trigger_speed_ready)
+#define TRIGGER_SPEED               (g_config.shoot.trigger_speed_single)
+#define CONTINUE_TRIGGER_SPEED      (g_config.shoot.trigger_speed_continuous)
+#define READY_TRIGGER_SPEED         (g_config.shoot.trigger_speed_ready)
 
-#define KEY_OFF_JUGUE_TIME          (g_app_config.shoot.key_off_judge_time_ms)
-#define SWITCH_TRIGGER_ON           (g_app_config.shoot.switch_trigger_on)
-#define SWITCH_TRIGGER_OFF          (g_app_config.shoot.switch_trigger_off)
+#define KEY_OFF_JUGUE_TIME          (g_config.shoot.key_off_judge_time_ms)
+#define SWITCH_TRIGGER_ON           (g_config.shoot.switch_trigger_on)
+#define SWITCH_TRIGGER_OFF          (g_config.shoot.switch_trigger_off)
 
 //卡单时间 以及反转时间
-#define BLOCK_TRIGGER_SPEED         (g_app_config.shoot.block_trigger_speed)
-#define BLOCK_TIME                  (g_app_config.shoot.block_time_ms)
-#define REVERSE_TIME                (g_app_config.shoot.reverse_time_ms)
-#define REVERSE_SPEED_LIMIT         (g_app_config.shoot.reverse_speed_limit)
+#define BLOCK_TRIGGER_SPEED         (g_config.shoot.block_trigger_speed)
+#define BLOCK_TIME                  (g_config.shoot.block_time_ms)
+#define REVERSE_TIME                (g_config.shoot.reverse_time_ms)
+#define REVERSE_SPEED_LIMIT         (g_config.shoot.reverse_speed_limit)
 
-#define PI_FOUR                     (g_app_config.shoot.pi_over_four)
-#define PI_TEN                      (g_app_config.shoot.pi_over_ten)
+#define PI_FOUR                     (g_config.shoot.pi_over_four)
+#define PI_TEN                      (g_config.shoot.pi_over_ten)
 
 //拨弹轮电机PID
-#define TRIGGER_ANGLE_PID_KP        (g_app_config.shoot.trigger_angle_pid.kp)
-#define TRIGGER_ANGLE_PID_KI        (g_app_config.shoot.trigger_angle_pid.ki)
-#define TRIGGER_ANGLE_PID_KD        (g_app_config.shoot.trigger_angle_pid.kd)
+#define TRIGGER_ANGLE_PID_KP        (g_config.shoot.trigger_angle_pid.kp)
+#define TRIGGER_ANGLE_PID_KI        (g_config.shoot.trigger_angle_pid.ki)
+#define TRIGGER_ANGLE_PID_KD        (g_config.shoot.trigger_angle_pid.kd)
 
-#define TRIGGER_BULLET_PID_MAX_OUT  (g_app_config.shoot.trigger_bullet_pid_max_out)
-#define TRIGGER_BULLET_PID_MAX_IOUT (g_app_config.shoot.trigger_bullet_pid_max_iout)
+#define TRIGGER_BULLET_PID_MAX_OUT  (g_config.shoot.trigger_bullet_pid_max_out)
+#define TRIGGER_BULLET_PID_MAX_IOUT (g_config.shoot.trigger_bullet_pid_max_iout)
 
-#define TRIGGER_READY_PID_MAX_OUT   (g_app_config.shoot.trigger_ready_pid_max_out)
-#define TRIGGER_READY_PID_MAX_IOUT  (g_app_config.shoot.trigger_ready_pid_max_iout)
+#define TRIGGER_READY_PID_MAX_OUT   (g_config.shoot.trigger_ready_pid_max_out)
+#define TRIGGER_READY_PID_MAX_IOUT  (g_config.shoot.trigger_ready_pid_max_iout)
 
 
-#define SHOOT_HEAT_REMAIN_VALUE     (g_app_config.shoot.heat_remain_value)
+#define SHOOT_HEAT_REMAIN_VALUE     (g_config.shoot.heat_remain_value)
 
 typedef enum
 {

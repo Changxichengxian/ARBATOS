@@ -11,7 +11,7 @@
 
 #include "struct_typedef.h"
 
-#include "app_config.h"
+#include "config.h"
 #include "gimbal_behaviour.h"
 #include "gimbal_task.h"
 

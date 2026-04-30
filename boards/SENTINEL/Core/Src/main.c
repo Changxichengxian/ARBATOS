@@ -30,7 +30,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "app_config.h"
+#include "config.h"
 #include "bsp_buzzer.h"
 #include "bsp_can.h"
 #include "remote_control.h"
@@ -113,7 +113,7 @@ int main(void)
   MX_TIM12_Init();
   /* USER CODE BEGIN 2 */
   can_filter_init();
-  buzzer_set_enable(g_app_config.buzzer.enable);
+  buzzer_set_enable(g_config.buzzer.enable);
   remote_control_init();
 
   /* USER CODE END 2 */

@@ -13,10 +13,10 @@
 
 #include "bsp_adc.h"
 #include "user_lib.h"
-#include "app_config.h"
+#include "config.h"
 #include "sdlog.h"
 
-static const voltage_config_t *const voltage_cfg = &g_app_config.voltage;
+static const voltage_config_t *const voltage_cfg = &g_config.voltage;
 
 
 static fp32 calc_battery_percentage(float voltage);
@@ -59,7 +59,7 @@ static fp32 calc_battery_percentage(float voltage)
     fp32 percentage;
     fp32 voltage_2 = voltage * voltage;
     fp32 voltage_3 = voltage_2 * voltage;
-    
+
     if(voltage < 19.5f)
     {
         percentage = 0.0f;

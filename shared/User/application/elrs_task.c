@@ -16,7 +16,7 @@
 #include "task.h"
 
 #include "detect_task.h"
-#include "app_config.h"
+#include "config.h"
 #include "app_watch.h"
 #include "remote_control.h"
 #include "sdlog.h"
@@ -363,7 +363,7 @@ static void uart1_elrs_decode_rc_channels(const uint8_t *payload, uint8_t payloa
         return;
     }
 
-    const app_input_config_t *cfg = &g_app_config.input;
+    const input_config_t *cfg = &g_config.input;
     int16_t ch_raw[16] = {0};
     for (uint8_t i = 0u; i < 16u; i++)
     {

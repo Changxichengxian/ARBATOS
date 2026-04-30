@@ -868,9 +868,9 @@
           <GroupName>Application/User/INFANTRY</GroupName>
           <Files>
             <File>
-              <FileName>app_config.c</FileName>
+              <FileName>config.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../../../target/INFANTRY/User/application/app_config.c</FilePath>
+              <FilePath>../../../target/INFANTRY/User/application/config.c</FilePath>
             </File>
             <File>
               <FileName>app_input.c</FileName>

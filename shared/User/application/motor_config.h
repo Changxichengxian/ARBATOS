@@ -10,7 +10,7 @@
 #ifndef MOTOR_CONFIG_H
 #define MOTOR_CONFIG_H
 
-#include "app_config.h"
+#include "config.h"
 #include "motor_model_db.h"
 
 static inline const motor_model_db_entry_t *motor_cfg_model_db(motor_model_e model);
@@ -22,7 +22,7 @@ static inline const motor_model_param_t *motor_cfg_model(motor_model_e model)
     {
         return NULL;
     }
-    return &g_app_config.motor.model[model];
+    return &g_motor_config.model[model];
 }
 
 static inline uint16_t motor_cfg_can_id(const motor_node_param_t *node)

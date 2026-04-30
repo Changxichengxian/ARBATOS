@@ -415,7 +415,7 @@ static void pitch_cali_buzzer_update(uint32_t now, bool_t active)
 
     if ((uint32_t)(now - s_ctx.beep_toggle_ms) >= PITCH_CALI_BEEP_PERIOD_MS)
     {
-        buzzer_tone_start_legacy(g_app_config.buzzer.soft_beep_psc, buzzer_legacy_pwm_half());
+        buzzer_tone_start_legacy(g_config.buzzer.soft_beep_psc, buzzer_legacy_pwm_half());
         s_ctx.beep_on = 1u;
         s_ctx.beep_toggle_ms = now;
     }
@@ -502,7 +502,7 @@ static uint32_t crc32_ieee_finish(uint32_t crc)
 
 static fp32 pitch_cali_limit_pitch_current(fp32 current)
 {
-    const fp32 limit = fabsf(g_app_config.gimbal.pitch_current_limit);
+    const fp32 limit = fabsf(g_config.gimbal.pitch_current_limit);
     if (limit <= 0.0f)
     {
         return current;
@@ -520,7 +520,7 @@ static fp32 pitch_cali_limit_pitch_current(fp32 current)
 
 static uint16_t pitch_cali_bullet_count_now(void)
 {
-    const pitch_cali_config_t *cfg = &g_app_config.gimbal.pitch_cali;
+    const pitch_cali_config_t *cfg = &g_config.gimbal.pitch_cali;
     if (cfg->bullet_source == (uint8_t)PITCH_CALI_BULLET_SRC_REFEREE)
     {
         return bullet_remaining_t.projectile_allowance_17mm;
@@ -713,7 +713,7 @@ bool_t pitch_cali_get_comp(fp32 pitch_angle,
         return 0;
     }
 
-    if (g_app_config.gimbal.pitch_cali.enable == 0u)
+    if (g_config.gimbal.pitch_cali.enable == 0u)
     {
         return 0;
     }
@@ -956,7 +956,7 @@ static void pitch_cali_state_reset(void)
 
 static void pitch_cali_prepare_grid(pitch_cali_table_t *tab)
 {
-    const pitch_cali_config_t *cfg = &g_app_config.gimbal.pitch_cali;
+    const pitch_cali_config_t *cfg = &g_config.gimbal.pitch_cali;
     const uint8_t aN_cfg = cfg->angle_points;
     const uint8_t bN_cfg = cfg->bullet_points;
 
@@ -1002,8 +1002,8 @@ static void pitch_cali_prepare_grid(pitch_cali_table_t *tab)
         }
     }
 
-    fp32 amin = g_app_config.gimbal.pitch_soft_limit_down;
-    fp32 amax = g_app_config.gimbal.pitch_soft_limit_up;
+    fp32 amin = g_config.gimbal.pitch_soft_limit_down;
+    fp32 amax = g_config.gimbal.pitch_soft_limit_up;
     if (amax < amin)
     {
         const fp32 t = amax;
@@ -1037,7 +1037,7 @@ static void pitch_cali_prepare_grid(pitch_cali_table_t *tab)
 void pitch_cali_boot_load(void)
 {
     pitch_cali_state_reset();
-    if (g_app_config.gimbal.pitch_cali.enable == 0u)
+    if (g_config.gimbal.pitch_cali.enable == 0u)
     {
         return;
     }
@@ -1080,8 +1080,8 @@ static void pitch_cali_seek_cmd_angle(fp32 angle, const pitch_cali_config_t *cfg
         return;
     }
 
-    fp32 amin = g_app_config.gimbal.pitch_soft_limit_down;
-    fp32 amax = g_app_config.gimbal.pitch_soft_limit_up;
+    fp32 amin = g_config.gimbal.pitch_soft_limit_down;
+    fp32 amax = g_config.gimbal.pitch_soft_limit_up;
     if (amax < amin)
     {
         const fp32 t = amax;
@@ -1089,7 +1089,7 @@ static void pitch_cali_seek_cmd_angle(fp32 angle, const pitch_cali_config_t *cfg
         amin = t;
     }
 
-    const fp32 dt_scale = (fp32)((g_app_config.gimbal.control_period_ms == 0u) ? 1u : g_app_config.gimbal.control_period_ms);
+    const fp32 dt_scale = (fp32)((g_config.gimbal.control_period_ms == 0u) ? 1u : g_config.gimbal.control_period_ms);
     const fp32 err = s_ctx.target_angle - angle;
     s_ctx.cmd_angle += (err * ki * dt_scale * PITCH_CALI_SEEK_SPEEDUP);
     s_ctx.cmd_angle = fp32_constrain(s_ctx.cmd_angle, amin, amax);
@@ -1122,8 +1122,8 @@ static bool_t pitch_cali_try_snap_endpoint_target(fp32 angle, fp32 gyro, const p
         return 0;
     }
 
-    fp32 amin = g_app_config.gimbal.pitch_soft_limit_down;
-    fp32 amax = g_app_config.gimbal.pitch_soft_limit_up;
+    fp32 amin = g_config.gimbal.pitch_soft_limit_down;
+    fp32 amax = g_config.gimbal.pitch_soft_limit_up;
     if (amax < amin)
     {
         const fp32 t = amax;
@@ -1307,7 +1307,7 @@ void pitch_cali_tick_post(const gimbal_control_t *gimbal, gimbal_behaviour_e beh
         return;
     }
 
-    const pitch_cali_config_t *cfg = &g_app_config.gimbal.pitch_cali;
+    const pitch_cali_config_t *cfg = &g_config.gimbal.pitch_cali;
     const uint32_t now = bsp_time_get_tick_ms();
 
     const fp32 angle = gimbal->gimbal_pitch_motor.angle;
@@ -1329,9 +1329,9 @@ void pitch_cali_tick_post(const gimbal_control_t *gimbal, gimbal_behaviour_e beh
         const uint16_t bullet_now = pitch_cali_bullet_count_now();
         if (!pitch_cali_bullet_ready(bullet_now, s_ctx.target_bullet))
         {
-            const fp32 hold = (g_app_config.gimbal.init_pitch_set);
-            fp32 amin = g_app_config.gimbal.pitch_soft_limit_down;
-            fp32 amax = g_app_config.gimbal.pitch_soft_limit_up;
+            const fp32 hold = (g_config.gimbal.init_pitch_set);
+            fp32 amin = g_config.gimbal.pitch_soft_limit_down;
+            fp32 amax = g_config.gimbal.pitch_soft_limit_up;
             if (amax < amin)
             {
                 const fp32 t = amax;

@@ -22,7 +22,7 @@ static inline const motor_model_param_t *motor_cfg_model(motor_model_e model)
     {
         return NULL;
     }
-    return &g_config.motor.model[model];
+    return &g_motor_config.model[model];
 }
 
 static inline uint16_t motor_cfg_can_id(const motor_node_param_t *node)

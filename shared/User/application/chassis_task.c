@@ -141,7 +141,7 @@ static fp32 chassis_wz_kf_step(fp32 wz_wheel, bool_t imu_valid, fp32 wz_imu)
 
 static bool_t test_mode_allow_chassis(void)
 {
-    test_mode_e mode = (test_mode_e)g_app_config.test.mode;
+    test_mode_e mode = (test_mode_e)g_config.test.mode;
     return (mode == TEST_MODE_NONE) || (mode == TEST_MODE_ENTERTAIN) || (mode == TEST_MODE_CHASSIS_ONLY);
 }
 
@@ -195,18 +195,18 @@ void chassis_mode_change_control_transit(chassis_move_t *chassis_move_transit);
 static void chassis_feedback_update(chassis_move_t *chassis_move_update);
 /**
   * @brief          set chassis control set-point, three movement control value is set by "chassis_behaviour_control_set".
-  *                 
+  *
   * @param[out]     chassis_move_update: "chassis_move" valiable point
   * @retval         none
   */
 /**
-  * @brief          
+  * @brief
   * @param[out]     chassis_move_update:"chassis_move"变量指针.
   * @retval         none
   */
 static void chassis_set_contorl(chassis_move_t *chassis_move_control);
 /**
-  * @brief          control loop, according to control set-point, calculate motor current, 
+  * @brief          control loop, according to control set-point, calculate motor current,
   *                 motor current will be sentto motor
   * @param[out]     chassis_move_control_loop: "chassis_move" valiable point
   * @retval         none
@@ -325,7 +325,7 @@ void chassis_tune_set_motor_speed_pid(const pid_param_t *pid, bool_t clear_state
 }
 
 /**
-  * @brief          chassis task, osDelay CHASSIS_CONTROL_TIME_MS (2ms) 
+  * @brief          chassis task, osDelay CHASSIS_CONTROL_TIME_MS (2ms)
   * @param[in]      pvParameters: null
   * @retval         none
   */
@@ -336,7 +336,7 @@ void chassis_tune_set_motor_speed_pid(const pid_param_t *pid, bool_t clear_state
   */
 void chassis_task(void const *pvParameters)
 {
-    //wait a time 
+    //wait a time
     //空闲一段时间
     vTaskDelay(CHASSIS_TASK_INIT_TIME);
     //chassis init
@@ -390,7 +390,7 @@ void chassis_task(void const *pvParameters)
             continue;
         }
 
-        //set chassis control set-point 
+        //set chassis control set-point
         //底盘控制量设置
         chassis_set_contorl(&chassis_move);
         //chassis control pid calculate
@@ -415,7 +415,7 @@ void chassis_task(void const *pvParameters)
             for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
             {
                 const int16_t current = chassis_move.motor_chassis[i].give_current;
-                chassis_current_cmd[i] = motor_cfg_limit_current_node(&g_app_config.motor.chassis[i], current);
+                chassis_current_cmd[i] = motor_cfg_limit_current_node(&g_config.motor.chassis[i], current);
             }
         }
 
@@ -474,16 +474,16 @@ static void chassis_init(chassis_move_t *chassis_move_init)
     //chassis motor speed PID
     //底盘速度环pid值
     const fp32 motor_speed_pid[3] = {M3505_MOTOR_SPEED_PID_KP, M3505_MOTOR_SPEED_PID_KI, M3505_MOTOR_SPEED_PID_KD};
-    
+
     //chassis angle PID
     //底盘角度pid值
     const fp32 chassis_yaw_pid[3] = {CHASSIS_FOLLOW_GIMBAL_PID_KP, CHASSIS_FOLLOW_GIMBAL_PID_KI, CHASSIS_FOLLOW_GIMBAL_PID_KD};
-    
+
     const fp32 chassis_x_order_filter[1] = {CHASSIS_ACCEL_X_NUM};
     const fp32 chassis_y_order_filter[1] = {CHASSIS_ACCEL_Y_NUM};
     uint8_t i;
 
-    //in beginning， chassis mode is raw 
+    //in beginning， chassis mode is raw
     //底盘开机状态为原始
     chassis_move_init->chassis_mode = CHASSIS_VECTOR_RAW;
     //get remote control point
@@ -497,9 +497,9 @@ static void chassis_init(chassis_move_t *chassis_move_init)
     //获取云台电机数据指针
     chassis_move_init->chassis_yaw_motor = get_yaw_motor_point();
     chassis_move_init->chassis_pitch_motor = get_pitch_motor_point();
-    
+
     //get chassis motor data point,  initialize motor speed PID
-    //获取底盘电机数据指针，初始化PID 
+    //获取底盘电机数据指针，初始化PID
     for (i = 0; i < 4; i++)
     {
         chassis_move_init->motor_chassis[i].chassis_motor_measure = get_chassis_motor_measure_point(i);
@@ -508,7 +508,7 @@ static void chassis_init(chassis_move_t *chassis_move_init)
     //initialize angle PID
     //初始化角度PID
     PID_init(&chassis_move_init->chassis_angle_pid, PID_POSITION, chassis_yaw_pid, CHASSIS_FOLLOW_GIMBAL_PID_MAX_OUT, CHASSIS_FOLLOW_GIMBAL_PID_MAX_IOUT);
-    
+
     //first order low-pass filter  replace ramp function
     //用一阶滤波代替斜波函数生成
     first_order_filter_init(&chassis_move_init->chassis_cmd_slow_set_vx, CHASSIS_CONTROL_TIME, chassis_x_order_filter);
@@ -630,7 +630,7 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update)
     {
         //update motor speed, accel is differential of speed PID
         //更新电机速度，加速度是速度的PID微分
-        chassis_move_update->motor_chassis[i].speed = CHASSIS_MOTOR_RPM_TO_VECTOR_SEN * chassis_move_update->motor_chassis[i].chassis_motor_measure->speed_rpm * g_app_config.chassis.motor_dir[i];
+        chassis_move_update->motor_chassis[i].speed = CHASSIS_MOTOR_RPM_TO_VECTOR_SEN * chassis_move_update->motor_chassis[i].chassis_motor_measure->speed_rpm * g_config.chassis.motor_dir[i];
         chassis_move_update->motor_chassis[i].accel = chassis_move_update->motor_speed_pid[i].Dbuf[0] * CHASSIS_CONTROL_FREQUENCE;
     }
 
@@ -638,14 +638,14 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update)
     // - vx: forward is positive
     // - vy: left is positive
     // - wz: CCW is positive
-    // NOTE: keep consistent with chassis_vector_to_mecanum_wheel_speed() and g_app_config.chassis.wheel_type.
+    // NOTE: keep consistent with chassis_vector_to_mecanum_wheel_speed() and g_config.chassis.wheel_type.
     const fp32 w0 = chassis_move_update->motor_chassis[0].speed;
     const fp32 w1 = chassis_move_update->motor_chassis[1].speed;
     const fp32 w2 = chassis_move_update->motor_chassis[2].speed;
     const fp32 w3 = chassis_move_update->motor_chassis[3].speed;
 
     fp32 wz_wheel = 0.0f;
-    if (g_app_config.chassis.wheel_type == (uint8_t)CHASSIS_WHEEL_TYPE_XDRIVE)
+    if (g_config.chassis.wheel_type == (uint8_t)CHASSIS_WHEEL_TYPE_XDRIVE)
     {
         // X-drive (45° omni) inverse kinematics:
         // w0 = +vx +vy +yaw, w1 = -vx +vy +yaw, w2 = -vx -vy +yaw, w3 = +vx -vy +yaw
@@ -667,7 +667,7 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update)
     // - In chassis-only test mode, keep wheel odom only to avoid relying on IMU/gimbal signals.
     bool_t imu_valid = 0;
     fp32 wz_imu = 0.0f;
-    if (((test_mode_e)g_app_config.test.mode) != TEST_MODE_CHASSIS_ONLY &&
+    if (((test_mode_e)g_config.test.mode) != TEST_MODE_CHASSIS_ONLY &&
         !toe_is_error(RM_IMU_TOE) &&
         !toe_is_error(YAW_GIMBAL_MOTOR_TOE) &&
         chassis_INT_gyro_point != NULL &&
@@ -682,7 +682,7 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update)
 
     //calculate chassis euler angle, if chassis add a new gyro sensor,please change this code
     //计算底盘姿态角度；chassis_only 测试模式下不使用 IMU/编码器姿态，保持为 0 以简化仅速度控制
-    if (((test_mode_e)g_app_config.test.mode) == TEST_MODE_CHASSIS_ONLY)
+    if (((test_mode_e)g_config.test.mode) == TEST_MODE_CHASSIS_ONLY)
     {
         chassis_move_update->chassis_yaw = 0.0f;
         chassis_move_update->chassis_pitch = 0.0f;
@@ -724,7 +724,7 @@ static fp32 chassis_follow_yaw_pd_calc(pid_type_def *pid, fp32 yaw_error, fp32 c
 }
 /**
   * @brief          accroding to the channel value of remote control, calculate chassis vertical and horizontal speed set-point
-  *                 
+  *
   * @param[out]     vx_set: vertical speed set-point
   * @param[out]     vy_set: horizontal speed set-point
   * @param[out]     chassis_move_rc_to_vector: "chassis_move" valiable point
@@ -732,7 +732,7 @@ static fp32 chassis_follow_yaw_pd_calc(pid_type_def *pid, fp32 yaw_error, fp32 c
   */
 /**
   * @brief          根据遥控器通道值，计算纵向和横移速度
-  *                 
+  *
   * @param[out]     vx_set: 纵向速度指针
   * @param[out]     vy_set: 横向速度指针
   * @param[out]     chassis_move_rc_to_vector: "chassis_move" 变量指针
@@ -744,13 +744,13 @@ void chassis_rc_to_control_vector(fp32 *vx_set, fp32 *vy_set, chassis_move_t *ch
     {
         return;
     }
-    
+
     int16_t vx_channel, vy_channel;
     fp32 vx_set_channel, vy_set_channel;
     //deadline, because some remote control need be calibrated,  the value of rocker is not zero in middle place,
     //死区限制，因为遥控器可能存在差异 摇杆在中间，其值不为0
-    rc_deadband_limit(app_input_axis(APP_AXIS_CHASSIS_X), vx_channel, CHASSIS_RC_DEADLINE);
-    rc_deadband_limit(app_input_axis(APP_AXIS_CHASSIS_Y), vy_channel, CHASSIS_RC_DEADLINE);
+    rc_deadband_limit(app_input_axis(INPUT_AXIS_CHASSIS_X), vx_channel, CHASSIS_RC_DEADLINE);
+    rc_deadband_limit(app_input_axis(INPUT_AXIS_CHASSIS_Y), vy_channel, CHASSIS_RC_DEADLINE);
 
     vx_set_channel = vx_channel * CHASSIS_VX_RC_SEN;
     // vy: positive means left, negative means right.
@@ -826,7 +826,7 @@ static void chassis_set_contorl(chassis_move_t *chassis_move_control)
         fp32 yaw_frame = yaw_relative_meas;
         fp32 sin_yaw = 0.0f, cos_yaw = 0.0f;
         (void)gimbal_turnaround_get_frame_yaw_relative(&yaw_frame);
-        //rotate chassis direction, make sure vertial direction follow gimbal 
+        //rotate chassis direction, make sure vertial direction follow gimbal
         //旋转控制底盘速度方向，保证前进方向是云台方向，有利于运动平稳
         sin_yaw = arm_sin_f32(-yaw_frame);
         cos_yaw = arm_cos_f32(-yaw_frame);
@@ -894,7 +894,7 @@ static void chassis_set_contorl(chassis_move_t *chassis_move_control)
 }
 
 /**
-  * @brief          four wheels speed is calculated by three param (mecanum / X-drive). 
+  * @brief          four wheels speed is calculated by three param (mecanum / X-drive).
   * @param[in]      vx_set: vertial speed
   * @param[in]      vy_set: horizontal speed
   * @param[in]      wz_set: rotation speed
@@ -915,7 +915,7 @@ static void chassis_vector_to_mecanum_wheel_speed(const fp32 vx_set, const fp32 
     // Robot frame: vx forward +, vy left +, wz CCW +
     const fp32 yaw_term = MOTOR_DISTANCE_TO_CENTER * wz_set;
 
-    if (g_app_config.chassis.wheel_type == (uint8_t)CHASSIS_WHEEL_TYPE_XDRIVE)
+    if (g_config.chassis.wheel_type == (uint8_t)CHASSIS_WHEEL_TYPE_XDRIVE)
     {
         // X-drive (45° omni): rotate uses all wheels same direction.
         wheel_speed[0] = vx_set + vy_set + yaw_term;  // LF
@@ -935,7 +935,7 @@ static void chassis_vector_to_mecanum_wheel_speed(const fp32 vx_set, const fp32 
     // motor_dir is applied in feedback and current output paths
 }
 /**
-  * @brief          control loop, according to control set-point, calculate motor current, 
+  * @brief          control loop, according to control set-point, calculate motor current,
   *                 motor current will be sentto motor
   * @param[out]     chassis_move_control_loop: "chassis_move" valiable point
   * @retval         none
@@ -961,10 +961,10 @@ static void chassis_control_loop(chassis_move_t *chassis_move_control_loop)
 
     if (chassis_move_control_loop->chassis_mode == CHASSIS_VECTOR_RAW)
     {
-        
+
         for (i = 0; i < 4; i++)
         {
-            chassis_move_control_loop->motor_chassis[i].give_current = (int16_t)(wheel_speed[i] * g_app_config.chassis.motor_dir[i]);
+            chassis_move_control_loop->motor_chassis[i].give_current = (int16_t)(wheel_speed[i] * g_config.chassis.motor_dir[i]);
         }
         //in raw mode, derectly return
         //raw控制直接返回
@@ -1007,6 +1007,6 @@ static void chassis_control_loop(chassis_move_t *chassis_move_control_loop)
     //赋值电流值
     for (i = 0; i < 4; i++)
     {
-        chassis_move_control_loop->motor_chassis[i].give_current = (int16_t)(chassis_move_control_loop->motor_speed_pid[i].out * g_app_config.chassis.motor_dir[i]);
+        chassis_move_control_loop->motor_chassis[i].give_current = (int16_t)(chassis_move_control_loop->motor_speed_pid[i].out * g_config.chassis.motor_dir[i]);
     }
 }

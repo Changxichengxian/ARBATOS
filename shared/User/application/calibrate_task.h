@@ -13,18 +13,18 @@
 #define CALIBRATE_TASK_H
 
 #include "struct_typedef.h"
-#include "app_config.h"
+#include "config.h"
 #include "bsp_buzzer.h"
 
 //when imu is calibrating ,buzzer set frequency and strength. 当imu在校准,蜂鸣器的设置频率和强度
-#define imu_start_buzzer()          buzzer_tone_start_legacy(g_app_config.buzzer.imu_cali_psc, g_app_config.buzzer.imu_cali_pwm)
+#define imu_start_buzzer()          buzzer_tone_start_legacy(g_config.buzzer.imu_cali_psc, g_config.buzzer.imu_cali_pwm)
 //when gimbal is calibrating ,buzzer set frequency and strength.当云台在校准,蜂鸣器的设置频率和强度
-#define gimbal_start_buzzer()       buzzer_tone_start_legacy(g_app_config.buzzer.gimbal_cali_psc, g_app_config.buzzer.gimbal_cali_pwm)
+#define gimbal_start_buzzer()       buzzer_tone_start_legacy(g_config.buzzer.gimbal_cali_psc, g_config.buzzer.gimbal_cali_pwm)
 #define cali_buzzer_off()           buzzer_tone_stop()            //buzzer off，关闭蜂鸣器
 
 
 //get stm32 chip temperature, to calc imu control temperature.获取stm32片内温度，计算imu的控制温度
-#define cali_get_mcu_temperature()  get_temprate()      
+#define cali_get_mcu_temperature()  get_temprate()
 
 
 
@@ -55,24 +55,24 @@
 
 #define CALI_SENSOR_HEAD_LEGHT  1
 
-#define SELF_ID                 0                   //ID 
+#define SELF_ID                 0                   //ID
 #define FIRMWARE_VERSION        12345               //handware version.
 #define CALIED_FLAG             0x55                // means it has been calibrated
 //you have 20 seconds to calibrate by remote control. 有20s可以用遥控器进行校准
 #define CALIBRATE_END_TIME          20000
 //when 10 second, buzzer frequency change to high frequency of gimbal calibration.当10s的时候,蜂鸣器切成高频声音
-#define RC_CALI_BUZZER_MIDDLE_TIME  (g_app_config.buzzer.rc_cali_middle_time_ms)
+#define RC_CALI_BUZZER_MIDDLE_TIME  (g_config.buzzer.rc_cali_middle_time_ms)
 //in the beginning, buzzer frequency change to low frequency of imu calibration.当开始校准的时候,蜂鸣器切成低频声音
-#define RC_CALI_BUZZER_START_TIME   (g_app_config.buzzer.rc_cali_start_time_ms)
+#define RC_CALI_BUZZER_START_TIME   (g_config.buzzer.rc_cali_start_time_ms)
 
 
 #define rc_cali_buzzer_middle_on()  gimbal_start_buzzer()
 #define rc_cali_buzzer_start_on()   imu_start_buzzer()
-#define RC_CMD_LONG_TIME            (g_app_config.buzzer.rc_cmd_long_time_ms)    
+#define RC_CMD_LONG_TIME            (g_config.buzzer.rc_cmd_long_time_ms)
 
-#define RCCALI_BUZZER_CYCLE_TIME    (g_app_config.buzzer.rc_cali_cycle_time_ms)        
-#define RC_CALI_BUZZER_PAUSE_TIME   (g_app_config.buzzer.rc_cali_pause_time_ms)       
-#define RC_CALI_VALUE_HOLE          600     //remote control threshold, the max value of remote control channel is 660. 
+#define RCCALI_BUZZER_CYCLE_TIME    (g_config.buzzer.rc_cali_cycle_time_ms)
+#define RC_CALI_BUZZER_PAUSE_TIME   (g_config.buzzer.rc_cali_pause_time_ms)
+#define RC_CALI_VALUE_HOLE          600     //remote control threshold, the max value of remote control channel is 660.
 
 
 #define GYRO_CALIBRATE_TIME         20000   //gyro calibrate time,陀螺仪校准时间
@@ -153,12 +153,12 @@ extern int8_t get_control_temperature(void);
 
 /**
   * @brief          get latitude, default 22.0f
-  * @param[out]     latitude: the point to fp32 
+  * @param[out]     latitude: the point to fp32
   * @retval         none
   */
 /**
   * @brief          获取纬度,默认22.0f
-  * @param[out]     latitude:fp32指针 
+  * @param[out]     latitude:fp32指针
   * @retval         none
   */
 extern void get_flash_latitude(float *latitude);

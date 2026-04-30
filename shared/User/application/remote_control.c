@@ -15,7 +15,7 @@
 
 #include <string.h>
 
-#include "app_config.h"
+#include "config.h"
 #include "app_input.h"
 #include "bsp_key.h"
 
@@ -48,7 +48,7 @@ static int16_t RC_abs(int16_t value);
   */
 static void sbus_to_rc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl);
 
-//remote control data 
+//remote control data
 //遥控器控制变量
 RC_ctrl_t rc_ctrl;
 
@@ -273,7 +273,7 @@ static void manual_input_apply_board_key(RC_ctrl_t *rc)
         return;
     }
 
-    const uint16_t mask = g_app_config.manual_input.board_key_key_mask;
+    const uint16_t mask = g_config.manual_input.board_key_key_mask;
     if (mask == 0u)
     {
         return;
@@ -346,7 +346,7 @@ static void manual_input_commit_output(const RC_ctrl_t *out, uint8_t active_src)
 
 static void manual_input_update_output(void)
 {
-    const manual_input_config_t *cfg = &g_app_config.manual_input;
+    const manual_input_config_t *cfg = &g_config.manual_input;
     const TickType_t now_tick = xTaskGetTickCount();
     const TickType_t timeout_tick = (cfg->source_timeout_ms == 0u) ? 0u : pdMS_TO_TICKS(cfg->source_timeout_ms);
     const uint8_t latest = manual_input_pick_latest(now_tick, timeout_tick);

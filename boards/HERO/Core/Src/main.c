@@ -37,7 +37,7 @@
 #include "bsp_delay.h"
 #include "bsp_buzzer.h"
 #include "bsp_usart.h"
-#include "app_config.h"
+#include "config.h"
 #include "remote_control.h"
 
 #include "calibrate_task.h"
@@ -140,10 +140,10 @@ int main(void)
     can_filter_init();
     delay_init();
     cali_param_init();
-    // Apply runtime config for BSP modules (BSP must not depend on g_app_config).
-    buzzer_set_enable(g_app_config.buzzer.enable);
-    buzzer_pcm_set_carrier_min_hz(g_app_config.buzzer.pcm.carrier_min_hz);
-    buzzer_pcm_set_stream_gain_q8(g_app_config.buzzer.pcm.gain_q8);
+    // Apply runtime config for BSP modules (BSP must not depend on g_config).
+    buzzer_set_enable(g_config.buzzer.enable);
+    buzzer_pcm_set_carrier_min_hz(g_config.buzzer.pcm.carrier_min_hz);
+    buzzer_pcm_set_stream_gain_q8(g_config.buzzer.pcm.gain_q8);
     remote_control_init();
     usart1_tx_dma_init();
   /* USER CODE END 2 */

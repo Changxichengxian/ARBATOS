@@ -91,7 +91,7 @@ static uint16_t shoot_u16_add_sat(uint16_t value, uint16_t add_ms, uint16_t max_
 
 static uint16_t shoot_get_raw_switch(void)
 {
-    uint16_t raw_sw = (uint16_t)app_input_switch(APP_SW_SHOOT_MODE);
+    uint16_t raw_sw = (uint16_t)app_input_switch(INPUT_SW_SHOOT_MODE);
 
     if (remote_control_get_active_source() != MANUAL_INPUT_SRC_IMAGE)
     {
@@ -105,7 +105,7 @@ static uint16_t shoot_get_raw_switch(void)
         return raw_sw;
     }
 
-    raw_sw = (uint16_t)app_input_switch(APP_SW_CHASSIS_MODE);
+    raw_sw = (uint16_t)app_input_switch(INPUT_SW_CHASSIS_MODE);
     return switch_is_up(raw_sw) ? (uint16_t)RC_SW_UP : (uint16_t)RC_SW_DOWN;
 }
 
@@ -163,7 +163,7 @@ const shoot_control_t *get_shoot_control_point(void)
 
 static test_mode_e shoot_test_mode(void)
 {
-    return (test_mode_e)g_app_config.test.mode;
+    return (test_mode_e)g_config.test.mode;
 }
 
 static bool_t shoot_allow_fric(test_mode_e mode)
@@ -178,8 +178,8 @@ static bool_t shoot_allow_trigger(test_mode_e mode)
 
 // 娱乐模式：使用射击模式拨杆（通常为左侧拨杆）控制蜂鸣器音乐。
 // - 上：停止播放
-// - 中：循环播放 g_app_config.buzzer.pcm.mid_file
-// - 下：循环播放 g_app_config.buzzer.pcm.down_file
+// - 中：循环播放 g_config.buzzer.pcm.mid_file
+// - 下：循环播放 g_config.buzzer.pcm.down_file
 #define SHOOT_ENTERTAIN_PATH_MAX 64u
 
 static int shoot_entertain_build_music_path(char *out, uint32_t out_size, const char *name_or_path)
@@ -237,7 +237,7 @@ static void shoot_entertain_music_control(test_mode_e mode)
     last_mode_entertain = 1u;
 
     const uint16_t shoot_sw = shoot_get_effective_switch();
-    const buzzer_pcm_config_t *pcm_cfg = &g_app_config.buzzer.pcm;
+    const buzzer_pcm_config_t *pcm_cfg = &g_config.buzzer.pcm;
 
     uint8_t want_key = 0u;
     const char *want_name = NULL;
@@ -398,7 +398,7 @@ void shoot_init(void)
 {
 
     const fp32 Trigger_speed_pid[3] = {TRIGGER_ANGLE_PID_KP, TRIGGER_ANGLE_PID_KI, TRIGGER_ANGLE_PID_KD};
-    const fp32 Fric_speed_pid[3] = {g_app_config.shoot.fric_speed_pid.kp, g_app_config.shoot.fric_speed_pid.ki, g_app_config.shoot.fric_speed_pid.kd};
+    const fp32 Fric_speed_pid[3] = {g_config.shoot.fric_speed_pid.kp, g_config.shoot.fric_speed_pid.ki, g_config.shoot.fric_speed_pid.kd};
     shoot_control.shoot_mode = SHOOT_STOP;
     //遥控器指针
     shoot_control.shoot_rc = get_remote_control_point();
@@ -408,7 +408,7 @@ void shoot_init(void)
     PID_init(&shoot_control.trigger_motor_pid, PID_POSITION, Trigger_speed_pid, TRIGGER_READY_PID_MAX_OUT, TRIGGER_READY_PID_MAX_IOUT);
     for (uint8_t i = 0; i < FRIC_MOTOR_NUM; i++)
     {
-        PID_init(&shoot_control.fric_speed_pid[i], PID_POSITION, Fric_speed_pid, g_app_config.shoot.fric_speed_pid.max_out, g_app_config.shoot.fric_speed_pid.max_iout);
+        PID_init(&shoot_control.fric_speed_pid[i], PID_POSITION, Fric_speed_pid, g_config.shoot.fric_speed_pid.max_out, g_config.shoot.fric_speed_pid.max_iout);
         shoot_control.fric_current_set[i] = 0;
     }
     //更新数据
@@ -575,7 +575,7 @@ int16_t shoot_control_loop(void)
             const fp32 speed_fdb = (m != NULL) ? (fp32)m->speed_rpm : 0.0f;
             const fp32 speed_set = shoot_control.fric_speed_set * (fp32)dir;
             const int16_t current_raw = (int16_t)PID_calc(&shoot_control.fric_speed_pid[i], speed_fdb, speed_set);
-            const int16_t current = motor_cfg_limit_current_node(&g_app_config.motor.friction[i], current_raw);
+            const int16_t current = motor_cfg_limit_current_node(&g_config.motor.friction[i], current_raw);
             shoot_control.fric_current_set[i] = current;
             fric_current_cmd[i] = current;
         }
@@ -660,7 +660,7 @@ static void shoot_set_mode(void)
             shoot_control.shoot_mode = SHOOT_BULLET;
         }
     }
-    
+
 
 
     if(shoot_control.shoot_mode > SHOOT_READY_FRIC)

@@ -12,7 +12,7 @@
 #include "gimbal_behaviour.h"
 #include "arm_math.h"
 #include "bsp_buzzer.h"
-#include "app_config.h"
+#include "config.h"
 #include "app_input.h"
 #include "detect_task.h"
 #include "pitch_cali.h"
@@ -23,13 +23,13 @@
 
 //when gimbal is in calibrating, set buzzer frequency and strenght
 //当云台在校准, 设置蜂鸣器频率和强度
-#define gimbal_warn_buzzer_on() buzzer_tone_start_legacy(g_app_config.buzzer.gimbal_warn_psc, g_app_config.buzzer.gimbal_warn_pwm)
+#define gimbal_warn_buzzer_on() buzzer_tone_start_legacy(g_config.buzzer.gimbal_warn_psc, g_config.buzzer.gimbal_warn_pwm)
 #define gimbal_warn_buzzer_off() buzzer_tone_stop()
 
 #define int_abs(x) ((x) > 0 ? (x) : (-x))
 /**
   * @brief          remote control dealline solve,because the value of rocker is not zero in middle place,
-  * @param          input:the raw channel value 
+  * @param          input:the raw channel value
   * @param          output: the processed channel value
   * @param          deadline
   */
@@ -137,7 +137,7 @@ static void gimbal_init_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimbal
 
 /**
   * @brief          when gimbal behaviour mode is GIMBAL_CALI, the function is called
-  *                 and gimbal control mode is raw mode. gimbal will lift the pitch axis, 
+  *                 and gimbal control mode is raw mode. gimbal will lift the pitch axis,
   *                 and then put down the pitch axis, and rotate yaw axis counterclockwise,
   *                 and rotate yaw axis clockwise.
   * @param[out]     yaw: yaw motor current set, will be sent to CAN bus decretly
@@ -157,7 +157,7 @@ static void gimbal_cali_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimbal
 
 /**
   * @brief          when gimbal behaviour mode is GIMBAL_ANGLE, the function is called
-  *                 and gimbal control mode is encoder angle mode. 
+  *                 and gimbal control mode is encoder angle mode.
   * @param[out]     yaw: yaw axia angle increment, unit rad
   * @param[out]     pitch: pitch axia angle increment,unit rad
   * @param[in]      gimbal_control_set: gimbal data
@@ -174,7 +174,7 @@ static void gimbal_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimba
 
 /**
   * @brief          when gimbal behaviour mode is GIMBAL_MOTIONLESS, the function is called
-  *                 and gimbal control mode is encode mode. 
+  *                 and gimbal control mode is encode mode.
   * @param[out]     yaw: yaw axia angle increment,  unit rad
   * @param[out]     pitch: pitch axia angle increment, unit rad
   * @param[in]      gimbal_control_set: gimbal data
@@ -442,11 +442,11 @@ static void gimbal_behavour_set(gimbal_control_t *gimbal_mode_set)
     }
 
     const bool_t dbus_offline = toe_is_error(DBUS_TOE);
-    const uint8_t gimbal_sw = app_input_switch(APP_SW_GIMBAL_MODE);
+    const uint8_t gimbal_sw = app_input_switch(INPUT_SW_GIMBAL_MODE);
     const bool_t switch_up_safe = switch_is_up(gimbal_sw);
-    const bool_t yaw_only_mode = ((test_mode_e)g_app_config.test.mode) == TEST_MODE_YAW_ONLY;
-    const bool_t yaw_easy_test_mode = ((test_mode_e)g_app_config.test.mode) == TEST_MODE_YAW_EASY_TEST;
-    const bool_t pitch_cali_mode = ((test_mode_e)g_app_config.test.mode) == TEST_MODE_PITCH_CALI;
+    const bool_t yaw_only_mode = ((test_mode_e)g_config.test.mode) == TEST_MODE_YAW_ONLY;
+    const bool_t yaw_easy_test_mode = ((test_mode_e)g_config.test.mode) == TEST_MODE_YAW_EASY_TEST;
+    const bool_t pitch_cali_mode = ((test_mode_e)g_config.test.mode) == TEST_MODE_PITCH_CALI;
 
     // 安全模式最高优先级：遥控上档或离线直接降为零力矩
     if (dbus_offline || switch_up_safe)
@@ -491,11 +491,11 @@ static void gimbal_behavour_set(gimbal_control_t *gimbal_mode_set)
         static uint16_t init_time = 0;
         static uint16_t init_stop_time = 0;
         init_time++;
-        
+
         if ((fabs(gimbal_mode_set->gimbal_yaw_motor.angle - INIT_YAW_SET) < GIMBAL_INIT_ANGLE_ERROR &&
              fabs(gimbal_mode_set->gimbal_pitch_motor.angle - INIT_PITCH_SET) < GIMBAL_INIT_ANGLE_ERROR))
         {
-            
+
             if (init_stop_time < GIMBAL_INIT_STOP_TIME)
             {
                 init_stop_time++;
@@ -503,7 +503,7 @@ static void gimbal_behavour_set(gimbal_control_t *gimbal_mode_set)
         }
         else
         {
-            
+
             if (init_time < GIMBAL_INIT_TIME)
             {
                 init_time++;
@@ -626,7 +626,7 @@ static void gimbal_init_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimbal
 
 /**
   * @brief          when gimbal behaviour mode is GIMBAL_CALI, the function is called
-  *                 and gimbal control mode is raw mode. gimbal will lift the pitch axis, 
+  *                 and gimbal control mode is raw mode. gimbal will lift the pitch axis,
   *                 and then put down the pitch axis, and rotate yaw axis counterclockwise,
   *                 and rotate yaw axis clockwise.
   * @param[out]     yaw: yaw motor current set, will be sent to CAN bus decretly
@@ -698,7 +698,7 @@ static void gimbal_cali_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimbal
 
 /**
   * @brief          when gimbal behaviour mode is GIMBAL_ANGLE, the function is called
-  *                 and gimbal control mode is encoder angle mode. 
+  *                 and gimbal control mode is encoder angle mode.
   * @param[out]     yaw: yaw axia angle increment, unit rad
   * @param[out]     pitch: pitch axia angle increment,unit rad
   * @param[in]      gimbal_control_set: gimbal data
@@ -718,11 +718,11 @@ static void gimbal_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimba
         return;
     }
     static int16_t yaw_channel = 0, pitch_channel = 0;
-    const test_mode_e test_mode = (test_mode_e)g_app_config.test.mode;
+    const test_mode_e test_mode = (test_mode_e)g_config.test.mode;
     const bool_t yaw_test_mode = (test_mode == TEST_MODE_YAW_ONLY) || (test_mode == TEST_MODE_YAW_EASY_TEST);
 
-    rc_deadband_limit(app_input_axis(APP_AXIS_GIMBAL_YAW), yaw_channel, RC_DEADBAND);
-    rc_deadband_limit(app_input_axis(APP_AXIS_GIMBAL_PITCH), pitch_channel, RC_DEADBAND);
+    rc_deadband_limit(app_input_axis(INPUT_AXIS_GIMBAL_YAW), yaw_channel, RC_DEADBAND);
+    rc_deadband_limit(app_input_axis(INPUT_AXIS_GIMBAL_PITCH), pitch_channel, RC_DEADBAND);
 
     const uint16_t key_mask = (gimbal_control_set->gimbal_rc_ctrl != NULL) ? gimbal_control_set->gimbal_rc_ctrl->key.v : 0u;
     const uint8_t turn_key_down = ((key_mask & TURN_KEYBOARD) != 0u) ? 1u : 0u;
@@ -797,7 +797,7 @@ static void gimbal_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimba
 
 /**
   * @brief          when gimbal behaviour mode is GIMBAL_MOTIONLESS, the function is called
-  *                 and gimbal control mode is encode mode. 
+  *                 and gimbal control mode is encode mode.
   * @param[out]     yaw: yaw axia angle increment,  unit rad
   * @param[out]     pitch: pitch axia angle increment, unit rad
   * @param[in]      gimbal_control_set: gimbal data
