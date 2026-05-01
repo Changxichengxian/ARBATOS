@@ -7,11 +7,12 @@
 - A 板相关说明
 
 当前已经归到板层的实现：
-- `User/application/INS_task.c`
-- `User/bsp/boards/bsp_rc_port.c`
-- `User/bsp/boards/bsp_referee_port.c`
-- `User/bsp/boards/bsp_usart.c`
-- `User/components/support/fatfs/diskio.c`
+- `app/INS_task.c`
+- `bsp/bsp_rc_port.c`
+- `bsp/bsp_referee_port.c`
+- `bsp/bsp_usart.c`
+- `devices/mpu6500.*`
+- `support/fatfs/diskio.c`
 
 这里不再承担的内容：
 - `INFANTRY`、`SENTINEL`、`CARRIER` 这些目标项目入口

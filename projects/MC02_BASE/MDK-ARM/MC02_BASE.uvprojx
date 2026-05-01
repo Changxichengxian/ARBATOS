@@ -337,7 +337,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32H723xx,ARM_MATH_CM7,__FPU_USED=1U,__FPU_PRESENT=1U,ARM_MATH_MATRIX_CHECK,ARM_MATH_ROUNDING</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../../../shared/common;../../../target/MC02_BASE/User/application;../User/application;../User/bsp/boards;../User/components/support;../User/components/support/fatfs;../../../shared/bsp/boards;../../../shared/components/devices;../../../shared/components/algorithm;../../../shared/components/controller;../../../shared/components/support;../../../shared/components/support/fatfs;../../../shared/application;../../../shared/application/protocol;../../../shared/components/algorithm/Include</IncludePath>
+              <IncludePath>../Core/Inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../../../shared/common;../../../target/MC02_BASE/User/application;../../../boards/DM_MC02_H7/app;../../../boards/DM_MC02_H7/bsp;../../../boards/DM_MC02_H7/support;../../../boards/DM_MC02_H7/support/fatfs;../../../shared/bsp/boards;../../../shared/components/devices;../../../shared/components/algorithm;../../../shared/components/controller;../../../shared/components/support;../../../shared/components/support/fatfs;../../../shared/application;../../../shared/application/protocol;../../../shared/components/algorithm/Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -394,12 +394,12 @@
             <File>
               <FileName>board_main.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\User\application\board_main.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\app\board_main.c</FilePath>
             </File>
             <File>
               <FileName>board_freertos.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\User\application\board_freertos.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\app\board_freertos.c</FilePath>
             </File>
             <File>
               <FileName>gpio.c</FileName>
@@ -699,37 +699,37 @@
             <File>
               <FileName>INS_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\User\application\INS_task.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\app\INS_task.c</FilePath>
             </File>
             <File>
               <FileName>bsp_uart_dispatch.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\User\bsp\boards\bsp_uart_dispatch.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\bsp_uart_dispatch.c</FilePath>
             </File>
             <File>
               <FileName>bsp_usart.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\User\bsp\boards\bsp_usart.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\bsp_usart.c</FilePath>
             </File>
             <File>
               <FileName>bsp_referee_uart.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\User\bsp\boards\bsp_referee_uart.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\bsp_referee_uart.c</FilePath>
             </File>
             <File>
               <FileName>bsp_rc_port.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\User\bsp\boards\bsp_rc_port.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\bsp_rc_port.c</FilePath>
             </File>
             <File>
               <FileName>bsp_sd_spi_port.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\User\bsp\boards\bsp_sd_spi_port.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\bsp_sd_spi_port.c</FilePath>
             </File>
             <File>
               <FileName>diskio.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\User\components\support\fatfs\diskio.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\support\fatfs\diskio.c</FilePath>
             </File>
             <File>
               <FileName>bsp_bmi088_port.c</FileName>

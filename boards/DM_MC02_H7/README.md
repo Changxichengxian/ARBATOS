@@ -1,22 +1,23 @@
 # DM MC02 H7
 
-`boards/DM_MC02_H7/` 是 H7 板级实验目录，不是当前根快捷方式默认打开的主入口。
+`boards/DM_MC02_H7/` 现在只放 H7 板级适配，不再放完整 Keil/CubeMX 工程。
 
 ## 当前入口
 
-- H7 板级实验入口：`MDK-ARM/MC02_BASE.uvprojx`
-- 根目录 `open_SENTINEL.cmd` 和 `open_CARRIER.cmd` 现在分别打开 `projects/SENTINEL/MDK-ARM/SENTINEL.uvprojx` 和 `projects/CARRIER/MDK-ARM/CARRIER.uvprojx`
+- H7 实验入口：`projects/MC02_BASE/MDK-ARM/MC02_BASE.uvprojx`
+- 根目录可以用 `open_MC02_BASE.cmd` 直接打开。
 
 ## 这一层负责什么
 
-- 板级启动：`boards/DM_MC02_H7/User/application/board_main.c`
-- FreeRTOS 任务挂接：`boards/DM_MC02_H7/User/application/board_freertos.c`
-- 板级 IMU：`boards/DM_MC02_H7/User/application/INS_task.c`
-- H7 板级 CubeMX / Keil 工程：`Core/`、`Drivers/`、`Middlewares/`、`USB_DEVICE/`、`MDK-ARM/`
+- 板级启动：`app/board_main.c`
+- FreeRTOS 任务挂接：`app/board_freertos.c`
+- 板级 IMU：`app/INS_task.c`
+- H7 串口、遥控器、裁判系统、SD 卡等板级适配：`bsp/`
+- FatFs 磁盘接口：`support/fatfs/diskio.c`
 
 ## 当前任务创建逻辑
 
-`boards/DM_MC02_H7/User/application/board_freertos.c` 默认创建：
+`app/board_freertos.c` 默认创建：
 
 - `defaultTask`
 - `rc_sbus_task`
@@ -35,8 +36,8 @@
 
 ## 当前状态
 
-- `MDK-ARM/MC02_BASE.uvprojx` 使用 `target/MC02_BASE/User/application/config.c`
+- `projects/MC02_BASE/MDK-ARM/MC02_BASE.uvprojx` 使用 `target/MC02_BASE/User/application/config.c`
 - 配置入口统一是 `config.c` / `config.h`，没有单独的板子配置文件名
 - H7 板级启动、任务挂接和 BMI088 IMU 已有 ARBATOS 自己的实现
 - AUX 口调参、ELRS 和 USB 业务任务在这套 H7 板级入口里还没有默认接上
-- 如果你要看当前能直接打开编译的 `SENTINEL` / `CARRIER` 主入口，去 `projects/`，别看这里
+- 如果要看能直接打开编译的完整工程，去 `projects/`，别看这里

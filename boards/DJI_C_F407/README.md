@@ -14,14 +14,14 @@
 - `HERO`：`open_HERO.cmd` 或 `projects/HERO/MDK-ARM/HERO.uvprojx`
 
 当前已经归到板层的实现：
-- `User/application/INS_task.c`
-- `User/bsp/boards/bsp_rc_port.c`
-- `User/bsp/boards/bsp_bmi088_cfg.h`
-- `User/bsp/boards/bsp_buzzer_cfg.h`
-- `User/bsp/boards/bsp_imu_pwm_cfg.h`
-- `User/bsp/boards/bsp_key_cfg.h`
-- `User/bsp/boards/bsp_rc_cfg.h`
-- `User/components/support/fatfs/diskio.c`
+- `app/INS_task.c`
+- `bsp/bsp_rc_port.c`
+- `bsp/bsp_bmi088_cfg.h`
+- `bsp/bsp_buzzer_cfg.h`
+- `bsp/bsp_imu_pwm_cfg.h`
+- `bsp/bsp_key_cfg.h`
+- `bsp/bsp_rc_cfg.h`
+- `support/fatfs/diskio.c`
 
 边界约定：
 - `boards/` 只放硬件板

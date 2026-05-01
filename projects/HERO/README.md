@@ -22,8 +22,8 @@
 - `Drivers/`、`Middlewares/`：HAL / CMSIS / FreeRTOS / USB 组件
 - `MDK-ARM/`：Keil 工程
 - `target/HERO/User/application/`：HERO 目标配置和健康监测，包含 `config.c`、`config.h`、`detect_task.c`
-- `boards/DJI_C_F407/User/application/INS_task.c`：C 板 IMU 任务
-- `boards/DJI_C_F407/User/bsp/boards/`：C 板 BSP 适配
+- `boards/DJI_C_F407/app/INS_task.c`：C 板 IMU 任务
+- `boards/DJI_C_F407/bsp/`：C 板 BSP 适配
 - `shared/application/`：共用任务和控制逻辑，包含 `host_link_task.c`、`chassis_control_task.c`、`gimbal_control_task.c`、`shoot.c`、`sdlog_task.c` 等
 
 ---

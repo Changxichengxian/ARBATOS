@@ -41,9 +41,9 @@
 - [shared/application/arm_task.c](/C:/Users/28111/Desktop/ARBATOS/shared/application/arm_task.c)
   - `arm_task` 里接入 `arm_motion -> unitree_motor_driver`
   - 负责 RS485 4M、34B 发包、78B 回包、CRC32、在线超时
-- [boards/DM_MC02_H7/User/application/board_freertos.c](/C:/Users/28111/Desktop/ARBATOS/boards/DM_MC02_H7/User/application/board_freertos.c)
+- [boards/DM_MC02_H7/app/board_freertos.c](/C:/Users/28111/Desktop/ARBATOS/boards/DM_MC02_H7/app/board_freertos.c)
   - `ARM_FAMILY_UNIFIED` 会起统一 `arm_task`
-- [boards/DM_MC02_H7/User/bsp/boards/bsp_usart.c](/C:/Users/28111/Desktop/ARBATOS/boards/DM_MC02_H7/User/bsp/boards/bsp_usart.c)
+- [boards/DM_MC02_H7/bsp/bsp_usart.c](/C:/Users/28111/Desktop/ARBATOS/boards/DM_MC02_H7/bsp/bsp_usart.c)
   - 新增 RS485 口动态切波特率
 
 ## 当前这版能做什么

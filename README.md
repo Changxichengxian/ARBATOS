@@ -53,7 +53,7 @@ shared/
   跨板、跨车型复用的控制逻辑、驱动封装、算法和通用组件
 
 projects/<TARGET>/
-  可直接打开编译的 Keil 工程入口，车的完整工程放这里
+  可直接打开编译的 Keil 工程入口，车和实验目标的完整工程放这里
 ```
 
 `board` 和 `target` 不是一回事：
@@ -61,7 +61,7 @@ projects/<TARGET>/
 - `board` 是硬件板，负责芯片、外设、引脚和启动。
 - `target` 是具体机器人目标，负责 PID 参数、电机 ID、通道映射和行为策略。
 - `shared` 放能跨机器人复用的代码。
-- `projects` 放最终打开编译的工程入口。`HERO`、`INFANTRY`、`SENTINEL`、`CARRIER` 这类车名目录只放在这里。
+- `projects` 放最终打开编译的工程入口。`HERO`、`INFANTRY`、`SENTINEL`、`CARRIER` 这类车名目录只放在这里，`MC02_BASE` 这种实验入口也放这里。
 
 ### 板级工程
 
@@ -86,7 +86,7 @@ projects/<TARGET>/
 - `config.h`：参数结构、输入映射、遥测信号枚举和轴电机装配结构。
 - `config.c`：默认参数、全局变量 `g_config` 和只读电机型号表 `g_motor_config`。
 - `detect_task.c`：目标设备在线检测。
-- 目标私有补充文件，例如 `INS_task.c`、`host_link_task_stub.c`、机械臂装配表等。
+- 目标私有补充文件，例如 `host_link_task_stub.c`、机械臂装配表等；板级 IMU、串口和外设适配放到 `boards/`。
 
 ### 共享层
 
@@ -255,7 +255,8 @@ ARBATOS/
 |   |-- HERO/
 |   |-- INFANTRY/
 |   |-- SENTINEL/
-|   `-- CARRIER/
+|   |-- CARRIER/
+|   `-- MC02_BASE/
 |-- target/
 |   |-- HERO/User/application/
 |   |-- INFANTRY/User/application/
