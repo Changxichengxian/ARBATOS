@@ -7,6 +7,14 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+/*
+ * 阅读地图：
+ * - 前段：按键判断、关节装配表读取、MIT/Unitree 协议辅助函数。
+ * - 中段：MIT 反馈同步、停止命令、J0 Unitree 状态同步。
+ * - 后段：手动步进各关节，处理 CAN/RS485 反馈，并给 CAN 发送任务补特殊轴。
+ * - 入口：arm_motion_step_manual() 每周期执行手动控制。
+ */
+
 #include "arm_task.h"
 #include "manual_input.h"
 

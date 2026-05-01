@@ -7,6 +7,14 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+/*
+ * 阅读地图：
+ * - 前段：底盘运行快照、日志缓存、调参接口。
+ * - 中段：模式/反馈更新、运动学换算、功率限制前后的电流计算。
+ * - 后段：chassis_control_task() 主循环，处理测试模式、离线保护和日志。
+ * - 输出：电流命令写入 actuator_cmd，由 CAN 发送任务统一发出。
+ */
+
 #include "chassis_control_task.h"
 #include "chassis_behaviour.h"
 #include "gimbal_behaviour.h"
@@ -496,6 +504,7 @@ void chassis_control_task(void const *pvParameters)
 {
     TickType_t last_wake = 0;
 
+    // 函数地图：初始化并等遥控在线；循环里取快照、选模式、算电流、做保护、写日志和延时。
     //wait a time
     vTaskDelay(CHASSIS_TASK_INIT_TIME);
     //chassis init

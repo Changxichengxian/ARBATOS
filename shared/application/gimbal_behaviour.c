@@ -7,6 +7,14 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+/*
+ * 阅读地图：
+ * - 前段：遥控死区、云台行为状态选择，安全档/离线/校准优先。
+ * - 中段：不同云台行为输出 yaw/pitch 控制量。
+ * - 后段：双云台模式复用同一套行为逻辑。
+ * - 被调用方：gimbal_control_task 先决定行为，再进入角度/速度/电流控制。
+ */
+
 
 
 #include "gimbal_behaviour.h"
@@ -441,6 +449,7 @@ static void gimbal_behavour_set(gimbal_control_t *gimbal_mode_set)
         return;
     }
 
+    // 函数地图：安全/测试模式优先；再处理校准和初始化；最后把拨杆状态写成行为模式。
     const gimbal_control_snapshot_t *fast = &gimbal_mode_set->fast;
     const bool_t dbus_offline = fast->dbus_offline;
     const uint8_t gimbal_sw = fast->mode_sw;

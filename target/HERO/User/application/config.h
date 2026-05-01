@@ -7,6 +7,14 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+/*
+ * 阅读地图：
+ * - 前段：PID、测试模式、云台/底盘/射击/功率等配置结构。
+ * - 中段：电机型号、协议、总线、轴装配表。
+ * - 后段：AUX 遥测信号 ID、手动输入源、保留的任务族配置。
+ * - 默认值在 config.c；带 [ID] 的字段可通过 AUX 口临时修改。
+ */
+
 #pragma once
 
 #include <stdint.h>

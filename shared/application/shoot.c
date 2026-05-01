@@ -7,6 +7,14 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+/*
+ * 阅读地图：
+ * - 前段：拨杆/图传输入解释、娱乐模式蜂鸣器音乐、摩擦轮/拨弹输出清零。
+ * - 中段：shoot_control_loop() 串起状态机、反馈更新、PID 电流输出。
+ * - 后段：shoot_set_mode() 决定射击状态，feedback_update() 维护编码器圈数和堵转信息。
+ * - 输出：拨弹电流作为返回值，摩擦轮电流写入 actuator_cmd。
+ */
+
 
 #include "shoot.h"
 
@@ -244,6 +252,7 @@ static int shoot_entertain_build_music_path(char *out, uint32_t out_size, const 
 
 static void shoot_entertain_music_control(test_mode_e mode)
 {
+    // 函数地图：只在娱乐模式接管蜂鸣器；拨杆中/下选择文件；文件变化或超时才重启播放。
     static uint8_t last_mode_entertain = 0u;
     static uint8_t last_want_key = 0u; // 0=停, 1=中, 2=下
     static uint32_t last_start_ms = 0u;
@@ -470,6 +479,7 @@ int16_t shoot_control_loop(void)
 {
     static uint8_t entertain_entered = 0u;
 
+    // 函数地图：先处理娱乐模式；再跑射击状态机；最后分别输出拨弹和摩擦轮电流。
     const test_mode_e test_mode = shoot_test_mode();
     shoot_entertain_music_control(test_mode);
 
@@ -625,6 +635,7 @@ int16_t shoot_control_loop(void)
   */
 static void shoot_set_mode(void)
 {
+    // 函数地图：先按拨杆定大状态，再叠加测试模式、鼠标/微动开关和完成/堵转条件。
     const test_mode_e test_mode = shoot_test_mode();
     const bool_t allow_fric = shoot_allow_fric(test_mode);
     const bool_t allow_trigger = shoot_allow_trigger(test_mode);
@@ -737,6 +748,7 @@ static void shoot_set_mode(void)
   */
 static void shoot_feedback_update(void)
 {
+    // 函数地图：滤波拨弹速度；维护编码器圈数/输出角；读取微动开关；更新长按和发射完成状态。
     static const fp32 fliter_num[3] = {1.725709860247969f, -0.75594777109163436f, 0.030237910843665373f};
     static second_order_filter_type_t speed_filter;
     static bool_t speed_filter_inited = 0;

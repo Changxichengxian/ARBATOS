@@ -7,6 +7,14 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+/*
+ * 阅读地图：
+ * - 前段：云台快照、PID 调参入口、yaw/pitch 电机反馈整理。
+ * - 中段：初始化、校准、模式设置，以及角度/速度目标生成。
+ * - 后段：双环 PID 算电流、离线保护、日志采样。
+ * - 入口：gimbal_control_task() 按任务周期运行，最后把电流写入 actuator_cmd。
+ */
+
 #include "gimbal_control_task.h"
 
 #include "cmsis_os.h"
@@ -612,6 +620,7 @@ static void calc_gimbal_cali(const gimbal_step_cali_t *gimbal_cali, uint16_t *ya
         return;
     }
 
+    // 函数地图：先按安装方向算 yaw 中值/限位，再按 pitch 软限位和编码器范围算 pitch 中值/限位。
     int16_t temp_max_ecd = 0, temp_min_ecd = 0, temp_ecd = 0;
 
     if (YAW_TURN)

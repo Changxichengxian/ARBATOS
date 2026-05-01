@@ -7,6 +7,14 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+/*
+ * 阅读地图：
+ * - 前段：IMU 安装方向、温控、DMA 标志、上电陀螺零偏校准配置。
+ * - 中段：INS_task() 读取传感器、滤波、融合姿态并写日志。
+ * - 后段：SPI DMA/EXTI 回调、加速度可信度评估、Mahony/AHRS 融合辅助函数。
+ * - 对外数据：INS_angle/INS_gyro/INS_accel/INS_quat 供云台、底盘、视觉链路读取。
+ */
+
 
 #include "INS_task.h"
 
@@ -254,6 +262,7 @@ static uint32_t imu_trust_log_tick_ms = 0;
 
 void INS_task(void const *pvParameters)
 {
+    // 函数地图：初始化传感器和零偏；启动 SPI DMA；循环里等数据、温控、融合姿态、写日志。
     //wait a time
     osDelay(imu_cfg->task_init_time_ms);
     while(BMI088_init())
@@ -1014,6 +1023,7 @@ static void imu_get_gravity_dir_from_quat(const fp32 quat[4], fp32 gravity_dir[3
 
 static float imu_calc_acc_trust(const fp32 quat[4], const fp32 acc[3], uint32_t now_ms, imu_acc_debug_t *debug)
 {
+    // 函数地图：检查加速度模长和方向；用异常持续时间把可信度平滑压低或恢复。
     const float acc_ref = gyro_boot_accel_norm_valid ? gyro_boot_accel_norm_ref : GRAVITY_EARTH;
 
     if (debug != NULL)

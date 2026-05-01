@@ -7,6 +7,14 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+/*
+ * 阅读地图：
+ * - 前段：校准表格式、插值/网格工具、蜂鸣器和运行日志。
+ * - 中段：从 TF/SD 读取、保存 pitch 补偿表，并支持内置默认表回退。
+ * - 后段：pitch_cali_tick_pre/control/post 组成状态机，驱动每个弹量/角度点采样。
+ * - 对外入口：boot_load() 启动加载，tick_pre/control/tick_post 接入云台循环。
+ */
+
 #include "pitch_cali.h"
 
 #include <math.h>
@@ -600,6 +608,7 @@ static int pitch_cali_load_from_sd(pitch_cali_table_t *out)
         return -1;
     }
 
+    // 函数地图：读文件头校验版本/尺寸，再读表体；校验失败时返回错误码给启动加载逻辑。
     FIL fp;
     FRESULT fr = f_open(&fp, PITCH_CALI_FILE_PATH, FA_READ);
     if (fr != FR_OK)
@@ -1032,6 +1041,7 @@ void pitch_cali_tick_pre(gimbal_control_t *gimbal, gimbal_behaviour_e behaviour,
 {
     (void)gimbal;
 
+    // 函数地图：先确认测试模式和 SD 卡，再准备/恢复网格，最后决定本周期 pitch 电机控制方式。
     if (test_mode != TEST_MODE_PITCH_CALI)
     {
         pitch_cali_buzzer_update(bsp_time_get_tick_ms(), 0);
@@ -1175,6 +1185,7 @@ void pitch_cali_tick_post(const gimbal_control_t *gimbal, gimbal_behaviour_e beh
     const pitch_cali_config_t *cfg = &g_config.gimbal.pitch_cali;
     const uint32_t now = bsp_time_get_tick_ms();
 
+    // 函数地图：记录当前状态；按状态机等待弹量、移动到角度、测上下静摩擦点、推进网格或保存。
     const fp32 angle = gimbal->gimbal_pitch_motor.angle;
     const fp32 gyro = gimbal->gimbal_pitch_motor.motor_gyro;
     const fp32 current = gimbal->gimbal_pitch_motor.current_set;

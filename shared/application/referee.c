@@ -7,6 +7,14 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+/*
+ * 阅读地图：
+ * - 前段：裁判系统全局数据、UI 绘图/字符串打包和发送接口。
+ * - 中段：UI demo、图形字段编码、客户端 ID 推导。
+ * - 后段：referee_data_solve() 解析裁判帧，getter 提供功率/热量/机器人状态。
+ * - 发送：referee_send_frame() 统一补帧头、CRC，并交给 USART。
+ */
+
 #include "referee.h"
 #include "string.h"
 #include "stdio.h"
@@ -351,6 +359,7 @@ int referee_ui_send_string_utf8_self(const referee_ui_graphic_t *graphic, const 
 
 void referee_ui_demo_tick(void)
 {
+    // 函数地图：客户端 ID 变更就重置；按阶段先清层，再分批发送图形和文字。
     static uint8_t stage = 0u;
     static uint16_t last_client_id = 0u;
     static uint32_t last_send_ms = 0u;
@@ -712,6 +721,7 @@ void init_referee_struct_data(void)
 
 void referee_data_solve(uint8_t *frame)
 {
+    // 函数地图：拆帧头和 cmd_id；按 cmd_id 拷贝到对应全局结构；重要数据顺手写日志。
     uint16_t cmd_id = 0;
     uint16_t payload_len = 0u;
 

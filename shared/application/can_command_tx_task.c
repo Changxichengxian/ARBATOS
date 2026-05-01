@@ -7,6 +7,14 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+/*
+ * 阅读地图：
+ * - 前段：命令限幅、RM/MIT 命令换算、单轴协议处理。
+ * - 中段：在线/离线收集各轴电流命令，并记录 CAN 电流日志。
+ * - 后段：按轴装配表执行发送，RM 组帧缓存最后统一发出。
+ * - 入口：can_command_tx_task() 每周期收集 actuator_cmd，再按电机配置发到 CAN/RS485。
+ */
+
 #include "can_command_tx_task.h"
 
 #include "FreeRTOS.h"
@@ -107,10 +115,83 @@ static inline uint8_t can_tx_cmd_nonzero(const actuator_cmd_t *cmd)
     return 0u;
 }
 
+static inline int16_t can_tx_fp32_to_i16_saturated(fp32 x)
+{
+    if (x > 32767.0f)
+    {
+        return 32767;
+    }
+    if (x < -32768.0f)
+    {
+        return -32768;
+    }
+    return (int16_t)x;
+}
+
+static inline uint8_t can_tx_cmd_mode_uses_position_feedback(actuator_cmd_mode_e mode)
+{
+    switch (mode)
+    {
+    case ACTUATOR_CMD_MODE_STATE_TORQUE:
+    case ACTUATOR_CMD_MODE_POS_VEL:
+    case ACTUATOR_CMD_MODE_FORCE_POS:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+
+static inline uint8_t can_tx_cmd_mode_uses_velocity_feedback(actuator_cmd_mode_e mode)
+{
+    if (can_tx_cmd_mode_uses_position_feedback(mode) != 0u)
+    {
+        return 1u;
+    }
+    return (mode == ACTUATOR_CMD_MODE_SPEED) ? 1u : 0u;
+}
+
 // 轴配置里可以指定 CAN 总线；没指定时使用该轴的默认总线。
 static inline uint8_t can_tx_node_bus(uint8_t fallback_bus, const motor_node_param_t *node)
 {
     return motor_cfg_can_bus(fallback_bus, node);
+}
+
+// RM 电机仍优先吃旧双环 PID 给出的电流；只有通用状态命令才临时换算成电流。
+static int16_t can_tx_build_rm_current_from_actuator(actuator_id_e actuator_id,
+                                                     int16_t current)
+{
+    actuator_cmd_t cmd;
+    actuator_feedback_t fb;
+    actuator_cmd_mode_e mode;
+    fp32 rm_current;
+
+    if (actuator_cmd_get_copy(actuator_id, &cmd) == 0u || cmd.active == 0u)
+    {
+        return current;
+    }
+
+    mode = (actuator_cmd_mode_e)cmd.mode;
+    if (can_tx_cmd_mode_uses_velocity_feedback(mode) == 0u)
+    {
+        return current;
+    }
+
+    if (actuator_feedback_get_copy(actuator_id, &fb) == 0u || fb.online == 0u)
+    {
+        return current;
+    }
+
+    rm_current = cmd.torque;
+    if (can_tx_cmd_mode_uses_position_feedback(mode) != 0u)
+    {
+        rm_current += cmd.kp * (cmd.position - fb.position);
+    }
+    if (can_tx_cmd_mode_uses_velocity_feedback(mode) != 0u)
+    {
+        rm_current += cmd.kd * (cmd.velocity - fb.velocity);
+    }
+
+    return can_tx_fp32_to_i16_saturated(rm_current);
 }
 
 // 旧控制链常给“电流”，MIT 电机要力矩，这里按型号量程换成力矩。
@@ -162,26 +243,23 @@ static inline void can_tx_build_mit_cmd_from_actuator(const motor_node_param_t *
         mode = src->mode;
     }
 
-    switch ((actuator_cmd_mode_e)mode)
+    if (can_tx_cmd_mode_uses_position_feedback((actuator_cmd_mode_e)mode) != 0u)
     {
-    case ACTUATOR_CMD_MODE_STATE_TORQUE:
-    case ACTUATOR_CMD_MODE_POS_VEL:
-    case ACTUATOR_CMD_MODE_FORCE_POS:
         out->position = (src != NULL) ? src->position : 0.0f;
         out->velocity = (src != NULL) ? src->velocity : 0.0f;
         out->kp = (src != NULL) ? src->kp : 0.0f;
         out->kd = (src != NULL) ? src->kd : 0.0f;
         out->torque = (src != NULL) ? src->torque : 0.0f;
-        break;
-    case ACTUATOR_CMD_MODE_SPEED:
+    }
+    else if (can_tx_cmd_mode_uses_velocity_feedback((actuator_cmd_mode_e)mode) != 0u)
+    {
         out->velocity = (src != NULL) ? src->velocity : 0.0f;
         out->kd = (src != NULL) ? src->kd : 0.0f;
         out->torque = (src != NULL) ? src->torque : 0.0f;
-        break;
-    case ACTUATOR_CMD_MODE_CURRENT:
-    default:
+    }
+    else
+    {
         out->torque = can_tx_current_to_mit_torque(node, current, limits);
-        break;
     }
 }
 
@@ -358,58 +436,93 @@ static void can_tx_clear_rm_frames(void)
     (void)memset(s_can_tx_can2_1ff, 0, sizeof(s_can_tx_can2_1ff));
 }
 
-// 每个轴的发送函数保持无参数，宏里统一处理协议分流和大疆组帧缓存。
-#define CAN_TX_STORE_RM_CURRENT(fallback_bus_, can_id_expr_, current_expr_)        \
-    do                                                                            \
-    {                                                                             \
-        const uint8_t bus__ = (uint8_t)(fallback_bus_);                            \
-        const int16_t current__ = (int16_t)(current_expr_);                        \
-        const uint16_t can_id__ = (uint16_t)(can_id_expr_);                        \
-        int16_t *frame_200__ = (bus__ == 1u) ? s_can_tx_can1_200 : s_can_tx_can2_200; \
-        int16_t *frame_1ff__ = (bus__ == 1u) ? s_can_tx_can1_1ff : s_can_tx_can2_1ff; \
-        if (can_id__ >= 0x201u && can_id__ <= 0x204u)                              \
-        {                                                                         \
-            frame_200__[can_id__ - 0x201u] = current__;                           \
-        }                                                                         \
-        else if (can_id__ >= 0x205u && can_id__ <= 0x208u)                         \
-        {                                                                         \
-            frame_1ff__[can_id__ - 0x205u] = current__;                           \
-        }                                                                         \
-    } while (0)
+static inline void can_tx_store_rm_current(uint8_t fallback_bus,
+                                           uint16_t can_id,
+                                           int16_t current)
+{
+    int16_t *frame_200 = (fallback_bus == 1u) ? s_can_tx_can1_200 : s_can_tx_can2_200;
+    int16_t *frame_1ff = (fallback_bus == 1u) ? s_can_tx_can1_1ff : s_can_tx_can2_1ff;
 
-#define CAN_TX_EXEC_AXIS(fallback_bus_, actuator_id_, node_expr_, is_rm_expr_, can_id_expr_, limited_current_expr_, current_expr_) \
-    do                                                                            \
-    {                                                                             \
-        const uint8_t fallback_bus__ = (uint8_t)(fallback_bus_);                   \
-        const actuator_id_e actuator_id__ = (actuator_id_);                         \
-        const motor_node_param_t *node__ = (node_expr_);                           \
-        const int16_t current__ = (int16_t)(current_expr_);                        \
-        if (motor_cfg_transport(node__) == MOTOR_TRANSPORT_RS485)                  \
-        {                                                                         \
-            const uint8_t port__ = (node__ != NULL) ? node__->rs485_port : 0u;      \
-            if (can_tx_process_extra_item(port__, actuator_id__, node__, current__) == 0u) \
-            {                                                                     \
-                watch_task_error(WATCH_TASK_CAN_COMMAND_TX);                      \
-            }                                                                     \
-        }                                                                         \
-        else if ((is_rm_expr_) == 0u)                                              \
-        {                                                                         \
-            const uint8_t node_bus__ = can_tx_node_bus(fallback_bus__, node__);    \
-            if (can_tx_process_can_mit_item(node_bus__,                            \
-                                            actuator_id__,                         \
-                                            node__,                                \
-                                            current__) == 0u &&                    \
-                can_tx_process_extra_item(node_bus__, actuator_id__, node__, current__) == 0u) \
-            {                                                                     \
-                watch_task_error(WATCH_TASK_CAN_COMMAND_TX);                      \
-            }                                                                     \
-        }                                                                         \
-        else                                                                      \
-        {                                                                         \
-            CAN_TX_STORE_RM_CURRENT(fallback_bus__,                                \
-                                    (can_id_expr_),                                \
-                                    (limited_current_expr_));                      \
-        }                                                                         \
+    if (can_id >= 0x201u && can_id <= 0x204u)
+    {
+        frame_200[can_id - 0x201u] = current;
+    }
+    else if (can_id >= 0x205u && can_id <= 0x208u)
+    {
+        frame_1ff[can_id - 0x205u] = current;
+    }
+}
+
+static inline void can_tx_process_rs485_axis(actuator_id_e actuator_id,
+                                             const motor_node_param_t *node,
+                                             int16_t current)
+{
+    const uint8_t port = (node != NULL) ? node->rs485_port : 0u;
+
+    if (can_tx_process_extra_item(port, actuator_id, node, current) == 0u)
+    {
+        watch_task_error(WATCH_TASK_CAN_COMMAND_TX);
+    }
+}
+
+static inline void can_tx_process_mit_or_extra_axis(uint8_t fallback_bus,
+                                                    actuator_id_e actuator_id,
+                                                    const motor_node_param_t *node,
+                                                    int16_t current)
+{
+    const uint8_t node_bus = can_tx_node_bus(fallback_bus, node);
+
+    if (can_tx_process_can_mit_item(node_bus, actuator_id, node, current) == 0u &&
+        can_tx_process_extra_item(node_bus, actuator_id, node, current) == 0u)
+    {
+        watch_task_error(WATCH_TASK_CAN_COMMAND_TX);
+    }
+}
+
+static inline void can_tx_process_rm_axis(uint8_t fallback_bus,
+                                          actuator_id_e actuator_id,
+                                          const motor_node_param_t *node,
+                                          uint16_t can_id,
+                                          int16_t current)
+{
+    const int16_t rm_current = can_tx_build_rm_current_from_actuator(actuator_id, current);
+    const int16_t limited_current = motor_cfg_limit_current_node(node, rm_current);
+
+    can_tx_store_rm_current(fallback_bus, can_id, limited_current);
+}
+
+static inline void can_tx_process_axis(uint8_t fallback_bus,
+                                       actuator_id_e actuator_id,
+                                       const motor_node_param_t *node,
+                                       uint8_t is_rm_group,
+                                       uint16_t can_id,
+                                       int16_t current)
+{
+    if (motor_cfg_transport(node) == MOTOR_TRANSPORT_RS485)
+    {
+        can_tx_process_rs485_axis(actuator_id, node, current);
+    }
+    else if (is_rm_group == 0u)
+    {
+        can_tx_process_mit_or_extra_axis(fallback_bus, actuator_id, node, current);
+    }
+    else
+    {
+        can_tx_process_rm_axis(fallback_bus, actuator_id, node, can_id, current);
+    }
+}
+
+// 每个轴的发送函数保持无参数，宏只负责把轴配置取出来交给普通函数。
+#define CAN_TX_EXEC_AXIS(fallback_bus_, actuator_id_, node_expr_, is_rm_expr_, can_id_expr_, current_expr_) \
+    do                                                                                                    \
+    {                                                                                                     \
+        const uint8_t fallback_bus__ = (uint8_t)(fallback_bus_);                                           \
+        const actuator_id_e actuator_id__ = (actuator_id_);                                                \
+        const motor_node_param_t *node__ = (node_expr_);                                                   \
+        const uint8_t is_rm_group__ = (uint8_t)(is_rm_expr_);                                              \
+        const uint16_t can_id__ = (uint16_t)(can_id_expr_);                                                \
+        const int16_t current__ = (int16_t)(current_expr_);                                                \
+        can_tx_process_axis(fallback_bus__, actuator_id__, node__, is_rm_group__, can_id__, current__);    \
     } while (0)
 
 static inline void can_tx_exec_chassis0(void)
@@ -419,7 +532,6 @@ static inline void can_tx_exec_chassis0(void)
                      CAN_TX_AXIS_CHASSIS0_NODE(),
                      CAN_TX_AXIS_CHASSIS0_IS_RM_GROUP(),
                      CAN_TX_AXIS_CHASSIS0_CAN_ID(),
-                     CAN_TX_AXIS_CHASSIS0_LIMIT_CURRENT(s_can_tx_chassis_cmd[0]),
                      s_can_tx_chassis_cmd[0]);
 }
 
@@ -430,7 +542,6 @@ static inline void can_tx_exec_chassis1(void)
                      CAN_TX_AXIS_CHASSIS1_NODE(),
                      CAN_TX_AXIS_CHASSIS1_IS_RM_GROUP(),
                      CAN_TX_AXIS_CHASSIS1_CAN_ID(),
-                     CAN_TX_AXIS_CHASSIS1_LIMIT_CURRENT(s_can_tx_chassis_cmd[1]),
                      s_can_tx_chassis_cmd[1]);
 }
 
@@ -441,7 +552,6 @@ static inline void can_tx_exec_chassis2(void)
                      CAN_TX_AXIS_CHASSIS2_NODE(),
                      CAN_TX_AXIS_CHASSIS2_IS_RM_GROUP(),
                      CAN_TX_AXIS_CHASSIS2_CAN_ID(),
-                     CAN_TX_AXIS_CHASSIS2_LIMIT_CURRENT(s_can_tx_chassis_cmd[2]),
                      s_can_tx_chassis_cmd[2]);
 }
 
@@ -452,7 +562,6 @@ static inline void can_tx_exec_chassis3(void)
                      CAN_TX_AXIS_CHASSIS3_NODE(),
                      CAN_TX_AXIS_CHASSIS3_IS_RM_GROUP(),
                      CAN_TX_AXIS_CHASSIS3_CAN_ID(),
-                     CAN_TX_AXIS_CHASSIS3_LIMIT_CURRENT(s_can_tx_chassis_cmd[3]),
                      s_can_tx_chassis_cmd[3]);
 }
 
@@ -463,7 +572,6 @@ static inline void can_tx_exec_yaw(void)
                      CAN_TX_AXIS_YAW_NODE(),
                      CAN_TX_AXIS_YAW_IS_RM_GROUP(),
                      CAN_TX_AXIS_YAW_CAN_ID(),
-                     CAN_TX_AXIS_YAW_LIMIT_CURRENT(s_can_tx_yaw_cmd),
                      s_can_tx_yaw_cmd);
 }
 
@@ -474,7 +582,6 @@ static inline void can_tx_exec_yaw_upper(void)
                      CAN_TX_AXIS_YAW_UPPER_NODE(),
                      CAN_TX_AXIS_YAW_UPPER_IS_RM_GROUP(),
                      CAN_TX_AXIS_YAW_UPPER_CAN_ID(),
-                     CAN_TX_AXIS_YAW_UPPER_LIMIT_CURRENT(s_can_tx_yaw_upper_cmd),
                      s_can_tx_yaw_upper_cmd);
 }
 
@@ -485,7 +592,6 @@ static inline void can_tx_exec_pitch(void)
                      CAN_TX_AXIS_PITCH_NODE(),
                      CAN_TX_AXIS_PITCH_IS_RM_GROUP(),
                      CAN_TX_AXIS_PITCH_CAN_ID(),
-                     CAN_TX_AXIS_PITCH_LIMIT_CURRENT(s_can_tx_pitch_cmd),
                      s_can_tx_pitch_cmd);
 }
 
@@ -496,7 +602,6 @@ static inline void can_tx_exec_trigger(void)
                      CAN_TX_AXIS_TRIGGER_NODE(),
                      CAN_TX_AXIS_TRIGGER_IS_RM_GROUP(),
                      CAN_TX_AXIS_TRIGGER_CAN_ID(),
-                     CAN_TX_AXIS_TRIGGER_LIMIT_CURRENT(s_can_tx_trigger_cmd),
                      s_can_tx_trigger_cmd);
 }
 
@@ -507,7 +612,6 @@ static inline void can_tx_exec_friction0(void)
                      CAN_TX_AXIS_FRICTION0_NODE(),
                      CAN_TX_AXIS_FRICTION0_IS_RM_GROUP(),
                      CAN_TX_AXIS_FRICTION0_CAN_ID(),
-                     CAN_TX_AXIS_FRICTION0_LIMIT_CURRENT(s_can_tx_friction_cmd[0]),
                      s_can_tx_friction_cmd[0]);
 }
 
@@ -518,7 +622,6 @@ static inline void can_tx_exec_friction1(void)
                      CAN_TX_AXIS_FRICTION1_NODE(),
                      CAN_TX_AXIS_FRICTION1_IS_RM_GROUP(),
                      CAN_TX_AXIS_FRICTION1_CAN_ID(),
-                     CAN_TX_AXIS_FRICTION1_LIMIT_CURRENT(s_can_tx_friction_cmd[1]),
                      s_can_tx_friction_cmd[1]);
 }
 
@@ -529,7 +632,6 @@ static inline void can_tx_exec_friction2(void)
                      CAN_TX_AXIS_FRICTION2_NODE(),
                      CAN_TX_AXIS_FRICTION2_IS_RM_GROUP(),
                      CAN_TX_AXIS_FRICTION2_CAN_ID(),
-                     CAN_TX_AXIS_FRICTION2_LIMIT_CURRENT(s_can_tx_friction_cmd[2]),
                      s_can_tx_friction_cmd[2]);
 }
 
@@ -540,7 +642,6 @@ static inline void can_tx_exec_friction3(void)
                      CAN_TX_AXIS_FRICTION3_NODE(),
                      CAN_TX_AXIS_FRICTION3_IS_RM_GROUP(),
                      CAN_TX_AXIS_FRICTION3_CAN_ID(),
-                     CAN_TX_AXIS_FRICTION3_LIMIT_CURRENT(s_can_tx_friction_cmd[3]),
                      s_can_tx_friction_cmd[3]);
 }
 

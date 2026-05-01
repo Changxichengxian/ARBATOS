@@ -7,6 +7,14 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+/*
+ * 阅读地图：
+ * - 前段：AUX 口模式、发送/接收缓存、基础解析工具。
+ * - 中段：AUX 调参命令，包含 id:value、串口模式切换、PID 临时调参。
+ * - 后段：自动调参数据流和 JustFloat 遥测信号取值。
+ * - 入口：host_link_task() 周期处理 AUX RX、USB/视觉链路和遥测发送。
+ */
+
 #include "host_link_task.h"
 #include "elrs_task.h"
 
@@ -561,6 +569,7 @@ static void aux_tune_rx_start(void)
 
 static void aux_tune_try_send_telem(void)
 {
+    // 函数地图：先让自动调参占用发送机会；否则按 AUX 遥测配置决定通道表、周期和一帧内容。
     if (aux_autotune_try_send_frame())
     {
         return;
@@ -682,6 +691,7 @@ static bool_t aux_tune_handle_line(const char *line)
         return 0;
     }
 
+    // 函数地图：先规范化输入；再处理 id:value；再处理 aux/autotune/底盘 PID/云台 PID 命令。
     char buf[AUX_TUNE_RX_LINE_MAX];
     strncpy(buf, line, sizeof(buf) - 1u);
     buf[sizeof(buf) - 1u] = '\0';
@@ -1168,6 +1178,7 @@ static bool_t aux_autotune_fill_fields(fp32 *fields, uint32_t *out_tick_ms)
         return 0;
     }
 
+    // 函数地图：按目标选择一个 PID，把 set/fdb/out/error/kp/ki/kd 打成固定字段。
     const uint32_t now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
     *out_tick_ms = now_ms;
     fields[0] = (fp32)now_ms;
@@ -1431,6 +1442,7 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
         return 0.0f;
     }
 
+    // 函数地图：先处理连续编号的重复信号组，再用 switch 处理零散的系统/姿态/裁判/诊断信号。
     // Decode repeated groups to keep the switch small.
     if (sig >= AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_SET && sig <= AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_OUT)
     {

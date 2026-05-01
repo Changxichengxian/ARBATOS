@@ -7,6 +7,14 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+/*
+ * 阅读地图：
+ * - 前段：RAM 环形缓存、文件序号索引、CRC 和变长整数工具。
+ * - 中段：小型 LZ4 块压缩、v2/v3 数据块写入。
+ * - 后段：打开下一个日志文件、start/stop/write/isr_write/poll 运行接口。
+ * - 设计重点：写入接口不阻塞，sdlog_poll() 在低优先级任务里慢慢刷出。
+ */
+
 #include "sdlog.h"
 
 #include <stdio.h>
@@ -238,6 +246,7 @@ static uint32_t sdlog_lz4_hash32(uint32_t v)
 
 static int sdlog_lz4_compress_block(const uint8_t *src, uint32_t src_len, uint8_t *dst, uint32_t dst_cap, uint32_t *out_len)
 {
+    // 函数地图：扫描 4 字节匹配；先写 literal，再写 offset/match；末尾补最后一段 literal。
     if (out_len == NULL)
     {
         return -1;
@@ -558,6 +567,7 @@ static int sdlog_find_next_log_index(uint32_t *out_next)
 
 static int sdlog_open_next_file(void)
 {
+    // 函数地图：优先读序号索引；索引坏了再扫目录；创建新文件后先写头和启动 META。
     if (!sdcard_is_mounted())
     {
         return -1;
