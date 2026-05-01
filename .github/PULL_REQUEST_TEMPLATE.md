@@ -1,6 +1,6 @@
 ## 提交前确认
 
-- [ ] 我已经阅读 `CONTRIBUTING.md`
+- [ ] 我已经阅读 `docs/legal/CONTRIBUTING.md`
 - [ ] 我同意 `docs/legal/CLA.md`
 - [ ] 我确认自己有权提交这次贡献，必要时已经拿到公司/学校/团队授权
 - [ ] 我理解这次贡献可以被 Maintainer 合并、修改、再授权、商业授权或用于后续换协议

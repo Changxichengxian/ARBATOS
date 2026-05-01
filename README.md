@@ -23,7 +23,7 @@ ARBATOS 是一套面向 RoboMaster 类机器人的 STM32 / FreeRTOS 下位机控
 - 这不是开源协议，也没有自动放开的日期。
 - 仓库里的第三方组件、厂商 SDK、参考工程和附带资料仍按各自原始许可执行。
 
-具体边界见 `LICENSE`、`docs/legal/COMMERCIAL.md`、`docs/legal/THIRD_PARTY.md`、`CONTRIBUTING.md` 和 `docs/legal/CLA.md`。
+具体边界见 `LICENSE`、`docs/legal/COMMERCIAL.md`、`docs/legal/THIRD_PARTY.md`、`docs/legal/CONTRIBUTING.md` 和 `docs/legal/CLA.md`。
 
 ## 目录
 

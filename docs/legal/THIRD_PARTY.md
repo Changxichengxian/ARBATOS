@@ -6,9 +6,9 @@
 
 下面这些位置里的内容，原则上优先按它们各自的文件头、目录内 `LICENSE`、`NOTICE` 或上游说明执行：
 
-- `boards/*/Drivers/`
-- `boards/*/Middlewares/`
-- `tools/vendor/`
+- `projects/*/Drivers/`
+- `projects/*/Middlewares/`
+- `docs/packages/`
 - `tools/ffmpeg/`
 - `local/reference/`
 - 任何带独立版权头、许可证文本、来源声明或上游归属说明的文件
