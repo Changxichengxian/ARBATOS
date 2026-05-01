@@ -44,7 +44,7 @@ ARBATOS 采用“三层复用结构，加一层项目入口”：
 
 ```text
 boards/<BOARD>/
-  硬件板工程、外设初始化、板级启动、板级 FreeRTOS 任务创建
+  硬件板支持、外设适配、板级启动代码
 
 target/<TARGET>/
   车型参数、目标差异、默认配置、设备在线检测
@@ -53,7 +53,7 @@ shared/
   跨板、跨车型复用的控制逻辑、驱动封装、算法和通用组件
 
 projects/<TARGET>/
-  可直接打开编译的 Keil 工程入口
+  可直接打开编译的 Keil 工程入口，车的完整工程放这里
 ```
 
 `board` 和 `target` 不是一回事：
@@ -61,7 +61,7 @@ projects/<TARGET>/
 - `board` 是硬件板，负责芯片、外设、引脚和启动。
 - `target` 是具体机器人目标，负责 PID 参数、电机 ID、通道映射和行为策略。
 - `shared` 放能跨机器人复用的代码。
-- `projects` 放最终打开编译的工程入口。
+- `projects` 放最终打开编译的工程入口。`HERO`、`INFANTRY`、`SENTINEL`、`CARRIER` 这类车名目录只放在这里。
 
 ### 板级工程
 
@@ -296,5 +296,5 @@ ARBATOS/
 1. 在 `config.h` 的家族枚举里补新值。
 2. 在目标的 `g_config.profile` 中选择该家族。
 3. 新建任务文件。
-4. 在板级 `freertos.c` 或 `board_freertos.c` 里创建任务。
+4. 在对应项目工程的 `freertos.c` 或 `board_freertos.c` 里创建任务。
 5. 给这个任务家族单独准备参数块。

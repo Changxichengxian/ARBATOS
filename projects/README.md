@@ -1,14 +1,12 @@
 # Projects
 
-`projects/` 放的是可以直接打开和编译的目标工程入口。
-
-这里表达三件事：
+`projects/` 放可以直接打开和编译的目标工程入口。这里表达三件事：
 
 - 具体机器人目标。
 - 对应的 Keil 工程。
 - 这个工程编译哪个 target 的 `config.c`。
 
-这里不放硬件板抽象，也不放共用控制逻辑。看板级外设去 `boards/`，看机器人参数去 `target/`，看共用控制去 `shared/`。
+这里不放硬件板抽象，也不放共享控制逻辑。看板级外设去 `boards/`，看机器人参数去 `target/`，看共用控制去 `shared/`。
 
 ## 当前入口
 
@@ -20,6 +18,14 @@
 | `CARRIER` | `projects/CARRIER/MDK-ARM/CARRIER.uvprojx` | `target/CARRIER/User/application/config.c` |
 
 每个工程都直接编译对应 target 的 `config.c` 和 `config.h`。
+
+## 和 boards 的分工
+
+`boards/` 只保留硬件板相关内容，比如 DJI A 板、DJI C 板、DM MC02 H7 板的板级支持、引脚和外设适配。
+
+`projects/` 才放车的完整工程入口。车名目录，例如 `HERO`、`INFANTRY`、`SENTINEL`、`CARRIER`，应该在这里出现，不应该再放到 `boards/` 下。
+
+当前 F4 车工程统一使用 CMSIS-RTOS v2，也就是 `CMSIS_RTOS_V2/cmsis_os2.*` 这层接口；FreeRTOS 内核版本仍由 CubeMX 带进来的内核文件决定。
 
 ## 配置边界
 
