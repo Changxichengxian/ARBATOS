@@ -79,6 +79,7 @@
 #define GYRO_BOOT_CALIB_DELAY_MS       1U
 #define GYRO_BOOT_CALIB_ACC_TOL_G      0.05f
 #define IMU_SDLOG_BASE_STREAM_MAX_SAMPLES 16u
+#define IMU_SDLOG_PID_PERIOD_MS        10u
 
 
 /**
@@ -239,6 +240,7 @@ static fp32 imu_angle_lpf[3] = {0.0f, 0.0f, 0.0f};
 static bool_t imu_angle_lpf_inited = 0;
 static float imu_last_dt_s = 0.001f;
 static imu_fusion_mode_e imu_fusion_mode_active = IMU_FUSION_MAHONY_6AXIS;
+static uint32_t imu_pid_log_tick_ms = 0;
 static uint32_t imu_trust_log_tick_ms = 0;
 
 typedef struct
@@ -519,13 +521,18 @@ void INS_task(void const *pvParameters)
         pkt.temp = bmi088_real_data.temp;
         imu_sdlog_append_base_sample(&pkt, now_ms, imu_sdlog_period_us_from_dt(dt));
 
-        sdlog_pid_runtime_t pidlog = {0};
-        pidlog.pid_id = SDLOG_PID_IMU_TEMP;
-        pidlog.mode = imu_temp_pid.mode;
-        pidlog.set = imu_temp_pid.set;
-        pidlog.fdb = imu_temp_pid.fdb;
-        pidlog.out = imu_temp_pid.out;
-        sdlog_write(SDLOG_TAG_PID, &pidlog, (uint16_t)sizeof(pidlog));
+        if ((uint32_t)(now_ms - imu_pid_log_tick_ms) >= IMU_SDLOG_PID_PERIOD_MS)
+        {
+            imu_pid_log_tick_ms = now_ms;
+
+            sdlog_pid_runtime_t pidlog = {0};
+            pidlog.pid_id = SDLOG_PID_IMU_TEMP;
+            pidlog.mode = imu_temp_pid.mode;
+            pidlog.set = imu_temp_pid.set;
+            pidlog.fdb = imu_temp_pid.fdb;
+            pidlog.out = imu_temp_pid.out;
+            sdlog_write(SDLOG_TAG_PID, &pidlog, (uint16_t)sizeof(pidlog));
+        }
 
         if ((uint32_t)(now_ms - imu_trust_log_tick_ms) >= 10u)
         {

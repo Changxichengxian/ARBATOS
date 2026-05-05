@@ -37,6 +37,8 @@
 #define ACC_HEALTH_MIN_G2             0.81f
 #define ACC_HEALTH_MAX_G2             1.21f
 #define IMU_TEMP_PID_OUTPUT_FULL_SCALE 5000.0f
+#define IMU_SDLOG_BASE_STREAM_MAX_SAMPLES 16u
+#define IMU_SDLOG_PID_PERIOD_MS       10u
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846f
@@ -104,6 +106,109 @@ static volatile fp32 g_ins_temp_c = 0.0f;
 static volatile fp32 g_ins_heater_pid_out = 0.0f;
 static volatile uint16_t g_ins_heater_pwm = 0u;
 static volatile uint8_t g_ins_heater_mode = 0u;
+static uint32_t imu_pid_log_tick_ms = 0u;
+
+typedef struct
+{
+    uint32_t start_tick_ms;
+    uint32_t last_tick_ms;
+    uint32_t period_us;
+    uint16_t sample_count;
+    sdlog_imu_base_sample_t samples[IMU_SDLOG_BASE_STREAM_MAX_SAMPLES];
+} imu_sdlog_base_stream_state_t;
+
+static imu_sdlog_base_stream_state_t s_imu_sdlog_base_stream = {0};
+
+static uint32_t imu_sdlog_period_us_from_dt(float dt_s)
+{
+    uint32_t period_us = 1000u;
+
+    if (dt_s > 0.0f)
+    {
+        const float period_f = dt_s * 1000000.0f;
+        if (period_f > 0.5f)
+        {
+            period_us = (uint32_t)(period_f + 0.5f);
+        }
+    }
+
+    if (period_us == 0u)
+    {
+        period_us = 1000u;
+    }
+    return period_us;
+}
+
+static void imu_sdlog_begin_base_stream(uint32_t now_ms, uint32_t period_us)
+{
+    s_imu_sdlog_base_stream.start_tick_ms = now_ms;
+    s_imu_sdlog_base_stream.last_tick_ms = now_ms;
+    s_imu_sdlog_base_stream.period_us = period_us;
+    s_imu_sdlog_base_stream.sample_count = 0u;
+}
+
+static void imu_sdlog_flush_base_stream(void)
+{
+    if (s_imu_sdlog_base_stream.sample_count == 0u)
+    {
+        return;
+    }
+
+    sdlog_imu_base_stream_header_t header = {0};
+    uint8_t payload[sizeof(header) + sizeof(s_imu_sdlog_base_stream.samples)];
+    const uint16_t payload_len =
+        (uint16_t)(sizeof(header) + (uint32_t)s_imu_sdlog_base_stream.sample_count * sizeof(sdlog_imu_base_sample_t));
+
+    header.start_tick_ms = s_imu_sdlog_base_stream.start_tick_ms;
+    header.period_us = (s_imu_sdlog_base_stream.period_us > 0xFFFFu) ? 0xFFFFu : (uint16_t)s_imu_sdlog_base_stream.period_us;
+    header.sample_count = (uint8_t)s_imu_sdlog_base_stream.sample_count;
+    header.version = SDLOG_IMU_BASE_STREAM_VERSION;
+
+    memcpy(payload, &header, sizeof(header));
+    memcpy(&payload[sizeof(header)],
+           s_imu_sdlog_base_stream.samples,
+           (uint32_t)s_imu_sdlog_base_stream.sample_count * sizeof(sdlog_imu_base_sample_t));
+    sdlog_write(SDLOG_TAG_IMU_BASE_STREAM, payload, payload_len);
+    s_imu_sdlog_base_stream.sample_count = 0u;
+}
+
+static void imu_sdlog_append_base_sample(const sdlog_imu_base_sample_t *sample,
+                                         uint32_t now_ms,
+                                         uint32_t period_us)
+{
+    if (sample == NULL)
+    {
+        return;
+    }
+
+    if (period_us == 0u)
+    {
+        period_us = 1000u;
+    }
+
+    if (s_imu_sdlog_base_stream.sample_count == 0u)
+    {
+        imu_sdlog_begin_base_stream(now_ms, period_us);
+    }
+    else
+    {
+        const uint32_t expected_dt_ms = (s_imu_sdlog_base_stream.period_us + 999u) / 1000u;
+        const uint32_t actual_dt_ms = now_ms - s_imu_sdlog_base_stream.last_tick_ms;
+        if (s_imu_sdlog_base_stream.period_us != period_us || actual_dt_ms != expected_dt_ms)
+        {
+            imu_sdlog_flush_base_stream();
+            imu_sdlog_begin_base_stream(now_ms, period_us);
+        }
+    }
+
+    s_imu_sdlog_base_stream.samples[s_imu_sdlog_base_stream.sample_count++] = *sample;
+    s_imu_sdlog_base_stream.last_tick_ms = now_ms;
+
+    if (s_imu_sdlog_base_stream.sample_count >= IMU_SDLOG_BASE_STREAM_MAX_SAMPLES)
+    {
+        imu_sdlog_flush_base_stream();
+    }
+}
 
 void INS_task(void const *pvParameters)
 {
@@ -153,9 +258,10 @@ void INS_task(void const *pvParameters)
             accel_filter_out[i] = second_order_filter_cali(&accel_filter[i], INS_accel[i]);
         }
 
+        const uint32_t now_ms = bsp_time_get_tick_ms();
         const float dt = imu_calc_dt_s();
         const bool_t acc_healthy = imu_acc_is_healthy(accel_filter_out);
-        const float kp_gain = imu_calc_dynamic_kp(acc_healthy, INS_gyro, bsp_time_get_tick_ms());
+        const float kp_gain = imu_calc_dynamic_kp(acc_healthy, INS_gyro, now_ms);
         mahony_imu_update(&imu_mahony, dt, INS_gyro, accel_filter_out, acc_healthy, kp_gain);
 
         INS_quat[0] = imu_mahony.quat[0];
@@ -164,7 +270,7 @@ void INS_task(void const *pvParameters)
         INS_quat[3] = imu_mahony.quat[3];
         imu_update_euler_from_quat(INS_quat, INS_angle);
 
-        sdlog_imu_t pkt = {0};
+        sdlog_imu_base_sample_t pkt = {0};
         pkt.temp = raw.temp;
         for (uint8_t i = 0u; i < 4u; i++)
         {
@@ -175,25 +281,20 @@ void INS_task(void const *pvParameters)
             pkt.gyro[i] = INS_gyro[i];
             pkt.accel[i] = INS_accel[i];
         }
-        sdlog_write(SDLOG_TAG_IMU, &pkt, (uint16_t)sizeof(pkt));
+        imu_sdlog_append_base_sample(&pkt, now_ms, imu_sdlog_period_us_from_dt(dt));
 
-        sdlog_pid_snapshot_t pidlog = {0};
-        pidlog.pid_id = SDLOG_PID_IMU_TEMP;
-        pidlog.mode = imu_temp_pid.mode;
-        pidlog.Kp = imu_temp_pid.Kp;
-        pidlog.Ki = imu_temp_pid.Ki;
-        pidlog.Kd = imu_temp_pid.Kd;
-        pidlog.max_out = imu_temp_pid.max_out;
-        pidlog.max_iout = imu_temp_pid.max_iout;
-        pidlog.set = imu_temp_pid.set;
-        pidlog.fdb = imu_temp_pid.fdb;
-        pidlog.out = imu_temp_pid.out;
-        pidlog.Pout = imu_temp_pid.Pout;
-        pidlog.Iout = imu_temp_pid.Iout;
-        pidlog.Dout = imu_temp_pid.Dout;
-        memcpy((void *)pidlog.Dbuf, (const void *)imu_temp_pid.Dbuf, sizeof(pidlog.Dbuf));
-        memcpy((void *)pidlog.error, (const void *)imu_temp_pid.error, sizeof(pidlog.error));
-        sdlog_write(SDLOG_TAG_PID, &pidlog, (uint16_t)sizeof(pidlog));
+        if ((uint32_t)(now_ms - imu_pid_log_tick_ms) >= IMU_SDLOG_PID_PERIOD_MS)
+        {
+            imu_pid_log_tick_ms = now_ms;
+
+            sdlog_pid_runtime_t pidlog = {0};
+            pidlog.pid_id = SDLOG_PID_IMU_TEMP;
+            pidlog.mode = imu_temp_pid.mode;
+            pidlog.set = imu_temp_pid.set;
+            pidlog.fdb = imu_temp_pid.fdb;
+            pidlog.out = imu_temp_pid.out;
+            sdlog_write(SDLOG_TAG_PID, &pidlog, (uint16_t)sizeof(pidlog));
+        }
 
         osDelay(1u);
     }
