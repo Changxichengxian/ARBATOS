@@ -371,15 +371,15 @@ static const aux_telem_sig_e aux_telem_default_list[] =
     AUX_TELEM_SIG_SHOOT_TRIGGER_ECD,
     AUX_TELEM_SIG_SHOOT_TRIGGER_TEMP,
     AUX_TELEM_SIG_SHOOT_TRIGGER_CURRENT_FB,
-    AUX_TELEM_SIG_DIAG_CAN1_0X200_M1,
-    AUX_TELEM_SIG_DIAG_CAN1_0X200_M2,
-    AUX_TELEM_SIG_DIAG_CAN1_0X200_PITCH,
-    AUX_TELEM_SIG_DIAG_CAN1_0X200_TRIGGER,
-    AUX_TELEM_SIG_DIAG_CAN1_0X1FF_M4,
-    AUX_TELEM_SIG_DIAG_CAN1_0X1FF_YAW,
-    AUX_TELEM_SIG_DIAG_CAN1_0X1FF_M3,
-    AUX_TELEM_SIG_DIAG_CAN1_1FF_STATUS,
-    AUX_TELEM_SIG_DIAG_CAN1_ERR,
+    AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS0_CURRENT,
+    AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS1_CURRENT,
+    AUX_TELEM_SIG_DIAG_ACTUATOR_PITCH_CURRENT,
+    AUX_TELEM_SIG_DIAG_ACTUATOR_TRIGGER_CURRENT,
+    AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS3_CURRENT,
+    AUX_TELEM_SIG_DIAG_ACTUATOR_YAW_CURRENT,
+    AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS2_CURRENT,
+    AUX_TELEM_SIG_DIAG_RM_GROUP_1FF_STATUS,
+    AUX_TELEM_SIG_DIAG_CAN_BUS1_ERR,
     AUX_TELEM_SIG_PACK_OFFLINE,
     AUX_TELEM_SIG_DIAG_ZERO_FORCE,
     AUX_TELEM_SIG_SHOOT_TRIGGER_PID_IOUT,
@@ -1543,7 +1543,7 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
             case 0: return (fp32)(mm ? mm->speed_rpm : 0);
             case 1: return (fp32)(mm ? mm->given_current : 0);
             case 2: return (fp32)(mm ? mm->temperate : 0);
-            case 3: return (fp32)actuator_cmd_get_friction_current_can2(motor);
+            case 3: return (fp32)actuator_cmd_get_friction_current(motor);
             default: return 0.0f;
             }
         }
@@ -1757,23 +1757,23 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
     case AUX_TELEM_SIG_SHOOT_TRIGGER_CURRENT_FB:
         return ctx->trigger_meas ? (fp32)ctx->trigger_meas->given_current : 0.0f;
 
-    case AUX_TELEM_SIG_DIAG_CAN1_0X200_M1:
-        return (fp32)actuator_cmd_get_chassis_current_can1(0);
-    case AUX_TELEM_SIG_DIAG_CAN1_0X200_M2:
-        return (fp32)actuator_cmd_get_chassis_current_can1(1);
-    case AUX_TELEM_SIG_DIAG_CAN1_0X200_PITCH:
-        return (fp32)actuator_cmd_get_pitch_current_can1();
-    case AUX_TELEM_SIG_DIAG_CAN1_0X200_TRIGGER:
-        return (fp32)actuator_cmd_get_trigger_current_can1();
-    case AUX_TELEM_SIG_DIAG_CAN1_0X1FF_M4:
-        return (fp32)actuator_cmd_get_chassis_current_can1(3);
-    case AUX_TELEM_SIG_DIAG_CAN1_0X1FF_YAW:
-        return (fp32)actuator_cmd_get_yaw_current_can1();
-    case AUX_TELEM_SIG_DIAG_CAN1_0X1FF_M3:
-        return (fp32)actuator_cmd_get_chassis_current_can1(2);
-    case AUX_TELEM_SIG_DIAG_CAN1_1FF_STATUS:
+    case AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS0_CURRENT:
+        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_CHASSIS0);
+    case AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS1_CURRENT:
+        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_CHASSIS1);
+    case AUX_TELEM_SIG_DIAG_ACTUATOR_PITCH_CURRENT:
+        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_PITCH);
+    case AUX_TELEM_SIG_DIAG_ACTUATOR_TRIGGER_CURRENT:
+        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_TRIGGER);
+    case AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS3_CURRENT:
+        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_CHASSIS3);
+    case AUX_TELEM_SIG_DIAG_ACTUATOR_YAW_CURRENT:
+        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_YAW);
+    case AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS2_CURRENT:
+        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_CHASSIS2);
+    case AUX_TELEM_SIG_DIAG_RM_GROUP_1FF_STATUS:
         return (fp32)CAN_get_last_1ff_status();
-    case AUX_TELEM_SIG_DIAG_CAN1_ERR:
+    case AUX_TELEM_SIG_DIAG_CAN_BUS1_ERR:
         return (fp32)CAN_get_last_can1_error();
     case AUX_TELEM_SIG_DIAG_ZERO_FORCE:
         return (gimbal_behaviour_watch == GIMBAL_ZERO_FORCE) ? 1.0f : 0.0f;

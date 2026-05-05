@@ -480,6 +480,8 @@ typedef struct
     motor_model_param_t model[MOTOR_MODEL__COUNT];
 } motor_config_t;
 
+#define MOTOR_ARM_JOINT_COUNT 6u
+
 typedef struct
 {
     motor_node_param_t chassis[4];
@@ -488,6 +490,7 @@ typedef struct
     motor_node_param_t yaw_upper;
     motor_node_param_t pitch;
     motor_node_param_t trigger;
+    motor_node_param_t arm[MOTOR_ARM_JOINT_COUNT];
 } motor_mount_config_t;
 
 // AUX telemetry signal IDs.
@@ -733,15 +736,15 @@ typedef enum
     AUX_TELEM_SIG_SHOOT_TRIGGER_CURRENT_FB, // [200] 拨弹电机电流反馈(given_current)
 
     // ===== 诊断 =====
-    AUX_TELEM_SIG_DIAG_CAN1_0X200_M1, // [201] CAN1 0x200 底盘电机1电流指令
-    AUX_TELEM_SIG_DIAG_CAN1_0X200_M2, // [202] CAN1 0x200 底盘电机2电流指令
-    AUX_TELEM_SIG_DIAG_CAN1_0X200_PITCH, // [203] CAN1 0x200 PITCH电机电流指令
-    AUX_TELEM_SIG_DIAG_CAN1_0X200_TRIGGER, // [204] CAN1 0x200 拨弹电机电流指令
-    AUX_TELEM_SIG_DIAG_CAN1_0X1FF_M4, // [205] CAN1 0x1FF 底盘电机4电流指令
-    AUX_TELEM_SIG_DIAG_CAN1_0X1FF_YAW, // [206] CAN1 0x1FF YAW电机电流指令
-    AUX_TELEM_SIG_DIAG_CAN1_0X1FF_M3, // [207] CAN1 0x1FF 底盘电机3电流指令
-    AUX_TELEM_SIG_DIAG_CAN1_1FF_STATUS, // [208] CAN1 0x1FF 发送状态(用于诊断)
-    AUX_TELEM_SIG_DIAG_CAN1_ERR, // [209] CAN1 错误码(最近一次)
+    AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS0_CURRENT, // [201] chassis0 电流指令
+    AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS1_CURRENT, // [202] chassis1 电流指令
+    AUX_TELEM_SIG_DIAG_ACTUATOR_PITCH_CURRENT, // [203] pitch 电流指令
+    AUX_TELEM_SIG_DIAG_ACTUATOR_TRIGGER_CURRENT, // [204] trigger 电流指令
+    AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS3_CURRENT, // [205] chassis3 电流指令
+    AUX_TELEM_SIG_DIAG_ACTUATOR_YAW_CURRENT, // [206] yaw 电流指令
+    AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS2_CURRENT, // [207] chassis2 电流指令
+    AUX_TELEM_SIG_DIAG_RM_GROUP_1FF_STATUS, // [208] RM 0x1FF 发送状态(用于诊断)
+    AUX_TELEM_SIG_DIAG_CAN_BUS1_ERR, // [209] CAN bus1 错误码(最近一次)
     AUX_TELEM_SIG_DIAG_ZERO_FORCE, // [210] 云台零力模式(1=进入)
 
     // ===== 射击 PID（拨弹，pid_type_def） =====
@@ -910,17 +913,10 @@ typedef struct
 
 typedef struct
 {
-    uint8_t enable;             // [800] 1=enable Unitree RS485 executor
-    uint8_t rs485_port;         // [801] legacy fallback; prefer motor node rs485_port
-    uint8_t motor_id;           // [802] legacy fallback; prefer motor node can_id
-    uint8_t reserved0;
-    uint32_t baudrate;          // [803] legacy fallback; prefer motor node baudrate
-    uint16_t control_period_ms; // [804] executor period
-    uint16_t rx_timeout_ms;     // [805] legacy fallback; prefer motor node rx_timeout_ms
-    fp32 reduction_ratio;       // [806] legacy fallback; prefer motor model reduction_ratio
-    fp32 key_speed_rad_s;       // [807] bringup key speed on output side
-    fp32 hold_kd;               // [808] damping when no key is pressed
-    fp32 drive_kd;              // [809] damping when key is pressed
+    uint16_t control_period_ms; // [800] executor period
+    fp32 key_speed_rad_s;       // [801] bringup key speed on output side
+    fp32 hold_kd;               // [802] damping when no key is pressed
+    fp32 drive_kd;              // [803] damping when key is pressed
 } arm_j0_unitree_config_t;
 
 typedef enum

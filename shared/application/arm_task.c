@@ -44,11 +44,6 @@ const arm_j0_unitree_state_t *arm_j0_unitree_get_state(void)
     return arm_motion_get_j0_unitree_state();
 }
 
-uint8_t can_tx_allow_can1_yaw_override(void)
-{
-    return arm_motion_can1_yaw_override_active();
-}
-
 uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8])
 {
     return arm_motion_process_can_feedback(bus, std_id, dlc, data);

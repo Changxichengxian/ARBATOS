@@ -467,7 +467,7 @@ void CAN_cmd_rm_group(uint8_t bus,
     data[6] = (uint8_t)(motor4 >> 8);
     data[7] = (uint8_t)motor4;
 
-    if (bus == 1u && group_id == (uint16_t)CAN_GIMBAL_ALL_ID)
+    if (bus == 1u && group_id == (uint16_t)CAN_RM_GROUP_0X1FF_ID)
     {
         last_can1ff_status = (uint8_t)bsp_can_tx(bus, group_id, data, 8u);
         return;
@@ -476,33 +476,10 @@ void CAN_cmd_rm_group(uint8_t bus,
     (void)bsp_can_tx(bus, group_id, data, 8u);
 }
 
-void CAN_cmd_pitch_3510(int16_t pitch)
-{
-    uint8_t data[8] = {0};
-    data[4] = (uint8_t)(pitch >> 8);
-    data[5] = (uint8_t)pitch;
-    (void)bsp_can_tx(1u, (uint16_t)CAN_CHASSIS_ALL_ID, data, 8u);
-}
-
-void CAN_cmd_friction_3510(int16_t f1, int16_t f2, int16_t f3, int16_t f4)
-{
-    CAN_cmd_rm_group(2u, (uint16_t)CAN_CHASSIS_ALL_ID, f1, f2, f3, f4);
-}
-
 void CAN_cmd_chassis_reset_ID(void)
 {
     uint8_t data[8] = {0};
     (void)bsp_can_tx(1u, 0x700u, data, 8u);
-}
-
-void CAN_cmd_chassis(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4)
-{
-    CAN_cmd_rm_group(1u, (uint16_t)CAN_CHASSIS_ALL_ID, motor1, motor2, motor3, motor4);
-}
-
-void CAN_cmd_chassis_1ff(int16_t motor205, int16_t motor206, int16_t motor207, int16_t motor208)
-{
-    CAN_cmd_rm_group(1u, (uint16_t)CAN_GIMBAL_ALL_ID, motor205, motor206, motor207, motor208);
 }
 
 const motor_measure_t *get_yaw_gimbal_motor_measure_point(void)

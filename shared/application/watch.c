@@ -607,7 +607,7 @@ static void watch_copy_shoot(void)
     g_watch.shoot.fric_speed_set_rpm = (int16_t)shoot->fric_speed_set;
     for (uint8_t i = 0; i < 4; i++)
     {
-        g_watch.shoot.fric_current_cmd[i] = actuator_cmd_get_friction_current_can2(i);
+        g_watch.shoot.fric_current_cmd[i] = actuator_cmd_get_friction_current(i);
     }
 
     g_watch.shoot.trigger_angle_deg = shoot->angle * rad2deg;
@@ -693,16 +693,12 @@ static void watch_copy_diag(void)
 {
     sdlog_stats_t sd_stats = {0};
     sdlog_image_link_stats_t image_stats = {0};
+    uint32_t i;
 
-    g_watch.diag.can1_0x200[0] = actuator_cmd_get_chassis_current_can1(0);        // 0x201
-    g_watch.diag.can1_0x200[1] = actuator_cmd_get_chassis_current_can1(1);        // 0x202
-    g_watch.diag.can1_0x200[2] = actuator_cmd_get_pitch_current_can1();           // 0x203
-    g_watch.diag.can1_0x200[3] = actuator_cmd_get_trigger_current_can1();         // 0x204
-
-    g_watch.diag.can1_0x1ff[0] = actuator_cmd_get_chassis_current_can1(3);        // 0x205
-    g_watch.diag.can1_0x1ff[1] = actuator_cmd_get_yaw_current_can1();             // 0x206
-    g_watch.diag.can1_0x1ff[2] = actuator_cmd_get_chassis_current_can1(2);        // 0x207
-    g_watch.diag.can1_0x1ff[3] = 0;                                               // 0x208 reserved
+    for (i = 0u; i < (uint32_t)ACTUATOR_ID__COUNT; i++)
+    {
+        g_watch.diag.actuator_current[i] = actuator_cmd_get_current((actuator_id_e)i);
+    }
 
     g_watch.diag.can1_1ff_status = (int16_t)CAN_get_last_1ff_status();
     g_watch.diag.can1_err = CAN_get_last_can1_error();

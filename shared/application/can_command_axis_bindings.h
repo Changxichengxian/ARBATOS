@@ -98,4 +98,10 @@
 #define CAN_TX_AXIS_FRICTION3_IS_RM_GROUP() motor_cfg_is_rm_group_protocol(CAN_TX_AXIS_FRICTION3_NODE())
 #define CAN_TX_AXIS_FRICTION3_LIMIT_CURRENT(current_) motor_cfg_limit_current_node(CAN_TX_AXIS_FRICTION3_NODE(), (current_))
 
+#define CAN_TX_AXIS_ARM_FALLBACK_BUS(index_) (((index_) == 0u) ? 1u : 2u)
+#define CAN_TX_AXIS_ARM_ACTUATOR_ID(index_) actuator_id_arm_joint((index_))
+#define CAN_TX_AXIS_ARM_NODE(index_) (&g_config.motor.arm[(index_)])
+#define CAN_TX_AXIS_ARM_CAN_ID(index_) motor_cfg_can_id(CAN_TX_AXIS_ARM_NODE((index_)))
+#define CAN_TX_AXIS_ARM_IS_RM_GROUP(index_) motor_cfg_is_rm_group_protocol(CAN_TX_AXIS_ARM_NODE((index_)))
+
 #endif

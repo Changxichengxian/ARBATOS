@@ -35,7 +35,6 @@
 
 #include <string.h>
 
-__weak uint8_t can_tx_allow_can1_yaw_override(void);
 __weak uint8_t can_tx_process_extra_item(uint8_t bus,
                                          actuator_id_e actuator_id,
                                          const motor_node_param_t *node,
@@ -366,11 +365,6 @@ static void can_tx_collect_offline_cmds(void)
         s_can_tx_friction_cmd[2] = actuator_cmd_get_friction_current(2);
         s_can_tx_friction_cmd[3] = actuator_cmd_get_friction_current(3);
     }
-    if (can_tx_allow_can1_yaw_override() != 0u)
-    {
-        s_can_tx_yaw_cmd = actuator_cmd_get_yaw_current();
-    }
-
     can_tx_limit_friction_cmds();
 }
 
@@ -645,11 +639,30 @@ static inline void can_tx_exec_friction3(void)
                      s_can_tx_friction_cmd[3]);
 }
 
+static inline void can_tx_exec_arm0(void)
+{
+    const motor_node_param_t *node = CAN_TX_AXIS_ARM_NODE(0u);
+    const int16_t current = actuator_cmd_get_current(ACTUATOR_ID_ARM_J0);
+
+    if (current == 0 || motor_cfg_transport(node) != MOTOR_TRANSPORT_CAN)
+    {
+        return;
+    }
+
+    CAN_TX_EXEC_AXIS(CAN_TX_AXIS_ARM_FALLBACK_BUS(0u),
+                     CAN_TX_AXIS_ARM_ACTUATOR_ID(0u),
+                     node,
+                     CAN_TX_AXIS_ARM_IS_RM_GROUP(0u),
+                     CAN_TX_AXIS_ARM_CAN_ID(0u),
+                     current);
+}
+
 // 离线分支只执行被允许的轴，其他轴保持 0 输出。
 static void can_tx_exec_offline_axes(void)
 {
     can_tx_clear_rm_frames();
     can_tx_exec_yaw();
+    can_tx_exec_arm0();
     can_tx_exec_friction0();
     can_tx_exec_friction1();
     can_tx_exec_friction2();
@@ -668,6 +681,7 @@ static void can_tx_exec_online_axes(void)
     can_tx_exec_yaw_upper();
     can_tx_exec_pitch();
     can_tx_exec_trigger();
+    can_tx_exec_arm0();
     can_tx_exec_friction0();
     can_tx_exec_friction1();
     can_tx_exec_friction2();
@@ -678,35 +692,29 @@ static void can_tx_exec_online_axes(void)
 static void can_tx_emit_rm_frames(void)
 {
     CAN_cmd_rm_group(1u,
-                     (uint16_t)CAN_CHASSIS_ALL_ID,
+                     (uint16_t)CAN_RM_GROUP_0X200_ID,
                      s_can_tx_can1_200[0],
                      s_can_tx_can1_200[1],
                      s_can_tx_can1_200[2],
                      s_can_tx_can1_200[3]);
     CAN_cmd_rm_group(1u,
-                     (uint16_t)CAN_GIMBAL_ALL_ID,
+                     (uint16_t)CAN_RM_GROUP_0X1FF_ID,
                      s_can_tx_can1_1ff[0],
                      s_can_tx_can1_1ff[1],
                      s_can_tx_can1_1ff[2],
                      s_can_tx_can1_1ff[3]);
     CAN_cmd_rm_group(2u,
-                     (uint16_t)CAN_CHASSIS_ALL_ID,
+                     (uint16_t)CAN_RM_GROUP_0X200_ID,
                      s_can_tx_can2_200[0],
                      s_can_tx_can2_200[1],
                      s_can_tx_can2_200[2],
                      s_can_tx_can2_200[3]);
     CAN_cmd_rm_group(2u,
-                     (uint16_t)CAN_GIMBAL_ALL_ID,
+                     (uint16_t)CAN_RM_GROUP_0X1FF_ID,
                      s_can_tx_can2_1ff[0],
                      s_can_tx_can2_1ff[1],
                      s_can_tx_can2_1ff[2],
                      s_can_tx_can2_1ff[3]);
-}
-
-// 目标工程可以打开这个口子，在遥控离线时仍允许 yaw 调试输出。
-__weak uint8_t can_tx_allow_can1_yaw_override(void)
-{
-    return 0u;
 }
 
 // 目标工程可在这里接入非大疆、非 MIT 的特殊电机发送逻辑。
@@ -719,6 +727,48 @@ __weak uint8_t can_tx_process_extra_item(uint8_t bus,
     (void)actuator_id;
     (void)node;
     (void)current;
+    return 0u;
+}
+
+__weak void can_mit_motor_send_cmd(uint8_t bus,
+                                   uint16_t std_id,
+                                   const can_mit_motor_limits_t *limits,
+                                   const can_mit_motor_cmd_t *cmd)
+{
+    (void)bus;
+    (void)std_id;
+    (void)limits;
+    (void)cmd;
+}
+
+__weak void can_mit_motor_send_enable(uint8_t bus, uint16_t std_id)
+{
+    (void)bus;
+    (void)std_id;
+}
+
+__weak void can_mit_motor_send_stop(uint8_t bus,
+                                    uint16_t std_id,
+                                    const can_mit_motor_limits_t *limits)
+{
+    (void)bus;
+    (void)std_id;
+    (void)limits;
+}
+
+__weak uint8_t can_mit_motor_update_feedback(uint16_t std_id,
+                                             uint8_t motor_id,
+                                             const can_mit_motor_limits_t *limits,
+                                             uint8_t dlc,
+                                             const uint8_t data[8],
+                                             can_mit_motor_feedback_t *feedback)
+{
+    (void)std_id;
+    (void)motor_id;
+    (void)limits;
+    (void)dlc;
+    (void)data;
+    (void)feedback;
     return 0u;
 }
 

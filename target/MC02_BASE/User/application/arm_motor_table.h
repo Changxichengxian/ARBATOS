@@ -13,7 +13,7 @@
 
 #include "config.h"
 
-#define ARM_MOTOR_COUNT 6u
+#define ARM_MOTOR_COUNT MOTOR_ARM_JOINT_COUNT
 
 typedef enum
 {
@@ -25,8 +25,7 @@ typedef struct
 {
     const char *name;
     uint8_t driver; // arm_motor_driver_e
-    motor_node_param_t node;
-    uint8_t bus; // fallback CAN bus; node.can_bus wins when set
+    uint8_t fallback_bus;
     int8_t direction;
     uint16_t key_mask;
     fp32 key_speed_rad_s;

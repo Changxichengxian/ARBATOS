@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "actuator_cmd.h"
 #include "struct_typedef.h"
 #include "rt_profiler.h"
 
@@ -279,8 +280,7 @@ typedef struct
 
 typedef struct
 {
-    int16_t can1_0x200[4]; // motor1/motor2/pitch/trigger
-    int16_t can1_0x1ff[4]; // motor205/yaw/motor207/motor208
+    int16_t actuator_current[ACTUATOR_ID__COUNT];
     uint8_t flags[8];      // 0:dbus_lost 1:zero_force 2:yaw_offline 3:pitch_offline 4:trigger_offline 5:chassis_zeroed
     int16_t can1_1ff_status;
     uint32_t can1_err;

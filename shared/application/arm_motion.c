@@ -41,7 +41,6 @@ volatile fp32 g_arm_key_speed_scale = 1.0f;
 volatile fp32 g_arm_key_kd = 1.0f;
 volatile int16_t g_arm_j0_current = ARM_J0_CURRENT_DEFAULT;
 
-static volatile uint8_t g_arm_can1_yaw_override_active = 0u;
 static uint8_t g_arm_mit_armed = 0u;
 static arm_motor_feedback_t g_arm_feedback[ARM_MOTOR_COUNT];
 static can_mit_motor_feedback_t g_arm_mit_feedback[ARM_MOTOR_COUNT];
@@ -55,6 +54,7 @@ static uint8_t arm_key_active(const arm_motor_entry_t *entry, uint16_t key_mask)
 static uint8_t arm_any_keys_active(uint16_t key_mask);
 static uint8_t arm_any_mit_keys_active(uint16_t key_mask);
 static const arm_motor_entry_t *arm_j0_entry(void);
+static const motor_node_param_t *arm_entry_node(const arm_motor_entry_t *entry);
 static uint8_t arm_entry_can_bus(const arm_motor_entry_t *entry);
 static uint8_t arm_entry_is_unitree_rs485(const arm_motor_entry_t *entry);
 static uint8_t arm_j0_unitree_enabled(const arm_motor_entry_t *entry);
@@ -167,52 +167,77 @@ static const arm_motor_entry_t *arm_j0_entry(void)
     return &g_arm_motor_table[ARM_J0_INDEX];
 }
 
+static const motor_node_param_t *arm_entry_node(const arm_motor_entry_t *entry)
+{
+    uint32_t i;
+
+    if (entry == NULL)
+    {
+        return NULL;
+    }
+
+    for (i = 0u; i < ARM_MOTOR_COUNT; i++)
+    {
+        if (entry == &g_arm_motor_table[i])
+        {
+            return &g_config.motor.arm[i];
+        }
+    }
+
+    return NULL;
+}
+
 static uint8_t arm_entry_can_bus(const arm_motor_entry_t *entry)
 {
     if (entry == NULL)
     {
         return 0u;
     }
-    return motor_cfg_can_bus(entry->bus, &entry->node);
+    return motor_cfg_can_bus(entry->fallback_bus, arm_entry_node(entry));
 }
 
 static uint8_t arm_entry_is_unitree_rs485(const arm_motor_entry_t *entry)
 {
+    const motor_node_param_t *node = arm_entry_node(entry);
+
     if (entry == NULL)
     {
         return 0u;
     }
-    if (motor_cfg_transport(&entry->node) != MOTOR_TRANSPORT_RS485)
+    if (motor_cfg_transport(node) != MOTOR_TRANSPORT_RS485)
     {
         return 0u;
     }
-    return (motor_cfg_protocol(&entry->node) == MOTOR_PROTOCOL_UNITREE_RS485) ? 1u : 0u;
+    return (motor_cfg_protocol(node) == MOTOR_PROTOCOL_UNITREE_RS485) ? 1u : 0u;
 }
 
 static uint8_t arm_j0_unitree_enabled(const arm_motor_entry_t *entry)
 {
-    return (g_config.arm_j0_unitree.enable != 0u &&
-            arm_entry_is_unitree_rs485(entry) != 0u) ? 1u : 0u;
+    return (arm_entry_is_unitree_rs485(entry) != 0u) ? 1u : 0u;
 }
 
 static uint16_t arm_mit_std_id(const arm_motor_entry_t *entry)
 {
+    const motor_node_param_t *node = arm_entry_node(entry);
+
     if (entry == NULL)
     {
         return 0u;
     }
 
-    return motor_cfg_can_id(&entry->node);
+    return motor_cfg_can_id(node);
 }
 
 static const can_mit_motor_limits_t *arm_mit_limits(const arm_motor_entry_t *entry)
 {
+    const motor_node_param_t *node = arm_entry_node(entry);
+
     if (entry == NULL)
     {
         return NULL;
     }
 
-    return motor_cfg_mit_limits(&entry->node);
+    return motor_cfg_mit_limits(node);
 }
 
 static void arm_copy_mit_feedback(uint8_t index)
@@ -334,17 +359,15 @@ static fp32 arm_j0_unitree_ratio_safe(const arm_motor_entry_t *entry, const arm_
 {
     if (entry != NULL)
     {
-        const motor_model_param_t *model = motor_cfg_model(entry->node.model);
+        const motor_node_param_t *node = arm_entry_node(entry);
+        const motor_model_param_t *model = (node != NULL) ? motor_cfg_model(node->model) : NULL;
 
         if (model != NULL && model->reduction_ratio > 0.0f)
         {
             return model->reduction_ratio;
         }
     }
-    if (cfg != NULL && cfg->reduction_ratio > 0.0f)
-    {
-        return cfg->reduction_ratio;
-    }
+    (void)cfg;
 
     return 1.0f;
 }
@@ -478,6 +501,8 @@ static void arm_build_j0_unitree_config(unitree_motor_config_t *out,
                                         const arm_motor_entry_t *entry,
                                         const arm_j0_unitree_config_t *cfg)
 {
+    const motor_node_param_t *node = arm_entry_node(entry);
+
     if (out == NULL)
     {
         return;
@@ -491,16 +516,10 @@ static void arm_build_j0_unitree_config(unitree_motor_config_t *out,
     }
 
     out->enable = arm_j0_unitree_enabled(entry);
-    out->rs485_port = (entry != NULL) ? entry->node.rs485_port : cfg->rs485_port;
-    out->motor_id = (entry != NULL && motor_cfg_node_id(&entry->node) != 0u) ?
-        motor_cfg_node_id(&entry->node) :
-        cfg->motor_id;
-    out->baudrate = (entry != NULL && entry->node.baudrate != 0u) ?
-        entry->node.baudrate :
-        cfg->baudrate;
-    out->rx_timeout_ms = (entry != NULL && entry->node.rx_timeout_ms != 0u) ?
-        entry->node.rx_timeout_ms :
-        cfg->rx_timeout_ms;
+    out->rs485_port = (node != NULL) ? node->rs485_port : 0u;
+    out->motor_id = motor_cfg_node_id(node);
+    out->baudrate = (node != NULL) ? node->baudrate : 0u;
+    out->rx_timeout_ms = (node != NULL) ? node->rx_timeout_ms : 0u;
 }
 
 static void arm_update_j0_actuator_feedback_from_unitree(void)
@@ -680,7 +699,7 @@ static void arm_refresh_j0_feedback(void)
                             (measure->given_current != 0) ||
                             (measure->temperate != 0u)) ? 1u : 0u;
         feedback->rx_dlc = 8u;
-        feedback->rx_id = CAN_YAW_MOTOR_ID;
+        feedback->rx_id = motor_cfg_feedback_id(arm_entry_node(entry));
         feedback->rx_count = 0u;
         feedback->last_rx_tick = 0u;
         feedback->position = (fp32)measure->ecd;
@@ -700,16 +719,13 @@ static void arm_step_j0(const arm_motor_entry_t *entry, uint16_t key_mask)
 
     if (arm_j0_unitree_enabled(entry) != 0u)
     {
-        g_arm_can1_yaw_override_active = 0u;
-        actuator_cmd_set_yaw_current(0);
+        actuator_cmd_set_current(ACTUATOR_ID_ARM_J0, 0);
         return;
     }
 
     if (g_arm_deadman_hold_ctrl != 0u && ctrl_held == 0u)
     {
-        g_arm_can1_yaw_override_active = 0u;
         actuator_cmd_set_current(ACTUATOR_ID_ARM_J0, 0);
-        actuator_cmd_set_yaw_current(0);
         return;
     }
 
@@ -718,16 +734,12 @@ static void arm_step_j0(const arm_motor_entry_t *entry, uint16_t key_mask)
         const int16_t current_abs = (g_arm_j0_current >= 0) ? g_arm_j0_current : (int16_t)(-g_arm_j0_current);
         int16_t current = (reverse != 0u) ? (int16_t)(-current_abs) : current_abs;
 
-        current = motor_cfg_limit_current_node(&g_config.motor.yaw, current);
-        g_arm_can1_yaw_override_active = 1u;
+        current = motor_cfg_limit_current_node(arm_entry_node(entry), current);
         actuator_cmd_set_current(ACTUATOR_ID_ARM_J0, current);
-        actuator_cmd_set_yaw_current(current);
     }
     else
     {
-        g_arm_can1_yaw_override_active = 0u;
         actuator_cmd_set_current(ACTUATOR_ID_ARM_J0, 0);
-        actuator_cmd_set_yaw_current(0);
     }
 }
 
@@ -822,14 +834,12 @@ void arm_motion_init(void)
     (void)memset(g_arm_feedback, 0, sizeof(g_arm_feedback));
     (void)memset(g_arm_mit_feedback, 0, sizeof(g_arm_mit_feedback));
     (void)memset(&g_arm_j0_unitree_state, 0, sizeof(g_arm_j0_unitree_state));
-    g_arm_can1_yaw_override_active = 0u;
     g_arm_mit_armed = 0u;
     g_arm_j0_unitree_last_step_tick_ms = 0u;
     g_arm_j0_unitree_cmd_output_speed_rad_s = 0.0f;
     g_arm_j0_unitree_cmd_output_kd = 0.0f;
     actuator_cmd_set_current(ACTUATOR_ID_ARM_J0, 0);
     arm_clear_mit_actuator_cmds();
-    actuator_cmd_set_yaw_current(0);
     unitree_motor_driver_init();
     arm_sync_j0_unitree_state();
     arm_refresh_j0_feedback();
@@ -852,11 +862,6 @@ const arm_motor_feedback_t *arm_motion_get_feedback(uint8_t index)
     return &g_arm_feedback[index];
 }
 
-uint8_t arm_motion_can1_yaw_override_active(void)
-{
-    return g_arm_can1_yaw_override_active;
-}
-
 uint8_t arm_motion_process_can_feedback(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8])
 {
     uint32_t i;
@@ -864,6 +869,7 @@ uint8_t arm_motion_process_can_feedback(uint8_t bus, uint16_t std_id, uint8_t dl
     for (i = 0u; i < ARM_MOTOR_COUNT; i++)
     {
         const arm_motor_entry_t *entry = &g_arm_motor_table[i];
+        const motor_node_param_t *node = arm_entry_node(entry);
 
         if (entry->driver != ARM_MOTOR_DRIVER_CAN_MIT)
         {
@@ -873,13 +879,13 @@ uint8_t arm_motion_process_can_feedback(uint8_t bus, uint16_t std_id, uint8_t dl
         {
             continue;
         }
-        if (motor_cfg_feedback_id(&entry->node) != std_id)
+        if (motor_cfg_feedback_id(node) != std_id)
         {
             continue;
         }
 
         if (can_mit_motor_update_feedback(std_id,
-                                          entry->node.can_id,
+                                          motor_cfg_node_id(node),
                                           arm_mit_limits(entry),
                                           dlc,
                                           data,

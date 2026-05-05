@@ -278,14 +278,7 @@ config_t g_config = {
     // 功率配置
     .arm_j0_unitree =
         {
-            .enable = 0u,
-            .rs485_port = 0u,
-            .motor_id = 0u,
-            .reserved0 = 0u,
-            .baudrate = 4000000u,
             .control_period_ms = 5u,
-            .rx_timeout_ms = 30u,
-            .reduction_ratio = 6.33f,
             .key_speed_rad_s = 1.0f,
             .hold_kd = 0.2f,
             .drive_kd = 0.4f,
@@ -548,7 +541,7 @@ static const config_block_desc_t g_config_blocks[] = {
     {CONFIG_BLOCK_LOCOMOTION_WHEELLEG_SERVO, "locomotion.wheelleg_servo", "500-599", &g_config.wheelleg_servo, sizeof(g_config.wheelleg_servo), config_block_active_wheelleg_servo},
     {CONFIG_BLOCK_LOCOMOTION_WHEELLEG_MIT, "locomotion.wheelleg_mit", "600-699", &g_config.wheelleg_mit, sizeof(g_config.wheelleg_mit), config_block_active_wheelleg_mit},
     {CONFIG_BLOCK_SHOOT_RM, "shoot.rm", "112-121,127,130-133,139-142,145-160", &g_config.shoot, sizeof(g_config.shoot), config_block_active_always},
-    {CONFIG_BLOCK_ARM_J0_UNITREE, "arm.j0_unitree", "800-809", &g_config.arm_j0_unitree, sizeof(g_config.arm_j0_unitree), config_block_active_arm},
+    {CONFIG_BLOCK_ARM_J0_UNITREE, "arm.j0_unitree", "800-803", &g_config.arm_j0_unitree, sizeof(g_config.arm_j0_unitree), config_block_active_arm},
     {CONFIG_BLOCK_COMMON_POWER, "common.power", "161-166", &g_config.power, sizeof(g_config.power), config_block_active_always},
     {CONFIG_BLOCK_COMMON_DETECT, "common.detect", "167-208,211", &g_config.detect, sizeof(g_config.detect), config_block_active_always},
     {CONFIG_BLOCK_COMMON_IMU, "common.imu", "218-219", &g_config.imu, sizeof(g_config.imu), config_block_active_always},

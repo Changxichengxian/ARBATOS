@@ -10,6 +10,8 @@
 
 #ifndef MANUAL_INPUT_H
 #define MANUAL_INPUT_H
+#include <stddef.h>
+
 #include "struct_typedef.h"
 #include "bsp_rc.h"
 #include "config.h"
@@ -121,27 +123,52 @@ static __inline fp32 rc_scale_fp32_by_abs(fp32 value, fp32 in_abs_max, fp32 out_
 #define KEY_PRESSED_OFFSET_V            ((uint16_t)1 << 14)
 #define KEY_PRESSED_OFFSET_B            ((uint16_t)1 << 15)
 /* ----------------------- Data Struct ------------------------------------- */
-typedef __packed struct
-{
-        __packed struct
-        {
-                int16_t ch[5];
-                char s[2];
-        } rc;
-        __packed struct
-        {
-                int16_t x;
-                int16_t y;
-                int16_t z;
-                uint8_t press_l;
-                uint8_t press_r;
-        } mouse;
-        __packed struct
-        {
-                uint16_t v;
-        } key;
+#pragma pack(push, 1)
 
+typedef struct manual_input_rc
+{
+        int16_t ch[5];
+        char s[2];
+} manual_input_rc_t;
+
+typedef struct manual_input_mouse
+{
+        int16_t x;
+        int16_t y;
+        int16_t z;
+        uint8_t press_l;
+        uint8_t press_r;
+} manual_input_mouse_t;
+
+typedef struct manual_input_key
+{
+        uint16_t v;
+} manual_input_key_t;
+
+typedef struct manual_input_state
+{
+        manual_input_rc_t rc;
+        manual_input_mouse_t mouse;
+        manual_input_key_t key;
 } manual_input_state_t;
+
+#pragma pack(pop)
+
+#define MANUAL_INPUT_RC_SIZE_BYTES      12u
+#define MANUAL_INPUT_MOUSE_SIZE_BYTES   8u
+#define MANUAL_INPUT_KEY_SIZE_BYTES     2u
+#define MANUAL_INPUT_STATE_SIZE_BYTES   22u
+#define MANUAL_INPUT_RC_OFFSET_BYTES    0u
+#define MANUAL_INPUT_MOUSE_OFFSET_BYTES 12u
+#define MANUAL_INPUT_KEY_OFFSET_BYTES   20u
+
+typedef char manual_input_rc_size_check[(sizeof(manual_input_rc_t) == MANUAL_INPUT_RC_SIZE_BYTES) ? 1 : -1];
+typedef char manual_input_mouse_size_check[(sizeof(manual_input_mouse_t) == MANUAL_INPUT_MOUSE_SIZE_BYTES) ? 1 : -1];
+typedef char manual_input_key_size_check[(sizeof(manual_input_key_t) == MANUAL_INPUT_KEY_SIZE_BYTES) ? 1 : -1];
+typedef char manual_input_state_size_check[(sizeof(manual_input_state_t) == MANUAL_INPUT_STATE_SIZE_BYTES) ? 1 : -1];
+typedef char manual_input_rc_offset_check[(offsetof(manual_input_state_t, rc) == MANUAL_INPUT_RC_OFFSET_BYTES) ? 1 : -1];
+typedef char manual_input_mouse_offset_check[(offsetof(manual_input_state_t, mouse) == MANUAL_INPUT_MOUSE_OFFSET_BYTES) ? 1 : -1];
+typedef char manual_input_key_offset_check[(offsetof(manual_input_state_t, key) == MANUAL_INPUT_KEY_OFFSET_BYTES) ? 1 : -1];
 
 /*
  * Manual input layers:

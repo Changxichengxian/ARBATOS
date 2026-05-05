@@ -15,28 +15,9 @@
 /* CAN send and receive ID */
 typedef enum
 {
-    CAN_CHASSIS_ALL_ID = 0x200,
-    CAN_3508_M1_ID = 0x201,
-    CAN_3508_M2_ID = 0x202,
-    CAN_3508_M3_ID = 0x203,
-    CAN_3508_M4_ID = 0x204,
-
-    // CAN1 gimbal group (0x1FF): 0x205/0x206/0x207/0x208
-    CAN_YAW_MOTOR_ID = 0x205,
-    CAN_PITCH_MOTOR_ID = 0x206,
-    CAN_TRIGGER_MOTOR_ID = 0x207,
-    CAN_GIMBAL_ALL_ID = 0x1FF,    // 0x1FF broadcast
-    CAN_YAW_ALL_ID = 0x2FF,       // 0x2FF broadcast
-
-    // CAN2 friction 3510
-    CAN_FRICTION1_ID = 0x201,
-    CAN_FRICTION2_ID = 0x202,
-    CAN_FRICTION3_ID = 0x203,
-    CAN_FRICTION4_ID = 0x204,
-
-    // CAN1 pitch motor (3510 / 6623 position-only)
-    CAN_PITCH_3510_ID = 0x206,
-
+    CAN_RM_GROUP_0X200_ID = 0x200,
+    CAN_RM_GROUP_0X1FF_ID = 0x1FF,
+    CAN_RM_GROUP_0X2FF_ID = 0x2FF,
 } can_msg_id_e;
 
 // rm motor data
@@ -49,10 +30,6 @@ typedef struct
     int16_t last_ecd;
 } motor_measure_t;
 
-// CAN1: 0x200 group send (0x201~0x204)
-extern void CAN_cmd_chassis(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4);
-// CAN1: 0x1FF send 0x205/0x206/0x207/0x208
-extern void CAN_cmd_chassis_1ff(int16_t motor205, int16_t motor206, int16_t motor207, int16_t motor208);
 extern void CAN_cmd_rm_group(uint8_t bus,
                              uint16_t group_id,
                              int16_t motor1,
@@ -68,11 +45,6 @@ uint32_t CAN_get_can1_tx_count(void);
 uint32_t CAN_get_can2_tx_count(void);
 uint32_t CAN_get_can1_tx_fail_count(void);
 uint32_t CAN_get_can2_tx_fail_count(void);
-// CAN1: pitch 3510 on 0x200 (motor3 slot)
-extern void CAN_cmd_pitch_3510(int16_t pitch);
-// NOTE: Shared actuator set currents (yaw/pitch/trigger) are in actuator_cmd.h.
-// CAN2: four 3510 friction motors
-extern void CAN_cmd_friction_3510(int16_t f1, int16_t f2, int16_t f3, int16_t f4);
 
 extern void CAN_cmd_chassis_reset_ID(void);
 

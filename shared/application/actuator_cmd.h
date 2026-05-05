@@ -115,23 +115,4 @@ int16_t actuator_cmd_get_trigger_current(void);
 void actuator_cmd_set_friction_current(uint8_t index, int16_t current);
 int16_t actuator_cmd_get_friction_current(uint8_t index);
 
-// Compatibility wrappers for older call sites.
-void actuator_cmd_set_chassis_current_can1(uint8_t index, int16_t current);
-int16_t actuator_cmd_get_chassis_current_can1(uint8_t index);
-
-void actuator_cmd_set_yaw_current_can1(int16_t current);
-int16_t actuator_cmd_get_yaw_current_can1(void);
-
-void actuator_cmd_set_yaw_upper_current_can1(int16_t current);
-int16_t actuator_cmd_get_yaw_upper_current_can1(void);
-
-void actuator_cmd_set_pitch_current_can1(int16_t current);
-int16_t actuator_cmd_get_pitch_current_can1(void);
-
-void actuator_cmd_set_trigger_current_can1(int16_t current);
-int16_t actuator_cmd_get_trigger_current_can1(void);
-
-void actuator_cmd_set_friction_current_can2(uint8_t index, int16_t current);
-int16_t actuator_cmd_get_friction_current_can2(uint8_t index);
-
 #endif
