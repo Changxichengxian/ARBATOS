@@ -25,8 +25,7 @@
 
 // friction wheel settings
 #define FRIC_MOTOR_NUM               (4u)
-#define SHOOT_FRIC_SPEED_UP_RPM      (g_config.shoot.fric_speed_up_rpm)
-#define SHOOT_FRIC_SPEED_DOWN_RPM    (g_config.shoot.fric_speed_down_rpm)
+#define SHOOT_FRIC_SPEED_RPM         (g_config.shoot.fric_speed_rpm)
 #define SHOOT_FRIC_SPEED_OFF_RPM     (g_config.shoot.fric_speed_off_rpm)
 #define SHOOT_FRIC_SPEED_STEP_RPM_S  (g_config.shoot.fric_speed_step_rpm_s)
 #define SHOOT_FRIC_READY_RATIO       (g_config.shoot.fric_ready_ratio)

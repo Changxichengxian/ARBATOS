@@ -88,15 +88,8 @@ void imu_fusion_task(void const *pvParameters)
 #define GYRO_BOOT_CALIB_SAMPLES        2000U
 #define GYRO_BOOT_CALIB_MOVING_LIMIT_DPS 5.0f
 #define GYRO_BOOT_CALIB_DELAY_MS       1U
-#define GYRO_BOOT_CALIB_ACC_TOL_G      0.05f
-#define GYRO_BOOT_TEMP_STABLE_ERR_C    1.0f
-#define GYRO_BOOT_TEMP_STABLE_TIME_MS  1000U
 #define IMU_SDLOG_BASE_STREAM_MAX_SAMPLES 16u
 #define IMU_SDLOG_PID_PERIOD_MS        10u
-#define IMU_TEMP_VALID_MIN_C           (-20.0f)
-#define IMU_TEMP_VALID_MAX_C           85.0f
-#define IMU_TEMP_INVALID_MAX_SAMPLES   5u
-#define IMU_TEMP_PREHEAT_TIMEOUT_MS    30000u
 
 
 /**
@@ -117,13 +110,9 @@ static void imu_cali_slove(fp32 gyro[3], fp32 accel[3], const fp32 gyro_raw[3], 
   * @brief          Average gyro samples at boot to estimate zero offset.
   * @retval         true when calibration updates gyro_offset; false if motion is detected.
   */
-static void gyro_boot_retry_reset(void);
-static void gyro_boot_retry_update(const fp32 gyro[3], const fp32 acc[3]);
-static bool_t gyro_boot_temp_ready(fp32 temp);
+static bool gyro_boot_calibration(void);
 
 static void imu_temp_control(fp32 temp);
-static uint16_t imu_temp_pwm_limit(void);
-static bool imu_temp_is_valid(fp32 temp);
 static float imu_calc_dt_s(void);
 static bool_t imu_acc_is_healthy(const fp32 acc[3]);
 static float imu_calc_dynamic_kp(bool_t use_acc, const fp32 gyro[3], uint32_t now_ms);
@@ -161,12 +150,6 @@ fp32 INS_angle[3] = {0.0f, 0.0f, 0.0f};      // euler angle, unit rad
 
 // Mahony attitude state.
 static mahony_imu_t imu_mahony;
-typedef struct
-{
-    fp32 gyro_sum[3];
-    fp32 accel_norm_sum;
-    uint16_t sample_count;
-} gyro_boot_retry_state_t;
 static enum {IMU_ST_DISARMED, IMU_ST_QUIET, IMU_ST_RESET} imu_gain_state = IMU_ST_DISARMED;
 static uint32_t imu_state_timeout_ms = 0;
 static float imu_kp = MAHONY_KP_DEFAULT;
@@ -174,9 +157,6 @@ static float imu_ki = MAHONY_KI_DEFAULT;
 static bool_t gyro_boot_calibrated = 0;
 static bool_t gyro_boot_calibrating = 0;
 static ins_gyro_boot_init_result_e gyro_boot_initial_result = INS_GYRO_BOOT_INIT_PENDING;
-static fp32 gyro_boot_accel_norm_ref = GRAVITY_EARTH;
-static bool_t gyro_boot_accel_norm_valid = 0;
-static gyro_boot_retry_state_t gyro_boot_retry_state = {0};
 static float imu_yaw_continuous = 0.0f;
 static bool_t imu_yaw_inited = 0;
 static fp32 imu_angle_lpf[3] = {0.0f, 0.0f, 0.0f};
@@ -196,6 +176,7 @@ typedef struct
     uint32_t last_tick_ms;
     uint32_t period_us;
     uint16_t sample_count;
+    uint16_t sample_div_counter;
     sdlog_imu_base_sample_t samples[IMU_SDLOG_BASE_STREAM_MAX_SAMPLES];
 } imu_sdlog_base_stream_state_t;
 
@@ -266,6 +247,21 @@ static void imu_sdlog_append_base_sample(const sdlog_imu_base_sample_t *sample,
     if (period_us == 0u)
     {
         period_us = 1000u;
+    }
+
+    const uint8_t div = sdlog_high_rate_divider();
+    if (div > 1u)
+    {
+        const uint16_t slot = s_imu_sdlog_base_stream.sample_div_counter++;
+        if ((slot % (uint16_t)div) != 0u)
+        {
+            return;
+        }
+        period_us *= (uint32_t)div;
+    }
+    else
+    {
+        s_imu_sdlog_base_stream.sample_div_counter = 0u;
     }
 
     if (s_imu_sdlog_base_stream.sample_count == 0u)
@@ -386,6 +382,13 @@ void INS_task(void const *pvParameters)
         osDelay(10);
     }
 
+    // Boot calibration uses stationary gyro samples and leaves the previous
+    // offset unchanged if movement is detected.
+    gyro_boot_calibrating = 1;
+    gyro_boot_calibrated = gyro_boot_calibration();
+    gyro_boot_calibrating = 0;
+    gyro_boot_initial_result = gyro_boot_calibrated ? INS_GYRO_BOOT_INIT_SUCCESS : INS_GYRO_BOOT_INIT_FAILED;
+
     fp32 gyro_raw[3];
     fp32 accel_raw[3];
 
@@ -487,17 +490,6 @@ void INS_task(void const *pvParameters)
             for (uint8_t i = 0u; i < 3u; i++)
             {
                 accel_fliter_3[i] = second_order_filter_cali(&accel_filter[i], INS_accel[i]);
-            }
-            if (!gyro_boot_calibrated)
-            {
-                if (gyro_boot_temp_ready(temp_c) != 0u)
-                {
-                    gyro_boot_retry_update(INS_gyro, accel_fliter_3);
-                }
-                else
-                {
-                    gyro_boot_retry_reset();
-                }
             }
 
             imu_fusion_mode_e mode = (imu_fusion_mode_e)imu_cfg->fusion_mode;
@@ -610,67 +602,18 @@ static void imu_temp_control(fp32 temp)
 {
     uint16_t tempPWM;
     static uint8_t temp_constant_time = 0;
-    static uint8_t temp_invalid_count = 0;
-    static uint8_t temp_fault = 0;
-    static uint32_t preheat_start_tick_ms = 0u;
-    const uint16_t pwm_limit = imu_temp_pwm_limit();
-
-    if (temp_fault)
-    {
-        imu_pwm_set(0u);
-        return;
-    }
-
-    if (!imu_temp_is_valid(temp))
-    {
-        imu_pwm_set(0u);
-        PID_clear(&imu_temp_pid);
-        temp_constant_time = 0u;
-        preheat_start_tick_ms = 0u;
-        if (temp_invalid_count < IMU_TEMP_INVALID_MAX_SAMPLES)
-        {
-            temp_invalid_count++;
-        }
-        if (temp_invalid_count >= IMU_TEMP_INVALID_MAX_SAMPLES)
-        {
-            temp_fault = 1u;
-        }
-        IMU_WATCH_ERROR();
-        return;
-    }
-
-    temp_invalid_count = 0u;
-
     if (first_temperate)
     {
-        preheat_start_tick_ms = 0u;
         PID_calc(&imu_temp_pid, temp, get_control_temperature());
-        if (imu_temp_pid.Iout < 0.0f)
-        {
-            imu_temp_pid.Iout = 0.0f;
-        }
-        else if (imu_temp_pid.Iout > (fp32)pwm_limit)
-        {
-            imu_temp_pid.Iout = (fp32)pwm_limit;
-        }
         if (imu_temp_pid.out < 0.0f)
         {
             imu_temp_pid.out = 0.0f;
-        }
-        else if (imu_temp_pid.out > (fp32)pwm_limit)
-        {
-            imu_temp_pid.out = (fp32)pwm_limit;
         }
         tempPWM = (uint16_t)imu_temp_pid.out;
         imu_pwm_set(tempPWM);
     }
     else
     {
-        if (preheat_start_tick_ms == 0u)
-        {
-            preheat_start_tick_ms = HAL_GetTick();
-        }
-
         // Heat at full power until the target temperature is reached.
         if (temp > get_control_temperature())
         {
@@ -679,48 +622,12 @@ static void imu_temp_control(fp32 temp)
             {
                 // Preload the integral term to speed convergence after warm-up.
                 first_temperate = 1;
-                imu_temp_pid.Iout = (fp32)pwm_limit / 2.0f;
-                preheat_start_tick_ms = 0u;
+                imu_temp_pid.Iout = MPU6500_TEMP_PWM_MAX / 2.0f;
             }
         }
-        else
-        {
-            temp_constant_time = 0u;
-        }
 
-        if (first_temperate)
-        {
-            imu_pwm_set(pwm_limit);
-            return;
-        }
-
-        if ((uint32_t)(HAL_GetTick() - preheat_start_tick_ms) >= IMU_TEMP_PREHEAT_TIMEOUT_MS)
-        {
-            imu_pwm_set(0u);
-            PID_clear(&imu_temp_pid);
-            temp_constant_time = 0u;
-            temp_fault = 1u;
-            IMU_WATCH_ERROR();
-            return;
-        }
-
-        imu_pwm_set(pwm_limit);
+        imu_pwm_set(MPU6500_TEMP_PWM_MAX - 1);
     }
-}
-
-static uint16_t imu_temp_pwm_limit(void)
-{
-    const uint16_t max_pwm = MPU6500_TEMP_PWM_MAX;
-    if (max_pwm == 0u)
-    {
-        return 0u;
-    }
-    return (uint16_t)(max_pwm - 1u);
-}
-
-static bool imu_temp_is_valid(fp32 temp)
-{
-    return (temp == temp) && (temp >= IMU_TEMP_VALID_MIN_C) && (temp <= IMU_TEMP_VALID_MAX_C);
 }
 
 /**
@@ -873,75 +780,50 @@ extern const fp32 *get_mag_data_point(void)
 }
 
 
-static void gyro_boot_retry_reset(void)
+static bool gyro_boot_calibration(void)
 {
-    memset(&gyro_boot_retry_state, 0, sizeof(gyro_boot_retry_state));
-    gyro_boot_calibrating = 0;
-}
-
-static void gyro_boot_retry_update(const fp32 gyro[3], const fp32 acc[3])
-{
-    if (gyro == NULL || acc == NULL)
-    {
-        gyro_boot_retry_reset();
-        return;
-    }
-
+    fp32 gyro_sum[3] = {0.0f, 0.0f, 0.0f};
+    fp32 gyro_raw[3];
+    mpu6500_raw_t raw = {0};
     const fp32 move_limit_rad = GYRO_BOOT_CALIB_MOVING_LIMIT_DPS * DEG_TO_RAD;
-    const fp32 acc_norm = sqrtf(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
-    const fp32 acc_ref = gyro_boot_accel_norm_valid ? gyro_boot_accel_norm_ref : GRAVITY_EARTH;
-    const fp32 acc_tol = acc_ref * GYRO_BOOT_CALIB_ACC_TOL_G;
 
-    if (fabsf(gyro[0]) > move_limit_rad ||
-        fabsf(gyro[1]) > move_limit_rad ||
-        fabsf(gyro[2]) > move_limit_rad ||
-        fabsf(acc_norm - acc_ref) > acc_tol)
+    // Average stationary gyro samples during boot calibration.
+    for (uint16_t i = 0; i < GYRO_BOOT_CALIB_SAMPLES; i++)
     {
-        gyro_boot_retry_reset();
-        return;
+        if (mpu6500_read_raw(&raw) != 0)
+        {
+            osDelay(GYRO_BOOT_CALIB_DELAY_MS);
+            continue;
+        }
+
+        gyro_raw[0] = (fp32)raw.gyro[0] * MPU6500_GYRO_LSB_TO_RAD_S;
+        gyro_raw[1] = (fp32)raw.gyro[1] * MPU6500_GYRO_LSB_TO_RAD_S;
+        gyro_raw[2] = (fp32)raw.gyro[2] * MPU6500_GYRO_LSB_TO_RAD_S;
+
+        // Rotate into board coordinates, consistent with runtime conversion.
+        fp32 gyro_rot[3];
+        gyro_rot[0] = gyro_raw[0] * gyro_scale_factor[0][0] + gyro_raw[1] * gyro_scale_factor[0][1] + gyro_raw[2] * gyro_scale_factor[0][2];
+        gyro_rot[1] = gyro_raw[0] * gyro_scale_factor[1][0] + gyro_raw[1] * gyro_scale_factor[1][1] + gyro_raw[2] * gyro_scale_factor[1][2];
+        gyro_rot[2] = gyro_raw[0] * gyro_scale_factor[2][0] + gyro_raw[1] * gyro_scale_factor[2][1] + gyro_raw[2] * gyro_scale_factor[2][2];
+
+        if (fabsf(gyro_rot[0]) > move_limit_rad || fabsf(gyro_rot[1]) > move_limit_rad || fabsf(gyro_rot[2]) > move_limit_rad)
+        {
+            return false;
+        }
+
+        gyro_sum[0] += gyro_rot[0];
+        gyro_sum[1] += gyro_rot[1];
+        gyro_sum[2] += gyro_rot[2];
+
+        osDelay(GYRO_BOOT_CALIB_DELAY_MS);
     }
 
-    gyro_boot_calibrating = 1;
-    gyro_boot_retry_state.gyro_sum[0] += gyro[0];
-    gyro_boot_retry_state.gyro_sum[1] += gyro[1];
-    gyro_boot_retry_state.gyro_sum[2] += gyro[2];
-    gyro_boot_retry_state.accel_norm_sum += acc_norm;
-    gyro_boot_retry_state.sample_count++;
+    const fp32 inv_samples = 1.0f / (fp32)GYRO_BOOT_CALIB_SAMPLES;
+    gyro_cali_offset[0] = gyro_offset[0] = -gyro_sum[0] * inv_samples;
+    gyro_cali_offset[1] = gyro_offset[1] = -gyro_sum[1] * inv_samples;
+    gyro_cali_offset[2] = gyro_offset[2] = -gyro_sum[2] * inv_samples;
 
-    if (gyro_boot_retry_state.sample_count < GYRO_BOOT_CALIB_SAMPLES)
-    {
-        return;
-    }
-
-    const fp32 inv_samples = 1.0f / (fp32)gyro_boot_retry_state.sample_count;
-    gyro_cali_offset[0] = gyro_offset[0] = gyro_offset[0] - gyro_boot_retry_state.gyro_sum[0] * inv_samples;
-    gyro_cali_offset[1] = gyro_offset[1] = gyro_offset[1] - gyro_boot_retry_state.gyro_sum[1] * inv_samples;
-    gyro_cali_offset[2] = gyro_offset[2] = gyro_offset[2] - gyro_boot_retry_state.gyro_sum[2] * inv_samples;
-    gyro_boot_accel_norm_ref = gyro_boot_retry_state.accel_norm_sum * inv_samples;
-    gyro_boot_accel_norm_valid = 1;
-    gyro_boot_initial_result = INS_GYRO_BOOT_INIT_SUCCESS;
-    gyro_boot_calibrated = 1;
-    gyro_boot_retry_reset();
-}
-
-static bool_t gyro_boot_temp_ready(fp32 temp)
-{
-    static uint32_t stable_start_ms = 0u;
-    const fp32 target = (fp32)get_control_temperature();
-
-    if (first_temperate == 0u || !imu_temp_is_valid(temp) || fabsf(temp - target) > GYRO_BOOT_TEMP_STABLE_ERR_C)
-    {
-        stable_start_ms = 0u;
-        return 0u;
-    }
-
-    const uint32_t now_ms = HAL_GetTick();
-    if (stable_start_ms == 0u)
-    {
-        stable_start_ms = now_ms;
-    }
-
-    return ((uint32_t)(now_ms - stable_start_ms) >= GYRO_BOOT_TEMP_STABLE_TIME_MS) ? 1u : 0u;
+    return true;
 }
 
 bool_t ins_is_gyro_boot_calibrated(void)

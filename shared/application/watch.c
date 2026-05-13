@@ -32,6 +32,7 @@
 #include "sdlog.h"
 #include "shoot.h"
 #include "host_link_task.h"
+#include "robot_task_profile.h"
 
 watch_t g_watch;
 
@@ -208,15 +209,20 @@ void watch_diag_set_error_args(uint32_t arg0, uint32_t arg1)
 
 void watch_task_beat(watch_task_id_e task_id)
 {
-    const uint64_t beat_start_us = rt_profiler_begin();
     const uint32_t now_ms = HAL_GetTick();
     watch_task_diag_entry_t *entry = watch_task_diag_get(task_id);
     if (entry == NULL)
     {
-        rt_profiler_end(RT_PROFILER_WATCH_TASK_BEAT, beat_start_us);
         return;
     }
 
+    if (entry->last_tick_ms != 0u &&
+        (uint32_t)(now_ms - entry->last_tick_ms) < (uint32_t)ROBOT_PROFILE_WATCH_TASK_BEAT_MIN_PERIOD_MS)
+    {
+        return;
+    }
+
+    const uint64_t beat_start_us = rt_profiler_begin();
     taskENTER_CRITICAL();
     if (entry->last_tick_ms != 0u)
     {

@@ -325,6 +325,7 @@ typedef struct
     uint32_t last_tick_ms;
     uint32_t period_us;
     uint16_t sample_count;
+    uint16_t sample_div_counter;
     sdlog_chassis_base_sample_t samples[CHASSIS_SDLOG_BASE_STREAM_MAX_SAMPLES];
 } chassis_sdlog_base_stream_state_t;
 
@@ -388,6 +389,21 @@ static void chassis_sdlog_append_base_sample(const sdlog_chassis_base_sample_t *
     if (period_us == 0u)
     {
         period_us = 1000u;
+    }
+
+    const uint8_t div = sdlog_high_rate_divider();
+    if (div > 1u)
+    {
+        const uint16_t slot = s_chassis_sdlog_base_stream.sample_div_counter++;
+        if ((slot % (uint16_t)div) != 0u)
+        {
+            return;
+        }
+        period_us *= (uint32_t)div;
+    }
+    else
+    {
+        s_chassis_sdlog_base_stream.sample_div_counter = 0u;
     }
 
     if (s_chassis_sdlog_base_stream.sample_count == 0u)

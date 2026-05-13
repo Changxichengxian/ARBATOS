@@ -36,7 +36,8 @@ extern volatile uint32_t gimbal_loop_counter;
 extern volatile uint32_t chassis_loop_counter;
 extern chassis_behaviour_e chassis_behaviour_mode;
 
-#define WATCH_UPDATE_PERIOD_MS 100u
+#define WATCH_UPDATE_PERIOD_MS 250u
+#define SYS_STATS_PERIOD_MS 250u
 
 
 /**
@@ -382,7 +383,7 @@ void detect_task(void const *pvParameters)
         }
 
         // Periodic system resource / realtime stats.
-        if ((uint32_t)(system_time - last_sys_stats_tick) >= (uint32_t)pdMS_TO_TICKS(100u))
+        if ((uint32_t)(system_time - last_sys_stats_tick) >= (uint32_t)pdMS_TO_TICKS(SYS_STATS_PERIOD_MS))
         {
             last_sys_stats_tick = system_time;
 

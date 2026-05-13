@@ -228,8 +228,7 @@ config_t g_config = {
     // 射击配置
     .shoot =
         {
-            .fric_speed_up_rpm = 5500.0f,      // [112] 摩擦轮高速目标转速（RPM，需按弹速整定）
-            .fric_speed_down_rpm = 4500.0f,    // [113] 摩擦轮低速目标转速（RPM）
+            .fric_speed_rpm = 4500.0f,         // [113] 摩擦轮目标转速（RPM）
             .fric_speed_off_rpm = 0.0f,        // [114] 停止
             .fric_speed_step_rpm_s = 20000.0f, // [115] 转速斜坡（RPM/s）
             .fric_ready_ratio = 0.90f,         // [116] 到速判定比例
@@ -501,6 +500,11 @@ config_t g_config = {
 
                                      },
          },
+    .sdlog =
+        {
+            // F4 用 1/2 差不多；更弱的芯片用 1/4，想更省可自己扩到 1/8；H7 级别可以全开。F4 全开基本带不动。
+            .high_rate_div = 2u,
+        },
  };
 
 // 这些函数只判断某个参数块当前是否有效，不负责修改配置内容。
@@ -547,7 +551,7 @@ static const config_block_desc_t g_config_blocks[] = {
     {CONFIG_BLOCK_LOCOMOTION_CLASSIC, "locomotion.classic", "066-075,081,086-092,098-106,245-248", &g_config.chassis, sizeof(g_config.chassis), config_block_active_locomotion_classic},
     {CONFIG_BLOCK_LOCOMOTION_WHEELLEG_SERVO, "locomotion.wheelleg_servo", "500-599", &g_config.wheelleg_servo, sizeof(g_config.wheelleg_servo), config_block_active_wheelleg_servo},
     {CONFIG_BLOCK_LOCOMOTION_WHEELLEG_MIT, "locomotion.wheelleg_mit", "600-699", &g_config.wheelleg_mit, sizeof(g_config.wheelleg_mit), config_block_active_wheelleg_mit},
-    {CONFIG_BLOCK_SHOOT_RM, "shoot.rm", "112-121,127,130-133,139-142,145-160", &g_config.shoot, sizeof(g_config.shoot), config_block_active_always},
+    {CONFIG_BLOCK_SHOOT_RM, "shoot.rm", "113-121,127,130-133,139-142,145-160", &g_config.shoot, sizeof(g_config.shoot), config_block_active_always},
     {CONFIG_BLOCK_ARM_J0_UNITREE, "arm.j0_unitree", "800-803", &g_config.arm_j0_unitree, sizeof(g_config.arm_j0_unitree), config_block_active_arm},
     {CONFIG_BLOCK_COMMON_POWER, "common.power", "161-166", &g_config.power, sizeof(g_config.power), config_block_active_always},
     {CONFIG_BLOCK_COMMON_DETECT, "common.detect", "167-208,211", &g_config.detect, sizeof(g_config.detect), config_block_active_always},
@@ -559,6 +563,7 @@ static const config_block_desc_t g_config_blocks[] = {
     {CONFIG_BLOCK_COMMON_INPUT, "common.input", "310-316,320-347", &g_config.input, sizeof(g_config.input), config_block_active_always},
     {CONFIG_BLOCK_COMMON_AUX_TELEM, "common.aux_telem", "241-243", &g_config.aux_telem, sizeof(g_config.aux_telem), config_block_active_always},
     {CONFIG_BLOCK_COMMON_TEST, "common.test", "244", &g_config.test, sizeof(g_config.test), config_block_active_always},
+    {CONFIG_BLOCK_COMMON_SDLOG, "common.sdlog", "249", &g_config.sdlog, sizeof(g_config.sdlog), config_block_active_always},
 };
 
 // 返回调参块表，同时可选返回块数量。

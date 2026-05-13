@@ -258,8 +258,7 @@ typedef struct
 // 射击/摩擦轮参数
 typedef struct
 {
-    fp32 fric_speed_up_rpm;             // 摩擦轮高速目标转速（RPM，电机反馈值）
-    fp32 fric_speed_down_rpm;           // 摩擦轮低速目标转速（RPM，电机反馈值）
+    fp32 fric_speed_rpm;                // 摩擦轮目标转速（RPM，电机反馈值）
     fp32 fric_speed_off_rpm;            // 摩擦轮停止目标转速（一般为 0）
     fp32 fric_speed_step_rpm_s;         // 目标转速斜坡（RPM/s）
     fp32 fric_ready_ratio;              // 就绪判定比例：|rpm| >= |set|*ratio 认为到速
@@ -410,6 +409,11 @@ typedef struct
     uint16_t slot_off_ms;  // 单模块灭灯时长
     uint16_t slot_gap_ms;  // 每轮结束额外熄灭时间
 } led_config_t;
+
+typedef struct
+{
+    uint8_t high_rate_div; // 1=all, 2=1/2, 4=1/4 for high-rate sdlog streams
+} sdlog_config_t;
 
 typedef enum
 {
@@ -939,6 +943,7 @@ typedef enum
     CONFIG_BLOCK_COMMON_INPUT,
     CONFIG_BLOCK_COMMON_AUX_TELEM,
     CONFIG_BLOCK_COMMON_TEST,
+    CONFIG_BLOCK_COMMON_SDLOG,
     CONFIG_BLOCK_COUNT
 } config_block_id_e;
 
@@ -975,6 +980,7 @@ typedef struct
     input_config_t input;
     aux_telem_config_t aux_telem;
     test_config_t test;
+    sdlog_config_t sdlog;
 } config_t;
 
 extern config_t g_config;

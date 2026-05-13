@@ -28,6 +28,7 @@
 #include "detect_task.h"
 #include "manual_input.h"
 #include "control_input.h"
+#include "chassis_control_task.h"
 #include "gimbal_behaviour.h"
 #include "INS_task.h"
 #include "shoot.h"
@@ -80,6 +81,34 @@ typedef struct
 #define PITCH_KICK_ERR_OFF_RAD 0.008f
 #define PITCH_KICK_ERR_ON_RAD  0.025f
 #define GIMBAL_SDLOG_BASE_STREAM_MAX_SAMPLES 16u
+
+#ifndef GIMBAL_YAW_CHASSIS_SPIN_FF_CURRENT_PER_RADPS
+#define GIMBAL_YAW_CHASSIS_SPIN_FF_CURRENT_PER_RADPS 1500.0f
+#endif
+
+#ifndef GIMBAL_YAW_CHASSIS_SPIN_FF_MAX_CURRENT
+#define GIMBAL_YAW_CHASSIS_SPIN_FF_MAX_CURRENT 6000.0f
+#endif
+
+#ifndef GIMBAL_YAW_CHASSIS_SPIN_FF_MIN_WZ_RADPS
+#define GIMBAL_YAW_CHASSIS_SPIN_FF_MIN_WZ_RADPS 0.20f
+#endif
+
+#ifndef GIMBAL_YAW_CHASSIS_SPIN_EXIT_FF_TIME_MS
+#define GIMBAL_YAW_CHASSIS_SPIN_EXIT_FF_TIME_MS 700u
+#endif
+
+#ifndef GIMBAL_YAW_CHASSIS_SPIN_EXIT_RATE_CURRENT_PER_RADPS
+#define GIMBAL_YAW_CHASSIS_SPIN_EXIT_RATE_CURRENT_PER_RADPS 1200.0f
+#endif
+
+#ifndef GIMBAL_YAW_CHASSIS_SPIN_EXIT_ERR_CURRENT_PER_RAD
+#define GIMBAL_YAW_CHASSIS_SPIN_EXIT_ERR_CURRENT_PER_RAD 18000.0f
+#endif
+
+#ifndef GIMBAL_YAW_CHASSIS_SPIN_EXIT_FF_MAX_CURRENT
+#define GIMBAL_YAW_CHASSIS_SPIN_EXIT_FF_MAX_CURRENT 5000.0f
+#endif
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
 uint32_t gimbal_high_water;
@@ -139,6 +168,7 @@ static fp32 motor_ecd_to_angle_change(uint16_t ecd, uint16_t offset_ecd);
 static void gimbal_set_control(gimbal_control_t *set_control);
 
 static void gimbal_angle_limit(gimbal_motor_t *gimbal_motor, fp32 add);
+static fp32 gimbal_yaw_chassis_spin_ff_current(const gimbal_motor_t *yaw_motor);
 
 /**
   * @brief          gimbal control mode :GIMBAL_MOTOR_ENCONDE, use the encode angle to control.
@@ -234,6 +264,7 @@ typedef struct
     uint32_t last_tick_ms;
     uint32_t period_us;
     uint16_t sample_count;
+    uint16_t sample_div_counter;
     sdlog_gimbal_base_sample_t samples[GIMBAL_SDLOG_BASE_STREAM_MAX_SAMPLES];
 } gimbal_sdlog_base_stream_state_t;
 
@@ -297,6 +328,21 @@ static void gimbal_sdlog_append_base_sample(const sdlog_gimbal_base_sample_t *sa
     if (period_us == 0u)
     {
         period_us = 1000u;
+    }
+
+    const uint8_t div = sdlog_high_rate_divider();
+    if (div > 1u)
+    {
+        const uint16_t slot = s_gimbal_sdlog_base_stream.sample_div_counter++;
+        if ((slot % (uint16_t)div) != 0u)
+        {
+            return;
+        }
+        period_us *= (uint32_t)div;
+    }
+    else
+    {
+        s_gimbal_sdlog_base_stream.sample_div_counter = 0u;
     }
 
     if (s_gimbal_sdlog_base_stream.sample_count == 0u)
@@ -1062,6 +1108,74 @@ static void gimbal_angle_limit(gimbal_motor_t *gimbal_motor, fp32 add)
         gimbal_motor->angle_set = gimbal_motor->min_angle;
     }
 }
+
+static fp32 gimbal_yaw_chassis_spin_ff_current(const gimbal_motor_t *yaw_motor)
+{
+    const chassis_move_t *chassis = get_chassis_move_point();
+    static uint8_t was_spin_active = 0u;
+    static uint32_t exit_start_ms = 0u;
+    static fp32 exit_yaw_err = 0.0f;
+
+    if (chassis == NULL || yaw_motor == NULL)
+    {
+        return 0.0f;
+    }
+
+    const fp32 wz_set = chassis->wz_set;
+    const fp32 wz_meas = chassis->wz;
+    const fp32 yaw_dir = YAW_TURN ? 1.0f : -1.0f;
+    const uint32_t now_ms = bsp_time_get_tick_ms();
+    const uint8_t spin_active =
+        (chassis->chassis_mode == CHASSIS_VECTOR_NO_FOLLOW_YAW &&
+         fabsf(wz_set) >= GIMBAL_YAW_CHASSIS_SPIN_FF_MIN_WZ_RADPS) ?
+            1u :
+            0u;
+
+    if (spin_active != 0u)
+    {
+        was_spin_active = 1u;
+        exit_start_ms = 0u;
+
+        const fp32 ff = yaw_dir * wz_set * GIMBAL_YAW_CHASSIS_SPIN_FF_CURRENT_PER_RADPS;
+        return fp32_constrain(ff,
+                              -GIMBAL_YAW_CHASSIS_SPIN_FF_MAX_CURRENT,
+                              GIMBAL_YAW_CHASSIS_SPIN_FF_MAX_CURRENT);
+    }
+
+    if (was_spin_active != 0u)
+    {
+        was_spin_active = 0u;
+        exit_start_ms = now_ms;
+        exit_yaw_err = rad_format(yaw_motor->angle_set - yaw_motor->angle);
+    }
+
+    fp32 ff = 0.0f;
+    if (fabsf(wz_meas) >= GIMBAL_YAW_CHASSIS_SPIN_FF_MIN_WZ_RADPS)
+    {
+        ff += yaw_dir * wz_meas * GIMBAL_YAW_CHASSIS_SPIN_EXIT_RATE_CURRENT_PER_RADPS;
+    }
+
+    if (exit_start_ms != 0u)
+    {
+        const uint32_t elapsed_ms = now_ms - exit_start_ms;
+        if (elapsed_ms < GIMBAL_YAW_CHASSIS_SPIN_EXIT_FF_TIME_MS)
+        {
+            const fp32 decay = 1.0f - ((fp32)elapsed_ms / (fp32)GIMBAL_YAW_CHASSIS_SPIN_EXIT_FF_TIME_MS);
+            const fp32 yaw_err_now = rad_format(yaw_motor->angle_set - yaw_motor->angle);
+            const fp32 yaw_err_blend = decay * exit_yaw_err + (1.0f - decay) * yaw_err_now;
+            ff += yaw_err_blend * GIMBAL_YAW_CHASSIS_SPIN_EXIT_ERR_CURRENT_PER_RAD * decay;
+        }
+        else
+        {
+            exit_start_ms = 0u;
+        }
+    }
+
+    return fp32_constrain(ff,
+                          -GIMBAL_YAW_CHASSIS_SPIN_EXIT_FF_MAX_CURRENT,
+                          GIMBAL_YAW_CHASSIS_SPIN_EXIT_FF_MAX_CURRENT);
+}
+
 static void gimbal_control_loop(gimbal_control_t *control_loop)
 {
     if (control_loop == NULL)
@@ -1122,6 +1236,19 @@ static void gimbal_motor_angle_control(gimbal_motor_t *gimbal_motor)
     gimbal_motor->current_set = PID_calc(&gimbal_motor->gimbal_motor_gyro_pid,
                                          gimbal_motor->motor_gyro,
                                          gimbal_motor->motor_gyro_set);
+
+    if (gimbal_motor == &gimbal_control.gimbal_yaw_motor)
+    {
+        const fp32 yaw_current_limit = fabsf(gimbal_motor->gimbal_motor_gyro_pid.max_out);
+        gimbal_motor->current_set += gimbal_yaw_chassis_spin_ff_current(gimbal_motor);
+        if (yaw_current_limit > 0.0f)
+        {
+            gimbal_motor->current_set = fp32_constrain(gimbal_motor->current_set,
+                                                       -yaw_current_limit,
+                                                       yaw_current_limit);
+        }
+    }
+
     gimbal_motor->given_current = (int16_t)(gimbal_motor->current_set);
 
     if (gimbal_motor == &gimbal_control.gimbal_pitch_motor)

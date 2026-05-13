@@ -14,7 +14,6 @@
 #include "bsp_usb.h"
 #include "config.h"
 #include "detect_task.h"
-#include "INS_task.h"
 #include "referee.h"
 #include "sdcard.h"
 
@@ -23,7 +22,12 @@
 #define SOFT_BEEP_GAP_TICKS ((SOFT_BEEP_GAP_MS + TEST_TASK_PERIOD_MS - 1U) / TEST_TASK_PERIOD_MS)
 #define SOFT_BEEP_PSC (g_config.buzzer.soft_beep_psc)
 #define SOFT_BEEP_DURATION_MS (g_config.buzzer.soft_beep_duration_ms)
+#define LOST_BEEP_CONFIRM_COUNT 5u
+#define LOST_BEEP_CONFIRM_STEP_TICKS ((DETECT_CONTROL_TIME + TEST_TASK_PERIOD_MS - 1U) / TEST_TASK_PERIOD_MS)
+#define STARTUP_LOST_BEEP_MUTE_MS 3500U
+#define STARTUP_LOST_BEEP_MUTE_TICKS ((STARTUP_LOST_BEEP_MUTE_MS + TEST_TASK_PERIOD_MS - 1U) / TEST_TASK_PERIOD_MS)
 
+static uint8_t lost_beep_confirm_due(void);
 static void buzzer_schedule(uint8_t times);
 static void buzzer_tick(void);
 static uint8_t buzzer_is_idle(void);
@@ -32,6 +36,9 @@ const error_t *error_list_test_local;
 static uint8_t beep_times_pending = 0;
 static uint16_t beep_on_ticks_left = 0;
 static uint16_t beep_gap_ticks_left = 0;
+static uint8_t lost_confirm_step_ticks[ERROR_LIST_LENGHT];
+static uint8_t lost_confirm_count[ERROR_LIST_LENGHT];
+static uint8_t lost_beeped[ERROR_LIST_LENGHT];
 
 /**
   * @brief          startup service task
@@ -49,8 +56,7 @@ void startup_service_task(void const * argument)
     static uint8_t error_num;
     static uint8_t ever_all_online = 0;
     static uint8_t startup_beep_done = 0;
-    static bool_t gyro_boot_cali_seen = 0;
-    static bool_t gyro_boot_beep_done = 0;
+    static uint16_t startup_lost_beep_mute_ticks = STARTUP_LOST_BEEP_MUTE_TICKS;
     (void)argument;
     error_list_test_local = get_error_list_point();
 
@@ -68,11 +74,17 @@ void startup_service_task(void const * argument)
         // find error
         for(error_num = 0; error_num < REFEREE_TOE; error_num++)
         {
-            if(error_list_test_local[error_num].error_exist)
+            if(error_list_test_local[error_num].is_lost)
             {
                 error = 1;
                 break;
             }
+        }
+
+        const uint8_t confirmed_lost = lost_beep_confirm_due();
+        if (startup_lost_beep_mute_ticks != 0u)
+        {
+            startup_lost_beep_mute_ticks--;
         }
 
         if(error == 0)
@@ -85,27 +97,17 @@ void startup_service_task(void const * argument)
         }
 
         {
-            uint8_t boot_missing = (error != 0 && ever_all_online == 0 && startup_beep_done == 0);
-            uint8_t drop_when_running = (error != 0 && last_error == 0 && ever_all_online != 0);
+            uint8_t boot_missing =
+                (confirmed_lost != 0u && error != 0 && ever_all_online == 0 && startup_beep_done == 0);
+            uint8_t drop_when_running =
+                (confirmed_lost != 0u && error != 0 && ever_all_online != 0);
 
-            if((boot_missing || drop_when_running) && buzzer_is_idle() != 0u)
+            if(startup_lost_beep_mute_ticks == 0u &&
+               (boot_missing || drop_when_running) &&
+               buzzer_is_idle() != 0u)
             {
                 buzzer_schedule(1u);
                 startup_beep_done = 1;
-            }
-        }
-
-        if (gyro_boot_beep_done == 0)
-        {
-            const bool_t calibrating = ins_is_gyro_boot_calibrating();
-            if (calibrating != 0)
-            {
-                gyro_boot_cali_seen = 1;
-            }
-            else if (gyro_boot_cali_seen != 0 && ins_is_gyro_boot_calibrated() && buzzer_is_idle() != 0u)
-            {
-                buzzer_schedule(1u);
-                gyro_boot_beep_done = 1;
             }
         }
 
@@ -136,7 +138,60 @@ static void buzzer_schedule(uint8_t times)
 
 static uint8_t buzzer_is_idle(void)
 {
-    return (beep_times_pending == 0u && beep_on_ticks_left == 0u && beep_gap_ticks_left == 0u) ? 1u : 0u;
+    return (beep_times_pending == 0u &&
+            beep_on_ticks_left == 0u &&
+            beep_gap_ticks_left == 0u &&
+            buzzer_pcm_is_running() == 0u) ? 1u : 0u;
+}
+
+static uint8_t lost_beep_confirm_due(void)
+{
+    uint8_t due = 0u;
+    const uint8_t toe_limit = ((uint8_t)REFEREE_TOE < (uint8_t)ERROR_LIST_LENGHT) ?
+        (uint8_t)REFEREE_TOE :
+        (uint8_t)ERROR_LIST_LENGHT;
+
+    if (error_list_test_local == NULL)
+    {
+        return 0u;
+    }
+
+    for (uint8_t toe = 0u; toe < toe_limit; toe++)
+    {
+        if (error_list_test_local[toe].is_lost != 0u)
+        {
+            const uint8_t step_ticks =
+                (LOST_BEEP_CONFIRM_STEP_TICKS > 0u) ? (uint8_t)LOST_BEEP_CONFIRM_STEP_TICKS : 1u;
+
+            if (lost_confirm_step_ticks[toe] < step_ticks)
+            {
+                lost_confirm_step_ticks[toe]++;
+            }
+
+            if (lost_confirm_step_ticks[toe] >= step_ticks)
+            {
+                lost_confirm_step_ticks[toe] = 0u;
+                if (lost_confirm_count[toe] < LOST_BEEP_CONFIRM_COUNT)
+                {
+                    lost_confirm_count[toe]++;
+                }
+            }
+
+            if (lost_confirm_count[toe] >= LOST_BEEP_CONFIRM_COUNT && lost_beeped[toe] == 0u)
+            {
+                lost_beeped[toe] = 1u;
+                due = 1u;
+            }
+        }
+        else
+        {
+            lost_confirm_step_ticks[toe] = 0u;
+            lost_confirm_count[toe] = 0u;
+            lost_beeped[toe] = 0u;
+        }
+    }
+
+    return due;
 }
 
 /**
@@ -169,6 +224,11 @@ static void buzzer_tick(void)
     }
 
     if (beep_times_pending == 0u)
+    {
+        return;
+    }
+
+    if (buzzer_pcm_is_running() != 0u)
     {
         return;
     }

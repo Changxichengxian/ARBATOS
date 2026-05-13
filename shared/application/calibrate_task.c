@@ -21,7 +21,6 @@
 #include "control_input.h"
 #include "INS_task.h"
 #include "gimbal_control_task.h"
-#include "detect_task.h"
 
 
 //include head,gimbal,gyro,accel,mag. gyro,accel and mag have the same data struct. total 5(CALI_LIST_LENGHT) devices, need data lenght + 5 * 4 bytes(name[3]+cali)
@@ -141,7 +140,6 @@ typedef enum
 
 static void boot_sound_update(void);
 static uint8_t boot_sound_has_active_calibration(void);
-static uint8_t boot_sound_manual_online(void);
 static void boot_sound_begin(const boot_sound_step_t *seq, uint8_t len);
 static uint8_t boot_sound_volume(void);
 
@@ -181,10 +179,9 @@ void *cali_hook_fun[CALI_LIST_LENGHT] = {cali_head_hook, cali_gimbal_hook, cali_
 
 static uint32_t calibrate_systemTick;
 static const boot_sound_step_t boot_sound_success_seq[] = {
-    {392u, 100u, 25u},
-    {494u, 100u, 25u},
-    {587u, 120u, 35u},
-    {784u, 180u, 0u},
+    {659u, 105u, 34u},
+    {784u, 110u, 36u},
+    {988u, 220u, 0u},
 };
 static boot_sound_state_e boot_sound_state = BOOT_SOUND_WAIT_RESULT;
 static const boot_sound_step_t *boot_sound_seq = NULL;
@@ -192,6 +189,7 @@ static uint8_t boot_sound_seq_len = 0u;
 static uint8_t boot_sound_seq_idx = 0u;
 static uint16_t boot_sound_wait_ms = 0u;
 static uint8_t boot_sound_note_on = 0u;
+static uint8_t manual_cali_buzzer_enable = 0u;
 
 
 /**
@@ -257,23 +255,6 @@ static uint8_t boot_sound_has_active_calibration(void)
     return 0u;
 }
 
-static uint8_t boot_sound_manual_online(void)
-{
-    const uint8_t active_source = remote_control_get_active_source();
-
-    if (active_source == MANUAL_INPUT_SRC_AUTO)
-    {
-        return 0u;
-    }
-
-    if (active_source == MANUAL_INPUT_SRC_DBUS && toe_is_error(DBUS_TOE))
-    {
-        return 0u;
-    }
-
-    return 1u;
-}
-
 static uint8_t boot_sound_volume(void)
 {
     uint8_t volume = (uint8_t)g_config.buzzer.pcm.volume;
@@ -316,12 +297,6 @@ static void boot_sound_update(void)
         const ins_gyro_boot_init_result_e result = ins_get_gyro_boot_initial_result();
         if (result == INS_GYRO_BOOT_INIT_PENDING)
         {
-            return;
-        }
-
-        if (boot_sound_manual_online() == 0u)
-        {
-            boot_sound_state = BOOT_SOUND_DONE;
             return;
         }
 
@@ -468,6 +443,7 @@ static void RC_cmd_to_calibrate(void)
         rc_action_flag = 0;
         rc_cmd_time = 0;
         cali_sensor[CALI_GIMBAL].cali_cmd = 1;
+        manual_cali_buzzer_enable = 1u;
         cali_buzzer_off();
     }
     else if (rc_action_flag == 3 && rc_cmd_time > RC_CMD_LONG_TIME)
@@ -476,6 +452,7 @@ static void RC_cmd_to_calibrate(void)
         rc_action_flag = 0;
         rc_cmd_time = 0;
         cali_sensor[CALI_GYRO].cali_cmd = 1;
+        manual_cali_buzzer_enable = 1u;
         //update control temperature
         head_cali.temperature = (int8_t)(cali_get_mcu_temperature()) + 10;
         if (head_cali.temperature > (int8_t)(GYRO_CONST_MAX_TEMP))
@@ -758,13 +735,17 @@ static bool_t cali_gyro_hook(uint32_t *cali, bool_t cmd)
         {
             count_time = 0;
             cali_buzzer_off();
+            manual_cali_buzzer_enable = 0u;
             gyro_cali_enable_control();
             return 1;
         }
         else
         {
             gyro_cali_disable_control(); //disable the remote control to make robot no move
-            imu_start_buzzer();
+            if (manual_cali_buzzer_enable != 0u)
+            {
+                imu_start_buzzer();
+            }
 
             return 0;
         }
@@ -810,12 +791,16 @@ static bool_t cali_gimbal_hook(uint32_t *cali, bool_t cmd)
                                  &local_cali_t->pitch_max_angle, &local_cali_t->pitch_min_angle))
         {
             cali_buzzer_off();
+            manual_cali_buzzer_enable = 0u;
 
             return 1;
         }
         else
         {
-            gimbal_start_buzzer();
+            if (manual_cali_buzzer_enable != 0u)
+            {
+                gimbal_start_buzzer();
+            }
 
             return 0;
         }

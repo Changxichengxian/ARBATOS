@@ -82,8 +82,7 @@ CONFIG_PARAM_F32(105, "chassis.swing_move_angle", CONFIG_PARAM_SCOPE_LOCOMOTION_
 CONFIG_PARAM_F32(106, "chassis.max_motor_can_current", CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC, g_config.chassis.max_motor_can_current, CONFIG_PARAM_APPLY_NONE)
 
 // shoot
-CONFIG_PARAM_F32(112, "shoot.fric_speed_up_rpm", CONFIG_PARAM_SCOPE_COMMON, g_config.shoot.fric_speed_up_rpm, CONFIG_PARAM_APPLY_NONE)
-CONFIG_PARAM_F32(113, "shoot.fric_speed_down_rpm", CONFIG_PARAM_SCOPE_COMMON, g_config.shoot.fric_speed_down_rpm, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_F32(113, "shoot.fric_speed_rpm", CONFIG_PARAM_SCOPE_COMMON, g_config.shoot.fric_speed_rpm, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_F32(114, "shoot.fric_speed_off_rpm", CONFIG_PARAM_SCOPE_COMMON, g_config.shoot.fric_speed_off_rpm, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_F32(115, "shoot.fric_speed_step_rpm_s", CONFIG_PARAM_SCOPE_COMMON, g_config.shoot.fric_speed_step_rpm_s, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_F32(116, "shoot.fric_ready_ratio", CONFIG_PARAM_SCOPE_COMMON, g_config.shoot.fric_ready_ratio, CONFIG_PARAM_APPLY_NONE)
@@ -202,6 +201,8 @@ CONFIG_PARAM_F32(245, "chassis.swing_amp_rad", CONFIG_PARAM_SCOPE_LOCOMOTION_CLA
 CONFIG_PARAM_U16(246, "chassis.swing_half_period_ms", CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC, g_config.chassis.swing_half_period_ms, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_U16(247, "chassis.swing_center_hold_min_ms", CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC, g_config.chassis.swing_center_hold_min_ms, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_U16(248, "chassis.swing_center_hold_max_ms", CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC, g_config.chassis.swing_center_hold_max_ms, CONFIG_PARAM_APPLY_NONE)
+// F4: 2 is a good default; weaker chips can use 4; 8 needs extending sdlog_high_rate_divider(); H7 can use 1.
+CONFIG_PARAM_U8_DEFAULT(249, "sdlog.high_rate_div", CONFIG_PARAM_SCOPE_COMMON, g_config.sdlog.high_rate_div, 4u, 2u, CONFIG_PARAM_APPLY_NONE)
 
 // manual input
 CONFIG_PARAM_U8_DEFAULT(300, "manual_input.active_source", CONFIG_PARAM_SCOPE_COMMON, g_config.manual_input.active_source, (uint8_t)MANUAL_INPUT_SRC_MAX, (uint8_t)MANUAL_INPUT_SRC_AUTO, CONFIG_PARAM_APPLY_REMOTE_REFRESH)

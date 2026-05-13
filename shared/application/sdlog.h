@@ -450,7 +450,7 @@ typedef struct __attribute__((packed))
     uint16_t reserved16_2;
 } sdlog_sys_stats_t;
 
-#define SDLOG_RT_PROFILER_MAX 8u
+#define SDLOG_RT_PROFILER_MAX 12u
 
 typedef struct __attribute__((packed))
 {
@@ -687,6 +687,9 @@ void sdlog_write_isr(uint16_t tag, const void *payload, uint16_t len);
 
 // Read-only stats snapshot (thread-safe, lightweight).
 void sdlog_get_stats(sdlog_stats_t *out);
+
+// Runtime divider for high-rate streams. Returns 1, 2, or 4.
+uint8_t sdlog_high_rate_divider(void);
 
 // Flush pending buffered records to the TF/SD card (call from a low-priority task).
 void sdlog_poll(void);

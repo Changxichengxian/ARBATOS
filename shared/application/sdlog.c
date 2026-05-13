@@ -24,6 +24,7 @@
 #include "bsp_time.h"
 #include "sdcard.h"
 #include "rt_profiler.h"
+#include "config.h"
 
 #include "fatfs/ff.h"
 
@@ -46,6 +47,10 @@
 #define SDLOG_FLUSH_BLOCKS_PER_POLL 4u
 #endif
 
+#ifndef SDLOG_ENABLE_COMPRESSION
+#define SDLOG_ENABLE_COMPRESSION 0u
+#endif
+
 #define SDLOG_ALIGN 4u
 
 static FIL sdlog_fp;
@@ -59,6 +64,24 @@ static uint32_t sdlog_last_tick_ms = 0u;
 __attribute__((section(".ccmram"))) static uint8_t sdlog_buf[SDLOG_BUF_SIZE];
 static volatile uint32_t sdlog_head = 0u;
 static volatile uint32_t sdlog_tail = 0u;
+
+uint8_t sdlog_high_rate_divider(void)
+{
+    const uint8_t div = g_config.sdlog.high_rate_div;
+    if (div >= 4u)
+    {
+        return 4u;
+    }
+    if (div == 3u)
+    {
+        return 4u;
+    }
+    if (div >= 2u)
+    {
+        return 2u;
+    }
+    return 1u;
+}
 
 static void sdlog_close_on_error(void);
 
@@ -74,14 +97,18 @@ typedef struct __attribute__((packed))
     uint32_t reserved;  // reserved for future
 } sdlog_index_file_t;
 
-// v2: block compression (LZ4 block format, implemented locally for small blocks).
+// Optional block compression (LZ4 block format, implemented locally for small blocks).
+#if SDLOG_ENABLE_COMPRESSION
 #define SDLOG_LZ4_HASH_BITS 11u
 #define SDLOG_LZ4_HASH_SIZE (1u << SDLOG_LZ4_HASH_BITS)
 #define SDLOG_LZ4_MAX_OUTPUT(n) ((n) + ((n) / 255u) + 16u)
+#endif
 
 static uint8_t sdlog_flush_in[SDLOG_FLUSH_CHUNK_MAX];
+#if SDLOG_ENABLE_COMPRESSION
 static uint8_t sdlog_flush_out[SDLOG_LZ4_MAX_OUTPUT(SDLOG_FLUSH_CHUNK_MAX)];
 __attribute__((section(".ccmram"))) static uint16_t sdlog_lz4_hash[SDLOG_LZ4_HASH_SIZE];
+#endif
 
 static uint32_t sdlog_used_bytes(uint32_t head, uint32_t tail)
 {
@@ -122,12 +149,14 @@ static void sdlog_ring_write_bytes_locked(const uint8_t *src, uint32_t len)
     sdlog_head = head;
 }
 
+#if SDLOG_ENABLE_COMPRESSION
 static uint32_t sdlog_read_u32_le_unaligned(const uint8_t *p)
 {
     uint32_t v;
     memcpy(&v, p, sizeof(v));
     return v;
 }
+#endif
 
 static uint8_t sdlog_write_var_u32(uint8_t *dst, uint32_t v)
 {
@@ -239,6 +268,7 @@ static void sdlog_index_write_best_effort(uint32_t next_idx)
     (void)f_close(&fp);
 }
 
+#if SDLOG_ENABLE_COMPRESSION
 static uint32_t sdlog_lz4_hash32(uint32_t v)
 {
     return (v * 2654435761u) >> (32u - SDLOG_LZ4_HASH_BITS);
@@ -403,6 +433,7 @@ static int sdlog_lz4_compress_block(const uint8_t *src, uint32_t src_len, uint8_
     *out_len = op;
     return 0;
 }
+#endif
 
 static int sdlog_write_v2_block(const uint8_t *raw, uint32_t raw_len)
 {
@@ -413,10 +444,14 @@ static int sdlog_write_v2_block(const uint8_t *raw, uint32_t raw_len)
 
     const uint32_t crc32 = sdlog_crc32_ieee(raw, raw_len);
 
-    uint32_t data_len = 0u;
+    uint32_t data_len = raw_len;
     int compressed = 0;
-    if (sdlog_lz4_compress_block(raw, raw_len, sdlog_flush_out, (uint32_t)sizeof(sdlog_flush_out), &data_len) == 0 &&
-        data_len < raw_len)
+#if SDLOG_ENABLE_COMPRESSION
+    const uint64_t compress_start_us = rt_profiler_begin();
+    const int compress_result =
+        sdlog_lz4_compress_block(raw, raw_len, sdlog_flush_out, (uint32_t)sizeof(sdlog_flush_out), &data_len);
+    rt_profiler_end(RT_PROFILER_SDLOG_COMPRESS, compress_start_us);
+    if (compress_result == 0 && data_len < raw_len)
     {
         compressed = 1;
     }
@@ -424,6 +459,7 @@ static int sdlog_write_v2_block(const uint8_t *raw, uint32_t raw_len)
     {
         data_len = raw_len;
     }
+#endif
 
     sdlog_block_header_t bh = {0};
     bh.magic = SDLOG_BLOCK_MAGIC;
@@ -434,9 +470,11 @@ static int sdlog_write_v2_block(const uint8_t *raw, uint32_t raw_len)
     bh.reserved = crc32;
 
     UINT bw = 0u;
+    const uint64_t block_write_start_us = rt_profiler_begin();
     FRESULT r = f_write(&sdlog_fp, &bh, (UINT)sizeof(bh), &bw);
     if (r != FR_OK || bw != (UINT)sizeof(bh))
     {
+        rt_profiler_end(RT_PROFILER_SDLOG_BLOCK_WRITE, block_write_start_us);
         sdlog_last_error = (r == FR_OK) ? -1 : (int32_t)r;
         sdlog_close_on_error();
         return -1;
@@ -444,14 +482,20 @@ static int sdlog_write_v2_block(const uint8_t *raw, uint32_t raw_len)
     sdlog_bytes_flushed += (uint32_t)bw;
 
     bw = 0u;
+#if SDLOG_ENABLE_COMPRESSION
     const uint8_t *data = compressed ? sdlog_flush_out : raw;
+#else
+    const uint8_t *data = raw;
+#endif
     r = f_write(&sdlog_fp, data, (UINT)data_len, &bw);
     if (r != FR_OK || bw != (UINT)data_len)
     {
+        rt_profiler_end(RT_PROFILER_SDLOG_BLOCK_WRITE, block_write_start_us);
         sdlog_last_error = (r == FR_OK) ? -1 : (int32_t)r;
         sdlog_close_on_error();
         return -1;
     }
+    rt_profiler_end(RT_PROFILER_SDLOG_BLOCK_WRITE, block_write_start_us);
     sdlog_bytes_flushed += (uint32_t)bw;
     return 0;
 }
@@ -463,6 +507,14 @@ static uint8_t sdlog_ascii_lower(uint8_t c)
         return (uint8_t)(c + (uint8_t)('a' - 'A'));
     }
     return c;
+}
+
+static FRESULT sdlog_sync_profiled(void)
+{
+    const uint64_t sync_start_us = rt_profiler_begin();
+    const FRESULT r = f_sync(&sdlog_fp);
+    rt_profiler_end(RT_PROFILER_SDLOG_SYNC, sync_start_us);
+    return r;
 }
 
 static int sdlog_parse_log_index_from_name(const char *name, uint32_t *out_idx)
@@ -659,7 +711,7 @@ static int sdlog_open_next_file(void)
                 return -4;
             }
 
-            const FRESULT sync_r = f_sync(&sdlog_fp);
+            const FRESULT sync_r = sdlog_sync_profiled();
             if (sync_r != FR_OK)
             {
                 sdlog_last_error = (int32_t)sync_r;
@@ -726,7 +778,7 @@ void sdlog_stop(void)
     sdlog_last_tick_ms = 0u;
     taskEXIT_CRITICAL();
 
-    (void)f_sync(&sdlog_fp);
+    (void)sdlog_sync_profiled();
     (void)f_close(&sdlog_fp);
 }
 
@@ -835,7 +887,7 @@ static void sdlog_close_on_error(void)
     sdlog_last_tick_ms = 0u;
     taskEXIT_CRITICAL();
 
-    (void)f_sync(&sdlog_fp);
+    (void)sdlog_sync_profiled();
     (void)f_close(&sdlog_fp);
 }
 
@@ -897,7 +949,7 @@ void sdlog_poll(void)
     const uint32_t now_ms = bsp_time_get_tick_ms();
     if ((uint32_t)(now_ms - sdlog_last_sync_ms) >= SDLOG_SYNC_PERIOD_MS)
     {
-        const FRESULT r = f_sync(&sdlog_fp);
+        const FRESULT r = sdlog_sync_profiled();
         if (r != FR_OK)
         {
             sdlog_last_error = (int32_t)r;

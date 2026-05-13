@@ -24,7 +24,7 @@
 // Minimal offline-detect implementation for the A-board port.
 // Keeps the public API used by HERO modules (detect_hook/toe_is_error).
 
-#define WATCH_UPDATE_PERIOD_MS 100u
+#define WATCH_UPDATE_PERIOD_MS 250u
 
 static error_t g_error_list[ERROR_LIST_LENGHT];
 static uint32_t g_last_tick_ms[ERROR_LIST_LENGHT];

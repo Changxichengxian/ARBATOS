@@ -455,7 +455,7 @@ void shoot_init(void)
     }
     // update feedback data
     shoot_feedback_update();
-    ramp_init(&shoot_control.fric_speed_ramp, SHOOT_CONTROL_TIME * 0.001f, SHOOT_FRIC_SPEED_DOWN_RPM, SHOOT_FRIC_SPEED_OFF_RPM);
+    ramp_init(&shoot_control.fric_speed_ramp, SHOOT_CONTROL_TIME * 0.001f, SHOOT_FRIC_SPEED_RPM, SHOOT_FRIC_SPEED_OFF_RPM);
     shoot_control.fric_speed_ramp.out = SHOOT_FRIC_SPEED_OFF_RPM;
     shoot_control.fric_speed_set = SHOOT_FRIC_SPEED_OFF_RPM;
     shoot_control.ecd_count = 0;
@@ -562,7 +562,9 @@ int16_t shoot_control_loop(void)
     if(shoot_control.shoot_mode == SHOOT_STOP)
     {
         shoot_laser_off();
-        shoot_control.given_current = 0;
+        // STOP overwrites actuator_cmd with zero current. Do not run the speed PID toward 0 RPM.
+        shoot_clear_trigger_output();
+        shoot_clear_fric_output();
     }
     else
     {
@@ -856,7 +858,8 @@ static void shoot_feedback_update(void)
     }
 
     //射击开关下档时间计时
-    if (shoot_control.shoot_mode != SHOOT_STOP && shoot_switch_is_fire(shoot_get_effective_switch()))
+    const uint16_t effective_sw = shoot_get_effective_switch();
+    if (shoot_control.shoot_mode != SHOOT_STOP && shoot_switch_is_fire(effective_sw))
     {
         if (shoot_control.rc_s_time < RC_S_LONG_TIME)
         {
@@ -868,22 +871,8 @@ static void shoot_feedback_update(void)
         shoot_control.rc_s_time = 0;
     }
 
-    //鼠标右键按下加速摩擦轮，使得左键低速射击， 右键高速射击
-    static uint16_t up_time = 0;
-    if (shoot_control.press_r)
-    {
-        up_time = UP_ADD_TIME;
-    }
-
-    if (up_time > 0)
-    {
-        shoot_control.fric_speed_ramp.max_value = SHOOT_FRIC_SPEED_UP_RPM;
-        up_time--;
-    }
-    else
-    {
-        shoot_control.fric_speed_ramp.max_value = SHOOT_FRIC_SPEED_DOWN_RPM;
-    }
+    // 摩擦轮只保留一个目标转速，不再区分左键/右键高速。
+    shoot_control.fric_speed_ramp.max_value = SHOOT_FRIC_SPEED_RPM;
 
 
 }
