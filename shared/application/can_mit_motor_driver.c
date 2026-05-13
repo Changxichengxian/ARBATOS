@@ -119,6 +119,8 @@ uint8_t can_mit_motor_update_feedback(uint16_t std_id,
                                       can_mit_motor_feedback_t *feedback)
 {
     uint8_t payload_off = 0u;
+    uint8_t feedback_motor_id = 0u;
+    uint8_t feedback_state = 0u;
     uint32_t p_int;
     uint32_t v_int;
     uint32_t t_int;
@@ -128,11 +130,31 @@ uint8_t can_mit_motor_update_feedback(uint16_t std_id,
         return 0u;
     }
 
-    if (dlc >= 6u && (data[0] == motor_id || data[0] == (uint8_t)std_id))
+    if (dlc >= 6u)
     {
-        payload_off = 1u;
+        const uint8_t low_id = (uint8_t)(data[0] & 0x0Fu);
+        if (data[0] == motor_id || data[0] == (uint8_t)std_id)
+        {
+            payload_off = 1u;
+            feedback_motor_id = data[0];
+        }
+        else if (low_id == motor_id || low_id == (uint8_t)(std_id & 0x0Fu))
+        {
+            payload_off = 1u;
+            feedback_motor_id = low_id;
+            feedback_state = (uint8_t)(data[0] >> 4);
+        }
     }
-    else if (dlc < 5u)
+    if (payload_off == 0u)
+    {
+        if (dlc < 5u)
+        {
+            return 0u;
+        }
+        feedback_motor_id = motor_id;
+    }
+
+    if ((uint8_t)(payload_off + 4u) >= dlc)
     {
         return 0u;
     }
@@ -144,8 +166,12 @@ uint8_t can_mit_motor_update_feedback(uint16_t std_id,
     feedback->online = 1u;
     feedback->rx_dlc = dlc;
     feedback->rx_id = std_id;
+    feedback->motor_id = feedback_motor_id;
+    feedback->state = feedback_state;
+    feedback->mos_temperature = (dlc >= 8u && payload_off == 1u) ? data[6] : 0u;
+    feedback->coil_temperature = (dlc >= 8u && payload_off == 1u) ? data[7] : 0u;
     feedback->rx_count++;
-    feedback->last_rx_tick = xTaskGetTickCount();
+    feedback->last_rx_tick = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
     feedback->position = can_mit_motor_uint_to_float(p_int,
                                                      -limits->position_max,
                                                      limits->position_max,

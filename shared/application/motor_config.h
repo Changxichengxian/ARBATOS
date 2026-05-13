@@ -164,6 +164,10 @@ static inline uint16_t motor_cfg_feedback_id(const motor_node_param_t *node)
     {
         return 0u;
     }
+    if (node->feedback_id_enable != 0u)
+    {
+        return node->feedback_id;
+    }
     if (node->master_id != 0u)
     {
         return node->master_id;

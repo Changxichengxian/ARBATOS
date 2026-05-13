@@ -421,6 +421,8 @@ typedef enum
     MOTOR_MODEL_DM_J8006_2EC_V11,
     MOTOR_MODEL_DM_J8006_2EC_V10,
     MOTOR_MODEL_UNITREE_GO_M8010_6,
+    MOTOR_MODEL_DM_J4310_WHEELLEG_REF,
+    MOTOR_MODEL_DM_6215_WHEELLEG_REF,
     MOTOR_MODEL__COUNT
 } motor_model_e;
 
@@ -470,6 +472,8 @@ typedef struct
     uint8_t rs485_port; // RS485 port when transport=RS485
     uint32_t baudrate; // RS485 baudrate, 0=driver/default
     uint16_t rx_timeout_ms; // RS485 offline timeout, 0=driver/default
+    uint16_t feedback_id; // explicit CAN feedback ID when enabled
+    uint8_t feedback_id_enable; // 1=use feedback_id, even when feedback_id is 0
 } motor_node_param_t;
 
 typedef struct

@@ -134,7 +134,7 @@ static inline uint8_t robot_profile_need_wheelleg_servo_task(void)
     return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_SERVO);
 }
 
-static inline uint8_t robot_profile_need_wheelleg_mit_task(void)
+static inline uint8_t robot_profile_is_wheelleg_mit(void)
 {
     return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_MIT);
 }

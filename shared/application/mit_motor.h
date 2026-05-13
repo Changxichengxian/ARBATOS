@@ -25,6 +25,10 @@ typedef struct
     uint8_t online;
     uint8_t rx_dlc;
     uint16_t rx_id;
+    uint8_t motor_id;
+    uint8_t state;
+    uint8_t mos_temperature;
+    uint8_t coil_temperature;
     uint32_t rx_count;
     uint32_t last_rx_tick;
     fp32 position;

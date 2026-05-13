@@ -234,6 +234,46 @@ static const motor_model_db_entry_t s_motor_model_db[MOTOR_MODEL__COUNT] =
             .torque_current_range_a = 0.0f,
             .fb_current_meas_range_abs = 0,
         },
+    [MOTOR_MODEL_DM_J4310_WHEELLEG_REF] =
+        {
+            .base = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 10.0f},
+            .rx_format = MOTOR_MODEL_RX_FMT_NONE,
+            .default_protocol = (uint8_t)MOTOR_PROTOCOL_DM_3MODE,
+            .default_control_mode = (uint8_t)MOTOR_CONTROL_MODE_MIT,
+            .caps = (uint8_t)(MOTOR_MODEL_CAP_MIT |
+                               MOTOR_MODEL_CAP_POS_VEL |
+                               MOTOR_MODEL_CAP_SPEED),
+            .mit_limits = {
+                .position_max = 12.5f,
+                .velocity_max = 30.0f,
+                .kp_max = 500.0f,
+                .kd_max = 5.0f,
+                .torque_max = 10.0f,
+            },
+            .cmd_current_range_abs = 0,
+            .torque_current_range_a = 0.0f,
+            .fb_current_meas_range_abs = 0,
+        },
+    [MOTOR_MODEL_DM_6215_WHEELLEG_REF] =
+        {
+            .base = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 1.0f},
+            .rx_format = MOTOR_MODEL_RX_FMT_NONE,
+            .default_protocol = (uint8_t)MOTOR_PROTOCOL_DM_3MODE,
+            .default_control_mode = (uint8_t)MOTOR_CONTROL_MODE_MIT,
+            .caps = (uint8_t)(MOTOR_MODEL_CAP_MIT |
+                               MOTOR_MODEL_CAP_POS_VEL |
+                               MOTOR_MODEL_CAP_SPEED),
+            .mit_limits = {
+                .position_max = 12.5f,
+                .velocity_max = 45.0f,
+                .kp_max = 500.0f,
+                .kd_max = 5.0f,
+                .torque_max = 10.0f,
+            },
+            .cmd_current_range_abs = 0,
+            .torque_current_range_a = 0.0f,
+            .fb_current_meas_range_abs = 0,
+        },
 };
 
 // 按电机型号取共享能力描述；型号无效时返回 NULL。

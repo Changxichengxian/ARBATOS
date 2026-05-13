@@ -32,6 +32,8 @@ const motor_config_t g_motor_config =
             [MOTOR_MODEL_DM_J8006_2EC_V11] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.0f},
             [MOTOR_MODEL_DM_J8006_2EC_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.0f},
             [MOTOR_MODEL_UNITREE_GO_M8010_6] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.33f},
+            [MOTOR_MODEL_DM_J4310_WHEELLEG_REF] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 10.0f},
+            [MOTOR_MODEL_DM_6215_WHEELLEG_REF] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 1.0f},
         },
 };
 
