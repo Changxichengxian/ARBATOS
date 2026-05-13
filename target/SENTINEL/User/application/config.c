@@ -325,9 +325,9 @@ config_t g_config = {
     .imu =
         {
             .fusion_mode = IMU_FUSION_MAHONY_6AXIS,                 // 姿态融合算法：0=Mahony 六轴，1=AHRS 九轴
-            .temperature_pid = {1600.0f, 0.2f, 0.0f, 4500.0f, 4400.0f}, // 温控 PID
-            .temperature_pid_max_out = 4500.0f,                       // 输出上限
-            .temperature_pid_max_iout = 4400.0f,                      // 积分上限
+            .temperature_pid = {1600.0f, 0.2f, 0.0f, 49.0f, 49.0f}, // 温控 PID
+            .temperature_pid_max_out = 49.0f,                       // 输出上限
+            .temperature_pid_max_iout = 49.0f,                      // 积分上限
             .imu_temp_pwm_max = 50,                                   // [219] PWM 上限
             .task_init_time_ms = 7,                                   // 任务延时
         },

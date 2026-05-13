@@ -2,6 +2,10 @@
 #include "BMI088reg.h"
 #include "bsp_bmi088_port.h"
 
+#ifndef BMI088_BOOT_SELF_TEST_ENABLE
+#define BMI088_BOOT_SELF_TEST_ENABLE 0
+#endif
+
 
 fp32 BMI088_ACCEL_SEN = BMI088_ACCEL_3G_SEN;
 fp32 BMI088_GYRO_SEN = BMI088_GYRO_2000_SEN;
@@ -92,6 +96,7 @@ uint8_t BMI088_init(void)
     BMI088_GPIO_init();
     BMI088_com_init();
 
+#if BMI088_BOOT_SELF_TEST_ENABLE
     // self test pass and init
     if (bmi088_accel_self_test() != BMI088_NO_ERROR)
     {
@@ -110,6 +115,10 @@ uint8_t BMI088_init(void)
     {
         error |= bmi088_gyro_init();
     }
+#else
+    error |= bmi088_accel_init();
+    error |= bmi088_gyro_init();
+#endif
 
     return error;
 }

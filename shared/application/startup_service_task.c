@@ -102,9 +102,9 @@ void startup_service_task(void const * argument)
             {
                 gyro_boot_cali_seen = 1;
             }
-            else if (gyro_boot_cali_seen != 0 && buzzer_is_idle() != 0u)
+            else if (gyro_boot_cali_seen != 0 && ins_is_gyro_boot_calibrated() && buzzer_is_idle() != 0u)
             {
-                buzzer_schedule(ins_is_gyro_boot_calibrated() ? 1u : 2u);
+                buzzer_schedule(1u);
                 gyro_boot_beep_done = 1;
             }
         }

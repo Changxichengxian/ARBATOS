@@ -442,7 +442,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\\..\\..\\boards\\DJI_C_F407\\User\\bsp\\boards\\bsp_rc_port.c</PathWithFileName>
+      <PathWithFileName>..\\..\\..\\boards\\DJI_C_F407\\bsp\\bsp_rc_port.c</PathWithFileName>
       <FilenameWithoutPath>bsp_rc_port.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -774,7 +774,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\\..\\..\\boards\\DJI_C_F407\\User\\application\\INS_task.c</PathWithFileName>
+      <PathWithFileName>..\\..\\..\\boards\\DJI_C_F407\\app\\INS_task.c</PathWithFileName>
       <FilenameWithoutPath>INS_task.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -1206,7 +1206,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\\..\\..\\boards\\DJI_C_F407\\User\\components\\support\\fatfs\\diskio.c</PathWithFileName>
+      <PathWithFileName>..\\..\\..\\boards\\DJI_C_F407\\support\\fatfs\\diskio.c</PathWithFileName>
       <FilenameWithoutPath>diskio.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>

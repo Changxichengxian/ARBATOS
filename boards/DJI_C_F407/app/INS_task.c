@@ -78,6 +78,8 @@
 #define GYRO_BOOT_CALIB_MOVING_LIMIT_DPS 5.0f
 #define GYRO_BOOT_CALIB_DELAY_MS       1U
 #define GYRO_BOOT_CALIB_ACC_TOL_G      0.05f
+#define GYRO_BOOT_TEMP_STABLE_ERR_C    1.0f
+#define GYRO_BOOT_TEMP_STABLE_TIME_MS  1000U
 #define IMU_SDLOG_BASE_STREAM_MAX_SAMPLES 16u
 #define IMU_SDLOG_PID_PERIOD_MS        10u
 
@@ -130,9 +132,9 @@ static void imu_cmd_spi_dma(void);
   * @brief          上电静止时对陀螺仪做均值零偏校准（取无人机姿态解算中的做法）
   * @retval         true 校准成功并写入 gyro_offset；false 检测到运动，未更新
   */
-static bool gyro_boot_calibration(void);
 static void gyro_boot_retry_reset(void);
 static void gyro_boot_retry_update(const fp32 gyro[3], const fp32 acc[3]);
+static bool_t gyro_boot_temp_ready(fp32 temp);
 
 static float imu_calc_dt_s(void);
 static bool_t imu_acc_is_healthy(const fp32 acc[3]);
@@ -381,13 +383,7 @@ void INS_task(void const *pvParameters)
     ist8310_read_mag(ist8310_real_data.mag);
     BMI088_read(bmi088_real_data.gyro, bmi088_real_data.accel, &bmi088_real_data.temp);
 
-    // 上电静止均值零偏校准：静止且陀螺 <5 dps 时累积 2000 次
-    // 运动时校准返回 false，保留原偏置（默认 0 或 flash 传入）
-    gyro_boot_calibrating = 1;
-    gyro_boot_calibrated = gyro_boot_calibration();
-    gyro_boot_calibrating = 0;
-    gyro_boot_initial_result = gyro_boot_calibrated ? INS_GYRO_BOOT_INIT_SUCCESS : INS_GYRO_BOOT_INIT_FAILED;
-
+    // Gyro offset collection is delayed until IMU temperature is stable.
     //rotate and zero drift 
     imu_cali_slove(INS_gyro, INS_accel, INS_mag, &bmi088_real_data, &ist8310_real_data);
 
@@ -466,7 +462,14 @@ void INS_task(void const *pvParameters)
         }
         if (!gyro_boot_calibrated)
         {
-            gyro_boot_retry_update(INS_gyro, accel_fliter_3);
+            if (gyro_boot_temp_ready(bmi088_real_data.temp) != 0u)
+            {
+                gyro_boot_retry_update(INS_gyro, accel_fliter_3);
+            }
+            else
+            {
+                gyro_boot_retry_reset();
+            }
         }
 
         const imu_fusion_mode_e mode = (imu_fusion_mode_e)imu_cfg->fusion_mode;
@@ -937,6 +940,7 @@ void DMA2_Stream2_IRQHandler(void)
 }
 
 
+#if 0
 static bool gyro_boot_calibration(void)
 {
     fp32 gyro_sum[3] = {0.0f, 0.0f, 0.0f};
@@ -987,6 +991,7 @@ static bool gyro_boot_calibration(void)
 
     return true;
 }
+#endif
 
 bool_t ins_is_gyro_boot_calibrated(void)
 {
@@ -1044,13 +1049,34 @@ static void gyro_boot_retry_update(const fp32 gyro[3], const fp32 acc[3])
     }
 
     const fp32 inv_samples = 1.0f / (fp32)gyro_boot_retry_state.sample_count;
-    gyro_cali_offset[0] = gyro_offset[0] = -gyro_boot_retry_state.gyro_sum[0] * inv_samples;
-    gyro_cali_offset[1] = gyro_offset[1] = -gyro_boot_retry_state.gyro_sum[1] * inv_samples;
-    gyro_cali_offset[2] = gyro_offset[2] = -gyro_boot_retry_state.gyro_sum[2] * inv_samples;
+    gyro_cali_offset[0] = gyro_offset[0] = gyro_offset[0] - gyro_boot_retry_state.gyro_sum[0] * inv_samples;
+    gyro_cali_offset[1] = gyro_offset[1] = gyro_offset[1] - gyro_boot_retry_state.gyro_sum[1] * inv_samples;
+    gyro_cali_offset[2] = gyro_offset[2] = gyro_offset[2] - gyro_boot_retry_state.gyro_sum[2] * inv_samples;
     gyro_boot_accel_norm_ref = gyro_boot_retry_state.accel_norm_sum * inv_samples;
     gyro_boot_accel_norm_valid = 1;
+    gyro_boot_initial_result = INS_GYRO_BOOT_INIT_SUCCESS;
     gyro_boot_calibrated = 1;
     gyro_boot_retry_reset();
+}
+
+static bool_t gyro_boot_temp_ready(fp32 temp)
+{
+    static uint32_t stable_start_ms = 0u;
+    const fp32 target = (fp32)get_control_temperature();
+
+    if (first_temperate == 0u || fabsf(temp - target) > GYRO_BOOT_TEMP_STABLE_ERR_C)
+    {
+        stable_start_ms = 0u;
+        return 0u;
+    }
+
+    const uint32_t now_ms = HAL_GetTick();
+    if (stable_start_ms == 0u)
+    {
+        stable_start_ms = now_ms;
+    }
+
+    return ((uint32_t)(now_ms - stable_start_ms) >= GYRO_BOOT_TEMP_STABLE_TIME_MS) ? 1u : 0u;
 }
 
 
