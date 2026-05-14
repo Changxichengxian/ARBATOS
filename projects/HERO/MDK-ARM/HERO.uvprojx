@@ -560,6 +560,11 @@
               <FilePath>..\\..\\..\\shared\\application\\motor_model_db.c</FilePath>
             </File>
             <File>
+              <FileName>motor_instance.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\motor_instance.c</FilePath>
+            </File>
+            <File>
               <FileName>can_command_tx_task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\application\\can_command_tx_task.c</FilePath>

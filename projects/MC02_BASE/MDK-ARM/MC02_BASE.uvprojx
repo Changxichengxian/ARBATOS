@@ -762,6 +762,11 @@
               <FilePath>..\\..\\..\\shared\\application\\motor_model_db.c</FilePath>
             </File>
             <File>
+              <FileName>motor_instance.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\motor_instance.c</FilePath>
+            </File>
+            <File>
               <FileName>user_lib.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\components\\algorithm\\user_lib.c</FilePath>

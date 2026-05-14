@@ -17,7 +17,7 @@
 #include "can_mit_motor_driver.h"
 #include "detect_task.h"
 #include "motor_config.h"
-#include "robot_task_profile.h"
+#include "motor_instance.h"
 #include "sdlog.h"
 #include "watch.h"
 
@@ -28,12 +28,6 @@
 #define CAN_RX_RPM_TO_RADPS 0.104719755f
 #define CAN_RX_ECD_RANGE_F 8191.0f
 
-static motor_measure_t motor_chassis[4];
-static motor_measure_t motor_yaw;
-static motor_measure_t motor_yaw_upper;
-static motor_measure_t motor_trigger;
-static motor_measure_t motor_pitch;
-static motor_measure_t motor_friction[4];
 static volatile uint8_t last_can1ff_status = 0u;
 
 __weak uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8]);
@@ -75,15 +69,6 @@ static uint16_t can_rx_position_to_ecd(fp32 position)
         ecd = 8191u;
     }
     return (uint16_t)ecd;
-}
-
-static uint8_t can_match_node(uint16_t std_id, const motor_node_param_t *node)
-{
-    if (node == NULL || motor_cfg_can_id(node) == 0u)
-    {
-        return 0u;
-    }
-    return (std_id == motor_cfg_feedback_id(node)) ? 1u : 0u;
 }
 
 // 浮点量写回旧结构前做 int16 饱和，避免溢出反号。
@@ -282,56 +267,6 @@ static void can_rx_unpack_motor_measure(motor_measure_t *measure, motor_model_e 
     }
 }
 
-// 在一组轴装配里按反馈 ID 找命中的轴，下标返回给调用者。
-static uint8_t can_match_nodes(uint16_t std_id, const motor_node_param_t *nodes, uint8_t count, uint8_t *out_idx)
-{
-    if (nodes == NULL || count == 0u)
-    {
-        return 0u;
-    }
-
-    for (uint8_t i = 0u; i < count; i++)
-    {
-        if (can_match_node(std_id, &nodes[i]) != 0u)
-        {
-            if (out_idx != NULL)
-            {
-                *out_idx = i;
-            }
-            return 1u;
-        }
-    }
-
-    return 0u;
-}
-
-static uint8_t can_match_nodes_on_bus(uint16_t std_id,
-                                      const motor_node_param_t *nodes,
-                                      uint8_t count,
-                                      uint8_t bus,
-                                      uint8_t *out_idx)
-{
-    if (nodes == NULL || count == 0u)
-    {
-        return 0u;
-    }
-
-    for (uint8_t i = 0u; i < count; i++)
-    {
-        if (can_match_node(std_id, &nodes[i]) != 0u &&
-            motor_cfg_can_bus(1u, &nodes[i]) == bus)
-        {
-            if (out_idx != NULL)
-            {
-                *out_idx = i;
-            }
-            return 1u;
-        }
-    }
-
-    return 0u;
-}
-
 // 按轴配置决定怎么处理反馈：大疆电流帧直接拆，MIT 帧走 MIT 解析，其他交给扩展口。
 static uint8_t can_rx_process_node_frame(motor_measure_t *measure,
                                          const motor_node_param_t *node,
@@ -394,142 +329,26 @@ __weak uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t 
 // CAN 接收总入口：先按总线和轴装配找到归属，再交给对应协议解析。
 void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8])
 {
+    const motor_instance_t *inst = NULL;
+
     if (data == NULL)
     {
         return;
     }
 
-    if (bus == 1u)
+    inst = motor_instance_find_feedback(bus, std_id);
+    if (inst != NULL)
     {
-        uint8_t idx = 0u;
-        if (robot_profile_is_wheelleg_mit() != 0u &&
-            can_match_nodes_on_bus(std_id, g_config.motor.arm, (uint8_t)MOTOR_ARM_JOINT_COUNT, bus, &idx) != 0u)
-        {
-            (void)can_rx_process_mit_node_frame(NULL,
-                                                &g_config.motor.arm[idx],
-                                                bus,
-                                                std_id,
-                                                dlc,
-                                                data,
-                                                actuator_id_arm_joint(idx),
-                                                0u,
-                                                0u);
-            return;
-        }
-        if (can_match_nodes(std_id, g_config.motor.chassis, 4u, &idx) != 0u)
-        {
-            (void)can_rx_process_node_frame(&motor_chassis[idx],
-                                            &g_config.motor.chassis[idx],
-                                            bus,
-                                            std_id,
-                                            dlc,
-                                            data,
-                                            (uint8_t)(CHASSIS_MOTOR1_TOE + idx),
-                                            1u,
-                                            actuator_id_chassis(idx));
-            return;
-        }
-        if (can_match_node(std_id, &g_config.motor.yaw) != 0u)
-        {
-            (void)can_rx_process_node_frame(&motor_yaw,
-                                            &g_config.motor.yaw,
-                                            bus,
-                                            std_id,
-                                            dlc,
-                                            data,
-                                            YAW_GIMBAL_MOTOR_TOE,
-                                            1u,
-                                            ACTUATOR_ID_YAW);
-            return;
-        }
-        if (can_match_node(std_id, &g_config.motor.yaw_upper) != 0u)
-        {
-            (void)can_rx_process_node_frame(&motor_yaw_upper,
-                                            &g_config.motor.yaw_upper,
-                                            bus,
-                                            std_id,
-                                            dlc,
-                                            data,
-                                            0u,
-                                            0u,
-                                            ACTUATOR_ID_YAW_UPPER);
-            return;
-        }
-        if (can_match_node(std_id, &g_config.motor.trigger) != 0u)
-        {
-            (void)can_rx_process_node_frame(&motor_trigger,
-                                            &g_config.motor.trigger,
-                                            bus,
-                                            std_id,
-                                            dlc,
-                                            data,
-                                            TRIGGER_MOTOR_TOE,
-                                            1u,
-                                            ACTUATOR_ID_TRIGGER);
-            return;
-        }
-        if (can_match_node(std_id, &g_config.motor.pitch) != 0u)
-        {
-            (void)can_rx_process_node_frame(&motor_pitch,
-                                            &g_config.motor.pitch,
-                                            bus,
-                                            std_id,
-                                            dlc,
-                                            data,
-                                            PITCH_GIMBAL_MOTOR_TOE,
-                                            1u,
-                                            ACTUATOR_ID_PITCH);
-            return;
-        }
-    }
-    else if (bus == 2u)
-    {
-        uint8_t idx = 0u;
-        if (robot_profile_is_wheelleg_mit() != 0u &&
-            can_match_nodes_on_bus(std_id, g_config.motor.arm, (uint8_t)MOTOR_ARM_JOINT_COUNT, bus, &idx) != 0u)
-        {
-            (void)can_rx_process_mit_node_frame(NULL,
-                                                &g_config.motor.arm[idx],
-                                                bus,
-                                                std_id,
-                                                dlc,
-                                                data,
-                                                actuator_id_arm_joint(idx),
-                                                0u,
-                                                0u);
-            return;
-        }
-        if (can_match_nodes(std_id, g_config.motor.friction, 4u, &idx) != 0u)
-        {
-            (void)can_rx_process_node_frame(&motor_friction[idx],
-                                            &g_config.motor.friction[idx],
-                                            bus,
-                                            std_id,
-                                            dlc,
-                                            data,
-                                            0u,
-                                            0u,
-                                            actuator_id_friction(idx));
-            return;
-        }
-    }
-    else if (bus == 3u)
-    {
-        uint8_t idx = 0u;
-        if (robot_profile_is_wheelleg_mit() != 0u &&
-            can_match_nodes_on_bus(std_id, g_config.motor.arm, (uint8_t)MOTOR_ARM_JOINT_COUNT, bus, &idx) != 0u)
-        {
-            (void)can_rx_process_mit_node_frame(NULL,
-                                                &g_config.motor.arm[idx],
-                                                bus,
-                                                std_id,
-                                                dlc,
-                                                data,
-                                                actuator_id_arm_joint(idx),
-                                                0u,
-                                                0u);
-            return;
-        }
+        (void)can_rx_process_node_frame(inst->measure,
+                                        inst->node,
+                                        bus,
+                                        std_id,
+                                        dlc,
+                                        data,
+                                        inst->detect_toe,
+                                        inst->use_detect,
+                                        inst->actuator_id);
+        return;
     }
 
     (void)CAN_rx_process_extra_frame(bus, std_id, dlc, data);
@@ -570,32 +389,32 @@ void CAN_cmd_chassis_reset_ID(void)
 
 const motor_measure_t *get_yaw_gimbal_motor_measure_point(void)
 {
-    return &motor_yaw;
+    return motor_instance_measure_const(ACTUATOR_ID_YAW);
 }
 
 const motor_measure_t *get_yaw_upper_gimbal_motor_measure_point(void)
 {
-    return &motor_yaw_upper;
+    return motor_instance_measure_const(ACTUATOR_ID_YAW_UPPER);
 }
 
 const motor_measure_t *get_pitch_gimbal_motor_measure_point(void)
 {
-    return &motor_pitch;
+    return motor_instance_measure_const(ACTUATOR_ID_PITCH);
 }
 
 const motor_measure_t *get_trigger_motor_measure_point(void)
 {
-    return &motor_trigger;
+    return motor_instance_measure_const(ACTUATOR_ID_TRIGGER);
 }
 
 const motor_measure_t *get_chassis_motor_measure_point(uint8_t i)
 {
-    return &motor_chassis[(i & 0x03u)];
+    return motor_instance_measure_const(actuator_id_chassis(i & 0x03u));
 }
 
 const motor_measure_t *get_friction_motor_measure_point(uint8_t i)
 {
-    return &motor_friction[(i & 0x03u)];
+    return motor_instance_measure_const(actuator_id_friction(i & 0x03u));
 }
 
 uint8_t CAN_get_last_1ff_status(void)
