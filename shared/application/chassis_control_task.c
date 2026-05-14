@@ -17,7 +17,6 @@
 
 #include "chassis_control_task.h"
 #include "chassis_behaviour.h"
-#include "gimbal_behaviour.h"
 
 #include "cmsis_os.h"
 
@@ -49,6 +48,22 @@
 #define CHASSIS_FOLLOW_YAW_STOP_ERR_RAD (0.01f)
 #define CHASSIS_FOLLOW_YAW_STOP_WZ_RADPS (0.10f)
 
+#ifndef HALF_ECD_RANGE
+#define HALF_ECD_RANGE 4096
+#endif
+
+#ifndef ECD_RANGE
+#define ECD_RANGE 8191
+#endif
+
+#ifndef MOTOR_ECD_TO_RAD
+#define MOTOR_ECD_TO_RAD (g_config.gimbal.motor_ecd_to_rad)
+#endif
+
+#ifndef YAW_TURN
+#define YAW_TURN (g_config.gimbal.yaw_turn)
+#endif
+
 // Chassis yaw-rate fusion (wheel odom + IMU yaw-rate minus gimbal-yaw rate).
 // IMU is installed on the gimbal, so gyro Z includes chassis yaw-rate + gimbal yaw-rate.
 // We subtract gimbal yaw motor rate to obtain chassis yaw-rate measurement.
@@ -62,8 +77,9 @@
 typedef struct
 {
     const manual_input_state_t *manual_input;
-    const gimbal_motor_t *yaw_motor;
-    const gimbal_motor_t *pitch_motor;
+    uint8_t gimbal_state_valid;
+    app_gimbal_motor_state_t yaw_motor;
+    app_gimbal_motor_state_t pitch_motor;
     const fp32 *ins_angle;
     const fp32 *gyro;
     const motor_measure_t *motor_measure[CHASSIS_MOTOR_COUNT];
@@ -99,14 +115,14 @@ static bool_t chassis_wz_kf_inited = 0;
         }                                                \
     }
 
-static fp32 chassis_get_gimbal_yaw_relative_angle(const gimbal_motor_t *yaw_motor)
+static fp32 chassis_get_gimbal_yaw_relative_angle(const app_gimbal_motor_state_t *yaw_motor)
 {
-    if (yaw_motor == NULL || yaw_motor->gimbal_motor_measure == NULL)
+    if (yaw_motor == NULL || yaw_motor->valid == 0u || yaw_motor->measure.valid == 0u)
     {
         return 0.0f;
     }
 
-    int32_t relative_ecd = (int32_t)yaw_motor->gimbal_motor_measure->ecd - (int32_t)yaw_motor->offset_ecd;
+    int32_t relative_ecd = (int32_t)yaw_motor->measure.ecd - (int32_t)yaw_motor->offset_ecd;
     if (relative_ecd > HALF_ECD_RANGE)
     {
         relative_ecd -= ECD_RANGE;
@@ -120,15 +136,51 @@ static fp32 chassis_get_gimbal_yaw_relative_angle(const gimbal_motor_t *yaw_moto
     return YAW_TURN ? -angle : angle;
 }
 
-static fp32 chassis_get_gimbal_yaw_relative_rate(const gimbal_motor_t *yaw_motor)
+static fp32 chassis_get_gimbal_yaw_relative_rate(const app_gimbal_motor_state_t *yaw_motor)
 {
-    if (yaw_motor == NULL || yaw_motor->gimbal_motor_measure == NULL)
+    if (yaw_motor == NULL || yaw_motor->valid == 0u || yaw_motor->measure.valid == 0u)
     {
         return 0.0f;
     }
 
-    fp32 w = (fp32)yaw_motor->gimbal_motor_measure->speed_rpm * CHASSIS_GIMBAL_MOTOR_RPM_TO_RADPS;
+    fp32 w = (fp32)yaw_motor->measure.speed_rpm * CHASSIS_GIMBAL_MOTOR_RPM_TO_RADPS;
     return YAW_TURN ? -w : w;
+}
+
+static bool_t chassis_get_turnaround_frame_yaw(fp32 *out_yaw_relative)
+{
+    app_gimbal_state_t gimbal_state;
+    if (out_yaw_relative == NULL ||
+        app_copy_gimbal_state(&gimbal_state) == 0u ||
+        gimbal_state.valid == 0u ||
+        gimbal_state.turnaround_frame_valid == 0u)
+    {
+        return 0;
+    }
+
+    *out_yaw_relative = gimbal_state.turnaround_frame_yaw_relative;
+    return 1;
+}
+
+static void chassis_fill_motor_measure_state(app_motor_measure_state_t *out, const motor_measure_t *measure)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    memset(out, 0, sizeof(*out));
+    if (measure == NULL)
+    {
+        return;
+    }
+
+    out->valid = 1u;
+    out->ecd = measure->ecd;
+    out->speed_rpm = measure->speed_rpm;
+    out->given_current = measure->given_current;
+    out->temperature = measure->temperate;
+    out->last_ecd = measure->last_ecd;
 }
 
 static void chassis_wz_kf_reset(fp32 wz0)
@@ -190,8 +242,21 @@ static void chassis_snapshot_capture(chassis_runtime_snapshot_t *snapshot, chass
 
     memset(snapshot, 0, sizeof(*snapshot));
     snapshot->manual_input = (control != NULL) ? control->chassis_RC : get_remote_control_point();
-    snapshot->yaw_motor = (control != NULL) ? control->chassis_yaw_motor : get_yaw_motor_point();
-    snapshot->pitch_motor = (control != NULL) ? control->chassis_pitch_motor : get_pitch_motor_point();
+    {
+        app_gimbal_state_t gimbal_state;
+        if (app_copy_gimbal_state(&gimbal_state) != 0u && gimbal_state.valid != 0u)
+        {
+            snapshot->gimbal_state_valid = 1u;
+            snapshot->yaw_motor = gimbal_state.yaw;
+            snapshot->pitch_motor = gimbal_state.pitch;
+        }
+        else if (control != NULL && control->gimbal_state_valid != 0u)
+        {
+            snapshot->gimbal_state_valid = 1u;
+            snapshot->yaw_motor = control->chassis_yaw_motor;
+            snapshot->pitch_motor = control->chassis_pitch_motor;
+        }
+    }
     snapshot->ins_angle = (control != NULL) ? control->chassis_INS_angle : get_INS_angle_point();
     snapshot->gyro = chassis_INT_gyro_point;
     snapshot->test_mode = (test_mode_e)g_config.test.mode;
@@ -218,6 +283,13 @@ static void chassis_snapshot_capture(chassis_runtime_snapshot_t *snapshot, chass
     {
         chassis_control_snapshot_t fast = {0};
         const manual_input_state_t *manual_input = snapshot->manual_input;
+
+        if (snapshot->gimbal_state_valid != 0u)
+        {
+            control->gimbal_state_valid = 1u;
+            control->chassis_yaw_motor = snapshot->yaw_motor;
+            control->chassis_pitch_motor = snapshot->pitch_motor;
+        }
 
         fast.manual_online = toe_is_error(DBUS_TOE) ? 0u : 1u;
         fast.test_mode = snapshot->test_mode;
@@ -278,7 +350,7 @@ static void chassis_set_mode(chassis_move_t *chassis_move_mode);
   * @param[out]     chassis_move_transit:"chassis_move"变量指针.
   * @retval         none
   */
-void chassis_mode_change_control_transit(chassis_move_t *chassis_move_transit);
+static void chassis_mode_change_control_transit(chassis_move_t *chassis_move_transit);
 /**
   * @param[out]     chassis_move_update: "chassis_move" valiable point
   * @retval         none
@@ -511,6 +583,43 @@ void chassis_tune_set_motor_speed_pid(const pid_param_t *pid, bool_t clear_state
     taskEXIT_CRITICAL();
 }
 
+static void chassis_publish_state(const chassis_move_t *control)
+{
+    if (control == NULL)
+    {
+        return;
+    }
+
+    app_chassis_state_t state = {0};
+    state.valid = 1u;
+    state.mode = (uint8_t)control->chassis_mode;
+    state.last_mode = (uint8_t)control->last_chassis_mode;
+    state.vx = control->vx;
+    state.vy = control->vy;
+    state.wz = control->wz;
+    state.vx_set = control->vx_set;
+    state.vy_set = control->vy_set;
+    state.wz_set = control->wz_set;
+    state.chassis_yaw_offset = control->chassis_yaw_offset;
+    state.chassis_yaw_offset_set = control->chassis_yaw_offset_set;
+    state.chassis_yaw_set = control->chassis_yaw_set;
+    state.chassis_yaw = control->chassis_yaw;
+    state.chassis_pitch = control->chassis_pitch;
+    state.chassis_roll = control->chassis_roll;
+    state.angle_pid = control->chassis_angle_pid;
+
+    for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT && i < APP_CHASSIS_MOTOR_COUNT; i++)
+    {
+        chassis_fill_motor_measure_state(&state.motor[i].measure, control->motor_chassis[i].chassis_motor_measure);
+        state.motor[i].accel = control->motor_chassis[i].accel;
+        state.motor[i].speed = control->motor_chassis[i].speed;
+        state.motor[i].speed_set = control->motor_chassis[i].speed_set;
+        state.motor[i].give_current = control->motor_chassis[i].give_current;
+    }
+
+    (void)app_publish_chassis_state(&state);
+}
+
 /**
   * @brief          chassis task, osDelay CHASSIS_CONTROL_TIME_MS (2ms)
   * @param[in]      pvParameters: null
@@ -567,6 +676,7 @@ void chassis_control_task(void const *pvParameters)
                 actuator_cmd_set_chassis_current(i, 0);
             }
 
+            chassis_publish_state(&chassis_move);
             rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
             vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
 
@@ -627,6 +737,7 @@ void chassis_control_task(void const *pvParameters)
 
             chassis_sdlog_append_base_sample(&sample, now_ms, snapshot.period_us);
         }
+        chassis_publish_state(&chassis_move);
         //os delay
         //系统延时
         rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
@@ -667,10 +778,10 @@ static void chassis_init(chassis_move_t *chassis_move_init)
     //get gyro sensor euler angle point
     chassis_move_init->chassis_INS_angle = get_INS_angle_point();
     chassis_INT_gyro_point = get_gyro_data_point();
-    //get gimbal motor data point
-    //获取云台电机数据指针
-    chassis_move_init->chassis_yaw_motor = get_yaw_motor_point();
-    chassis_move_init->chassis_pitch_motor = get_pitch_motor_point();
+    // cache gimbal state from app topics when it becomes available
+    chassis_move_init->gimbal_state_valid = 0u;
+    memset(&chassis_move_init->chassis_yaw_motor, 0, sizeof(chassis_move_init->chassis_yaw_motor));
+    memset(&chassis_move_init->chassis_pitch_motor, 0, sizeof(chassis_move_init->chassis_pitch_motor));
 
     //get chassis motor data point,  initialize motor speed PID
     //获取底盘电机数据指针，初始化PID
@@ -699,6 +810,7 @@ static void chassis_init(chassis_move_t *chassis_move_init)
         chassis_runtime_snapshot_t snapshot;
         chassis_snapshot_capture(&snapshot, chassis_move_init);
         chassis_feedback_update(chassis_move_init, &snapshot);
+        chassis_publish_state(chassis_move_init);
     }
 }
 
@@ -842,8 +954,18 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update, const c
     fp32 wz_imu = 0.0f;
     const test_mode_e test_mode = (snapshot != NULL) ? snapshot->test_mode : (test_mode_e)g_config.test.mode;
     const fp32 *gyro = (snapshot != NULL) ? snapshot->gyro : chassis_INT_gyro_point;
-    const gimbal_motor_t *yaw_motor = (snapshot != NULL) ? snapshot->yaw_motor : chassis_move_update->chassis_yaw_motor;
-    const gimbal_motor_t *pitch_motor = (snapshot != NULL) ? snapshot->pitch_motor : chassis_move_update->chassis_pitch_motor;
+    const app_gimbal_motor_state_t *yaw_motor = NULL;
+    const app_gimbal_motor_state_t *pitch_motor = NULL;
+    if (snapshot != NULL && snapshot->gimbal_state_valid != 0u)
+    {
+        yaw_motor = &snapshot->yaw_motor;
+        pitch_motor = &snapshot->pitch_motor;
+    }
+    else if (chassis_move_update->gimbal_state_valid != 0u)
+    {
+        yaw_motor = &chassis_move_update->chassis_yaw_motor;
+        pitch_motor = &chassis_move_update->chassis_pitch_motor;
+    }
     const fp32 *ins_angle = (snapshot != NULL) ? snapshot->ins_angle : chassis_move_update->chassis_INS_angle;
     if (test_mode != TEST_MODE_CHASSIS_ONLY &&
         !toe_is_error(RM_IMU_TOE) &&
@@ -871,7 +993,7 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update, const c
         const fp32 yaw = (ins_angle != NULL) ? ins_angle[INS_YAW_ADDRESS_OFFSET] : 0.0f;
         const fp32 pitch = (ins_angle != NULL) ? ins_angle[INS_PITCH_ADDRESS_OFFSET] : 0.0f;
         const fp32 roll = (ins_angle != NULL) ? ins_angle[INS_ROLL_ADDRESS_OFFSET] : 0.0f;
-        const fp32 gimbal_pitch = (pitch_motor != NULL) ? pitch_motor->angle : 0.0f;
+        const fp32 gimbal_pitch = (pitch_motor != NULL && pitch_motor->valid != 0u) ? pitch_motor->angle : 0.0f;
         chassis_move_update->chassis_yaw = rad_format(yaw - yaw_relative);
         chassis_move_update->chassis_pitch = rad_format(pitch - gimbal_pitch);
         chassis_move_update->chassis_roll = roll;
@@ -997,10 +1119,10 @@ static void chassis_set_contorl(chassis_move_t *chassis_move_control)
     //follow gimbal mode
     if (chassis_move_control->chassis_mode == CHASSIS_VECTOR_FOLLOW_GIMBAL_YAW)
     {
-        const fp32 yaw_relative_meas = chassis_get_gimbal_yaw_relative_angle(chassis_move_control->chassis_yaw_motor);
+        const fp32 yaw_relative_meas = chassis_get_gimbal_yaw_relative_angle(&chassis_move_control->chassis_yaw_motor);
         fp32 yaw_frame = yaw_relative_meas;
         fp32 sin_yaw = 0.0f, cos_yaw = 0.0f;
-        (void)gimbal_turnaround_get_frame_yaw_relative(&yaw_frame);
+        (void)chassis_get_turnaround_frame_yaw(&yaw_frame);
         //rotate chassis direction, make sure vertial direction follow gimbal
         //旋转控制底盘速度方向，保证前进方向是云台方向，有利于运动平稳
         sin_yaw = arm_sin_f32(-yaw_frame);

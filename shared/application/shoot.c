@@ -35,7 +35,7 @@
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
 #include "motor_config.h"
-#include "gimbal_behaviour.h"
+#include "app_topics.h"
 #include "control_input.h"
 #include "detect_task.h"
 #include "pid.h"
@@ -71,6 +71,8 @@ static void shoot_clear_fric_output(void);
   * @retval         1: ready 0: not ready
   */
 static bool_t shoot_fric_speed_ready(void);
+static bool_t shoot_gimbal_cmd_to_shoot_stop(void);
+static void shoot_publish_state(void);
 
 /**
   * @brief          trigger jam reverse handling.
@@ -204,6 +206,52 @@ shoot_control_t shoot_control;          // shoot control data
 const shoot_control_t *get_shoot_control_point(void)
 {
     return &shoot_control;
+}
+
+static bool_t shoot_gimbal_cmd_to_shoot_stop(void)
+{
+    app_gimbal_state_t state;
+    return (app_copy_gimbal_state(&state) != 0u && state.valid != 0u && state.shoot_stop != 0u) ? 1 : 0;
+}
+
+static void shoot_publish_state(void)
+{
+    app_shoot_state_t state = {0};
+
+    state.valid = 1u;
+    state.mode = (uint8_t)shoot_control.shoot_mode;
+    state.fric_speed_set = shoot_control.fric_speed_set;
+    state.trigger_speed_set = shoot_control.trigger_speed_set;
+    state.speed = shoot_control.speed;
+    state.speed_set = shoot_control.speed_set;
+    state.angle = shoot_control.angle;
+    state.set_angle = shoot_control.set_angle;
+    state.given_current = shoot_control.given_current;
+    state.ecd_count = shoot_control.ecd_count;
+    state.trigger_measure_ready = shoot_control.trigger_measure_ready;
+    state.press_l = (uint8_t)shoot_control.press_l;
+    state.press_r = (uint8_t)shoot_control.press_r;
+    state.last_press_l = (uint8_t)shoot_control.last_press_l;
+    state.last_press_r = (uint8_t)shoot_control.last_press_r;
+    state.press_l_time = shoot_control.press_l_time;
+    state.press_r_time = shoot_control.press_r_time;
+    state.rc_s_time = shoot_control.rc_s_time;
+    state.block_time = shoot_control.block_time;
+    state.reverse_time = shoot_control.reverse_time;
+    state.move_flag = (uint8_t)shoot_control.move_flag;
+    state.key = (uint8_t)shoot_control.key;
+    state.key_time = shoot_control.key_time;
+    state.heat_limit = shoot_control.heat_limit;
+    state.heat = shoot_control.heat;
+    state.trigger_motor_pid = shoot_control.trigger_motor_pid;
+
+    for (uint8_t i = 0u; i < FRIC_MOTOR_NUM && i < APP_SHOOT_FRIC_MOTOR_COUNT; i++)
+    {
+        state.fric_speed_pid[i] = shoot_control.fric_speed_pid[i];
+        state.fric_current_set[i] = shoot_control.fric_current_set[i];
+    }
+
+    (void)app_publish_shoot_state(&state);
 }
 
 static test_mode_e shoot_test_mode(void)
@@ -468,6 +516,7 @@ void shoot_init(void)
     shoot_control.speed = 0.0f;
     shoot_control.speed_set = 0.0f;
     shoot_control.key_time = 0;
+    shoot_publish_state();
 }
 
 /**
@@ -498,6 +547,7 @@ int16_t shoot_control_loop(void)
             shoot_control.shoot_mode = SHOOT_STOP;
             shoot_laser_off();
         }
+        shoot_publish_state();
         return 0;
     }
     entertain_entered = 0u;
@@ -627,6 +677,7 @@ int16_t shoot_control_loop(void)
             actuator_cmd_set_friction_current(i, fric_current_cmd[i]);
         }
     }
+    shoot_publish_state();
     return shoot_control.given_current;
 }
 
@@ -727,7 +778,7 @@ static void shoot_set_mode(void)
         }
     }
     //如果云台状态是 无力状态，就关闭射击
-    if (gimbal_cmd_to_shoot_stop())
+    if (shoot_gimbal_cmd_to_shoot_stop())
     {
         shoot_control.shoot_mode = SHOOT_STOP;
     }

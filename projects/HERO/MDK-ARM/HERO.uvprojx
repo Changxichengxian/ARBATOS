@@ -550,6 +550,11 @@
               <FilePath>..\\..\\..\\shared\\application\\actuator_cmd.c</FilePath>
             </File>
             <File>
+              <FileName>app_pubsub.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\app_pubsub.c</FilePath>
+            </File>
+            <File>
               <FileName>motor_model_db.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\application\\motor_model_db.c</FilePath>

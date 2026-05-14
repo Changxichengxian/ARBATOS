@@ -19,18 +19,15 @@
 
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
+#include "app_topics.h"
 #include "arm_task.h"
 #include "INS_task.h"
-#include "chassis_control_task.h"
 #include "detect_task.h"
-#include "gimbal_behaviour.h"
-#include "gimbal_control_task.h"
 #include "mem_mang.h"
 #include "manual_input.h"
 #include "bsp_can.h"
 #include "sdcard.h"
 #include "sdlog.h"
-#include "shoot.h"
 #include "host_link_task.h"
 #include "robot_task_profile.h"
 
@@ -500,33 +497,32 @@ static void watch_copy_chassis(void)
         return;
     }
 
-    const chassis_move_t *chassis = get_chassis_move_point();
-    if (chassis == NULL)
+    app_chassis_state_t chassis;
+    if (app_copy_chassis_state(&chassis) == 0u || chassis.valid == 0u)
     {
         memset(&g_watch.chassis, 0, sizeof(g_watch.chassis));
         return;
     }
 
-    g_watch.chassis.mode = (watch_chassis_mode_e)chassis->chassis_mode;
-    g_watch.chassis.last_mode = (watch_chassis_mode_e)chassis->last_chassis_mode;
+    g_watch.chassis.mode = (watch_chassis_mode_e)chassis.mode;
+    g_watch.chassis.last_mode = (watch_chassis_mode_e)chassis.last_mode;
 
-    g_watch.chassis.vx_set = chassis->vx_set;
-    g_watch.chassis.vy_set = chassis->vy_set;
-    g_watch.chassis.wz_set = chassis->wz_set;
-    g_watch.chassis.vx = chassis->vx;
-    g_watch.chassis.vy = chassis->vy;
-    g_watch.chassis.wz = chassis->wz;
-    g_watch.chassis.yaw_deg = chassis->chassis_yaw * rad2deg;
+    g_watch.chassis.vx_set = chassis.vx_set;
+    g_watch.chassis.vy_set = chassis.vy_set;
+    g_watch.chassis.wz_set = chassis.wz_set;
+    g_watch.chassis.vx = chassis.vx;
+    g_watch.chassis.vy = chassis.vy;
+    g_watch.chassis.wz = chassis.wz;
+    g_watch.chassis.yaw_deg = chassis.chassis_yaw * rad2deg;
 
-    for (uint8_t i = 0; i < 4; i++)
+    for (uint8_t i = 0; i < 4u && i < APP_CHASSIS_MOTOR_COUNT; i++)
     {
-        const chassis_motor_t *m = &chassis->motor_chassis[i];
-        const motor_measure_t *mm = m->chassis_motor_measure;
-        g_watch.chassis.motor_rpm[i] = mm ? mm->speed_rpm : 0;
+        const app_chassis_motor_state_t *m = &chassis.motor[i];
+        g_watch.chassis.motor_rpm[i] = (m->measure.valid != 0u) ? m->measure.speed_rpm : 0;
         g_watch.chassis.motor_current[i] = m->give_current;
         g_watch.chassis.motor_speed_set[i] = m->speed_set;
-        g_watch.chassis.motor_ecd[i] = mm ? mm->ecd : 0;
-        g_watch.chassis.motor_temp[i] = mm ? mm->temperate : 0;
+        g_watch.chassis.motor_ecd[i] = (m->measure.valid != 0u) ? m->measure.ecd : 0;
+        g_watch.chassis.motor_temp[i] = (m->measure.valid != 0u) ? m->measure.temperature : 0;
     }
 }
 
@@ -540,22 +536,28 @@ static void watch_copy_gimbal(void)
         return;
     }
 
-    const gimbal_motor_t *yaw = get_yaw_motor_point();
-    const gimbal_motor_t *pitch = get_pitch_motor_point();
-
-    if (yaw)
+    app_gimbal_state_t gimbal;
+    if (app_copy_gimbal_state(&gimbal) == 0u || gimbal.valid == 0u)
     {
-        g_watch.gimbal.yaw_mode = (watch_gimbal_motor_mode_e)yaw->gimbal_motor_mode;
+        memset(&g_watch.gimbal, 0, sizeof(g_watch.gimbal));
+        return;
+    }
+
+    const app_gimbal_motor_state_t *yaw = &gimbal.yaw;
+    const app_gimbal_motor_state_t *pitch = &gimbal.pitch;
+
+    if (yaw->valid != 0u)
+    {
+        g_watch.gimbal.yaw_mode = (watch_gimbal_motor_mode_e)yaw->motor_mode;
         g_watch.gimbal.yaw_angle_deg = yaw->angle * rad2deg;
         g_watch.gimbal.yaw_set_deg = yaw->angle_set * rad2deg;
         g_watch.gimbal.yaw_gyro_dps = yaw->motor_gyro * rad2deg;
         g_watch.gimbal.yaw_current = yaw->given_current;
 
-        const motor_measure_t *m = yaw->gimbal_motor_measure;
-        g_watch.gimbal.yaw_rpm = m ? m->speed_rpm : 0;
-        g_watch.gimbal.yaw_current_fb = m ? m->given_current : 0;
-        g_watch.gimbal.yaw_ecd = m ? m->ecd : 0;
-        g_watch.gimbal.yaw_temp = m ? m->temperate : 0;
+        g_watch.gimbal.yaw_rpm = (yaw->measure.valid != 0u) ? yaw->measure.speed_rpm : 0;
+        g_watch.gimbal.yaw_current_fb = (yaw->measure.valid != 0u) ? yaw->measure.given_current : 0;
+        g_watch.gimbal.yaw_ecd = (yaw->measure.valid != 0u) ? yaw->measure.ecd : 0;
+        g_watch.gimbal.yaw_temp = (yaw->measure.valid != 0u) ? yaw->measure.temperature : 0;
     }
     else
     {
@@ -570,19 +572,18 @@ static void watch_copy_gimbal(void)
         g_watch.gimbal.yaw_temp = 0;
     }
 
-    if (pitch)
+    if (pitch->valid != 0u)
     {
-        g_watch.gimbal.pitch_mode = (watch_gimbal_motor_mode_e)pitch->gimbal_motor_mode;
+        g_watch.gimbal.pitch_mode = (watch_gimbal_motor_mode_e)pitch->motor_mode;
         g_watch.gimbal.pitch_angle_deg = pitch->angle * rad2deg;
         g_watch.gimbal.pitch_set_deg = pitch->angle_set * rad2deg;
         g_watch.gimbal.pitch_gyro_dps = pitch->motor_gyro * rad2deg;
         g_watch.gimbal.pitch_current = pitch->given_current;
 
-        const motor_measure_t *m = pitch->gimbal_motor_measure;
-        g_watch.gimbal.pitch_rpm = m ? m->speed_rpm : 0;
-        g_watch.gimbal.pitch_current_fb = m ? m->given_current : 0;
-        g_watch.gimbal.pitch_ecd = m ? m->ecd : 0;
-        g_watch.gimbal.pitch_temp = m ? m->temperate : 0;
+        g_watch.gimbal.pitch_rpm = (pitch->measure.valid != 0u) ? pitch->measure.speed_rpm : 0;
+        g_watch.gimbal.pitch_current_fb = (pitch->measure.valid != 0u) ? pitch->measure.given_current : 0;
+        g_watch.gimbal.pitch_ecd = (pitch->measure.valid != 0u) ? pitch->measure.ecd : 0;
+        g_watch.gimbal.pitch_temp = (pitch->measure.valid != 0u) ? pitch->measure.temperature : 0;
     }
     else
     {
@@ -602,25 +603,25 @@ static void watch_copy_shoot(void)
 {
     const fp32 rad2deg = 57.29577951308232f;
 
-    const shoot_control_t *shoot = get_shoot_control_point();
-    if (shoot == NULL)
+    app_shoot_state_t shoot;
+    if (app_copy_shoot_state(&shoot) == 0u || shoot.valid == 0u)
     {
         memset(&g_watch.shoot, 0, sizeof(g_watch.shoot));
         return;
     }
 
-    g_watch.shoot.mode = (watch_shoot_mode_e)shoot->shoot_mode;
-    g_watch.shoot.fric_speed_set_rpm = (int16_t)shoot->fric_speed_set;
+    g_watch.shoot.mode = (watch_shoot_mode_e)shoot.mode;
+    g_watch.shoot.fric_speed_set_rpm = (int16_t)shoot.fric_speed_set;
     for (uint8_t i = 0; i < 4; i++)
     {
         g_watch.shoot.fric_current_cmd[i] = actuator_cmd_get_friction_current(i);
     }
 
-    g_watch.shoot.trigger_angle_deg = shoot->angle * rad2deg;
-    g_watch.shoot.trigger_set_deg = shoot->set_angle * rad2deg;
-    g_watch.shoot.trigger_speed = shoot->speed;
-    g_watch.shoot.trigger_speed_set = shoot->speed_set;
-    g_watch.shoot.trigger_current = shoot->given_current;
+    g_watch.shoot.trigger_angle_deg = shoot.angle * rad2deg;
+    g_watch.shoot.trigger_set_deg = shoot.set_angle * rad2deg;
+    g_watch.shoot.trigger_speed = shoot.speed;
+    g_watch.shoot.trigger_speed_set = shoot.speed_set;
+    g_watch.shoot.trigger_current = shoot.given_current;
 
     const motor_measure_t *trigger_meas = get_trigger_motor_measure_point();
     if (trigger_meas)
@@ -636,8 +637,8 @@ static void watch_copy_shoot(void)
         g_watch.shoot.trigger_temp = 0;
     }
 
-    g_watch.shoot.heat_limit = shoot->heat_limit;
-    g_watch.shoot.heat = shoot->heat;
+    g_watch.shoot.heat_limit = shoot.heat_limit;
+    g_watch.shoot.heat = shoot.heat;
 
     for (uint8_t i = 0; i < 4; i++)
     {
@@ -747,7 +748,11 @@ static void watch_copy_diag(void)
 
     memset(g_watch.diag.flags, 0, sizeof(g_watch.diag.flags));
     g_watch.diag.flags[0] = (uint8_t)toe_is_error(DBUS_TOE);
-    g_watch.diag.flags[1] = (uint8_t)(gimbal_behaviour_watch == GIMBAL_ZERO_FORCE);
+    {
+        app_gimbal_state_t gimbal;
+        g_watch.diag.flags[1] =
+            (uint8_t)(app_copy_gimbal_state(&gimbal) != 0u && gimbal.valid != 0u && gimbal.behaviour == 0u);
+    }
     g_watch.diag.flags[2] = (uint8_t)toe_is_error(YAW_GIMBAL_MOTOR_TOE);
     g_watch.diag.flags[3] = (uint8_t)toe_is_error(PITCH_GIMBAL_MOTOR_TOE);
     g_watch.diag.flags[4] = (uint8_t)toe_is_error(TRIGGER_MOTOR_TOE);

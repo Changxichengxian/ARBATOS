@@ -23,11 +23,26 @@
 #include "arm_math.h"
 
 #include "bsp_time.h"
-#include "gimbal_behaviour.h"
 #include "control_input.h"
 #include "detect_task.h"
 
 #include <math.h>
+
+#ifndef HALF_ECD_RANGE
+#define HALF_ECD_RANGE 4096
+#endif
+
+#ifndef ECD_RANGE
+#define ECD_RANGE 8191
+#endif
+
+#ifndef MOTOR_ECD_TO_RAD
+#define MOTOR_ECD_TO_RAD (g_config.gimbal.motor_ecd_to_rad)
+#endif
+
+#ifndef YAW_TURN
+#define YAW_TURN (g_config.gimbal.yaw_turn)
+#endif
 
 // "Small gyro" (小陀螺) is implemented as a constant chassis yaw rate (wz) while:
 // - NOT following gimbal yaw (open-loop rotation speed set-point)
@@ -97,7 +112,11 @@ static void chassis_no_move_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, ch
 static void chassis_infantry_follow_gimbal_yaw_control(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, chassis_move_t *chassis_move_rc_to_vector);
 
 // Small gyro: keep vx/vy in gimbal frame, while commanding a constant chassis wz (no yaw follow).
-static fp32 chassis_get_gimbal_yaw_relative_angle(const gimbal_motor_t *yaw_motor);
+static fp32 chassis_get_gimbal_yaw_relative_angle(const app_gimbal_motor_state_t *yaw_motor);
+static bool_t chassis_gimbal_turnaround_is_active(void);
+static fp32 chassis_gimbal_turnaround_chassis_follow_offset_rad(void);
+static bool_t chassis_gimbal_turnaround_get_frame_yaw_relative(fp32 *out_yaw_relative);
+static bool_t chassis_gimbal_cmd_to_chassis_stop(void);
 static void chassis_gyro_spin_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, chassis_move_t *chassis_move_rc_to_vector);
 static void chassis_gyro_spin_var_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, chassis_move_t *chassis_move_rc_to_vector);
 static void chassis_swing_control(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, chassis_move_t *chassis_move_rc_to_vector);
@@ -172,6 +191,47 @@ static void chassis_open_set_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, c
 //highlight, the variable chassis behaviour mode
 //留意，这个底盘行为模式变量
 chassis_behaviour_e chassis_behaviour_mode = CHASSIS_ZERO_FORCE;
+
+static bool_t chassis_copy_gimbal_state(app_gimbal_state_t *state)
+{
+    if (state == NULL || app_copy_gimbal_state(state) == 0u || state->valid == 0u)
+    {
+        return 0;
+    }
+    return 1;
+}
+
+static bool_t chassis_gimbal_turnaround_is_active(void)
+{
+    app_gimbal_state_t state;
+    return (chassis_copy_gimbal_state(&state) != 0 && state.turnaround_active != 0u) ? 1 : 0;
+}
+
+static fp32 chassis_gimbal_turnaround_chassis_follow_offset_rad(void)
+{
+    app_gimbal_state_t state;
+    return (chassis_copy_gimbal_state(&state) != 0) ? state.turnaround_follow_offset_rad : 0.0f;
+}
+
+static bool_t chassis_gimbal_turnaround_get_frame_yaw_relative(fp32 *out_yaw_relative)
+{
+    app_gimbal_state_t state;
+    if (out_yaw_relative == NULL ||
+        chassis_copy_gimbal_state(&state) == 0 ||
+        state.turnaround_frame_valid == 0u)
+    {
+        return 0;
+    }
+
+    *out_yaw_relative = state.turnaround_frame_yaw_relative;
+    return 1;
+}
+
+static bool_t chassis_gimbal_cmd_to_chassis_stop(void)
+{
+    app_gimbal_state_t state;
+    return (chassis_copy_gimbal_state(&state) != 0 && state.chassis_stop != 0u) ? 1 : 0;
+}
 
 static uint16_t chassis_get_effective_switch(uint16_t raw_sw,
                                              uint8_t manual_online,
@@ -264,7 +324,7 @@ void chassis_behaviour_mode_set(chassis_move_t *chassis_move_mode)
 
     //remote control  set chassis behaviour mode
     //遥控器设置模式
-    if (gimbal_turnaround_is_active())
+    if (chassis_gimbal_turnaround_is_active())
     {
         chassis_behaviour_mode = CHASSIS_INFANTRY_FOLLOW_GIMBAL_YAW;
     }
@@ -299,7 +359,7 @@ void chassis_behaviour_mode_set(chassis_move_t *chassis_move_mode)
 
     //when gimbal in some mode, such as init mode, chassis must's move
     //当云台在某些模式下，像初始化， 底盘不动
-    if (gimbal_cmd_to_chassis_stop())
+    if (chassis_gimbal_cmd_to_chassis_stop())
     {
         chassis_behaviour_mode = CHASSIS_NO_MOVE;
     }
@@ -505,13 +565,13 @@ static void chassis_infantry_follow_gimbal_yaw_control(fp32 *vx_set, fp32 *vy_se
     //遥控器的通道值以及键盘按键 得出 一般情况下的速度设定值
     chassis_rc_to_control_vector(vx_set, vy_set, chassis_move_rc_to_vector);
 
-    if (gimbal_turnaround_is_active())
+    if (chassis_gimbal_turnaround_is_active())
     {
-        *angle_set = chassis_get_gimbal_yaw_relative_angle(chassis_move_rc_to_vector->chassis_yaw_motor);
+        *angle_set = chassis_get_gimbal_yaw_relative_angle(&chassis_move_rc_to_vector->chassis_yaw_motor);
     }
     else
     {
-        *angle_set = gimbal_turnaround_chassis_follow_offset_rad();
+        *angle_set = chassis_gimbal_turnaround_chassis_follow_offset_rad();
     }
 }
 
@@ -593,7 +653,7 @@ static void chassis_swing_control(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, c
     // 摇摆时仍然尽量保持平移参考跟着云台，不然按键方向会发飘。
     const fp32 vx_raw = *vx_set;
     const fp32 vy_raw = *vy_set;
-    const fp32 yaw_relative = chassis_get_gimbal_yaw_relative_angle(chassis_move_rc_to_vector->chassis_yaw_motor);
+    const fp32 yaw_relative = chassis_get_gimbal_yaw_relative_angle(&chassis_move_rc_to_vector->chassis_yaw_motor);
     const fp32 sin_yaw = arm_sin_f32(-yaw_relative);
     const fp32 cos_yaw = arm_cos_f32(-yaw_relative);
     *vx_set = cos_yaw * vx_raw + sin_yaw * vy_raw;
@@ -689,14 +749,14 @@ static void chassis_swing_control(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, c
     *angle_set = rad_format(centers_rad[st.center_idx] + offset);
 }
 
-static fp32 chassis_get_gimbal_yaw_relative_angle(const gimbal_motor_t *yaw_motor)
+static fp32 chassis_get_gimbal_yaw_relative_angle(const app_gimbal_motor_state_t *yaw_motor)
 {
-    if (yaw_motor == NULL || yaw_motor->gimbal_motor_measure == NULL)
+    if (yaw_motor == NULL || yaw_motor->valid == 0u || yaw_motor->measure.valid == 0u)
     {
         return 0.0f;
     }
 
-    int32_t relative_ecd = (int32_t)yaw_motor->gimbal_motor_measure->ecd - (int32_t)yaw_motor->offset_ecd;
+    int32_t relative_ecd = (int32_t)yaw_motor->measure.ecd - (int32_t)yaw_motor->offset_ecd;
     if (relative_ecd > HALF_ECD_RANGE)
     {
         relative_ecd -= ECD_RANGE;
@@ -723,9 +783,9 @@ static void chassis_gyro_spin_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, 
     const fp32 vx_raw = *vx_set;
     const fp32 vy_raw = *vy_set;
 
-    const fp32 yaw_relative_meas = chassis_get_gimbal_yaw_relative_angle(chassis_move_rc_to_vector->chassis_yaw_motor);
+    const fp32 yaw_relative_meas = chassis_get_gimbal_yaw_relative_angle(&chassis_move_rc_to_vector->chassis_yaw_motor);
     fp32 yaw_frame = yaw_relative_meas;
-    (void)gimbal_turnaround_get_frame_yaw_relative(&yaw_frame);
+    (void)chassis_gimbal_turnaround_get_frame_yaw_relative(&yaw_frame);
     const fp32 sin_yaw = arm_sin_f32(-yaw_frame);
     const fp32 cos_yaw = arm_cos_f32(-yaw_frame);
     *vx_set = cos_yaw * vx_raw + sin_yaw * vy_raw;

@@ -12,7 +12,7 @@
 
 #include "struct_typedef.h"
 #include "CAN_receive.h"
-#include "gimbal_control_task.h"
+#include "app_topics.h"
 #include "pid.h"
 #include "manual_input.h"
 #include "user_lib.h"
@@ -134,8 +134,9 @@ typedef struct
 typedef struct
 {
     const manual_input_state_t *chassis_RC;
-    const gimbal_motor_t *chassis_yaw_motor;
-    const gimbal_motor_t *chassis_pitch_motor;
+    uint8_t gimbal_state_valid;
+    app_gimbal_motor_state_t chassis_yaw_motor;
+    app_gimbal_motor_state_t chassis_pitch_motor;
     const fp32 *chassis_INS_angle;
     chassis_mode_e chassis_mode;
     chassis_mode_e last_chassis_mode;

@@ -28,7 +28,7 @@
 #include "detect_task.h"
 #include "manual_input.h"
 #include "control_input.h"
-#include "chassis_control_task.h"
+#include "app_topics.h"
 #include "gimbal_behaviour.h"
 #include "INS_task.h"
 #include "shoot.h"
@@ -169,6 +169,7 @@ static void gimbal_set_control(gimbal_control_t *set_control);
 
 static void gimbal_angle_limit(gimbal_motor_t *gimbal_motor, fp32 add);
 static fp32 gimbal_yaw_chassis_spin_ff_current(const gimbal_motor_t *yaw_motor);
+static void gimbal_publish_state(void);
 
 /**
   * @brief          gimbal control mode :GIMBAL_MOTOR_ENCONDE, use the encode angle to control.
@@ -256,8 +257,6 @@ volatile int16_t gimbal_watch_yaw_current = 0;
 volatile int16_t gimbal_watch_pitch_current = 0;
 volatile int16_t gimbal_yaw_easytest_current = 3000;
 
-extern shoot_control_t shoot_control;
-
 typedef struct
 {
     uint32_t start_tick_ms;
@@ -281,6 +280,76 @@ static int16_t gimbal_sdlog_clamp_current(fp32 current)
         return -32768;
     }
     return (int16_t)current;
+}
+
+static void gimbal_fill_motor_measure_state(app_motor_measure_state_t *out, const motor_measure_t *measure)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    memset(out, 0, sizeof(*out));
+    if (measure == NULL)
+    {
+        return;
+    }
+
+    out->valid = 1u;
+    out->ecd = measure->ecd;
+    out->speed_rpm = measure->speed_rpm;
+    out->given_current = measure->given_current;
+    out->temperature = measure->temperate;
+    out->last_ecd = measure->last_ecd;
+}
+
+static void gimbal_fill_motor_state(app_gimbal_motor_state_t *out, const gimbal_motor_t *motor)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    memset(out, 0, sizeof(*out));
+    if (motor == NULL)
+    {
+        return;
+    }
+
+    out->valid = 1u;
+    out->motor_mode = (uint8_t)motor->gimbal_motor_mode;
+    out->last_motor_mode = (uint8_t)motor->last_gimbal_motor_mode;
+    out->offset_ecd = motor->offset_ecd;
+    out->max_angle = motor->max_angle;
+    out->min_angle = motor->min_angle;
+    gimbal_fill_motor_measure_state(&out->measure, motor->gimbal_motor_measure);
+    out->angle_pid = motor->gimbal_motor_angle_pid;
+    out->gyro_pid = motor->gimbal_motor_gyro_pid;
+    out->angle = motor->angle;
+    out->angle_set = motor->angle_set;
+    out->motor_gyro = motor->motor_gyro;
+    out->motor_gyro_set = motor->motor_gyro_set;
+    out->motor_speed = motor->motor_speed;
+    out->raw_cmd_current = motor->raw_cmd_current;
+    out->current_set = motor->current_set;
+    out->given_current = motor->given_current;
+}
+
+static void gimbal_publish_state(void)
+{
+    app_gimbal_state_t state = {0};
+
+    state.valid = 1u;
+    state.behaviour = (uint8_t)gimbal_behaviour_watch;
+    state.chassis_stop = (uint8_t)gimbal_cmd_to_chassis_stop();
+    state.shoot_stop = (uint8_t)gimbal_cmd_to_shoot_stop();
+    state.turnaround_active = (uint8_t)gimbal_turnaround_is_active();
+    state.turnaround_follow_offset_rad = gimbal_turnaround_chassis_follow_offset_rad();
+    state.turnaround_frame_valid = (uint8_t)gimbal_turnaround_get_frame_yaw_relative(&state.turnaround_frame_yaw_relative);
+    gimbal_fill_motor_state(&state.yaw, &gimbal_control.gimbal_yaw_motor);
+    gimbal_fill_motor_state(&state.pitch, &gimbal_control.gimbal_pitch_motor);
+
+    (void)app_publish_gimbal_state(&state);
 }
 
 static void gimbal_sdlog_begin_base_stream(uint32_t now_ms, uint32_t period_us)
@@ -496,6 +565,7 @@ void gimbal_control_task(void const *pvParameters)
     vTaskDelay(GIMBAL_TASK_INIT_TIME);
     //gimbal init
     gimbal_init(&gimbal_control);
+    gimbal_publish_state();
     //shoot init
     shoot_init();
     pitch_cali_boot_load();
@@ -514,6 +584,7 @@ void gimbal_control_task(void const *pvParameters)
         gimbal_set_control(&gimbal_control);
         gimbal_control_loop(&gimbal_control);
         pitch_cali_tick_post(&gimbal_control, gimbal_behaviour_watch, snapshot.test_mode);
+        gimbal_publish_state();
         shoot_can_set_current = shoot_control_loop();        // 拨盘电流
         if (snapshot.yaw_turn != 0u)
         {
@@ -1111,22 +1182,24 @@ static void gimbal_angle_limit(gimbal_motor_t *gimbal_motor, fp32 add)
 
 static fp32 gimbal_yaw_chassis_spin_ff_current(const gimbal_motor_t *yaw_motor)
 {
-    const chassis_move_t *chassis = get_chassis_move_point();
+    app_chassis_state_t chassis;
     static uint8_t was_spin_active = 0u;
     static uint32_t exit_start_ms = 0u;
     static fp32 exit_yaw_err = 0.0f;
 
-    if (chassis == NULL || yaw_motor == NULL)
+    if (yaw_motor == NULL ||
+        app_copy_chassis_state(&chassis) == 0u ||
+        chassis.valid == 0u)
     {
         return 0.0f;
     }
 
-    const fp32 wz_set = chassis->wz_set;
-    const fp32 wz_meas = chassis->wz;
+    const fp32 wz_set = chassis.wz_set;
+    const fp32 wz_meas = chassis.wz;
     const fp32 yaw_dir = YAW_TURN ? 1.0f : -1.0f;
     const uint32_t now_ms = bsp_time_get_tick_ms();
     const uint8_t spin_active =
-        (chassis->chassis_mode == CHASSIS_VECTOR_NO_FOLLOW_YAW &&
+        (chassis.mode == APP_CHASSIS_MODE_NO_FOLLOW_YAW &&
          fabsf(wz_set) >= GIMBAL_YAW_CHASSIS_SPIN_FF_MIN_WZ_RADPS) ?
             1u :
             0u;
