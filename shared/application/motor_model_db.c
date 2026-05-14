@@ -234,27 +234,32 @@ static const motor_model_db_entry_t s_motor_model_db[MOTOR_MODEL__COUNT] =
             .torque_current_range_a = 0.0f,
             .fb_current_meas_range_abs = 0,
         },
-    [MOTOR_MODEL_DM_J4310_WHEELLEG_REF] =
+    [MOTOR_MODEL_DM_H3510_V10] =
         {
-            .base = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 10.0f},
+            .base = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 1.0f},
             .rx_format = MOTOR_MODEL_RX_FMT_NONE,
-            .default_protocol = (uint8_t)MOTOR_PROTOCOL_DM_3MODE,
+            .default_protocol = (uint8_t)MOTOR_PROTOCOL_DM_EXT_V2,
             .default_control_mode = (uint8_t)MOTOR_CONTROL_MODE_MIT,
             .caps = (uint8_t)(MOTOR_MODEL_CAP_MIT |
                                MOTOR_MODEL_CAP_POS_VEL |
-                               MOTOR_MODEL_CAP_SPEED),
+                               MOTOR_MODEL_CAP_SPEED |
+                               MOTOR_MODEL_CAP_FORCE_POS |
+                               MOTOR_MODEL_CAP_CAN_PARAM_RW |
+                               MOTOR_MODEL_CAP_CAN_SAVE |
+                               MOTOR_MODEL_CAP_CAN_BAUD_RW |
+                               MOTOR_MODEL_CAP_ENABLE_CMD),
             .mit_limits = {
                 .position_max = 12.5f,
-                .velocity_max = 30.0f,
+                .velocity_max = 100.0f,
                 .kp_max = 500.0f,
                 .kd_max = 5.0f,
-                .torque_max = 10.0f,
+                .torque_max = 0.45f,
             },
             .cmd_current_range_abs = 0,
             .torque_current_range_a = 0.0f,
             .fb_current_meas_range_abs = 0,
         },
-    [MOTOR_MODEL_DM_6215_WHEELLEG_REF] =
+    [MOTOR_MODEL_DM_6215] =
         {
             .base = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 1.0f},
             .rx_format = MOTOR_MODEL_RX_FMT_NONE,
@@ -264,11 +269,11 @@ static const motor_model_db_entry_t s_motor_model_db[MOTOR_MODEL__COUNT] =
                                MOTOR_MODEL_CAP_POS_VEL |
                                MOTOR_MODEL_CAP_SPEED),
             .mit_limits = {
-                .position_max = 12.5f,
+                .position_max = 12.0f,
                 .velocity_max = 45.0f,
                 .kp_max = 500.0f,
                 .kd_max = 5.0f,
-                .torque_max = 10.0f,
+                .torque_max = 18.0f,
             },
             .cmd_current_range_abs = 0,
             .torque_current_range_a = 0.0f,

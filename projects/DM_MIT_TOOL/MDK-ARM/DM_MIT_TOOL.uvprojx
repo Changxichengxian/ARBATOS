@@ -705,6 +705,11 @@
               <FilePath>..\\..\\..\\target\\DM_MIT_TOOL\\User\\application\\config.c</FilePath>
             </File>
             <File>
+              <FileName>dm_mit_tool_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\\..\\..\\target\\DM_MIT_TOOL\\User\\application\\dm_mit_tool_config.h</FilePath>
+            </File>
+            <File>
               <FileName>control_input.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\application\\control_input.c</FilePath>

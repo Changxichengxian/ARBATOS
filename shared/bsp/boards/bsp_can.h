@@ -18,12 +18,15 @@
 
 typedef struct
 {
-    uint8_t bus; // 1: CAN1, 2: CAN2
+    uint8_t bus; // 1: CAN1, 2: CAN2, 3: CAN3 on FDCAN boards
     uint8_t dlc;
+    uint8_t flags;
     uint16_t std_id;
     uint8_t data[8];
 } bsp_can_frame_t;
 
+#define BSP_CAN_FLAG_FD  0x01u
+#define BSP_CAN_FLAG_BRS 0x02u
 
 extern void can_filter_init(void);
 
@@ -36,6 +39,8 @@ uint32_t bsp_can_rx_get_drop_count(uint8_t bus);
 // ===== TX =====
 // Return: 0 on success, else HAL_StatusTypeDef value (1: ERROR, 2: BUSY, 3: TIMEOUT)
 int bsp_can_tx(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_t dlc);
+int bsp_can_tx_flags(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_t dlc, uint8_t flags);
+int bsp_can_fd_set_data_bitrate(uint8_t bus, uint32_t data_bitrate);
 
 uint32_t bsp_can_get_last_error(uint8_t bus);
 uint8_t bsp_can_get_last_tx_status(uint8_t bus);

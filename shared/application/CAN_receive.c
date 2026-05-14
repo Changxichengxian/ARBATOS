@@ -513,6 +513,24 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
             return;
         }
     }
+    else if (bus == 3u)
+    {
+        uint8_t idx = 0u;
+        if (robot_profile_is_wheelleg_mit() != 0u &&
+            can_match_nodes_on_bus(std_id, g_config.motor.arm, (uint8_t)MOTOR_ARM_JOINT_COUNT, bus, &idx) != 0u)
+        {
+            (void)can_rx_process_mit_node_frame(NULL,
+                                                &g_config.motor.arm[idx],
+                                                bus,
+                                                std_id,
+                                                dlc,
+                                                data,
+                                                actuator_id_arm_joint(idx),
+                                                0u,
+                                                0u);
+            return;
+        }
+    }
 
     (void)CAN_rx_process_extra_frame(bus, std_id, dlc, data);
 }
@@ -595,6 +613,11 @@ uint32_t CAN_get_last_can2_error(void)
     return bsp_can_get_last_error(2u);
 }
 
+uint32_t CAN_get_last_can3_error(void)
+{
+    return bsp_can_get_last_error(3u);
+}
+
 uint32_t CAN_get_can1_rx_drop_count(void)
 {
     return bsp_can_rx_get_drop_count(1u);
@@ -603,6 +626,11 @@ uint32_t CAN_get_can1_rx_drop_count(void)
 uint32_t CAN_get_can2_rx_drop_count(void)
 {
     return bsp_can_rx_get_drop_count(2u);
+}
+
+uint32_t CAN_get_can3_rx_drop_count(void)
+{
+    return bsp_can_rx_get_drop_count(3u);
 }
 
 uint32_t CAN_get_can1_tx_count(void)
@@ -615,6 +643,11 @@ uint32_t CAN_get_can2_tx_count(void)
     return bsp_can_get_tx_count(2u);
 }
 
+uint32_t CAN_get_can3_tx_count(void)
+{
+    return bsp_can_get_tx_count(3u);
+}
+
 uint32_t CAN_get_can1_tx_fail_count(void)
 {
     return bsp_can_get_tx_fail_count(1u);
@@ -623,4 +656,9 @@ uint32_t CAN_get_can1_tx_fail_count(void)
 uint32_t CAN_get_can2_tx_fail_count(void)
 {
     return bsp_can_get_tx_fail_count(2u);
+}
+
+uint32_t CAN_get_can3_tx_fail_count(void)
+{
+    return bsp_can_get_tx_fail_count(3u);
 }

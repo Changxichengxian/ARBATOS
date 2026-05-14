@@ -10,18 +10,25 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "bsp_buzzer.h"
 #include "bsp_can.h"
 #include "bsp_usart.h"
 #include "can_mit_motor_driver.h"
 #include "manual_input.h"
+
+#if defined(DM_MIT_TOOL_PROJECT) || defined(DM_MIT_TOOL_HAS_CONFIG)
+#include "dm_mit_tool_config.h"
+#endif
 
 #define DM_MIT_TOOL_CMD_READ_PARAM  0x33u
 #define DM_MIT_TOOL_CMD_WRITE_PARAM 0x55u
 #define DM_MIT_TOOL_CMD_SAVE_PARAM  0xAAu
 #define DM_MIT_TOOL_PARAM_CAN_ID    8u
 #define DM_MIT_TOOL_PARAM_MASTER_ID 7u
+#define DM_MIT_TOOL_PARAM_CAN_BR    35u
 #define DM_MIT_TOOL_PARAM_CAN_STDID 0x7FFu
 #define DM_MIT_TOOL_WRITE_MAGIC     0xA5u
+#define DM_MIT_TOOL_CAN_BR_1M       4u
 
 #ifndef DM_MIT_TOOL_BUS
 #define DM_MIT_TOOL_BUS 1u
@@ -57,6 +64,18 @@
 
 #ifndef DM_MIT_TOOL_TEST_ENABLE
 #define DM_MIT_TOOL_TEST_ENABLE 1u
+#endif
+
+#ifndef DM_MIT_TOOL_REBOOT_AFTER_WRITE
+#define DM_MIT_TOOL_REBOOT_AFTER_WRITE 1u
+#endif
+
+#ifndef DM_MIT_TOOL_BEEP_ENABLE
+#define DM_MIT_TOOL_BEEP_ENABLE 1u
+#endif
+
+#ifndef DM_MIT_TOOL_BEEP_VOLUME
+#define DM_MIT_TOOL_BEEP_VOLUME 160u
 #endif
 
 #ifndef DM_MIT_TOOL_RC_TIMEOUT_MS
@@ -103,6 +122,30 @@
 #define DM_MIT_TOOL_RX_TIMEOUT_MS 150u
 #endif
 
+#ifndef DM_MIT_TOOL_BLIND_RECOVER_ENABLE
+#define DM_MIT_TOOL_BLIND_RECOVER_ENABLE 0u
+#endif
+
+#ifndef DM_MIT_TOOL_BLIND_RECOVER_ONLY
+#define DM_MIT_TOOL_BLIND_RECOVER_ONLY 0u
+#endif
+
+#ifndef DM_MIT_TOOL_BLIND_RECOVER_REPEAT
+#define DM_MIT_TOOL_BLIND_RECOVER_REPEAT 3u
+#endif
+
+#ifndef DM_MIT_TOOL_BLIND_RECOVER_SAVE_DELAY_MS
+#define DM_MIT_TOOL_BLIND_RECOVER_SAVE_DELAY_MS 40u
+#endif
+
+#ifndef DM_MIT_TOOL_AUTO_FD_ENABLE
+#define DM_MIT_TOOL_AUTO_FD_ENABLE 0u
+#endif
+
+#ifndef DM_MIT_TOOL_OWN_CAN_EXTRA_HOOK
+#define DM_MIT_TOOL_OWN_CAN_EXTRA_HOOK 1u
+#endif
+
 #define DM_MIT_TOOL_SCAN_MIN_CLAMPED ((DM_MIT_TOOL_SCAN_MIN_ID < 1u) ? 1u : DM_MIT_TOOL_SCAN_MIN_ID)
 #define DM_MIT_TOOL_SCAN_MAX_CLAMPED ((DM_MIT_TOOL_SCAN_MAX_ID > 0x7FEu) ? 0x7FEu : DM_MIT_TOOL_SCAN_MAX_ID)
 
@@ -116,14 +159,36 @@ typedef struct
     uint32_t value;
 } dm_mit_param_rsp_t;
 
+typedef enum
+{
+    DM_TOOL_ID_RESULT_NOT_ARMED = 0u,
+    DM_TOOL_ID_RESULT_ALREADY_TARGET,
+    DM_TOOL_ID_RESULT_CHANGED,
+    DM_TOOL_ID_RESULT_FAILED,
+} dm_tool_id_result_e;
+
+typedef struct
+{
+    uint32_t data_bitrate;
+} dm_tool_fd_candidate_t;
+
 #if (DM_MIT_TOOL_MODEL == 6215u)
 static const can_mit_motor_limits_t k_dm6215_limits =
 {
-    12.5f,
+    12.0f,
     45.0f,
     500.0f,
     5.0f,
-    10.0f,
+    18.0f,
+};
+#elif (DM_MIT_TOOL_MODEL == 3510u)
+static const can_mit_motor_limits_t k_dmh3510_limits =
+{
+    12.5f,
+    100.0f,
+    500.0f,
+    5.0f,
+    0.45f,
 };
 #else
 static const can_mit_motor_limits_t k_dm4310_limits =
@@ -151,6 +216,8 @@ static const can_mit_motor_limits_t *dm_tool_limits(void)
 {
 #if (DM_MIT_TOOL_MODEL == 6215u)
     return &k_dm6215_limits;
+#elif (DM_MIT_TOOL_MODEL == 3510u)
+    return &k_dmh3510_limits;
 #else
     return &k_dm4310_limits;
 #endif
@@ -186,9 +253,55 @@ static void dm_tool_logf(const char *fmt, uint32_t a, uint32_t b, uint32_t c)
     (void)bsp_aux_link_tx_dma((const uint8_t *)buf, (uint16_t)n);
 }
 
+static void dm_tool_beep_tone(uint32_t freq_hz, uint16_t duration_ms, uint16_t gap_ms)
+{
+#if (DM_MIT_TOOL_BEEP_ENABLE != 0u)
+    buzzer_set_enable(1u);
+    (void)buzzer_tone_start_hz(freq_hz, (uint8_t)DM_MIT_TOOL_BEEP_VOLUME);
+    vTaskDelay(pdMS_TO_TICKS(duration_ms));
+    buzzer_tone_stop();
+    if (gap_ms != 0u)
+    {
+        vTaskDelay(pdMS_TO_TICKS(gap_ms));
+    }
+#else
+    (void)freq_hz;
+    (void)duration_ms;
+    (void)gap_ms;
+#endif
+}
+
+static void dm_tool_beep_id_success(void)
+{
+    dm_tool_beep_tone(1400u, 90u, 60u);
+    dm_tool_beep_tone(2200u, 140u, 0u);
+}
+
+static void dm_tool_beep_id_failed(void)
+{
+    dm_tool_beep_tone(500u, 120u, 80u);
+    dm_tool_beep_tone(500u, 120u, 80u);
+    dm_tool_beep_tone(500u, 220u, 0u);
+}
+
+static void dm_tool_beep_id_already_target(void)
+{
+    dm_tool_beep_tone(1200u, 220u, 0u);
+}
+
 static uint8_t dm_tool_bus(void)
 {
-    return (DM_MIT_TOOL_BUS == 2u) ? 2u : 1u;
+    if (DM_MIT_TOOL_BUS == 2u)
+    {
+        return 2u;
+    }
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    if (DM_MIT_TOOL_BUS == 3u)
+    {
+        return 3u;
+    }
+#endif
+    return 1u;
 }
 
 static void dm_tool_send_param_frame(uint16_t slave_id, uint8_t cmd, uint8_t rid, uint32_t value)
@@ -223,6 +336,20 @@ static void dm_tool_send_zero(uint16_t command_id)
     (void)memset(&cmd, 0, sizeof(cmd));
     can_mit_motor_send_cmd(dm_tool_bus(), command_id, dm_tool_limits(), &cmd);
     g_dm_mit_tool_state.tx_count++;
+}
+
+static void dm_tool_send_disable(uint16_t command_id)
+{
+    static const uint8_t data[8] = {0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFDu};
+
+    if (command_id == 0u)
+    {
+        return;
+    }
+    if (bsp_can_tx(dm_tool_bus(), command_id, data, 8u) == 0)
+    {
+        g_dm_mit_tool_state.tx_count++;
+    }
 }
 
 static int16_t dm_tool_abs_i16(int16_t x)
@@ -455,6 +582,16 @@ static uint8_t dm_tool_handle_can_frame(const bsp_can_frame_t *f)
         return 0u;
     }
 
+    g_dm_mit_tool_state.last_rx_flags = f->flags;
+    if ((f->flags & BSP_CAN_FLAG_FD) != 0u)
+    {
+        g_dm_mit_tool_state.can_fd_seen = 1u;
+    }
+    if ((f->flags & BSP_CAN_FLAG_BRS) != 0u)
+    {
+        g_dm_mit_tool_state.can_brs_seen = 1u;
+    }
+
     if (f->dlc == 8u &&
         (f->data[2] == DM_MIT_TOOL_CMD_READ_PARAM || f->data[2] == DM_MIT_TOOL_CMD_WRITE_PARAM))
     {
@@ -552,7 +689,42 @@ static uint8_t dm_tool_write_param(uint16_t slave_id,
 
 static void dm_tool_save_param(uint16_t slave_id)
 {
-    dm_tool_send_param_frame(slave_id, DM_MIT_TOOL_CMD_SAVE_PARAM, 0u, 0u);
+    dm_tool_send_param_frame(slave_id, DM_MIT_TOOL_CMD_SAVE_PARAM, 1u, 0u);
+}
+
+static void dm_tool_blind_recover_can_1m(void)
+{
+#if (DM_MIT_TOOL_BLIND_RECOVER_ENABLE != 0u)
+    uint16_t id;
+    uint16_t repeat;
+    const uint16_t min_id = (uint16_t)DM_MIT_TOOL_SCAN_MIN_CLAMPED;
+    const uint16_t max_id = (uint16_t)DM_MIT_TOOL_SCAN_MAX_CLAMPED;
+
+    g_dm_mit_tool_state.phase = (uint8_t)DM_MIT_TOOL_PHASE_SAVE;
+    g_dm_mit_tool_state.blind_recover_done = 1u;
+    dm_tool_log("[dm-tool] blind recover: write can_br=4 and save\r\n");
+
+    for (repeat = 0u; repeat < (uint16_t)DM_MIT_TOOL_BLIND_RECOVER_REPEAT; repeat++)
+    {
+        for (id = min_id; id <= max_id; id++)
+        {
+            g_dm_mit_tool_state.scan_id = (uint8_t)(id & 0xFFu);
+            dm_tool_send_disable(id);
+            vTaskDelay(pdMS_TO_TICKS(2u));
+            dm_tool_send_param_frame(id,
+                                     DM_MIT_TOOL_CMD_WRITE_PARAM,
+                                     DM_MIT_TOOL_PARAM_CAN_BR,
+                                     (uint32_t)DM_MIT_TOOL_CAN_BR_1M);
+            vTaskDelay(pdMS_TO_TICKS(2u));
+            dm_tool_save_param(id);
+            vTaskDelay(pdMS_TO_TICKS(DM_MIT_TOOL_BLIND_RECOVER_SAVE_DELAY_MS));
+        }
+    }
+
+    dm_tool_log("[dm-tool] blind recover sent; power-cycle motor and board\r\n");
+#else
+    dm_tool_log("[dm-tool] blind recover disabled\r\n");
+#endif
 }
 
 static uint8_t dm_tool_scan_by_param(uint16_t slave_id,
@@ -614,7 +786,16 @@ static uint8_t dm_tool_scan_by_enable(uint16_t slave_id,
     return 0u;
 }
 
-static uint8_t dm_tool_scan(uint16_t *out_command_id, uint16_t *out_master_id)
+static void dm_tool_discard_can(void)
+{
+    bsp_can_frame_t f;
+
+    while (bsp_can_rx_pop(&f) != 0)
+    {
+    }
+}
+
+static uint8_t dm_tool_scan_once(uint16_t *out_command_id, uint16_t *out_master_id)
 {
     uint16_t id;
     const uint16_t min_id = (uint16_t)DM_MIT_TOOL_SCAN_MIN_CLAMPED;
@@ -641,18 +822,61 @@ static uint8_t dm_tool_scan(uint16_t *out_command_id, uint16_t *out_master_id)
     return 0u;
 }
 
-static void dm_tool_write_ids(uint16_t current_command_id, uint16_t current_master_id)
+static uint8_t dm_tool_scan(uint16_t *out_command_id, uint16_t *out_master_id)
+{
+#if (DM_MIT_TOOL_AUTO_FD_ENABLE != 0u) && defined(HAL_FDCAN_MODULE_ENABLED)
+    static const dm_tool_fd_candidate_t candidates[] =
+    {
+        {5000000u},
+        {4000000u},
+        {3200000u},
+        {2500000u},
+        {2000000u},
+        {1000000u},
+    };
+    uint8_t i;
+
+    for (i = 0u; i < (uint8_t)(sizeof(candidates) / sizeof(candidates[0])); i++)
+    {
+        g_dm_mit_tool_state.fd_data_bitrate = candidates[i].data_bitrate;
+        (void)bsp_can_fd_set_data_bitrate(dm_tool_bus(), candidates[i].data_bitrate);
+        dm_tool_discard_can();
+        dm_tool_logf("[dm-tool] fd data scan=%lu bus=%lu\r\n",
+                     candidates[i].data_bitrate,
+                     dm_tool_bus(),
+                     0u);
+        if (dm_tool_scan_once(out_command_id, out_master_id) != 0u)
+        {
+            return 1u;
+        }
+    }
+    return 0u;
+#else
+    g_dm_mit_tool_state.fd_data_bitrate = 0u;
+    return dm_tool_scan_once(out_command_id, out_master_id);
+#endif
+}
+
+static dm_tool_id_result_e dm_tool_write_ids(uint16_t current_command_id, uint16_t current_master_id)
 {
     const uint16_t original_command_id = current_command_id;
     const uint16_t target_command_id = (uint16_t)DM_MIT_TOOL_TARGET_COMMAND_ID;
     const uint16_t target_master_id = (uint16_t)DM_MIT_TOOL_TARGET_MASTER_ID;
     uint8_t changed = 0u;
+    uint8_t failed = 0u;
 
     g_dm_mit_tool_state.write_armed =
         (DM_MIT_TOOL_AUTO_WRITE != 0u && DM_MIT_TOOL_WRITE_ARM == DM_MIT_TOOL_WRITE_MAGIC) ? 1u : 0u;
     if (g_dm_mit_tool_state.write_armed == 0u)
     {
-        return;
+        if ((target_command_id == 0u || target_command_id == current_command_id) &&
+            (target_master_id == 0u || target_master_id == current_master_id))
+        {
+            dm_tool_log("[dm-tool] id already matches; write not armed\r\n");
+            return DM_TOOL_ID_RESULT_ALREADY_TARGET;
+        }
+        dm_tool_log("[dm-tool] id write not armed; skip write\r\n");
+        return DM_TOOL_ID_RESULT_NOT_ARMED;
     }
 
     if (target_master_id != 0u && target_master_id != current_master_id)
@@ -665,6 +889,7 @@ static void dm_tool_write_ids(uint16_t current_command_id, uint16_t current_mast
         if (dm_tool_write_param(current_command_id, DM_MIT_TOOL_PARAM_MASTER_ID, target_master_id, 80u) == 0u)
         {
             g_dm_mit_tool_state.last_error = 1u;
+            failed = 1u;
         }
         else
         {
@@ -683,6 +908,7 @@ static void dm_tool_write_ids(uint16_t current_command_id, uint16_t current_mast
         if (dm_tool_write_param(current_command_id, DM_MIT_TOOL_PARAM_CAN_ID, target_command_id, 80u) == 0u)
         {
             g_dm_mit_tool_state.last_error = 2u;
+            failed = 1u;
         }
         else
         {
@@ -700,7 +926,7 @@ static void dm_tool_write_ids(uint16_t current_command_id, uint16_t current_mast
             dm_tool_save_param(target_command_id);
         }
         g_dm_mit_tool_state.write_done = 1u;
-        dm_tool_log("[dm-tool] save sent; power-cycle motor if new id is not active yet\r\n");
+        dm_tool_log("[dm-tool] save sent; power-cycle motor and board before test\r\n");
     }
     else
     {
@@ -709,6 +935,15 @@ static void dm_tool_write_ids(uint16_t current_command_id, uint16_t current_mast
 
     g_dm_mit_tool_state.active_command_id = current_command_id;
     g_dm_mit_tool_state.active_master_id = current_master_id;
+    if (failed != 0u)
+    {
+        return DM_TOOL_ID_RESULT_FAILED;
+    }
+    if (changed != 0u)
+    {
+        return DM_TOOL_ID_RESULT_CHANGED;
+    }
+    return DM_TOOL_ID_RESULT_ALREADY_TARGET;
 }
 
 static void dm_tool_test_loop(void)
@@ -753,6 +988,26 @@ static void dm_tool_test_loop(void)
     }
 }
 
+static void dm_tool_done_loop(void)
+{
+    g_dm_mit_tool_state.phase = (uint8_t)DM_MIT_TOOL_PHASE_DONE;
+    g_dm_mit_tool_state.motor_enabled = 0u;
+    g_dm_mit_tool_state.drive_allowed = 0u;
+    g_dm_mit_tool_state.cmd_velocity = 0.0f;
+    g_dm_mit_tool_state.cmd_torque = 0.0f;
+
+    for (;;)
+    {
+        dm_tool_poll_can();
+        if (g_dm_mit_tool_state.active_command_id != 0u)
+        {
+            dm_tool_send_zero(g_dm_mit_tool_state.active_command_id);
+        }
+        vTaskDelay(pdMS_TO_TICKS(20u));
+    }
+}
+
+#if (DM_MIT_TOOL_OWN_CAN_EXTRA_HOOK != 0u)
 uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8])
 {
     bsp_can_frame_t f;
@@ -765,14 +1020,17 @@ uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, co
     f.bus = bus;
     f.std_id = std_id;
     f.dlc = dlc;
+    f.flags = 0u;
     (void)memcpy(f.data, data, sizeof(f.data));
     return dm_tool_handle_can_frame(&f);
 }
+#endif
 
 void dm_mit_tool_task(void const *argument)
 {
     uint16_t found_command_id = 0u;
     uint16_t found_master_id = 0u;
+    dm_tool_id_result_e id_result = DM_TOOL_ID_RESULT_NOT_ARMED;
 
     (void)argument;
     (void)memset(&g_dm_mit_tool_state, 0, sizeof(g_dm_mit_tool_state));
@@ -787,18 +1045,33 @@ void dm_mit_tool_task(void const *argument)
     vTaskDelay(pdMS_TO_TICKS(500u));
 
     dm_tool_log("[dm-tool] boot\r\n");
+
+#if (DM_MIT_TOOL_BLIND_RECOVER_ONLY != 0u)
+    dm_tool_blind_recover_can_1m();
+    dm_tool_beep_id_success();
+    dm_tool_done_loop();
+#endif
+
     g_dm_mit_tool_state.phase = (uint8_t)DM_MIT_TOOL_PHASE_SCAN;
 
     if (dm_tool_scan(&found_command_id, &found_master_id) == 0u)
     {
+#if (DM_MIT_TOOL_BLIND_RECOVER_ENABLE != 0u)
+        dm_tool_log("[dm-tool] no motor found; try blind recover\r\n");
+        dm_tool_blind_recover_can_1m();
+        dm_tool_beep_id_success();
+        dm_tool_done_loop();
+#else
         g_dm_mit_tool_state.phase = (uint8_t)DM_MIT_TOOL_PHASE_ERROR;
         g_dm_mit_tool_state.last_error = 3u;
         dm_tool_log("[dm-tool] no motor found\r\n");
+        dm_tool_beep_id_failed();
         for (;;)
         {
             dm_tool_poll_can();
             vTaskDelay(pdMS_TO_TICKS(20u));
         }
+#endif
     }
 
     g_dm_mit_tool_state.found = 1u;
@@ -811,18 +1084,42 @@ void dm_mit_tool_task(void const *argument)
                  found_command_id,
                  found_master_id,
                  0u);
+    dm_tool_logf("[dm-tool] rx fd=%lu brs=%lu data=%lu\r\n",
+                 g_dm_mit_tool_state.can_fd_seen,
+                 g_dm_mit_tool_state.can_brs_seen,
+                 g_dm_mit_tool_state.fd_data_bitrate);
 
-    dm_tool_write_ids(found_command_id, found_master_id);
+    id_result = dm_tool_write_ids(found_command_id, found_master_id);
+    if (id_result == DM_TOOL_ID_RESULT_CHANGED)
+    {
+        dm_tool_beep_id_success();
+    }
+    else if (id_result == DM_TOOL_ID_RESULT_FAILED)
+    {
+        dm_tool_beep_id_failed();
+        dm_tool_done_loop();
+    }
+    else if (id_result == DM_TOOL_ID_RESULT_ALREADY_TARGET)
+    {
+        dm_tool_beep_id_already_target();
+    }
+    else
+    {
+        /* Not armed: keep using the scanned ID for a plain test run. */
+    }
+
+#if (DM_MIT_TOOL_REBOOT_AFTER_WRITE != 0u)
+    if (g_dm_mit_tool_state.write_done != 0u)
+    {
+        dm_tool_log("[dm-tool] id changed; power-cycle motor and board before test\r\n");
+        dm_tool_done_loop();
+    }
+#endif
 
 #if (DM_MIT_TOOL_TEST_ENABLE != 0u)
     dm_tool_test_loop();
 #else
-    g_dm_mit_tool_state.phase = (uint8_t)DM_MIT_TOOL_PHASE_DONE;
-    for (;;)
-    {
-        dm_tool_poll_can();
-        vTaskDelay(pdMS_TO_TICKS(20u));
-    }
+    dm_tool_done_loop();
 #endif
 }
 

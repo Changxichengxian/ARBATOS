@@ -38,8 +38,8 @@ const motor_config_t g_motor_config =
             [MOTOR_MODEL_DM_J8006_2EC_V11] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.0f},
             [MOTOR_MODEL_DM_J8006_2EC_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.0f},
             [MOTOR_MODEL_UNITREE_GO_M8010_6] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.33f},
-            [MOTOR_MODEL_DM_J4310_WHEELLEG_REF] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 10.0f},
-            [MOTOR_MODEL_DM_6215_WHEELLEG_REF] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 1.0f},
+            [MOTOR_MODEL_DM_H3510_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 1.0f},
+            [MOTOR_MODEL_DM_6215] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 1.0f},
         },
 };
 
@@ -72,12 +72,12 @@ config_t g_config = {
             .trigger = {MOTOR_MODEL_3510, 4u},
             .arm =
                 {
-                    [0] = {.model = MOTOR_MODEL_DM_6215_WHEELLEG_REF, .can_id = 1u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 0u, .feedback_id_enable = 1u},
-                    [1] = {.model = MOTOR_MODEL_DM_J4310_WHEELLEG_REF, .can_id = 6u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 3u, .feedback_id_enable = 1u},
-                    [2] = {.model = MOTOR_MODEL_DM_J4310_WHEELLEG_REF, .can_id = 8u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 4u, .feedback_id_enable = 1u},
-                    [3] = {.model = MOTOR_MODEL_DM_6215_WHEELLEG_REF, .can_id = 1u, .can_bus = 2u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 0u, .feedback_id_enable = 1u},
-                    [4] = {.model = MOTOR_MODEL_DM_J4310_WHEELLEG_REF, .can_id = 6u, .can_bus = 2u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 3u, .feedback_id_enable = 1u},
-                    [5] = {.model = MOTOR_MODEL_DM_J4310_WHEELLEG_REF, .can_id = 8u, .can_bus = 2u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 4u, .feedback_id_enable = 1u},
+                    [0] = {.model = MOTOR_MODEL_DM_6215, .can_id = 1u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 0u, .feedback_id_enable = 1u},
+                    [1] = {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 6u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 3u, .feedback_id_enable = 1u},
+                    [2] = {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 8u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 4u, .feedback_id_enable = 1u},
+                    [3] = {.model = MOTOR_MODEL_DM_6215, .can_id = 1u, .can_bus = 2u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 0u, .feedback_id_enable = 1u},
+                    [4] = {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 6u, .can_bus = 2u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 3u, .feedback_id_enable = 1u},
+                    [5] = {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 8u, .can_bus = 2u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 4u, .feedback_id_enable = 1u},
                 },
         },
     // 云台配置

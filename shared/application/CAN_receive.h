@@ -39,12 +39,16 @@ extern void CAN_cmd_rm_group(uint8_t bus,
 uint8_t CAN_get_last_1ff_status(void);
 uint32_t CAN_get_last_can1_error(void);
 uint32_t CAN_get_last_can2_error(void);
+uint32_t CAN_get_last_can3_error(void);
 uint32_t CAN_get_can1_rx_drop_count(void);
 uint32_t CAN_get_can2_rx_drop_count(void);
+uint32_t CAN_get_can3_rx_drop_count(void);
 uint32_t CAN_get_can1_tx_count(void);
 uint32_t CAN_get_can2_tx_count(void);
+uint32_t CAN_get_can3_tx_count(void);
 uint32_t CAN_get_can1_tx_fail_count(void);
 uint32_t CAN_get_can2_tx_fail_count(void);
+uint32_t CAN_get_can3_tx_fail_count(void);
 
 extern void CAN_cmd_chassis_reset_ID(void);
 

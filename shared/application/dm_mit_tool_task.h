@@ -36,6 +36,10 @@ typedef struct
     uint8_t motor_enabled;
     uint8_t feedback_online;
     uint8_t feedback_state;
+    uint8_t can_fd_seen;
+    uint8_t can_brs_seen;
+    uint8_t last_rx_flags;
+    uint8_t blind_recover_done;
     uint16_t found_command_id;
     uint16_t found_master_id;
     uint16_t active_command_id;
@@ -46,6 +50,7 @@ typedef struct
     uint32_t tx_count;
     uint32_t rx_count;
     uint32_t param_rx_count;
+    uint32_t fd_data_bitrate;
     uint32_t last_rx_tick_ms;
     uint32_t last_rc_tick_ms;
     uint32_t last_error;
