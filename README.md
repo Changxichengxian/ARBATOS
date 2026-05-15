@@ -352,6 +352,7 @@ actuator_feedback + 旧电机反馈结构
 | 图传遥控输入 | `shared/application/image_remote_link.c` |
 | ELRS/CRSF 输入 | `shared/application/elrs_task.c` |
 | 状态共享 | `shared/application/app_pubsub.c`、`shared/application/app_topics.h` |
+| 控制器生命周期 | `shared/application/control_manager.c` |
 | 执行器命令 | `shared/application/actuator_cmd.c` |
 | 电机实例 | `shared/application/motor_instance.c` |
 | 电机参数查询 | `shared/application/motor_config.h` |
@@ -370,6 +371,8 @@ actuator_feedback + 旧电机反馈结构
 | 诊断观察 | `shared/application/watch.c` |
 | 运行耗时统计 | `shared/application/rt_profiler.c` |
 | TF/SD 日志 | `shared/application/sdlog_task.c`、`shared/application/sdlog.c` |
+
+`control_manager.c` 是 MCU 轻量版控制器生命周期层。它只保存静态 controller 描述、处理 pending switch/stop、按 domain 保证单 active controller，并用资源 claim mask 防止多个 controller 同时拥有同一批执行器。它不新建任务、不动态加载、不分配堆内存；真正的 `enter/update/exit/stop` 仍然在对应控制任务自己的周期内执行。
 
 ## 配置和调试
 

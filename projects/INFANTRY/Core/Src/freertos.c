@@ -38,6 +38,7 @@
 #include "elrs_task.h"
 #include "watch.h"
 #include "robot_task_profile.h"
+#include "control_manager.h"
 
 /* USER CODE END Includes */
 
@@ -147,6 +148,7 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
+  control_manager_init();
 
   /* USER CODE END Init */
 

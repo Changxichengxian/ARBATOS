@@ -497,6 +497,11 @@
               <FilePath>..\\..\\..\\shared\\application\\app_pubsub.c</FilePath>
             </File>
             <File>
+              <FileName>control_manager.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\control_manager.c</FilePath>
+            </File>
+            <File>
               <FileName>CAN_receive.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\application\\CAN_receive.c</FilePath>

@@ -15,6 +15,7 @@
 #include "referee_rx_task.h"
 #include "sdlog_task.h"
 #include "robot_task_profile.h"
+#include "control_manager.h"
 
 osThreadId_t defaultTaskHandle;
 osThreadId_t rcSbusTaskHandle;
@@ -80,6 +81,8 @@ void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
 
 void MX_FREERTOS_Init(void)
 {
+    control_manager_init();
+
     defaultTaskHandle = APP_THREAD_CREATE(defaultTask, StartDefaultTask);
 
     rcSbusTaskHandle = APP_THREAD_CREATE(rcSbusTask, rc_sbus_task);
