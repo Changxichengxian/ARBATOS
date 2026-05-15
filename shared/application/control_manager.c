@@ -12,18 +12,17 @@
 #include <stddef.h>
 #include <string.h>
 
+#if !defined(CONTROL_MANAGER_ENTER_CRITICAL) || !defined(CONTROL_MANAGER_EXIT_CRITICAL)
+#include "FreeRTOS.h"
+#include "task.h"
+#endif
+
 #ifndef CONTROL_MANAGER_ENTER_CRITICAL
-#define CONTROL_MANAGER_ENTER_CRITICAL() \
-    do                                   \
-    {                                    \
-    } while (0)
+#define CONTROL_MANAGER_ENTER_CRITICAL() taskENTER_CRITICAL()
 #endif
 
 #ifndef CONTROL_MANAGER_EXIT_CRITICAL
-#define CONTROL_MANAGER_EXIT_CRITICAL() \
-    do                                  \
-    {                                   \
-    } while (0)
+#define CONTROL_MANAGER_EXIT_CRITICAL() taskEXIT_CRITICAL()
 #endif
 
 typedef struct
@@ -272,26 +271,35 @@ static control_result_e control_apply_pending(control_domain_e domain, control_c
     }
 }
 
-void control_manager_reset(void)
+static void control_reset_state_unlocked(void)
 {
-    CONTROL_MANAGER_ENTER_CRITICAL();
     memset(&s_registry, 0, sizeof(s_registry));
     memset(&s_domain, 0, sizeof(s_domain));
     s_active_claim_mask = 0u;
     s_inited = 1u;
+}
+
+void control_manager_reset(void)
+{
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    control_reset_state_unlocked();
     CONTROL_MANAGER_EXIT_CRITICAL();
 }
 
 void control_manager_init(void)
 {
+    CONTROL_MANAGER_ENTER_CRITICAL();
     if (s_inited == 0u)
     {
-        control_manager_reset();
+        control_reset_state_unlocked();
     }
+    CONTROL_MANAGER_EXIT_CRITICAL();
 }
 
 control_result_e control_manager_register(const control_controller_t *controller)
 {
+    control_result_e result = CONTROL_RESULT_OK;
+
     control_manager_init();
 
     if (controller == NULL ||
@@ -301,28 +309,35 @@ control_result_e control_manager_register(const control_controller_t *controller
         return CONTROL_RESULT_BAD_ARGUMENT;
     }
 
+    CONTROL_MANAGER_ENTER_CRITICAL();
     if (control_find(controller->id) != NULL)
     {
-        return CONTROL_RESULT_DUPLICATE;
+        result = CONTROL_RESULT_DUPLICATE;
     }
-
-    if (s_registry.count >= (uint8_t)CONTROL_MANAGER_MAX_CONTROLLERS)
+    else if (s_registry.count >= (uint8_t)CONTROL_MANAGER_MAX_CONTROLLERS)
     {
-        return CONTROL_RESULT_FULL;
+        result = CONTROL_RESULT_FULL;
     }
-
-    CONTROL_MANAGER_ENTER_CRITICAL();
-    s_registry.controller[s_registry.count] = *controller;
-    s_registry.count++;
+    else
+    {
+        s_registry.controller[s_registry.count] = *controller;
+        s_registry.count++;
+    }
     CONTROL_MANAGER_EXIT_CRITICAL();
 
-    return CONTROL_RESULT_OK;
+    return result;
 }
 
 uint8_t control_manager_registered_count(void)
 {
+    uint8_t count;
+
     control_manager_init();
-    return s_registry.count;
+
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    count = s_registry.count;
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return count;
 }
 
 control_result_e control_manager_request_switch(uint16_t controller_id, control_transition_reason_e reason)
@@ -457,26 +472,39 @@ control_result_e control_manager_update_all(control_context_t *context)
 
 uint8_t control_manager_is_active(uint16_t controller_id)
 {
+    uint8_t active = 0u;
+
     control_manager_init();
+    CONTROL_MANAGER_ENTER_CRITICAL();
     for (uint8_t i = 0u; i < (uint8_t)CONTROL_DOMAIN__COUNT; i++)
     {
         if (s_domain[i].active != NULL && s_domain[i].active->id == controller_id)
         {
-            return 1u;
+            active = 1u;
+            break;
         }
     }
-    return 0u;
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return active;
 }
 
 uint16_t control_manager_active_id(control_domain_e domain)
 {
+    uint16_t active_id = CONTROL_CONTROLLER_NONE;
+
     control_manager_init();
-    if (control_domain_valid(domain) == 0u || s_domain[domain].active == NULL)
+    if (control_domain_valid(domain) == 0u)
     {
         return CONTROL_CONTROLLER_NONE;
     }
 
-    return s_domain[domain].active->id;
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    if (s_domain[domain].active != NULL)
+    {
+        active_id = s_domain[domain].active->id;
+    }
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return active_id;
 }
 
 control_result_e control_manager_get_domain_status(control_domain_e domain, control_domain_status_t *out)
@@ -489,6 +517,7 @@ control_result_e control_manager_get_domain_status(control_domain_e domain, cont
         return CONTROL_RESULT_BAD_ARGUMENT;
     }
 
+    CONTROL_MANAGER_ENTER_CRITICAL();
     domain_state = &s_domain[domain];
     memset(out, 0, sizeof(*out));
     out->domain = domain;
@@ -507,12 +536,19 @@ control_result_e control_manager_get_domain_status(control_domain_e domain, cont
         out->active_id = domain_state->active->id;
         out->active_name = domain_state->active->name;
     }
+    CONTROL_MANAGER_EXIT_CRITICAL();
 
     return CONTROL_RESULT_OK;
 }
 
 uint32_t control_manager_active_claim_mask(void)
 {
+    uint32_t claim_mask;
+
     control_manager_init();
-    return s_active_claim_mask;
+
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    claim_mask = s_active_claim_mask;
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return claim_mask;
 }

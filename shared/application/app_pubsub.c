@@ -29,6 +29,16 @@ static uint8_t app_topic_is_valid(app_topic_id_e topic)
     return ((uint32_t)topic < (uint32_t)APP_TOPIC__COUNT) ? 1u : 0u;
 }
 
+static void app_pubsub_lock(void)
+{
+    vTaskSuspendAll();
+}
+
+static void app_pubsub_unlock(void)
+{
+    (void)xTaskResumeAll();
+}
+
 uint8_t app_pubsub_publish(app_topic_id_e topic, const void *payload, uint16_t size)
 {
     if (app_topic_is_valid(topic) == 0u || payload == NULL || size == 0u || size > APP_PUBSUB_MAX_PAYLOAD_BYTES)
@@ -36,12 +46,12 @@ uint8_t app_pubsub_publish(app_topic_id_e topic, const void *payload, uint16_t s
         return 0u;
     }
 
-    taskENTER_CRITICAL();
+    app_pubsub_lock();
     memcpy(s_topics[topic].payload, payload, size);
     s_topics[topic].size = size;
     s_topics[topic].seq++;
     s_topics[topic].valid = 1u;
-    taskEXIT_CRITICAL();
+    app_pubsub_unlock();
     return 1u;
 }
 
@@ -53,13 +63,13 @@ uint8_t app_pubsub_copy(app_topic_id_e topic, void *out, uint16_t size)
     }
 
     uint8_t ok = 0u;
-    taskENTER_CRITICAL();
+    app_pubsub_lock();
     if (s_topics[topic].valid != 0u && s_topics[topic].size == size)
     {
         memcpy(out, s_topics[topic].payload, size);
         ok = 1u;
     }
-    taskEXIT_CRITICAL();
+    app_pubsub_unlock();
     return ok;
 }
 
@@ -71,10 +81,10 @@ app_topic_status_t app_pubsub_status(app_topic_id_e topic)
         return status;
     }
 
-    taskENTER_CRITICAL();
+    app_pubsub_lock();
     status.valid = s_topics[topic].valid;
     status.size = s_topics[topic].size;
     status.seq = s_topics[topic].seq;
-    taskEXIT_CRITICAL();
+    app_pubsub_unlock();
     return status;
 }

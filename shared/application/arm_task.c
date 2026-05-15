@@ -32,8 +32,8 @@ static void arm_publish_status(uint16_t key_mask)
     app_interface_header_init(&status.header,
                               APP_IF_SOURCE_MANUAL,
                               (uint16_t)sizeof(status),
-                              bsp_time_get_tick_ms());
-    status.header.seq = ++s_arm_status_seq;
+                              bsp_time_get_tick_ms(),
+                              ++s_arm_status_seq);
     status.mode = (uint8_t)((key_mask != 0u) ? ARM_INTERFACE_MODE_MANUAL : ARM_INTERFACE_MODE_HOLD);
     status.enabled = 1u;
     status.key_mask = key_mask;

@@ -50,17 +50,18 @@ typedef struct
 static inline void app_interface_header_init(app_interface_header_t *header,
                                              app_interface_source_e source,
                                              uint16_t size,
-                                             uint32_t tick_ms)
+                                             uint32_t tick_ms,
+                                             uint32_t seq)
 {
     if (header == 0)
     {
         return;
     }
 
-    header->seq = (header->valid != 0u) ? (header->seq + 1u) : 1u;
     header->valid = 1u;
     header->source = (uint8_t)source;
     header->size = size;
+    header->seq = seq;
     header->tick_ms = tick_ms;
 }
 
