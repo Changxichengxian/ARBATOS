@@ -1,4 +1,4 @@
-# DM MC02 H7
+﻿# DM MC02 H7
 
 `boards/DM_MC02_H7/` 现在只放 H7 板级适配，不再放完整 Keil/CubeMX 工程。
 
@@ -36,7 +36,7 @@
 
 ## 当前状态
 
-- `projects/MC02_BASE/MDK-ARM/MC02_BASE.uvprojx` 使用 `target/MC02_BASE/User/application/config.c`
+- `projects/MC02_BASE/MDK-ARM/MC02_BASE.uvprojx` 使用 `target/MC02_BASE/config.c`
 - 配置入口统一是 `config.c` / `config.h`，没有单独的板子配置文件名
 - H7 板级启动、任务挂接和 BMI088 IMU 已有 ARBATOS 自己的实现
 - AUX 口调参、ELRS 和 USB 业务任务在这套 H7 板级入口里还没有默认接上

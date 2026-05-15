@@ -42,6 +42,8 @@ MDK-ARM/standard_tpye_c/
 *.uvguix.*
 
 # Local logs / cache / references
+docs/
+local/docs/
 local/logs/**
 !local/logs/
 !local/logs/sdlog/

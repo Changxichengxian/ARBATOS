@@ -337,7 +337,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32H723xx,ARM_MATH_CM7,__FPU_USED=1U,__FPU_PRESENT=1U,ARM_MATH_MATRIX_CHECK,ARM_MATH_ROUNDING</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../../../shared/common;../../../target/MC02_BASE/User/application;../../../boards/DM_MC02_H7/app;../../../boards/DM_MC02_H7/bsp;../../../boards/DM_MC02_H7/support;../../../boards/DM_MC02_H7/support/fatfs;../../../shared/bsp/boards;../../../shared/components/devices;../../../shared/components/algorithm;../../../shared/components/controller;../../../shared/components/support;../../../shared/components/support/fatfs;../../../shared/application;../../../shared/application/protocol;../../../shared/components/algorithm/Include</IncludePath>
+              <IncludePath>../Core/Inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../../../shared/common;../../../target/MC02_BASE;../../../boards/DM_MC02_H7/app;../../../boards/DM_MC02_H7/bsp;../../../boards/DM_MC02_H7/support;../../../boards/DM_MC02_H7/support/fatfs;../../../shared/bsp/boards;../../../shared/components/devices;../../../shared/components/algorithm;../../../shared/components/controller;../../../shared/components/support;../../../shared/components/support/fatfs;../../../shared/application;../../../shared/application/protocol;../../../shared/components/algorithm/Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -454,17 +454,17 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>Application/User/MC02_BASE</GroupName>
+          <GroupName>Target/MC02_BASE</GroupName>
           <Files>
             <File>
               <FileName>config.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\target\\MC02_BASE\\User\\application\\config.c</FilePath>
+              <FilePath>..\\..\\..\\target\\MC02_BASE\\config.c</FilePath>
             </File>
             <File>
               <FileName>mc02_compat.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\target\\MC02_BASE\\User\\application\\mc02_compat.c</FilePath>
+              <FilePath>..\\..\\..\\target\\MC02_BASE\\mc02_compat.c</FilePath>
             </File>
             <File>
               <FileName>manual_input.c</FileName>
@@ -479,7 +479,7 @@
             <File>
               <FileName>detect_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\target\\MC02_BASE\\User\\application\\detect_task.c</FilePath>
+              <FilePath>..\\..\\..\\target\\MC02_BASE\\detect_task.c</FilePath>
             </File>
             <File>
               <FileName>control_input.c</FileName>
@@ -539,7 +539,7 @@
             <File>
               <FileName>arm_motor_table.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\target\\MC02_BASE\\User\\application\\arm_motor_table.c</FilePath>
+              <FilePath>..\\..\\..\\target\\MC02_BASE\\arm_motor_table.c</FilePath>
             </File>
             <File>
               <FileName>chassis_behaviour.c</FileName>
