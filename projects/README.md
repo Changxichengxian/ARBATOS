@@ -12,7 +12,7 @@
 | `CARRIER` | `projects/CARRIER/MDK-ARM/CARRIER.uvprojx` | `target/CARRIER` | `boards/DJI_A_F427` |
 | `MC02_BASE` | `projects/MC02_BASE/MDK-ARM/MC02_BASE.uvprojx` | `target/MC02_BASE` | `boards/DM_MC02_H7` |
 
-更完整的对应表见本地文档 `local/docs/project_target_board_matrix.md`。
+更完整的对应表见本地文档 `local/docs/01_当前工程说明/工程-车型-板卡对应表.md`。
 
 ## 这一层负责什么
 

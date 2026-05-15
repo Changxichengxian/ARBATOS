@@ -26,7 +26,7 @@ ARBATOS 是一套面向 RoboMaster 类机器人的 STM32 / FreeRTOS 下位机控
 - 高频日志虽然已经是环形缓冲，但仍要继续实测成本，避免影响 1ms / 2ms 控制链。
 - 根目录还没有统一的命令行编译入口，也没有正式的自动编译检查（CI，提交后自动跑编译）。
 
-剩余架构任务放在本地文档 `local/docs/architecture_remaining_tasks.md`。
+剩余架构任务放在本地文档 `local/docs/90_待办和清理/架构剩余任务.md`。
 
 ## 授权和商用
 
