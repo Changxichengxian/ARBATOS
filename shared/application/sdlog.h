@@ -100,7 +100,7 @@ typedef enum
     SDLOG_TAG_CAN_RX = 0x0030u,
 
     // High-level state/health snapshots
-    SDLOG_TAG_APP_WATCH = 0x0031u,      // payload: watch_t (see watch.h)
+    SDLOG_TAG_WATCH = 0x0031u,      // payload: watch_t (see watch.h)
     SDLOG_TAG_DETECT_STATUS = 0x0032u,  // payload: sdlog_detect_status_t
     SDLOG_TAG_CHASSIS_POWER_LIMIT = 0x0033u,
     SDLOG_TAG_GIMBAL_LIMIT = 0x0034u,

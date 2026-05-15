@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "arm_interface.h"
+#include "arm_msg.h"
 
 // Runtime tuning knobs shared by arm motor drivers.
 extern volatile uint8_t g_arm_deadman_hold_ctrl;
@@ -17,7 +17,7 @@ extern volatile fp32 g_arm_key_speed_scale;
 extern volatile fp32 g_arm_key_kd;
 extern volatile int16_t g_arm_j0_current;
 
-// Single arm task entry and public runtime query interface.
+// Single arm task entry and public runtime query API.
 void arm_task(void const *argument);
 const arm_motor_feedback_t *arm_get_feedback(uint8_t index);
 const arm_j0_unitree_state_t *arm_j0_unitree_get_state(void);

@@ -7,11 +7,11 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#ifndef WHEELLEG_INTERFACE_H
-#define WHEELLEG_INTERFACE_H
+#ifndef WHEELLEG_MSG_H
+#define WHEELLEG_MSG_H
 
-#include "app_interface.h"
-#include "app_pubsub.h"
+#include "robot_msg.h"
+#include "state_store.h"
 #include "struct_typedef.h"
 
 #ifdef __cplusplus
@@ -69,7 +69,7 @@ typedef struct
 
 typedef struct
 {
-    app_interface_header_t header;
+    msg_header_t header;
     uint8_t mode; // wheelleg_mode_e
     uint8_t enable;
     uint8_t jump;
@@ -82,7 +82,7 @@ typedef struct
 
 typedef struct
 {
-    app_interface_header_t header;
+    msg_header_t header;
     fp32 pitch_rad;
     fp32 d_pitch_radps;
     fp32 roll_rad;
@@ -101,11 +101,11 @@ typedef struct
 
 typedef struct
 {
-    app_interface_header_t header;
+    msg_header_t header;
     uint8_t mode; // wheelleg_mode_e
     uint8_t last_mode;
     uint16_t fault_flags;
-    uint8_t health; // app_interface_health_e
+    uint8_t health; // msg_health_e
     uint8_t controller_active;
     uint16_t active_controller_id;
     fp32 target_v_mps;
@@ -139,7 +139,7 @@ typedef struct
 
 typedef struct
 {
-    app_interface_header_t header;
+    msg_header_t header;
     wheelleg_lqr_debug_t lqr;
     wheelleg_vmc_debug_leg_t vmc[WHEELLEG_SIDE_COUNT];
     fp32 observer_x_m;
@@ -149,49 +149,49 @@ typedef struct
     uint32_t overrun_count;
 } wheelleg_debug_t;
 
-typedef char wheelleg_cmd_fits_pubsub[(sizeof(wheelleg_cmd_t) <= APP_PUBSUB_MAX_PAYLOAD_BYTES) ? 1 : -1];
-typedef char wheelleg_state_fits_pubsub[(sizeof(wheelleg_state_t) <= APP_PUBSUB_MAX_PAYLOAD_BYTES) ? 1 : -1];
-typedef char wheelleg_status_fits_pubsub[(sizeof(wheelleg_status_t) <= APP_PUBSUB_MAX_PAYLOAD_BYTES) ? 1 : -1];
-typedef char wheelleg_debug_fits_pubsub[(sizeof(wheelleg_debug_t) <= APP_PUBSUB_MAX_PAYLOAD_BYTES) ? 1 : -1];
+typedef char wheelleg_cmd_fits_store[(sizeof(wheelleg_cmd_t) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
+typedef char wheelleg_state_fits_store[(sizeof(wheelleg_state_t) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
+typedef char wheelleg_status_fits_store[(sizeof(wheelleg_status_t) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
+typedef char wheelleg_debug_fits_store[(sizeof(wheelleg_debug_t) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
 
-static inline uint8_t wheelleg_cmd_publish(const wheelleg_cmd_t *cmd)
+static inline uint8_t wheelleg_cmd_write(const wheelleg_cmd_t *cmd)
 {
-    return app_pubsub_publish(APP_TOPIC_WHEELLEG_CMD, cmd, (uint16_t)sizeof(*cmd));
+    return state_store_write(STATE_WHEELLEG_CMD, cmd, (uint16_t)sizeof(*cmd));
 }
 
-static inline uint8_t wheelleg_cmd_copy(wheelleg_cmd_t *out)
+static inline uint8_t wheelleg_cmd_read(wheelleg_cmd_t *out)
 {
-    return app_pubsub_copy(APP_TOPIC_WHEELLEG_CMD, out, (uint16_t)sizeof(*out));
+    return state_store_read(STATE_WHEELLEG_CMD, out, (uint16_t)sizeof(*out));
 }
 
-static inline uint8_t wheelleg_state_publish(const wheelleg_state_t *state)
+static inline uint8_t wheelleg_state_write(const wheelleg_state_t *state)
 {
-    return app_pubsub_publish(APP_TOPIC_WHEELLEG_STATE, state, (uint16_t)sizeof(*state));
+    return state_store_write(STATE_WHEELLEG_STATE, state, (uint16_t)sizeof(*state));
 }
 
-static inline uint8_t wheelleg_state_copy(wheelleg_state_t *out)
+static inline uint8_t wheelleg_state_read(wheelleg_state_t *out)
 {
-    return app_pubsub_copy(APP_TOPIC_WHEELLEG_STATE, out, (uint16_t)sizeof(*out));
+    return state_store_read(STATE_WHEELLEG_STATE, out, (uint16_t)sizeof(*out));
 }
 
-static inline uint8_t wheelleg_status_publish(const wheelleg_status_t *status)
+static inline uint8_t wheelleg_status_write(const wheelleg_status_t *status)
 {
-    return app_pubsub_publish(APP_TOPIC_WHEELLEG_STATUS, status, (uint16_t)sizeof(*status));
+    return state_store_write(STATE_WHEELLEG_STATUS, status, (uint16_t)sizeof(*status));
 }
 
-static inline uint8_t wheelleg_status_copy(wheelleg_status_t *out)
+static inline uint8_t wheelleg_status_read(wheelleg_status_t *out)
 {
-    return app_pubsub_copy(APP_TOPIC_WHEELLEG_STATUS, out, (uint16_t)sizeof(*out));
+    return state_store_read(STATE_WHEELLEG_STATUS, out, (uint16_t)sizeof(*out));
 }
 
-static inline uint8_t wheelleg_debug_publish(const wheelleg_debug_t *debug)
+static inline uint8_t wheelleg_debug_write(const wheelleg_debug_t *debug)
 {
-    return app_pubsub_publish(APP_TOPIC_WHEELLEG_DEBUG, debug, (uint16_t)sizeof(*debug));
+    return state_store_write(STATE_WHEELLEG_DEBUG, debug, (uint16_t)sizeof(*debug));
 }
 
-static inline uint8_t wheelleg_debug_copy(wheelleg_debug_t *out)
+static inline uint8_t wheelleg_debug_read(wheelleg_debug_t *out)
 {
-    return app_pubsub_copy(APP_TOPIC_WHEELLEG_DEBUG, out, (uint16_t)sizeof(*out));
+    return state_store_read(STATE_WHEELLEG_DEBUG, out, (uint16_t)sizeof(*out));
 }
 
 #ifdef __cplusplus

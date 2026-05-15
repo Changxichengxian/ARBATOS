@@ -35,8 +35,8 @@
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
 #include "motor_config.h"
-#include "gimbal_interface.h"
-#include "shoot_interface.h"
+#include "gimbal_state.h"
+#include "shoot_state.h"
 #include "control_input.h"
 #include "detect_task.h"
 #include "pid.h"
@@ -73,7 +73,7 @@ static void shoot_clear_fric_output(void);
   */
 static bool_t shoot_fric_speed_ready(void);
 static bool_t shoot_gimbal_cmd_to_shoot_stop(void);
-static void shoot_publish_state(void);
+static void shoot_write_state(void);
 
 /**
   * @brief          trigger jam reverse handling.
@@ -211,13 +211,13 @@ const shoot_control_t *get_shoot_control_point(void)
 
 static bool_t shoot_gimbal_cmd_to_shoot_stop(void)
 {
-    app_gimbal_state_t state;
-    return (app_copy_gimbal_state(&state) != 0u && state.valid != 0u && state.shoot_stop != 0u) ? 1 : 0;
+    gimbal_state_t state;
+    return (gimbal_state_read(&state) != 0u && state.valid != 0u && state.shoot_stop != 0u) ? 1 : 0;
 }
 
-static void shoot_publish_state(void)
+static void shoot_write_state(void)
 {
-    app_shoot_state_t state = {0};
+    shoot_state_t state = {0};
 
     state.valid = 1u;
     state.mode = (uint8_t)shoot_control.shoot_mode;
@@ -246,13 +246,13 @@ static void shoot_publish_state(void)
     state.heat = shoot_control.heat;
     state.trigger_motor_pid = shoot_control.trigger_motor_pid;
 
-    for (uint8_t i = 0u; i < FRIC_MOTOR_NUM && i < APP_SHOOT_FRIC_MOTOR_COUNT; i++)
+    for (uint8_t i = 0u; i < FRIC_MOTOR_NUM && i < SHOOT_STATE_FRIC_MOTOR_COUNT; i++)
     {
         state.fric_speed_pid[i] = shoot_control.fric_speed_pid[i];
         state.fric_current_set[i] = shoot_control.fric_current_set[i];
     }
 
-    (void)app_publish_shoot_state(&state);
+    (void)shoot_state_write(&state);
 }
 
 static test_mode_e shoot_test_mode(void)
@@ -517,7 +517,7 @@ void shoot_init(void)
     shoot_control.speed = 0.0f;
     shoot_control.speed_set = 0.0f;
     shoot_control.key_time = 0;
-    shoot_publish_state();
+    shoot_write_state();
 }
 
 /**
@@ -548,7 +548,7 @@ int16_t shoot_control_loop(void)
             shoot_control.shoot_mode = SHOOT_STOP;
             shoot_laser_off();
         }
-        shoot_publish_state();
+        shoot_write_state();
         return 0;
     }
     entertain_entered = 0u;
@@ -678,7 +678,7 @@ int16_t shoot_control_loop(void)
             actuator_cmd_set_friction_current(i, fric_current_cmd[i]);
         }
     }
-    shoot_publish_state();
+    shoot_write_state();
     return shoot_control.given_current;
 }
 

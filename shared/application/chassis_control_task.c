@@ -28,7 +28,7 @@
 #include "control_input.h"
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
-#include "chassis_interface.h"
+#include "chassis_state.h"
 #include "motor_config.h"
 #include "watch.h"
 #include "detect_task.h"
@@ -79,8 +79,8 @@ typedef struct
 {
     const manual_input_state_t *manual_input;
     uint8_t gimbal_state_valid;
-    app_gimbal_motor_state_t yaw_motor;
-    app_gimbal_motor_state_t pitch_motor;
+    gimbal_motor_state_t yaw_motor;
+    gimbal_motor_state_t pitch_motor;
     const fp32 *ins_angle;
     const fp32 *gyro;
     const motor_measure_t *motor_measure[CHASSIS_MOTOR_COUNT];
@@ -116,7 +116,7 @@ static bool_t chassis_wz_kf_inited = 0;
         }                                                \
     }
 
-static fp32 chassis_get_gimbal_yaw_relative_angle(const app_gimbal_motor_state_t *yaw_motor)
+static fp32 chassis_get_gimbal_yaw_relative_angle(const gimbal_motor_state_t *yaw_motor)
 {
     if (yaw_motor == NULL || yaw_motor->valid == 0u || yaw_motor->measure.valid == 0u)
     {
@@ -137,7 +137,7 @@ static fp32 chassis_get_gimbal_yaw_relative_angle(const app_gimbal_motor_state_t
     return YAW_TURN ? -angle : angle;
 }
 
-static fp32 chassis_get_gimbal_yaw_relative_rate(const app_gimbal_motor_state_t *yaw_motor)
+static fp32 chassis_get_gimbal_yaw_relative_rate(const gimbal_motor_state_t *yaw_motor)
 {
     if (yaw_motor == NULL || yaw_motor->valid == 0u || yaw_motor->measure.valid == 0u)
     {
@@ -150,9 +150,9 @@ static fp32 chassis_get_gimbal_yaw_relative_rate(const app_gimbal_motor_state_t 
 
 static bool_t chassis_get_turnaround_frame_yaw(fp32 *out_yaw_relative)
 {
-    app_gimbal_state_t gimbal_state;
+    gimbal_state_t gimbal_state;
     if (out_yaw_relative == NULL ||
-        app_copy_gimbal_state(&gimbal_state) == 0u ||
+        gimbal_state_read(&gimbal_state) == 0u ||
         gimbal_state.valid == 0u ||
         gimbal_state.turnaround_frame_valid == 0u)
     {
@@ -163,7 +163,7 @@ static bool_t chassis_get_turnaround_frame_yaw(fp32 *out_yaw_relative)
     return 1;
 }
 
-static void chassis_fill_motor_measure_state(app_motor_measure_state_t *out, const motor_measure_t *measure)
+static void chassis_fill_motor_measure_state(motor_measure_state_t *out, const motor_measure_t *measure)
 {
     if (out == NULL)
     {
@@ -244,8 +244,8 @@ static void chassis_snapshot_capture(chassis_runtime_snapshot_t *snapshot, chass
     memset(snapshot, 0, sizeof(*snapshot));
     snapshot->manual_input = (control != NULL) ? control->chassis_RC : get_remote_control_point();
     {
-        app_gimbal_state_t gimbal_state;
-        if (app_copy_gimbal_state(&gimbal_state) != 0u && gimbal_state.valid != 0u)
+        gimbal_state_t gimbal_state;
+        if (gimbal_state_read(&gimbal_state) != 0u && gimbal_state.valid != 0u)
         {
             snapshot->gimbal_state_valid = 1u;
             snapshot->yaw_motor = gimbal_state.yaw;
@@ -584,14 +584,14 @@ void chassis_tune_set_motor_speed_pid(const pid_param_t *pid, bool_t clear_state
     taskEXIT_CRITICAL();
 }
 
-static void chassis_publish_state(const chassis_move_t *control)
+static void chassis_write_state(const chassis_move_t *control)
 {
     if (control == NULL)
     {
         return;
     }
 
-    app_chassis_state_t state = {0};
+    chassis_state_t state = {0};
     state.valid = 1u;
     state.mode = (uint8_t)control->chassis_mode;
     state.last_mode = (uint8_t)control->last_chassis_mode;
@@ -609,7 +609,7 @@ static void chassis_publish_state(const chassis_move_t *control)
     state.chassis_roll = control->chassis_roll;
     state.angle_pid = control->chassis_angle_pid;
 
-    for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT && i < APP_CHASSIS_MOTOR_COUNT; i++)
+    for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT && i < CHASSIS_STATE_MOTOR_COUNT; i++)
     {
         chassis_fill_motor_measure_state(&state.motor[i].measure, control->motor_chassis[i].chassis_motor_measure);
         state.motor[i].accel = control->motor_chassis[i].accel;
@@ -618,7 +618,7 @@ static void chassis_publish_state(const chassis_move_t *control)
         state.motor[i].give_current = control->motor_chassis[i].give_current;
     }
 
-    (void)app_publish_chassis_state(&state);
+    (void)chassis_state_write(&state);
 }
 
 /**
@@ -677,7 +677,7 @@ void chassis_control_task(void const *pvParameters)
                 actuator_cmd_set_chassis_current(i, 0);
             }
 
-            chassis_publish_state(&chassis_move);
+            chassis_write_state(&chassis_move);
             rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
             vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
 
@@ -738,7 +738,7 @@ void chassis_control_task(void const *pvParameters)
 
             chassis_sdlog_append_base_sample(&sample, now_ms, snapshot.period_us);
         }
-        chassis_publish_state(&chassis_move);
+        chassis_write_state(&chassis_move);
         //os delay
         //系统延时
         rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
@@ -779,7 +779,7 @@ static void chassis_init(chassis_move_t *chassis_move_init)
     //get gyro sensor euler angle point
     chassis_move_init->chassis_INS_angle = get_INS_angle_point();
     chassis_INT_gyro_point = get_gyro_data_point();
-    // cache gimbal state from app topics when it becomes available
+    // Cache gimbal state once it becomes available.
     chassis_move_init->gimbal_state_valid = 0u;
     memset(&chassis_move_init->chassis_yaw_motor, 0, sizeof(chassis_move_init->chassis_yaw_motor));
     memset(&chassis_move_init->chassis_pitch_motor, 0, sizeof(chassis_move_init->chassis_pitch_motor));
@@ -811,7 +811,7 @@ static void chassis_init(chassis_move_t *chassis_move_init)
         chassis_runtime_snapshot_t snapshot;
         chassis_snapshot_capture(&snapshot, chassis_move_init);
         chassis_feedback_update(chassis_move_init, &snapshot);
-        chassis_publish_state(chassis_move_init);
+        chassis_write_state(chassis_move_init);
     }
 }
 
@@ -955,8 +955,8 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update, const c
     fp32 wz_imu = 0.0f;
     const test_mode_e test_mode = (snapshot != NULL) ? snapshot->test_mode : (test_mode_e)g_config.test.mode;
     const fp32 *gyro = (snapshot != NULL) ? snapshot->gyro : chassis_INT_gyro_point;
-    const app_gimbal_motor_state_t *yaw_motor = NULL;
-    const app_gimbal_motor_state_t *pitch_motor = NULL;
+    const gimbal_motor_state_t *yaw_motor = NULL;
+    const gimbal_motor_state_t *pitch_motor = NULL;
     if (snapshot != NULL && snapshot->gimbal_state_valid != 0u)
     {
         yaw_motor = &snapshot->yaw_motor;

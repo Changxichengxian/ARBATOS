@@ -264,9 +264,9 @@ actuator_feedback + 旧电机反馈结构
 控制任务之间不使用动态字符串消息系统。当前有两类共享方式：
 
 - `actuator_cmd` / `actuator_feedback`：执行器命令和反馈，按固定轴编号读写。
-- 状态话题（topic，一类共享状态）：`app_pubsub.c` + `app_topics.h`，目前主要发布云台、底盘、射击状态，给诊断、遥测、日志读取。
+- 共享状态表：`state_store.c` + `robot_state.h`，目前主要保存云台、底盘、射击状态，给诊断、遥测、日志读取。
 
-`app_pubsub` 使用固定枚举、固定内存和短临界区拷贝，适合下位机实时场景。代价是扩展不如动态消息中心灵活；新增一类状态时，需要补枚举、结构体和读写包装。
+`state_store` 使用固定枚举、固定内存和短临界区拷贝，适合下位机实时场景。代价是扩展不如动态消息中心灵活；新增一类状态时，需要补枚举、结构体和读写包装。
 
 ## 电机和执行器
 
@@ -351,13 +351,13 @@ actuator_feedback + 旧电机反馈结构
 | 视觉链路 | `shared/application/vision_link.c` |
 | 图传遥控输入 | `shared/application/image_remote_link.c` |
 | ELRS/CRSF 输入 | `shared/application/elrs_task.c` |
-| 状态共享 | `shared/application/app_pubsub.c`、`shared/application/app_topics.h` |
-| 接口消息基础类型 | `shared/application/app_interface.h` |
-| 底盘接口消息 | `shared/application/chassis_interface.h` |
-| 云台接口消息 | `shared/application/gimbal_interface.h` |
-| 射击接口消息 | `shared/application/shoot_interface.h` |
-| 机械臂接口消息 | `shared/application/arm_interface.h` |
-| 轮腿接口消息 | `shared/application/wheelleg_interface.h` |
+| 状态共享 | `shared/application/state_store.c`、`shared/application/robot_state.h` |
+| 消息基础类型 | `shared/application/robot_msg.h` |
+| 底盘状态消息 | `shared/application/chassis_state.h` |
+| 云台状态消息 | `shared/application/gimbal_state.h` |
+| 射击状态消息 | `shared/application/shoot_state.h` |
+| 机械臂命令和状态消息 | `shared/application/arm_msg.h` |
+| 轮腿命令和状态消息 | `shared/application/wheelleg_msg.h` |
 | 控制器生命周期 | `shared/application/control_manager.c` |
 | 执行器命令 | `shared/application/actuator_cmd.c` |
 | 电机实例 | `shared/application/motor_instance.c` |
@@ -378,7 +378,7 @@ actuator_feedback + 旧电机反馈结构
 | 运行耗时统计 | `shared/application/rt_profiler.c` |
 | TF/SD 日志 | `shared/application/sdlog_task.c`、`shared/application/sdlog.c` |
 
-`app_interface.h` 和各 `*_interface.h` 是 ARBATOS 原生消息接口。它们借鉴 ROS msg 的边界思路，但只使用 C 结构体和现有 pubsub，不引入动态分配、运行时反射或外部中间件。`app_topics.h` 只保留为旧代码兼容聚合入口，新代码优先包含具体模块的 interface 头文件。
+`robot_msg.h` 和各 `*_state.h` / `*_msg.h` 是 ARBATOS 原生结构体消息。它们只使用 C 结构体和固定状态表，不引入动态分配、运行时反射或外部中间件。`robot_state.h` 是聚合入口，新代码也可以只包含自己需要的模块头文件。
 
 `control_manager.c` 是 MCU 轻量版控制器生命周期层。它只保存静态 controller 描述、处理 pending switch/stop、按 domain 保证单 active controller，并用资源 claim mask 防止多个 controller 同时拥有同一批执行器。它不新建任务、不动态加载、不分配堆内存；真正的 `enter/update/exit/stop` 仍然在对应控制任务自己的周期内执行。
 
@@ -418,7 +418,7 @@ actuator_feedback + 旧电机反馈结构
 - 运行状态：看 `g_watch`。
 - 输入问题：看 `manual_input_state`、`control_input` 和对应输入源统计。
 - 电机问题：先看 `g_config.motor`、`motor_instance`、`actuator_feedback`，再看 CAN 收发统计。
-- 控制问题：看 `app_topics` 里的云台、底盘、射击状态。
+- 控制问题：看 `robot_state.h` 里的云台、底盘、射击状态。
 - 日志问题：看 `sdlog_get_stats()` 返回的环形缓冲、丢包、写文件状态。
 - AUX 调参问题：先确认字段所在配置块是否在 `g_config_blocks`。
 

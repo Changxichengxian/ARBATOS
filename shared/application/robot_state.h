@@ -7,18 +7,18 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#ifndef APP_TOPICS_H
-#define APP_TOPICS_H
+#ifndef ROBOT_STATE_H
+#define ROBOT_STATE_H
 
 /*
- * Compatibility aggregate for the old app_topics include path.
- * New code should include the concrete interface header it consumes.
+ * Aggregate include for shared robot state and command messages.
+ * New code may include only the module header it uses.
  */
 
-#include "chassis_interface.h"
-#include "gimbal_interface.h"
-#include "shoot_interface.h"
-#include "arm_interface.h"
-#include "wheelleg_interface.h"
+#include "chassis_state.h"
+#include "gimbal_state.h"
+#include "shoot_state.h"
+#include "arm_msg.h"
+#include "wheelleg_msg.h"
 
 #endif

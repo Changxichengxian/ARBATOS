@@ -7,11 +7,11 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#ifndef GIMBAL_INTERFACE_H
-#define GIMBAL_INTERFACE_H
+#ifndef GIMBAL_STATE_H
+#define GIMBAL_STATE_H
 
-#include "app_interface.h"
-#include "app_pubsub.h"
+#include "robot_msg.h"
+#include "state_store.h"
 #include "gimbal_pid.h"
 #include "pid.h"
 #include "struct_typedef.h"
@@ -28,7 +28,7 @@ typedef struct
     uint16_t offset_ecd;
     fp32 max_angle;
     fp32 min_angle;
-    app_motor_measure_state_t measure;
+    motor_measure_state_t measure;
     gimbal_PID_t angle_pid;
     pid_type_def gyro_pid;
     fp32 angle;
@@ -39,7 +39,7 @@ typedef struct
     fp32 raw_cmd_current;
     fp32 current_set;
     int16_t given_current;
-} app_gimbal_motor_state_t;
+} gimbal_motor_state_t;
 
 typedef struct
 {
@@ -51,20 +51,20 @@ typedef struct
     uint8_t turnaround_frame_valid;
     fp32 turnaround_frame_yaw_relative;
     fp32 turnaround_follow_offset_rad;
-    app_gimbal_motor_state_t yaw;
-    app_gimbal_motor_state_t pitch;
-} app_gimbal_state_t;
+    gimbal_motor_state_t yaw;
+    gimbal_motor_state_t pitch;
+} gimbal_state_t;
 
-typedef char app_gimbal_state_fits_pubsub[(sizeof(app_gimbal_state_t) <= APP_PUBSUB_MAX_PAYLOAD_BYTES) ? 1 : -1];
+typedef char gimbal_state_fits_store[(sizeof(gimbal_state_t) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
 
-static inline uint8_t app_publish_gimbal_state(const app_gimbal_state_t *state)
+static inline uint8_t gimbal_state_write(const gimbal_state_t *state)
 {
-    return app_pubsub_publish(APP_TOPIC_GIMBAL_STATE, state, (uint16_t)sizeof(*state));
+    return state_store_write(STATE_GIMBAL, state, (uint16_t)sizeof(*state));
 }
 
-static inline uint8_t app_copy_gimbal_state(app_gimbal_state_t *out)
+static inline uint8_t gimbal_state_read(gimbal_state_t *out)
 {
-    return app_pubsub_copy(APP_TOPIC_GIMBAL_STATE, out, (uint16_t)sizeof(*out));
+    return state_store_read(STATE_GIMBAL, out, (uint16_t)sizeof(*out));
 }
 
 #ifdef __cplusplus

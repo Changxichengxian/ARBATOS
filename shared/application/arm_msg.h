@@ -7,26 +7,26 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#ifndef ARM_INTERFACE_H
-#define ARM_INTERFACE_H
+#ifndef ARM_MSG_H
+#define ARM_MSG_H
 
-#include "app_interface.h"
-#include "app_pubsub.h"
+#include "robot_msg.h"
+#include "state_store.h"
 #include "struct_typedef.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define APP_ARM_JOINT_COUNT 6u
+#define ARM_JOINT_COUNT 6u
 
 typedef enum
 {
-    ARM_INTERFACE_MODE_DISABLED = 0,
-    ARM_INTERFACE_MODE_MANUAL,
-    ARM_INTERFACE_MODE_HOLD,
-    ARM_INTERFACE_MODE_FAULT,
-} arm_interface_mode_e;
+    ARM_MODE_DISABLED = 0,
+    ARM_MODE_MANUAL,
+    ARM_MODE_HOLD,
+    ARM_MODE_FAULT,
+} arm_mode_e;
 
 typedef struct
 {
@@ -65,8 +65,8 @@ typedef struct
 
 typedef struct
 {
-    app_interface_header_t header;
-    uint8_t mode; // arm_interface_mode_e
+    msg_header_t header;
+    uint8_t mode; // arm_mode_e
     uint8_t enabled;
     uint16_t key_mask;
     fp32 key_speed_scale;
@@ -76,8 +76,8 @@ typedef struct
 
 typedef struct
 {
-    app_interface_header_t header;
-    uint8_t mode; // arm_interface_mode_e
+    msg_header_t header;
+    uint8_t mode; // arm_mode_e
     uint8_t active_joint_count;
     uint16_t key_mask;
     uint8_t deadman_hold_ctrl;
@@ -85,20 +85,20 @@ typedef struct
     fp32 key_speed_scale;
     fp32 key_kd;
     int16_t j0_current;
-    arm_motor_feedback_t motor[APP_ARM_JOINT_COUNT];
+    arm_motor_feedback_t motor[ARM_JOINT_COUNT];
     arm_j0_unitree_state_t j0_unitree;
 } arm_status_t;
 
-typedef char arm_status_fits_pubsub[(sizeof(arm_status_t) <= APP_PUBSUB_MAX_PAYLOAD_BYTES) ? 1 : -1];
+typedef char arm_status_fits_store[(sizeof(arm_status_t) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
 
-static inline uint8_t arm_status_publish(const arm_status_t *status)
+static inline uint8_t arm_status_write(const arm_status_t *status)
 {
-    return app_pubsub_publish(APP_TOPIC_ARM_STATUS, status, (uint16_t)sizeof(*status));
+    return state_store_write(STATE_ARM_STATUS, status, (uint16_t)sizeof(*status));
 }
 
-static inline uint8_t arm_status_copy(arm_status_t *out)
+static inline uint8_t arm_status_read(arm_status_t *out)
 {
-    return app_pubsub_copy(APP_TOPIC_ARM_STATUS, out, (uint16_t)sizeof(*out));
+    return state_store_read(STATE_ARM_STATUS, out, (uint16_t)sizeof(*out));
 }
 
 #ifdef __cplusplus

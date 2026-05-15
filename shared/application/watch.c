@@ -20,8 +20,8 @@
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
 #include "arm_task.h"
-#include "chassis_interface.h"
-#include "gimbal_interface.h"
+#include "chassis_state.h"
+#include "gimbal_state.h"
 #include "INS_task.h"
 #include "detect_task.h"
 #include "mem_mang.h"
@@ -29,7 +29,7 @@
 #include "bsp_can.h"
 #include "sdcard.h"
 #include "sdlog.h"
-#include "shoot_interface.h"
+#include "shoot_state.h"
 #include "host_link_task.h"
 #include "robot_task_profile.h"
 
@@ -499,8 +499,8 @@ static void watch_copy_chassis(void)
         return;
     }
 
-    app_chassis_state_t chassis;
-    if (app_copy_chassis_state(&chassis) == 0u || chassis.valid == 0u)
+    chassis_state_t chassis;
+    if (chassis_state_read(&chassis) == 0u || chassis.valid == 0u)
     {
         memset(&g_watch.chassis, 0, sizeof(g_watch.chassis));
         return;
@@ -517,9 +517,9 @@ static void watch_copy_chassis(void)
     g_watch.chassis.wz = chassis.wz;
     g_watch.chassis.yaw_deg = chassis.chassis_yaw * rad2deg;
 
-    for (uint8_t i = 0; i < 4u && i < APP_CHASSIS_MOTOR_COUNT; i++)
+    for (uint8_t i = 0; i < 4u && i < CHASSIS_STATE_MOTOR_COUNT; i++)
     {
-        const app_chassis_motor_state_t *m = &chassis.motor[i];
+        const chassis_motor_state_t *m = &chassis.motor[i];
         g_watch.chassis.motor_rpm[i] = (m->measure.valid != 0u) ? m->measure.speed_rpm : 0;
         g_watch.chassis.motor_current[i] = m->give_current;
         g_watch.chassis.motor_speed_set[i] = m->speed_set;
@@ -538,15 +538,15 @@ static void watch_copy_gimbal(void)
         return;
     }
 
-    app_gimbal_state_t gimbal;
-    if (app_copy_gimbal_state(&gimbal) == 0u || gimbal.valid == 0u)
+    gimbal_state_t gimbal;
+    if (gimbal_state_read(&gimbal) == 0u || gimbal.valid == 0u)
     {
         memset(&g_watch.gimbal, 0, sizeof(g_watch.gimbal));
         return;
     }
 
-    const app_gimbal_motor_state_t *yaw = &gimbal.yaw;
-    const app_gimbal_motor_state_t *pitch = &gimbal.pitch;
+    const gimbal_motor_state_t *yaw = &gimbal.yaw;
+    const gimbal_motor_state_t *pitch = &gimbal.pitch;
 
     if (yaw->valid != 0u)
     {
@@ -605,8 +605,8 @@ static void watch_copy_shoot(void)
 {
     const fp32 rad2deg = 57.29577951308232f;
 
-    app_shoot_state_t shoot;
-    if (app_copy_shoot_state(&shoot) == 0u || shoot.valid == 0u)
+    shoot_state_t shoot;
+    if (shoot_state_read(&shoot) == 0u || shoot.valid == 0u)
     {
         memset(&g_watch.shoot, 0, sizeof(g_watch.shoot));
         return;
@@ -751,9 +751,9 @@ static void watch_copy_diag(void)
     memset(g_watch.diag.flags, 0, sizeof(g_watch.diag.flags));
     g_watch.diag.flags[0] = (uint8_t)toe_is_error(DBUS_TOE);
     {
-        app_gimbal_state_t gimbal;
+        gimbal_state_t gimbal;
         g_watch.diag.flags[1] =
-            (uint8_t)(app_copy_gimbal_state(&gimbal) != 0u && gimbal.valid != 0u && gimbal.behaviour == 0u);
+            (uint8_t)(gimbal_state_read(&gimbal) != 0u && gimbal.valid != 0u && gimbal.behaviour == 0u);
     }
     g_watch.diag.flags[2] = (uint8_t)toe_is_error(YAW_GIMBAL_MOTOR_TOE);
     g_watch.diag.flags[3] = (uint8_t)toe_is_error(PITCH_GIMBAL_MOTOR_TOE);

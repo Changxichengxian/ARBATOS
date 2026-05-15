@@ -7,8 +7,8 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#ifndef APP_INTERFACE_H
-#define APP_INTERFACE_H
+#ifndef ROBOT_MSG_H
+#define ROBOT_MSG_H
 
 #include <stdint.h>
 
@@ -20,38 +20,38 @@ extern "C" {
 
 typedef enum
 {
-    APP_IF_SOURCE_NONE = 0,
-    APP_IF_SOURCE_MANUAL,
-    APP_IF_SOURCE_HOST,
-    APP_IF_SOURCE_VISION,
-    APP_IF_SOURCE_REFEREE,
-    APP_IF_SOURCE_AUTONOMY,
-    APP_IF_SOURCE_TEST,
-    APP_IF_SOURCE_SAFETY,
-} app_interface_source_e;
+    MSG_SOURCE_NONE = 0,
+    MSG_SOURCE_MANUAL,
+    MSG_SOURCE_HOST,
+    MSG_SOURCE_VISION,
+    MSG_SOURCE_REFEREE,
+    MSG_SOURCE_AUTONOMY,
+    MSG_SOURCE_TEST,
+    MSG_SOURCE_SAFETY,
+} msg_source_e;
 
 typedef enum
 {
-    APP_IF_HEALTH_UNKNOWN = 0,
-    APP_IF_HEALTH_OK,
-    APP_IF_HEALTH_DEGRADED,
-    APP_IF_HEALTH_FAULT,
-} app_interface_health_e;
+    MSG_HEALTH_UNKNOWN = 0,
+    MSG_HEALTH_OK,
+    MSG_HEALTH_DEGRADED,
+    MSG_HEALTH_FAULT,
+} msg_health_e;
 
 typedef struct
 {
     uint8_t valid;
-    uint8_t source; // app_interface_source_e
+    uint8_t source; // msg_source_e
     uint16_t size;
     uint32_t seq;
     uint32_t tick_ms;
-} app_interface_header_t;
+} msg_header_t;
 
-static inline void app_interface_header_init(app_interface_header_t *header,
-                                             app_interface_source_e source,
-                                             uint16_t size,
-                                             uint32_t tick_ms,
-                                             uint32_t seq)
+static inline void msg_header_init(msg_header_t *header,
+                                   msg_source_e source,
+                                   uint16_t size,
+                                   uint32_t tick_ms,
+                                   uint32_t seq)
 {
     if (header == 0)
     {
@@ -73,7 +73,7 @@ typedef struct
     int16_t given_current;
     uint8_t temperature;
     int16_t last_ecd;
-} app_motor_measure_state_t;
+} motor_measure_state_t;
 
 #ifdef __cplusplus
 }

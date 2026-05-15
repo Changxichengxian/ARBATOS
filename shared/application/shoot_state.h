@@ -7,10 +7,10 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#ifndef SHOOT_INTERFACE_H
-#define SHOOT_INTERFACE_H
+#ifndef SHOOT_STATE_H
+#define SHOOT_STATE_H
 
-#include "app_pubsub.h"
+#include "state_store.h"
 #include "pid.h"
 #include "struct_typedef.h"
 
@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define APP_SHOOT_FRIC_MOTOR_COUNT 4u
+#define SHOOT_STATE_FRIC_MOTOR_COUNT 4u
 
 typedef struct
 {
@@ -48,20 +48,20 @@ typedef struct
     uint16_t heat_limit;
     uint16_t heat;
     pid_type_def trigger_motor_pid;
-    pid_type_def fric_speed_pid[APP_SHOOT_FRIC_MOTOR_COUNT];
-    int16_t fric_current_set[APP_SHOOT_FRIC_MOTOR_COUNT];
-} app_shoot_state_t;
+    pid_type_def fric_speed_pid[SHOOT_STATE_FRIC_MOTOR_COUNT];
+    int16_t fric_current_set[SHOOT_STATE_FRIC_MOTOR_COUNT];
+} shoot_state_t;
 
-typedef char app_shoot_state_fits_pubsub[(sizeof(app_shoot_state_t) <= APP_PUBSUB_MAX_PAYLOAD_BYTES) ? 1 : -1];
+typedef char shoot_state_fits_store[(sizeof(shoot_state_t) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
 
-static inline uint8_t app_publish_shoot_state(const app_shoot_state_t *state)
+static inline uint8_t shoot_state_write(const shoot_state_t *state)
 {
-    return app_pubsub_publish(APP_TOPIC_SHOOT_STATE, state, (uint16_t)sizeof(*state));
+    return state_store_write(STATE_SHOOT, state, (uint16_t)sizeof(*state));
 }
 
-static inline uint8_t app_copy_shoot_state(app_shoot_state_t *out)
+static inline uint8_t shoot_state_read(shoot_state_t *out)
 {
-    return app_pubsub_copy(APP_TOPIC_SHOOT_STATE, out, (uint16_t)sizeof(*out));
+    return state_store_read(STATE_SHOOT, out, (uint16_t)sizeof(*out));
 }
 
 #ifdef __cplusplus

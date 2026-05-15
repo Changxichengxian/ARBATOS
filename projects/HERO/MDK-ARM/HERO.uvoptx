@@ -618,8 +618,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\\..\\..\\shared\\application\\app_pubsub.c</PathWithFileName>
-      <FilenameWithoutPath>app_pubsub.c</FilenameWithoutPath>
+      <PathWithFileName>..\\..\\..\\shared\\application\\state_store.c</PathWithFileName>
+      <FilenameWithoutPath>state_store.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>

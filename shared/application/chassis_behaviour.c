@@ -112,7 +112,7 @@ static void chassis_no_move_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, ch
 static void chassis_infantry_follow_gimbal_yaw_control(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, chassis_move_t *chassis_move_rc_to_vector);
 
 // Small gyro: keep vx/vy in gimbal frame, while commanding a constant chassis wz (no yaw follow).
-static fp32 chassis_get_gimbal_yaw_relative_angle(const app_gimbal_motor_state_t *yaw_motor);
+static fp32 chassis_get_gimbal_yaw_relative_angle(const gimbal_motor_state_t *yaw_motor);
 static bool_t chassis_gimbal_turnaround_is_active(void);
 static fp32 chassis_gimbal_turnaround_chassis_follow_offset_rad(void);
 static bool_t chassis_gimbal_turnaround_get_frame_yaw_relative(fp32 *out_yaw_relative);
@@ -192,9 +192,9 @@ static void chassis_open_set_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, c
 //留意，这个底盘行为模式变量
 chassis_behaviour_e chassis_behaviour_mode = CHASSIS_ZERO_FORCE;
 
-static bool_t chassis_copy_gimbal_state(app_gimbal_state_t *state)
+static bool_t chassis_read_gimbal_state(gimbal_state_t *state)
 {
-    if (state == NULL || app_copy_gimbal_state(state) == 0u || state->valid == 0u)
+    if (state == NULL || gimbal_state_read(state) == 0u || state->valid == 0u)
     {
         return 0;
     }
@@ -203,21 +203,21 @@ static bool_t chassis_copy_gimbal_state(app_gimbal_state_t *state)
 
 static bool_t chassis_gimbal_turnaround_is_active(void)
 {
-    app_gimbal_state_t state;
-    return (chassis_copy_gimbal_state(&state) != 0 && state.turnaround_active != 0u) ? 1 : 0;
+    gimbal_state_t state;
+    return (chassis_read_gimbal_state(&state) != 0 && state.turnaround_active != 0u) ? 1 : 0;
 }
 
 static fp32 chassis_gimbal_turnaround_chassis_follow_offset_rad(void)
 {
-    app_gimbal_state_t state;
-    return (chassis_copy_gimbal_state(&state) != 0) ? state.turnaround_follow_offset_rad : 0.0f;
+    gimbal_state_t state;
+    return (chassis_read_gimbal_state(&state) != 0) ? state.turnaround_follow_offset_rad : 0.0f;
 }
 
 static bool_t chassis_gimbal_turnaround_get_frame_yaw_relative(fp32 *out_yaw_relative)
 {
-    app_gimbal_state_t state;
+    gimbal_state_t state;
     if (out_yaw_relative == NULL ||
-        chassis_copy_gimbal_state(&state) == 0 ||
+        chassis_read_gimbal_state(&state) == 0 ||
         state.turnaround_frame_valid == 0u)
     {
         return 0;
@@ -229,8 +229,8 @@ static bool_t chassis_gimbal_turnaround_get_frame_yaw_relative(fp32 *out_yaw_rel
 
 static bool_t chassis_gimbal_cmd_to_chassis_stop(void)
 {
-    app_gimbal_state_t state;
-    return (chassis_copy_gimbal_state(&state) != 0 && state.chassis_stop != 0u) ? 1 : 0;
+    gimbal_state_t state;
+    return (chassis_read_gimbal_state(&state) != 0 && state.chassis_stop != 0u) ? 1 : 0;
 }
 
 static uint16_t chassis_get_effective_switch(uint16_t raw_sw,
@@ -749,7 +749,7 @@ static void chassis_swing_control(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, c
     *angle_set = rad_format(centers_rad[st.center_idx] + offset);
 }
 
-static fp32 chassis_get_gimbal_yaw_relative_angle(const app_gimbal_motor_state_t *yaw_motor)
+static fp32 chassis_get_gimbal_yaw_relative_angle(const gimbal_motor_state_t *yaw_motor)
 {
     if (yaw_motor == NULL || yaw_motor->valid == 0u || yaw_motor->measure.valid == 0u)
     {

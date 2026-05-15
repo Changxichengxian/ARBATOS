@@ -430,7 +430,7 @@ static bool_t aux_tune_parse_u32(const char *s, uint32_t *out);
 static const config_param_desc_t *aux_tune_find_config_param_by_name(const char *name);
 #endif
 static void aux_tune_apply_config_param(config_param_apply_e action);
-static bool_t aux_tune_set_app_param(uint16_t id, fp32 value);
+static bool_t aux_tune_set_config_param(uint16_t id, fp32 value);
 static uint16_t aux_telem_min_period_ms(uint16_t channel_num);
 static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig);
 
@@ -745,7 +745,7 @@ static bool_t aux_tune_handle_line(const char *line)
 
         if (aux_tune_parse_u16(key_s, &id))
         {
-            if (aux_tune_set_app_param(id, v))
+            if (aux_tune_set_config_param(id, v))
             {
                 aux_cmd_seq++;
                 return 1;
@@ -755,7 +755,7 @@ static bool_t aux_tune_handle_line(const char *line)
 
 #if AUX_TUNE_ENABLE_PARAM_NAME_LOOKUP
         const config_param_desc_t *desc = aux_tune_find_config_param_by_name(key_s);
-        if (desc != NULL && aux_tune_set_app_param(desc->id, v))
+        if (desc != NULL && aux_tune_set_config_param(desc->id, v))
         {
             aux_cmd_seq++;
             return 1;
@@ -2117,7 +2117,7 @@ static void aux_tune_apply_config_param(config_param_apply_e action)
     }
 }
 
-static bool_t aux_tune_set_app_param(uint16_t id, fp32 value)
+static bool_t aux_tune_set_config_param(uint16_t id, fp32 value)
 {
     switch (id)
     {
