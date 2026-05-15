@@ -64,6 +64,16 @@ static inline void app_interface_header_init(app_interface_header_t *header,
     header->tick_ms = tick_ms;
 }
 
+typedef struct
+{
+    uint8_t valid;
+    uint16_t ecd;
+    int16_t speed_rpm;
+    int16_t given_current;
+    uint8_t temperature;
+    int16_t last_ecd;
+} app_motor_measure_state_t;
+
 #ifdef __cplusplus
 }
 #endif

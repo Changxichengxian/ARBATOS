@@ -28,6 +28,7 @@
 #include "control_input.h"
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
+#include "chassis_interface.h"
 #include "motor_config.h"
 #include "watch.h"
 #include "detect_task.h"

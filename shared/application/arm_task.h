@@ -9,42 +9,7 @@
 
 #pragma once
 
-#include "struct_typedef.h"
-
-typedef struct
-{
-    uint8_t online;
-    uint8_t rx_dlc;
-    uint16_t rx_id;
-    uint32_t rx_count;
-    uint32_t last_rx_tick;
-    fp32 position;
-    fp32 velocity;
-    fp32 torque;
-} arm_motor_feedback_t;
-
-typedef struct
-{
-    uint8_t enabled;
-    uint8_t rs485_port;
-    uint8_t motor_id;
-    uint8_t online;
-    uint8_t last_mode;
-    uint8_t motor_error;
-    int8_t motor_temp;
-    uint8_t last_tx_status;
-    uint32_t tx_count;
-    uint32_t tx_fail_count;
-    uint32_t rx_frame_count;
-    uint32_t rx_crc_fail_count;
-    uint32_t rx_parse_error_count;
-    uint32_t last_rx_tick_ms;
-    fp32 cmd_output_speed_rad_s;
-    fp32 cmd_output_kd;
-    fp32 torque_nm;
-    fp32 joint_speed_rad_s;
-    fp32 joint_position_rad;
-} arm_j0_unitree_state_t;
+#include "arm_interface.h"
 
 // Runtime tuning knobs shared by arm motor drivers.
 extern volatile uint8_t g_arm_deadman_hold_ctrl;

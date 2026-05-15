@@ -12,7 +12,7 @@
 
 #include "struct_typedef.h"
 #include "CAN_receive.h"
-#include "app_topics.h"
+#include "gimbal_interface.h"
 #include "pid.h"
 #include "manual_input.h"
 #include "user_lib.h"

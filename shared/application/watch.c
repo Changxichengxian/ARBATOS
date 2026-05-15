@@ -19,8 +19,9 @@
 
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
-#include "app_topics.h"
 #include "arm_task.h"
+#include "chassis_interface.h"
+#include "gimbal_interface.h"
 #include "INS_task.h"
 #include "detect_task.h"
 #include "mem_mang.h"
@@ -28,6 +29,7 @@
 #include "bsp_can.h"
 #include "sdcard.h"
 #include "sdlog.h"
+#include "shoot_interface.h"
 #include "host_link_task.h"
 #include "robot_task_profile.h"
 
