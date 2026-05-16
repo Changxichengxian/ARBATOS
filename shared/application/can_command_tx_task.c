@@ -273,6 +273,7 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
     actuator_cmd_t cmd;
     mit_motor_cmd_t mit_cmd;
     uint8_t have_cmd;
+    uint8_t active_cmd;
     uint16_t std_id;
 
     if (node == NULL)
@@ -288,6 +289,9 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
 
     (void)memset(&cmd, 0, sizeof(cmd));
     have_cmd = actuator_cmd_get_copy(actuator_id, &cmd);
+    active_cmd = (uint8_t)(have_cmd != 0u &&
+                           cmd.active != 0u &&
+                           cmd.mode != (uint8_t)ACTUATOR_CMD_MODE_NONE);
     if (have_cmd == 0u || cmd.active == 0u)
     {
         cmd.active = 1u;
@@ -303,7 +307,7 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
 
     if (can_tx_actuator_id_valid(actuator_id) != 0u &&
         mit_enabled[actuator_id] == 0u &&
-        can_tx_cmd_nonzero(&cmd) != 0u)
+        (active_cmd != 0u || can_tx_cmd_nonzero(&cmd) != 0u))
     {
         can_mit_motor_send_enable(bus, std_id);
         mit_enabled[actuator_id] = 1u;
@@ -311,6 +315,7 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
 
     if (can_tx_actuator_id_valid(actuator_id) != 0u &&
         mit_enabled[actuator_id] == 0u &&
+        active_cmd == 0u &&
         can_tx_cmd_nonzero(&cmd) == 0u)
     {
         return 1u;
@@ -639,22 +644,43 @@ static inline void can_tx_exec_friction3(void)
                      s_can_tx_friction_cmd[3]);
 }
 
-static inline void can_tx_exec_arm0(void)
+static inline void can_tx_exec_arm(uint8_t index)
 {
-    const motor_node_param_t *node = CAN_TX_AXIS_ARM_NODE(0u);
-    const int16_t current = actuator_cmd_get_current(ACTUATOR_ID_ARM_J0);
+    const actuator_id_e actuator_id = CAN_TX_AXIS_ARM_ACTUATOR_ID(index);
+    const motor_node_param_t *node = CAN_TX_AXIS_ARM_NODE(index);
+    actuator_cmd_t cmd;
+    const int16_t current = actuator_cmd_get_current(actuator_id);
 
-    if (current == 0 || motor_cfg_transport(node) != MOTOR_TRANSPORT_CAN)
+    if (motor_cfg_transport(node) != MOTOR_TRANSPORT_CAN)
     {
         return;
     }
 
-    CAN_TX_EXEC_AXIS(CAN_TX_AXIS_ARM_FALLBACK_BUS(0u),
-                     CAN_TX_AXIS_ARM_ACTUATOR_ID(0u),
+    (void)memset(&cmd, 0, sizeof(cmd));
+    if (current == 0 &&
+        (actuator_cmd_get_copy(actuator_id, &cmd) == 0u ||
+         cmd.active == 0u ||
+         cmd.mode == (uint8_t)ACTUATOR_CMD_MODE_NONE))
+    {
+        return;
+    }
+
+    CAN_TX_EXEC_AXIS(CAN_TX_AXIS_ARM_FALLBACK_BUS(index),
+                     actuator_id,
                      node,
-                     CAN_TX_AXIS_ARM_IS_RM_GROUP(0u),
-                     CAN_TX_AXIS_ARM_CAN_ID(0u),
+                     CAN_TX_AXIS_ARM_IS_RM_GROUP(index),
+                     CAN_TX_AXIS_ARM_CAN_ID(index),
                      current);
+}
+
+static inline void can_tx_exec_arm_all(void)
+{
+    can_tx_exec_arm(0u);
+    can_tx_exec_arm(1u);
+    can_tx_exec_arm(2u);
+    can_tx_exec_arm(3u);
+    can_tx_exec_arm(4u);
+    can_tx_exec_arm(5u);
 }
 
 // 离线分支只执行被允许的轴，其他轴保持 0 输出。
@@ -662,7 +688,7 @@ static void can_tx_exec_offline_axes(void)
 {
     can_tx_clear_rm_frames();
     can_tx_exec_yaw();
-    can_tx_exec_arm0();
+    can_tx_exec_arm_all();
     can_tx_exec_friction0();
     can_tx_exec_friction1();
     can_tx_exec_friction2();
@@ -681,7 +707,7 @@ static void can_tx_exec_online_axes(void)
     can_tx_exec_yaw_upper();
     can_tx_exec_pitch();
     can_tx_exec_trigger();
-    can_tx_exec_arm0();
+    can_tx_exec_arm_all();
     can_tx_exec_friction0();
     can_tx_exec_friction1();
     can_tx_exec_friction2();

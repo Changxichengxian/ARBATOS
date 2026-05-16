@@ -36,6 +36,7 @@
 #include "config.h"
 #include "robot_task_profile.h"
 #include "control_manager.h"
+#include "wheelleg_mit_task.h"
 
 /* USER CODE END Includes */
 
@@ -47,6 +48,7 @@ osThreadId_t sdlogTaskHandle;
 osThreadId_t canFeedbackRxTaskHandle;
 osThreadId_t canCommandTxTaskHandle;
 osThreadId_t chassisControlTaskHandle;
+osThreadId_t wheellegMitTaskHandle;
 osThreadId_t gimbalControlTaskHandle;
 osThreadId_t imuTaskHandle;
 
@@ -94,6 +96,7 @@ APP_THREAD_ATTR(sdlogTask, osPriorityLow, 512);
 APP_THREAD_ATTR(canCommandTxTask, osPriorityAboveNormal, 256);
 APP_THREAD_ATTR(canFeedbackRxTask, osPriorityHigh, 256);
 APP_THREAD_ATTR(chassisControlTask, osPriorityAboveNormal, 512);
+APP_THREAD_ATTR(wheellegMitTask, osPriorityAboveNormal, 768);
 APP_THREAD_ATTR(gimbalControlTask, osPriorityHigh, 512);
 APP_THREAD_ATTR(imuFusionTask, osPriorityRealtime, 1024);
 
@@ -177,6 +180,15 @@ void MX_FREERTOS_Init(void) {
   else
   {
     chassisControlTaskHandle = NULL;
+  }
+
+  if (robot_profile_is_wheelleg_mit())
+  {
+    wheellegMitTaskHandle = APP_THREAD_CREATE(wheellegMitTask, wheelleg_mit_task);
+  }
+  else
+  {
+    wheellegMitTaskHandle = NULL;
   }
 
   if (robot_profile_need_single_gimbal_control_task())

@@ -580,6 +580,11 @@
               <FilePath>..\\..\\..\\shared\\application\\can_mit_motor_driver.c</FilePath>
             </File>
             <File>
+              <FileName>wheelleg_mit_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\wheelleg_mit_task.c</FilePath>
+            </File>
+            <File>
               <FileName>can_feedback_rx_task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\application\\can_feedback_rx_task.c</FilePath>

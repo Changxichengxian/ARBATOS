@@ -909,7 +909,48 @@ typedef struct
 
 typedef struct
 {
-    uint8_t reserved0;
+    uint16_t task_init_time_ms;
+    uint16_t control_period_ms;
+
+    fp32 l1_m;
+    fp32 l2_m;
+    fp32 l3_m;
+    fp32 l4_m;
+    fp32 l5_m;
+    fp32 wheel_radius_m;
+    fp32 lqr_poly[12][4];
+
+    fp32 support_bias_n;
+    fp32 leg_mass_kg;
+    fp32 default_leg_length_m;
+    fp32 min_leg_length_m;
+    fp32 max_leg_length_m;
+
+    fp32 max_wheel_torque_nm;
+    fp32 max_joint_torque_nm;
+    fp32 max_jump_joint_torque_nm;
+    fp32 max_support_force_n;
+    fp32 attitude_limit_rad;
+    fp32 observer_lpf;
+
+    pid_param_t leg_length_pid;
+    pid_param_t leg_split_pid;
+    pid_param_t turn_pid;
+    pid_param_t roll_pid;
+
+    fp32 pitch_balance_offset_right_rad;
+    fp32 pitch_balance_offset_left_rad;
+    fp32 max_v_mps;
+    fp32 max_yaw_rate_radps;
+    uint16_t rc_deadband;
+    uint8_t enable_switch_pos; // MANUAL_INPUT_SWITCH_POS_*
+
+    uint8_t right_front_actuator; // actuator_id_e
+    uint8_t right_back_actuator;  // actuator_id_e
+    uint8_t right_wheel_actuator; // actuator_id_e
+    uint8_t left_front_actuator;  // actuator_id_e
+    uint8_t left_back_actuator;   // actuator_id_e
+    uint8_t left_wheel_actuator;  // actuator_id_e
 } wheelleg_mit_config_t;
 
 typedef struct

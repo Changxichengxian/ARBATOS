@@ -537,6 +537,11 @@
               <FilePath>..\\..\\..\\shared\\application\\can_mit_motor_driver.c</FilePath>
             </File>
             <File>
+              <FileName>wheelleg_mit_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\wheelleg_mit_task.c</FilePath>
+            </File>
+            <File>
               <FileName>unitree_motor_driver.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\application\\unitree_motor_driver.c</FilePath>

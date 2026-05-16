@@ -46,6 +46,7 @@
 #include "watch.h"
 #include "robot_task_profile.h"
 #include "control_manager.h"
+#include "wheelleg_mit_task.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -66,6 +67,7 @@ osThreadId_t elrs_link_thread_handle;
 osThreadId_t batteryMonitorTaskHandle;
 osThreadId_t servoControlTaskHandle;
 osThreadId_t sdlog_task_handle;
+osThreadId_t wheellegMitTaskHandle;
 
 
 /* USER CODE END PTD */
@@ -119,6 +121,7 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 APP_STATIC_THREAD(startupServiceTask, startup_service_task, osPriorityNormal, 512);
 APP_STATIC_THREAD(cali, calibrate_task, osPriorityNormal, 512);
 APP_STATIC_THREAD(chassisControlTask, chassis_control_task, osPriorityAboveNormal, 512);
+APP_STATIC_THREAD(wheellegMitTask, wheelleg_mit_task, osPriorityAboveNormal, 768);
 APP_STATIC_THREAD(canCommandTxTask, can_command_tx_task, osPriorityAboveNormal, 256);
 APP_STATIC_THREAD(canFeedbackRxTask, can_feedback_rx_task, osPriorityHigh, 256);
 APP_STATIC_THREAD(RCSBUS, rc_sbus_task, osPriorityAboveNormal, 256);
@@ -208,6 +211,15 @@ void MX_FREERTOS_Init(void) {
     else
     {
       chassisControlTaskHandle = NULL;
+    }
+
+    if (robot_profile_is_wheelleg_mit())
+    {
+      wheellegMitTaskHandle = APP_STATIC_THREAD_CREATE(wheellegMitTask, wheelleg_mit_task);
+    }
+    else
+    {
+      wheellegMitTaskHandle = NULL;
     }
 
     canCommandTxTaskHandle = APP_STATIC_THREAD_CREATE(canCommandTxTask, can_command_tx_task);

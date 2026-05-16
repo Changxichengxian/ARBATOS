@@ -8,6 +8,7 @@
  */
 
 #include "config.h"
+#include "actuator_cmd.h"
 
 /*
  * AUX 口临时改参：发送 "<id>:<value>"（例如 "1:1000"）
@@ -227,7 +228,62 @@ config_t g_config = {
             .key_right_mask = 1u << 3, // [111] D
         },
 
-    // 射击配置
+    // Wheel-leg MIT config
+    .wheelleg_mit =
+        {
+            .task_init_time_ms = 250u,
+            .control_period_ms = 3u,
+            .l1_m = 0.05000f,
+            .l2_m = 0.11404f,
+            .l3_m = 0.11404f,
+            .l4_m = 0.05000f,
+            .l5_m = 0.06000f,
+            .wheel_radius_m = 0.03275f,
+            .lqr_poly =
+                {
+                    {-243.932f, 105.148f, -19.1838f, -0.199759f},
+                    {-6.33721f, 2.6174f, -1.08798f, -0.0047227f},
+                    {-43.8763f, 16.3233f, -2.10154f, -0.127721f},
+                    {-52.0411f, 19.3719f, -2.60375f, -0.168927f},
+                    {-805.793f, 328.293f, -48.8092f, 2.92903f},
+                    {-40.1396f, 16.7832f, -2.61208f, 0.17602f},
+                    {-962.682f, 417.508f, -67.9889f, 4.84346f},
+                    {-89.4595f, 37.3246f, -5.80403f, 0.414703f},
+                    {-618.557f, 251.264f, -37.1404f, 2.18751f},
+                    {-800.904f, 324.39f, -47.7682f, 2.80481f},
+                    {3575.2f, -1332.91f, 172.196f, 9.48315f},
+                    {202.812f, -76.6035f, 10.1013f, 0.345984f},
+                },
+            .support_bias_n = 11.0f,
+            .leg_mass_kg = 0.12f,
+            .default_leg_length_m = 0.095f,
+            .min_leg_length_m = 0.085f,
+            .max_leg_length_m = 0.120f,
+            .max_wheel_torque_nm = 0.45f,
+            .max_joint_torque_nm = 3.0f,
+            .max_jump_joint_torque_nm = 3.0f,
+            .max_support_force_n = 60.0f,
+            .attitude_limit_rad = 0.45f,
+            .observer_lpf = 0.18f,
+            .leg_length_pid = {280.0f, 0.0f, 1200.0f, 35.0f, 0.0f},
+            .leg_split_pid = {30.0f, 0.0f, 1.0f, 2.0f, 0.0f},
+            .turn_pid = {0.6f, 0.0f, 0.08f, 0.10f, 0.0f},
+            .roll_pid = {25.0f, 0.0f, 3.0f, 15.0f, 0.0f},
+            .pitch_balance_offset_right_rad = 0.0f,
+            .pitch_balance_offset_left_rad = 0.0f,
+            .max_v_mps = 0.30f,
+            .max_yaw_rate_radps = 0.60f,
+            .rc_deadband = 10u,
+            .enable_switch_pos = MANUAL_INPUT_SWITCH_POS_MID,
+            .right_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J1,
+            .right_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J2,
+            .right_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J0,
+            .left_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J4,
+            .left_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J5,
+            .left_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J3,
+        },
+
+    // Shoot config
     .shoot =
         {
             .fric_speed_rpm = 4500.0f,         // [113] 摩擦轮目标转速（RPM）
