@@ -1,7 +1,7 @@
 #ifndef KALMAN_FILTER_H
 #define KALMAN_FILTER_H
 
-#include "struct_typedef.h"
+#include "types.h"
 
 typedef struct
 {

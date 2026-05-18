@@ -15,12 +15,13 @@
 - 板级端口配置：UART、CAN、SPI、I2C、PWM、GPIO。
 - 板载设备适配：IMU、蜂鸣器、按键、SD 卡、裁判串口等。
 - 板级启动代码：只有独立板级实验入口才放 `board_main.c`、`board_freertos.c`。
-- 和某块板子强绑定的 BSP 文件。
+- 和某块板子强绑定的端口文件，例如 `bsp_board_ports.h`、`bsp_imu_pwm_cfg.h`。
 
 ## 不应该放这里
 
-- 某台车的 PID、电机 ID、输入映射：放 `target/`。
+- 某台车的 PID、电机 ID、输入映射：放 `Robotconfig/`。
 - 可直接打开编译的完整 Keil 工程：放 `projects/`。
 - 跨板复用的控制逻辑和协议驱动：放 `shared/`。
+- 跨板复用的外设封装：放 `shared/hal/`，这里的 `bsp/` 只放具体板子的端口和配置。
 
 如果一个文件只因为“换板子”才需要改，它通常属于这里；如果只是换车型参数，不应该动这里。

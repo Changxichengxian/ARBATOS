@@ -1,7 +1,7 @@
 #ifndef AXIS_CURRENT_CONDITIONER_H
 #define AXIS_CURRENT_CONDITIONER_H
 
-#include "struct_typedef.h"
+#include "types.h"
 
 typedef struct
 {

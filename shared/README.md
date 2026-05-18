@@ -6,11 +6,22 @@
 
 ```text
 shared/
-|-- application/   # 控制任务、输入链路、主机链路、诊断、日志
-|-- bsp/           # 跨板 BSP 抽象和通用外设封装
-|-- components/    # 算法、控制器、设备驱动、FatFs、CRC、FIFO
-`-- common/        # 通用类型定义
+|-- application/   # 控制任务、通信链路、输入、电机、诊断、日志
+|   |-- arm/
+|   |-- chassis/
+|   |-- comm/
+|   |-- gimbal/
+|   |-- input/
+|   |-- motors/
+|   |-- robot/
+|   |-- services/
+|   |-- shoot/
+|   `-- wheelleg/
+|-- hal/           # 跨板复用的硬件适配实现
+`-- components/    # 算法、控制器、设备驱动、基础支持库和通用类型
 ```
+
+`shared/hal/` 和 `boards/<BOARD>/bsp/` 的边界：前者放多块板共用的 CAN、UART、USB、PWM 等实现；后者放某块板子的引脚、端口、设备安装方式和少量强板子相关代码。
 
 ## 应该放这里
 
@@ -22,7 +33,7 @@ shared/
 
 ## 不应该放这里
 
-- 具体车型的默认参数和电机装配：放 `target/`。
+- 具体车型的默认参数和电机装配：放 `Robotconfig/`。
 - 某块板子的引脚和端口分配：放 `boards/`。
 - Keil 工程文件和 CubeMX 工程入口：放 `projects/`。
 

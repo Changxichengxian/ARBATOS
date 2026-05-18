@@ -1,7 +1,7 @@
 #ifndef CHASSIS_POWER_LIMITER_H
 #define CHASSIS_POWER_LIMITER_H
 
-#include "struct_typedef.h"
+#include "types.h"
 #include "config.h"
 
 typedef struct

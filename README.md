@@ -2,7 +2,7 @@
 
 ARBATOS 是一套面向 RoboMaster 类机器人的 STM32 / FreeRTOS 下位机控制代码。它的目标不是做成“大而全的上位机系统”，而是把底盘、云台、射击、机械臂、通信、诊断和日志这些下位机功能收进一套能复用、能扩展、还能保证实时性的工程结构里。
 
-这份 README 按当前代码写。旧文档如果和代码不一致，先以 `projects/`、`target/`、`shared/`、`boards/` 里的代码为准。
+这份 README 按当前代码写。旧文档如果和代码不一致，先以 `projects/`、`Robotconfig/`、`shared/`、`boards/` 里的代码为准。
 
 **Author:** 谢宇瀚 <2811158416@qq.com>  
 **Repo:** https://github.com/Changxichengxian/ARBATOS.git
@@ -11,7 +11,7 @@ ARBATOS 是一套面向 RoboMaster 类机器人的 STM32 / FreeRTOS 下位机控
 
 当前代码已经不只是“基础框架移植”。主线已经有：
 
-- 多目标工程入口：`HERO`、`INFANTRY`、`SENTINEL`、`CARRIER`、`MC02_BASE`。
+- 多目标工程入口：`HERO`、`INFANTRY`、`SENTINEL`、`CARRIER`、`miniwheeleg`。
 - 多硬件板支持：DJI C 板、DJI A 板、DM MC02 H7 板。
 - 静态 FreeRTOS 任务创建，并按任务族配置（profile，用配置决定启哪些任务）选择底盘、云台等任务；MC02 H7 实验入口还按配置接机械臂任务。
 - 多源手动输入：DBUS/SBUS、ELRS/CRSF、图传遥控、板载按键。
@@ -66,7 +66,7 @@ ARBATOS 采用“三层复用结构，加一层项目入口”：
 boards/<BOARD>/
   硬件板支持、外设适配、板级启动代码
 
-target/<TARGET>/
+Robotconfig/<TARGET>/
   车型参数、目标差异、默认配置、设备在线检测
 
 shared/
@@ -76,12 +76,12 @@ projects/<TARGET>/
   可直接打开编译的 Keil 工程入口，车和实验目标的完整工程放这里
 ```
 
-`board` 和 `target` 不是一回事：
+`board` 和 `Robotconfig` 不是一回事：
 
 - `board` 是硬件板，负责芯片、外设、引脚和启动。
-- `target` 是具体机器人目标，负责 PID 参数、电机 ID、通道映射和行为策略。
+- `Robotconfig` 是具体机器人目标，负责 PID 参数、电机 ID、通道映射和行为策略。
 - `shared` 放能跨机器人复用的代码。
-- `projects` 放最终打开编译的工程入口。`HERO`、`INFANTRY`、`SENTINEL`、`CARRIER` 这类车名目录只放在这里，`MC02_BASE` 这种实验入口也放这里。
+- `projects` 放最终打开编译的工程入口。`HERO`、`INFANTRY`、`SENTINEL`、`CARRIER` 这类车名目录只放在这里，`miniwheeleg` 这种实验入口也放这里。
 
 ### 板级工程
 
@@ -99,9 +99,9 @@ projects/<TARGET>/
 | `INFANTRY` | 西北农林科技大学步兵机器人 |
 | `SENTINEL` | 西北农林科技大学哨兵机器人 |
 | `CARRIER` | 西北农林科技大学工程机器人 |
-| `MC02_BASE` | H7 接板和轮腿 MIT 调试入口 |
+| `miniwheeleg` | H7 接板和轮腿 MIT 调试入口 |
 
-每个 `target/<TARGET>/` 当前至少提供：
+每个 `Robotconfig/<TARGET>/` 当前至少提供：
 
 - `config.h`：参数结构、任务族、输入映射、遥测信号枚举、轴电机装配结构。
 - `config.c`：默认参数、全局变量 `g_config`、只读电机型号表 `g_motor_config`、AUX 临时调参表。
@@ -112,10 +112,9 @@ projects/<TARGET>/
 
 ```text
 shared/
-|-- application/   # 控制任务、输入链路、主机链路、诊断、日志
-|-- bsp/           # ADC、CAN、SPI、I2C、UART、USB、PWM 等外设封装
-|-- components/    # AHRS、Mahony、Kalman、PID、设备驱动、CRC、FIFO
-`-- common/        # 通用类型定义
+|-- application/   # 控制任务、通信链路、输入、电机、诊断、日志
+|-- hal/           # ADC、CAN、SPI、I2C、UART、USB、PWM 等跨板外设封装
+`-- components/    # AHRS、Mahony、Kalman、PID、设备驱动、CRC、FIFO、通用类型
 ```
 
 ## 工程入口
@@ -124,11 +123,11 @@ shared/
 
 | Target | Keil 工程 | 默认配置 |
 |---|---|---|
-| `HERO` | `projects/HERO/MDK-ARM/HERO.uvprojx` | `target/HERO/config.c` |
-| `INFANTRY` | `projects/INFANTRY/MDK-ARM/INFANTRY.uvprojx` | `target/INFANTRY/config.c` |
-| `SENTINEL` | `projects/SENTINEL/MDK-ARM/SENTINEL.uvprojx` | `target/SENTINEL/config.c` |
-| `CARRIER` | `projects/CARRIER/MDK-ARM/CARRIER.uvprojx` | `target/CARRIER/config.c` |
-| `MC02_BASE` | `projects/MC02_BASE/MDK-ARM/MC02_BASE.uvprojx` | `target/MC02_BASE/config.c` |
+| `HERO` | `projects/HERO/MDK-ARM/HERO.uvprojx` | `Robotconfig/HERO/config.c` |
+| `INFANTRY` | `projects/INFANTRY/MDK-ARM/INFANTRY.uvprojx` | `Robotconfig/INFANTRY/config.c` |
+| `SENTINEL` | `projects/SENTINEL/MDK-ARM/SENTINEL.uvprojx` | `Robotconfig/SENTINEL/config.c` |
+| `CARRIER` | `projects/CARRIER/MDK-ARM/CARRIER.uvprojx` | `Robotconfig/CARRIER/config.c` |
+| `miniwheeleg` | `projects/miniwheeleg/MDK-ARM/miniwheeleg.uvprojx` | `Robotconfig/miniwheeleg/config.c` |
 
 注意：
 
@@ -178,7 +177,7 @@ F4 车工程主要在 `projects/<TARGET>/Core/Src/freertos.c` 创建任务。MC0
 | `health_monitor_task` | 在线检测、状态汇总、系统统计 |
 | `status_led_task` | 状态灯和提示输出 |
 
-任务选择入口在 `shared/application/robot_task_profile.h`。现在已经有经典底盘、单云台、机械臂的创建判断；双云台、轮腿舵机、轮腿 MIT 的判断入口也有，但对应实际控制任务还没补完整。
+任务选择入口在 `shared/application/robot/robot_task_profile.h`。现在已经有经典底盘、单云台、机械臂的创建判断；双云台、轮腿舵机、轮腿 MIT 的判断入口也有，但对应实际控制任务还没补完整。
 
 ## 当前控制链路
 
@@ -345,38 +344,38 @@ actuator_feedback + 旧电机反馈结构
 
 | 模块 | 入口 |
 |---|---|
-| 手动输入 | `shared/application/manual_input.c` |
-| 输入映射 | `shared/application/control_input.c` |
-| 主机链路 | `shared/application/host_link_task.c` |
-| 视觉链路 | `shared/application/vision_link.c` |
-| 图传遥控输入 | `shared/application/image_remote_link.c` |
-| ELRS/CRSF 输入 | `shared/application/elrs_task.c` |
-| 状态共享 | `shared/application/state_store.c`、`shared/application/robot_state.h` |
-| 消息基础类型 | `shared/application/robot_msg.h` |
-| 底盘状态消息 | `shared/application/chassis_state.h` |
-| 云台状态消息 | `shared/application/gimbal_state.h` |
-| 射击状态消息 | `shared/application/shoot_state.h` |
-| 机械臂命令和状态消息 | `shared/application/arm_msg.h` |
-| 轮腿命令和状态消息 | `shared/application/wheelleg_msg.h` |
-| 控制器生命周期 | `shared/application/control_manager.c` |
-| 执行器命令 | `shared/application/actuator_cmd.c` |
-| 电机实例 | `shared/application/motor_instance.c` |
-| 电机参数查询 | `shared/application/motor_config.h` |
-| 电机协议能力表 | `shared/application/motor_model_db.c` |
-| 共享电机驱动 | `shared/application/can_mit_motor_driver.c`、`shared/application/unitree_motor_driver.c` |
-| CAN 接收 | `shared/application/can_feedback_rx_task.c`、`shared/application/CAN_receive.c` |
-| CAN 发送 | `shared/application/can_command_tx_task.c` |
-| 底盘控制 | `shared/application/chassis_control_task.c` |
-| 云台控制 | `shared/application/gimbal_control_task.c` |
-| 射击控制 | `shared/application/shoot.c` |
-| 机械臂运动 | `shared/application/arm_motion.c` |
-| 裁判系统 | `shared/application/referee_rx_task.c`、`shared/application/referee.c` |
-| 电池监测 | `shared/application/battery_monitor_task.c` |
-| 舵机输出 | `shared/application/servo_control_task.c` |
-| 状态灯 | `shared/application/status_led_task.c` |
-| 诊断观察 | `shared/application/watch.c` |
-| 运行耗时统计 | `shared/application/rt_profiler.c` |
-| TF/SD 日志 | `shared/application/sdlog_task.c`、`shared/application/sdlog.c` |
+| 手动输入 | `shared/application/input/manual_input.c` |
+| 输入映射 | `shared/application/input/control_input.c` |
+| 主机链路 | `shared/application/comm/host/host_link_task.c` |
+| 视觉链路 | `shared/application/comm/vision/vision_link.c` |
+| 图传遥控输入 | `shared/application/input/image_remote_link.c` |
+| ELRS/CRSF 输入 | `shared/application/input/elrs_task.c` |
+| 状态共享 | `shared/application/robot/state_store.c`、`shared/application/robot/robot_state.h` |
+| 消息基础类型 | `shared/application/robot/robot_msg.h` |
+| 底盘状态消息 | `shared/application/chassis/chassis_state.h` |
+| 云台状态消息 | `shared/application/gimbal/gimbal_state.h` |
+| 射击状态消息 | `shared/application/shoot/shoot_state.h` |
+| 机械臂命令和状态消息 | `shared/application/arm/arm_msg.h` |
+| 轮腿命令和状态消息 | `shared/application/wheelleg/wheelleg_msg.h` |
+| 控制器生命周期 | `shared/application/robot/control_manager.c` |
+| 执行器命令 | `shared/application/robot/actuator_cmd.c` |
+| 电机实例 | `shared/application/motors/motor_instance.c` |
+| 电机参数查询 | `shared/application/motors/motor_config.h` |
+| 电机协议能力表 | `shared/application/motors/motor_model_db.c` |
+| 共享电机驱动 | `shared/application/motors/can_mit_motor_driver.c`、`shared/application/motors/unitree_motor_driver.c` |
+| CAN 接收 | `shared/application/comm/can/can_feedback_rx_task.c`、`shared/application/comm/can/CAN_receive.c` |
+| CAN 发送 | `shared/application/comm/can/can_command_tx_task.c` |
+| 底盘控制 | `shared/application/chassis/chassis_control_task.c` |
+| 云台控制 | `shared/application/gimbal/gimbal_control_task.c` |
+| 射击控制 | `shared/application/shoot/shoot.c` |
+| 机械臂运动 | `shared/application/arm/arm_motion.c` |
+| 裁判系统 | `shared/application/comm/referee/referee_rx_task.c`、`shared/application/comm/referee/referee.c` |
+| 电池监测 | `shared/application/services/battery/battery_monitor_task.c` |
+| 舵机输出 | `shared/application/services/servo/servo_control_task.c` |
+| 状态灯 | `shared/application/services/startup/status_led_task.c` |
+| 诊断观察 | `shared/application/services/diagnostics/watch.c` |
+| 运行耗时统计 | `shared/application/services/diagnostics/rt_profiler.c` |
+| TF/SD 日志 | `shared/application/services/storage/sdlog_task.c`、`shared/application/services/storage/sdlog.c` |
 
 `robot_msg.h` 和各 `*_state.h` / `*_msg.h` 是 ARBATOS 原生结构体消息。它们只使用 C 结构体和固定状态表，不引入动态分配、运行时反射或外部中间件。`robot_state.h` 是聚合入口，新代码也可以只包含自己需要的模块头文件。
 
@@ -393,7 +392,7 @@ actuator_feedback + 旧电机反馈结构
 - `g_motor_config` 是只读电机型号表。
 - `motor_model_db.c` 是共享协议能力表。
 - `g_config.motor` 是当前目标的轴装配表。
-- `g_config.motor` 没放进 AUX 调参表；换电机或换接线时，改对应 target 的 `config.c`。
+- `g_config.motor` 没放进 AUX 调参表；换电机或换接线时，改对应 Robotconfig 的 `config.c`。
 - 底盘、云台、射击和机械臂只对“轴”发命令，通过 `motor_config.h` 和 `motor_instance.c` 处理电机差异。
 
 主要配置块包括：
@@ -426,7 +425,7 @@ actuator_feedback + 旧电机反馈结构
 
 1. 安装 Keil MDK-ARM v5 和对应 STM32F4 / STM32H7 芯片包。
 2. 打开目标工程，例如 `projects/HERO/MDK-ARM/HERO.uvprojx`。
-3. 确认当前 target 的 `config.c` 符合硬件接线，尤其是 `g_config.profile` 和 `g_config.motor`。
+3. 确认当前 Robotconfig 的 `config.c` 符合硬件接线，尤其是 `g_config.profile` 和 `g_config.motor`。
 4. 确认板级串口、CAN、IMU、蜂鸣器、按键等配置在 `boards/<BOARD>/` 下匹配当前硬件。
 5. 编译并下载到对应板卡。
 6. 首次上车前，先用 `g_watch`、AUX 遥测或 TF/SD 日志确认输入、电机反馈、任务状态都正常。
@@ -444,31 +443,30 @@ ARBATOS/
 |   |-- INFANTRY/
 |   |-- SENTINEL/
 |   |-- CARRIER/
-|   `-- MC02_BASE/
-|-- target/
+|   `-- miniwheeleg/
+|-- Robotconfig/
 |   |-- HERO/
 |   |-- INFANTRY/
 |   |-- SENTINEL/
 |   |-- CARRIER/
-|   `-- MC02_BASE/
+|   `-- miniwheeleg/
 |-- shared/
 |   |-- application/
 |   |-- bsp/
-|   |-- components/
-|   `-- common/
+|   `-- components/
 |-- legal/
 |-- local/
 `-- tools/
 ```
 
-注意：这里没有 `target/<TARGET>/User/application/`。如果看到旧文档或旧工程里还写这个路径，那就是过期引用。
+注意：这里没有 `Robotconfig/<TARGET>/User/application/`。如果看到旧文档或旧工程里还写这个路径，那就是过期引用。
 
 ## 更多文档
 
 - `legal/`：授权、商用、第三方组件和贡献边界，继续跟随 Git。
 - `local/docs/`：本地文档、接入记录、厂商资料和清理清单，不再提交到 Git。
 - `projects/README.md`：项目入口说明。
-- `target/README.md`：目标配置层说明。
+- `Robotconfig/README.md`：机器人配置层说明。
 - `boards/README.md`：板级适配层说明。
 - `shared/README.md`：共享代码层说明。
 - `boards/*/README.md`：各硬件板说明。
@@ -476,9 +474,9 @@ ARBATOS/
 
 ## 扩展建议
 
-新增 target 时：
+新增 Robotconfig 时：
 
-1. 在 `target/` 下创建新的目标目录。
+1. 在 `Robotconfig/` 下创建新的目标目录。
 2. 准备 `config.h` / `config.c`。
 3. 配好 `g_config.profile`、`g_config.motor` 和输入映射。
 4. 按需要补 `detect_task.c`、`INS_task.c` 或主机链路空实现。

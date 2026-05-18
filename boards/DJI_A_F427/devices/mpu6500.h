@@ -1,7 +1,7 @@
 #ifndef MPU6500_H
 #define MPU6500_H
 
-#include "struct_typedef.h"
+#include "types.h"
 
 typedef struct
 {

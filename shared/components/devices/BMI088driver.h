@@ -1,7 +1,7 @@
 #ifndef BMI088DRIVER_H
 #define BMI088DRIVER_H
 
-#include "struct_typedef.h"
+#include "types.h"
 
 #define BMI088_TEMP_FACTOR 0.125f
 #define BMI088_TEMP_OFFSET 23.0f
