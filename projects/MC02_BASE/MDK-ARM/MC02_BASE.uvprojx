@@ -1,7 +1,10 @@
-<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
 <Project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="project_projx.xsd">
+
   <SchemaVersion>2.1</SchemaVersion>
+
   <Header>### uVision Project, (C) Keil Software</Header>
+
   <Targets>
     <Target>
       <TargetName>MC02_BASE</TargetName>
@@ -542,6 +545,11 @@
               <FilePath>..\\..\\..\\shared\\application\\wheelleg_mit_task.c</FilePath>
             </File>
             <File>
+              <FileName>battery_monitor_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\battery_monitor_task.c</FilePath>
+            </File>
+            <File>
               <FileName>unitree_motor_driver.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\application\\unitree_motor_driver.c</FilePath>
@@ -610,6 +618,11 @@
               <FileName>bsp_buzzer.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_buzzer.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_adc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\bsp\\boards\\bsp_adc.c</FilePath>
             </File>
             <File>
               <FileName>bsp_laser.c</FileName>
@@ -1074,16 +1087,18 @@
       </Groups>
     </Target>
   </Targets>
+
   <RTE>
-    <apis />
+    <apis/>
     <components>
       <component Cclass="CMSIS" Cgroup="CORE" Cvendor="ARM" Cversion="4.3.0" condition="CMSIS Core">
-        <package name="CMSIS" schemaVersion="1.3" url="http://www.keil.com/pack/" vendor="ARM" version="4.5.0" />
+        <package name="CMSIS" schemaVersion="1.3" url="http://www.keil.com/pack/" vendor="ARM" version="4.5.0"/>
         <targetInfos>
-          <targetInfo name="MC02_BASE" />
+          <targetInfo name="MC02_BASE"/>
         </targetInfos>
       </component>
     </components>
-    <files />
+    <files/>
   </RTE>
+
 </Project>

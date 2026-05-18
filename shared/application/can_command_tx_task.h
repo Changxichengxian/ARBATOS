@@ -11,8 +11,6 @@
 #ifndef CAN_COMMAND_TX_TASK_H
 #define CAN_COMMAND_TX_TASK_H
 
-#include "struct_typedef.h"
-
 void can_command_tx_task(void const *pvParameters);
 
 #endif

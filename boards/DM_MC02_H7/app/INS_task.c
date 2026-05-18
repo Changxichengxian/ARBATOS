@@ -6,6 +6,7 @@
 #include "cmsis_os2.h"
 
 #include "bmi088driver.h"
+#include "bsp_buzzer.h"
 #include "bsp_imu_pwm.h"
 #include "bsp_time.h"
 #include "detect_task.h"
@@ -14,6 +15,7 @@
 #include "config.h"
 #include "tim.h"
 #include "user_lib.h"
+#include "watch.h"
 
 #include <math.h>
 #include <stdbool.h>
@@ -39,6 +41,7 @@
 #define IMU_TEMP_PID_OUTPUT_FULL_SCALE 5000.0f
 #define IMU_SDLOG_BASE_STREAM_MAX_SAMPLES 16u
 #define IMU_SDLOG_PID_PERIOD_MS       10u
+#define IMU_BOOT_SOUND_DEFAULT_VOLUME 255u
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846f
@@ -65,6 +68,7 @@ static bool_t imu_acc_is_healthy(const fp32 acc[3]);
 static float imu_calc_dynamic_kp(bool_t use_acc, const fp32 gyro[3], uint32_t now_ms);
 static void imu_update_euler_from_quat(const fp32 quat[4], fp32 euler[3]);
 static void imu_fusion_reset(void);
+static void imu_boot_sound_success(void);
 
 fp32 gyro_scale_factor[3][3] = {BMI088_BOARD_INSTALL_SPIN_MATRIX};
 fp32 gyro_offset[3];
@@ -231,21 +235,35 @@ void INS_task(void const *pvParameters)
 {
     (void)pvParameters;
 
+    watch_imu_set_stage(WATCH_IMU_STAGE_ENTER);
+    watch_task_wait(WATCH_TASK_IMU);
     osDelay(imu_cfg->task_init_time_ms);
+    watch_imu_set_stage(WATCH_IMU_STAGE_INIT_DELAY_DONE);
     (void)HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
 
+    watch_imu_set_stage(WATCH_IMU_STAGE_BMI088_INIT_TRY);
     while (BMI088_init() != 0u)
     {
+        watch_imu_set_stage(WATCH_IMU_STAGE_BMI088_INIT_RETRY);
+        watch_task_wait(WATCH_TASK_IMU);
+        watch_task_error(WATCH_TASK_IMU);
         osDelay(100u);
     }
+    watch_imu_set_stage(WATCH_IMU_STAGE_BMI088_INIT_OK);
+    watch_task_wait(WATCH_TASK_IMU);
 
     bmi088_real_data_t raw = {0};
     BMI088_read(raw.gyro, raw.accel, &raw.temp);
 
+    watch_imu_set_stage(WATCH_IMU_STAGE_GYRO_BOOT_CALIB);
     gyro_boot_calibrating = 1;
     gyro_boot_calibrated = gyro_boot_calibration();
     gyro_boot_calibrating = 0;
     gyro_boot_initial_result = gyro_boot_calibrated ? INS_GYRO_BOOT_INIT_SUCCESS : INS_GYRO_BOOT_INIT_FAILED;
+    if (gyro_boot_calibrated != 0)
+    {
+        imu_boot_sound_success();
+    }
 
     imu_cali_solve(INS_gyro, INS_accel, raw.gyro, raw.accel);
     for (uint8_t i = 0u; i < 3u; i++)
@@ -264,6 +282,8 @@ void INS_task(void const *pvParameters)
 
     while (1)
     {
+        watch_imu_set_stage(WATCH_IMU_STAGE_FUSION_LOOP);
+        watch_task_beat(WATCH_TASK_IMU);
         BMI088_read(raw.gyro, raw.accel, &raw.temp);
         detect_hook(BOARD_GYRO_TOE);
         detect_hook(BOARD_ACCEL_TOE);
@@ -479,6 +499,52 @@ const fp32 *get_mag_data_point(void)
     return INS_mag;
 }
 
+typedef struct
+{
+    uint16_t freq_hz;
+    uint16_t on_ms;
+    uint16_t off_ms;
+} imu_boot_sound_step_t;
+
+static uint8_t imu_boot_sound_volume(void)
+{
+    uint8_t volume = (uint8_t)g_config.buzzer.pcm.volume;
+
+    if (volume == 0u)
+    {
+        volume = IMU_BOOT_SOUND_DEFAULT_VOLUME;
+    }
+    return volume;
+}
+
+static void imu_boot_sound_success(void)
+{
+    static const imu_boot_sound_step_t seq[] = {
+        {659u, 105u, 34u},
+        {784u, 110u, 36u},
+        {988u, 220u, 0u},
+    };
+    const uint8_t volume = imu_boot_sound_volume();
+
+    if (g_config.buzzer.enable == 0u)
+    {
+        return;
+    }
+
+    for (uint8_t i = 0u; i < (uint8_t)(sizeof(seq) / sizeof(seq[0])); i++)
+    {
+        if (buzzer_tone_start_hz(seq[i].freq_hz, volume) == 0)
+        {
+            osDelay(seq[i].on_ms);
+            buzzer_tone_stop();
+        }
+        if (seq[i].off_ms != 0u)
+        {
+            osDelay(seq[i].off_ms);
+        }
+    }
+}
+
 static bool gyro_boot_calibration(void)
 {
     fp32 gyro_sum[3] = {0.0f, 0.0f, 0.0f};
@@ -487,6 +553,11 @@ static bool gyro_boot_calibration(void)
 
     for (uint16_t i = 0u; i < GYRO_BOOT_CALIB_SAMPLES; i++)
     {
+        if ((i % 100u) == 0u)
+        {
+            watch_task_wait(WATCH_TASK_IMU);
+        }
+
         BMI088_read(raw.gyro, raw.accel, &raw.temp);
 
         fp32 gyro_rot[3];

@@ -12,18 +12,29 @@
 #include "cmsis_os.h"
 
 #include "bsp_adc.h"
+#include "bsp_buzzer.h"
 #include "user_lib.h"
 #include "config.h"
 #include "sdlog.h"
 
 static const voltage_config_t *const voltage_cfg = &g_config.voltage;
 
+#define BATTERY_MONITOR_PERIOD_MS             100u
+#define BATTERY_LOW_EXIT_HYSTERESIS_V         0.5f
+#define BATTERY_ALARM_BEEP_FREQ_HZ            2600u
+#define BATTERY_ALARM_BEEP_VOLUME             180u
+#define BATTERY_ALARM_BEEP_ON_MS              120u
+#define BATTERY_ALARM_BEEP_OFF_MS             160u
 
 static fp32 calc_battery_percentage(float voltage);
+static void battery_low_alarm_update(void);
 
 
 fp32 battery_voltage;
 fp32 electricity_percentage;
+static uint8_t battery_low_alarm;
+static uint8_t battery_alarm_beep_on;
+static uint16_t battery_alarm_beep_elapsed_ms;
 
 /**
   * @brief          power ADC and calculate electricity percentage
@@ -50,7 +61,9 @@ void battery_monitor_task(void const * argument)
         pkt.percent = electricity_percentage;
         sdlog_write(SDLOG_TAG_BATTERY, &pkt, (uint16_t)sizeof(pkt));
 
-        osDelay(100);
+        battery_low_alarm_update();
+
+        osDelay(BATTERY_MONITOR_PERIOD_MS);
     }
 }
 
@@ -111,4 +124,70 @@ static fp32 calc_battery_percentage(float voltage)
 uint16_t get_battery_percentage(void)
 {
     return (uint16_t)(electricity_percentage * 100.0f);
+}
+
+fp32 get_battery_voltage_cached(void)
+{
+    return battery_voltage;
+}
+
+fp32 get_battery_percentage_fp32(void)
+{
+    return electricity_percentage;
+}
+
+uint8_t battery_monitor_is_low_alarm(void)
+{
+    return battery_low_alarm;
+}
+
+static void battery_low_alarm_update(void)
+{
+    const fp32 low_voltage = voltage_cfg->low_battery_voltage;
+    const uint8_t was_alarm = battery_low_alarm;
+
+    if ((battery_voltage > 1.0f) && (battery_voltage <= low_voltage))
+    {
+        battery_low_alarm = 1u;
+    }
+    else if (battery_voltage > (low_voltage + BATTERY_LOW_EXIT_HYSTERESIS_V))
+    {
+        battery_low_alarm = 0u;
+    }
+
+    if (battery_low_alarm == 0u)
+    {
+        if (battery_alarm_beep_on != 0u)
+        {
+            buzzer_tone_stop();
+        }
+        battery_alarm_beep_on = 0u;
+        battery_alarm_beep_elapsed_ms = 0u;
+        return;
+    }
+
+    if (was_alarm == 0u)
+    {
+        battery_alarm_beep_on = 1u;
+        battery_alarm_beep_elapsed_ms = 0u;
+        (void)buzzer_tone_start_hz(BATTERY_ALARM_BEEP_FREQ_HZ, BATTERY_ALARM_BEEP_VOLUME);
+        return;
+    }
+
+    battery_alarm_beep_elapsed_ms = (uint16_t)(battery_alarm_beep_elapsed_ms + BATTERY_MONITOR_PERIOD_MS);
+    if (battery_alarm_beep_on != 0u)
+    {
+        if (battery_alarm_beep_elapsed_ms >= BATTERY_ALARM_BEEP_ON_MS)
+        {
+            buzzer_tone_stop();
+            battery_alarm_beep_on = 0u;
+            battery_alarm_beep_elapsed_ms = 0u;
+        }
+    }
+    else if (battery_alarm_beep_elapsed_ms >= BATTERY_ALARM_BEEP_OFF_MS)
+    {
+        (void)buzzer_tone_start_hz(BATTERY_ALARM_BEEP_FREQ_HZ, BATTERY_ALARM_BEEP_VOLUME);
+        battery_alarm_beep_on = 1u;
+        battery_alarm_beep_elapsed_ms = 0u;
+    }
 }

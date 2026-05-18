@@ -11,7 +11,7 @@
 #include "bsp_dwt.h"
 #include "main.h"
 
-static uint8_t fac_us = 0;
+static uint32_t fac_us = 0;
 static uint32_t fac_ms = 0;
 
 void delay_init(void)
@@ -28,6 +28,10 @@ void delay_us(uint16_t nus)
     uint32_t tnow = 0;
     uint32_t tcnt = 0;
     uint32_t reload = 0;
+    if (fac_us == 0u)
+    {
+        delay_init();
+    }
     reload = SysTick->LOAD;
     ticks = nus * fac_us;
     told = SysTick->VAL;
@@ -60,6 +64,10 @@ void delay_ms(uint16_t nms)
     uint32_t tnow = 0;
     uint32_t tcnt = 0;
     uint32_t reload = 0;
+    if (fac_ms == 0u)
+    {
+        delay_init();
+    }
     reload = SysTick->LOAD;
     ticks = nms * fac_ms;
     told = SysTick->VAL;

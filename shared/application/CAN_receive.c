@@ -200,7 +200,10 @@ static uint8_t can_rx_process_mit_node_frame(motor_measure_t *measure,
         fb.online = 1u;
         fb.bus = bus;
         fb.rx_dlc = dlc;
+        fb.rx_data0 = data[0];
         fb.transport = (uint8_t)ACTUATOR_TRANSPORT_CAN;
+        fb.motor_id = mit.motor_id;
+        fb.state = mit.state;
         fb.rx_id = std_id;
         fb.rx_count = prev_rx_count + 1u;
         fb.last_rx_tick = mit.last_rx_tick;
@@ -452,6 +455,81 @@ uint32_t CAN_get_can3_rx_drop_count(void)
     return bsp_can_rx_get_drop_count(3u);
 }
 
+uint32_t CAN_get_can1_rx_count(void)
+{
+    return bsp_can_rx_get_count(1u);
+}
+
+uint32_t CAN_get_can2_rx_count(void)
+{
+    return bsp_can_rx_get_count(2u);
+}
+
+uint32_t CAN_get_can3_rx_count(void)
+{
+    return bsp_can_rx_get_count(3u);
+}
+
+uint16_t CAN_get_can1_last_rx_id(void)
+{
+    return bsp_can_rx_get_last_std_id(1u);
+}
+
+uint16_t CAN_get_can2_last_rx_id(void)
+{
+    return bsp_can_rx_get_last_std_id(2u);
+}
+
+uint16_t CAN_get_can3_last_rx_id(void)
+{
+    return bsp_can_rx_get_last_std_id(3u);
+}
+
+uint8_t CAN_get_can1_last_rx_dlc(void)
+{
+    return bsp_can_rx_get_last_dlc(1u);
+}
+
+uint8_t CAN_get_can2_last_rx_dlc(void)
+{
+    return bsp_can_rx_get_last_dlc(2u);
+}
+
+uint8_t CAN_get_can3_last_rx_dlc(void)
+{
+    return bsp_can_rx_get_last_dlc(3u);
+}
+
+uint16_t CAN_get_can1_last_tx_id(void)
+{
+    return bsp_can_get_last_tx_std_id(1u);
+}
+
+uint16_t CAN_get_can2_last_tx_id(void)
+{
+    return bsp_can_get_last_tx_std_id(2u);
+}
+
+uint16_t CAN_get_can3_last_tx_id(void)
+{
+    return bsp_can_get_last_tx_std_id(3u);
+}
+
+uint8_t CAN_get_can1_last_tx_dlc(void)
+{
+    return bsp_can_get_last_tx_dlc(1u);
+}
+
+uint8_t CAN_get_can2_last_tx_dlc(void)
+{
+    return bsp_can_get_last_tx_dlc(2u);
+}
+
+uint8_t CAN_get_can3_last_tx_dlc(void)
+{
+    return bsp_can_get_last_tx_dlc(3u);
+}
+
 uint32_t CAN_get_can1_tx_count(void)
 {
     return bsp_can_get_tx_count(1u);
@@ -480,4 +558,139 @@ uint32_t CAN_get_can2_tx_fail_count(void)
 uint32_t CAN_get_can3_tx_fail_count(void)
 {
     return bsp_can_get_tx_fail_count(3u);
+}
+
+uint8_t CAN_get_can1_protocol_lec(void)
+{
+    return bsp_can_get_protocol_last_error_code(1u);
+}
+
+uint8_t CAN_get_can2_protocol_lec(void)
+{
+    return bsp_can_get_protocol_last_error_code(2u);
+}
+
+uint8_t CAN_get_can3_protocol_lec(void)
+{
+    return bsp_can_get_protocol_last_error_code(3u);
+}
+
+uint8_t CAN_get_can1_protocol_dlec(void)
+{
+    return bsp_can_get_protocol_data_last_error_code(1u);
+}
+
+uint8_t CAN_get_can2_protocol_dlec(void)
+{
+    return bsp_can_get_protocol_data_last_error_code(2u);
+}
+
+uint8_t CAN_get_can3_protocol_dlec(void)
+{
+    return bsp_can_get_protocol_data_last_error_code(3u);
+}
+
+uint8_t CAN_get_can1_protocol_activity(void)
+{
+    return bsp_can_get_protocol_activity(1u);
+}
+
+uint8_t CAN_get_can2_protocol_activity(void)
+{
+    return bsp_can_get_protocol_activity(2u);
+}
+
+uint8_t CAN_get_can3_protocol_activity(void)
+{
+    return bsp_can_get_protocol_activity(3u);
+}
+
+uint8_t CAN_get_can1_error_passive(void)
+{
+    return bsp_can_get_protocol_error_passive(1u);
+}
+
+uint8_t CAN_get_can2_error_passive(void)
+{
+    return bsp_can_get_protocol_error_passive(2u);
+}
+
+uint8_t CAN_get_can3_error_passive(void)
+{
+    return bsp_can_get_protocol_error_passive(3u);
+}
+
+uint8_t CAN_get_can1_error_warning(void)
+{
+    return bsp_can_get_protocol_warning(1u);
+}
+
+uint8_t CAN_get_can2_error_warning(void)
+{
+    return bsp_can_get_protocol_warning(2u);
+}
+
+uint8_t CAN_get_can3_error_warning(void)
+{
+    return bsp_can_get_protocol_warning(3u);
+}
+
+uint8_t CAN_get_can1_bus_off(void)
+{
+    return bsp_can_get_protocol_bus_off(1u);
+}
+
+uint8_t CAN_get_can2_bus_off(void)
+{
+    return bsp_can_get_protocol_bus_off(2u);
+}
+
+uint8_t CAN_get_can3_bus_off(void)
+{
+    return bsp_can_get_protocol_bus_off(3u);
+}
+
+uint8_t CAN_get_can1_tx_error_count(void)
+{
+    return bsp_can_get_tx_error_count(1u);
+}
+
+uint8_t CAN_get_can2_tx_error_count(void)
+{
+    return bsp_can_get_tx_error_count(2u);
+}
+
+uint8_t CAN_get_can3_tx_error_count(void)
+{
+    return bsp_can_get_tx_error_count(3u);
+}
+
+uint8_t CAN_get_can1_rx_error_count(void)
+{
+    return bsp_can_get_rx_error_count(1u);
+}
+
+uint8_t CAN_get_can2_rx_error_count(void)
+{
+    return bsp_can_get_rx_error_count(2u);
+}
+
+uint8_t CAN_get_can3_rx_error_count(void)
+{
+    return bsp_can_get_rx_error_count(3u);
+}
+
+uint8_t CAN_get_can1_error_logging_count(void)
+{
+    return bsp_can_get_error_logging_count(1u);
+}
+
+uint8_t CAN_get_can2_error_logging_count(void)
+{
+    return bsp_can_get_error_logging_count(2u);
+}
+
+uint8_t CAN_get_can3_error_logging_count(void)
+{
+    return bsp_can_get_error_logging_count(3u);
 }

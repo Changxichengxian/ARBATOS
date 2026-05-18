@@ -19,7 +19,8 @@
  * code. The macros under "active assignment" are the real binding.
  *
  * Board facts:
- * - USART10 DBUS: TX PE3, RX PE2. Receiver-facing serial port.
+ * - UART5 DBUS: TX PC12, RX PD2. Receiver-facing serial port.
+ * - USART10: TX PE3, RX PE2. General serial port.
  * - USART1 AUX: TX PA9, RX PA10. General serial port.
  * - UART7 REFEREE: TX PE8, RX PE7. Common referee or spare serial port.
  * - USART2 RS485_0: TX PD5, RX PD6, DE PD4. On-board RS485 transceiver.
@@ -27,15 +28,15 @@
  * - KEY: PA15, active low.
  *
  * Active assignment:
- * - RC receiver: USART10 DBUS
+ * - RC receiver: UART5 DBUS
  * - AUX / tuning / ELRS / video link: USART1 AUX
  * - Referee: UART7 REFEREE
  * - RS485 port 0: USART2 RS485_0
  * - RS485 port 1: USART3 RS485_1
  */
 
-#define BSP_BOARD_RC_UART_HANDLE            huart10
-#define BSP_BOARD_RC_UART_IRQn              USART10_IRQn
+#define BSP_BOARD_RC_UART_HANDLE            huart5
+#define BSP_BOARD_RC_UART_IRQn              UART5_IRQn
 #define BSP_BOARD_AUX_UART_HANDLE           huart1
 #define BSP_BOARD_REFEREE_UART_HANDLE       huart7
 #define BSP_BOARD_RS485_PORT0_UART_HANDLE   huart2

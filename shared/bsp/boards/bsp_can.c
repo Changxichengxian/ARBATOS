@@ -25,6 +25,7 @@ extern CAN_HandleTypeDef hcan2;
 
 // ===== RX ring buffers =====
 #define BSP_CAN_RX_RING_SIZE 128u
+#define BSP_CAN_STD_ID_DIAG_COUNT 16u
 typedef char _check_can_rx_ring_pow2[(BSP_CAN_RX_RING_SIZE & (BSP_CAN_RX_RING_SIZE - 1u)) == 0u ? 1 : -1];
 
 static volatile uint16_t can1_rx_head = 0u;
@@ -43,15 +44,36 @@ static bsp_can_frame_t can3_rx_ring[BSP_CAN_RX_RING_SIZE];
 
 static volatile uint32_t can1_rx_drop = 0u;
 static volatile uint32_t can2_rx_drop = 0u;
+static volatile uint32_t can1_rx_count = 0u;
+static volatile uint32_t can2_rx_count = 0u;
+static volatile uint16_t can1_rx_last_std_id = 0u;
+static volatile uint16_t can2_rx_last_std_id = 0u;
+static volatile uint8_t can1_rx_last_dlc = 0u;
+static volatile uint8_t can2_rx_last_dlc = 0u;
 static volatile uint32_t can1_tx_count = 0u;
 static volatile uint32_t can2_tx_count = 0u;
 static volatile uint32_t can1_tx_fail = 0u;
 static volatile uint32_t can2_tx_fail = 0u;
+static volatile uint16_t can1_tx_last_std_id = 0u;
+static volatile uint16_t can2_tx_last_std_id = 0u;
+static volatile uint8_t can1_tx_last_dlc = 0u;
+static volatile uint8_t can2_tx_last_dlc = 0u;
+static volatile uint32_t can1_rx_std_id_count[BSP_CAN_STD_ID_DIAG_COUNT];
+static volatile uint32_t can2_rx_std_id_count[BSP_CAN_STD_ID_DIAG_COUNT];
+static volatile uint32_t can1_tx_std_id_count[BSP_CAN_STD_ID_DIAG_COUNT];
+static volatile uint32_t can2_tx_std_id_count[BSP_CAN_STD_ID_DIAG_COUNT];
 
 #if defined(HAL_FDCAN_MODULE_ENABLED)
 static volatile uint32_t can3_rx_drop = 0u;
+static volatile uint32_t can3_rx_count = 0u;
+static volatile uint16_t can3_rx_last_std_id = 0u;
+static volatile uint8_t can3_rx_last_dlc = 0u;
 static volatile uint32_t can3_tx_count = 0u;
 static volatile uint32_t can3_tx_fail = 0u;
+static volatile uint16_t can3_tx_last_std_id = 0u;
+static volatile uint8_t can3_tx_last_dlc = 0u;
+static volatile uint32_t can3_rx_std_id_count[BSP_CAN_STD_ID_DIAG_COUNT];
+static volatile uint32_t can3_tx_std_id_count[BSP_CAN_STD_ID_DIAG_COUNT];
 #endif
 
 static TaskHandle_t can_feedback_rx_task_handle = NULL;
@@ -79,14 +101,41 @@ static void bsp_can_reset_state(void)
 
     can1_rx_drop = 0u;
     can2_rx_drop = 0u;
+    can1_rx_count = 0u;
+    can2_rx_count = 0u;
+    can1_rx_last_std_id = 0u;
+    can2_rx_last_std_id = 0u;
+    can1_rx_last_dlc = 0u;
+    can2_rx_last_dlc = 0u;
     can1_tx_count = 0u;
     can2_tx_count = 0u;
     can1_tx_fail = 0u;
     can2_tx_fail = 0u;
+    can1_tx_last_std_id = 0u;
+    can2_tx_last_std_id = 0u;
+    can1_tx_last_dlc = 0u;
+    can2_tx_last_dlc = 0u;
+    for (uint8_t i = 0u; i < BSP_CAN_STD_ID_DIAG_COUNT; i++)
+    {
+        can1_rx_std_id_count[i] = 0u;
+        can2_rx_std_id_count[i] = 0u;
+        can1_tx_std_id_count[i] = 0u;
+        can2_tx_std_id_count[i] = 0u;
+    }
 #if defined(HAL_FDCAN_MODULE_ENABLED)
     can3_rx_drop = 0u;
+    can3_rx_count = 0u;
+    can3_rx_last_std_id = 0u;
+    can3_rx_last_dlc = 0u;
     can3_tx_count = 0u;
     can3_tx_fail = 0u;
+    can3_tx_last_std_id = 0u;
+    can3_tx_last_dlc = 0u;
+    for (uint8_t i = 0u; i < BSP_CAN_STD_ID_DIAG_COUNT; i++)
+    {
+        can3_rx_std_id_count[i] = 0u;
+        can3_tx_std_id_count[i] = 0u;
+    }
 #endif
 
     can1_last_error = BSP_CAN_ERR_NONE;
@@ -105,6 +154,10 @@ static void bsp_can_rx_push_common(uint8_t bus, uint16_t std_id, uint8_t dlc, co
     volatile uint16_t *tail = NULL;
     bsp_can_frame_t *ring = NULL;
     volatile uint32_t *drop = NULL;
+    volatile uint32_t *count = NULL;
+    volatile uint32_t *id_count = NULL;
+    volatile uint16_t *last_std_id = NULL;
+    volatile uint8_t *last_dlc = NULL;
 
     if (data == NULL || dlc > 8u)
     {
@@ -117,6 +170,10 @@ static void bsp_can_rx_push_common(uint8_t bus, uint16_t std_id, uint8_t dlc, co
         tail = &can1_rx_tail;
         ring = can1_rx_ring;
         drop = &can1_rx_drop;
+        count = &can1_rx_count;
+        id_count = can1_rx_std_id_count;
+        last_std_id = &can1_rx_last_std_id;
+        last_dlc = &can1_rx_last_dlc;
     }
     else if (bus == 2u)
     {
@@ -124,6 +181,10 @@ static void bsp_can_rx_push_common(uint8_t bus, uint16_t std_id, uint8_t dlc, co
         tail = &can2_rx_tail;
         ring = can2_rx_ring;
         drop = &can2_rx_drop;
+        count = &can2_rx_count;
+        id_count = can2_rx_std_id_count;
+        last_std_id = &can2_rx_last_std_id;
+        last_dlc = &can2_rx_last_dlc;
     }
 #if defined(HAL_FDCAN_MODULE_ENABLED)
     else if (bus == 3u)
@@ -132,12 +193,24 @@ static void bsp_can_rx_push_common(uint8_t bus, uint16_t std_id, uint8_t dlc, co
         tail = &can3_rx_tail;
         ring = can3_rx_ring;
         drop = &can3_rx_drop;
+        count = &can3_rx_count;
+        id_count = can3_rx_std_id_count;
+        last_std_id = &can3_rx_last_std_id;
+        last_dlc = &can3_rx_last_dlc;
     }
 #endif
     else
     {
         return;
     }
+
+    (*count)++;
+    if (std_id < BSP_CAN_STD_ID_DIAG_COUNT && id_count != NULL)
+    {
+        id_count[std_id]++;
+    }
+    *last_std_id = std_id;
+    *last_dlc = dlc;
 
     const uint16_t h = *head;
     const uint16_t next = (uint16_t)((h + 1u) & (BSP_CAN_RX_RING_SIZE - 1u));
@@ -293,33 +366,33 @@ static uint8_t bsp_can_fdcan_set_timing(FDCAN_HandleTypeDef *hfdcan, uint32_t da
     {
     case 5000000u:
         prescaler = 1u;
-        tseg1 = 18u;
-        tseg2 = 5u;
+        tseg1 = 13u;
+        tseg2 = 2u;
         break;
     case 4000000u:
         prescaler = 1u;
-        tseg1 = 23u;
-        tseg2 = 6u;
+        tseg1 = 14u;
+        tseg2 = 5u;
         break;
     case 3200000u:
         prescaler = 1u;
-        tseg1 = 29u;
-        tseg2 = 8u;
-        break;
-    case 2500000u:
-        prescaler = 2u;
-        tseg1 = 18u;
+        tseg1 = 19u;
         tseg2 = 5u;
         break;
-    case 2000000u:
-        prescaler = 2u;
-        tseg1 = 23u;
+    case 2500000u:
+        prescaler = 1u;
+        tseg1 = 25u;
         tseg2 = 6u;
         break;
+    case 2000000u:
+        prescaler = 1u;
+        tseg1 = 29u;
+        tseg2 = 10u;
+        break;
     case 1000000u:
-        prescaler = 4u;
-        tseg1 = 23u;
-        tseg2 = 6u;
+        prescaler = 2u;
+        tseg1 = 29u;
+        tseg2 = 10u;
         break;
     default:
         return 0u;
@@ -361,12 +434,12 @@ static void bsp_can_fdcan_init_bus(FDCAN_HandleTypeDef *hfdcan, volatile uint32_
     {
         *last_error = HAL_FDCAN_GetError(hfdcan);
     }
-    if (HAL_FDCAN_Start(hfdcan) != HAL_OK && last_error != NULL)
+    if (HAL_FDCAN_ActivateNotification(hfdcan, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0u) != HAL_OK &&
+        last_error != NULL)
     {
         *last_error = HAL_FDCAN_GetError(hfdcan);
     }
-    if (HAL_FDCAN_ActivateNotification(hfdcan, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0u) != HAL_OK &&
-        last_error != NULL)
+    if (HAL_FDCAN_Start(hfdcan) != HAL_OK && last_error != NULL)
     {
         *last_error = HAL_FDCAN_GetError(hfdcan);
     }
@@ -619,12 +692,87 @@ uint32_t bsp_can_rx_get_drop_count(uint8_t bus)
     }
 }
 
+uint32_t bsp_can_rx_get_count(uint8_t bus)
+{
+    switch (bus)
+    {
+    case 1u:
+        return can1_rx_count;
+    case 2u:
+        return can2_rx_count;
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    case 3u:
+        return can3_rx_count;
+#endif
+    default:
+        return 0u;
+    }
+}
+
+uint32_t bsp_can_rx_get_std_id_count(uint8_t bus, uint16_t std_id)
+{
+    if (std_id >= BSP_CAN_STD_ID_DIAG_COUNT)
+    {
+        return 0u;
+    }
+    switch (bus)
+    {
+    case 1u:
+        return can1_rx_std_id_count[std_id];
+    case 2u:
+        return can2_rx_std_id_count[std_id];
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    case 3u:
+        return can3_rx_std_id_count[std_id];
+#endif
+    default:
+        return 0u;
+    }
+}
+
+uint16_t bsp_can_rx_get_last_std_id(uint8_t bus)
+{
+    switch (bus)
+    {
+    case 1u:
+        return can1_rx_last_std_id;
+    case 2u:
+        return can2_rx_last_std_id;
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    case 3u:
+        return can3_rx_last_std_id;
+#endif
+    default:
+        return 0u;
+    }
+}
+
+uint8_t bsp_can_rx_get_last_dlc(uint8_t bus)
+{
+    switch (bus)
+    {
+    case 1u:
+        return can1_rx_last_dlc;
+    case 2u:
+        return can2_rx_last_dlc;
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    case 3u:
+        return can3_rx_last_dlc;
+#endif
+    default:
+        return 0u;
+    }
+}
+
 int bsp_can_tx_flags(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_t dlc, uint8_t flags)
 {
     volatile uint8_t *last_status = NULL;
     volatile uint32_t *last_error = NULL;
     volatile uint32_t *tx_count = NULL;
     volatile uint32_t *tx_fail = NULL;
+    volatile uint32_t *id_count = NULL;
+    volatile uint16_t *last_tx_std_id = NULL;
+    volatile uint8_t *last_tx_dlc = NULL;
     HAL_StatusTypeDef ret = HAL_ERROR;
 
     if (data == NULL || dlc > 8u)
@@ -638,6 +786,9 @@ int bsp_can_tx_flags(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_
         last_error = &can1_last_error;
         tx_count = &can1_tx_count;
         tx_fail = &can1_tx_fail;
+        id_count = can1_tx_std_id_count;
+        last_tx_std_id = &can1_tx_last_std_id;
+        last_tx_dlc = &can1_tx_last_dlc;
     }
     else if (bus == 2u)
     {
@@ -645,6 +796,9 @@ int bsp_can_tx_flags(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_
         last_error = &can2_last_error;
         tx_count = &can2_tx_count;
         tx_fail = &can2_tx_fail;
+        id_count = can2_tx_std_id_count;
+        last_tx_std_id = &can2_tx_last_std_id;
+        last_tx_dlc = &can2_tx_last_dlc;
     }
 #if defined(HAL_FDCAN_MODULE_ENABLED)
     else if (bus == 3u)
@@ -653,6 +807,9 @@ int bsp_can_tx_flags(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_
         last_error = &can3_last_error;
         tx_count = &can3_tx_count;
         tx_fail = &can3_tx_fail;
+        id_count = can3_tx_std_id_count;
+        last_tx_std_id = &can3_tx_last_std_id;
+        last_tx_dlc = &can3_tx_last_dlc;
     }
 #endif
     else
@@ -663,6 +820,18 @@ int bsp_can_tx_flags(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_
     if (tx_count != NULL)
     {
         (*tx_count)++;
+    }
+    if (std_id < BSP_CAN_STD_ID_DIAG_COUNT && id_count != NULL)
+    {
+        id_count[std_id]++;
+    }
+    if (last_tx_std_id != NULL)
+    {
+        *last_tx_std_id = std_id;
+    }
+    if (last_tx_dlc != NULL)
+    {
+        *last_tx_dlc = dlc;
     }
 
 #if defined(HAL_FDCAN_MODULE_ENABLED)
@@ -799,6 +968,40 @@ uint8_t bsp_can_get_last_tx_status(uint8_t bus)
     }
 }
 
+uint16_t bsp_can_get_last_tx_std_id(uint8_t bus)
+{
+    switch (bus)
+    {
+    case 1u:
+        return can1_tx_last_std_id;
+    case 2u:
+        return can2_tx_last_std_id;
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    case 3u:
+        return can3_tx_last_std_id;
+#endif
+    default:
+        return 0u;
+    }
+}
+
+uint8_t bsp_can_get_last_tx_dlc(uint8_t bus)
+{
+    switch (bus)
+    {
+    case 1u:
+        return can1_tx_last_dlc;
+    case 2u:
+        return can2_tx_last_dlc;
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    case 3u:
+        return can3_tx_last_dlc;
+#endif
+    default:
+        return 0u;
+    }
+}
+
 uint32_t bsp_can_get_tx_count(uint8_t bus)
 {
     switch (bus)
@@ -816,6 +1019,150 @@ uint32_t bsp_can_get_tx_count(uint8_t bus)
     }
 }
 
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+static uint8_t bsp_can_get_fdcan_protocol_u8(uint8_t bus, uint8_t field)
+{
+    FDCAN_HandleTypeDef *hfdcan = bsp_can_fdcan_handle(bus);
+    FDCAN_ProtocolStatusTypeDef status = {0};
+
+    if (hfdcan == NULL || HAL_FDCAN_GetProtocolStatus(hfdcan, &status) != HAL_OK)
+    {
+        return 0u;
+    }
+
+    switch (field)
+    {
+    case 0u:
+        return (uint8_t)status.LastErrorCode;
+    case 1u:
+        return (uint8_t)status.DataLastErrorCode;
+    case 2u:
+        return (uint8_t)status.Activity;
+    case 3u:
+        return (uint8_t)status.ErrorPassive;
+    case 4u:
+        return (uint8_t)status.Warning;
+    case 5u:
+        return (uint8_t)status.BusOff;
+    default:
+        return 0u;
+    }
+}
+
+static uint8_t bsp_can_get_fdcan_error_counter_u8(uint8_t bus, uint8_t field)
+{
+    FDCAN_HandleTypeDef *hfdcan = bsp_can_fdcan_handle(bus);
+    FDCAN_ErrorCountersTypeDef counters = {0};
+
+    if (hfdcan == NULL || HAL_FDCAN_GetErrorCounters(hfdcan, &counters) != HAL_OK)
+    {
+        return 0u;
+    }
+
+    switch (field)
+    {
+    case 0u:
+        return (uint8_t)counters.TxErrorCnt;
+    case 1u:
+        return (uint8_t)counters.RxErrorCnt;
+    case 2u:
+        return (uint8_t)counters.ErrorLogging;
+    default:
+        return 0u;
+    }
+}
+#endif
+
+uint8_t bsp_can_get_protocol_last_error_code(uint8_t bus)
+{
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    return bsp_can_get_fdcan_protocol_u8(bus, 0u);
+#else
+    (void)bus;
+    return 0u;
+#endif
+}
+
+uint8_t bsp_can_get_protocol_data_last_error_code(uint8_t bus)
+{
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    return bsp_can_get_fdcan_protocol_u8(bus, 1u);
+#else
+    (void)bus;
+    return 0u;
+#endif
+}
+
+uint8_t bsp_can_get_protocol_activity(uint8_t bus)
+{
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    return bsp_can_get_fdcan_protocol_u8(bus, 2u);
+#else
+    (void)bus;
+    return 0u;
+#endif
+}
+
+uint8_t bsp_can_get_protocol_error_passive(uint8_t bus)
+{
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    return bsp_can_get_fdcan_protocol_u8(bus, 3u);
+#else
+    (void)bus;
+    return 0u;
+#endif
+}
+
+uint8_t bsp_can_get_protocol_warning(uint8_t bus)
+{
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    return bsp_can_get_fdcan_protocol_u8(bus, 4u);
+#else
+    (void)bus;
+    return 0u;
+#endif
+}
+
+uint8_t bsp_can_get_protocol_bus_off(uint8_t bus)
+{
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    return bsp_can_get_fdcan_protocol_u8(bus, 5u);
+#else
+    (void)bus;
+    return 0u;
+#endif
+}
+
+uint8_t bsp_can_get_tx_error_count(uint8_t bus)
+{
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    return bsp_can_get_fdcan_error_counter_u8(bus, 0u);
+#else
+    (void)bus;
+    return 0u;
+#endif
+}
+
+uint8_t bsp_can_get_rx_error_count(uint8_t bus)
+{
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    return bsp_can_get_fdcan_error_counter_u8(bus, 1u);
+#else
+    (void)bus;
+    return 0u;
+#endif
+}
+
+uint8_t bsp_can_get_error_logging_count(uint8_t bus)
+{
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    return bsp_can_get_fdcan_error_counter_u8(bus, 2u);
+#else
+    (void)bus;
+    return 0u;
+#endif
+}
+
 uint32_t bsp_can_get_tx_fail_count(uint8_t bus)
 {
     switch (bus)
@@ -827,6 +1174,27 @@ uint32_t bsp_can_get_tx_fail_count(uint8_t bus)
 #if defined(HAL_FDCAN_MODULE_ENABLED)
     case 3u:
         return can3_tx_fail;
+#endif
+    default:
+        return 0u;
+    }
+}
+
+uint32_t bsp_can_get_tx_std_id_count(uint8_t bus, uint16_t std_id)
+{
+    if (std_id >= BSP_CAN_STD_ID_DIAG_COUNT)
+    {
+        return 0u;
+    }
+    switch (bus)
+    {
+    case 1u:
+        return can1_tx_std_id_count[std_id];
+    case 2u:
+        return can2_tx_std_id_count[std_id];
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    case 3u:
+        return can3_tx_std_id_count[std_id];
 #endif
     default:
         return 0u;

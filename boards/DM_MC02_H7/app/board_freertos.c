@@ -8,6 +8,7 @@
 #include "can_feedback_rx_task.h"
 #include "can_command_tx_task.h"
 #include "arm_task.h"
+#include "battery_monitor_task.h"
 #include "chassis_control_task.h"
 #include "detect_task.h"
 #include "gimbal_control_task.h"
@@ -16,12 +17,14 @@
 #include "sdlog_task.h"
 #include "robot_task_profile.h"
 #include "control_manager.h"
+#include "watch.h"
 #include "wheelleg_mit_task.h"
 
 osThreadId_t defaultTaskHandle;
 osThreadId_t rcSbusTaskHandle;
 osThreadId_t detectTaskHandle;
 osThreadId_t sdlogTaskHandle;
+osThreadId_t batteryMonitorTaskHandle;
 osThreadId_t canFeedbackRxTaskHandle;
 osThreadId_t canCommandTxTaskHandle;
 osThreadId_t armTaskHandle;
@@ -51,13 +54,14 @@ APP_THREAD_ATTR(rcSbusTask, osPriorityAboveNormal, 256);
 APP_THREAD_ATTR(refereeRxTask, osPriorityNormal, 256);
 APP_THREAD_ATTR(healthMonitorTask, osPriorityNormal, 256);
 APP_THREAD_ATTR(sdlogTask, osPriorityLow, 512);
+APP_THREAD_ATTR(batteryMonitorTask, osPriorityLow, 256);
 APP_THREAD_ATTR(canCommandTxTask, osPriorityAboveNormal, 256);
 APP_THREAD_ATTR(canFeedbackRxTask, osPriorityHigh, 256);
 APP_THREAD_ATTR(armTask, osPriorityNormal, 768);
 APP_THREAD_ATTR(chassisControlTask, osPriorityAboveNormal, 512);
 APP_THREAD_ATTR(wheellegMitTask, osPriorityAboveNormal, 768);
 APP_THREAD_ATTR(gimbalControlTask, osPriorityHigh, 1024);
-APP_THREAD_ATTR(imuFusionTask, osPriorityRealtime, 1024);
+APP_THREAD_ATTR(imuFusionTask, osPriorityRealtime, 512);
 
 static StaticTask_t xIdleTaskTCBBuffer;
 static StackType_t xIdleStack[configMINIMAL_STACK_SIZE];
@@ -88,6 +92,8 @@ void MX_FREERTOS_Init(void)
 
     defaultTaskHandle = APP_THREAD_CREATE(defaultTask, StartDefaultTask);
 
+    imuTaskHandle = APP_THREAD_CREATE(imuFusionTask, imu_fusion_task);
+
     rcSbusTaskHandle = APP_THREAD_CREATE(rcSbusTask, rc_sbus_task);
 
     refereeRxTaskHandle = APP_THREAD_CREATE(refereeRxTask, referee_rx_task);
@@ -95,6 +101,8 @@ void MX_FREERTOS_Init(void)
     detectTaskHandle = APP_THREAD_CREATE(healthMonitorTask, health_monitor_task);
 
     sdlogTaskHandle = APP_THREAD_CREATE(sdlogTask, sdlog_task);
+
+    batteryMonitorTaskHandle = APP_THREAD_CREATE(batteryMonitorTask, battery_monitor_task);
 
     canCommandTxTaskHandle = APP_THREAD_CREATE(canCommandTxTask, can_command_tx_task);
 
@@ -138,17 +146,23 @@ void MX_FREERTOS_Init(void)
     }
 #endif
 
-    imuTaskHandle = APP_THREAD_CREATE(imuFusionTask, imu_fusion_task);
 }
 
 void StartDefaultTask(void *argument)
 {
     (void)argument;
+    watch_init();
+    watch_diag_set_boot_stage(WATCH_BOOT_STAGE_DEFAULT_TASK_START);
+
     MX_USB_DEVICE_Init();
+    watch_diag_set_boot_stage(WATCH_BOOT_STAGE_USB_DEVICE_START);
+    watch_diag_set_boot_stage(WATCH_BOOT_STAGE_RUN);
 
     for (;;)
     {
-        osDelay(1);
+        watch_task_beat(WATCH_TASK_DEFAULT);
+        watch_update();
+        osDelay(10);
     }
 }
 

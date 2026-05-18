@@ -55,6 +55,8 @@ typedef struct
 
 typedef struct
 {
+    // MIT frame scaling limits. Keep these matched with PMAX/VMAX/TMAX in the driver,
+    // not with the motor's mechanical peak capability.
     fp32 position_max;
     fp32 velocity_max;
     fp32 kp_max;
@@ -64,11 +66,36 @@ typedef struct
 
 typedef struct
 {
+    uint8_t dm_driver_generation; // 0 when not a Damiao generation-marked model.
+    uint8_t encoder_bits;
+    fp32 rated_torque_nm;
+    fp32 peak_torque_nm;
+    fp32 rated_speed_rpm;
+    fp32 max_no_load_speed_rpm_24v;
+    fp32 max_no_load_speed_rpm_48v;
+    fp32 rated_current_a; // Legacy manuals do not split phase/supply current.
+    fp32 peak_current_a;
+    fp32 rated_phase_current_a_24v;
+    fp32 rated_supply_current_a_24v;
+    fp32 peak_phase_current_a_24v;
+    fp32 peak_supply_current_a_24v;
+    fp32 rated_phase_current_a_48v;
+    fp32 rated_supply_current_a_48v;
+    fp32 peak_phase_current_a_48v;
+    fp32 peak_supply_current_a_48v;
+    fp32 phase_inductance_uh;
+    fp32 phase_resistance_mohm;
+    fp32 weight_g;
+} motor_model_specs_t;
+
+typedef struct
+{
     motor_model_param_t base;
     motor_model_rx_format_e rx_format;
     uint8_t default_protocol;
     uint8_t default_control_mode;
     uint8_t caps;
+    motor_model_specs_t specs;
     motor_model_mit_limits_t mit_limits;
     int16_t cmd_current_range_abs;
     fp32 torque_current_range_a;

@@ -281,6 +281,32 @@ config_t g_config = {
             .max_yaw_rate_radps = 0.60f,
             .rc_deadband = 10u,
             .enable_switch_pos = MANUAL_INPUT_SWITCH_POS_MID,
+            .single_test_actuator = (uint8_t)ACTUATOR_ID_ARM_J1, // [600] 单电机测试目标
+            .single_test_position_rad = 0.0f, // [601] MIT 位置给定；kp=0 时不生效
+            .single_test_velocity_radps = 0.0f, // [602] MIT 速度给定
+            .single_test_kp = 0.0f, // [603] 位置刚度，默认关闭位置环
+            .single_test_kd = 0.10f, // [604] 速度阻尼
+            .single_test_torque_nm = 0.0f, // [605] 单电机测试力矩，默认 0
+            .single_test_torque_limit_nm = 0.30f, // [606] 测试力矩限幅
+            .left_test_zero_time_ms = 1000u, // [607] 上电后先回 0 并保持
+            .left_test_move_time_ms = 1500u, // [608] 每段 90deg 扫动时间
+            .left_test_angle_rad = 1.5707963268f, // [609] 90deg
+            .left_test_kp = 1.0f, // [610] 位置刚度，先保守
+            .left_test_kd = 0.12f, // [611] 速度阻尼
+            .left_test_torque_ff_nm = 0.0f, // [612] 前馈力矩
+            .left_test_torque_limit_nm = 0.30f, // [613] 前馈限幅
+            .left_test_front_dir = 1, // [614]
+            .left_test_back_dir = 1, // [615]
+            .right_test_front_dir = 1, // [616]
+            .right_test_back_dir = 1, // [617]
+            .left_front_zero_rad = 0.0f, // [618]
+            .left_back_zero_rad = 0.0f, // [619]
+            .right_front_zero_rad = 0.0f, // [620]
+            .right_back_zero_rad = 0.0f, // [621]
+            .left_front_dir = 1, // [622]
+            .left_back_dir = 1, // [623]
+            .right_front_dir = 1, // [624]
+            .right_back_dir = 1, // [625]
             .right_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J1,
             .right_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J2,
             .right_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J0,
@@ -526,6 +552,8 @@ config_t g_config = {
             // 8: TEST_MODE_SHOOT_COMBO,
             // 9: TEST_MODE_ENTERTAIN,
             // 10: TEST_MODE_PITCH_CALI,
+            // 11: TEST_MODE_WHEELLEG_SINGLE_MOTOR,
+            // 12: TEST_MODE_WHEELLEG_LEFT_LEG_SWING,
         },
 
 	    // AUX 口遥测默认表：这里只定默认行为，是否临时看更多通道改代码即可。

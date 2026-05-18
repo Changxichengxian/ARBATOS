@@ -1,10 +1,24 @@
 #include "BMI088driver.h"
 #include "BMI088reg.h"
 #include "bsp_bmi088_port.h"
+#include <bsp_bmi088_cfg.h>
+#include <stddef.h>
 
+#ifndef BSP_BMI088_SKIP_SELF_TEST
+#define BSP_BMI088_SKIP_SELF_TEST 0
+#endif
 
 fp32 BMI088_ACCEL_SEN = BMI088_ACCEL_3G_SEN;
 fp32 BMI088_GYRO_SEN = BMI088_GYRO_2000_SEN;
+
+static bmi088_diag_t s_bmi088_diag;
+
+static void BMI088_diag_set_init_fail(uint8_t reg, uint8_t expect, uint8_t actual)
+{
+    s_bmi088_diag.init_fail_reg = reg;
+    s_bmi088_diag.init_fail_expect = expect;
+    s_bmi088_diag.init_fail_actual = actual;
+}
 
 
 
@@ -88,10 +102,16 @@ static uint8_t write_BMI088_gyro_reg_data_error[BMI088_WRITE_GYRO_REG_NUM][3] =
 uint8_t BMI088_init(void)
 {
     uint8_t error = BMI088_NO_ERROR;
+    s_bmi088_diag.init_count++;
+    BMI088_diag_set_init_fail(0u, 0u, 0u);
     // GPIO and SPI  Init .
     BMI088_GPIO_init();
     BMI088_com_init();
 
+#if BSP_BMI088_SKIP_SELF_TEST
+    error |= bmi088_accel_init();
+    error |= bmi088_gyro_init();
+#else
     // self test pass and init
     if (bmi088_accel_self_test() != BMI088_NO_ERROR)
     {
@@ -109,6 +129,13 @@ uint8_t BMI088_init(void)
     else
     {
         error |= bmi088_gyro_init();
+    }
+#endif
+
+    s_bmi088_diag.init_last_error = error;
+    if (error != BMI088_NO_ERROR)
+    {
+        s_bmi088_diag.init_error_count++;
     }
 
     return error;
@@ -136,8 +163,10 @@ bool_t bmi088_accel_init(void)
     BMI088_delay_us(BMI088_COM_WAIT_SENSOR_TIME);
 
     // check the "who am I"
+    s_bmi088_diag.accel_chip_id = res;
     if (res != BMI088_ACC_CHIP_ID_VALUE)
     {
+        BMI088_diag_set_init_fail(BMI088_ACC_CHIP_ID, BMI088_ACC_CHIP_ID_VALUE, res);
         return BMI088_NO_SENSOR;
     }
 
@@ -153,6 +182,9 @@ bool_t bmi088_accel_init(void)
 
         if (res != write_BMI088_accel_reg_data_error[write_reg_num][1])
         {
+            BMI088_diag_set_init_fail(write_BMI088_accel_reg_data_error[write_reg_num][0],
+                                      write_BMI088_accel_reg_data_error[write_reg_num][1],
+                                      res);
             return write_BMI088_accel_reg_data_error[write_reg_num][2];
         }
     }
@@ -180,8 +212,10 @@ bool_t bmi088_gyro_init(void)
     BMI088_delay_us(BMI088_COM_WAIT_SENSOR_TIME);
 
     // check the "who am I"
+    s_bmi088_diag.gyro_chip_id = res;
     if (res != BMI088_GYRO_CHIP_ID_VALUE)
     {
+        BMI088_diag_set_init_fail(BMI088_GYRO_CHIP_ID, BMI088_GYRO_CHIP_ID_VALUE, res);
         return BMI088_NO_SENSOR;
     }
 
@@ -197,6 +231,9 @@ bool_t bmi088_gyro_init(void)
 
         if (res != write_BMI088_gyro_reg_data_error[write_reg_num][1])
         {
+            BMI088_diag_set_init_fail(write_BMI088_gyro_reg_data_error[write_reg_num][0],
+                                      write_BMI088_gyro_reg_data_error[write_reg_num][1],
+                                      res);
             return write_BMI088_gyro_reg_data_error[write_reg_num][2];
         }
     }
@@ -421,6 +458,8 @@ void BMI088_read(fp32 gyro[3], fp32 accel[3], fp32 *temperate)
     uint8_t buf[8] = {0, 0, 0, 0, 0, 0};
     int16_t bmi088_raw_temp;
 
+    s_bmi088_diag.read_count++;
+
     BMI088_accel_read_muli_reg(BMI088_ACCEL_XOUT_L, buf, 6);
 
     bmi088_raw_temp = (int16_t)((buf[1]) << 8) | buf[0];
@@ -431,14 +470,21 @@ void BMI088_read(fp32 gyro[3], fp32 accel[3], fp32 *temperate)
     accel[2] = bmi088_raw_temp * BMI088_ACCEL_SEN;
 
     BMI088_gyro_read_muli_reg(BMI088_GYRO_CHIP_ID, buf, 8);
+    s_bmi088_diag.gyro_read_chip_id = buf[0];
     if(buf[0] == BMI088_GYRO_CHIP_ID_VALUE)
     {
+        s_bmi088_diag.gyro_read_ok = 1u;
         bmi088_raw_temp = (int16_t)((buf[3]) << 8) | buf[2];
         gyro[0] = bmi088_raw_temp * BMI088_GYRO_SEN;
         bmi088_raw_temp = (int16_t)((buf[5]) << 8) | buf[4];
         gyro[1] = bmi088_raw_temp * BMI088_GYRO_SEN;
         bmi088_raw_temp = (int16_t)((buf[7]) << 8) | buf[6];
         gyro[2] = bmi088_raw_temp * BMI088_GYRO_SEN;
+    }
+    else
+    {
+        s_bmi088_diag.gyro_read_ok = 0u;
+        s_bmi088_diag.gyro_read_bad_count++;
     }
     BMI088_accel_read_muli_reg(BMI088_TEMP_M, buf, 2);
 
@@ -450,6 +496,16 @@ void BMI088_read(fp32 gyro[3], fp32 accel[3], fp32 *temperate)
     }
 
     *temperate = bmi088_raw_temp * BMI088_TEMP_FACTOR + BMI088_TEMP_OFFSET;
+}
+
+void BMI088_get_diag(bmi088_diag_t *out)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    *out = s_bmi088_diag;
 }
 
 uint32_t get_BMI088_sensor_time(void)

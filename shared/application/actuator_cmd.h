@@ -71,7 +71,10 @@ typedef struct
     uint8_t online;
     uint8_t bus;
     uint8_t rx_dlc;
+    uint8_t rx_data0;   // raw first byte from the last feedback frame when available
     uint8_t transport; // actuator_transport_e
+    uint8_t motor_id;  // MIT feedback motor id when available
+    uint8_t state;     // MIT feedback state when available
     uint16_t rx_id;
     uint32_t rx_count;
     uint32_t last_rx_tick;
@@ -89,6 +92,7 @@ actuator_id_e actuator_id_friction(uint8_t index);
 actuator_id_e actuator_id_arm_joint(uint8_t index);
 
 void actuator_cmd_clear_all(void);
+void actuator_cmd_clear(actuator_id_e id);
 void actuator_cmd_set_current(actuator_id_e id, int16_t current);
 int16_t actuator_cmd_get_current(actuator_id_e id);
 void actuator_cmd_set_state_torque(actuator_id_e id, const actuator_cmd_t *cmd);

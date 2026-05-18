@@ -35,6 +35,11 @@
 
 #include <string.h>
 
+#define CAN_TX_MIT_WHEEL_CMD_PERIOD_MS 2u
+#define CAN_TX_MIT_JOINT_CMD_PERIOD_MS 5u
+#define CAN_TX_MIT_MODE_FRAME_REPEAT_COUNT 10u
+#define CAN_TX_MIT_MAX_FRAMES_PER_MS 3u
+
 __weak uint8_t can_tx_process_extra_item(uint8_t bus,
                                          actuator_id_e actuator_id,
                                          const motor_node_param_t *node,
@@ -51,6 +56,8 @@ static int16_t s_can_tx_can1_200[4];
 static int16_t s_can_tx_can1_1ff[4];
 static int16_t s_can_tx_can2_200[4];
 static int16_t s_can_tx_can2_1ff[4];
+static uint32_t s_can_tx_mit_budget_tick_ms;
+static uint8_t s_can_tx_mit_budget_used;
 
 // 测试模式会限制底盘输出，避免只测云台或射击时底盘误动。
 static inline bool_t can_tx_allow_chassis(void)
@@ -95,23 +102,45 @@ static inline uint8_t can_tx_actuator_id_valid(actuator_id_e id)
     return ((uint32_t)id < (uint32_t)ACTUATOR_ID__COUNT) ? 1u : 0u;
 }
 
-// 判断执行器命令是否真正带输出；MIT 电机第一次有输出前不急着使能。
-static inline uint8_t can_tx_cmd_nonzero(const actuator_cmd_t *cmd)
+static uint8_t can_tx_mit_is_wheelleg_wheel(actuator_id_e actuator_id)
 {
-    if (cmd == NULL || cmd->active == 0u)
+    if (robot_profile_is_wheelleg_mit() == 0u)
     {
         return 0u;
     }
-    if (cmd->current != 0)
+
+    return (uint8_t)((uint8_t)actuator_id == g_config.wheelleg_mit.left_wheel_actuator ||
+                     (uint8_t)actuator_id == g_config.wheelleg_mit.right_wheel_actuator);
+}
+
+static uint16_t can_tx_mit_cmd_period_ms(actuator_id_e actuator_id)
+{
+    return (can_tx_mit_is_wheelleg_wheel(actuator_id) != 0u) ?
+               CAN_TX_MIT_WHEEL_CMD_PERIOD_MS :
+               CAN_TX_MIT_JOINT_CMD_PERIOD_MS;
+}
+
+static uint8_t can_tx_mit_take_frame_budget(uint32_t now_ms)
+{
+    if (s_can_tx_mit_budget_tick_ms != now_ms)
     {
-        return 1u;
+        s_can_tx_mit_budget_tick_ms = now_ms;
+        s_can_tx_mit_budget_used = 0u;
     }
-    if (cmd->position != 0.0f || cmd->velocity != 0.0f ||
-        cmd->kp != 0.0f || cmd->kd != 0.0f || cmd->torque != 0.0f)
+
+    if (s_can_tx_mit_budget_used >= CAN_TX_MIT_MAX_FRAMES_PER_MS)
     {
-        return 1u;
+        return 0u;
     }
-    return 0u;
+
+    s_can_tx_mit_budget_used++;
+    return 1u;
+}
+
+static uint8_t can_tx_mit_period_due(uint32_t now_ms, uint32_t last_tick_ms, uint16_t period_ms)
+{
+    return (uint8_t)(last_tick_ms == 0u ||
+                     (uint32_t)(now_ms - last_tick_ms) >= (uint32_t)period_ms);
 }
 
 static inline int16_t can_tx_fp32_to_i16_saturated(fp32 x)
@@ -269,12 +298,19 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
                                                   int16_t current)
 {
     static uint8_t mit_enabled[ACTUATOR_ID__COUNT];
+    static uint8_t mit_enable_repeat_left[ACTUATOR_ID__COUNT];
+    static uint8_t mit_disable_repeat_left[ACTUATOR_ID__COUNT];
+    static uint32_t mit_last_enable_tick[ACTUATOR_ID__COUNT];
+    static uint32_t mit_last_disable_tick[ACTUATOR_ID__COUNT];
+    static uint32_t mit_last_cmd_tick[ACTUATOR_ID__COUNT];
     const can_mit_motor_limits_t *limits;
     actuator_cmd_t cmd;
     mit_motor_cmd_t mit_cmd;
     uint8_t have_cmd;
     uint8_t active_cmd;
+    uint16_t cmd_period_ms;
     uint16_t std_id;
+    const uint32_t now = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
 
     if (node == NULL)
     {
@@ -292,11 +328,12 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
     active_cmd = (uint8_t)(have_cmd != 0u &&
                            cmd.active != 0u &&
                            cmd.mode != (uint8_t)ACTUATOR_CMD_MODE_NONE);
-    if (have_cmd == 0u || cmd.active == 0u)
+    if (active_cmd == 0u && current != 0)
     {
         cmd.active = 1u;
         cmd.mode = (uint8_t)ACTUATOR_CMD_MODE_CURRENT;
         cmd.current = current;
+        active_cmd = 1u;
     }
 
     std_id = motor_cfg_can_id(node);
@@ -304,19 +341,92 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
     {
         return 0u;
     }
+    cmd_period_ms = can_tx_mit_cmd_period_ms(actuator_id);
 
-    if (can_tx_actuator_id_valid(actuator_id) != 0u &&
-        mit_enabled[actuator_id] == 0u &&
-        (active_cmd != 0u || can_tx_cmd_nonzero(&cmd) != 0u))
+    if (can_tx_actuator_id_valid(actuator_id) != 0u)
     {
-        can_mit_motor_send_enable(bus, std_id);
-        mit_enabled[actuator_id] = 1u;
+        if (active_cmd == 0u)
+        {
+            mit_enable_repeat_left[actuator_id] = 0u;
+            mit_last_enable_tick[actuator_id] = 0u;
+
+            if (mit_disable_repeat_left[actuator_id] == 0u)
+            {
+                mit_disable_repeat_left[actuator_id] = CAN_TX_MIT_MODE_FRAME_REPEAT_COUNT;
+            }
+
+            if (can_tx_mit_period_due(now, mit_last_disable_tick[actuator_id], cmd_period_ms) != 0u &&
+                can_tx_mit_take_frame_budget(now) != 0u)
+            {
+                const int ret = can_mit_motor_send_disable(bus, std_id);
+                if (ret == 0)
+                {
+                    mit_last_disable_tick[actuator_id] = now;
+                    mit_enabled[actuator_id] = 0u;
+                    mit_last_cmd_tick[actuator_id] = 0u;
+                    if (mit_disable_repeat_left[actuator_id] > 0u)
+                    {
+                        mit_disable_repeat_left[actuator_id]--;
+                    }
+                }
+            }
+            return 1u;
+        }
+
+        mit_disable_repeat_left[actuator_id] = 0u;
+
+        if (mit_enabled[actuator_id] == 0u)
+        {
+            if (mit_enable_repeat_left[actuator_id] == 0u)
+            {
+                mit_enable_repeat_left[actuator_id] = CAN_TX_MIT_MODE_FRAME_REPEAT_COUNT;
+                mit_last_enable_tick[actuator_id] = 0u;
+            }
+
+            if (can_tx_mit_period_due(now, mit_last_enable_tick[actuator_id], cmd_period_ms) != 0u &&
+                can_tx_mit_take_frame_budget(now) != 0u)
+            {
+                const int ret = can_mit_motor_send_enable(bus, std_id);
+                if (ret == 0)
+                {
+                    mit_last_enable_tick[actuator_id] = now;
+                    if (mit_enable_repeat_left[actuator_id] > 0u)
+                    {
+                        mit_enable_repeat_left[actuator_id]--;
+                    }
+                    if (mit_enable_repeat_left[actuator_id] == 0u)
+                    {
+                        mit_enabled[actuator_id] = 1u;
+                        mit_last_cmd_tick[actuator_id] = 0u;
+                    }
+                }
+            }
+            return 1u;
+        }
+
+        if (mit_last_cmd_tick[actuator_id] != 0u &&
+            (uint32_t)(now - mit_last_cmd_tick[actuator_id]) < cmd_period_ms)
+        {
+            return 1u;
+        }
+
+        if (can_tx_mit_take_frame_budget(now) == 0u)
+        {
+            return 1u;
+        }
+
+        can_tx_build_mit_cmd_from_actuator(node, &cmd, current, limits, &mit_cmd);
+        {
+            const int ret = can_mit_motor_send_cmd(bus, std_id, limits, &mit_cmd);
+            if (ret == 0)
+            {
+                mit_last_cmd_tick[actuator_id] = now;
+            }
+        }
+        return 1u;
     }
 
-    if (can_tx_actuator_id_valid(actuator_id) != 0u &&
-        mit_enabled[actuator_id] == 0u &&
-        active_cmd == 0u &&
-        can_tx_cmd_nonzero(&cmd) == 0u)
+    if (active_cmd == 0u)
     {
         return 1u;
     }
@@ -662,7 +772,10 @@ static inline void can_tx_exec_arm(uint8_t index)
          cmd.active == 0u ||
          cmd.mode == (uint8_t)ACTUATOR_CMD_MODE_NONE))
     {
-        return;
+        if (motor_cfg_mit_limits(node) == NULL || motor_cfg_can_id(node) == 0u)
+        {
+            return;
+        }
     }
 
     CAN_TX_EXEC_AXIS(CAN_TX_AXIS_ARM_FALLBACK_BUS(index),
@@ -715,32 +828,62 @@ static void can_tx_exec_online_axes(void)
 }
 
 // 把已经缓存好的大疆 0x200/0x1FF 四电机电流帧一次性发出去。
+static uint8_t can_tx_rm_frame_has_output(const int16_t frame[4])
+{
+    return (uint8_t)(frame[0] != 0 ||
+                     frame[1] != 0 ||
+                     frame[2] != 0 ||
+                     frame[3] != 0);
+}
+
+static uint8_t can_tx_rm_group_has_config(uint8_t bus, uint16_t group_id)
+{
+    const uint16_t min_id = (group_id == (uint16_t)CAN_RM_GROUP_0X200_ID) ? 0x201u : 0x205u;
+    const uint16_t max_id = (group_id == (uint16_t)CAN_RM_GROUP_0X200_ID) ? 0x204u : 0x208u;
+    const uint8_t count = motor_instance_count();
+    uint8_t i;
+
+    for (i = 0u; i < count; i++)
+    {
+        const motor_instance_t *inst = motor_instance_get(i);
+        uint16_t can_id;
+
+        if (inst == NULL ||
+            motor_instance_enabled(inst) == 0u ||
+            motor_instance_bus(inst) != bus ||
+            motor_cfg_transport(inst->node) != MOTOR_TRANSPORT_CAN ||
+            motor_cfg_is_rm_group_protocol(inst->node) == 0u)
+        {
+            continue;
+        }
+
+        can_id = motor_cfg_can_id(inst->node);
+        if (can_id >= min_id && can_id <= max_id)
+        {
+            return 1u;
+        }
+    }
+
+    return 0u;
+}
+
+static void can_tx_emit_rm_group_if_needed(uint8_t bus, uint16_t group_id, const int16_t frame[4])
+{
+    if (can_tx_rm_frame_has_output(frame) == 0u &&
+        can_tx_rm_group_has_config(bus, group_id) == 0u)
+    {
+        return;
+    }
+
+    CAN_cmd_rm_group(bus, group_id, frame[0], frame[1], frame[2], frame[3]);
+}
+
 static void can_tx_emit_rm_frames(void)
 {
-    CAN_cmd_rm_group(1u,
-                     (uint16_t)CAN_RM_GROUP_0X200_ID,
-                     s_can_tx_can1_200[0],
-                     s_can_tx_can1_200[1],
-                     s_can_tx_can1_200[2],
-                     s_can_tx_can1_200[3]);
-    CAN_cmd_rm_group(1u,
-                     (uint16_t)CAN_RM_GROUP_0X1FF_ID,
-                     s_can_tx_can1_1ff[0],
-                     s_can_tx_can1_1ff[1],
-                     s_can_tx_can1_1ff[2],
-                     s_can_tx_can1_1ff[3]);
-    CAN_cmd_rm_group(2u,
-                     (uint16_t)CAN_RM_GROUP_0X200_ID,
-                     s_can_tx_can2_200[0],
-                     s_can_tx_can2_200[1],
-                     s_can_tx_can2_200[2],
-                     s_can_tx_can2_200[3]);
-    CAN_cmd_rm_group(2u,
-                     (uint16_t)CAN_RM_GROUP_0X1FF_ID,
-                     s_can_tx_can2_1ff[0],
-                     s_can_tx_can2_1ff[1],
-                     s_can_tx_can2_1ff[2],
-                     s_can_tx_can2_1ff[3]);
+    can_tx_emit_rm_group_if_needed(1u, (uint16_t)CAN_RM_GROUP_0X200_ID, s_can_tx_can1_200);
+    can_tx_emit_rm_group_if_needed(1u, (uint16_t)CAN_RM_GROUP_0X1FF_ID, s_can_tx_can1_1ff);
+    can_tx_emit_rm_group_if_needed(2u, (uint16_t)CAN_RM_GROUP_0X200_ID, s_can_tx_can2_200);
+    can_tx_emit_rm_group_if_needed(2u, (uint16_t)CAN_RM_GROUP_0X1FF_ID, s_can_tx_can2_1ff);
 }
 
 // 目标工程可在这里接入非大疆、非 MIT 的特殊电机发送逻辑。
@@ -756,30 +899,40 @@ __weak uint8_t can_tx_process_extra_item(uint8_t bus,
     return 0u;
 }
 
-__weak void can_mit_motor_send_cmd(uint8_t bus,
-                                   uint16_t std_id,
-                                   const can_mit_motor_limits_t *limits,
-                                   const can_mit_motor_cmd_t *cmd)
+__weak int can_mit_motor_send_cmd(uint8_t bus,
+                                  uint16_t std_id,
+                                  const can_mit_motor_limits_t *limits,
+                                  const can_mit_motor_cmd_t *cmd)
 {
     (void)bus;
     (void)std_id;
     (void)limits;
     (void)cmd;
+    return -1;
 }
 
-__weak void can_mit_motor_send_enable(uint8_t bus, uint16_t std_id)
+__weak int can_mit_motor_send_enable(uint8_t bus, uint16_t std_id)
 {
     (void)bus;
     (void)std_id;
+    return -1;
 }
 
-__weak void can_mit_motor_send_stop(uint8_t bus,
-                                    uint16_t std_id,
-                                    const can_mit_motor_limits_t *limits)
+__weak int can_mit_motor_send_disable(uint8_t bus, uint16_t std_id)
+{
+    (void)bus;
+    (void)std_id;
+    return -1;
+}
+
+__weak int can_mit_motor_send_stop(uint8_t bus,
+                                   uint16_t std_id,
+                                   const can_mit_motor_limits_t *limits)
 {
     (void)bus;
     (void)std_id;
     (void)limits;
+    return -1;
 }
 
 __weak uint8_t can_mit_motor_update_feedback(uint16_t std_id,

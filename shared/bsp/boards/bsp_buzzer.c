@@ -838,6 +838,21 @@ int buzzer_tone_start_legacy(uint16_t psc, uint16_t pwm)
     return buzzer_tone_start_hz(freq_hz, volume);
 }
 
+uint16_t buzzer_legacy_pwm_half(void)
+{
+    uint32_t arr_base = (uint32_t)BSP_BUZZER_TIM_HANDLE.Init.Period;
+    uint32_t duty = (arr_base + 1u) / 2u;
+    if (duty == 0u)
+    {
+        duty = 1u;
+    }
+    if (duty > 0xFFFFu)
+    {
+        duty = 0xFFFFu;
+    }
+    return (uint16_t)duty;
+}
+
 void buzzer_tone_stop(void)
 {
     buzzer_pwm_stop();

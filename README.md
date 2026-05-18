@@ -99,7 +99,7 @@ projects/<TARGET>/
 | `INFANTRY` | 西北农林科技大学步兵机器人 |
 | `SENTINEL` | 西北农林科技大学哨兵机器人 |
 | `CARRIER` | 西北农林科技大学工程机器人 |
-| `MC02_BASE` | H7 接板和机械臂实验 |
+| `MC02_BASE` | H7 接板和轮腿 MIT 调试入口 |
 
 每个 `target/<TARGET>/` 当前至少提供：
 

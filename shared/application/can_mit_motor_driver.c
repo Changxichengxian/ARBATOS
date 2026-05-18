@@ -57,10 +57,10 @@ static fp32 can_mit_motor_clamp_fp32(fp32 x, fp32 x_min, fp32 x_max)
     return x;
 }
 
-void can_mit_motor_send_cmd(uint8_t bus,
-                            uint16_t std_id,
-                            const can_mit_motor_limits_t *limits,
-                            const can_mit_motor_cmd_t *cmd)
+int can_mit_motor_send_cmd(uint8_t bus,
+                           uint16_t std_id,
+                           const can_mit_motor_limits_t *limits,
+                           const can_mit_motor_cmd_t *cmd)
 {
     uint8_t data[8];
     uint32_t p_int;
@@ -71,7 +71,7 @@ void can_mit_motor_send_cmd(uint8_t bus,
 
     if (limits == NULL || cmd == NULL || std_id == 0u)
     {
-        return;
+        return -1;
     }
 
     p_int = can_mit_motor_float_to_uint(cmd->position, -limits->position_max, limits->position_max, 16u);
@@ -89,26 +89,38 @@ void can_mit_motor_send_cmd(uint8_t bus,
     data[6] = (uint8_t)(((kd_int & 0x0Fu) << 4) | (t_int >> 8));
     data[7] = (uint8_t)t_int;
 
-    (void)bsp_can_tx(bus, std_id, data, 8u);
+    return bsp_can_tx(bus, std_id, data, 8u);
 }
 
-void can_mit_motor_send_enable(uint8_t bus, uint16_t std_id)
+int can_mit_motor_send_enable(uint8_t bus, uint16_t std_id)
 {
     static const uint8_t data[8] = {0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFCu};
 
     if (std_id == 0u)
     {
-        return;
+        return -1;
     }
 
-    (void)bsp_can_tx(bus, std_id, data, 8u);
+    return bsp_can_tx(bus, std_id, data, 8u);
 }
 
-void can_mit_motor_send_stop(uint8_t bus, uint16_t std_id, const can_mit_motor_limits_t *limits)
+int can_mit_motor_send_disable(uint8_t bus, uint16_t std_id)
+{
+    static const uint8_t data[8] = {0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFDu};
+
+    if (std_id == 0u)
+    {
+        return -1;
+    }
+
+    return bsp_can_tx(bus, std_id, data, 8u);
+}
+
+int can_mit_motor_send_stop(uint8_t bus, uint16_t std_id, const can_mit_motor_limits_t *limits)
 {
     can_mit_motor_cmd_t stop_cmd = {0};
 
-    can_mit_motor_send_cmd(bus, std_id, limits, &stop_cmd);
+    return can_mit_motor_send_cmd(bus, std_id, limits, &stop_cmd);
 }
 
 uint8_t can_mit_motor_update_feedback(uint16_t std_id,

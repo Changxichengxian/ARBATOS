@@ -50,6 +50,9 @@ typedef enum
     TEST_MODE_SHOOT_COMBO,   // 摩擦+撥盤
     TEST_MODE_ENTERTAIN,     // 娛樂模式：禁用摩擦輪/撥盤，左撥杆控制 TF 音樂（上=停，中/下=播）
     TEST_MODE_PITCH_CALI,    // pitch 校准：测重力维持电流 & 静摩擦起动电流（存 SD，非安全档才运行）
+    TEST_MODE_WHEELLEG_SINGLE_MOTOR, // 轮腿单电机测试：只给指定执行器发 MIT 状态力矩命令
+    TEST_MODE_WHEELLEG_LEFT_LEG_SWING, // 轮腿左腿关节测试：归零后正反转 90 度
+    TEST_MODE_WHEELLEG_FOOT_TRAJECTORY, // 轮腿足端轨迹测试：归零、伸腿、前后 3cm
 } test_mode_e;
 
 typedef struct
@@ -951,6 +954,45 @@ typedef struct
     fp32 max_yaw_rate_radps;
     uint16_t rc_deadband;
     uint8_t enable_switch_pos; // MANUAL_INPUT_SWITCH_POS_*
+
+    uint8_t single_test_actuator; // [600] actuator_id_e
+    fp32 single_test_position_rad; // [601]
+    fp32 single_test_velocity_radps; // [602]
+    fp32 single_test_kp; // [603]
+    fp32 single_test_kd; // [604]
+    fp32 single_test_torque_nm; // [605]
+    fp32 single_test_torque_limit_nm; // [606]
+    uint16_t left_test_zero_time_ms; // [607]
+    uint16_t left_test_move_time_ms; // [608]
+    fp32 left_test_angle_rad; // [609]
+    fp32 left_test_kp; // [610]
+    fp32 left_test_kd; // [611]
+    fp32 left_test_torque_ff_nm; // [612]
+    fp32 left_test_torque_limit_nm; // [613]
+    int8_t left_test_front_dir; // [614]
+    int8_t left_test_back_dir; // [615]
+    int8_t right_test_front_dir; // [616]
+    int8_t right_test_back_dir; // [617]
+
+    fp32 left_front_zero_rad; // [618]
+    fp32 left_back_zero_rad; // [619]
+    fp32 right_front_zero_rad; // [620]
+    fp32 right_back_zero_rad; // [621]
+    int8_t left_front_dir; // [622]
+    int8_t left_back_dir; // [623]
+    int8_t right_front_dir; // [624]
+    int8_t right_back_dir; // [625]
+    uint16_t foot_test_zero_hold_time_ms; // [626]
+    uint16_t foot_test_extend_time_ms; // [627]
+    uint16_t foot_test_swing_time_ms; // [628]
+    uint16_t foot_test_return_time_ms; // [629]
+    fp32 foot_test_length_m; // [630]
+    fp32 foot_test_forward_m; // [631]
+    fp32 foot_test_kp; // [632]
+    fp32 foot_test_kd; // [633]
+    fp32 foot_test_torque_ff_nm; // [634]
+    fp32 foot_test_torque_limit_nm; // [635]
+    int8_t foot_test_forward_dir; // [636]
 
     uint8_t right_front_actuator; // actuator_id_e
     uint8_t right_back_actuator;  // actuator_id_e

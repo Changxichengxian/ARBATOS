@@ -14,7 +14,7 @@
 #define BMI088_ACCEL_TEMP_DATA_READY_BIT    2
 
 #define BMI088_LONG_DELAY_TIME      80
-#define BMI088_COM_WAIT_SENSOR_TIME 150
+#define BMI088_COM_WAIT_SENSOR_TIME 1000
 
 
 #define BMI088_ACCEL_IIC_ADDRESSE   (0x18 << 1)
@@ -62,6 +62,22 @@ typedef struct BMI088_REAL_DATA
     fp32 time;
 } bmi088_real_data_t;
 
+typedef struct
+{
+    uint8_t init_last_error;
+    uint8_t init_fail_reg;
+    uint8_t init_fail_expect;
+    uint8_t init_fail_actual;
+    uint8_t accel_chip_id;
+    uint8_t gyro_chip_id;
+    uint8_t gyro_read_chip_id;
+    uint8_t gyro_read_ok;
+    uint32_t init_count;
+    uint32_t init_error_count;
+    uint32_t read_count;
+    uint32_t gyro_read_bad_count;
+} bmi088_diag_t;
+
 
 enum
 {
@@ -99,6 +115,7 @@ extern void BMI088_accel_read_over(uint8_t *rx_buf, fp32 accel[3], fp32 *time);
 extern void BMI088_gyro_read_over(uint8_t *rx_buf, fp32 gyro[3]);
 extern void BMI088_temperature_read_over(uint8_t *rx_buf, fp32 *temperate);
 extern void BMI088_read(fp32 gyro[3], fp32 accel[3], fp32 *temperate);
+extern void BMI088_get_diag(bmi088_diag_t *out);
 extern uint32_t get_BMI088_sensor_time(void);
 extern fp32 get_BMI088_temperate(void);
 extern void get_BMI088_gyro(int16_t gyro[3]);

@@ -41,38 +41,38 @@ const motor_config_t g_motor_config =
 config_t g_config = {
     .profile =
         {
-            .locomotion_family = LOCOMOTION_FAMILY_CLASSIC_CHASSIS,
-            .gimbal_family = GIMBAL_FAMILY_SINGLE,
-            .arm_family = ARM_FAMILY_UNIFIED,
+            .locomotion_family = LOCOMOTION_FAMILY_WHEELLEG_MIT,
+            .gimbal_family = GIMBAL_FAMILY_NONE,
+            .arm_family = ARM_FAMILY_NONE,
         },
     .motor =
         {
             .chassis =
                 {
-                    {MOTOR_MODEL_3508, 1u},
-                    {MOTOR_MODEL_3508, 2u},
-                    {MOTOR_MODEL_3508, 7u},
-                    {MOTOR_MODEL_3508, 5u},
+                    {MOTOR_MODEL_3508, 0u},
+                    {MOTOR_MODEL_3508, 0u},
+                    {MOTOR_MODEL_3508, 0u},
+                    {MOTOR_MODEL_3508, 0u},
                 },
             .friction =
                 {
-                    {MOTOR_MODEL_3510, 1u},
-                    {MOTOR_MODEL_3510, 2u},
-                    {MOTOR_MODEL_3510, 3u},
-                    {MOTOR_MODEL_3510, 4u},
+                    {MOTOR_MODEL_3510, 0u},
+                    {MOTOR_MODEL_3510, 0u},
+                    {MOTOR_MODEL_3510, 0u},
+                    {MOTOR_MODEL_3510, 0u},
                 },
-            .yaw = {MOTOR_MODEL_6020, 1u},
+            .yaw = {MOTOR_MODEL_6020, 0u},
             .yaw_upper = {MOTOR_MODEL_6020, 0u},
-            .pitch = {MOTOR_MODEL_3510, 6u},
-            .trigger = {MOTOR_MODEL_3510, 7u},
+            .pitch = {MOTOR_MODEL_3510, 0u},
+            .trigger = {MOTOR_MODEL_3510, 0u},
             .arm =
                 {
-                    {MOTOR_MODEL_6020, 1u},
-                    {MOTOR_MODEL_DM_J8009_2EC_V10, 1u, 2u, (uint8_t)MOTOR_PROTOCOL_INHERIT, (uint8_t)MOTOR_CONTROL_MODE_INHERIT, 0u, (uint8_t)MOTOR_TRANSPORT_CAN},
-                    {MOTOR_MODEL_DM_J8006_2EC_V10, 2u, 2u, (uint8_t)MOTOR_PROTOCOL_INHERIT, (uint8_t)MOTOR_CONTROL_MODE_INHERIT, 0u, (uint8_t)MOTOR_TRANSPORT_CAN},
-                    {MOTOR_MODEL_DM_J4310_2EC_V11, 3u, 2u, (uint8_t)MOTOR_PROTOCOL_INHERIT, (uint8_t)MOTOR_CONTROL_MODE_INHERIT, 0u, (uint8_t)MOTOR_TRANSPORT_CAN},
-                    {MOTOR_MODEL_DM_J4310_2EC_V12, 4u, 2u, (uint8_t)MOTOR_PROTOCOL_INHERIT, (uint8_t)MOTOR_CONTROL_MODE_INHERIT, 0u, (uint8_t)MOTOR_TRANSPORT_CAN},
-                    {MOTOR_MODEL_DM_J4310_2EC_V12, 5u, 2u, (uint8_t)MOTOR_PROTOCOL_INHERIT, (uint8_t)MOTOR_CONTROL_MODE_INHERIT, 0u, (uint8_t)MOTOR_TRANSPORT_CAN},
+                    {.model = MOTOR_MODEL_DM_H3510_V10, .can_id = 6u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 6u, .transport = MOTOR_TRANSPORT_CAN},
+                    {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 1u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 1u, .transport = MOTOR_TRANSPORT_CAN},
+                    {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 2u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 2u, .transport = MOTOR_TRANSPORT_CAN},
+                    {.model = MOTOR_MODEL_DM_J4310_2EC_V12, .can_id = 3u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 3u, .transport = MOTOR_TRANSPORT_CAN},
+                    {.model = MOTOR_MODEL_DM_J4310_2EC_V12, .can_id = 4u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 4u, .transport = MOTOR_TRANSPORT_CAN},
+                    {.model = MOTOR_MODEL_DM_H3510_V10, .can_id = 5u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 5u, .transport = MOTOR_TRANSPORT_CAN},
                 },
         },
     // 云台配置
@@ -231,7 +231,7 @@ config_t g_config = {
     // Wheel-leg MIT config
     .wheelleg_mit =
         {
-            .task_init_time_ms = 250u,
+            .task_init_time_ms = 1000u,
             .control_period_ms = 3u,
             .l1_m = 0.05000f,
             .l2_m = 0.11404f,
@@ -256,7 +256,7 @@ config_t g_config = {
                 },
             .support_bias_n = 11.0f,
             .leg_mass_kg = 0.12f,
-            .default_leg_length_m = 0.095f,
+            .default_leg_length_m = 0.100f,
             .min_leg_length_m = 0.085f,
             .max_leg_length_m = 0.120f,
             .max_wheel_torque_nm = 0.45f,
@@ -267,20 +267,57 @@ config_t g_config = {
             .observer_lpf = 0.18f,
             .leg_length_pid = {280.0f, 0.0f, 1200.0f, 35.0f, 0.0f},
             .leg_split_pid = {30.0f, 0.0f, 1.0f, 2.0f, 0.0f},
-            .turn_pid = {0.6f, 0.0f, 0.08f, 0.10f, 0.0f},
+            .turn_pid = {0.6f, 0.0f, 0.08f, 0.20f, 0.0f},
             .roll_pid = {25.0f, 0.0f, 3.0f, 15.0f, 0.0f},
             .pitch_balance_offset_right_rad = 0.0f,
             .pitch_balance_offset_left_rad = 0.0f,
-            .max_v_mps = 0.30f,
-            .max_yaw_rate_radps = 0.60f,
+            .max_v_mps = 0.45f,
+            .max_yaw_rate_radps = 1.20f,
             .rc_deadband = 10u,
             .enable_switch_pos = MANUAL_INPUT_SWITCH_POS_MID,
-            .right_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J1,
-            .right_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J2,
+            .single_test_actuator = (uint8_t)ACTUATOR_ID_ARM_J5, // [600] 单电机测试目标：达妙 H3510，CAN1 ID 5
+            .single_test_position_rad = 0.0f, // [601] MIT 位置给定；kp=0 时不生效
+            .single_test_velocity_radps = 30.0f, // [602] ch3 满杆速度，rad/s；改负数可反向
+            .single_test_kp = 0.0f, // [603] 位置刚度，默认关闭位置环
+            .single_test_kd = 0.10f, // [604] 速度阻尼
+            .single_test_torque_nm = 0.0f, // [605] 单电机测试力矩，默认 0
+            .single_test_torque_limit_nm = 0.30f, // [606] 测试力矩限幅
+            .left_test_zero_time_ms = 1000u, // [607] 上电后先回 0 并保持
+            .left_test_move_time_ms = 1500u, // [608] 每段 90deg 扫动时间
+            .left_test_angle_rad = 1.5707963268f, // [609] 90deg
+            .left_test_kp = 2.0f, // [610] 位置刚度，测试先给到能明显跟随
+            .left_test_kd = 0.16f, // [611] 速度阻尼
+            .left_test_torque_ff_nm = 0.0f, // [612] 前馈力矩
+            .left_test_torque_limit_nm = 0.30f, // [613] 前馈限幅
+            .left_test_front_dir = 1, // [614]
+            .left_test_back_dir = -1, // [615]
+            .right_test_front_dir = -1, // [616]
+            .right_test_back_dir = 1, // [617]
+            .left_front_zero_rad = -1.0145340144f, // [618] short-leg reference pose
+            .left_back_zero_rad = 0.3362703268f, // [619]
+            .right_front_zero_rad = 0.2740898096f, // [620]
+            .right_back_zero_rad = -2.0628290601f, // [621]
+            .left_front_dir = 1, // [622]
+            .left_back_dir = -1, // [623]
+            .right_front_dir = -1, // [624]
+            .right_back_dir = 1, // [625]
+            .foot_test_zero_hold_time_ms = 1000u, // [626] 先回 0 并保持
+            .foot_test_extend_time_ms = 4000u, // [627] 从 0 点伸到目标腿长
+            .foot_test_swing_time_ms = 3000u, // [628] 足端每段前后移动时间
+            .foot_test_return_time_ms = 4000u, // [629] 回到 0 点时间
+            .foot_test_length_m = 0.120f, // [630] 伸腿目标 12cm
+            .foot_test_forward_m = 0.030f, // [631] 足端前后 3cm
+            .foot_test_kp = 2.0f, // [632] 足端测试位置刚度，太小会基本不动
+            .foot_test_kd = 0.16f, // [633]
+            .foot_test_torque_ff_nm = 0.0f, // [634]
+            .foot_test_torque_limit_nm = 0.30f, // [635]
+            .foot_test_forward_dir = 1, // [636] 前后方向反了就改成 -1
+            .right_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J3,
+            .right_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J4,
             .right_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J0,
-            .left_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J4,
-            .left_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J5,
-            .left_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J3,
+            .left_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J1,
+            .left_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J2,
+            .left_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J5,
         },
 
     // Shoot config
@@ -399,7 +436,7 @@ config_t g_config = {
     .voltage =
         {
             .full_battery_voltage = 25.2f, // [221] 满电电压
-            .low_battery_voltage = 22.2f,  // [222] 低电阈值
+            .low_battery_voltage = 21.6f,  // [222] 低电阈值
             .voltage_drop = 0.0f,          // [223] 压降补偿
         },
 
@@ -417,8 +454,8 @@ config_t g_config = {
             .mid_file = "YOU.U8",
             .down_file = "hajimi.U8",
         },
-        .soft_beep_psc = 1,                // [224] 软提示分频：越小音调越高
-        .soft_beep_duration_ms = 80,       // [225] 软提示时长：ms
+        .soft_beep_psc = 49,               // [224] 软提示分频：越小音调越高
+        .soft_beep_duration_ms = 180,      // [225] 软提示时长：ms
         .enable = 1,                       // [226] 蜂鸣器总开关（0=关，1=开）
 
         .gimbal_warn_psc = 31,             // [227] 云台警告分频
@@ -489,14 +526,14 @@ config_t g_config = {
 
             .axis =
                 {
-                    [INPUT_AXIS_CHASSIS_X] = {.rc_ch = 3u, .invert = 0u},     // [320] ch [321] invert
-                    [INPUT_AXIS_CHASSIS_Y] = {.rc_ch = 2u, .invert = 0u},     // [322] ch [323] invert
+                    [INPUT_AXIS_CHASSIS_X] = {.rc_ch = 1u, .invert = 0u},     // [320] ch1 forward/back
+                    [INPUT_AXIS_CHASSIS_Y] = {.rc_ch = 3u, .invert = 0u},     // [322] ch3 reserved; bench mode does not move legs
                     [INPUT_AXIS_CHASSIS_WZ] = {.rc_ch = 0u, .invert = 0u},    // [324] ch [325] invert
                     [INPUT_AXIS_GIMBAL_YAW] = {.rc_ch = 0u, .invert = 0u},    // [326] ch [327] invert
                     [INPUT_AXIS_GIMBAL_PITCH] = {.rc_ch = 1u, .invert = 0u},  // [328] ch [329] invert
                     [INPUT_AXIS_CALIB_0] = {.rc_ch = 0u, .invert = 0u},       // [330] ch [331] invert
                     [INPUT_AXIS_CALIB_1] = {.rc_ch = 1u, .invert = 0u},       // [332] ch [333] invert
-                    [INPUT_AXIS_CALIB_2] = {.rc_ch = 2u, .invert = 0u},       // [334] ch [335] invert
+                    [INPUT_AXIS_CALIB_2] = {.rc_ch = 2u, .invert = 0u},       // [334] ch2 reserved; bench mode does not move legs
                     [INPUT_AXIS_CALIB_3] = {.rc_ch = 3u, .invert = 0u},       // [336] ch [337] invert
                 },
             .sw =
@@ -524,6 +561,9 @@ config_t g_config = {
             // 8: TEST_MODE_SHOOT_COMBO,
             // 9: TEST_MODE_ENTERTAIN,
             // 10: TEST_MODE_PITCH_CALI,
+            // 11: TEST_MODE_WHEELLEG_SINGLE_MOTOR,
+            // 12: TEST_MODE_WHEELLEG_LEFT_LEG_SWING,
+            // 13: TEST_MODE_WHEELLEG_FOOT_TRAJECTORY,
         },
 
 	    // AUX 口 VOFA+/FireWater (JustFloat) 遥测：N*fp32 + INF 尾（实时/带宽有限）

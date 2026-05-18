@@ -11,7 +11,6 @@
 
 #include "actuator_cmd.h"
 #include "struct_typedef.h"
-#include "rt_profiler.h"
 
 // 为减少任务间耦合，本文件不直接依赖 chassis/gimbal/shoot 等头文件；
 // mode 字段使用 watch_ 内部枚举，数值与对应模块枚举保持一致（用于调试观测）。
@@ -54,6 +53,7 @@ typedef enum
     WATCH_BOOT_STAGE_USART1_INIT,
     WATCH_BOOT_STAGE_USART3_INIT,
     WATCH_BOOT_STAGE_USART6_INIT,
+    WATCH_BOOT_STAGE_UART5_INIT,
     WATCH_BOOT_STAGE_UART7_INIT,
     WATCH_BOOT_STAGE_UART8_INIT,
     WATCH_BOOT_STAGE_SPI5_INIT,
@@ -90,7 +90,20 @@ typedef enum
     WATCH_TASK_HOST_LINK,
     WATCH_TASK_ELRS,
     WATCH_TASK_ARM,
+    WATCH_TASK_WHEELLEG_MIT,
 } watch_task_id_e;
+
+typedef enum
+{
+    WATCH_IMU_STAGE_NONE = 0,
+    WATCH_IMU_STAGE_ENTER = 1,
+    WATCH_IMU_STAGE_INIT_DELAY_DONE = 2,
+    WATCH_IMU_STAGE_BMI088_INIT_TRY = 3,
+    WATCH_IMU_STAGE_BMI088_INIT_RETRY = 4,
+    WATCH_IMU_STAGE_BMI088_INIT_OK = 5,
+    WATCH_IMU_STAGE_GYRO_BOOT_CALIB = 6,
+    WATCH_IMU_STAGE_FUSION_LOOP = 7,
+} watch_imu_stage_e;
 
 typedef enum
 {
@@ -133,6 +146,7 @@ typedef struct
     watch_task_diag_entry_t host_link_task;
     watch_task_diag_entry_t elrs_task;
     watch_task_diag_entry_t arm_task;
+    watch_task_diag_entry_t wheelleg_mit_task;
 } watch_task_diag_t;
 
 typedef struct
@@ -280,49 +294,85 @@ typedef struct
 
 typedef struct
 {
-    int16_t actuator_current[ACTUATOR_ID__COUNT];
-    uint8_t flags[8];      // 0:dbus_lost 1:zero_force 2:yaw_offline 3:pitch_offline 4:trigger_offline 5:chassis_zeroed
     int16_t can1_1ff_status;
     uint32_t can1_err;
     uint32_t can2_err;
     uint8_t can1_tx_status;
     uint8_t can2_tx_status;
+    uint32_t can1_rx_count;
+    uint32_t can1_tx_count;
+    uint32_t can1_tx_fail_count;
+    uint32_t can1_rx_drop_count;
+    uint32_t can1_rx_fps;
+    uint32_t can1_tx_fps;
+    uint32_t can1_tx_fail_fps;
+    uint32_t can1_rx_drop_fps;
+    uint32_t can_rx_pending;
+    uint16_t can1_last_rx_id;
+    uint16_t can1_last_tx_id;
+    uint8_t can1_last_rx_dlc;
+    uint8_t can1_last_tx_dlc;
+    uint8_t can1_tx_error_count;
+    uint8_t can1_rx_error_count;
     uint8_t manual_active_source;
     uint8_t sd_mounted;
     uint8_t sdlog_active;
-    uint8_t reserved0[3];
-    uint32_t can1_rx_drop;
-    uint32_t can2_rx_drop;
-    uint32_t can1_tx_count;
-    uint32_t can2_tx_count;
-    uint32_t can1_tx_fail;
-    uint32_t can2_tx_fail;
     uint32_t manual_sbus_frame_count;
     uint32_t manual_set_source_count;
-    uint32_t sdlog_dropped;
-    uint32_t sdlog_ring_used;
-    uint32_t sdlog_ring_free;
-    uint32_t sdlog_bytes_flushed;
-    uint32_t sdlog_last_sync_ms;
-    int32_t sdlog_last_error;
-    uint32_t image_last_rx_tick_ms;
-    uint32_t image_frame_count;
-    uint32_t image_controller_frame_count;
-    uint32_t image_client_frame_count;
-    uint32_t image_vt13_frame_count;
-    uint32_t image_crc_error_count;
-    uint32_t image_parse_error_count;
-    uint32_t image_restart_count;
-    uint16_t image_last_cmd_id;
-    uint8_t image_port_active;
-    uint8_t image_last_range_mode;
+
+    fp32 battery_voltage_v;
+    fp32 battery_percent;
+    uint8_t battery_low_alarm;
+    uint8_t adc_started;
+    uint16_t adc_raw0;
+    uint16_t adc_raw1;
+    fp32 adc_voltage0_v;
+    fp32 adc_voltage1_v;
+    uint32_t adc_start_ok_count;
+    uint32_t adc_start_fail_count;
+
+    uint8_t imu_task_stage;
+    uint8_t imu_bmi088_init_error;
+    uint8_t imu_bmi088_fail_reg;
+    uint8_t imu_bmi088_fail_expect;
+    uint8_t imu_bmi088_fail_actual;
+    uint8_t imu_accel_chip_id;
+    uint8_t imu_gyro_chip_id;
+    uint8_t imu_gyro_read_chip_id;
+    uint8_t imu_gyro_read_ok;
+    uint8_t imu_gyro_boot_calibrating;
+    uint8_t imu_gyro_boot_result;
+    uint8_t imu_heater_mode;
+    uint16_t imu_heater_pwm;
+    uint8_t reserved0;
+    uint32_t imu_bmi088_init_count;
+    uint32_t imu_bmi088_init_error_count;
+    uint32_t imu_bmi088_read_count;
+    uint32_t imu_gyro_read_bad_count;
+    uint32_t imu_task_enter_count;
+    uint32_t imu_task_stage_tick_ms;
+    fp32 imu_temp_c;
+    fp32 imu_heater_pid_out;
+
+    uint8_t wheelleg_lqr_valid;
+    uint8_t reserved1;
+    uint8_t reserved2;
+    uint8_t reserved3;
+    fp32 wheelleg_lqr_theta_err_rad;
+    fp32 wheelleg_lqr_dtheta_radps;
+    fp32 wheelleg_lqr_x_m;
+    fp32 wheelleg_lqr_v_err_mps;
+    fp32 wheelleg_lqr_pitch_rad;
+    fp32 wheelleg_lqr_pitch_gyro_radps;
+    fp32 wheelleg_lqr_right_torque_nm;
+    fp32 wheelleg_lqr_left_torque_nm;
+
     uint32_t watch_update_count;
     uint32_t watch_update_tick_ms;
     uint32_t scheduler_state;
     uint32_t task_count;
     uint32_t current_task_handle;
     char current_task_name[16];
-    rt_profiler_stats_t rt_profiler[RT_PROFILER_COUNT];
     watch_task_diag_t task;
     watch_irq_diag_t irq;
     watch_boot_stage_e boot_stage;
@@ -394,7 +444,97 @@ typedef struct
 
 typedef struct
 {
+    uint8_t id;
+    uint8_t online;
+    uint8_t cmd_active;
+    uint8_t cmd_mode;
+    uint8_t fb_bus;
+    uint8_t fb_rx_dlc;
+    uint8_t fb_rx_data0;
+    uint8_t fb_rx_data0_low4;
+    uint8_t fb_rx_data0_high4;
+    uint8_t fb_motor_id;
+    uint8_t fb_state;
+    uint16_t fb_rx_id;
+    uint32_t fb_rx_count;
+    uint32_t fb_last_rx_tick_ms;
+    fp32 cmd_position_rad;
+    fp32 cmd_position_deg;
+    fp32 cmd_velocity_rad_s;
+    fp32 cmd_kp;
+    fp32 cmd_kd;
+    fp32 cmd_torque_nm;
+    fp32 fb_position_rad;
+    fp32 fb_position_deg;
+    fp32 fb_velocity_rad_s;
+    fp32 fb_torque_nm;
+    fp32 rel_position_rad;
+    fp32 rel_position_deg;
+    fp32 cmd_minus_fb_rad;
+    fp32 cmd_minus_fb_deg;
+} watch_wheelleg_mit_motor_t;
+
+typedef struct
+{
+    uint8_t front_online;
+    uint8_t back_online;
+    uint8_t wheel_online;
     uint8_t reserved0;
+    fp32 length_m;
+    fp32 theta_rad;
+    fp32 theta_deg;
+    fp32 support_force_n;
+    fp32 wheel_torque_nm;
+} watch_wheelleg_mit_leg_t;
+
+typedef struct
+{
+    uint8_t wheel_zero_valid;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+    fp32 target_x_m;
+    fp32 target_y_m;
+    fp32 target_length_m;
+    fp32 wheel_zero_rad;
+    fp32 wheel_zero_deg;
+    fp32 wheel_dx_m;
+    fp32 wheel_comp_rad;
+    fp32 wheel_comp_deg;
+    fp32 wheel_target_rad;
+    fp32 wheel_target_deg;
+} watch_wheelleg_mit_foot_test_t;
+
+typedef struct
+{
+    uint8_t status_valid;
+    uint8_t state_valid;
+    uint8_t profile_on;
+    uint8_t manual_on;
+    uint8_t enabled;
+    uint8_t mode;
+    uint8_t last_mode;
+    uint8_t health;
+    uint8_t controller_active;
+    uint8_t test_mode;
+    uint8_t foot_test_phase;
+    uint8_t foot_test_ik_ok;
+    uint8_t input_chassis_switch;
+    uint8_t enable_switch_pos;
+    uint16_t fault_flags;
+    uint16_t active_controller_id;
+    fp32 target_v_mps;
+    fp32 target_leg_length_m;
+    fp32 target_foot_x_m;
+    fp32 target_leg_theta_rad;
+    fp32 target_leg_theta_deg;
+    fp32 pitch_rad;
+    fp32 pitch_deg;
+    fp32 x_dot_mps;
+    watch_wheelleg_mit_leg_t leg[2]; // 0:left, 1:right
+    watch_wheelleg_mit_motor_t joint[4]; // 0:LF, 1:LB, 2:RF, 3:RB
+    watch_wheelleg_mit_motor_t wheel[2]; // 0:left, 1:right
+    watch_wheelleg_mit_foot_test_t foot_test[2]; // 0:left, 1:right
 } watch_wheelleg_mit_t;
 
 typedef struct
@@ -476,6 +616,7 @@ void watch_task_beat(watch_task_id_e task_id);
 void watch_task_wait(watch_task_id_e task_id);
 void watch_task_timeout(watch_task_id_e task_id);
 void watch_task_error(watch_task_id_e task_id);
+void watch_imu_set_stage(watch_imu_stage_e stage);
 void watch_irq_hit(watch_irq_id_e irq_id);
 const watch_block_desc_t *watch_get_block_table(uint32_t *count);
 const watch_block_desc_t *watch_find_block(watch_block_id_e id);

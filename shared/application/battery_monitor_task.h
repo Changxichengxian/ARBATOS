@@ -37,4 +37,7 @@ extern void battery_monitor_task(void const * argument);
   * @retval         电量, 单位 1, 1 = 1%
   */
 extern uint16_t get_battery_percentage(void);
+extern fp32 get_battery_voltage_cached(void);
+extern fp32 get_battery_percentage_fp32(void);
+extern uint8_t battery_monitor_is_low_alarm(void);
 #endif

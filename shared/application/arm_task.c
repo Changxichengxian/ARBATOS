@@ -35,7 +35,6 @@ static void arm_write_status(uint16_t key_mask)
                     bsp_time_get_tick_ms(),
                     ++s_arm_status_seq);
     status.mode = (uint8_t)((key_mask != 0u) ? ARM_MODE_MANUAL : ARM_MODE_HOLD);
-    status.enabled = 1u;
     status.key_mask = key_mask;
     status.deadman_hold_ctrl = g_arm_deadman_hold_ctrl;
     status.key_speed_scale = g_arm_key_speed_scale;

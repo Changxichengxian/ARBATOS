@@ -57,6 +57,18 @@ void actuator_cmd_clear_all(void)
     taskEXIT_CRITICAL();
 }
 
+void actuator_cmd_clear(actuator_id_e id)
+{
+    if (actuator_id_valid(id) == 0u)
+    {
+        return;
+    }
+
+    taskENTER_CRITICAL();
+    (void)memset(&g_actuator_cmd[id], 0, sizeof(g_actuator_cmd[id]));
+    taskEXIT_CRITICAL();
+}
+
 void actuator_cmd_set_current(actuator_id_e id, int16_t current)
 {
     actuator_cmd_t cmd;

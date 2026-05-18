@@ -190,4 +190,9 @@ extern bool_t ins_is_gyro_boot_calibrating(void);
   */
 extern ins_gyro_boot_init_result_e ins_get_gyro_boot_initial_result(void);
 
+extern fp32 ins_get_imu_temperature_c(void);
+extern uint16_t ins_get_imu_heater_pwm(void);
+extern uint8_t ins_get_imu_heater_mode(void);
+extern fp32 ins_get_imu_heater_pid_out(void);
+
 #endif
