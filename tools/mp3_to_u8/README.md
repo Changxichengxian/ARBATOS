@@ -20,3 +20,5 @@ The key parts are:
 You can also drag one or more MP3 files onto `convert_mp3_to_u8.cmd`; the `.U8` output still goes into this tool's `U8/` folder.
 
 The `.mp3` inputs are treated as temporary source files and ignored by Git. The `.U8` outputs in `U8/` are kept in Git.
+
+`ffmpeg.exe` in this folder is a small custom FFmpeg build for this one conversion path. It is not a general-purpose FFmpeg package.
