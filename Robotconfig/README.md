@@ -6,11 +6,11 @@
 
 | 配置 | 说明 | 主要文件 |
 |---|---|---|
-| `HERO` | 英雄机器人 | `config.c`、`config.h`、`detect_task.c`、`pitch_cali_builtin.c` |
-| `INFANTRY` | 步兵机器人 | `config.c`、`config.h`、`detect_task.c`、`usb_task_stub.c` |
-| `SENTINEL` | 哨兵机器人 | `config.c`、`config.h`、`detect_task.c`、`usb_task_stub.c` |
-| `CARRIER` | 工程机器人 | `config.c`、`config.h`、`detect_task.c`、`usb_task_stub.c` |
-| `miniwheeleg` | H7 接板和机械臂实验 | `config.c`、`config.h`、`detect_task.c`、`arm_motor_table.c` |
+| `HERO-C` | 英雄机器人 | `config.c`、`config.h`、`detect_task.c`、`pitch_cali_builtin.c` |
+| `INFANTRY-A` | 步兵机器人 | `config.c`、`config.h`、`detect_task.c`、`usb_task_stub.c` |
+| `SENTINEL-A` | 哨兵机器人 | `config.c`、`config.h`、`detect_task.c`、`usb_task_stub.c` |
+| `CARRIER-A` | 工程机器人 | `config.c`、`config.h`、`detect_task.c`、`usb_task_stub.c` |
+| `MINIWHEELEG-M` | H7 接板和机械臂实验 | `config.c`、`config.h`、`detect_task.c`、`arm_motor_table.c` |
 
 目标目录采用扁平结构：
 
@@ -28,7 +28,7 @@ Robotconfig/<TARGET>/
 - 轴电机装配：哪个轴用什么电机、哪个 CAN ID、正反方向、反馈 ID。
 - 目标在线检测：这台车关心哪些设备、哪些离线算故障。
 - 目标私有的小补丁：例如某个目标不接 USB 主机链路，就放对应空实现。
-- 目标专属装配表：例如 `miniwheeleg` 的机械臂关节表。
+- 目标专属装配表：例如 `MINIWHEELEG-M` 的机械臂关节表。
 
 ## 不应该放这里
 

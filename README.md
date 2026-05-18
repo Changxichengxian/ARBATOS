@@ -11,7 +11,7 @@ ARBATOS 是一套面向 RoboMaster 类机器人的 STM32 / FreeRTOS 下位机控
 
 当前代码已经不只是“基础框架移植”。主线已经有：
 
-- 多目标工程入口：`HERO`、`INFANTRY`、`SENTINEL`、`CARRIER`、`miniwheeleg`。
+- 多目标工程入口：`HERO-C`、`INFANTRY-A`、`SENTINEL-A`、`CARRIER-A`、`MINIWHEELEG-M`。
 - 多硬件板支持：DJI C 板、DJI A 板、DM MC02 H7 板。
 - 静态 FreeRTOS 任务创建，并按任务族配置（profile，用配置决定启哪些任务）选择底盘、云台等任务；MC02 H7 实验入口还按配置接机械臂任务。
 - 多源手动输入：DBUS/SBUS、ELRS/CRSF、图传遥控、板载按键。
@@ -81,7 +81,7 @@ projects/<TARGET>/
 - `board` 是硬件板，负责芯片、外设、引脚和启动。
 - `Robotconfig` 是具体机器人目标，负责 PID 参数、电机 ID、通道映射和行为策略。
 - `shared` 放能跨机器人复用的代码。
-- `projects` 放最终打开编译的工程入口。`HERO`、`INFANTRY`、`SENTINEL`、`CARRIER` 这类车名目录只放在这里，`miniwheeleg` 这种实验入口也放这里。
+- `projects` 放最终打开编译的工程入口。`HERO-C`、`INFANTRY-A`、`SENTINEL-A`、`CARRIER-A` 这类车名目录只放在这里，`MINIWHEELEG-M` 这种实验入口也放这里。
 
 ### 板级工程
 
@@ -95,11 +95,11 @@ projects/<TARGET>/
 
 | Target | 说明 |
 |---|---|
-| `HERO` | 西北农林科技大学英雄机器人 |
-| `INFANTRY` | 西北农林科技大学步兵机器人 |
-| `SENTINEL` | 西北农林科技大学哨兵机器人 |
-| `CARRIER` | 西北农林科技大学工程机器人 |
-| `miniwheeleg` | H7 接板和轮腿 MIT 调试入口 |
+| `HERO-C` | 西北农林科技大学英雄机器人 |
+| `INFANTRY-A` | 西北农林科技大学步兵机器人 |
+| `SENTINEL-A` | 西北农林科技大学哨兵机器人 |
+| `CARRIER-A` | 西北农林科技大学工程机器人 |
+| `MINIWHEELEG-M` | H7 接板和轮腿 MIT 调试入口 |
 
 每个 `Robotconfig/<TARGET>/` 当前至少提供：
 
@@ -123,11 +123,11 @@ shared/
 
 | Target | Keil 工程 | 默认配置 |
 |---|---|---|
-| `HERO` | `projects/HERO/MDK-ARM/HERO.uvprojx` | `Robotconfig/HERO/config.c` |
-| `INFANTRY` | `projects/INFANTRY/MDK-ARM/INFANTRY.uvprojx` | `Robotconfig/INFANTRY/config.c` |
-| `SENTINEL` | `projects/SENTINEL/MDK-ARM/SENTINEL.uvprojx` | `Robotconfig/SENTINEL/config.c` |
-| `CARRIER` | `projects/CARRIER/MDK-ARM/CARRIER.uvprojx` | `Robotconfig/CARRIER/config.c` |
-| `miniwheeleg` | `projects/miniwheeleg/MDK-ARM/miniwheeleg.uvprojx` | `Robotconfig/miniwheeleg/config.c` |
+| `HERO-C` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | `Robotconfig/HERO-C/config.c` |
+| `INFANTRY-A` | `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx` | `Robotconfig/INFANTRY-A/config.c` |
+| `SENTINEL-A` | `projects/SENTINEL-A/MDK-ARM/SENTINEL-A.uvprojx` | `Robotconfig/SENTINEL-A/config.c` |
+| `CARRIER-A` | `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx` | `Robotconfig/CARRIER-A/config.c` |
+| `MINIWHEELEG-M` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | `Robotconfig/MINIWHEELEG-M/config.c` |
 
 注意：
 
@@ -424,7 +424,7 @@ actuator_feedback + 旧电机反馈结构
 ## 快速开始
 
 1. 安装 Keil MDK-ARM v5 和对应 STM32F4 / STM32H7 芯片包。
-2. 打开目标工程，例如 `projects/HERO/MDK-ARM/HERO.uvprojx`。
+2. 打开目标工程，例如 `projects/HERO-C/MDK-ARM/HERO-C.uvprojx`。
 3. 确认当前 Robotconfig 的 `config.c` 符合硬件接线，尤其是 `g_config.profile` 和 `g_config.motor`。
 4. 确认板级串口、CAN、IMU、蜂鸣器、按键等配置在 `boards/<BOARD>/` 下匹配当前硬件。
 5. 编译并下载到对应板卡。
@@ -439,17 +439,17 @@ ARBATOS/
 |   |-- DJI_A_F427/
 |   `-- DM_MC02_H7/
 |-- projects/
-|   |-- HERO/
-|   |-- INFANTRY/
-|   |-- SENTINEL/
-|   |-- CARRIER/
-|   `-- miniwheeleg/
+|   |-- HERO-C/
+|   |-- INFANTRY-A/
+|   |-- SENTINEL-A/
+|   |-- CARRIER-A/
+|   `-- MINIWHEELEG-M/
 |-- Robotconfig/
-|   |-- HERO/
-|   |-- INFANTRY/
-|   |-- SENTINEL/
-|   |-- CARRIER/
-|   `-- miniwheeleg/
+|   |-- HERO-C/
+|   |-- INFANTRY-A/
+|   |-- SENTINEL-A/
+|   |-- CARRIER-A/
+|   `-- MINIWHEELEG-M/
 |-- shared/
 |   |-- application/
 |   |-- bsp/

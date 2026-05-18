@@ -6,11 +6,11 @@
 
 | Project | Keil 工程 | 使用的 Robotconfig | 使用的 board |
 |---|---|---|---|
-| `HERO` | `projects/HERO/MDK-ARM/HERO.uvprojx` | `Robotconfig/HERO` | `boards/DJI_C_F407` |
-| `INFANTRY` | `projects/INFANTRY/MDK-ARM/INFANTRY.uvprojx` | `Robotconfig/INFANTRY` | `boards/DJI_A_F427` |
-| `SENTINEL` | `projects/SENTINEL/MDK-ARM/SENTINEL.uvprojx` | `Robotconfig/SENTINEL` | `boards/DJI_A_F427` |
-| `CARRIER` | `projects/CARRIER/MDK-ARM/CARRIER.uvprojx` | `Robotconfig/CARRIER` | `boards/DJI_A_F427` |
-| `miniwheeleg` | `projects/miniwheeleg/MDK-ARM/miniwheeleg.uvprojx` | `Robotconfig/miniwheeleg` | `boards/DM_MC02_H7` |
+| `HERO-C` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | `Robotconfig/HERO-C` | `boards/DJI_C_F407` |
+| `INFANTRY-A` | `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx` | `Robotconfig/INFANTRY-A` | `boards/DJI_A_F427` |
+| `SENTINEL-A` | `projects/SENTINEL-A/MDK-ARM/SENTINEL-A.uvprojx` | `Robotconfig/SENTINEL-A` | `boards/DJI_A_F427` |
+| `CARRIER-A` | `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx` | `Robotconfig/CARRIER-A` | `boards/DJI_A_F427` |
+| `MINIWHEELEG-M` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | `Robotconfig/MINIWHEELEG-M` | `boards/DM_MC02_H7` |
 
 更完整的对应表见本地文档 `local/docs/01_当前工程说明/工程-车型-板卡对应表.md`。
 
@@ -29,7 +29,7 @@
 
 ## 和 Robotconfig / boards 的关系
 
-现在大部分目录是同名 1 对 1，例如 `projects/HERO` 使用 `Robotconfig/HERO`。但这只是当前安排，不是概念绑定。
+现在大部分目录是同名 1 对 1，例如 `projects/HERO-C` 使用 `Robotconfig/HERO-C`。但这只是当前安排，不是概念绑定。
 
 以后可以有这些情况：
 
