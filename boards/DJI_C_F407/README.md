@@ -16,6 +16,7 @@
 ## 当前使用者
 
 - `HERO-C`：`open_HERO-C.cmd` 或 `projects/HERO-C/MDK-ARM/HERO-C.uvprojx`
+- `MINIWHEELEG-C`：`open_MINIWHEELEG-C.cmd` 或 `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx`
 
 ## 边界
 

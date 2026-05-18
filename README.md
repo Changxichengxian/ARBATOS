@@ -11,7 +11,7 @@ ARBATOS 是一套面向 RoboMaster 类机器人的 STM32 / FreeRTOS 下位机控
 
 当前代码已经不只是“基础框架移植”。主线已经有：
 
-- 多目标工程入口：`HERO-C`、`INFANTRY-A`、`SENTINEL-A`、`CARRIER-A`、`MINIWHEELEG-M`。
+- 多目标工程入口：`HERO-C`、`HERO-M`、`INFANTRY-A`、`SENTINEL-A`、`CARRIER-A`、`MINIWHEELEG-M`、`MINIWHEELEG-C`。
 - 多硬件板支持：DJI C 板、DJI A 板、DM MC02 H7 板。
 - 静态 FreeRTOS 任务创建，并按任务族配置（profile，用配置决定启哪些任务）选择底盘、云台等任务；MC02 H7 实验入口还按配置接机械臂任务。
 - 多源手动输入：DBUS/SBUS、ELRS/CRSF、图传遥控、板载按键。
@@ -81,7 +81,7 @@ projects/<TARGET>/
 - `board` 是硬件板，负责芯片、外设、引脚和启动。
 - `Robotconfig` 是具体机器人目标，负责 PID 参数、电机 ID、通道映射和行为策略。
 - `shared` 放能跨机器人复用的代码。
-- `projects` 放最终打开编译的工程入口。`HERO-C`、`INFANTRY-A`、`SENTINEL-A`、`CARRIER-A` 这类车名目录只放在这里，`MINIWHEELEG-M` 这种实验入口也放这里。
+- `projects` 放最终打开编译的工程入口。`HERO-C`、`HERO-M`、`INFANTRY-A`、`SENTINEL-A`、`CARRIER-A` 这类车名目录只放在这里，`MINIWHEELEG-M`、`MINIWHEELEG-C` 这种实验入口也放这里。
 
 ### 板级工程
 
@@ -96,10 +96,12 @@ projects/<TARGET>/
 | Target | 说明 |
 |---|---|
 | `HERO-C` | 西北农林科技大学英雄机器人 |
+| `HERO-M` | 英雄机器人临时接 MC02 H7 板 |
 | `INFANTRY-A` | 西北农林科技大学步兵机器人 |
 | `SENTINEL-A` | 西北农林科技大学哨兵机器人 |
 | `CARRIER-A` | 西北农林科技大学工程机器人 |
 | `MINIWHEELEG-M` | H7 接板和轮腿 MIT 调试入口 |
+| `MINIWHEELEG-C` | 小轮腿临时接 DJI C 板 |
 
 每个 `Robotconfig/<TARGET>/` 当前至少提供：
 
@@ -124,10 +126,12 @@ shared/
 | Target | Keil 工程 | 默认配置 |
 |---|---|---|
 | `HERO-C` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | `Robotconfig/HERO-C/config.c` |
+| `HERO-M` | `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` | `Robotconfig/HERO-M/config.c` |
 | `INFANTRY-A` | `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx` | `Robotconfig/INFANTRY-A/config.c` |
 | `SENTINEL-A` | `projects/SENTINEL-A/MDK-ARM/SENTINEL-A.uvprojx` | `Robotconfig/SENTINEL-A/config.c` |
 | `CARRIER-A` | `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx` | `Robotconfig/CARRIER-A/config.c` |
 | `MINIWHEELEG-M` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | `Robotconfig/MINIWHEELEG-M/config.c` |
+| `MINIWHEELEG-C` | `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx` | `Robotconfig/MINIWHEELEG-C/config.c` |
 
 注意：
 
@@ -440,16 +444,20 @@ ARBATOS/
 |   `-- DM_MC02_H7/
 |-- projects/
 |   |-- HERO-C/
+|   |-- HERO-M/
 |   |-- INFANTRY-A/
 |   |-- SENTINEL-A/
 |   |-- CARRIER-A/
-|   `-- MINIWHEELEG-M/
+|   |-- MINIWHEELEG-M/
+|   `-- MINIWHEELEG-C/
 |-- Robotconfig/
 |   |-- HERO-C/
+|   |-- HERO-M/
 |   |-- INFANTRY-A/
 |   |-- SENTINEL-A/
 |   |-- CARRIER-A/
-|   `-- MINIWHEELEG-M/
+|   |-- MINIWHEELEG-M/
+|   `-- MINIWHEELEG-C/
 |-- shared/
 |   |-- application/
 |   |-- bsp/
@@ -470,6 +478,7 @@ ARBATOS/
 - `boards/README.md`：板级适配层说明。
 - `shared/README.md`：共享代码层说明。
 - `boards/*/README.md`：各硬件板说明。
+- `tools/mp3_to_u8/README.md`：把 MP3 转成蜂鸣器使用的 `.U8` 原始音频。
 - `tools/pid_autotune/README.md`：PID 自动整定工具说明。
 
 ## 扩展建议

@@ -9,7 +9,7 @@
 - `projects/*/Drivers/`
 - `projects/*/Middlewares/`
 - `local/docs/04_原厂资料包/`
-- `tools/ffmpeg/`
+- `tools/mp3_to_u8/`
 - `local/reference/`
 - 任何带独立版权头、许可证文本、来源声明或上游归属说明的文件
 
