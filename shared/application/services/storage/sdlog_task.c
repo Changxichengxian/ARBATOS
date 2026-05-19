@@ -16,31 +16,52 @@
 #include "sdcard.h"
 #include "sdlog.h"
 #include "rt_profiler.h"
+#include "robot_task_profile.h"
 
 #define SDLOG_TASK_IDLE_DELAY_MS 10u
 #define SDLOG_TASK_BACKLOG_YIELD_POLLS 8u
 #define SDLOG_TASK_RT_PROFILER_PERIOD_MS 500u
 
+static uint8_t sdlog_rt_profiler_id_active(rt_profiler_id_e id)
+{
+    switch (id)
+    {
+    case RT_PROFILER_GIMBAL_CONTROL_LOOP:
+        return (uint8_t)(robot_profile_need_single_gimbal_control_task() ||
+                         robot_profile_need_dual_gimbal_control_task());
+    case RT_PROFILER_CHASSIS_CONTROL_LOOP:
+        return robot_profile_need_classic_chassis_control_task();
+    default:
+        return 1u;
+    }
+}
+
 static void sdlog_write_rt_profiler_sample(void)
 {
     sdlog_rt_profiler_t sample = {0};
-    const uint32_t count = ((uint32_t)RT_PROFILER_COUNT < (uint32_t)SDLOG_RT_PROFILER_MAX) ?
-                               (uint32_t)RT_PROFILER_COUNT :
-                               (uint32_t)SDLOG_RT_PROFILER_MAX;
 
-    sample.count = (uint8_t)count;
-    for (uint32_t i = 0u; i < count; i++)
+    for (uint32_t i = 0u; i < (uint32_t)RT_PROFILER_COUNT; i++)
     {
+        if (sample.count >= (uint8_t)SDLOG_RT_PROFILER_MAX)
+        {
+            break;
+        }
+        if (!sdlog_rt_profiler_id_active((rt_profiler_id_e)i))
+        {
+            continue;
+        }
+
         rt_profiler_stats_t stats = {0};
         rt_profiler_get((rt_profiler_id_e)i, &stats);
 
-        sample.entry[i].id = (uint8_t)i;
-        sample.entry[i].count = stats.count;
-        sample.entry[i].last_us = stats.last_us;
-        sample.entry[i].max_us = stats.max_us;
-        sample.entry[i].avg_us = stats.avg_us;
-        sample.entry[i].budget_us = stats.budget_us;
-        sample.entry[i].overrun_count = stats.overrun_count;
+        sample.entry[sample.count].id = (uint8_t)i;
+        sample.entry[sample.count].count = stats.count;
+        sample.entry[sample.count].last_us = stats.last_us;
+        sample.entry[sample.count].max_us = stats.max_us;
+        sample.entry[sample.count].avg_us = stats.avg_us;
+        sample.entry[sample.count].budget_us = stats.budget_us;
+        sample.entry[sample.count].overrun_count = stats.overrun_count;
+        sample.count++;
     }
 
     sdlog_write(SDLOG_TAG_RT_PROFILER, &sample, (uint16_t)sizeof(sample));

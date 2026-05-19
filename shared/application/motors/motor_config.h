@@ -16,14 +16,15 @@
 static inline const motor_model_db_entry_t *motor_cfg_model_db(motor_model_e model);
 static inline const motor_model_rx_desc_t *motor_cfg_rx_desc(motor_model_e model);
 
-// 取目标自己的只读电机型号参数；型号越界时返回 NULL。
+// 取共享电机型号参数；型号越界时返回 NULL。
 static inline const motor_model_param_t *motor_cfg_model(motor_model_e model)
 {
-    if ((uint32_t)model >= (uint32_t)MOTOR_MODEL__COUNT)
+    const motor_model_db_entry_t *entry = motor_cfg_model_db(model);
+    if (entry == NULL)
     {
         return NULL;
     }
-    return &g_motor_config.model[model];
+    return &entry->base;
 }
 
 static inline motor_transport_e motor_cfg_transport(const motor_node_param_t *node)

@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 // TF/SD card raw file playback (FatFs). File format: raw unsigned 8-bit PCM mono ("u8") with no header.
-// Path example: "0:/you_12k.u8". Note: FatFs is configured for ASCII filenames (FF_CODE_PAGE=437).
+// Path example: "0:/you_12k.u8". FatFs path strings are UTF-8.
 // PC-side example: `ffmpeg -y -i input.mp3 -ac 1 -ar 12000 -c:a pcm_u8 -f u8 0:/you_12k.u8`
 int buzzer_pcm_play_file_u8(const char *path, uint32_t sample_rate_hz, uint8_t loop, uint8_t volume);
 void buzzer_pcm_play_file_stop(void);
@@ -23,4 +23,3 @@ uint8_t buzzer_pcm_get_music_env_u8(void);
 void buzzer_pcm_reset_music_env(void);
 
 #endif
-

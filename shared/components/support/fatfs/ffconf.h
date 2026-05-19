@@ -26,13 +26,13 @@
 / Locale and Namespace Configurations
 /---------------------------------------------------------------------------*/
 
-#define FF_CODE_PAGE 437
+#define FF_CODE_PAGE 936
 
 // Enable long file names (LFN). Requires ffunicode.c.
 #define FF_USE_LFN 3
-#define FF_MAX_LFN 64
-#define FF_LFN_UNICODE 0
-#define FF_LFN_BUF 64
+#define FF_MAX_LFN 255
+#define FF_LFN_UNICODE 2
+#define FF_LFN_BUF 255
 #define FF_SFN_BUF 12
 #define FF_STRF_ENCODE 0
 

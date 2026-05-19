@@ -9,11 +9,21 @@
 
 
 #include "startup_service_task.h"
+
+#include <stdio.h>
+#include <string.h>
+
 #include "cmsis_os.h"
+#include "fatfs/ff.h"
 #include "bsp_buzzer.h"
+#include "bsp_time.h"
 #include "bsp_usb.h"
+#include "buzzer_file_player.h"
 #include "config.h"
+#include "control_input.h"
 #include "detect_task.h"
+#include "image_remote_link.h"
+#include "manual_input.h"
 #include "referee.h"
 #include "sdcard.h"
 
@@ -26,11 +36,22 @@
 #define LOST_BEEP_CONFIRM_STEP_TICKS ((DETECT_CONTROL_TIME + TEST_TASK_PERIOD_MS - 1U) / TEST_TASK_PERIOD_MS)
 #define STARTUP_LOST_BEEP_MUTE_MS 3500U
 #define STARTUP_LOST_BEEP_MUTE_TICKS ((STARTUP_LOST_BEEP_MUTE_MS + TEST_TASK_PERIOD_MS - 1U) / TEST_TASK_PERIOD_MS)
+#define ENTERTAIN_MUSIC_PATH_MAX 256u
+#define ENTERTAIN_MUSIC_ROOT "0:/"
 
 static uint8_t lost_beep_confirm_due(void);
 static void buzzer_schedule(uint8_t times);
 static void buzzer_tick(void);
 static uint8_t buzzer_is_idle(void);
+static void entertainment_music_tick(void);
+static uint8_t entertainment_manual_connected(void);
+static uint8_t entertainment_switch_is_ready(uint16_t raw_sw);
+static uint8_t entertainment_switch_is_fire(uint16_t raw_sw);
+static uint8_t entertainment_music_name_is_u8(const char *name);
+static int entertainment_find_music_by_index(int32_t *index_io,
+                                             char *out,
+                                             uint32_t out_size,
+                                             uint32_t *count_out);
 
 const error_t *error_list_test_local;
 static uint8_t beep_times_pending = 0;
@@ -39,6 +60,343 @@ static uint16_t beep_gap_ticks_left = 0;
 static uint8_t lost_confirm_step_ticks[ERROR_LIST_LENGHT];
 static uint8_t lost_confirm_count[ERROR_LIST_LENGHT];
 static uint8_t lost_beeped[ERROR_LIST_LENGHT];
+
+static uint16_t entertainment_switch_raw_from_pos(uint8_t pos)
+{
+    return (uint16_t)input_switch_pos_to_raw(pos);
+}
+
+static uint8_t entertainment_switch_is_stop(uint16_t raw_sw)
+{
+    return input_switch_is_pos(raw_sw, g_config.manual_input.semantics.shoot_stop_pos);
+}
+
+static uint8_t entertainment_switch_is_ready(uint16_t raw_sw)
+{
+    return input_switch_is_pos(raw_sw, g_config.manual_input.semantics.shoot_ready_pos);
+}
+
+static uint8_t entertainment_switch_is_fire(uint16_t raw_sw)
+{
+    return input_switch_is_pos(raw_sw, g_config.manual_input.semantics.shoot_fire_pos);
+}
+
+static input_switch_e entertainment_get_image_switch_input(void)
+{
+    switch (g_config.manual_input.semantics.image_vt13_shoot_switch_input)
+    {
+    case MANUAL_INPUT_IMAGE_SWITCH_CHASSIS:
+        return INPUT_SW_CHASSIS_MODE;
+    case MANUAL_INPUT_IMAGE_SWITCH_GIMBAL:
+        return INPUT_SW_GIMBAL_MODE;
+    case MANUAL_INPUT_IMAGE_SWITCH_SHOOT:
+    default:
+        return INPUT_SW_SHOOT_MODE;
+    }
+}
+
+static uint16_t entertainment_get_raw_switch(void)
+{
+    uint16_t raw_sw = (uint16_t)input_switch(INPUT_SW_SHOOT_MODE);
+
+    if (remote_control_get_active_source() != MANUAL_INPUT_SRC_IMAGE)
+    {
+        return raw_sw;
+    }
+
+    image_remote_state_t image_state;
+    if (!image_remote_get_state(&image_state) ||
+        image_state.proto != SDLOG_MANUAL_INPUT_PROTO_IMAGE_VT13)
+    {
+        return raw_sw;
+    }
+
+    raw_sw = (uint16_t)input_switch(entertainment_get_image_switch_input());
+    if (entertainment_switch_is_stop(raw_sw))
+    {
+        return entertainment_switch_raw_from_pos(g_config.manual_input.semantics.shoot_stop_pos);
+    }
+    if (entertainment_switch_is_ready(raw_sw))
+    {
+        return entertainment_switch_raw_from_pos(g_config.manual_input.semantics.shoot_ready_pos);
+    }
+    return entertainment_switch_raw_from_pos(g_config.manual_input.semantics.shoot_fire_pos);
+}
+
+static uint8_t entertainment_manual_connected(void)
+{
+    return (remote_control_get_active_source() != MANUAL_INPUT_SRC_AUTO) ? 1u : 0u;
+}
+
+static char entertainment_ascii_upper(char c)
+{
+    if (c >= 'a' && c <= 'z')
+    {
+        return (char)(c - ('a' - 'A'));
+    }
+    return c;
+}
+
+static uint8_t entertainment_music_name_is_u8(const char *name)
+{
+    const uint32_t len = (name != NULL) ? (uint32_t)strlen(name) : 0u;
+
+    if (len < 4u)
+    {
+        return 0u;
+    }
+
+    return (uint8_t)(name[len - 3u] == '.' &&
+                     entertainment_ascii_upper(name[len - 2u]) == 'U' &&
+                     entertainment_ascii_upper(name[len - 1u]) == '8');
+}
+
+static int entertainment_music_scan_count(uint32_t *count_out)
+{
+    DIR dir;
+    FILINFO info;
+    FRESULT fr;
+    uint32_t count = 0u;
+
+    if (count_out == NULL)
+    {
+        return -1;
+    }
+
+    if (sdcard_is_mounted() == 0)
+    {
+        const int m = sdcard_mount();
+        if (m != 0)
+        {
+            return m;
+        }
+    }
+
+    fr = f_opendir(&dir, ENTERTAIN_MUSIC_ROOT);
+    if (fr != FR_OK)
+    {
+        return -(int)fr;
+    }
+
+    for (;;)
+    {
+        fr = f_readdir(&dir, &info);
+        if (fr != FR_OK)
+        {
+            (void)f_closedir(&dir);
+            return -(int)fr;
+        }
+        if (info.fname[0] == '\0')
+        {
+            break;
+        }
+        if ((info.fattrib & AM_DIR) == 0u && entertainment_music_name_is_u8(info.fname) != 0u)
+        {
+            count++;
+        }
+    }
+
+    (void)f_closedir(&dir);
+    *count_out = count;
+    return (count != 0u) ? 0 : -2;
+}
+
+static int entertainment_find_music_by_index(int32_t *index_io,
+                                             char *out,
+                                             uint32_t out_size,
+                                             uint32_t *count_out)
+{
+    DIR dir;
+    FILINFO info;
+    FRESULT fr;
+    uint32_t count = 0u;
+    uint32_t seen = 0u;
+    int32_t index;
+
+    if (index_io == NULL || out == NULL || out_size == 0u)
+    {
+        return -1;
+    }
+
+    const int count_res = entertainment_music_scan_count(&count);
+    if (count_res != 0)
+    {
+        if (count_out != NULL)
+        {
+            *count_out = 0u;
+        }
+        return count_res;
+    }
+
+    index = *index_io;
+    while (index < 0)
+    {
+        index += (int32_t)count;
+    }
+    index %= (int32_t)count;
+
+    fr = f_opendir(&dir, ENTERTAIN_MUSIC_ROOT);
+    if (fr != FR_OK)
+    {
+        return -(int)fr;
+    }
+
+    for (;;)
+    {
+        fr = f_readdir(&dir, &info);
+        if (fr != FR_OK)
+        {
+            (void)f_closedir(&dir);
+            return -(int)fr;
+        }
+        if (info.fname[0] == '\0')
+        {
+            break;
+        }
+        if ((info.fattrib & AM_DIR) != 0u || entertainment_music_name_is_u8(info.fname) == 0u)
+        {
+            continue;
+        }
+        if (seen == (uint32_t)index)
+        {
+            const int n = snprintf(out, (size_t)out_size, "%s%s", ENTERTAIN_MUSIC_ROOT, info.fname);
+            (void)f_closedir(&dir);
+            if (n <= 0 || (uint32_t)n >= out_size)
+            {
+                return -3;
+            }
+            *index_io = index;
+            if (count_out != NULL)
+            {
+                *count_out = count;
+            }
+            return 0;
+        }
+        seen++;
+    }
+
+    (void)f_closedir(&dir);
+    return -4;
+}
+
+static void entertainment_music_tick(void)
+{
+    static uint8_t last_mode_entertain = 0u;
+    static uint8_t last_manual_connected = 0u;
+    static uint16_t last_music_sw = 0u;
+    static uint32_t last_start_ms = 0u;
+    static int32_t selected_index = 0;
+    static char want_path[ENTERTAIN_MUSIC_PATH_MAX] = {0};
+    static char last_cmd_path[ENTERTAIN_MUSIC_PATH_MAX] = {0};
+    uint8_t reload_path = 0u;
+
+    if ((test_mode_e)g_config.test.mode != TEST_MODE_ENTERTAIN)
+    {
+        if (last_mode_entertain != 0u && buzzer_pcm_is_stream_mode() != 0u)
+        {
+            buzzer_pcm_play_file_stop();
+        }
+        last_mode_entertain = 0u;
+        last_manual_connected = 0u;
+        last_music_sw = 0u;
+        selected_index = 0;
+        want_path[0] = '\0';
+        last_cmd_path[0] = '\0';
+        last_start_ms = 0u;
+        return;
+    }
+
+    last_mode_entertain = 1u;
+
+    const uint16_t music_sw = entertainment_get_raw_switch();
+    const uint8_t manual_connected = entertainment_manual_connected();
+    const buzzer_pcm_config_t *pcm_cfg = &g_config.buzzer.pcm;
+    const uint32_t sample_rate_hz = (pcm_cfg->sample_rate_hz != 0u) ? pcm_cfg->sample_rate_hz : 12000u;
+    const uint8_t volume = pcm_cfg->volume;
+    const uint8_t loop = (pcm_cfg->loop != 0u) ? 1u : 0u;
+    const uint16_t retry_ms = (pcm_cfg->retry_ms != 0u) ? pcm_cfg->retry_ms : 500u;
+    const uint32_t now_ms = bsp_time_get_tick_ms();
+
+    if (manual_connected == 0u)
+    {
+        if (buzzer_pcm_is_stream_mode() != 0u)
+        {
+            buzzer_pcm_play_file_stop();
+        }
+        last_manual_connected = 0u;
+        last_music_sw = 0u;
+        want_path[0] = '\0';
+        last_cmd_path[0] = '\0';
+        last_start_ms = 0u;
+        return;
+    }
+
+    if (last_manual_connected == 0u)
+    {
+        reload_path = 1u;
+    }
+    if (last_music_sw == RC_SW_MID && music_sw == RC_SW_DOWN)
+    {
+        selected_index++;
+        reload_path = 1u;
+    }
+    else if (last_music_sw == RC_SW_MID && music_sw == RC_SW_UP)
+    {
+        selected_index--;
+        reload_path = 1u;
+    }
+    if (want_path[0] == '\0' && (uint32_t)(now_ms - last_start_ms) >= (uint32_t)retry_ms)
+    {
+        reload_path = 1u;
+    }
+
+    last_manual_connected = 1u;
+    last_music_sw = music_sw;
+
+    if (reload_path != 0u)
+    {
+        char tmp[ENTERTAIN_MUSIC_PATH_MAX] = {0};
+        if (entertainment_find_music_by_index(&selected_index, tmp, (uint32_t)sizeof(tmp), NULL) != 0)
+        {
+            want_path[0] = '\0';
+            last_cmd_path[0] = '\0';
+            last_start_ms = now_ms;
+            if (buzzer_pcm_is_stream_mode() != 0u)
+            {
+                buzzer_pcm_play_file_stop();
+            }
+            return;
+        }
+
+        (void)strncpy(want_path, tmp, sizeof(want_path) - 1u);
+        want_path[sizeof(want_path) - 1u] = '\0';
+    }
+
+    if (buzzer_pcm_is_stream_mode() != 0u)
+    {
+        if (strcmp(last_cmd_path, want_path) != 0)
+        {
+            (void)buzzer_pcm_play_file_u8(want_path, sample_rate_hz, loop, volume);
+            (void)strncpy(last_cmd_path, want_path, sizeof(last_cmd_path) - 1u);
+            last_cmd_path[sizeof(last_cmd_path) - 1u] = '\0';
+            last_start_ms = bsp_time_get_tick_ms();
+        }
+        return;
+    }
+
+    if (buzzer_pcm_is_running() != 0u)
+    {
+        return;
+    }
+
+    if (strcmp(last_cmd_path, want_path) != 0 || (uint32_t)(now_ms - last_start_ms) >= (uint32_t)retry_ms)
+    {
+        (void)buzzer_pcm_play_file_u8(want_path, sample_rate_hz, loop, volume);
+        (void)strncpy(last_cmd_path, want_path, sizeof(last_cmd_path) - 1u);
+        last_cmd_path[sizeof(last_cmd_path) - 1u] = '\0';
+        last_start_ms = now_ms;
+    }
+}
 
 /**
   * @brief          startup service task
@@ -87,6 +445,10 @@ void startup_service_task(void const * argument)
             startup_lost_beep_mute_ticks--;
         }
 
+        const uint8_t entertainment_mode =
+            ((test_mode_e)g_config.test.mode == TEST_MODE_ENTERTAIN) ? 1u : 0u;
+        entertainment_music_tick();
+
         if(error == 0)
         {
             ever_all_online = 1;
@@ -102,7 +464,8 @@ void startup_service_task(void const * argument)
             uint8_t drop_when_running =
                 (confirmed_lost != 0u && error != 0 && ever_all_online != 0);
 
-            if(startup_lost_beep_mute_ticks == 0u &&
+            if(entertainment_mode == 0u &&
+               startup_lost_beep_mute_ticks == 0u &&
                (boot_missing || drop_when_running) &&
                buzzer_is_idle() != 0u)
             {
@@ -111,7 +474,20 @@ void startup_service_task(void const * argument)
             }
         }
 
-        buzzer_tick();
+        if (entertainment_mode != 0u)
+        {
+            beep_times_pending = 0u;
+            beep_gap_ticks_left = 0u;
+            if (beep_on_ticks_left != 0u && buzzer_pcm_is_running() == 0u)
+            {
+                buzzer_tone_stop();
+            }
+            beep_on_ticks_left = 0u;
+        }
+        else
+        {
+            buzzer_tick();
+        }
         referee_ui_demo_tick();
         last_error = error;
         osDelay(TEST_TASK_PERIOD_MS);

@@ -19,16 +19,10 @@
 #include "shoot.h"
 
 #include <math.h>
-#include <stdio.h>
-#include <string.h>
-
 #include "cmsis_os.h"
 
-#include "bsp_buzzer.h"
 #include "bsp_laser.h"
 #include "bsp_shoot_trig.h"
-#include "bsp_time.h"
-#include "buzzer_file_player.h"
 #include "user_lib.h"
 #include "referee.h"
 
@@ -209,6 +203,32 @@ const shoot_control_t *get_shoot_control_point(void)
     return &shoot_control;
 }
 
+void shoot_tune_apply_fric_speed_pid(void)
+{
+    taskENTER_CRITICAL();
+    for (uint8_t i = 0; i < FRIC_MOTOR_NUM; i++)
+    {
+        pid_type_def *dst = &shoot_control.fric_speed_pid[i];
+        dst->Kp = g_config.shoot.fric_speed_pid.kp;
+        dst->Ki = g_config.shoot.fric_speed_pid.ki;
+        dst->Kd = g_config.shoot.fric_speed_pid.kd;
+        dst->max_out = g_config.shoot.fric_speed_pid.max_out;
+        dst->max_iout = g_config.shoot.fric_speed_pid.max_iout;
+        PID_clear(dst);
+    }
+    taskEXIT_CRITICAL();
+}
+
+void shoot_tune_apply_trigger_pid(void)
+{
+    taskENTER_CRITICAL();
+    shoot_control.trigger_motor_pid.Kp = g_config.shoot.trigger_angle_pid.kp;
+    shoot_control.trigger_motor_pid.Ki = g_config.shoot.trigger_angle_pid.ki;
+    shoot_control.trigger_motor_pid.Kd = g_config.shoot.trigger_angle_pid.kd;
+    PID_clear(&shoot_control.trigger_motor_pid);
+    taskEXIT_CRITICAL();
+}
+
 static bool_t shoot_gimbal_cmd_to_shoot_stop(void)
 {
     gimbal_state_t state;
@@ -268,156 +288,6 @@ static bool_t shoot_allow_fric(test_mode_e mode)
 static bool_t shoot_allow_trigger(test_mode_e mode)
 {
     return (mode == TEST_MODE_NONE) || (mode == TEST_MODE_TRIGGER_ONLY) || (mode == TEST_MODE_SHOOT_COMBO);
-}
-
-// 娱乐模式：使用射击模式拨杆（通常为左侧拨杆）控制蜂鸣器音乐。
-// - 上：停止播放
-// - 中：循环播放 g_config.buzzer.pcm.mid_file
-// - 下：循环播放 g_config.buzzer.pcm.down_file
-#define SHOOT_ENTERTAIN_PATH_MAX 64u
-
-static int shoot_entertain_build_music_path(char *out, uint32_t out_size, const char *name_or_path)
-{
-    if (out == NULL || out_size == 0u || name_or_path == NULL || name_or_path[0] == '\0')
-    {
-        return -1;
-    }
-
-    // 绝对路径（包含盘符）："0:/xxx"
-    if (strchr(name_or_path, ':') != NULL)
-    {
-        const int n = snprintf(out, (size_t)out_size, "%s", name_or_path);
-        return (n > 0 && (uint32_t)n < out_size) ? 0 : -2;
-    }
-
-    // 相对路径：自动补齐盘符前缀。
-    while (*name_or_path == '/' || *name_or_path == '\\')
-    {
-        name_or_path++;
-    }
-    const int n = snprintf(out, (size_t)out_size, "0:/%s", name_or_path);
-    return (n > 0 && (uint32_t)n < out_size) ? 0 : -2;
-}
-
-static void shoot_entertain_music_control(test_mode_e mode)
-{
-    // 函数地图：只在娱乐模式接管蜂鸣器；拨杆中/下选择文件；文件变化或超时才重启播放。
-    static uint8_t last_mode_entertain = 0u;
-    static uint8_t last_want_key = 0u; // 0=停, 1=中, 2=下
-    static uint32_t last_start_ms = 0u;
-    static char want_path[SHOOT_ENTERTAIN_PATH_MAX] = {0};
-    static char last_cmd_path[SHOOT_ENTERTAIN_PATH_MAX] = {0};
-
-    if (shoot_control.shoot_rc == NULL)
-    {
-        return;
-    }
-
-    if (mode != TEST_MODE_ENTERTAIN)
-    {
-        if (last_mode_entertain != 0u)
-        {
-            if (buzzer_pcm_is_stream_mode() != 0u)
-            {
-                buzzer_pcm_play_file_stop();
-            }
-            last_want_key = 0u;
-            want_path[0] = '\0';
-            last_cmd_path[0] = '\0';
-        }
-        last_mode_entertain = 0u;
-        return;
-    }
-
-    last_mode_entertain = 1u;
-
-    const uint16_t shoot_sw = shoot_get_effective_switch();
-    const buzzer_pcm_config_t *pcm_cfg = &g_config.buzzer.pcm;
-
-    uint8_t want_key = 0u;
-    const char *want_name = NULL;
-    if (shoot_switch_is_ready(shoot_sw))
-    {
-        want_key = 1u;
-        want_name = pcm_cfg->mid_file;
-    }
-    else if (shoot_switch_is_fire(shoot_sw))
-    {
-        want_key = 2u;
-        want_name = pcm_cfg->down_file;
-    }
-
-    if (want_name == NULL || want_name[0] == '\0')
-    {
-        want_key = 0u;
-    }
-
-    if (want_key == 0u)
-    {
-        if (buzzer_pcm_is_stream_mode() != 0u)
-        {
-            buzzer_pcm_play_file_stop();
-        }
-        last_want_key = 0u;
-        want_path[0] = '\0';
-        last_cmd_path[0] = '\0';
-        last_start_ms = 0u;
-        return;
-    }
-
-    if (want_key != last_want_key || want_path[0] == '\0')
-    {
-        char tmp[SHOOT_ENTERTAIN_PATH_MAX] = {0};
-        if (shoot_entertain_build_music_path(tmp, (uint32_t)sizeof(tmp), want_name) != 0)
-        {
-            want_path[0] = '\0';
-            last_cmd_path[0] = '\0';
-            last_start_ms = 0u;
-            if (buzzer_pcm_is_stream_mode() != 0u)
-            {
-                buzzer_pcm_play_file_stop();
-            }
-            return;
-        }
-
-        (void)strncpy(want_path, tmp, sizeof(want_path) - 1u);
-        want_path[sizeof(want_path) - 1u] = '\0';
-        last_want_key = want_key;
-    }
-
-    const uint32_t sample_rate_hz = (pcm_cfg->sample_rate_hz != 0u) ? pcm_cfg->sample_rate_hz : 12000u;
-    const uint8_t volume = pcm_cfg->volume;
-    const uint8_t loop = (pcm_cfg->loop != 0u) ? 1u : 0u;
-    const uint16_t retry_ms = (pcm_cfg->retry_ms != 0u) ? pcm_cfg->retry_ms : 500u;
-
-    // 已在流式播放：仅当目标文件变化时重启。
-    if (buzzer_pcm_is_stream_mode() != 0u)
-    {
-        if (strcmp(last_cmd_path, want_path) != 0)
-        {
-            (void)buzzer_pcm_play_file_u8(want_path, sample_rate_hz, loop, volume);
-            (void)strncpy(last_cmd_path, want_path, sizeof(last_cmd_path) - 1u);
-            last_cmd_path[sizeof(last_cmd_path) - 1u] = '\0';
-            last_start_ms = bsp_time_get_tick_ms();
-        }
-        return;
-    }
-
-    // 蜂鸣器正被其它音效占用：等待空闲。
-    if (buzzer_pcm_is_running() != 0u)
-    {
-        return;
-    }
-
-    // 空闲：启动（或按周期重试）目标音乐。
-    const uint32_t now_ms = bsp_time_get_tick_ms();
-    if (strcmp(last_cmd_path, want_path) != 0 || (uint32_t)(now_ms - last_start_ms) >= (uint32_t)retry_ms)
-    {
-        (void)buzzer_pcm_play_file_u8(want_path, sample_rate_hz, loop, volume);
-        (void)strncpy(last_cmd_path, want_path, sizeof(last_cmd_path) - 1u);
-        last_cmd_path[sizeof(last_cmd_path) - 1u] = '\0';
-        last_start_ms = now_ms;
-    }
 }
 
 static void shoot_clear_trigger_output(void)
@@ -531,8 +401,6 @@ int16_t shoot_control_loop(void)
 
     // 函数地图：先处理娱乐模式；再跑射击状态机；最后分别输出拨弹和摩擦轮电流。
     const test_mode_e test_mode = shoot_test_mode();
-    shoot_entertain_music_control(test_mode);
-
     if (test_mode == TEST_MODE_ENTERTAIN)
     {
         if (entertain_entered == 0u)

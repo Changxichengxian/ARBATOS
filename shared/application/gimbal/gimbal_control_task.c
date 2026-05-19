@@ -44,6 +44,15 @@
 
 #include <string.h>
 
+__weak void shoot_init(void)
+{
+}
+
+__weak int16_t shoot_control_loop(void)
+{
+    return 0;
+}
+
 typedef struct
 {
     const manual_input_state_t *manual_input;

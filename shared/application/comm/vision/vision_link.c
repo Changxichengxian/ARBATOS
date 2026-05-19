@@ -15,7 +15,6 @@
 #include "task.h"
 
 #include "INS_task.h"
-#include "shoot.h"
 #include "referee.h"
 #include "sdlog.h"
 #include "CRC8_CRC16.h"

@@ -10,7 +10,30 @@
 #pragma once
 
 #include "actuator_cmd.h"
+#include "config.h"
 #include "types.h"
+
+#ifndef WATCH_ENABLE_LOCOMOTION_CLASSIC
+#define WATCH_ENABLE_LOCOMOTION_CLASSIC 1
+#endif
+#ifndef WATCH_ENABLE_LOCOMOTION_WHEELLEG_SERVO
+#define WATCH_ENABLE_LOCOMOTION_WHEELLEG_SERVO 1
+#endif
+#ifndef WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
+#define WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT 1
+#endif
+#ifndef WATCH_ENABLE_GIMBAL_SINGLE
+#define WATCH_ENABLE_GIMBAL_SINGLE 1
+#endif
+#ifndef WATCH_ENABLE_GIMBAL_DUAL
+#define WATCH_ENABLE_GIMBAL_DUAL 1
+#endif
+#ifndef WATCH_ENABLE_SHOOT_RM
+#define WATCH_ENABLE_SHOOT_RM 1
+#endif
+#ifndef WATCH_ENABLE_ARM_J0_UNITREE
+#define WATCH_ENABLE_ARM_J0_UNITREE 1
+#endif
 
 // 为减少任务间耦合，本文件不直接依赖 chassis/gimbal/shoot 等头文件；
 // mode 字段使用 watch_ 内部枚举，数值与对应模块枚举保持一致（用于调试观测）。
@@ -138,15 +161,23 @@ typedef struct
     watch_task_diag_entry_t default_task;
     watch_task_diag_entry_t detect_task;
     watch_task_diag_entry_t imu_task;
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
     watch_task_diag_entry_t gimbal_control_task;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
     watch_task_diag_entry_t chassis_control_task;
+#endif
     watch_task_diag_entry_t can_feedback_rx_task;
     watch_task_diag_entry_t can_command_tx_task;
     watch_task_diag_entry_t rc_sbus_task;
     watch_task_diag_entry_t host_link_task;
     watch_task_diag_entry_t elrs_task;
+#if WATCH_ENABLE_ARM_J0_UNITREE
     watch_task_diag_entry_t arm_task;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
     watch_task_diag_entry_t wheelleg_mit_task;
+#endif
 } watch_task_diag_t;
 
 typedef struct
@@ -314,6 +345,20 @@ typedef struct
     uint8_t can1_last_tx_dlc;
     uint8_t can1_tx_error_count;
     uint8_t can1_rx_error_count;
+    uint32_t can2_rx_count;
+    uint32_t can2_tx_count;
+    uint32_t can2_tx_fail_count;
+    uint32_t can2_rx_drop_count;
+    uint32_t can2_rx_fps;
+    uint32_t can2_tx_fps;
+    uint32_t can2_tx_fail_fps;
+    uint32_t can2_rx_drop_fps;
+    uint16_t can2_last_rx_id;
+    uint16_t can2_last_tx_id;
+    uint8_t can2_last_rx_dlc;
+    uint8_t can2_last_tx_dlc;
+    uint8_t can2_tx_error_count;
+    uint8_t can2_rx_error_count;
     uint8_t manual_active_source;
     uint8_t sd_mounted;
     uint8_t sdlog_active;
@@ -358,12 +403,12 @@ typedef struct
     uint8_t reserved1;
     uint8_t reserved2;
     uint8_t reserved3;
-    fp32 wheelleg_lqr_theta_err_rad;
-    fp32 wheelleg_lqr_dtheta_radps;
+    fp32 wheelleg_lqr_theta_err_deg;
+    fp32 wheelleg_lqr_dtheta_degps;
     fp32 wheelleg_lqr_x_m;
     fp32 wheelleg_lqr_v_err_mps;
-    fp32 wheelleg_lqr_pitch_rad;
-    fp32 wheelleg_lqr_pitch_gyro_radps;
+    fp32 wheelleg_lqr_pitch_deg;
+    fp32 wheelleg_lqr_pitch_gyro_degps;
     fp32 wheelleg_lqr_right_torque_nm;
     fp32 wheelleg_lqr_left_torque_nm;
 
@@ -391,8 +436,12 @@ typedef struct
     uint32_t heap_ever_free;
 
     // FreeRTOS uxTaskGetStackHighWaterMark() results (unit: words).
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
     uint32_t stack_gimbal;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
     uint32_t stack_chassis;
+#endif
     uint32_t stack_detect;
     uint32_t stack_calibrate;
 
@@ -458,19 +507,15 @@ typedef struct
     uint16_t fb_rx_id;
     uint32_t fb_rx_count;
     uint32_t fb_last_rx_tick_ms;
-    fp32 cmd_position_rad;
     fp32 cmd_position_deg;
-    fp32 cmd_velocity_rad_s;
+    fp32 cmd_velocity_deg_s;
     fp32 cmd_kp;
     fp32 cmd_kd;
     fp32 cmd_torque_nm;
-    fp32 fb_position_rad;
     fp32 fb_position_deg;
-    fp32 fb_velocity_rad_s;
+    fp32 fb_velocity_deg_s;
     fp32 fb_torque_nm;
-    fp32 rel_position_rad;
     fp32 rel_position_deg;
-    fp32 cmd_minus_fb_rad;
     fp32 cmd_minus_fb_deg;
 } watch_wheelleg_mit_motor_t;
 
@@ -481,8 +526,8 @@ typedef struct
     uint8_t wheel_online;
     uint8_t reserved0;
     fp32 length_m;
-    fp32 theta_rad;
     fp32 theta_deg;
+    fp32 alpha_deg;
     fp32 support_force_n;
     fp32 wheel_torque_nm;
 } watch_wheelleg_mit_leg_t;
@@ -496,12 +541,9 @@ typedef struct
     fp32 target_x_m;
     fp32 target_y_m;
     fp32 target_length_m;
-    fp32 wheel_zero_rad;
     fp32 wheel_zero_deg;
     fp32 wheel_dx_m;
-    fp32 wheel_comp_rad;
     fp32 wheel_comp_deg;
-    fp32 wheel_target_rad;
     fp32 wheel_target_deg;
 } watch_wheelleg_mit_foot_test_t;
 
@@ -526,9 +568,8 @@ typedef struct
     fp32 target_v_mps;
     fp32 target_leg_length_m;
     fp32 target_foot_x_m;
-    fp32 target_leg_theta_rad;
+    fp32 target_foot_y_m;
     fp32 target_leg_theta_deg;
-    fp32 pitch_rad;
     fp32 pitch_deg;
     fp32 x_dot_mps;
     watch_wheelleg_mit_leg_t leg[2]; // 0:left, 1:right
@@ -553,11 +594,11 @@ typedef struct
     uint32_t rx_crc_fail_count;
     uint32_t rx_parse_error_count;
     uint32_t last_rx_tick_ms;
-    fp32 cmd_speed_rad_s;
+    fp32 cmd_speed_deg_s;
     fp32 cmd_kd;
     fp32 torque_nm;
-    fp32 joint_speed_rad_s;
-    fp32 joint_position_rad;
+    fp32 joint_speed_deg_s;
+    fp32 joint_position_deg;
 } watch_arm_j0_unitree_t;
 
 typedef enum
@@ -593,13 +634,27 @@ typedef struct
 {
     watch_rc_t rc;
     watch_newrc_t newrc;
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
     watch_chassis_t chassis;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_SERVO
     watch_wheelleg_servo_t wheelleg_servo;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
     watch_wheelleg_mit_t wheelleg_mit;
+#endif
+#if WATCH_ENABLE_GIMBAL_SINGLE
     watch_gimbal_t gimbal;
+#endif
+#if WATCH_ENABLE_GIMBAL_DUAL
     watch_dual_gimbal_t dual_gimbal;
+#endif
+#if WATCH_ENABLE_SHOOT_RM
     watch_shoot_t shoot;
+#endif
+#if WATCH_ENABLE_ARM_J0_UNITREE
     watch_arm_j0_unitree_t arm_j0_unitree;
+#endif
     watch_imu_t imu;
     watch_diag_t diag;
     watch_rtos_t rtos;

@@ -106,7 +106,7 @@ projects/<TARGET>/
 每个 `Robotconfig/<TARGET>/` 当前至少提供：
 
 - `config.h`：参数结构、任务族、输入映射、遥测信号枚举、轴电机装配结构。
-- `config.c`：默认参数、全局变量 `g_config`、只读电机型号表 `g_motor_config`、AUX 临时调参表。
+- `config.c`：默认参数、全局变量 `g_config`、AUX 临时调参表。
 - `detect_task.c`：目标设备在线检测、状态汇总、部分日志上报。
 - 目标私有补充文件，例如 `host_link_task_stub.c`、`usb_task_stub.c`、机械臂装配表等。
 
@@ -275,8 +275,7 @@ actuator_feedback + 旧电机反馈结构
 
 电机相关边界现在按下面分：
 
-- `g_motor_config`：只读电机型号表，记录每种电机的 CAN 基址、最大电流和减速比。
-- `motor_model_db.c`：共享能力表，记录协议类型、控制方式、MIT 控制范围和反馈解析方式。
+- `motor_model_db.c`：共享电机型号表，记录 CAN 基址、最大电流、减速比、协议类型、控制方式、MIT 控制范围和反馈解析方式。
 - `g_config.motor`：当前目标的轴装配表，记录底盘、摩擦轮、yaw、pitch、trigger、机械臂关节等轴分别装什么电机、用哪个 CAN ID。
 - `motor_instance.c`：根据配置生成运行期电机实例，并负责把 CAN 反馈归到对应轴。
 - `actuator_cmd.c`：控制任务写入执行器命令，支持电流、状态力矩、位置速度、速度、力位等模式。
@@ -393,8 +392,7 @@ actuator_feedback + 旧电机反馈结构
 
 电机相关边界：
 
-- `g_motor_config` 是只读电机型号表。
-- `motor_model_db.c` 是共享协议能力表。
+- `motor_model_db.c` 是共享电机型号和协议能力表。
 - `g_config.motor` 是当前目标的轴装配表。
 - `g_config.motor` 没放进 AUX 调参表；换电机或换接线时，改对应 Robotconfig 的 `config.c`。
 - 底盘、云台、射击和机械臂只对“轴”发命令，通过 `motor_config.h` 和 `motor_instance.c` 处理电机差异。
@@ -501,10 +499,9 @@ ARBATOS/
 新增电机型号时：
 
 1. 在 `config.h` 里补 `motor_model_e`。
-2. 在 `g_motor_config` 里补固定参数。
-3. 在 `motor_model_db.c` 里补协议能力、反馈格式和控制范围。
-4. 如果需要新协议，补对应驱动，并接进 `CAN_receive.c` / `can_command_tx_task.c`。
-5. 最后只在 `g_config.motor` 里把某个轴装成这个电机。
+2. 在 `motor_model_db.c` 里补固定参数、协议能力、反馈格式和控制范围。
+3. 如果需要新协议，补对应驱动，并接进 `CAN_receive.c` / `can_command_tx_task.c`。
+4. 最后只在 `g_config.motor` 里把某个轴装成这个电机。
 
 新增输入来源时：
 

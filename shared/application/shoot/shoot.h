@@ -128,5 +128,7 @@ typedef struct
 extern void shoot_init(void);
 extern int16_t shoot_control_loop(void);
 extern const shoot_control_t *get_shoot_control_point(void);
+extern void shoot_tune_apply_fric_speed_pid(void);
+extern void shoot_tune_apply_trigger_pid(void);
 
 #endif

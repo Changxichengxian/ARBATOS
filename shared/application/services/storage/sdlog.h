@@ -132,6 +132,8 @@ typedef enum
     SDLOG_TAG_GIMBAL_BASE_STREAM = 0x004Cu,
     SDLOG_TAG_IMU_BASE_STREAM = 0x004Du,
     SDLOG_TAG_RT_PROFILER = 0x004Eu,
+    SDLOG_TAG_WHEELLEG_MIT_CONFIG = 0x004Fu,
+    SDLOG_TAG_WHEELLEG_MIT_STATUS = 0x0050u,
 } sdlog_tag_e;
 
 typedef enum
@@ -470,6 +472,122 @@ typedef struct __attribute__((packed))
     uint8_t reserved8[3];
     sdlog_rt_profiler_entry_t entry[SDLOG_RT_PROFILER_MAX];
 } sdlog_rt_profiler_t;
+
+#define SDLOG_WHEELLEG_MIT_CONFIG_VERSION 1u
+#define SDLOG_WHEELLEG_MIT_STATUS_VERSION 1u
+
+typedef struct __attribute__((packed))
+{
+    float kp;
+    float ki;
+    float kd;
+    float max_out;
+    float max_iout;
+} sdlog_pid_param_t;
+
+typedef struct __attribute__((packed))
+{
+    uint8_t version;
+    uint8_t enable_switch_pos;
+    uint16_t control_period_ms;
+    uint16_t rc_deadband;
+    uint16_t lqr_default_mask; // bit i = lqr row i uses firmware default instead of config row
+
+    uint8_t actuator_id[6]; // left front/back/wheel, right front/back/wheel
+    int8_t joint_dir[4];    // left front/back, right front/back
+    uint8_t reserved8[2];
+
+    float joint_zero_rad[4]; // left front/back, right front/back
+
+    float l1_m;
+    float l2_m;
+    float l3_m;
+    float l4_m;
+    float l5_m;
+    float wheel_radius_m;
+
+    float default_leg_length_m;
+    float min_leg_length_m;
+    float max_leg_length_m;
+
+    float support_bias_n;
+    float leg_mass_kg;
+
+    float max_wheel_torque_nm;
+    float max_joint_torque_nm;
+    float max_jump_joint_torque_nm;
+    float max_support_force_n;
+
+    float attitude_limit_rad;
+    float observer_lpf;
+
+    float pitch_balance_offset_right_rad;
+    float pitch_balance_offset_left_rad;
+    float max_v_mps;
+    float max_yaw_rate_radps;
+
+    sdlog_pid_param_t leg_length_pid;
+    sdlog_pid_param_t leg_split_pid;
+    sdlog_pid_param_t turn_pid;
+    sdlog_pid_param_t roll_pid;
+
+    float effective_lqr_poly[12][4];
+} sdlog_wheelleg_mit_config_t;
+
+typedef struct __attribute__((packed))
+{
+    uint8_t version;
+    uint8_t mode;
+    uint8_t last_mode;
+    uint8_t controller_active;
+
+    uint16_t fault_flags;
+    uint16_t feedback_faults;
+
+    uint8_t test_mode;
+    uint8_t manual_on;
+    uint8_t profile_on;
+    uint8_t reserved8;
+
+    float pitch_rad;
+    float roll_rad;
+    float yaw_rad;
+    float gyro_radps[3];
+
+    float target_v_mps;
+    float target_yaw_rate_radps;
+    float target_leg_length_m;
+    float target_foot_x_m;
+    float target_leg_theta_rad;
+
+    float observer_x_m;
+    float observer_v_mps;
+
+    float leg_length_m[2];      // left, right
+    float leg_theta_rad[2];     // left, right
+    float leg_d_length_mps[2];  // left, right
+    float leg_d_theta_radps[2]; // left, right
+
+    float support_force_n[2];   // left, right
+    float hip_torque_nm[2];     // left, right
+    float joint_torque_nm[2][2]; // [side][front/back]
+
+    float wheel_pos_rad[2];     // left, right
+    float wheel_vel_radps[2];   // left, right
+    float wheel_torque_nm[2];   // left, right
+
+    float lqr_error[6];  // right theta, right dtheta, x, v, right pitch, right gyro
+    float lqr_output[4]; // right wheel, left wheel, right hip, left hip
+
+    uint8_t contact[2];       // left, right
+    uint8_t motor_online_bits; // bit0 LF, bit1 LB, bit2 LW, bit3 RF, bit4 RB, bit5 RW
+    uint8_t reserved8_2;
+
+    uint32_t overrun_count;
+} sdlog_wheelleg_mit_status_t;
+
+typedef char _check_sdlog_wheelleg_mit_config_size[(sizeof(sdlog_wheelleg_mit_config_t) == 392) ? 1 : -1];
+typedef char _check_sdlog_wheelleg_mit_status_size[(sizeof(sdlog_wheelleg_mit_status_t) == 200) ? 1 : -1];
 
 typedef enum
 {

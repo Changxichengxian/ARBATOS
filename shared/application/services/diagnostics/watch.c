@@ -192,74 +192,152 @@ static const fp32 *ins_accel_src;
 static void watch_copy_rc(void);
 static void watch_copy_newrc(void);
 static void watch_copy_imu(void);
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
 static void watch_copy_chassis(void);
+#endif
+#if WATCH_ENABLE_GIMBAL_SINGLE
 static void watch_copy_gimbal(void);
+#endif
+#if WATCH_ENABLE_SHOOT_RM
 static void watch_copy_shoot(void);
+#endif
+#if WATCH_ENABLE_ARM_J0_UNITREE
 static void watch_copy_arm_j0_unitree(void);
+#endif
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
 static void watch_copy_wheelleg_mit(void);
+#endif
 static void watch_copy_diag(void);
 static void watch_copy_rtos(void);
 static void watch_diag_push_stage(watch_boot_stage_e stage);
 static watch_task_diag_entry_t *watch_task_diag_get(watch_task_id_e task_id);
 static watch_irq_diag_entry_t *watch_irq_diag_get(watch_irq_id_e irq_id);
 static uint8_t watch_block_active_always(void);
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
 static uint8_t watch_block_active_locomotion_classic(void);
+#endif
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_SERVO
 static uint8_t watch_block_active_wheelleg_servo(void);
+#endif
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
 static uint8_t watch_block_active_wheelleg_mit(void);
+#endif
+#if WATCH_ENABLE_GIMBAL_SINGLE
 static uint8_t watch_block_active_gimbal_single(void);
+#endif
+#if WATCH_ENABLE_GIMBAL_DUAL
 static uint8_t watch_block_active_gimbal_dual(void);
+#endif
+#if WATCH_ENABLE_SHOOT_RM
+static uint8_t watch_block_active_shoot_rm(void);
+#endif
+#if WATCH_ENABLE_ARM_J0_UNITREE
 static uint8_t watch_block_active_arm(void);
+#endif
 
 static const watch_block_desc_t g_watch_blocks[] = {
     {WATCH_BLOCK_RC, "input.rc", &g_watch.rc, sizeof(g_watch.rc), watch_block_active_always},
     {WATCH_BLOCK_NEWRC, "input.newrc", &g_watch.newrc, sizeof(g_watch.newrc), watch_block_active_always},
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
     {WATCH_BLOCK_LOCOMOTION_CLASSIC, "locomotion.classic", &g_watch.chassis, sizeof(g_watch.chassis), watch_block_active_locomotion_classic},
+#endif
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_SERVO
     {WATCH_BLOCK_LOCOMOTION_WHEELLEG_SERVO, "locomotion.wheelleg_servo", &g_watch.wheelleg_servo, sizeof(g_watch.wheelleg_servo), watch_block_active_wheelleg_servo},
+#endif
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
     {WATCH_BLOCK_LOCOMOTION_WHEELLEG_MIT, "locomotion.wheelleg_mit", &g_watch.wheelleg_mit, sizeof(g_watch.wheelleg_mit), watch_block_active_wheelleg_mit},
+#endif
+#if WATCH_ENABLE_GIMBAL_SINGLE
     {WATCH_BLOCK_GIMBAL_SINGLE, "gimbal.single", &g_watch.gimbal, sizeof(g_watch.gimbal), watch_block_active_gimbal_single},
+#endif
+#if WATCH_ENABLE_GIMBAL_DUAL
     {WATCH_BLOCK_GIMBAL_DUAL, "gimbal.dual", &g_watch.dual_gimbal, sizeof(g_watch.dual_gimbal), watch_block_active_gimbal_dual},
-    {WATCH_BLOCK_SHOOT_RM, "shoot.rm", &g_watch.shoot, sizeof(g_watch.shoot), watch_block_active_always},
+#endif
+#if WATCH_ENABLE_SHOOT_RM
+    {WATCH_BLOCK_SHOOT_RM, "shoot.rm", &g_watch.shoot, sizeof(g_watch.shoot), watch_block_active_shoot_rm},
+#endif
+#if WATCH_ENABLE_ARM_J0_UNITREE
     {WATCH_BLOCK_ARM_J0_UNITREE, "arm.j0_unitree", &g_watch.arm_j0_unitree, sizeof(g_watch.arm_j0_unitree), watch_block_active_arm},
+#endif
     {WATCH_BLOCK_IMU, "common.imu", &g_watch.imu, sizeof(g_watch.imu), watch_block_active_always},
     {WATCH_BLOCK_DIAG, "common.diag", &g_watch.diag, sizeof(g_watch.diag), watch_block_active_always},
     {WATCH_BLOCK_RTOS, "common.rtos", &g_watch.rtos, sizeof(g_watch.rtos), watch_block_active_always},
     {WATCH_BLOCK_FAULT, "common.fault", &g_watch.fault, sizeof(g_watch.fault), watch_block_active_always},
 };
 
+static watch_block_desc_t g_watch_active_blocks[WATCH_BLOCK_COUNT];
+
 static uint8_t watch_block_active_always(void)
 {
     return 1u;
 }
 
+static fp32 watch_rad_to_deg(fp32 rad)
+{
+    return rad * 57.29577951308232f;
+}
+
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
 static uint8_t watch_block_active_locomotion_classic(void)
 {
     return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_CLASSIC_CHASSIS);
 }
+#endif
 
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_SERVO
 static uint8_t watch_block_active_wheelleg_servo(void)
 {
     return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_SERVO);
 }
+#endif
 
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
 static uint8_t watch_block_active_wheelleg_mit(void)
 {
     return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_MIT);
 }
+#endif
 
+#if WATCH_ENABLE_GIMBAL_SINGLE
 static uint8_t watch_block_active_gimbal_single(void)
 {
     return (uint8_t)(g_config.profile.gimbal_family == GIMBAL_FAMILY_SINGLE);
 }
+#endif
 
+#if WATCH_ENABLE_GIMBAL_DUAL
 static uint8_t watch_block_active_gimbal_dual(void)
 {
     return (uint8_t)(g_config.profile.gimbal_family == GIMBAL_FAMILY_DUAL);
 }
+#endif
 
+#if WATCH_ENABLE_SHOOT_RM
+static uint8_t watch_block_active_shoot_rm(void)
+{
+    if (g_config.motor.trigger.can_id != 0u)
+    {
+        return 1u;
+    }
+
+    for (uint8_t i = 0u; i < 4u; i++)
+    {
+        if (g_config.motor.friction[i].can_id != 0u)
+        {
+            return 1u;
+        }
+    }
+
+    return 0u;
+}
+#endif
+
+#if WATCH_ENABLE_ARM_J0_UNITREE
 static uint8_t watch_block_active_arm(void)
 {
     return (uint8_t)(g_config.profile.arm_family != ARM_FAMILY_NONE);
 }
+#endif
 
 static watch_task_diag_entry_t *watch_task_diag_get(watch_task_id_e task_id)
 {
@@ -272,9 +350,17 @@ static watch_task_diag_entry_t *watch_task_diag_get(watch_task_id_e task_id)
     case WATCH_TASK_IMU:
         return &g_watch.diag.task.imu_task;
     case WATCH_TASK_GIMBAL_CONTROL:
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
         return &g_watch.diag.task.gimbal_control_task;
+#else
+        return NULL;
+#endif
     case WATCH_TASK_CHASSIS_CONTROL:
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
         return &g_watch.diag.task.chassis_control_task;
+#else
+        return NULL;
+#endif
     case WATCH_TASK_CAN_FEEDBACK_RX:
         return &g_watch.diag.task.can_feedback_rx_task;
     case WATCH_TASK_CAN_COMMAND_TX:
@@ -286,9 +372,17 @@ static watch_task_diag_entry_t *watch_task_diag_get(watch_task_id_e task_id)
     case WATCH_TASK_ELRS:
         return &g_watch.diag.task.elrs_task;
     case WATCH_TASK_ARM:
+#if WATCH_ENABLE_ARM_J0_UNITREE
         return &g_watch.diag.task.arm_task;
+#else
+        return NULL;
+#endif
     case WATCH_TASK_WHEELLEG_MIT:
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
         return &g_watch.diag.task.wheelleg_mit_task;
+#else
+        return NULL;
+#endif
     default:
         return NULL;
     }
@@ -467,31 +561,53 @@ void watch_update(void)
     watch_copy_rc();
     watch_copy_newrc();
     watch_copy_imu();
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
     watch_copy_chassis();
+#endif
+#if WATCH_ENABLE_GIMBAL_SINGLE
     watch_copy_gimbal();
+#endif
+#if WATCH_ENABLE_SHOOT_RM
     watch_copy_shoot();
+#endif
+#if WATCH_ENABLE_ARM_J0_UNITREE
     watch_copy_arm_j0_unitree();
+#endif
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
     watch_copy_wheelleg_mit();
+#endif
     watch_copy_diag();
     watch_copy_rtos();
 }
 
 const watch_block_desc_t *watch_get_block_table(uint32_t *count)
 {
+    uint32_t active_count = 0u;
+    for (uint32_t i = 0u; i < (uint32_t)(sizeof(g_watch_blocks) / sizeof(g_watch_blocks[0])); i++)
+    {
+        const watch_block_desc_t *block = &g_watch_blocks[i];
+        if (block->is_active == NULL || block->is_active())
+        {
+            g_watch_active_blocks[active_count++] = *block;
+        }
+    }
+
     if (count != NULL)
     {
-        *count = (uint32_t)(sizeof(g_watch_blocks) / sizeof(g_watch_blocks[0]));
+        *count = active_count;
     }
-    return g_watch_blocks;
+    return g_watch_active_blocks;
 }
 
 const watch_block_desc_t *watch_find_block(watch_block_id_e id)
 {
     for (uint32_t i = 0u; i < (uint32_t)(sizeof(g_watch_blocks) / sizeof(g_watch_blocks[0])); i++)
     {
-        if (g_watch_blocks[i].id == id)
+        const watch_block_desc_t *block = &g_watch_blocks[i];
+        if (block->id == id &&
+            (block->is_active == NULL || block->is_active()))
         {
-            return &g_watch_blocks[i];
+            return block;
         }
     }
     return NULL;
@@ -646,6 +762,7 @@ static void watch_copy_imu(void)
     }
 }
 
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
 static void watch_copy_chassis(void)
 {
     const fp32 rad2deg = 57.29577951308232f;
@@ -684,7 +801,9 @@ static void watch_copy_chassis(void)
         g_watch.chassis.motor_temp[i] = (m->measure.valid != 0u) ? m->measure.temperature : 0;
     }
 }
+#endif
 
+#if WATCH_ENABLE_GIMBAL_SINGLE
 static void watch_copy_gimbal(void)
 {
     const fp32 rad2deg = 57.29577951308232f;
@@ -757,7 +876,9 @@ static void watch_copy_gimbal(void)
         g_watch.gimbal.pitch_temp = 0;
     }
 }
+#endif
 
+#if WATCH_ENABLE_SHOOT_RM
 static void watch_copy_shoot(void)
 {
     const fp32 rad2deg = 57.29577951308232f;
@@ -816,7 +937,9 @@ static void watch_copy_shoot(void)
         }
     }
 }
+#endif
 
+#if WATCH_ENABLE_ARM_J0_UNITREE
 static void watch_copy_arm_j0_unitree(void)
 {
     const arm_j0_unitree_state_t *state = NULL;
@@ -848,21 +971,18 @@ static void watch_copy_arm_j0_unitree(void)
     g_watch.arm_j0_unitree.rx_crc_fail_count = state->rx_crc_fail_count;
     g_watch.arm_j0_unitree.rx_parse_error_count = state->rx_parse_error_count;
     g_watch.arm_j0_unitree.last_rx_tick_ms = state->last_rx_tick_ms;
-    g_watch.arm_j0_unitree.cmd_speed_rad_s = state->cmd_output_speed_rad_s;
+    g_watch.arm_j0_unitree.cmd_speed_deg_s = watch_rad_to_deg(state->cmd_output_speed_rad_s);
     g_watch.arm_j0_unitree.cmd_kd = state->cmd_output_kd;
     g_watch.arm_j0_unitree.torque_nm = state->torque_nm;
-    g_watch.arm_j0_unitree.joint_speed_rad_s = state->joint_speed_rad_s;
-    g_watch.arm_j0_unitree.joint_position_rad = state->joint_position_rad;
+    g_watch.arm_j0_unitree.joint_speed_deg_s = watch_rad_to_deg(state->joint_speed_rad_s);
+    g_watch.arm_j0_unitree.joint_position_deg = watch_rad_to_deg(state->joint_position_rad);
 }
+#endif
 
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
 static fp32 watch_wheelleg_dir_sign(int8_t dir)
 {
     return (dir < 0) ? -1.0f : 1.0f;
-}
-
-static fp32 watch_rad_to_deg(fp32 rad)
-{
-    return rad * 57.29577951308232f;
 }
 
 static void watch_copy_wheelleg_mit_motor(watch_wheelleg_mit_motor_t *out,
@@ -890,9 +1010,8 @@ static void watch_copy_wheelleg_mit_motor(watch_wheelleg_mit_motor_t *out,
     {
         out->cmd_active = cmd.active;
         out->cmd_mode = cmd.mode;
-        out->cmd_position_rad = cmd.position;
         out->cmd_position_deg = watch_rad_to_deg(cmd.position);
-        out->cmd_velocity_rad_s = cmd.velocity;
+        out->cmd_velocity_deg_s = watch_rad_to_deg(cmd.velocity);
         out->cmd_kp = cmd.kp;
         out->cmd_kd = cmd.kd;
         out->cmd_torque_nm = cmd.torque;
@@ -911,19 +1030,17 @@ static void watch_copy_wheelleg_mit_motor(watch_wheelleg_mit_motor_t *out,
         out->fb_rx_id = fb.rx_id;
         out->fb_rx_count = fb.rx_count;
         out->fb_last_rx_tick_ms = fb.last_rx_tick;
-        out->fb_position_rad = fb.position;
         out->fb_position_deg = watch_rad_to_deg(fb.position);
-        out->fb_velocity_rad_s = fb.velocity;
+        out->fb_velocity_deg_s = watch_rad_to_deg(fb.velocity);
         out->fb_torque_nm = fb.torque;
         if (use_rel_position != 0u)
         {
-            out->rel_position_rad = (fb.position - zero_rad) * watch_wheelleg_dir_sign(dir);
-            out->rel_position_deg = watch_rad_to_deg(out->rel_position_rad);
+            const fp32 rel_position_rad = (fb.position - zero_rad) * watch_wheelleg_dir_sign(dir);
+            out->rel_position_deg = watch_rad_to_deg(rel_position_rad);
         }
         if (out->cmd_active != 0u)
         {
-            out->cmd_minus_fb_rad = out->cmd_position_rad - fb.position;
-            out->cmd_minus_fb_deg = watch_rad_to_deg(out->cmd_minus_fb_rad);
+            out->cmd_minus_fb_deg = watch_rad_to_deg(cmd.position - fb.position);
         }
     }
 }
@@ -931,6 +1048,9 @@ static void watch_copy_wheelleg_mit_motor(watch_wheelleg_mit_motor_t *out,
 static void watch_copy_wheelleg_mit_foot_test(uint8_t side)
 {
     watch_wheelleg_mit_foot_test_t *out;
+    fp32 wheel_zero_rad = 0.0f;
+    fp32 wheel_comp_rad = 0.0f;
+    fp32 wheel_target_rad = 0.0f;
 
     if (side >= (uint8_t)WHEELLEG_SIDE_COUNT)
     {
@@ -944,13 +1064,19 @@ static void watch_copy_wheelleg_mit_foot_test(uint8_t side)
                                       &out->target_length_m);
     wheelleg_mit_get_foot_test_wheel(side,
                                      &out->wheel_zero_valid,
-                                     &out->wheel_zero_rad,
+                                     &wheel_zero_rad,
                                      &out->wheel_dx_m,
-                                     &out->wheel_comp_rad,
-                                     &out->wheel_target_rad);
-    out->wheel_zero_deg = watch_rad_to_deg(out->wheel_zero_rad);
-    out->wheel_comp_deg = watch_rad_to_deg(out->wheel_comp_rad);
-    out->wheel_target_deg = watch_rad_to_deg(out->wheel_target_rad);
+                                     &wheel_comp_rad,
+                                     &wheel_target_rad);
+    out->wheel_zero_deg = watch_rad_to_deg(wheel_zero_rad);
+    out->wheel_comp_deg = watch_rad_to_deg(wheel_comp_rad);
+    out->wheel_target_deg = watch_rad_to_deg(wheel_target_rad);
+}
+
+static uint8_t watch_wheelleg_manual_enabled_by_switch(uint8_t chassis_sw)
+{
+    return (uint8_t)(control_input_switch_is_pos(chassis_sw,
+                                                 g_config.manual_input.semantics.chassis_safe_pos) == 0u);
 }
 
 static void watch_copy_wheelleg_mit(void)
@@ -977,8 +1103,7 @@ static void watch_copy_wheelleg_mit(void)
     g_watch.wheelleg_mit.profile_on = profile_on;
     g_watch.wheelleg_mit.input_chassis_switch = chassis_sw;
     g_watch.wheelleg_mit.enable_switch_pos = g_config.wheelleg_mit.enable_switch_pos;
-    g_watch.wheelleg_mit.manual_on =
-        control_input_switch_is_pos(chassis_sw, g_config.wheelleg_mit.enable_switch_pos);
+    g_watch.wheelleg_mit.manual_on = watch_wheelleg_manual_enabled_by_switch(chassis_sw);
     g_watch.wheelleg_mit.test_mode = test_mode;
     g_watch.wheelleg_mit.foot_test_phase = wheelleg_mit_get_foot_test_phase();
     g_watch.wheelleg_mit.foot_test_ik_ok = wheelleg_mit_get_foot_test_ik_ok();
@@ -996,9 +1121,8 @@ static void watch_copy_wheelleg_mit(void)
         g_watch.wheelleg_mit.target_v_mps = status.target_v_mps;
         g_watch.wheelleg_mit.target_leg_length_m = status.target_leg_length_m;
         g_watch.wheelleg_mit.target_foot_x_m = status.target_foot_x_m;
-        g_watch.wheelleg_mit.target_leg_theta_rad = status.target_leg_theta_rad;
+        g_watch.wheelleg_mit.target_foot_y_m = status.target_foot_y_m;
         g_watch.wheelleg_mit.target_leg_theta_deg = watch_rad_to_deg(status.target_leg_theta_rad);
-        g_watch.wheelleg_mit.pitch_rad = status.pitch_rad;
         g_watch.wheelleg_mit.pitch_deg = watch_rad_to_deg(status.pitch_rad);
         g_watch.wheelleg_mit.x_dot_mps = status.x_dot_mps;
         g_watch.wheelleg_mit.enabled =
@@ -1008,10 +1132,10 @@ static void watch_copy_wheelleg_mit(void)
 
         g_watch.wheelleg_mit.leg[0].length_m = status.leg_length_m[WHEELLEG_SIDE_LEFT];
         g_watch.wheelleg_mit.leg[1].length_m = status.leg_length_m[WHEELLEG_SIDE_RIGHT];
-        g_watch.wheelleg_mit.leg[0].theta_rad = status.leg_theta_rad[WHEELLEG_SIDE_LEFT];
-        g_watch.wheelleg_mit.leg[1].theta_rad = status.leg_theta_rad[WHEELLEG_SIDE_RIGHT];
         g_watch.wheelleg_mit.leg[0].theta_deg = watch_rad_to_deg(status.leg_theta_rad[WHEELLEG_SIDE_LEFT]);
         g_watch.wheelleg_mit.leg[1].theta_deg = watch_rad_to_deg(status.leg_theta_rad[WHEELLEG_SIDE_RIGHT]);
+        g_watch.wheelleg_mit.leg[0].alpha_deg = watch_rad_to_deg(status.leg_alpha_rad[WHEELLEG_SIDE_LEFT]);
+        g_watch.wheelleg_mit.leg[1].alpha_deg = watch_rad_to_deg(status.leg_alpha_rad[WHEELLEG_SIDE_RIGHT]);
         g_watch.wheelleg_mit.leg[0].support_force_n = status.support_force_n[WHEELLEG_SIDE_LEFT];
         g_watch.wheelleg_mit.leg[1].support_force_n = status.support_force_n[WHEELLEG_SIDE_RIGHT];
         g_watch.wheelleg_mit.leg[0].wheel_torque_nm = status.wheel_torque_nm[WHEELLEG_SIDE_LEFT];
@@ -1063,6 +1187,7 @@ static void watch_copy_wheelleg_mit(void)
                                   1,
                                   0u);
 }
+#endif
 
 static void watch_copy_diag(void)
 {
@@ -1074,15 +1199,27 @@ static void watch_copy_diag(void)
     static uint32_t can_rate_last_tx_count;
     static uint32_t can_rate_last_tx_fail_count;
     static uint32_t can_rate_last_rx_drop_count;
+    static uint32_t can2_rate_last_rx_count;
+    static uint32_t can2_rate_last_tx_count;
+    static uint32_t can2_rate_last_tx_fail_count;
+    static uint32_t can2_rate_last_rx_drop_count;
     static uint32_t can1_rx_fps;
     static uint32_t can1_tx_fps;
     static uint32_t can1_tx_fail_fps;
     static uint32_t can1_rx_drop_fps;
+    static uint32_t can2_rx_fps;
+    static uint32_t can2_tx_fps;
+    static uint32_t can2_tx_fail_fps;
+    static uint32_t can2_rx_drop_fps;
     const uint32_t now_ms = HAL_GetTick();
     const uint32_t can1_rx_count = CAN_get_can1_rx_count();
     const uint32_t can1_tx_count = CAN_get_can1_tx_count();
     const uint32_t can1_tx_fail_count = CAN_get_can1_tx_fail_count();
     const uint32_t can1_rx_drop_count = CAN_get_can1_rx_drop_count();
+    const uint32_t can2_rx_count = CAN_get_can2_rx_count();
+    const uint32_t can2_tx_count = CAN_get_can2_tx_count();
+    const uint32_t can2_tx_fail_count = CAN_get_can2_tx_fail_count();
+    const uint32_t can2_rx_drop_count = CAN_get_can2_rx_drop_count();
     const uint8_t wheelleg_debug_valid =
         (robot_profile_is_wheelleg_mit() != 0u) ? wheelleg_debug_read(&wheelleg_debug) : 0u;
     uint32_t elapsed_ms;
@@ -1099,6 +1236,10 @@ static void watch_copy_diag(void)
         can_rate_last_tx_count = can1_tx_count;
         can_rate_last_tx_fail_count = can1_tx_fail_count;
         can_rate_last_rx_drop_count = can1_rx_drop_count;
+        can2_rate_last_rx_count = can2_rx_count;
+        can2_rate_last_tx_count = can2_tx_count;
+        can2_rate_last_tx_fail_count = can2_tx_fail_count;
+        can2_rate_last_rx_drop_count = can2_rx_drop_count;
     }
     elapsed_ms = now_ms - can_rate_last_tick_ms;
     if (elapsed_ms >= 1000u)
@@ -1107,11 +1248,19 @@ static void watch_copy_diag(void)
         can1_tx_fps = ((can1_tx_count - can_rate_last_tx_count) * 1000u) / elapsed_ms;
         can1_tx_fail_fps = ((can1_tx_fail_count - can_rate_last_tx_fail_count) * 1000u) / elapsed_ms;
         can1_rx_drop_fps = ((can1_rx_drop_count - can_rate_last_rx_drop_count) * 1000u) / elapsed_ms;
+        can2_rx_fps = ((can2_rx_count - can2_rate_last_rx_count) * 1000u) / elapsed_ms;
+        can2_tx_fps = ((can2_tx_count - can2_rate_last_tx_count) * 1000u) / elapsed_ms;
+        can2_tx_fail_fps = ((can2_tx_fail_count - can2_rate_last_tx_fail_count) * 1000u) / elapsed_ms;
+        can2_rx_drop_fps = ((can2_rx_drop_count - can2_rate_last_rx_drop_count) * 1000u) / elapsed_ms;
         can_rate_last_tick_ms = now_ms;
         can_rate_last_rx_count = can1_rx_count;
         can_rate_last_tx_count = can1_tx_count;
         can_rate_last_tx_fail_count = can1_tx_fail_count;
         can_rate_last_rx_drop_count = can1_rx_drop_count;
+        can2_rate_last_rx_count = can2_rx_count;
+        can2_rate_last_tx_count = can2_tx_count;
+        can2_rate_last_tx_fail_count = can2_tx_fail_count;
+        can2_rate_last_rx_drop_count = can2_rx_drop_count;
     }
 
     g_watch.diag.can1_rx_count = can1_rx_count;
@@ -1129,6 +1278,20 @@ static void watch_copy_diag(void)
     g_watch.diag.can1_last_tx_dlc = CAN_get_can1_last_tx_dlc();
     g_watch.diag.can1_tx_error_count = CAN_get_can1_tx_error_count();
     g_watch.diag.can1_rx_error_count = CAN_get_can1_rx_error_count();
+    g_watch.diag.can2_rx_count = can2_rx_count;
+    g_watch.diag.can2_tx_count = can2_tx_count;
+    g_watch.diag.can2_tx_fail_count = can2_tx_fail_count;
+    g_watch.diag.can2_rx_drop_count = can2_rx_drop_count;
+    g_watch.diag.can2_rx_fps = can2_rx_fps;
+    g_watch.diag.can2_tx_fps = can2_tx_fps;
+    g_watch.diag.can2_tx_fail_fps = can2_tx_fail_fps;
+    g_watch.diag.can2_rx_drop_fps = can2_rx_drop_fps;
+    g_watch.diag.can2_last_rx_id = CAN_get_can2_last_rx_id();
+    g_watch.diag.can2_last_tx_id = CAN_get_can2_last_tx_id();
+    g_watch.diag.can2_last_rx_dlc = CAN_get_can2_last_rx_dlc();
+    g_watch.diag.can2_last_tx_dlc = CAN_get_can2_last_tx_dlc();
+    g_watch.diag.can2_tx_error_count = CAN_get_can2_tx_error_count();
+    g_watch.diag.can2_rx_error_count = CAN_get_can2_rx_error_count();
     g_watch.diag.manual_active_source = remote_control_get_active_source();
     g_watch.diag.sd_mounted = (uint8_t)sdcard_is_mounted();
     sdlog_get_stats(&sd_stats);
@@ -1169,23 +1332,23 @@ static void watch_copy_diag(void)
     g_watch.diag.wheelleg_lqr_valid = wheelleg_debug_valid;
     if (wheelleg_debug_valid != 0u)
     {
-        g_watch.diag.wheelleg_lqr_theta_err_rad = wheelleg_debug.lqr.error[0];
-        g_watch.diag.wheelleg_lqr_dtheta_radps = wheelleg_debug.lqr.error[1];
+        g_watch.diag.wheelleg_lqr_theta_err_deg = watch_rad_to_deg(wheelleg_debug.lqr.error[0]);
+        g_watch.diag.wheelleg_lqr_dtheta_degps = watch_rad_to_deg(wheelleg_debug.lqr.error[1]);
         g_watch.diag.wheelleg_lqr_x_m = wheelleg_debug.lqr.error[2];
         g_watch.diag.wheelleg_lqr_v_err_mps = wheelleg_debug.lqr.error[3];
-        g_watch.diag.wheelleg_lqr_pitch_rad = wheelleg_debug.lqr.error[4];
-        g_watch.diag.wheelleg_lqr_pitch_gyro_radps = wheelleg_debug.lqr.error[5];
+        g_watch.diag.wheelleg_lqr_pitch_deg = watch_rad_to_deg(wheelleg_debug.lqr.error[4]);
+        g_watch.diag.wheelleg_lqr_pitch_gyro_degps = watch_rad_to_deg(wheelleg_debug.lqr.error[5]);
         g_watch.diag.wheelleg_lqr_right_torque_nm = wheelleg_debug.lqr.output[0];
         g_watch.diag.wheelleg_lqr_left_torque_nm = wheelleg_debug.lqr.output[1];
     }
     else
     {
-        g_watch.diag.wheelleg_lqr_theta_err_rad = 0.0f;
-        g_watch.diag.wheelleg_lqr_dtheta_radps = 0.0f;
+        g_watch.diag.wheelleg_lqr_theta_err_deg = 0.0f;
+        g_watch.diag.wheelleg_lqr_dtheta_degps = 0.0f;
         g_watch.diag.wheelleg_lqr_x_m = 0.0f;
         g_watch.diag.wheelleg_lqr_v_err_mps = 0.0f;
-        g_watch.diag.wheelleg_lqr_pitch_rad = 0.0f;
-        g_watch.diag.wheelleg_lqr_pitch_gyro_radps = 0.0f;
+        g_watch.diag.wheelleg_lqr_pitch_deg = 0.0f;
+        g_watch.diag.wheelleg_lqr_pitch_gyro_degps = 0.0f;
         g_watch.diag.wheelleg_lqr_right_torque_nm = 0.0f;
         g_watch.diag.wheelleg_lqr_left_torque_nm = 0.0f;
     }
@@ -1194,8 +1357,12 @@ static void watch_copy_diag(void)
 #if INCLUDE_uxTaskGetStackHighWaterMark
 // Optional stack watermark globals (defined in some targets). Provide weak defaults
 // so the shared watch can link even if a target doesn't export them.
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
 __weak uint32_t gimbal_high_water;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
 __weak uint32_t chassis_high_water;
+#endif
 __weak uint32_t detect_task_stack;
 __weak uint32_t calibrate_task_stack;
 #endif
@@ -1220,13 +1387,21 @@ static void watch_copy_rtos(void)
         (void)strncpy(g_watch.diag.current_task_name, current_name, sizeof(g_watch.diag.current_task_name) - 1u);
     }
 #if INCLUDE_uxTaskGetStackHighWaterMark
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
     g_watch.rtos.stack_gimbal = gimbal_high_water;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
     g_watch.rtos.stack_chassis = chassis_high_water;
+#endif
     g_watch.rtos.stack_detect = detect_task_stack;
     g_watch.rtos.stack_calibrate = calibrate_task_stack;
 #else
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
     g_watch.rtos.stack_gimbal = 0u;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
     g_watch.rtos.stack_chassis = 0u;
+#endif
     g_watch.rtos.stack_detect = 0u;
     g_watch.rtos.stack_calibrate = 0u;
 #endif

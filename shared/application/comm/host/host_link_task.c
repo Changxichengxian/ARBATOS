@@ -27,6 +27,8 @@
 #include "detect_task.h"
 #include "INS_task.h"
 #include "config.h"
+#include "motor_config.h"
+#include "robot_task_profile.h"
 #include "control_input.h"
 #include "watch.h"
 #include "user_lib.h"
@@ -37,7 +39,7 @@
 #include "manual_input.h"
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
-#include "shoot.h"
+#include "shoot_state.h"
 #include "bsp_time.h"
 #include "bsp_usart.h"
 #include "battery_monitor_task.h"
@@ -66,8 +68,10 @@ typedef struct
     const gimbal_motor_t *yaw;
     const gimbal_motor_t *pitch;
     const chassis_move_t *chassis;
+    shoot_state_t shoot;
+    uint8_t shoot_valid;
     const motor_measure_t *trigger_meas;
-    const motor_measure_t *fric_meas[FRIC_MOTOR_NUM];
+    const motor_measure_t *fric_meas[SHOOT_STATE_FRIC_MOTOR_COUNT];
 } aux_telem_ctx_t;
 
 typedef enum
@@ -89,7 +93,6 @@ typedef struct
     uint32_t last_tick_ms;
 } aux_autotune_stream_t;
 
-#if AUX_TUNE_ENABLE_PARAM_NAME_LOOKUP
 typedef enum
 {
     CONFIG_PARAM_SCOPE_COMMON = 0u,
@@ -99,7 +102,6 @@ typedef enum
     CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_SERVO,
     CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT,
 } config_param_scope_e;
-#endif
 
 typedef enum
 {
@@ -399,12 +401,130 @@ static const fp32 *ins_accel;
 
 extern ext_shoot_data_t shoot_data_t;
 extern ext_bullet_remaining_t bullet_remaining_t;
-extern shoot_control_t shoot_control;
 
 // Some targets do not wire in battery_monitor_task.c yet. Keep USB telemetry linkable
 // by providing weak zero defaults that are overridden when the real task exists.
 __weak fp32 battery_voltage = 0.0f;
 __weak fp32 electricity_percentage = 0.0f;
+
+__weak void shoot_tune_apply_fric_speed_pid(void)
+{
+}
+
+__weak void shoot_tune_apply_trigger_pid(void)
+{
+}
+
+__weak const gimbal_motor_t *get_yaw_motor_point(void)
+{
+    return NULL;
+}
+
+__weak const gimbal_motor_t *get_pitch_motor_point(void)
+{
+    return NULL;
+}
+
+__weak void gimbal_tune_get_yaw_speed_pid(pid_param_t *out)
+{
+    if (out != NULL)
+    {
+        memset(out, 0, sizeof(*out));
+    }
+}
+
+__weak void gimbal_tune_get_yaw_angle_pid(pid_param_t *out)
+{
+    if (out != NULL)
+    {
+        memset(out, 0, sizeof(*out));
+    }
+}
+
+__weak void gimbal_tune_set_yaw_speed_pid(const pid_param_t *pid, bool_t clear_state)
+{
+    (void)pid;
+    (void)clear_state;
+}
+
+__weak void gimbal_tune_set_yaw_angle_pid(const pid_param_t *pid, bool_t clear_state)
+{
+    (void)pid;
+    (void)clear_state;
+}
+
+__weak void gimbal_tune_clear_yaw_pid(void)
+{
+}
+
+__weak void gimbal_tune_get_pitch_speed_pid(pid_param_t *out)
+{
+    if (out != NULL)
+    {
+        memset(out, 0, sizeof(*out));
+    }
+}
+
+__weak void gimbal_tune_get_pitch_angle_pid(pid_param_t *out)
+{
+    if (out != NULL)
+    {
+        memset(out, 0, sizeof(*out));
+    }
+}
+
+__weak void gimbal_tune_set_pitch_speed_pid(const pid_param_t *pid, bool_t clear_state)
+{
+    (void)pid;
+    (void)clear_state;
+}
+
+__weak void gimbal_tune_set_pitch_angle_pid(const pid_param_t *pid, bool_t clear_state)
+{
+    (void)pid;
+    (void)clear_state;
+}
+
+__weak void gimbal_tune_clear_pitch_pid(void)
+{
+}
+
+__weak const chassis_move_t *get_chassis_move_point(void)
+{
+    return NULL;
+}
+
+__weak void chassis_tune_get_follow_pid(pid_param_t *out)
+{
+    if (out != NULL)
+    {
+        memset(out, 0, sizeof(*out));
+    }
+}
+
+__weak void chassis_tune_set_follow_pid(const pid_param_t *pid, bool_t clear_state)
+{
+    (void)pid;
+    (void)clear_state;
+}
+
+__weak void chassis_tune_clear_follow_pid(void)
+{
+}
+
+__weak void chassis_tune_get_motor_speed_pid(pid_param_t *out)
+{
+    if (out != NULL)
+    {
+        memset(out, 0, sizeof(*out));
+    }
+}
+
+__weak void chassis_tune_set_motor_speed_pid(const pid_param_t *pid, bool_t clear_state)
+{
+    (void)pid;
+    (void)clear_state;
+}
 
 static void aux_port_init(void);
 static void aux_port_poll(void);
@@ -421,17 +541,23 @@ static void aux_tune_try_send_telem(void);
 static void aux_tune_poll(void);
 static void aux_autotune_stop(void);
 static bool_t aux_autotune_parse_target(const char *s, aux_autotune_target_e *out);
+static bool_t aux_autotune_target_is_active(aux_autotune_target_e target);
 static bool_t aux_autotune_fill_fields(fp32 *fields, uint32_t *out_tick_ms);
 static bool_t aux_autotune_try_send_frame(void);
 static bool_t aux_tune_parse_fp32(const char *s, fp32 *out);
 static bool_t aux_tune_parse_u16(const char *s, uint16_t *out);
 static bool_t aux_tune_parse_u32(const char *s, uint32_t *out);
+static bool_t aux_tune_config_scope_is_active(config_param_scope_e scope);
 #if AUX_TUNE_ENABLE_PARAM_NAME_LOOKUP
 static const config_param_desc_t *aux_tune_find_config_param_by_name(const char *name);
 #endif
 static void aux_tune_apply_config_param(config_param_apply_e action);
 static bool_t aux_tune_set_config_param(uint16_t id, fp32 value);
 static uint16_t aux_telem_min_period_ms(uint16_t channel_num);
+static aux_telem_sig_e aux_telem_signal_at(const aux_telem_config_t *cfg,
+                                           uint8_t use_default_list,
+                                           uint16_t index);
+static bool_t aux_telem_signal_is_active(aux_telem_sig_e sig);
 static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig);
 
 void host_link_task(void const * argument)
@@ -589,6 +715,7 @@ static void aux_tune_try_send_telem(void)
     // - channel_num != 0: send the first channel_num entries in channel_map[].
     uint8_t use_default_list = 0u;
     uint16_t channel_num = cfg->channel_num;
+    uint16_t active_channel_num = 0u;
     if (channel_num == 0u)
     {
         use_default_list = 1u;
@@ -603,8 +730,21 @@ static void aux_tune_try_send_telem(void)
         return;
     }
 
+    for (uint16_t i = 0u; i < channel_num; i++)
+    {
+        const aux_telem_sig_e sig = aux_telem_signal_at(cfg, use_default_list, i);
+        if (aux_telem_signal_is_active(sig))
+        {
+            active_channel_num++;
+        }
+    }
+    if (active_channel_num == 0u)
+    {
+        return;
+    }
+
     uint16_t period_ms = cfg->period_ms;
-    const uint16_t min_period_ms = aux_telem_min_period_ms(channel_num);
+    const uint16_t min_period_ms = aux_telem_min_period_ms(active_channel_num);
     if (period_ms == 0u)
     {
         uint32_t auto_ms = ((uint32_t)min_period_ms * (100u + AUX_TELEM_AUTO_EXTRA_BACKOFF_PCT) + 99u) / 100u;
@@ -644,40 +784,30 @@ static void aux_tune_try_send_telem(void)
     ctx.yaw = get_yaw_motor_point();
     ctx.pitch = get_pitch_motor_point();
     ctx.chassis = get_chassis_move_point();
+    ctx.shoot_valid = shoot_state_read(&ctx.shoot);
     ctx.trigger_meas = get_trigger_motor_measure_point();
-    for (uint8_t i = 0; i < FRIC_MOTOR_NUM; i++)
+    for (uint8_t i = 0; i < SHOOT_STATE_FRIC_MOTOR_COUNT; i++)
     {
         ctx.fric_meas[i] = get_friction_motor_measure_point(i);
     }
 
-    if (use_default_list)
+    uint16_t out_channel_num = 0u;
+    for (uint16_t i = 0u; i < channel_num; i++)
     {
-        for (uint32_t i = 0; i < channel_num; i++)
+        const aux_telem_sig_e sig = aux_telem_signal_at(cfg, use_default_list, i);
+        if (!aux_telem_signal_is_active(sig))
         {
-            const aux_telem_sig_e sig = aux_telem_default_list[i];
-            const fp32 v = aux_telem_get_value(&ctx, sig);
-            memcpy(&aux_telem_frame[i * 4u], &v, 4u);
+            continue;
         }
-    }
-    else
-    {
-        for (uint32_t i = 0; i < channel_num; i++)
-        {
-            uint16_t sig_id = cfg->channel_map[i];
-            if (sig_id >= (uint16_t)AUX_TELEM_SIG__COUNT)
-            {
-                sig_id = 0u;
-            }
-            const aux_telem_sig_e sig = (aux_telem_sig_e)sig_id;
-            const fp32 v = aux_telem_get_value(&ctx, sig);
-            memcpy(&aux_telem_frame[i * 4u], &v, 4u);
-        }
+        const fp32 v = aux_telem_get_value(&ctx, sig);
+        memcpy(&aux_telem_frame[out_channel_num * 4u], &v, 4u);
+        out_channel_num++;
     }
 
     const uint32_t tail = 0x7F800000u;
-    memcpy(&aux_telem_frame[channel_num * 4u], &tail, 4u);
+    memcpy(&aux_telem_frame[out_channel_num * 4u], &tail, 4u);
 
-    const uint16_t frame_len = (uint16_t)((channel_num + 1u) * 4u);
+    const uint16_t frame_len = (uint16_t)((out_channel_num + 1u) * 4u);
     if (bsp_aux_link_tx_dma(aux_telem_frame, frame_len) == 0)
     {
         aux_telem_tick = now;
@@ -799,6 +929,10 @@ static bool_t aux_tune_handle_line(const char *line)
 
     if (strcmp(argv[0], "clear") == 0)
     {
+        if (!robot_profile_need_single_gimbal_control_task())
+        {
+            return 0;
+        }
         gimbal_tune_clear_pitch_pid();
         aux_cmd_seq++;
         return 1;
@@ -911,6 +1045,10 @@ static bool_t aux_tune_handle_line(const char *line)
         {
             return 0;
         }
+        if (!aux_autotune_target_is_active(target))
+        {
+            return 0;
+        }
 
         aux_autotune.enabled = 1u;
         aux_autotune.target = (uint8_t)target;
@@ -925,6 +1063,10 @@ static bool_t aux_tune_handle_line(const char *line)
 
     if (strcmp(argv[0], "cf") == 0)
     {
+        if (!robot_profile_need_classic_chassis_control_task())
+        {
+            return 0;
+        }
         if (argc >= 2 && strcmp(argv[1], "clear") == 0)
         {
             chassis_tune_clear_follow_pid();
@@ -977,6 +1119,10 @@ static bool_t aux_tune_handle_line(const char *line)
 
     if (strcmp(argv[0], "cm") == 0)
     {
+        if (!robot_profile_need_classic_chassis_control_task())
+        {
+            return 0;
+        }
         if (argc < 3)
         {
             return 0;
@@ -1027,6 +1173,10 @@ static bool_t aux_tune_handle_line(const char *line)
     const bool_t is_yaw_angle = (strcmp(argv[0], "ya") == 0);
     if (is_pitch_speed || is_pitch_angle || is_yaw_speed || is_yaw_angle)
     {
+        if (!robot_profile_need_single_gimbal_control_task())
+        {
+            return 0;
+        }
         if (argc >= 2 && strcmp(argv[1], "clear") == 0)
         {
             if (is_pitch_speed || is_pitch_angle)
@@ -1171,6 +1321,23 @@ static bool_t aux_autotune_parse_target(const char *s, aux_autotune_target_e *ou
     return 0;
 }
 
+static bool_t aux_autotune_target_is_active(aux_autotune_target_e target)
+{
+    switch (target)
+    {
+    case AUX_AUTOTUNE_TARGET_PITCH_SPEED:
+    case AUX_AUTOTUNE_TARGET_PITCH_ANGLE:
+    case AUX_AUTOTUNE_TARGET_YAW_SPEED:
+    case AUX_AUTOTUNE_TARGET_YAW_ANGLE:
+        return (bool_t)robot_profile_need_single_gimbal_control_task();
+    case AUX_AUTOTUNE_TARGET_CHASSIS_FOLLOW:
+    case AUX_AUTOTUNE_TARGET_CHASSIS_MOTOR_SPEED:
+        return (bool_t)robot_profile_need_classic_chassis_control_task();
+    default:
+        return 0;
+    }
+}
+
 static bool_t aux_autotune_fill_fields(fp32 *fields, uint32_t *out_tick_ms)
 {
     if (fields == NULL || out_tick_ms == NULL)
@@ -1182,6 +1349,11 @@ static bool_t aux_autotune_fill_fields(fp32 *fields, uint32_t *out_tick_ms)
     const uint32_t now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
     *out_tick_ms = now_ms;
     fields[0] = (fp32)now_ms;
+
+    if (!aux_autotune_target_is_active((aux_autotune_target_e)aux_autotune.target))
+    {
+        return 0;
+    }
 
     switch ((aux_autotune_target_e)aux_autotune.target)
     {
@@ -1383,6 +1555,85 @@ static uint16_t aux_telem_min_period_ms(uint16_t channel_num)
     return (uint16_t)ms;
 }
 
+static aux_telem_sig_e aux_telem_signal_at(const aux_telem_config_t *cfg,
+                                           uint8_t use_default_list,
+                                           uint16_t index)
+{
+    if (use_default_list)
+    {
+        return aux_telem_default_list[index];
+    }
+
+    if (cfg == NULL || cfg->channel_map[index] >= (uint16_t)AUX_TELEM_SIG__COUNT)
+    {
+        return AUX_TELEM_SIG_SYS_TICK_MS;
+    }
+
+    return (aux_telem_sig_e)cfg->channel_map[index];
+}
+
+static bool_t aux_telem_signal_is_active(aux_telem_sig_e sig)
+{
+    const uint8_t classic_chassis_on = robot_profile_need_classic_chassis_control_task();
+    const uint8_t gimbal_on = (uint8_t)(robot_profile_need_single_gimbal_control_task() ||
+                                        robot_profile_need_dual_gimbal_control_task());
+    const uint8_t trigger_on = (uint8_t)(motor_cfg_node_id(&g_config.motor.trigger) != 0u);
+    uint8_t friction_on = 0u;
+    for (uint8_t i = 0u; i < SHOOT_STATE_FRIC_MOTOR_COUNT; i++)
+    {
+        if (motor_cfg_node_id(&g_config.motor.friction[i]) != 0u)
+        {
+            friction_on = 1u;
+            break;
+        }
+    }
+    const uint8_t shoot_on = (uint8_t)((trigger_on != 0u || friction_on != 0u) ? 1u : 0u);
+
+    if ((sig >= AUX_TELEM_SIG_GIMBAL_YAW_ANGLE && sig <= AUX_TELEM_SIG_GIMBAL_PITCH_TEMP) ||
+        (sig >= AUX_TELEM_SIG_GIMBAL_YAW_ANGLE_PID_SET && sig <= AUX_TELEM_SIG_GIMBAL_PITCH_SPEED_PID_OUT) ||
+        sig == AUX_TELEM_SIG_DIAG_ACTUATOR_YAW_CURRENT ||
+        sig == AUX_TELEM_SIG_DIAG_ACTUATOR_PITCH_CURRENT ||
+        sig == AUX_TELEM_SIG_DIAG_ZERO_FORCE)
+    {
+        return (bool_t)gimbal_on;
+    }
+
+    if ((sig >= AUX_TELEM_SIG_CHASSIS_VX_SET && sig <= AUX_TELEM_SIG_CHASSIS_M3_SPD_PID_OUT) ||
+        sig == AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS0_CURRENT ||
+        sig == AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS1_CURRENT ||
+        sig == AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS2_CURRENT ||
+        sig == AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS3_CURRENT)
+    {
+        return (bool_t)classic_chassis_on;
+    }
+
+    if (sig == AUX_TELEM_SIG_SHOOT_FRIC_SPEED_SET ||
+        (sig >= AUX_TELEM_SIG_SHOOT_FRIC0_RPM && sig <= AUX_TELEM_SIG_SHOOT_FRIC3_CURRENT_CMD))
+    {
+        return (bool_t)friction_on;
+    }
+
+    if ((sig >= AUX_TELEM_SIG_SHOOT_TRIGGER_SPEED_SET && sig <= AUX_TELEM_SIG_SHOOT_TRIGGER_ECD_COUNT) ||
+        (sig >= AUX_TELEM_SIG_SHOOT_TRIGGER_RPM && sig <= AUX_TELEM_SIG_SHOOT_TRIGGER_CURRENT_FB) ||
+        sig == AUX_TELEM_SIG_DIAG_ACTUATOR_TRIGGER_CURRENT ||
+        sig == AUX_TELEM_SIG_SHOOT_TRIGGER_PID_IOUT ||
+        sig == AUX_TELEM_SIG_SHOOT_TRIGGER_PID_OUT)
+    {
+        return (bool_t)trigger_on;
+    }
+
+    if (sig == AUX_TELEM_SIG_SHOOT_PRESS_L ||
+        sig == AUX_TELEM_SIG_SHOOT_PRESS_R ||
+        sig == AUX_TELEM_SIG_SHOOT_KEY ||
+        sig == AUX_TELEM_SIG_SHOOT_HEAT_LIMIT ||
+        sig == AUX_TELEM_SIG_SHOOT_HEAT)
+    {
+        return (bool_t)shoot_on;
+    }
+
+    return 1;
+}
+
 static fp32 aux_telem_pid_field(const pid_type_def *pid, uint8_t field)
 {
     if (pid == NULL)
@@ -1535,7 +1786,7 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
         const uint32_t off = (uint32_t)(sig - AUX_TELEM_SIG_SHOOT_FRIC0_RPM);
         const uint8_t motor = (uint8_t)(off / 4u);
         const uint8_t field = (uint8_t)(off % 4u);
-        if (motor < FRIC_MOTOR_NUM)
+        if (motor < SHOOT_STATE_FRIC_MOTOR_COUNT)
         {
             const motor_measure_t *mm = ctx->fric_meas[motor];
             switch (field)
@@ -1724,29 +1975,29 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
         }
         return 0.0f;
     case AUX_TELEM_SIG_SHOOT_FRIC_SPEED_SET:
-        return shoot_control.fric_speed_set;
+        return ctx->shoot.fric_speed_set;
     case AUX_TELEM_SIG_SHOOT_TRIGGER_SPEED_SET:
-        return shoot_control.trigger_speed_set;
+        return ctx->shoot.trigger_speed_set;
     case AUX_TELEM_SIG_SHOOT_TRIGGER_SPEED:
-        return shoot_control.speed;
+        return ctx->shoot.speed;
     case AUX_TELEM_SIG_SHOOT_TRIGGER_ANGLE:
-        return shoot_control.angle;
+        return ctx->shoot.angle;
     case AUX_TELEM_SIG_SHOOT_TRIGGER_ANGLE_SET:
-        return shoot_control.set_angle;
+        return ctx->shoot.set_angle;
     case AUX_TELEM_SIG_SHOOT_TRIGGER_GIVEN_CURRENT:
-        return (fp32)shoot_control.given_current;
+        return (fp32)ctx->shoot.given_current;
     case AUX_TELEM_SIG_SHOOT_TRIGGER_ECD_COUNT:
-        return (fp32)shoot_control.ecd_count;
+        return (fp32)ctx->shoot.ecd_count;
     case AUX_TELEM_SIG_SHOOT_PRESS_L:
-        return (fp32)shoot_control.press_l;
+        return (fp32)ctx->shoot.press_l;
     case AUX_TELEM_SIG_SHOOT_PRESS_R:
-        return (fp32)shoot_control.press_r;
+        return (fp32)ctx->shoot.press_r;
     case AUX_TELEM_SIG_SHOOT_KEY:
-        return (fp32)shoot_control.key;
+        return (fp32)ctx->shoot.key;
     case AUX_TELEM_SIG_SHOOT_HEAT_LIMIT:
-        return (fp32)shoot_control.heat_limit;
+        return (fp32)ctx->shoot.heat_limit;
     case AUX_TELEM_SIG_SHOOT_HEAT:
-        return (fp32)shoot_control.heat;
+        return (fp32)ctx->shoot.heat;
 
     case AUX_TELEM_SIG_SHOOT_TRIGGER_RPM:
         return ctx->trigger_meas ? (fp32)ctx->trigger_meas->speed_rpm : 0.0f;
@@ -1785,7 +2036,7 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
         const uint32_t pitch_motor_mode = (ctx->pitch != NULL) ? (uint32_t)ctx->pitch->gimbal_motor_mode : 0u;
         const uint32_t chassis_mode = (ctx->chassis != NULL) ? (uint32_t)ctx->chassis->chassis_mode : 0u;
         const uint32_t last_chassis_mode = (ctx->chassis != NULL) ? (uint32_t)ctx->chassis->last_chassis_mode : 0u;
-        const uint32_t shoot_mode = (uint32_t)shoot_control.shoot_mode;
+        const uint32_t shoot_mode = (uint32_t)ctx->shoot.mode;
 
         const uint32_t packed = gimbal_behaviour +
                                 yaw_motor_mode * 10u +
@@ -1798,20 +2049,24 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
     case AUX_TELEM_SIG_PACK_OFFLINE:
     {
         uint32_t mask = 0u;
-        if (toe_is_error(DBUS_TOE))           mask |= 1u << 0;
-        if (toe_is_error(CHASSIS_MOTOR1_TOE))  mask |= 1u << 1;
-        if (toe_is_error(CHASSIS_MOTOR2_TOE))  mask |= 1u << 2;
-        if (toe_is_error(CHASSIS_MOTOR3_TOE))  mask |= 1u << 3;
-        if (toe_is_error(CHASSIS_MOTOR4_TOE))  mask |= 1u << 4;
-        if (toe_is_error(YAW_GIMBAL_MOTOR_TOE)) mask |= 1u << 5;
-        if (toe_is_error(PITCH_GIMBAL_MOTOR_TOE)) mask |= 1u << 6;
-        if (toe_is_error(TRIGGER_MOTOR_TOE))   mask |= 1u << 7;
-        if (toe_is_error(REFEREE_TOE))         mask |= 1u << 8;
-        if (toe_is_error(RM_IMU_TOE))          mask |= 1u << 9;
-        if (toe_is_error(BOARD_GYRO_TOE))      mask |= 1u << 10;
-        if (toe_is_error(BOARD_ACCEL_TOE))     mask |= 1u << 11;
-        if (toe_is_error(BOARD_MAG_TOE))       mask |= 1u << 12;
-        if (toe_is_error(OLED_TOE))            mask |= 1u << 13;
+        const uint8_t classic_chassis_on = robot_profile_need_classic_chassis_control_task();
+        const uint8_t gimbal_on = (uint8_t)(robot_profile_need_single_gimbal_control_task() ||
+                                            robot_profile_need_dual_gimbal_control_task());
+        const uint8_t trigger_on = (uint8_t)(motor_cfg_node_id(&g_config.motor.trigger) != 0u);
+        if (toe_is_error(DBUS_TOE)) mask |= 1u << 0;
+        if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR1_TOE)) mask |= 1u << 1;
+        if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR2_TOE)) mask |= 1u << 2;
+        if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR3_TOE)) mask |= 1u << 3;
+        if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR4_TOE)) mask |= 1u << 4;
+        if (gimbal_on && toe_is_error(YAW_GIMBAL_MOTOR_TOE)) mask |= 1u << 5;
+        if (gimbal_on && toe_is_error(PITCH_GIMBAL_MOTOR_TOE)) mask |= 1u << 6;
+        if (trigger_on && toe_is_error(TRIGGER_MOTOR_TOE)) mask |= 1u << 7;
+        if (toe_is_error(REFEREE_TOE)) mask |= 1u << 8;
+        if (toe_is_error(RM_IMU_TOE)) mask |= 1u << 9;
+        if (toe_is_error(BOARD_GYRO_TOE)) mask |= 1u << 10;
+        if (toe_is_error(BOARD_ACCEL_TOE)) mask |= 1u << 11;
+        if (toe_is_error(BOARD_MAG_TOE)) mask |= 1u << 12;
+        if (toe_is_error(OLED_TOE)) mask |= 1u << 13;
         return (fp32)mask;
     }
 
@@ -1826,9 +2081,9 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
         return (fp32)bsp_key_get_press_cnt();
 
     case AUX_TELEM_SIG_SHOOT_TRIGGER_PID_IOUT:
-        return shoot_control.trigger_motor_pid.Iout;
+        return ctx->shoot.trigger_motor_pid.Iout;
     case AUX_TELEM_SIG_SHOOT_TRIGGER_PID_OUT:
-        return shoot_control.trigger_motor_pid.out;
+        return ctx->shoot.trigger_motor_pid.out;
 
     default:
         return 0.0f;
@@ -2003,6 +2258,57 @@ static uint16_t aux_tune_to_u16(fp32 v)
     return (uint16_t)r;
 }
 
+static int8_t aux_tune_to_i8(fp32 v, int8_t min_v, int8_t max_v)
+{
+    if (min_v > max_v)
+    {
+        const int8_t t = min_v;
+        min_v = max_v;
+        max_v = t;
+    }
+
+    if (v <= (fp32)min_v)
+    {
+        return min_v;
+    }
+    if (v >= (fp32)max_v)
+    {
+        return max_v;
+    }
+
+    fp32 r = v + ((v >= 0.0f) ? 0.5f : -0.5f);
+    if (r < (fp32)min_v)
+    {
+        r = (fp32)min_v;
+    }
+    if (r > (fp32)max_v)
+    {
+        r = (fp32)max_v;
+    }
+    return (int8_t)r;
+}
+
+static bool_t aux_tune_config_scope_is_active(config_param_scope_e scope)
+{
+    switch (scope)
+    {
+    case CONFIG_PARAM_SCOPE_COMMON:
+        return 1;
+    case CONFIG_PARAM_SCOPE_GIMBAL_SINGLE:
+        return (bool_t)robot_profile_need_single_gimbal_control_task();
+    case CONFIG_PARAM_SCOPE_GIMBAL_DUAL:
+        return (bool_t)robot_profile_need_dual_gimbal_control_task();
+    case CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC:
+        return (bool_t)robot_profile_need_classic_chassis_control_task();
+    case CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_SERVO:
+        return (bool_t)robot_profile_need_wheelleg_servo_task();
+    case CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT:
+        return (bool_t)robot_profile_is_wheelleg_mit();
+    default:
+        return 0;
+    }
+}
+
 #if AUX_TUNE_ENABLE_PARAM_NAME_LOOKUP
 static const config_param_desc_t *aux_tune_find_config_param_by_name(const char *name)
 {
@@ -2016,6 +2322,10 @@ static const config_param_desc_t *aux_tune_find_config_param_by_name(const char 
     {
         if (strcmp(g_config_param_descs[i].name, name) == 0)
         {
+            if (!aux_tune_config_scope_is_active((config_param_scope_e)g_config_param_descs[i].scope))
+            {
+                return NULL;
+            }
             return &g_config_param_descs[i];
         }
     }
@@ -2055,28 +2365,12 @@ static void aux_tune_apply_chassis_follow_pid(void)
 
 static void aux_tune_apply_shoot_fric_speed_pid(void)
 {
-    taskENTER_CRITICAL();
-    for (uint8_t i = 0; i < FRIC_MOTOR_NUM; i++)
-    {
-        pid_type_def *dst = &shoot_control.fric_speed_pid[i];
-        dst->Kp = g_config.shoot.fric_speed_pid.kp;
-        dst->Ki = g_config.shoot.fric_speed_pid.ki;
-        dst->Kd = g_config.shoot.fric_speed_pid.kd;
-        dst->max_out = g_config.shoot.fric_speed_pid.max_out;
-        dst->max_iout = g_config.shoot.fric_speed_pid.max_iout;
-        PID_clear(dst);
-    }
-    taskEXIT_CRITICAL();
+    shoot_tune_apply_fric_speed_pid();
 }
 
 static void aux_tune_apply_shoot_trigger_pid(void)
 {
-    taskENTER_CRITICAL();
-    shoot_control.trigger_motor_pid.Kp = g_config.shoot.trigger_angle_pid.kp;
-    shoot_control.trigger_motor_pid.Ki = g_config.shoot.trigger_angle_pid.ki;
-    shoot_control.trigger_motor_pid.Kd = g_config.shoot.trigger_angle_pid.kd;
-    PID_clear(&shoot_control.trigger_motor_pid);
-    taskEXIT_CRITICAL();
+    shoot_tune_apply_trigger_pid();
 }
 
 static void aux_tune_apply_config_param(config_param_apply_e action)
@@ -2123,32 +2417,38 @@ static bool_t aux_tune_set_config_param(uint16_t id, fp32 value)
     {
 #define CONFIG_PARAM_F32(ID, NAME, SCOPE, LVALUE, APPLY) \
     case ID: \
+        if (!aux_tune_config_scope_is_active((SCOPE))) { return 0; } \
         (LVALUE) = value; \
         aux_tune_apply_config_param(APPLY); \
         return 1;
 #define CONFIG_PARAM_U16(ID, NAME, SCOPE, LVALUE, APPLY) \
     case ID: \
+        if (!aux_tune_config_scope_is_active((SCOPE))) { return 0; } \
         (LVALUE) = aux_tune_to_u16(value); \
         aux_tune_apply_config_param(APPLY); \
         return 1;
 #define CONFIG_PARAM_U8(ID, NAME, SCOPE, LVALUE, APPLY) \
     case ID: \
+        if (!aux_tune_config_scope_is_active((SCOPE))) { return 0; } \
         (LVALUE) = aux_tune_to_u8(value); \
         aux_tune_apply_config_param(APPLY); \
         return 1;
 #define CONFIG_PARAM_I8_RANGE(ID, NAME, SCOPE, LVALUE, MIN_V, MAX_V, APPLY) \
     case ID: \
+        if (!aux_tune_config_scope_is_active((SCOPE))) { return 0; } \
         (LVALUE) = aux_tune_to_i8(value, (MIN_V), (MAX_V)); \
         aux_tune_apply_config_param(APPLY); \
         return 1;
 #define CONFIG_PARAM_BOOL(ID, NAME, SCOPE, LVALUE, APPLY) \
     case ID: \
+        if (!aux_tune_config_scope_is_active((SCOPE))) { return 0; } \
         (LVALUE) = (aux_tune_to_u8(value) != 0u) ? 1u : 0u; \
         aux_tune_apply_config_param(APPLY); \
         return 1;
 #define CONFIG_PARAM_U8_MAX(ID, NAME, SCOPE, LVALUE, MAX_V, APPLY) \
     case ID: \
     { \
+        if (!aux_tune_config_scope_is_active((SCOPE))) { return 0; } \
         uint8_t v__ = aux_tune_to_u8(value); \
         if (v__ > (uint8_t)(MAX_V)) \
         { \
@@ -2161,6 +2461,7 @@ static bool_t aux_tune_set_config_param(uint16_t id, fp32 value)
 #define CONFIG_PARAM_U8_DEFAULT(ID, NAME, SCOPE, LVALUE, MAX_V, DEFAULT_V, APPLY) \
     case ID: \
     { \
+        if (!aux_tune_config_scope_is_active((SCOPE))) { return 0; } \
         uint8_t v__ = aux_tune_to_u8(value); \
         if (v__ > (uint8_t)(MAX_V)) \
         { \

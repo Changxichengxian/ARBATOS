@@ -52,6 +52,8 @@ TAG_NAMES: dict[int, str] = {
     0x004C: "GIMBAL_BASE_STREAM",
     0x004D: "IMU_BASE_STREAM",
     0x004E: "RT_PROFILER",
+    0x004F: "WHEELLEG_MIT_CONFIG",
+    0x0050: "WHEELLEG_MIT_STATUS",
 }
 
 RT_PROFILER_NAMES: dict[int, str] = {
@@ -93,6 +95,20 @@ PITCH_CALI_STATE_NAMES: dict[int, str] = {
     8: "SAVE",
     9: "DONE",
     10: "ERROR",
+}
+
+WHEELLEG_MODE_NAMES: dict[int, str] = {
+    0: "DISABLED",
+    1: "CALIBRATION",
+    2: "STANDUP",
+    3: "BALANCE",
+    4: "JUMP",
+    5: "AIRBORNE",
+    6: "LAND",
+    7: "RECOVERY",
+    8: "FAULT",
+    9: "BENCH",
+    10: "LEG_POSITION",
 }
 
 
@@ -483,6 +499,206 @@ def _pid_fields_from_snapshot(
         "iout": iout,
         "dout": dout,
     }
+
+
+def _add_pid_param_fields(fields: dict[str, Any], prefix: str, payload: bytes, off: int) -> int:
+    kp, ki, kd, max_out, max_iout = struct.unpack_from("<5f", payload, off)
+    fields[f"{prefix}_kp"] = kp
+    fields[f"{prefix}_ki"] = ki
+    fields[f"{prefix}_kd"] = kd
+    fields[f"{prefix}_max_out"] = max_out
+    fields[f"{prefix}_max_iout"] = max_iout
+    return off + struct.calcsize("<5f")
+
+
+def _extract_wheelleg_mit_config(name: str, payload: bytes) -> list[tuple[str, str, dict[str, Any]]] | None:
+    if len(payload) != 392:
+        return None
+
+    off = 0
+    version, enable_switch_pos, control_period_ms, rc_deadband, lqr_default_mask = struct.unpack_from("<BBHHH", payload, off)
+    off += struct.calcsize("<BBHHH")
+    actuator_id = struct.unpack_from("<6B", payload, off)
+    off += 6
+    joint_dir = struct.unpack_from("<4b", payload, off)
+    off += 4
+    off += 2
+    joint_zero = struct.unpack_from("<4f", payload, off)
+    off += struct.calcsize("<4f")
+
+    scalar_names = [
+        "l1_m",
+        "l2_m",
+        "l3_m",
+        "l4_m",
+        "l5_m",
+        "wheel_radius_m",
+        "default_leg_length_m",
+        "min_leg_length_m",
+        "max_leg_length_m",
+        "support_bias_n",
+        "leg_mass_kg",
+        "max_wheel_torque_nm",
+        "max_joint_torque_nm",
+        "max_jump_joint_torque_nm",
+        "max_support_force_n",
+        "attitude_limit_rad",
+        "observer_lpf",
+        "pitch_balance_offset_right_rad",
+        "pitch_balance_offset_left_rad",
+        "max_v_mps",
+        "max_yaw_rate_radps",
+    ]
+    scalar_values = struct.unpack_from(f"<{len(scalar_names)}f", payload, off)
+    off += struct.calcsize(f"<{len(scalar_names)}f")
+
+    fields: dict[str, Any] = {
+        "version": version,
+        "enable_switch_pos": enable_switch_pos,
+        "control_period_ms": control_period_ms,
+        "rc_deadband": rc_deadband,
+        "lqr_default_mask": lqr_default_mask,
+        "actuator_left_front_id": actuator_id[0],
+        "actuator_left_back_id": actuator_id[1],
+        "actuator_left_wheel_id": actuator_id[2],
+        "actuator_right_front_id": actuator_id[3],
+        "actuator_right_back_id": actuator_id[4],
+        "actuator_right_wheel_id": actuator_id[5],
+        "left_front_dir": joint_dir[0],
+        "left_back_dir": joint_dir[1],
+        "right_front_dir": joint_dir[2],
+        "right_back_dir": joint_dir[3],
+        "left_front_zero_rad": joint_zero[0],
+        "left_back_zero_rad": joint_zero[1],
+        "right_front_zero_rad": joint_zero[2],
+        "right_back_zero_rad": joint_zero[3],
+    }
+    for k, v in zip(scalar_names, scalar_values):
+        fields[k] = v
+
+    off = _add_pid_param_fields(fields, "leg_length_pid", payload, off)
+    off = _add_pid_param_fields(fields, "leg_split_pid", payload, off)
+    off = _add_pid_param_fields(fields, "turn_pid", payload, off)
+    off = _add_pid_param_fields(fields, "roll_pid", payload, off)
+
+    for row in range(12):
+        coe = struct.unpack_from("<4f", payload, off)
+        off += struct.calcsize("<4f")
+        fields[f"lqr_{row}_uses_default"] = 1 if (lqr_default_mask & (1 << row)) else 0
+        fields[f"lqr_{row}_c0"] = coe[0]
+        fields[f"lqr_{row}_c1"] = coe[1]
+        fields[f"lqr_{row}_c2"] = coe[2]
+        fields[f"lqr_{row}_c3"] = coe[3]
+
+    return [(name, name, fields)]
+
+
+def _extract_wheelleg_mit_status(name: str, payload: bytes) -> list[tuple[str, str, dict[str, Any]]] | None:
+    if len(payload) != 200:
+        return None
+
+    off = 0
+    (
+        version,
+        mode,
+        last_mode,
+        controller_active,
+        fault_flags,
+        feedback_faults,
+        test_mode,
+        manual_on,
+        profile_on,
+        _reserved8,
+    ) = struct.unpack_from("<4BHH4B", payload, off)
+    off += struct.calcsize("<4BHH4B")
+
+    float_names = [
+        "pitch_rad",
+        "roll_rad",
+        "yaw_rad",
+        "gyro_x_radps",
+        "gyro_y_radps",
+        "gyro_z_radps",
+        "target_v_mps",
+        "target_yaw_rate_radps",
+        "target_leg_length_m",
+        "target_foot_x_m",
+        "target_leg_theta_rad",
+        "observer_x_m",
+        "observer_v_mps",
+        "leg_left_length_m",
+        "leg_right_length_m",
+        "leg_left_theta_rad",
+        "leg_right_theta_rad",
+        "leg_left_d_length_mps",
+        "leg_right_d_length_mps",
+        "leg_left_d_theta_radps",
+        "leg_right_d_theta_radps",
+        "leg_left_support_force_n",
+        "leg_right_support_force_n",
+        "leg_left_hip_torque_nm",
+        "leg_right_hip_torque_nm",
+        "leg_left_front_joint_torque_nm",
+        "leg_left_back_joint_torque_nm",
+        "leg_right_front_joint_torque_nm",
+        "leg_right_back_joint_torque_nm",
+        "wheel_left_pos_rad",
+        "wheel_right_pos_rad",
+        "wheel_left_vel_radps",
+        "wheel_right_vel_radps",
+        "wheel_left_torque_nm",
+        "wheel_right_torque_nm",
+        "lqr_right_theta_err_rad",
+        "lqr_right_dtheta_radps",
+        "lqr_x_err_m",
+        "lqr_v_err_mps",
+        "lqr_right_pitch_err_rad",
+        "lqr_right_gyro_radps",
+        "lqr_right_wheel_torque_nm",
+        "lqr_left_wheel_torque_nm",
+        "lqr_right_hip_torque_nm",
+        "lqr_left_hip_torque_nm",
+    ]
+    float_values = struct.unpack_from(f"<{len(float_names)}f", payload, off)
+    off += struct.calcsize(f"<{len(float_names)}f")
+    contact_left, contact_right, motor_online_bits, _reserved8_2 = struct.unpack_from("<4B", payload, off)
+    off += struct.calcsize("<4B")
+    (overrun_count,) = struct.unpack_from("<I", payload, off)
+
+    fields: dict[str, Any] = {
+        "version": version,
+        "mode": mode,
+        "mode_name": WHEELLEG_MODE_NAMES.get(mode, f"MODE_{mode}"),
+        "last_mode": last_mode,
+        "last_mode_name": WHEELLEG_MODE_NAMES.get(last_mode, f"MODE_{last_mode}"),
+        "controller_active": controller_active,
+        "fault_flags": fault_flags,
+        "feedback_faults": feedback_faults,
+        "test_mode": test_mode,
+        "manual_on": manual_on,
+        "profile_on": profile_on,
+    }
+    for k, v in zip(float_names, float_values):
+        fields[k] = v
+    target_foot_y_sq = fields["target_leg_length_m"] ** 2 - fields["target_foot_x_m"] ** 2
+    fields["target_foot_y_m"] = target_foot_y_sq ** 0.5 if target_foot_y_sq > 0.0 else 0.0
+
+    fields.update(
+        {
+            "contact_left": contact_left,
+            "contact_right": contact_right,
+            "left_front_online": 1 if (motor_online_bits & (1 << 0)) else 0,
+            "left_back_online": 1 if (motor_online_bits & (1 << 1)) else 0,
+            "left_wheel_online": 1 if (motor_online_bits & (1 << 2)) else 0,
+            "right_front_online": 1 if (motor_online_bits & (1 << 3)) else 0,
+            "right_back_online": 1 if (motor_online_bits & (1 << 4)) else 0,
+            "right_wheel_online": 1 if (motor_online_bits & (1 << 5)) else 0,
+            "motor_online_bits": motor_online_bits,
+            "overrun_count": overrun_count,
+        }
+    )
+
+    return [(name, name, fields)]
 
 
 def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, Any]]] | None:
@@ -1103,6 +1319,12 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
                 )
             )
         return rows
+
+    if tag == 0x004F:  # WHEELLEG_MIT_CONFIG
+        return _extract_wheelleg_mit_config(name, payload)
+
+    if tag == 0x0050:  # WHEELLEG_MIT_STATUS
+        return _extract_wheelleg_mit_status(name, payload)
 
     if tag == 0x0042:  # EVENT
         v = _unpack_exact("<HHII", payload)

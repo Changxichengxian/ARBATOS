@@ -10,6 +10,9 @@
 #include "detect_task.h"
 
 #include "config.h"
+#include "motor_config.h"
+#include "robot_task_profile.h"
+#include "watch.h"
 
 #include "FreeRTOS.h"
 #include "cmsis_os2.h"
@@ -22,10 +25,31 @@
 
 // Minimal offline-detect implementation for the A-board port.
 // Keeps the public API used by HERO modules (detect_hook/toe_is_error).
+#define WATCH_UPDATE_PERIOD_MS 250u
 
 static error_t g_error_list[ERROR_LIST_LENGHT];
 static uint32_t g_last_tick_ms[ERROR_LIST_LENGHT];
 static uint8_t g_detect_inited = 0u;
+
+static uint8_t detect_toe_enabled_by_profile(uint8_t toe)
+{
+    switch (toe)
+    {
+    case CHASSIS_MOTOR1_TOE:
+    case CHASSIS_MOTOR2_TOE:
+    case CHASSIS_MOTOR3_TOE:
+    case CHASSIS_MOTOR4_TOE:
+        return robot_profile_need_classic_chassis_control_task();
+    case YAW_GIMBAL_MOTOR_TOE:
+    case PITCH_GIMBAL_MOTOR_TOE:
+        return (uint8_t)(robot_profile_need_single_gimbal_control_task() ||
+                         robot_profile_need_dual_gimbal_control_task());
+    case TRIGGER_MOTOR_TOE:
+        return (uint8_t)(motor_cfg_node_id(&g_config.motor.trigger) != 0u);
+    default:
+        return 1u;
+    }
+}
 
 static void detect_init_once(void)
 {
@@ -38,15 +62,20 @@ static void detect_init_once(void)
     memset(g_error_list, 0, sizeof(g_error_list));
     memset(g_last_tick_ms, 0, sizeof(g_last_tick_ms));
 
-    // Default offline thresholds (ms). Tune later if needed.
     for (uint8_t i = 0u; i < (uint8_t)ERROR_LIST_LENGHT; i++)
     {
-        g_error_list[i].enable = 1u;
-        g_error_list[i].priority = 0u;
-        g_error_list[i].set_online_time = 0u;
-        g_error_list[i].set_offline_time = 200u;
+        const detect_item_t *item = &g_config.detect.items[i];
+        const uint8_t enabled_by_config = (uint8_t)((g_config.detect.enable_mask >> i) & 0x1u);
+        const uint8_t enabled = (uint8_t)(enabled_by_config && detect_toe_enabled_by_profile(i));
+
+        g_error_list[i].enable = enabled;
+        g_error_list[i].priority = item->priority;
+        g_error_list[i].set_online_time = item->online_time_ms;
+        g_error_list[i].set_offline_time = item->offline_time_ms;
+        g_error_list[i].error_exist = enabled;
+        g_error_list[i].is_lost = enabled;
+        g_error_list[i].data_is_error = enabled;
     }
-    g_error_list[DBUS_TOE].set_offline_time = 100u;
 }
 
 void health_monitor_task(void const *pvParameters)
@@ -114,10 +143,12 @@ void detect_task(void const *pvParameters)
     (void)pvParameters;
 
     detect_init_once();
+    watch_init();
     osDelay(DETECT_TASK_INIT_TIME);
 
     static uint8_t config_buf[sizeof(sdlog_config_header_t) + sizeof(g_config)];
     uint8_t config_logged = 0u;
+    uint32_t last_watch_snapshot_tick = HAL_GetTick();
 
     for (;;)
     {
@@ -150,6 +181,12 @@ void detect_task(void const *pvParameters)
             taskEXIT_CRITICAL();
             sdlog_write(SDLOG_TAG_CONFIG, config_buf, cfg_size);
             config_logged = 1u;
+        }
+
+        if ((uint32_t)(now_ms - last_watch_snapshot_tick) >= WATCH_UPDATE_PERIOD_MS)
+        {
+            last_watch_snapshot_tick = now_ms;
+            watch_update();
         }
 
         osDelay(DETECT_CONTROL_TIME);

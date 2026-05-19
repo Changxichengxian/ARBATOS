@@ -16,6 +16,7 @@
 #include "detect_task.h"
 #include "robot_msg.h"
 #include "robot_task_profile.h"
+#include "sdlog.h"
 #include "watch.h"
 #include "wheelleg_msg.h"
 
@@ -31,10 +32,66 @@
 #define WHEELLEG_TARGET_FOOT_X_SLEW_MPS 0.060f
 #define WHEELLEG_AUTO_LEG_REACH_EPS_M 0.003f
 #define WHEELLEG_AUTO_LEG_DWELL_MS 500u
-#define WHEELLEG_DETACHED_JOINT_STAGE_MS 2000u
 #define WHEELLEG_DETACHED_JOINT_TEST_KP 2.0f
 #define WHEELLEG_DETACHED_JOINT_TEST_KD 0.16f
 #define WHEELLEG_BENCH_LQR_TORQUE_SCALE 0.18f
+#define WHEELLEG_SDLOG_BASE_PERIOD_MS 10u
+
+#ifndef WHEELLEG_BENCH_TARGET_FOOT_X_M
+#define WHEELLEG_BENCH_TARGET_FOOT_X_M 0.0f
+#endif
+
+#ifndef WHEELLEG_ENABLE_VMC_BALANCE
+#define WHEELLEG_ENABLE_VMC_BALANCE 0
+#endif
+
+#ifndef WHEELLEG_IMU_BODY_ROLL_OFFSET
+#define WHEELLEG_IMU_BODY_ROLL_OFFSET INS_ROLL_ADDRESS_OFFSET
+#endif
+
+#ifndef WHEELLEG_IMU_BODY_PITCH_OFFSET
+#define WHEELLEG_IMU_BODY_PITCH_OFFSET INS_PITCH_ADDRESS_OFFSET
+#endif
+
+#ifndef WHEELLEG_IMU_BODY_YAW_OFFSET
+#define WHEELLEG_IMU_BODY_YAW_OFFSET INS_YAW_ADDRESS_OFFSET
+#endif
+
+#ifndef WHEELLEG_IMU_ROLL_SIGN
+#define WHEELLEG_IMU_ROLL_SIGN 1.0f
+#endif
+
+#ifndef WHEELLEG_IMU_PITCH_SIGN
+#define WHEELLEG_IMU_PITCH_SIGN 1.0f
+#endif
+
+#ifndef WHEELLEG_IMU_YAW_SIGN
+#define WHEELLEG_IMU_YAW_SIGN 1.0f
+#endif
+
+#ifndef WHEELLEG_IMU_BODY_GYRO_X_OFFSET
+#define WHEELLEG_IMU_BODY_GYRO_X_OFFSET INS_GYRO_X_ADDRESS_OFFSET
+#endif
+
+#ifndef WHEELLEG_IMU_BODY_GYRO_Y_OFFSET
+#define WHEELLEG_IMU_BODY_GYRO_Y_OFFSET INS_GYRO_Y_ADDRESS_OFFSET
+#endif
+
+#ifndef WHEELLEG_IMU_BODY_GYRO_Z_OFFSET
+#define WHEELLEG_IMU_BODY_GYRO_Z_OFFSET INS_GYRO_Z_ADDRESS_OFFSET
+#endif
+
+#ifndef WHEELLEG_IMU_GYRO_X_SIGN
+#define WHEELLEG_IMU_GYRO_X_SIGN WHEELLEG_IMU_ROLL_SIGN
+#endif
+
+#ifndef WHEELLEG_IMU_GYRO_Y_SIGN
+#define WHEELLEG_IMU_GYRO_Y_SIGN WHEELLEG_IMU_PITCH_SIGN
+#endif
+
+#ifndef WHEELLEG_IMU_GYRO_Z_SIGN
+#define WHEELLEG_IMU_GYRO_Z_SIGN WHEELLEG_IMU_YAW_SIGN
+#endif
 
 typedef struct
 {
@@ -106,6 +163,7 @@ typedef struct
     fp32 v_mps;
     fp32 target_leg_smooth;
     fp32 target_foot_x_smooth;
+    fp32 target_foot_y_smooth;
     fp32 yaw_set;
     fp32 last_yaw;
     uint8_t target_smooth_valid;
@@ -137,9 +195,12 @@ typedef struct
     fp32 foot_test_wheel_dx_m[WHEELLEG_SIDE_COUNT];
     fp32 foot_test_wheel_comp_rad[WHEELLEG_SIDE_COUNT];
     fp32 foot_test_wheel_target_rad[WHEELLEG_SIDE_COUNT];
+    uint16_t feedback_faults;
 } wheelleg_mit_ctrl_t;
 
 static wheelleg_mit_ctrl_t s_wheelleg;
+static uint8_t s_wheelleg_sdlog_config_logged = 0u;
+static uint32_t s_wheelleg_sdlog_last_status_ms = 0u;
 
 static fp32 wheelleg_axis_to_fp32(int16_t axis, fp32 max_abs, uint16_t deadband);
 
@@ -267,11 +328,14 @@ static uint8_t wheelleg_axis_in_deadband(int16_t axis, uint16_t deadband)
 
 static fp32 wheelleg_target_theta_from_foot_x(fp32 foot_x_m, fp32 leg_length_m)
 {
+    fp32 ratio;
+
     if (leg_length_m < 0.02f)
     {
         leg_length_m = 0.02f;
     }
-    return atan2f(foot_x_m, leg_length_m);
+    ratio = wheelleg_clamp(foot_x_m / leg_length_m, -0.98f, 0.98f);
+    return asinf(ratio);
 }
 
 static fp32 wheelleg_slew_fp32(fp32 current, fp32 target, fp32 max_delta)
@@ -305,6 +369,52 @@ static fp32 wheelleg_bench_default_leg_m(void)
     return length;
 }
 
+static uint8_t wheelleg_limit_foot_xy(fp32 *x_m, fp32 *y_m, fp32 *length_m)
+{
+    const wheelleg_mit_config_t *cfg = &g_config.wheelleg_mit;
+    fp32 min_leg = cfg->min_leg_length_m;
+    fp32 max_leg = cfg->max_leg_length_m;
+    fp32 x;
+    fp32 y;
+    fp32 max_x_sq;
+    fp32 max_abs_x;
+    fp32 length;
+
+    if (x_m == NULL || y_m == NULL || length_m == NULL)
+    {
+        return 0u;
+    }
+
+    if (min_leg <= 0.02f)
+    {
+        min_leg = 0.02f;
+    }
+    if (max_leg < min_leg)
+    {
+        max_leg = min_leg;
+    }
+
+    y = wheelleg_clamp(*y_m, min_leg, max_leg);
+    max_x_sq = max_leg * max_leg - y * y;
+    max_abs_x = (max_x_sq > 0.0f) ? sqrtf(max_x_sq) : 0.0f;
+    if (max_abs_x > WHEELLEG_MANUAL_FOOT_X_RANGE_M)
+    {
+        max_abs_x = WHEELLEG_MANUAL_FOOT_X_RANGE_M;
+    }
+
+    x = wheelleg_clamp(*x_m, -max_abs_x, max_abs_x);
+    length = sqrtf(x * x + y * y);
+    if (length <= 0.02f || length > max_leg + 0.0001f)
+    {
+        return 0u;
+    }
+
+    *x_m = x;
+    *y_m = y;
+    *length_m = length;
+    return 1u;
+}
+
 static void wheelleg_target_smooth_reset(void)
 {
     uint8_t side;
@@ -312,11 +422,12 @@ static void wheelleg_target_smooth_reset(void)
     s_wheelleg.target_smooth_valid = 0u;
     s_wheelleg.target_leg_smooth = 0.0f;
     s_wheelleg.target_foot_x_smooth = 0.0f;
+    s_wheelleg.target_foot_y_smooth = 0.0f;
     s_wheelleg.auto_leg_stage = 0u;
     s_wheelleg.auto_leg_stage_tick_ms = 0u;
     s_wheelleg.bench_hold_pose_valid = 0u;
     s_wheelleg.bench_hold_target_leg_m = wheelleg_bench_default_leg_m();
-    s_wheelleg.bench_hold_target_foot_x_m = 0.0f;
+    s_wheelleg.bench_hold_target_foot_x_m = WHEELLEG_BENCH_TARGET_FOOT_X_M;
     for (side = 0u; side < WHEELLEG_SIDE_COUNT; side++)
     {
         s_wheelleg.bench_hold_front_valid[side] = 0u;
@@ -335,50 +446,62 @@ static void wheelleg_balance_state_reset(void)
     s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].first = 0u;
 }
 
-static void wheelleg_target_smooth_update(fp32 target_leg, fp32 target_foot_x, fp32 dt)
+static void wheelleg_target_smooth_update_xy(fp32 target_foot_x, fp32 target_foot_y, fp32 dt)
 {
     const fp32 measured_leg =
         (s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].length + s_wheelleg.leg[WHEELLEG_SIDE_LEFT].length) * 0.5f;
-    fp32 measured_theta =
-        (s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].theta + s_wheelleg.leg[WHEELLEG_SIDE_LEFT].theta) * 0.5f;
+    fp32 measured_alpha =
+        (s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].alpha + s_wheelleg.leg[WHEELLEG_SIDE_LEFT].alpha) * 0.5f;
+    fp32 measured_x;
+    fp32 measured_y;
+    fp32 measured_length;
+    fp32 target_length;
 
     if (dt <= 0.0f)
     {
         dt = 0.003f;
     }
 
+    if (wheelleg_limit_foot_xy(&target_foot_x, &target_foot_y, &target_length) == 0u)
+    {
+        return;
+    }
+
     if (s_wheelleg.target_smooth_valid == 0u)
     {
-        measured_theta = wheelleg_clamp(measured_theta, -1.2f, 1.2f);
-        s_wheelleg.target_leg_smooth = wheelleg_clamp(measured_leg,
-                                                      g_config.wheelleg_mit.min_leg_length_m,
-                                                      g_config.wheelleg_mit.max_leg_length_m);
-        s_wheelleg.target_foot_x_smooth = wheelleg_clamp(tanf(measured_theta) * s_wheelleg.target_leg_smooth,
-                                                         -WHEELLEG_MANUAL_FOOT_X_RANGE_M,
-                                                         WHEELLEG_MANUAL_FOOT_X_RANGE_M);
+        measured_alpha = wheelleg_clamp(measured_alpha, -1.2f, 1.2f);
+        measured_length = wheelleg_clamp(measured_leg,
+                                         g_config.wheelleg_mit.min_leg_length_m,
+                                         g_config.wheelleg_mit.max_leg_length_m);
+        measured_x = measured_length * sinf(measured_alpha);
+        measured_y = measured_length * cosf(measured_alpha);
+        if (wheelleg_limit_foot_xy(&measured_x, &measured_y, &measured_length) == 0u)
+        {
+            measured_x = target_foot_x;
+            measured_y = target_foot_y;
+            measured_length = target_length;
+        }
+        s_wheelleg.target_foot_x_smooth = measured_x;
+        s_wheelleg.target_foot_y_smooth = measured_y;
+        s_wheelleg.target_leg_smooth = measured_length;
         s_wheelleg.target_smooth_valid = 1u;
     }
 
-    s_wheelleg.target_leg_smooth =
-        wheelleg_slew_fp32(s_wheelleg.target_leg_smooth,
-                           target_leg,
-                           WHEELLEG_TARGET_LEG_SLEW_MPS * dt);
     s_wheelleg.target_foot_x_smooth =
         wheelleg_slew_fp32(s_wheelleg.target_foot_x_smooth,
                            target_foot_x,
                            WHEELLEG_TARGET_FOOT_X_SLEW_MPS * dt);
+    s_wheelleg.target_foot_y_smooth =
+        wheelleg_slew_fp32(s_wheelleg.target_foot_y_smooth,
+                           target_foot_y,
+                           WHEELLEG_TARGET_LEG_SLEW_MPS * dt);
+    s_wheelleg.target_leg_smooth = target_length;
+    (void)wheelleg_limit_foot_xy(&s_wheelleg.target_foot_x_smooth,
+                                 &s_wheelleg.target_foot_y_smooth,
+                                 &s_wheelleg.target_leg_smooth);
 }
 
-static void wheelleg_target_smooth_seed(fp32 target_leg, fp32 target_foot_x)
-{
-    if (s_wheelleg.target_smooth_valid == 0u)
-    {
-        s_wheelleg.target_leg_smooth = target_leg;
-        s_wheelleg.target_foot_x_smooth = target_foot_x;
-        s_wheelleg.target_smooth_valid = 1u;
-    }
-}
-
+#if WHEELLEG_ENABLE_VMC_BALANCE
 static fp32 wheelleg_auto_leg_target_by_stage(uint8_t stage)
 {
     switch (stage)
@@ -426,32 +549,7 @@ static fp32 wheelleg_auto_leg_target(uint32_t now_ms)
 
     return target;
 }
-
-static fp32 wheelleg_detached_joint_leg_target(uint32_t now_ms)
-{
-    uint32_t elapsed_ms;
-    uint32_t phase_ms;
-    uint8_t start_stage;
-    uint8_t end_stage;
-    fp32 start_leg;
-    fp32 end_leg;
-    fp32 u;
-
-    if (s_wheelleg.detached_test_active == 0u)
-    {
-        s_wheelleg.detached_test_active = 1u;
-        s_wheelleg.detached_test_start_ms = now_ms;
-    }
-
-    elapsed_ms = now_ms - s_wheelleg.detached_test_start_ms;
-    start_stage = (uint8_t)((elapsed_ms / WHEELLEG_DETACHED_JOINT_STAGE_MS) % 3u);
-    end_stage = (uint8_t)((start_stage + 1u) % 3u);
-    phase_ms = elapsed_ms % WHEELLEG_DETACHED_JOINT_STAGE_MS;
-    u = (fp32)phase_ms / (fp32)WHEELLEG_DETACHED_JOINT_STAGE_MS;
-    start_leg = wheelleg_auto_leg_target_by_stage(start_stage);
-    end_leg = wheelleg_auto_leg_target_by_stage(end_stage);
-    return start_leg + (end_leg - start_leg) * u;
-}
+#endif
 
 static fp32 wheelleg_dir_sign(int8_t dir)
 {
@@ -598,6 +696,234 @@ static void wheelleg_eval_lqr(fp32 leg_length, fp32 out[12])
     {
         out[i] = wheelleg_poly(wheelleg_lqr_row(i), length);
     }
+}
+
+static uint8_t wheelleg_manual_enabled_by_switch(void)
+{
+    return (uint8_t)(control_input_switch_is_pos(input_switch(INPUT_SW_CHASSIS_MODE),
+                                                 g_config.manual_input.semantics.chassis_safe_pos) == 0u);
+}
+
+static fp32 wheelleg_imu_angle(const fp32 *angle, uint8_t offset, fp32 sign)
+{
+    return (angle != NULL) ? angle[offset] * sign : 0.0f;
+}
+
+static const fp32 *wheelleg_imu_gyro_aligned(const fp32 *gyro, fp32 aligned[3])
+{
+    if (gyro == NULL || aligned == NULL)
+    {
+        return NULL;
+    }
+
+    aligned[INS_GYRO_X_ADDRESS_OFFSET] = gyro[WHEELLEG_IMU_BODY_GYRO_X_OFFSET] * WHEELLEG_IMU_GYRO_X_SIGN;
+    aligned[INS_GYRO_Y_ADDRESS_OFFSET] = gyro[WHEELLEG_IMU_BODY_GYRO_Y_OFFSET] * WHEELLEG_IMU_GYRO_Y_SIGN;
+    aligned[INS_GYRO_Z_ADDRESS_OFFSET] = gyro[WHEELLEG_IMU_BODY_GYRO_Z_OFFSET] * WHEELLEG_IMU_GYRO_Z_SIGN;
+    return aligned;
+}
+
+static void wheelleg_sdlog_copy_pid(sdlog_pid_param_t *out, const pid_param_t *pid)
+{
+    if (out == NULL || pid == NULL)
+    {
+        return;
+    }
+
+    out->kp = pid->kp;
+    out->ki = pid->ki;
+    out->kd = pid->kd;
+    out->max_out = pid->max_out;
+    out->max_iout = pid->max_iout;
+}
+
+static void wheelleg_sdlog_write_config_once(void)
+{
+    sdlog_wheelleg_mit_config_t log;
+    const wheelleg_mit_config_t *cfg = &g_config.wheelleg_mit;
+    uint8_t i;
+
+    if (!sdlog_is_active())
+    {
+        s_wheelleg_sdlog_config_logged = 0u;
+        return;
+    }
+    if (s_wheelleg_sdlog_config_logged != 0u)
+    {
+        return;
+    }
+
+    (void)memset(&log, 0, sizeof(log));
+    log.version = SDLOG_WHEELLEG_MIT_CONFIG_VERSION;
+    log.enable_switch_pos = cfg->enable_switch_pos;
+    log.control_period_ms = cfg->control_period_ms;
+    log.rc_deadband = cfg->rc_deadband;
+
+    log.actuator_id[0] = cfg->left_front_actuator;
+    log.actuator_id[1] = cfg->left_back_actuator;
+    log.actuator_id[2] = cfg->left_wheel_actuator;
+    log.actuator_id[3] = cfg->right_front_actuator;
+    log.actuator_id[4] = cfg->right_back_actuator;
+    log.actuator_id[5] = cfg->right_wheel_actuator;
+
+    log.joint_dir[0] = cfg->left_front_dir;
+    log.joint_dir[1] = cfg->left_back_dir;
+    log.joint_dir[2] = cfg->right_front_dir;
+    log.joint_dir[3] = cfg->right_back_dir;
+
+    log.joint_zero_rad[0] = cfg->left_front_zero_rad;
+    log.joint_zero_rad[1] = cfg->left_back_zero_rad;
+    log.joint_zero_rad[2] = cfg->right_front_zero_rad;
+    log.joint_zero_rad[3] = cfg->right_back_zero_rad;
+
+    log.l1_m = cfg->l1_m;
+    log.l2_m = cfg->l2_m;
+    log.l3_m = cfg->l3_m;
+    log.l4_m = cfg->l4_m;
+    log.l5_m = cfg->l5_m;
+    log.wheel_radius_m = cfg->wheel_radius_m;
+    log.default_leg_length_m = cfg->default_leg_length_m;
+    log.min_leg_length_m = cfg->min_leg_length_m;
+    log.max_leg_length_m = cfg->max_leg_length_m;
+    log.support_bias_n = cfg->support_bias_n;
+    log.leg_mass_kg = cfg->leg_mass_kg;
+    log.max_wheel_torque_nm = cfg->max_wheel_torque_nm;
+    log.max_joint_torque_nm = cfg->max_joint_torque_nm;
+    log.max_jump_joint_torque_nm = cfg->max_jump_joint_torque_nm;
+    log.max_support_force_n = cfg->max_support_force_n;
+    log.attitude_limit_rad = cfg->attitude_limit_rad;
+    log.observer_lpf = cfg->observer_lpf;
+    log.pitch_balance_offset_right_rad = cfg->pitch_balance_offset_right_rad;
+    log.pitch_balance_offset_left_rad = cfg->pitch_balance_offset_left_rad;
+    log.max_v_mps = cfg->max_v_mps;
+    log.max_yaw_rate_radps = cfg->max_yaw_rate_radps;
+
+    wheelleg_sdlog_copy_pid(&log.leg_length_pid, &cfg->leg_length_pid);
+    wheelleg_sdlog_copy_pid(&log.leg_split_pid, &cfg->leg_split_pid);
+    wheelleg_sdlog_copy_pid(&log.turn_pid, &cfg->turn_pid);
+    wheelleg_sdlog_copy_pid(&log.roll_pid, &cfg->roll_pid);
+
+    for (i = 0u; i < 12u; i++)
+    {
+        const fp32 *row = wheelleg_lqr_row(i);
+        if (wheelleg_lqr_row_is_zero(&cfg->lqr_poly[i][0]) != 0u)
+        {
+            log.lqr_default_mask |= (uint16_t)(1u << i);
+        }
+        log.effective_lqr_poly[i][0] = row[0];
+        log.effective_lqr_poly[i][1] = row[1];
+        log.effective_lqr_poly[i][2] = row[2];
+        log.effective_lqr_poly[i][3] = row[3];
+    }
+
+    sdlog_write(SDLOG_TAG_WHEELLEG_MIT_CONFIG, &log, (uint16_t)sizeof(log));
+    s_wheelleg_sdlog_config_logged = 1u;
+}
+
+static void wheelleg_sdlog_write_status(uint16_t faults,
+                                        wheelleg_mode_e mode,
+                                        fp32 pitch,
+                                        fp32 roll,
+                                        fp32 yaw,
+                                        const fp32 gyro[3],
+                                        fp32 target_v,
+                                        fp32 target_leg,
+                                        fp32 target_foot_x,
+                                        fp32 target_yaw_rate,
+                                        fp32 target_theta,
+                                        const fp32 wheel_torque[WHEELLEG_SIDE_COUNT],
+                                        uint8_t controller_active,
+                                        uint32_t now_ms)
+{
+    sdlog_wheelleg_mit_status_t log;
+    const uint32_t log_period_ms = (uint32_t)WHEELLEG_SDLOG_BASE_PERIOD_MS *
+                                   (uint32_t)sdlog_high_rate_divider();
+    uint8_t side;
+
+    if (!sdlog_is_active())
+    {
+        s_wheelleg_sdlog_config_logged = 0u;
+        s_wheelleg_sdlog_last_status_ms = 0u;
+        return;
+    }
+
+    wheelleg_sdlog_write_config_once();
+
+    if (s_wheelleg_sdlog_last_status_ms != 0u &&
+        (uint32_t)(now_ms - s_wheelleg_sdlog_last_status_ms) < log_period_ms)
+    {
+        return;
+    }
+    s_wheelleg_sdlog_last_status_ms = now_ms;
+
+    (void)memset(&log, 0, sizeof(log));
+    log.version = SDLOG_WHEELLEG_MIT_STATUS_VERSION;
+    log.mode = (uint8_t)mode;
+    log.last_mode = (uint8_t)s_wheelleg.last_mode;
+    log.controller_active = controller_active;
+    log.fault_flags = faults;
+    log.feedback_faults = s_wheelleg.feedback_faults;
+    log.test_mode = (uint8_t)g_config.test.mode;
+    log.profile_on = robot_profile_is_wheelleg_mit();
+    log.manual_on = wheelleg_manual_enabled_by_switch();
+
+    log.pitch_rad = pitch;
+    log.roll_rad = roll;
+    log.yaw_rad = yaw;
+    if (gyro != NULL)
+    {
+        log.gyro_radps[0] = gyro[INS_GYRO_X_ADDRESS_OFFSET];
+        log.gyro_radps[1] = gyro[INS_GYRO_Y_ADDRESS_OFFSET];
+        log.gyro_radps[2] = gyro[INS_GYRO_Z_ADDRESS_OFFSET];
+    }
+
+    log.target_v_mps = target_v;
+    log.target_yaw_rate_radps = target_yaw_rate;
+    log.target_leg_length_m = target_leg;
+    log.target_foot_x_m = target_foot_x;
+    log.target_leg_theta_rad = target_theta;
+    log.observer_x_m = s_wheelleg.x_m;
+    log.observer_v_mps = s_wheelleg.v_mps;
+
+    for (side = 0u; side < WHEELLEG_SIDE_COUNT; side++)
+    {
+        const wheelleg_leg_calc_t *leg = &s_wheelleg.leg[side];
+        const actuator_feedback_t *wheel_fb = &s_wheelleg.wheel_fb[side];
+
+        log.leg_length_m[side] = leg->length;
+        log.leg_theta_rad[side] = leg->theta;
+        log.leg_d_length_mps[side] = leg->d_length;
+        log.leg_d_theta_radps[side] = leg->d_theta;
+        log.support_force_n[side] = leg->f0;
+        log.hip_torque_nm[side] = leg->tp;
+        log.joint_torque_nm[side][0] = leg->joint_torque[0];
+        log.joint_torque_nm[side][1] = leg->joint_torque[1];
+        log.wheel_pos_rad[side] = wheel_fb->position;
+        log.wheel_vel_radps[side] = wheel_fb->velocity;
+        log.wheel_torque_nm[side] = (wheel_torque != NULL) ? wheel_torque[side] : 0.0f;
+        log.contact[side] = leg->contact;
+    }
+
+    log.motor_online_bits =
+        (uint8_t)((s_wheelleg.front_fb[WHEELLEG_SIDE_LEFT].online ? (1u << 0) : 0u) |
+                  (s_wheelleg.back_fb[WHEELLEG_SIDE_LEFT].online ? (1u << 1) : 0u) |
+                  (s_wheelleg.wheel_fb[WHEELLEG_SIDE_LEFT].online ? (1u << 2) : 0u) |
+                  (s_wheelleg.front_fb[WHEELLEG_SIDE_RIGHT].online ? (1u << 3) : 0u) |
+                  (s_wheelleg.back_fb[WHEELLEG_SIDE_RIGHT].online ? (1u << 4) : 0u) |
+                  (s_wheelleg.wheel_fb[WHEELLEG_SIDE_RIGHT].online ? (1u << 5) : 0u));
+
+    log.lqr_error[0] = s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].theta - target_theta;
+    log.lqr_error[1] = s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].d_theta;
+    log.lqr_error[2] = s_wheelleg.x_m;
+    log.lqr_error[3] = s_wheelleg.v_mps - 0.4f * target_v;
+    log.lqr_error[4] = pitch - g_config.wheelleg_mit.pitch_balance_offset_right_rad;
+    log.lqr_error[5] = (gyro != NULL) ? gyro[INS_GYRO_Y_ADDRESS_OFFSET] : 0.0f;
+    log.lqr_output[0] = (wheel_torque != NULL) ? wheel_torque[WHEELLEG_SIDE_RIGHT] : 0.0f;
+    log.lqr_output[1] = (wheel_torque != NULL) ? wheel_torque[WHEELLEG_SIDE_LEFT] : 0.0f;
+    log.lqr_output[2] = s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].tp;
+    log.lqr_output[3] = s_wheelleg.leg[WHEELLEG_SIDE_LEFT].tp;
+    log.overrun_count = s_wheelleg.overrun_count;
+
+    sdlog_write(SDLOG_TAG_WHEELLEG_MIT_STATUS, &log, (uint16_t)sizeof(log));
 }
 
 static actuator_id_e wheelleg_actuator_from_u8(uint8_t id)
@@ -821,8 +1147,8 @@ static uint8_t wheelleg_calc_kinematics(wheelleg_leg_calc_t *leg,
     }
 
     leg->d_alpha = -(leg->phi0 - leg->last_phi0) / dt;
-    leg->theta = WHEELLEG_PI * 0.5f - pitch_side - leg->phi0;
-    leg->d_theta = -gyro_side + leg->d_alpha;
+    leg->theta = leg->alpha - pitch_side;
+    leg->d_theta = leg->d_alpha - gyro_side;
     leg->length = length;
     leg->d_length = (leg->length - leg->last_length) / dt;
     leg->dd_length = (leg->d_length - leg->last_d_length) / dt;
@@ -834,6 +1160,7 @@ static uint8_t wheelleg_calc_kinematics(wheelleg_leg_calc_t *leg,
     return 1u;
 }
 
+#if WHEELLEG_ENABLE_VMC_BALANCE
 static uint8_t wheelleg_calc_vmc(wheelleg_leg_calc_t *leg)
 {
     fp32 sin32;
@@ -861,6 +1188,7 @@ static uint8_t wheelleg_calc_vmc(wheelleg_leg_calc_t *leg)
     leg->joint_torque[1] = j21 * leg->f0 + j22 * leg->tp;
     return 1u;
 }
+#endif
 
 static void wheelleg_send_torque(actuator_id_e id, fp32 torque)
 {
@@ -876,10 +1204,12 @@ static void wheelleg_send_torque(actuator_id_e id, fp32 torque)
     actuator_cmd_set_state_torque(id, &cmd);
 }
 
+#if WHEELLEG_ENABLE_VMC_BALANCE
 static void wheelleg_send_joint_torque(actuator_id_e id, fp32 kinematic_torque, int8_t dir)
 {
     wheelleg_send_torque(id, kinematic_torque * wheelleg_dir_sign(dir));
 }
+#endif
 
 static uint8_t wheelleg_send_state_cmd(actuator_id_e id,
                                        fp32 position,
@@ -913,6 +1243,20 @@ static void wheelleg_clear_state_cmd(actuator_id_e id)
     }
 
     actuator_cmd_clear(id);
+}
+
+static void wheelleg_clear_leg_virtual_outputs(void)
+{
+    uint8_t side;
+
+    for (side = 0u; side < WHEELLEG_SIDE_COUNT; side++)
+    {
+        s_wheelleg.leg[side].f0 = 0.0f;
+        s_wheelleg.leg[side].tp = 0.0f;
+        s_wheelleg.leg[side].joint_torque[0] = 0.0f;
+        s_wheelleg.leg[side].joint_torque[1] = 0.0f;
+        s_wheelleg.leg[side].contact = 0u;
+    }
 }
 
 static void wheelleg_clear_all_control_cmds(void)
@@ -958,7 +1302,7 @@ static void wheelleg_bench_hold_prepare_default(void)
     s_wheelleg.bench_hold_back_valid[WHEELLEG_SIDE_RIGHT] = 1u;
 
     s_wheelleg.bench_hold_target_leg_m = wheelleg_bench_default_leg_m();
-    s_wheelleg.bench_hold_target_foot_x_m = 0.0f;
+    s_wheelleg.bench_hold_target_foot_x_m = WHEELLEG_BENCH_TARGET_FOOT_X_M;
     s_wheelleg.bench_hold_pose_valid = 1u;
 }
 
@@ -1082,18 +1426,25 @@ static uint8_t wheelleg_foot_point_from_length_x(fp32 length_m,
     return 1u;
 }
 
-static uint8_t wheelleg_foot_point_from_y_x(fp32 y_m,
-                                            fp32 x_m,
-                                            wheelleg_foot_point_t *out)
+static uint8_t wheelleg_foot_point_from_xy(fp32 x_m,
+                                           fp32 y_m,
+                                           wheelleg_foot_point_t *out)
 {
-    if (out == NULL || y_m <= 0.02f)
+    fp32 length_m = 0.0f;
+
+    if (out == NULL)
+    {
+        return 0u;
+    }
+
+    if (wheelleg_limit_foot_xy(&x_m, &y_m, &length_m) == 0u)
     {
         return 0u;
     }
 
     out->x_m = x_m;
     out->y_m = y_m;
-    out->length_m = sqrtf(x_m * x_m + y_m * y_m);
+    out->length_m = length_m;
     return 1u;
 }
 
@@ -1527,134 +1878,142 @@ static uint8_t wheelleg_foot_test_apply(uint32_t now_ms, fp32 pitch)
     return 1u;
 }
 
-static uint8_t wheelleg_joint_position_apply_side(const wheelleg_actuator_map_t *map,
-                                                  uint8_t side,
-                                                  fp32 front_kin_target,
-                                                  fp32 back_kin_target,
-                                                  fp32 front_kin_zero,
-                                                  fp32 back_kin_zero,
-                                                  fp32 front_raw_zero,
-                                                  fp32 back_raw_zero,
-                                                  int8_t front_dir,
-                                                  int8_t back_dir,
-                                                  fp32 kp,
-                                                  fp32 kd,
-                                                  uint8_t clear_wheel)
+static fp32 wheelleg_manual_y_target_from_axis(int16_t axis)
 {
-    uint8_t sent = 0u;
+    fp32 center = g_config.wheelleg_mit.default_leg_length_m;
+    fp32 min_leg = g_config.wheelleg_mit.min_leg_length_m;
+    fp32 max_leg = g_config.wheelleg_mit.max_leg_length_m;
+    fp32 u;
 
-    if (map == NULL || side >= WHEELLEG_SIDE_COUNT)
+    if (min_leg <= 0.02f)
+    {
+        min_leg = 0.02f;
+    }
+    if (max_leg < min_leg)
+    {
+        max_leg = min_leg;
+    }
+    center = wheelleg_clamp(center, min_leg, max_leg);
+
+    if (wheelleg_axis_in_deadband(axis, g_config.wheelleg_mit.rc_deadband) != 0u)
+    {
+        return center;
+    }
+
+    u = wheelleg_clamp(((fp32)axis) / (fp32)RC_CH_VALUE_ABS_LEGACY, -1.0f, 1.0f);
+    if (u >= 0.0f)
+    {
+        return center + u * (max_leg - center);
+    }
+    return center + u * (center - min_leg);
+}
+
+static fp32 wheelleg_manual_x_target_from_axis(int16_t axis)
+{
+    return wheelleg_axis_to_fp32(axis,
+                                WHEELLEG_MANUAL_FOOT_X_RANGE_M,
+                                g_config.wheelleg_mit.rc_deadband);
+}
+
+static uint8_t wheelleg_position_apply_leg(const wheelleg_actuator_map_t *map,
+                                           uint8_t side,
+                                           fp32 front_raw_zero,
+                                           fp32 back_raw_zero,
+                                           int8_t front_dir,
+                                           int8_t back_dir,
+                                           fp32 target_foot_x,
+                                           fp32 target_foot_y,
+                                           fp32 kp,
+                                           fp32 kd)
+{
+    wheelleg_foot_point_t target;
+    fp32 front_kin_zero;
+    fp32 back_kin_zero;
+    fp32 front_target;
+    fp32 back_target;
+
+    if (map == NULL)
+    {
+        return 0u;
+    }
+    if (wheelleg_kinematic_zero(&front_kin_zero, &back_kin_zero) == 0u ||
+        wheelleg_foot_point_from_xy(target_foot_x, target_foot_y, &target) == 0u ||
+        wheelleg_inverse_point(&target, front_kin_zero, back_kin_zero, &front_target, &back_target) == 0u)
     {
         return 0u;
     }
 
-    sent += wheelleg_send_state_cmd(map->front,
-                                    wheelleg_kinematic_to_raw(front_kin_target,
-                                                              front_raw_zero,
-                                                              front_dir,
-                                                              front_kin_zero),
-                                    0.0f,
-                                    kp,
-                                    kd,
-                                    0.0f);
-    sent += wheelleg_send_state_cmd(map->back,
-                                    wheelleg_kinematic_to_raw(back_kin_target,
-                                                              back_raw_zero,
-                                                              back_dir,
-                                                              back_kin_zero),
-                                    0.0f,
-                                    kp,
-                                    kd,
-                                    0.0f);
-    if (clear_wheel != 0u)
+    if (side < WHEELLEG_SIDE_COUNT)
     {
-        wheelleg_clear_state_cmd(map->wheel);
+        s_wheelleg.foot_test_target[side] = target;
     }
 
-    return sent;
+    if (wheelleg_send_state_cmd(map->front,
+                                wheelleg_kinematic_to_raw(front_target,
+                                                          front_raw_zero,
+                                                          front_dir,
+                                                          front_kin_zero),
+                                0.0f,
+                                kp,
+                                kd,
+                                0.0f) == 0u ||
+        wheelleg_send_state_cmd(map->back,
+                                wheelleg_kinematic_to_raw(back_target,
+                                                          back_raw_zero,
+                                                          back_dir,
+                                                          back_kin_zero),
+                                0.0f,
+                                kp,
+                                kd,
+                                0.0f) == 0u)
+    {
+        return 0u;
+    }
+
+    wheelleg_clear_state_cmd(map->wheel);
+    return 1u;
 }
 
-static uint8_t wheelleg_joint_position_target_apply(fp32 target_leg,
-                                                    fp32 target_foot_x,
-                                                    uint8_t clear_wheels,
-                                                    fp32 *target_leg_out,
-                                                    fp32 *target_foot_x_out)
+static uint8_t wheelleg_manual_position_apply(fp32 target_foot_x, fp32 target_foot_y)
 {
     const wheelleg_mit_config_t *cfg = &g_config.wheelleg_mit;
     const wheelleg_actuator_map_t *left_map = &s_wheelleg.actuator[WHEELLEG_SIDE_LEFT];
     const wheelleg_actuator_map_t *right_map = &s_wheelleg.actuator[WHEELLEG_SIDE_RIGHT];
-    wheelleg_foot_point_t target;
-    fp32 front_kin_zero;
-    fp32 back_kin_zero;
-    fp32 front_kin_target;
-    fp32 back_kin_target;
     const fp32 kp = (cfg->foot_test_kp > 0.0f) ? cfg->foot_test_kp : WHEELLEG_DETACHED_JOINT_TEST_KP;
     const fp32 kd = (cfg->foot_test_kd > 0.0f) ? cfg->foot_test_kd : WHEELLEG_DETACHED_JOINT_TEST_KD;
-    uint8_t sent = 0u;
+    uint8_t ok_left;
+    uint8_t ok_right;
 
-    target_leg = wheelleg_clamp(target_leg, cfg->min_leg_length_m, cfg->max_leg_length_m);
-    if (target_leg_out != NULL)
-    {
-        *target_leg_out = target_leg;
-    }
-    if (target_foot_x_out != NULL)
-    {
-        *target_foot_x_out = target_foot_x;
-    }
+    s_wheelleg.foot_test_ik_ok = 0u;
 
-    if (wheelleg_foot_point_from_y_x(target_leg, target_foot_x, &target) == 0u ||
-        wheelleg_kinematic_zero(&front_kin_zero, &back_kin_zero) == 0u ||
-        wheelleg_inverse_point(&target,
-                               front_kin_zero,
-                               back_kin_zero,
-                               &front_kin_target,
-                               &back_kin_target) == 0u)
+    ok_left = wheelleg_position_apply_leg(left_map,
+                                          WHEELLEG_SIDE_LEFT,
+                                          cfg->left_front_zero_rad,
+                                          cfg->left_back_zero_rad,
+                                          cfg->left_front_dir,
+                                          cfg->left_back_dir,
+                                          target_foot_x,
+                                          target_foot_y,
+                                          kp,
+                                          kd);
+    ok_right = wheelleg_position_apply_leg(right_map,
+                                           WHEELLEG_SIDE_RIGHT,
+                                           cfg->right_front_zero_rad,
+                                           cfg->right_back_zero_rad,
+                                           cfg->right_front_dir,
+                                           cfg->right_back_dir,
+                                           target_foot_x,
+                                           target_foot_y,
+                                           kp,
+                                           kd);
+    if (ok_left == 0u || ok_right == 0u)
     {
+        wheelleg_clear_joint_test_cmds();
         return 0u;
     }
 
-    s_wheelleg.foot_test_target[WHEELLEG_SIDE_LEFT] = target;
-    s_wheelleg.foot_test_target[WHEELLEG_SIDE_RIGHT] = target;
     s_wheelleg.foot_test_ik_ok = 1u;
-
-    sent += wheelleg_joint_position_apply_side(left_map,
-                                               WHEELLEG_SIDE_LEFT,
-                                               front_kin_target,
-                                               back_kin_target,
-                                               front_kin_zero,
-                                               back_kin_zero,
-                                               cfg->left_front_zero_rad,
-                                               cfg->left_back_zero_rad,
-                                               cfg->left_front_dir,
-                                               cfg->left_back_dir,
-                                               kp,
-                                               kd,
-                                               clear_wheels);
-    sent += wheelleg_joint_position_apply_side(right_map,
-                                               WHEELLEG_SIDE_RIGHT,
-                                               front_kin_target,
-                                               back_kin_target,
-                                               front_kin_zero,
-                                               back_kin_zero,
-                                               cfg->right_front_zero_rad,
-                                               cfg->right_back_zero_rad,
-                                               cfg->right_front_dir,
-                                               cfg->right_back_dir,
-                                               kp,
-                                               kd,
-                                               clear_wheels);
-    return sent;
-}
-
-static uint8_t wheelleg_detached_joint_test_apply(uint32_t now_ms,
-                                                  fp32 *target_leg_out,
-                                                  fp32 *target_foot_x_out)
-{
-    return wheelleg_joint_position_target_apply(wheelleg_detached_joint_leg_target(now_ms),
-                                                0.0f,
-                                                1u,
-                                                target_leg_out,
-                                                target_foot_x_out);
+    return 1u;
 }
 
 static fp32 wheelleg_left_leg_test_target(uint32_t elapsed_ms)
@@ -1836,6 +2195,8 @@ static void wheelleg_publish(uint16_t faults,
     static uint32_t seq;
     const uint32_t now_ms = wheelleg_tick_ms();
     const fp32 target_theta = wheelleg_target_theta_from_foot_x(target_foot_x, target_leg);
+    const fp32 target_foot_y_sq = target_leg * target_leg - target_foot_x * target_foot_x;
+    const fp32 target_foot_y = (target_foot_y_sq > 0.0f) ? sqrtf(target_foot_y_sq) : 0.0f;
     uint8_t side;
 
     (void)memset(&state, 0, sizeof(state));
@@ -1866,6 +2227,7 @@ static void wheelleg_publish(uint16_t faults,
     status.target_v_mps = target_v;
     status.target_leg_length_m = target_leg;
     status.target_foot_x_m = target_foot_x;
+    status.target_foot_y_m = target_foot_y;
     status.target_leg_theta_rad = target_theta;
     status.pitch_rad = pitch;
     status.x_dot_mps = s_wheelleg.v_mps;
@@ -1893,6 +2255,7 @@ static void wheelleg_publish(uint16_t faults,
 
         status.leg_length_m[side] = leg->length;
         status.leg_theta_rad[side] = leg->theta;
+        status.leg_alpha_rad[side] = leg->alpha;
         status.support_force_n[side] = leg->f0;
         status.wheel_torque_nm[side] = wheel_torque[side];
 
@@ -1934,6 +2297,21 @@ static void wheelleg_publish(uint16_t faults,
     (void)wheelleg_state_write(&state);
     (void)wheelleg_status_write(&status);
     (void)wheelleg_debug_write(&debug);
+
+    wheelleg_sdlog_write_status(faults,
+                                mode,
+                                pitch,
+                                roll,
+                                yaw,
+                                gyro,
+                                target_v,
+                                target_leg,
+                                target_foot_x,
+                                target_yaw_rate,
+                                target_theta,
+                                wheel_torque,
+                                controller_active,
+                                now_ms);
 }
 
 uint8_t wheelleg_update_leg_kinematics(fp32 pitch, const fp32 gyro[3], fp32 dt)
@@ -2077,6 +2455,7 @@ uint8_t wheelleg_bench_lqr_step(fp32 dt,
     return 1u;
 }
 
+#if WHEELLEG_ENABLE_VMC_BALANCE
 static uint8_t wheelleg_controller_step(fp32 dt,
                                         fp32 pitch,
                                         fp32 roll,
@@ -2221,6 +2600,7 @@ static uint8_t wheelleg_controller_step(fp32 dt,
 
     return 1u;
 }
+#endif
 
 void wheelleg_mit_task(void const *pvParameters)
 {
@@ -2241,23 +2621,28 @@ void wheelleg_mit_task(void const *pvParameters)
         const uint32_t now_ms = wheelleg_tick_ms();
         const fp32 *angle = get_INS_angle_point();
         const fp32 *gyro = get_gyro_data_point();
-        const fp32 pitch = (angle != NULL) ? angle[INS_PITCH_ADDRESS_OFFSET] : 0.0f;
-        const fp32 roll = (angle != NULL) ? angle[INS_ROLL_ADDRESS_OFFSET] : 0.0f;
-        const fp32 yaw = (angle != NULL) ? angle[INS_YAW_ADDRESS_OFFSET] : 0.0f;
+        fp32 gyro_aligned[3] = {0.0f, 0.0f, 0.0f};
+        const fp32 *gyro_wheelleg = wheelleg_imu_gyro_aligned(gyro, gyro_aligned);
+        const fp32 pitch = wheelleg_imu_angle(angle, WHEELLEG_IMU_BODY_PITCH_OFFSET, WHEELLEG_IMU_PITCH_SIGN);
+        const fp32 roll = wheelleg_imu_angle(angle, WHEELLEG_IMU_BODY_ROLL_OFFSET, WHEELLEG_IMU_ROLL_SIGN);
+        const fp32 yaw = wheelleg_imu_angle(angle, WHEELLEG_IMU_BODY_YAW_OFFSET, WHEELLEG_IMU_YAW_SIGN);
         const int16_t vx_axis = input_axis(INPUT_AXIS_CHASSIS_X);
         const int16_t yaw_axis = input_axis(INPUT_AXIS_CHASSIS_WZ);
         const int16_t single_test_axis = input_axis(INPUT_AXIS_CALIB_3);
+        const int16_t leg_axis = input_axis(INPUT_AXIS_CHASSIS_Y);
+        const int16_t foot_x_axis = input_axis(INPUT_AXIS_CALIB_2);
         const test_mode_e test_mode = (test_mode_e)g_config.test.mode;
         fp32 target_v = 0.0f;
         fp32 target_yaw_rate = 0.0f;
         fp32 target_leg = 0.100f;
         fp32 target_foot_x = 0.0f;
+        fp32 target_foot_y = 0.100f;
         fp32 wheel_torque[WHEELLEG_SIDE_COUNT] = {0.0f, 0.0f};
         uint16_t faults = WHEELLEG_FAULT_NONE;
         const uint8_t profile_on = robot_profile_is_wheelleg_mit();
-        const uint8_t manual_on =
-            control_input_switch_is_pos(input_switch(INPUT_SW_CHASSIS_MODE),
-                                        g_config.wheelleg_mit.enable_switch_pos);
+        const uint8_t manual_on = wheelleg_manual_enabled_by_switch();
+        const uint8_t imu_ok =
+            (toe_is_error(BOARD_GYRO_TOE) == 0u && toe_is_error(BOARD_ACCEL_TOE) == 0u) ? 1u : 0u;
         const uint8_t single_test =
             (test_mode == TEST_MODE_WHEELLEG_SINGLE_MOTOR) ? 1u : 0u;
         const uint8_t left_leg_test =
@@ -2266,8 +2651,11 @@ void wheelleg_mit_task(void const *pvParameters)
             (test_mode == TEST_MODE_WHEELLEG_FOOT_TRAJECTORY) ? 1u : 0u;
         const uint8_t test_mode_active =
             (single_test != 0u || left_leg_test != 0u || foot_test != 0u) ? 1u : 0u;
+        const uint8_t normal_mode = (test_mode == TEST_MODE_NONE) ? 1u : 0u;
+        const uint8_t bench_mode = (uint8_t)(test_mode_active == 0u && normal_mode == 0u);
         uint8_t enabled;
         uint8_t controller_active = 0u;
+        uint8_t kinematics_ok = 0u;
         uint16_t feedback_faults;
 
         wheelleg_configure_actuators();
@@ -2276,13 +2664,14 @@ void wheelleg_mit_task(void const *pvParameters)
         wheelleg_pid_apply(&s_wheelleg.split_pid, &g_config.wheelleg_mit.leg_split_pid);
 
         feedback_faults = wheelleg_update_feedback(now_ms);
+        s_wheelleg.feedback_faults = feedback_faults;
         if (toe_is_error(DBUS_TOE))
         {
             faults |= WHEELLEG_FAULT_MANUAL_OFFLINE;
         }
-        if (test_mode_active == 0u)
+        if (bench_mode != 0u)
         {
-            if (toe_is_error(BOARD_GYRO_TOE) || toe_is_error(BOARD_ACCEL_TOE))
+            if (imu_ok == 0u)
             {
                 faults |= WHEELLEG_FAULT_IMU_OFFLINE;
             }
@@ -2291,6 +2680,13 @@ void wheelleg_mit_task(void const *pvParameters)
             {
                 faults |= WHEELLEG_FAULT_ATTITUDE_LIMIT;
             }
+        }
+        if (profile_on != 0u &&
+            feedback_faults == WHEELLEG_FAULT_NONE)
+        {
+            kinematics_ok = wheelleg_update_leg_kinematics((imu_ok != 0u) ? pitch : 0.0f,
+                                                           (imu_ok != 0u) ? gyro_wheelleg : NULL,
+                                                           dt);
         }
 
         enabled = (uint8_t)(profile_on != 0u &&
@@ -2315,7 +2711,9 @@ void wheelleg_mit_task(void const *pvParameters)
             s_wheelleg.detached_test_active = 0u;
             s_wheelleg.foot_test_phase = 0u;
             s_wheelleg.foot_test_ik_ok = 0u;
-            wheelleg_publish(faults, s_wheelleg.mode, pitch, roll, yaw, gyro,
+            target_leg = s_wheelleg.bench_hold_target_leg_m;
+            target_foot_x = s_wheelleg.bench_hold_target_foot_x_m;
+            wheelleg_publish(faults, s_wheelleg.mode, pitch, roll, yaw, gyro_wheelleg,
                              target_v, target_leg, target_foot_x, target_yaw_rate, wheel_torque, 0u);
             vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(period_ms));
             continue;
@@ -2350,7 +2748,7 @@ void wheelleg_mit_task(void const *pvParameters)
                              pitch,
                              roll,
                              yaw,
-                             gyro,
+                             gyro_wheelleg,
                              target_v,
                              target_leg,
                              target_foot_x,
@@ -2388,7 +2786,7 @@ void wheelleg_mit_task(void const *pvParameters)
                              pitch,
                              roll,
                              yaw,
-                             gyro,
+                             gyro_wheelleg,
                              target_v,
                              target_leg,
                              target_foot_x,
@@ -2424,7 +2822,7 @@ void wheelleg_mit_task(void const *pvParameters)
                              pitch,
                              roll,
                              yaw,
-                             gyro,
+                             gyro_wheelleg,
                              target_v,
                              target_leg,
                              target_foot_x,
@@ -2439,7 +2837,7 @@ void wheelleg_mit_task(void const *pvParameters)
             continue;
         }
 
-        if (test_mode_active == 0u)
+        if (bench_mode != 0u)
         {
             const wheelleg_actuator_map_t *right_map = &s_wheelleg.actuator[WHEELLEG_SIDE_RIGHT];
             const wheelleg_actuator_map_t *left_map = &s_wheelleg.actuator[WHEELLEG_SIDE_LEFT];
@@ -2469,12 +2867,12 @@ void wheelleg_mit_task(void const *pvParameters)
             if ((faults & WHEELLEG_FAULT_CONTROLLER) == 0u &&
                 feedback_faults == WHEELLEG_FAULT_NONE)
             {
-                if (wheelleg_update_leg_kinematics(pitch, gyro, dt) != 0u)
+                if (kinematics_ok != 0u)
                 {
                     wheelleg_bench_hold_update_pose_target();
                     target_leg = s_wheelleg.bench_hold_target_leg_m;
                     target_foot_x = s_wheelleg.bench_hold_target_foot_x_m;
-                    wheelleg_update_observer(dt, gyro);
+                    wheelleg_update_observer(dt, gyro_wheelleg);
                     if (wheelleg_axis_in_deadband(vx_axis, g_config.wheelleg_mit.rc_deadband) != 0u &&
                         wheelleg_axis_in_deadband(yaw_axis, g_config.wheelleg_mit.rc_deadband) != 0u)
                     {
@@ -2484,7 +2882,7 @@ void wheelleg_mit_task(void const *pvParameters)
                     if (wheelleg_bench_lqr_step(dt,
                                                 pitch,
                                                 yaw,
-                                                gyro,
+                                                gyro_wheelleg,
                                                 target_v,
                                                 target_leg,
                                                 target_foot_x,
@@ -2528,7 +2926,7 @@ void wheelleg_mit_task(void const *pvParameters)
                              pitch,
                              roll,
                              yaw,
-                             gyro,
+                             gyro_wheelleg,
                              target_v,
                              target_leg,
                              target_foot_x,
@@ -2548,78 +2946,35 @@ void wheelleg_mit_task(void const *pvParameters)
         s_wheelleg.detached_test_active = 0u;
         s_wheelleg.foot_test_phase = 0u;
         s_wheelleg.foot_test_ik_ok = 0u;
-        s_wheelleg.mode = WHEELLEG_MODE_BALANCE;
+        s_wheelleg.mode = WHEELLEG_MODE_LEG_POSITION;
+        wheelleg_pid_clear(&s_wheelleg.leg_pid[WHEELLEG_SIDE_LEFT]);
+        wheelleg_pid_clear(&s_wheelleg.leg_pid[WHEELLEG_SIDE_RIGHT]);
+        wheelleg_pid_clear(&s_wheelleg.split_pid);
+        wheelleg_clear_leg_virtual_outputs();
+        target_v = 0.0f;
+        target_yaw_rate = 0.0f;
+        target_foot_x = wheelleg_manual_x_target_from_axis(foot_x_axis);
+        target_foot_y = wheelleg_manual_y_target_from_axis(leg_axis);
+        if (wheelleg_limit_foot_xy(&target_foot_x, &target_foot_y, &target_leg) == 0u)
         {
-            fp32 front_kin_zero;
-            fp32 back_kin_zero;
-            fp32 right_front_pos;
-            fp32 right_back_pos;
-            fp32 left_front_pos;
-            fp32 left_back_pos;
-
-            if (wheelleg_kinematic_zero(&front_kin_zero, &back_kin_zero) == 0u)
-            {
-                faults |= WHEELLEG_FAULT_CONTROLLER;
-            }
-            else
-            {
-                right_front_pos = wheelleg_raw_to_kinematic(s_wheelleg.front_fb[WHEELLEG_SIDE_RIGHT].position,
-                                                            g_config.wheelleg_mit.right_front_zero_rad,
-                                                            g_config.wheelleg_mit.right_front_dir,
-                                                            front_kin_zero);
-                right_back_pos = wheelleg_raw_to_kinematic(s_wheelleg.back_fb[WHEELLEG_SIDE_RIGHT].position,
-                                                           g_config.wheelleg_mit.right_back_zero_rad,
-                                                           g_config.wheelleg_mit.right_back_dir,
-                                                           back_kin_zero);
-                left_front_pos = wheelleg_raw_to_kinematic(s_wheelleg.front_fb[WHEELLEG_SIDE_LEFT].position,
-                                                           g_config.wheelleg_mit.left_front_zero_rad,
-                                                           g_config.wheelleg_mit.left_front_dir,
-                                                           front_kin_zero);
-                left_back_pos = wheelleg_raw_to_kinematic(s_wheelleg.back_fb[WHEELLEG_SIDE_LEFT].position,
-                                                          g_config.wheelleg_mit.left_back_zero_rad,
-                                                          g_config.wheelleg_mit.left_back_dir,
-                                                          back_kin_zero);
-
-                if (wheelleg_calc_kinematics(&s_wheelleg.leg[WHEELLEG_SIDE_RIGHT],
-                                             right_front_pos,
-                                             right_back_pos,
-                                             pitch,
-                                             (gyro != NULL) ? gyro[INS_GYRO_Y_ADDRESS_OFFSET] : 0.0f,
-                                             0u,
-                                             dt) == 0u ||
-                    wheelleg_calc_kinematics(&s_wheelleg.leg[WHEELLEG_SIDE_LEFT],
-                                             left_front_pos,
-                                             left_back_pos,
-                                             pitch,
-                                             (gyro != NULL) ? gyro[INS_GYRO_Y_ADDRESS_OFFSET] : 0.0f,
-                                             1u,
-                                             dt) == 0u)
-                {
-                    faults |= WHEELLEG_FAULT_CONTROLLER;
-                }
-            }
+            faults |= WHEELLEG_FAULT_CONTROLLER;
+        }
+        if (feedback_faults != WHEELLEG_FAULT_NONE)
+        {
+            faults |= feedback_faults;
+        }
+        if (faults == WHEELLEG_FAULT_NONE && kinematics_ok == 0u)
+        {
+            faults |= WHEELLEG_FAULT_CONTROLLER;
         }
 
-        if ((faults & WHEELLEG_FAULT_CONTROLLER) == 0u)
+        if (faults == WHEELLEG_FAULT_NONE)
         {
-            target_v = 0.0f;
-            target_yaw_rate = 0.0f;
-            target_leg = wheelleg_auto_leg_target(now_ms);
-            target_foot_x = 0.0f;
-            wheelleg_target_smooth_update(target_leg, target_foot_x, dt);
+            wheelleg_target_smooth_update_xy(target_foot_x, target_foot_y, dt);
             target_leg = s_wheelleg.target_leg_smooth;
             target_foot_x = s_wheelleg.target_foot_x_smooth;
-            wheelleg_update_observer(dt, gyro);
-            if (wheelleg_controller_step(dt,
-                                         pitch,
-                                         roll,
-                                         yaw,
-                                         gyro,
-                                         target_v,
-                                         target_leg,
-                                         target_foot_x,
-                                         target_yaw_rate,
-                                         wheel_torque) == 0u)
+            target_foot_y = s_wheelleg.target_foot_y_smooth;
+            if (wheelleg_manual_position_apply(target_foot_x, target_foot_y) == 0u)
             {
                 faults |= WHEELLEG_FAULT_CONTROLLER;
             }
@@ -2633,23 +2988,6 @@ void wheelleg_mit_task(void const *pvParameters)
         }
         else
         {
-            const wheelleg_actuator_map_t *right_map = &s_wheelleg.actuator[WHEELLEG_SIDE_RIGHT];
-            const wheelleg_actuator_map_t *left_map = &s_wheelleg.actuator[WHEELLEG_SIDE_LEFT];
-
-            wheelleg_send_joint_torque(right_map->front,
-                                       s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].joint_torque[0],
-                                       g_config.wheelleg_mit.right_front_dir);
-            wheelleg_send_joint_torque(right_map->back,
-                                       s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].joint_torque[1],
-                                       g_config.wheelleg_mit.right_back_dir);
-            wheelleg_send_torque(right_map->wheel, wheel_torque[WHEELLEG_SIDE_RIGHT]);
-            wheelleg_send_joint_torque(left_map->front,
-                                       s_wheelleg.leg[WHEELLEG_SIDE_LEFT].joint_torque[0],
-                                       g_config.wheelleg_mit.left_front_dir);
-            wheelleg_send_joint_torque(left_map->back,
-                                       s_wheelleg.leg[WHEELLEG_SIDE_LEFT].joint_torque[1],
-                                       g_config.wheelleg_mit.left_back_dir);
-            wheelleg_send_torque(left_map->wheel, wheel_torque[WHEELLEG_SIDE_LEFT]);
             controller_active = 1u;
             s_wheelleg.ever_commanded = 1u;
         }
@@ -2659,7 +2997,7 @@ void wheelleg_mit_task(void const *pvParameters)
                          pitch,
                          roll,
                          yaw,
-                         gyro,
+                         gyro_wheelleg,
                          target_v,
                          target_leg,
                          target_foot_x,

@@ -56,7 +56,7 @@ static void motor_instance_add(actuator_id_e actuator_id,
 
 static uint8_t motor_instance_arm_role_enabled(void)
 {
-    return robot_profile_is_wheelleg_mit();
+    return (uint8_t)(robot_profile_need_arm_task() || robot_profile_is_wheelleg_mit());
 }
 
 static uint8_t motor_instance_rx_enabled(const motor_instance_t *inst)
