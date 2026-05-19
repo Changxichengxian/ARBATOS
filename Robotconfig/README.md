@@ -40,3 +40,15 @@ Robotconfig/<TARGET>/
 - 厂商包、参考工程、临时材料：放 `local/docs/` 或 `local/`。
 
 判断标准很简单：如果换一台同板子的机器人也要改它，它大概率属于 `Robotconfig/`；如果换一块板子才要改它，它大概率属于 `boards/`。
+
+## 新车配置优先级
+
+新建目标时，建议先复制最接近的一台车，再按这个顺序改：
+
+1. `g_config.profile`：先决定底盘、云台、机械臂这些任务族开不开。
+2. `g_config.motor`：填电机型号、CAN ID、总线、反馈 ID；不用的轴先设 `can_id = 0`。
+3. `g_config.input` 和 `g_config.manual_input`：确认遥控通道、语义开关、安全档和输入源策略。
+4. 底盘、云台、射击、功率、IMU 等参数块：先保守限幅，再逐步调手感。
+5. `detect_task.c`：把这台车真正关心的设备在线检测补齐。
+
+`g_config.test.mode` 是调试入口。常用做法是先开单子系统测试，再回到 `TEST_MODE_NONE` 做整车联调。陀螺仪零偏专门校准使用 `TEST_MODE_IMU_GYRO_CALI`：温度升到 40 度并稳定后，静止采 30 秒并保存。

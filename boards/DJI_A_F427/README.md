@@ -11,6 +11,8 @@
 - `devices/mpu6500.*`：A 板使用的 MPU6500 驱动。
 - `bsp/diskio.c`：FatFs 磁盘接口。
 
+`bsp/INS_task.c` 只保留 A 板的 MPU6500 读取、安装矩阵、温控和姿态融合差异。陀螺仪零偏采样流程共用 `shared/application/services/calibration/gyro_zero_cali.h`：正常上电温稳后静止 3 秒微调；`TEST_MODE_IMU_GYRO_CALI` 下温度到 40 度后静止 30 秒并保存。
+
 ## 当前使用者
 
 - `INFANTRY-A`：`open_INFANTRY-A.cmd` 或 `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx`

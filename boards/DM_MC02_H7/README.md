@@ -16,6 +16,8 @@
 - H7 串口、遥控器、裁判系统、SD 卡等板级适配：`bsp/`
 - FatFs 磁盘接口：`bsp/diskio.c`
 
+`app/INS_task.c` 只保留 MC02 H7 的 BMI088 读取、安装矩阵、温控和姿态融合差异。陀螺仪零偏采样流程共用 `shared/application/services/calibration/gyro_zero_cali.h`：正常上电温稳后静止 3 秒微调；`TEST_MODE_IMU_GYRO_CALI` 下温度到 40 度后静止 30 秒并保存。
+
 ## 当前任务创建逻辑
 
 `app/board_freertos.c` 默认创建：

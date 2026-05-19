@@ -48,7 +48,7 @@ void status_led_task(void const *argument)
             continue;
         }
 
-        // 额外指示：上电 2s 陀螺零偏采集状态（成功绿，失败/未完成红）
+        // 额外指示：陀螺零偏校准状态（成功绿，失败红）
         {
             const ins_gyro_boot_init_result_e result = ins_get_gyro_boot_initial_result();
             if (result != INS_GYRO_BOOT_INIT_PENDING)

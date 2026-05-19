@@ -40,3 +40,15 @@
 - 多个 Robotconfig 共用同一批 shared 控制逻辑：底盘、云台、射击任务尽量复用。
 
 判断文件该不该放 `projects/`：如果它影响“工程怎么编译和启动”，放这里；如果它影响“机器人怎么控制”，多数时候不该放这里。
+
+## 新建工程入口
+
+新车如果复用已有板卡，优先复制最接近的 `projects/<TARGET>/`：
+
+1. 修改 Keil 工程名和输出名。
+2. Include Path 改到新的 `Robotconfig/<TARGET>`，保留对应 `boards/<BOARD>` 和 `shared/` 路径。
+3. Source Group 里确认只包含一个目标的 `Robotconfig/<TARGET>` 文件，不要把多个目标的 `config.c` 同时编进去。
+4. 如果换了板卡，确认 `Core/`、`Drivers/`、`Middlewares/` 和板级 `INS_task.c` 对应同一块芯片。
+5. 第一次编译通过后，再去调 `Robotconfig/` 参数。
+
+根目录的 `QUICK_START.md` 写的是新车接入顺序；这里主要负责工程入口本身。

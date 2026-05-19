@@ -13,6 +13,8 @@
 - `bsp/bsp_rc_cfg.h`：遥控器板级配置。
 - `bsp/diskio.c`：FatFs 磁盘接口。
 
+`bsp/INS_task.c` 只保留 C 板的 BMI088 读取、安装矩阵、温控和姿态融合差异。陀螺仪零偏采样流程共用 `shared/application/services/calibration/gyro_zero_cali.h`：正常上电温稳后静止 3 秒微调；`TEST_MODE_IMU_GYRO_CALI` 下温度到 40 度后静止 30 秒并保存。
+
 ## 当前使用者
 
 - `HERO-C`：`open_HERO-C.cmd` 或 `projects/HERO-C/MDK-ARM/HERO-C.uvprojx`

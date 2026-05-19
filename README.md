@@ -375,6 +375,7 @@ actuator_feedback + 旧电机反馈结构
 | 裁判系统 | `shared/application/comm/referee/referee_rx_task.c`、`shared/application/comm/referee/referee.c` |
 | 电池监测 | `shared/application/services/battery/battery_monitor_task.c` |
 | 舵机输出 | `shared/application/services/servo/servo_control_task.c` |
+| 校准服务 | `shared/application/services/calibration/calibrate_task.c`、`shared/application/services/calibration/gyro_zero_cali.h`、`shared/application/services/calibration/pitch_cali.c` |
 | 状态灯 | `shared/application/services/startup/status_led_task.c` |
 | 诊断观察 | `shared/application/services/diagnostics/watch.c` |
 | 运行耗时统计 | `shared/application/services/diagnostics/rt_profiler.c` |
@@ -425,12 +426,16 @@ actuator_feedback + 旧电机反馈结构
 
 ## 快速开始
 
+如果是第一次接触这套代码，先看根目录的 `QUICK_START.md`。那份文档专门写“新接一辆车先干什么、按什么顺序调、出问题看哪里”。
+
+最短流程是：
+
 1. 安装 Keil MDK-ARM v5 和对应 STM32F4 / STM32H7 芯片包。
 2. 打开目标工程，例如 `projects/HERO-C/MDK-ARM/HERO-C.uvprojx`。
-3. 确认当前 Robotconfig 的 `config.c` 符合硬件接线，尤其是 `g_config.profile` 和 `g_config.motor`。
-4. 确认板级串口、CAN、IMU、蜂鸣器、按键等配置在 `boards/<BOARD>/` 下匹配当前硬件。
-5. 编译并下载到对应板卡。
-6. 首次上车前，先用 `g_watch`、AUX 遥测或 TF/SD 日志确认输入、电机反馈、任务状态都正常。
+3. 核对 `Robotconfig/<TARGET>/config.c`，先确认 `g_config.profile`、`g_config.motor`、输入映射和安全档。
+4. 核对 `boards/<BOARD>/`，确认串口、CAN、IMU、蜂鸣器、按键等板级配置匹配当前硬件。
+5. 编译下载后，先用 `g_watch`、AUX 遥测或 TF/SD 日志确认输入、电机反馈、IMU、任务状态都正常。
+6. 上车调试按“IMU -> CAN 反馈 -> 单个子系统 -> 整车联调”的顺序来，不要一开始就全功能同时开。
 
 ## 目录结构
 
@@ -458,7 +463,7 @@ ARBATOS/
 |   `-- MINIWHEELEG-C/
 |-- shared/
 |   |-- application/
-|   |-- bsp/
+|   |-- hal/
 |   `-- components/
 |-- legal/
 |-- local/
@@ -469,6 +474,7 @@ ARBATOS/
 
 ## 更多文档
 
+- `QUICK_START.md`：新手快速上手，聚焦新车接入和调试顺序。
 - `legal/`：授权、商用、第三方组件和贡献边界，继续跟随 Git。
 - `local/docs/`：本地文档、接入记录、厂商资料和清理清单，不再提交到 Git。
 - `projects/README.md`：项目入口说明。
