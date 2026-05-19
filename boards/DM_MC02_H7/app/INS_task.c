@@ -13,12 +13,13 @@
 #include "pid.h"
 #include "sdlog.h"
 #include "config.h"
+#include "control_input.h"
+#include "manual_input.h"
 #include "tim.h"
 #include "user_lib.h"
 #include "watch.h"
 
 #include <math.h>
-#include <stdbool.h>
 #include <string.h>
 
 #define BMI088_BOARD_INSTALL_SPIN_MATRIX \
@@ -97,9 +98,6 @@ static enum {IMU_ST_DISARMED, IMU_ST_QUIET, IMU_ST_RESET} imu_gain_state = IMU_S
 static uint32_t imu_state_timeout_ms = 0u;
 static float imu_kp = MAHONY_KP_DEFAULT;
 static float imu_ki = MAHONY_KI_DEFAULT;
-static bool_t gyro_boot_calibrated = 0;
-static bool_t gyro_boot_calibrating = 0;
-static ins_gyro_boot_init_result_e gyro_boot_initial_result = INS_GYRO_BOOT_INIT_PENDING;
 static float imu_yaw_continuous = 0.0f;
 static bool_t imu_yaw_inited = 0;
 static fp32 imu_angle_lpf[3] = {0.0f, 0.0f, 0.0f};
@@ -110,12 +108,7 @@ static volatile fp32 g_ins_heater_pid_out = 0.0f;
 static volatile uint16_t g_ins_heater_pwm = 0u;
 static volatile uint8_t g_ins_heater_mode = 0u;
 static uint32_t imu_pid_log_tick_ms = 0u;
-static gyro_zero_cali_sample_state_t gyro_boot_adjust_state = {0};
-static gyro_zero_cali_temp_state_t gyro_boot_adjust_temp_state = {0};
-static gyro_zero_cali_sample_state_t gyro_test_cali_state = {0};
-static gyro_zero_cali_temp_state_t gyro_test_cali_temp_state = {0};
-static uint8_t gyro_boot_adjust_finished = 0u;
-static uint8_t gyro_test_cali_finished = 0u;
+static gyro_zero_cali_runtime_state_t gyro_zero_state = {0};
 
 typedef struct
 {
@@ -287,90 +280,48 @@ __weak bool_t calibrate_gyro_offset_save(const fp32 offset[3])
     return 0;
 }
 
-static void gyro_zero_test_mode_update(const fp32 gyro_raw[3], const fp32 accel_raw[3], fp32 temp_c, uint32_t now_ms)
+static void gyro_zero_apply_offset_cb(const fp32 offset[3], void *ctx)
 {
-    if (gyro_test_cali_finished != 0u)
-    {
-        gyro_boot_calibrating = 0;
-        return;
-    }
-
-    gyro_boot_calibrating = 1;
-    const fp32 target_temp = (fp32)get_control_temperature();
-    if (!gyro_zero_cali_temp_stable_update(&gyro_test_cali_temp_state, temp_c, target_temp, now_ms, first_temperate))
-    {
-        gyro_zero_cali_sample_reset(&gyro_test_cali_state);
-        return;
-    }
-
-    fp32 gyro_rot[3];
-    fp32 accel_rot[3];
-    imu_rotate_gyro_raw(gyro_rot, gyro_raw);
-    imu_rotate_accel_raw(accel_rot, accel_raw);
-
-    if (gyro_zero_cali_collect_sample(&gyro_test_cali_state, gyro_rot, accel_rot, GYRO_ZERO_CALI_TEST_SAMPLES))
-    {
-        fp32 offset[3];
-        gyro_zero_cali_calc_offset(&gyro_test_cali_state, offset);
-        gyro_zero_apply_offset(offset);
-        gyro_boot_calibrated = calibrate_gyro_offset_save(offset);
-        gyro_boot_initial_result = (gyro_boot_calibrated != 0) ? INS_GYRO_BOOT_INIT_SUCCESS : INS_GYRO_BOOT_INIT_FAILED;
-        gyro_test_cali_finished = 1u;
-        gyro_boot_calibrating = 0;
-        gyro_zero_cali_sample_reset(&gyro_test_cali_state);
-    }
+    (void)ctx;
+    gyro_zero_apply_offset(offset);
 }
 
-static void gyro_zero_boot_adjust_update(const fp32 gyro_raw[3], const fp32 accel_raw[3], fp32 temp_c, uint32_t now_ms)
+static bool_t gyro_zero_save_offset_cb(const fp32 offset[3], void *ctx)
 {
-    if (gyro_boot_adjust_finished != 0u)
-    {
-        gyro_boot_calibrating = 0;
-        return;
-    }
+    (void)ctx;
+    return calibrate_gyro_offset_save(offset);
+}
 
-    const fp32 target_temp = (fp32)get_control_temperature();
-    if (!gyro_zero_cali_temp_stable_update(&gyro_boot_adjust_temp_state, temp_c, target_temp, now_ms, first_temperate) ||
-        gyro_zero_cali_boot_adjust_allowed_by_input() == 0u)
-    {
-        gyro_boot_calibrating = 0;
-        gyro_zero_cali_sample_reset(&gyro_boot_adjust_state);
-        return;
-    }
+static uint8_t gyro_zero_boot_adjust_allowed_by_input(void)
+{
+    const uint8_t rc_disconnected =
+        (manual_input_get_active_source() == MANUAL_INPUT_SRC_AUTO) ? 1u : 0u;
+    const uint8_t gimbal_safe = input_switch_is_pos(input_switch(INPUT_SW_GIMBAL_MODE),
+                                                    g_config.manual_input.semantics.gimbal_safe_pos);
+    const uint8_t chassis_safe = input_switch_is_pos(input_switch(INPUT_SW_CHASSIS_MODE),
+                                                     g_config.manual_input.semantics.chassis_safe_pos);
+    const uint8_t safe_mode = (gimbal_safe != 0u && chassis_safe != 0u) ? 1u : 0u;
 
-    fp32 gyro_rot[3];
-    fp32 accel_rot[3];
-    imu_rotate_gyro_raw(gyro_rot, gyro_raw);
-    imu_rotate_accel_raw(accel_rot, accel_raw);
-
-    gyro_boot_calibrating = 1;
-    if (gyro_zero_cali_collect_sample(&gyro_boot_adjust_state, gyro_rot, accel_rot, GYRO_ZERO_CALI_BOOT_ADJUST_SAMPLES))
-    {
-        fp32 offset[3];
-        gyro_zero_cali_calc_offset(&gyro_boot_adjust_state, offset);
-        gyro_zero_apply_offset(offset);
-        gyro_boot_calibrated = 1;
-        gyro_boot_initial_result = INS_GYRO_BOOT_INIT_SUCCESS;
-        gyro_boot_adjust_finished = 1u;
-        gyro_boot_calibrating = 0;
-        gyro_zero_cali_sample_reset(&gyro_boot_adjust_state);
-    }
+    return (rc_disconnected != 0u || safe_mode != 0u) ? 1u : 0u;
 }
 
 static void gyro_zero_runtime_update(const fp32 gyro_raw[3], const fp32 accel_raw[3], fp32 temp_c, uint32_t now_ms)
 {
-    if ((test_mode_e)g_config.test.mode == TEST_MODE_IMU_GYRO_CALI)
-    {
-        gyro_zero_cali_sample_reset(&gyro_boot_adjust_state);
-        gyro_zero_cali_temp_reset(&gyro_boot_adjust_temp_state);
-        gyro_zero_test_mode_update(gyro_raw, accel_raw, temp_c, now_ms);
-        return;
-    }
-
-    gyro_test_cali_finished = 0u;
-    gyro_zero_cali_sample_reset(&gyro_test_cali_state);
-    gyro_zero_cali_temp_reset(&gyro_test_cali_temp_state);
-    gyro_zero_boot_adjust_update(gyro_raw, accel_raw, temp_c, now_ms);
+    const gyro_zero_cali_runtime_cfg_t cfg = {
+        .test_mode_active = ((test_mode_e)g_config.test.mode == TEST_MODE_IMU_GYRO_CALI) ? 1u : 0u,
+        .temp_c = temp_c,
+        .target_temp_c = (fp32)get_control_temperature(),
+        .heater_stable = first_temperate,
+        .boot_adjust_allowed = gyro_zero_boot_adjust_allowed_by_input(),
+        .now_ms = now_ms,
+        .rotate_gyro = imu_rotate_gyro_raw,
+        .rotate_accel = imu_rotate_accel_raw,
+        .apply_offset = gyro_zero_apply_offset_cb,
+        .save_offset = gyro_zero_save_offset_cb,
+        .sample_done = NULL,
+        .ctx = NULL,
+    };
+    gyro_zero_cali_runtime_update(&gyro_zero_state, &cfg, gyro_raw, accel_raw);
 }
 
 void INS_task(void const *pvParameters)
@@ -397,9 +348,7 @@ void INS_task(void const *pvParameters)
     bmi088_real_data_t raw = {0};
     BMI088_read(raw.gyro, raw.accel, &raw.temp);
 
-    gyro_boot_calibrating = 0;
-    gyro_boot_calibrated = 0;
-    gyro_boot_initial_result = INS_GYRO_BOOT_INIT_PENDING;
+    gyro_zero_cali_runtime_reset(&gyro_zero_state);
 
     imu_cali_solve(INS_gyro, INS_accel, raw.gyro, raw.accel);
     for (uint8_t i = 0u; i < 3u; i++)
@@ -638,17 +587,17 @@ const fp32 *get_mag_data_point(void)
 
 bool_t ins_is_gyro_boot_calibrated(void)
 {
-    return gyro_boot_calibrated;
+    return gyro_zero_cali_runtime_is_calibrated(&gyro_zero_state);
 }
 
 bool_t ins_is_gyro_boot_calibrating(void)
 {
-    return gyro_boot_calibrating;
+    return gyro_zero_cali_runtime_is_calibrating(&gyro_zero_state);
 }
 
 ins_gyro_boot_init_result_e ins_get_gyro_boot_initial_result(void)
 {
-    return gyro_boot_initial_result;
+    return (ins_gyro_boot_init_result_e)gyro_zero_cali_runtime_result(&gyro_zero_state);
 }
 
 fp32 ins_get_imu_temperature_c(void)
