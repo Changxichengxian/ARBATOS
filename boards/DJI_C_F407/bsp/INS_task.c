@@ -32,6 +32,7 @@
 #include "config.h"
 #include "bsp_key.h"
 #include "AHRS.h"
+#include "gyro_zero_cali.h"
 #include "sdlog.h"
 
 
@@ -75,11 +76,11 @@
 
 // 上电静止陀螺零偏校准（取无人机代码思路）
 #define GYRO_BOOT_CALIB_SAMPLES        2000U
+#define IMU_SDLOG_BASE_STREAM_MAX_SAMPLES 16u
+#define IMU_SDLOG_PID_PERIOD_MS        10u
 #define GYRO_BOOT_CALIB_MOVING_LIMIT_DPS 5.0f
 #define GYRO_BOOT_CALIB_DELAY_MS       1U
 #define GYRO_BOOT_CALIB_ACC_TOL_G      0.05f
-#define IMU_SDLOG_BASE_STREAM_MAX_SAMPLES 16u
-#define IMU_SDLOG_PID_PERIOD_MS        10u
 
 
 /**
@@ -130,10 +131,6 @@ static void imu_cmd_spi_dma(void);
   * @brief          上电静止时对陀螺仪做均值零偏校准（取无人机姿态解算中的做法）
   * @retval         true 校准成功并写入 gyro_offset；false 检测到运动，未更新
   */
-static bool gyro_boot_calibration(void);
-static void gyro_boot_retry_reset(void);
-static void gyro_boot_retry_update(const fp32 gyro[3], const fp32 acc[3]);
-
 static float imu_calc_dt_s(void);
 static bool_t imu_acc_is_healthy(const fp32 acc[3]);
 typedef struct
@@ -152,6 +149,10 @@ static void imu_mix_accel_for_fusion(const fp32 quat[4], const fp32 raw_acc[3], 
 static float imu_calc_dynamic_kp(bool_t use_acc, const fp32 gyro[3], uint32_t now_ms);
 static void imu_update_euler_from_quat(const fp32 quat[4], fp32 euler[3]);
 static void imu_fusion_reset(imu_fusion_mode_e mode, const fp32 acc[3], const fp32 mag[3]);
+static void imu_rotate_gyro_raw(fp32 gyro_rot[3], const fp32 gyro_raw[3]);
+static void imu_rotate_accel_raw(fp32 accel_rot[3], const fp32 accel_raw[3]);
+static void gyro_zero_apply_offset(const fp32 offset[3]);
+static void gyro_zero_runtime_update(const fp32 gyro_raw[3], const fp32 accel_raw[3], fp32 temp_c, uint32_t now_ms);
 
 
 
@@ -242,6 +243,12 @@ static float imu_last_dt_s = 0.001f;
 static imu_fusion_mode_e imu_fusion_mode_active = IMU_FUSION_MAHONY_6AXIS;
 static uint32_t imu_pid_log_tick_ms = 0;
 static uint32_t imu_trust_log_tick_ms = 0;
+static gyro_zero_cali_sample_state_t gyro_boot_adjust_state = {0};
+static gyro_zero_cali_temp_state_t gyro_boot_adjust_temp_state = {0};
+static gyro_zero_cali_sample_state_t gyro_test_cali_state = {0};
+static gyro_zero_cali_temp_state_t gyro_test_cali_temp_state = {0};
+static uint8_t gyro_boot_adjust_finished = 0u;
+static uint8_t gyro_test_cali_finished = 0u;
 
 typedef struct
 {
@@ -366,6 +373,152 @@ static void imu_sdlog_append_base_sample(const sdlog_imu_base_sample_t *sample,
     }
 }
 
+static void imu_rotate_gyro_raw(fp32 gyro_rot[3], const fp32 gyro_raw[3])
+{
+    if (gyro_rot == NULL || gyro_raw == NULL)
+    {
+        return;
+    }
+
+    for (uint8_t i = 0u; i < 3u; i++)
+    {
+        gyro_rot[i] = gyro_raw[0] * gyro_scale_factor[i][0] +
+                      gyro_raw[1] * gyro_scale_factor[i][1] +
+                      gyro_raw[2] * gyro_scale_factor[i][2];
+    }
+}
+
+static void imu_rotate_accel_raw(fp32 accel_rot[3], const fp32 accel_raw[3])
+{
+    if (accel_rot == NULL || accel_raw == NULL)
+    {
+        return;
+    }
+
+    for (uint8_t i = 0u; i < 3u; i++)
+    {
+        accel_rot[i] = accel_raw[0] * accel_scale_factor[i][0] +
+                       accel_raw[1] * accel_scale_factor[i][1] +
+                       accel_raw[2] * accel_scale_factor[i][2] +
+                       accel_offset[i];
+    }
+}
+
+static void gyro_zero_apply_offset(const fp32 offset[3])
+{
+    if (offset == NULL)
+    {
+        return;
+    }
+
+    gyro_cali_offset[0] = offset[0];
+    gyro_cali_offset[1] = offset[1];
+    gyro_cali_offset[2] = offset[2];
+    gyro_offset[0] = gyro_cali_offset[0];
+    gyro_offset[1] = gyro_cali_offset[1];
+    gyro_offset[2] = gyro_cali_offset[2];
+}
+
+__weak bool_t calibrate_gyro_offset_save(const fp32 offset[3])
+{
+    gyro_zero_apply_offset(offset);
+    return 0;
+}
+
+static void gyro_zero_update_accel_ref(const gyro_zero_cali_sample_state_t *state)
+{
+    gyro_boot_accel_norm_ref = gyro_zero_cali_accel_norm_avg(state, GRAVITY_EARTH);
+    gyro_boot_accel_norm_valid = 1;
+}
+
+static void gyro_zero_test_mode_update(const fp32 gyro_raw[3], const fp32 accel_raw[3], fp32 temp_c, uint32_t now_ms)
+{
+    if (gyro_test_cali_finished != 0u)
+    {
+        gyro_boot_calibrating = 0;
+        return;
+    }
+
+    gyro_boot_calibrating = 1;
+    const fp32 target_temp = (fp32)get_control_temperature();
+    if (!gyro_zero_cali_temp_stable_update(&gyro_test_cali_temp_state, temp_c, target_temp, now_ms, first_temperate))
+    {
+        gyro_zero_cali_sample_reset(&gyro_test_cali_state);
+        return;
+    }
+
+    fp32 gyro_rot[3];
+    fp32 accel_rot[3];
+    imu_rotate_gyro_raw(gyro_rot, gyro_raw);
+    imu_rotate_accel_raw(accel_rot, accel_raw);
+
+    if (gyro_zero_cali_collect_sample(&gyro_test_cali_state, gyro_rot, accel_rot, GYRO_ZERO_CALI_TEST_SAMPLES))
+    {
+        fp32 offset[3];
+        gyro_zero_cali_calc_offset(&gyro_test_cali_state, offset);
+        gyro_zero_apply_offset(offset);
+        gyro_zero_update_accel_ref(&gyro_test_cali_state);
+        gyro_boot_calibrated = calibrate_gyro_offset_save(offset);
+        gyro_boot_initial_result = (gyro_boot_calibrated != 0) ? INS_GYRO_BOOT_INIT_SUCCESS : INS_GYRO_BOOT_INIT_FAILED;
+        gyro_test_cali_finished = 1u;
+        gyro_boot_calibrating = 0;
+        gyro_zero_cali_sample_reset(&gyro_test_cali_state);
+    }
+}
+
+static void gyro_zero_boot_adjust_update(const fp32 gyro_raw[3], const fp32 accel_raw[3], fp32 temp_c, uint32_t now_ms)
+{
+    if (gyro_boot_adjust_finished != 0u)
+    {
+        gyro_boot_calibrating = 0;
+        return;
+    }
+
+    const fp32 target_temp = (fp32)get_control_temperature();
+    if (!gyro_zero_cali_temp_stable_update(&gyro_boot_adjust_temp_state, temp_c, target_temp, now_ms, first_temperate) ||
+        gyro_zero_cali_boot_adjust_allowed_by_input() == 0u)
+    {
+        gyro_boot_calibrating = 0;
+        gyro_zero_cali_sample_reset(&gyro_boot_adjust_state);
+        return;
+    }
+
+    fp32 gyro_rot[3];
+    fp32 accel_rot[3];
+    imu_rotate_gyro_raw(gyro_rot, gyro_raw);
+    imu_rotate_accel_raw(accel_rot, accel_raw);
+
+    gyro_boot_calibrating = 1;
+    if (gyro_zero_cali_collect_sample(&gyro_boot_adjust_state, gyro_rot, accel_rot, GYRO_ZERO_CALI_BOOT_ADJUST_SAMPLES))
+    {
+        fp32 offset[3];
+        gyro_zero_cali_calc_offset(&gyro_boot_adjust_state, offset);
+        gyro_zero_apply_offset(offset);
+        gyro_zero_update_accel_ref(&gyro_boot_adjust_state);
+        gyro_boot_calibrated = 1;
+        gyro_boot_initial_result = INS_GYRO_BOOT_INIT_SUCCESS;
+        gyro_boot_adjust_finished = 1u;
+        gyro_boot_calibrating = 0;
+        gyro_zero_cali_sample_reset(&gyro_boot_adjust_state);
+    }
+}
+
+static void gyro_zero_runtime_update(const fp32 gyro_raw[3], const fp32 accel_raw[3], fp32 temp_c, uint32_t now_ms)
+{
+    if ((test_mode_e)g_config.test.mode == TEST_MODE_IMU_GYRO_CALI)
+    {
+        gyro_zero_cali_sample_reset(&gyro_boot_adjust_state);
+        gyro_zero_cali_temp_reset(&gyro_boot_adjust_temp_state);
+        gyro_zero_test_mode_update(gyro_raw, accel_raw, temp_c, now_ms);
+        return;
+    }
+
+    gyro_test_cali_finished = 0u;
+    gyro_zero_cali_sample_reset(&gyro_test_cali_state);
+    gyro_zero_cali_temp_reset(&gyro_test_cali_temp_state);
+    gyro_zero_boot_adjust_update(gyro_raw, accel_raw, temp_c, now_ms);
+}
+
 
 
 
@@ -397,12 +550,11 @@ void INS_task(void const *pvParameters)
     ist8310_read_mag(ist8310_real_data.mag);
     BMI088_read(bmi088_real_data.gyro, bmi088_real_data.accel, &bmi088_real_data.temp);
 
-    // 上电静止均值零偏校准：静止且陀螺 <5 dps 时累积 2000 次
-    // 运动时校准返回 false，保留原偏置（默认 0 或 flash 传入）
-    gyro_boot_calibrating = 1;
-    gyro_boot_calibrated = gyro_boot_calibration();
+    // 开机不再阻塞采样；温度稳定后再后台尝试 3s 零偏微调。
     gyro_boot_calibrating = 0;
-    gyro_boot_initial_result = gyro_boot_calibrated ? INS_GYRO_BOOT_INIT_SUCCESS : INS_GYRO_BOOT_INIT_FAILED;
+    gyro_boot_calibrated = 0;
+    gyro_boot_initial_result = INS_GYRO_BOOT_INIT_PENDING;
+    gyro_boot_calibrating = 0;
 
     //rotate and zero drift 
     imu_cali_slove(INS_gyro, INS_accel, INS_mag, &bmi088_real_data, &ist8310_real_data);
@@ -472,6 +624,8 @@ void INS_task(void const *pvParameters)
 
         //rotate and zero drift 
         imu_cali_slove(INS_gyro, INS_accel, INS_mag, &bmi088_real_data, &ist8310_real_data);
+        const uint32_t now_ms = HAL_GetTick();
+        gyro_zero_runtime_update(bmi088_real_data.gyro, bmi088_real_data.accel, bmi088_real_data.temp, now_ms);
 
 
         //加速度计低通滤波
@@ -480,11 +634,6 @@ void INS_task(void const *pvParameters)
         {
             accel_fliter_3[i] = second_order_filter_cali(&accel_filter[i], INS_accel[i]);
         }
-        if (!gyro_boot_calibrated)
-        {
-            gyro_boot_retry_update(INS_gyro, accel_fliter_3);
-        }
-
         const imu_fusion_mode_e mode = (imu_fusion_mode_e)imu_cfg->fusion_mode;
         if (mode != imu_fusion_mode_active)
         {
@@ -498,7 +647,6 @@ void INS_task(void const *pvParameters)
 
 
         // dt 计算（ms tick），异常值回退到 1ms
-        const uint32_t now_ms = HAL_GetTick();
         const float dt = imu_calc_dt_s();
         imu_acc_debug_t acc_debug = {0};
         const float acc_trust = imu_calc_acc_trust(INS_quat, accel_fliter_3, now_ms, &acc_debug);

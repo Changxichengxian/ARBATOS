@@ -12,10 +12,19 @@
 #include <stdint.h>
 #include "types.h"
 
+#define WATCH_ENABLE_LOCOMOTION_CLASSIC 0
+#define WATCH_ENABLE_LOCOMOTION_WHEELLEG_SERVO 0
+#define WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT 1
+#define WATCH_ENABLE_GIMBAL_SINGLE 0
+#define WATCH_ENABLE_GIMBAL_DUAL 0
+#define WATCH_ENABLE_SHOOT_RM 0
+#define WATCH_ENABLE_ARM_J0_UNITREE 0
+
+#define MINIWHEELEG_MIT_MOTOR_CAN_BUS 1u
+
 // 说明：
 // - 本文件集中管理可调参数，作为配置源；默认值在 config.c 内填写。
 // - 运行时读取方式：直接使用 g_config.xxx
-// - 电机型号表使用 const g_motor_config；轴电机装配在 g_config.motor，启动后不改。
 // - 若需从 Flash/裁判数据覆盖，可在启动时拷贝到 RAM 并按需修改。
 
 // 通用 PID 参数
@@ -45,6 +54,7 @@ typedef enum
     TEST_MODE_WHEELLEG_SINGLE_MOTOR, // 轮腿单电机测试：ch3 控制指定达妙 MIT 电机转速
     TEST_MODE_WHEELLEG_LEFT_LEG_SWING, // 轮腿左腿关节测试：归零后正反转 90 度
     TEST_MODE_WHEELLEG_FOOT_TRAJECTORY, // 轮腿足端轨迹测试：归零、伸腿、前后 3cm
+    TEST_MODE_IMU_GYRO_CALI, // 陀螺仪零偏校准：40C 稳温后采 30s 并保存
 } test_mode_e;
 
 typedef struct
@@ -357,9 +367,7 @@ typedef struct
 } voltage_config_t;
 
 // Buzzer PCM playback config (PWM+DMA, u8 samples on TF/SD).
-// - name/path: if it contains ':' treat as absolute path (e.g. "0:/YOU_12K.U8"),
-//              otherwise prefix "0:/" at runtime.
-#define CONFIG_BUZZER_MUSIC_NAME_MAX 32u
+// Music mode scans TF/SD root for *.U8 files; file names are not configured here.
 
 typedef struct
 {
@@ -369,9 +377,6 @@ typedef struct
     uint8_t volume;          // volume (0..255)
     uint8_t loop;            // loop (0/1)
     uint16_t gain_q8;        // extra digital gain (Q8, 256=1.0x, 512=2.0x), saturates to 8-bit output
-
-    char mid_file[CONFIG_BUZZER_MUSIC_NAME_MAX];  // ENTERTAIN: RC switch MID music file name/path
-    char down_file[CONFIG_BUZZER_MUSIC_NAME_MAX]; // ENTERTAIN: RC switch DOWN music file name/path
 } buzzer_pcm_config_t;
 
 // 蜂鸣器参数
@@ -478,11 +483,6 @@ typedef struct
     uint16_t feedback_id; // explicit CAN feedback ID when enabled
     uint8_t feedback_id_enable; // 1=use feedback_id, even when feedback_id is 0
 } motor_node_param_t;
-
-typedef struct
-{
-    motor_model_param_t model[MOTOR_MODEL__COUNT];
-} motor_config_t;
 
 #define MOTOR_ARM_JOINT_COUNT 6u
 
@@ -1061,7 +1061,6 @@ typedef struct
 } config_t;
 
 extern config_t g_config;
-extern const motor_config_t g_motor_config;
 const config_block_desc_t *config_get_block_table(uint32_t *count);
 const config_block_desc_t *config_find_block(config_block_id_e id);
 uint8_t config_block_is_active(config_block_id_e id);

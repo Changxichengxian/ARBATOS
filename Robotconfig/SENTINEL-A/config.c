@@ -23,27 +23,6 @@
  * - AUX 口只改 RAM 里的 g_config，重启后会回到这里的默认值。
  */
 
-// 电机型号表：每种电机的固定参数。
-const motor_config_t g_motor_config =
-{
-    .model =
-        {
-            [MOTOR_MODEL_3508] = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 19.0f},
-            [MOTOR_MODEL_3510] = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 19.0f},
-            [MOTOR_MODEL_2006] = {.can_id_base = 0x200u, .max_current = 10000, .reduction_ratio = 25.0f},
-            [MOTOR_MODEL_6020] = {.can_id_base = 0x204u, .max_current = 30000, .reduction_ratio = 1.0f},
-            [MOTOR_MODEL_6623] = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 1.0f},
-            [MOTOR_MODEL_DM_J4310_2EC_V11] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 10.0f},
-            [MOTOR_MODEL_DM_J4310_2EC_V12] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 10.0f},
-            [MOTOR_MODEL_DM_J8009_2EC_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 9.0f},
-            [MOTOR_MODEL_DM_J8006_2EC_V11] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.0f},
-            [MOTOR_MODEL_DM_J8006_2EC_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.0f},
-            [MOTOR_MODEL_UNITREE_GO_M8010_6] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.33f},
-            [MOTOR_MODEL_DM_H3510_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 1.0f},
-            [MOTOR_MODEL_DM_6215] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 1.0f},
-        },
-};
-
 config_t g_config = {
     .profile =
         {
@@ -443,8 +422,6 @@ config_t g_config = {
             .volume = 255u,
             .loop = 1u,
             .gain_q8 = 1024u,
-            .mid_file = "YOU.U8",
-            .down_file = "hajimi.U8",
         },
         .soft_beep_psc = 1,                // [224] 软提示分频：越小音调越高
         .soft_beep_duration_ms = 80,       // [225] 软提示时长：ms
@@ -554,6 +531,8 @@ config_t g_config = {
             // 10: TEST_MODE_PITCH_CALI,
             // 11: TEST_MODE_WHEELLEG_SINGLE_MOTOR,
             // 12: TEST_MODE_WHEELLEG_LEFT_LEG_SWING,
+            // 13: TEST_MODE_WHEELLEG_FOOT_TRAJECTORY,
+            // 14: TEST_MODE_IMU_GYRO_CALI,
         },
 
 	    // AUX 口遥测默认表：这里只定默认行为，是否临时看更多通道改代码即可。
@@ -626,6 +605,24 @@ static uint8_t config_block_active_wheelleg_mit(void)
     return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_MIT);
 }
 
+static uint8_t config_block_active_shoot_rm(void)
+{
+    if (g_config.motor.trigger.can_id != 0u)
+    {
+        return 1u;
+    }
+
+    for (uint8_t i = 0u; i < 4u; i++)
+    {
+        if (g_config.motor.friction[i].can_id != 0u)
+        {
+            return 1u;
+        }
+    }
+
+    return 0u;
+}
+
 static uint8_t config_block_active_arm(void)
 {
     return (uint8_t)(g_config.profile.arm_family != ARM_FAMILY_NONE);
@@ -639,7 +636,7 @@ static const config_block_desc_t g_config_blocks[] = {
     {CONFIG_BLOCK_LOCOMOTION_CLASSIC, "locomotion.classic", "066-075,081,086-092,098-106,245-248", &g_config.chassis, sizeof(g_config.chassis), config_block_active_locomotion_classic},
     {CONFIG_BLOCK_LOCOMOTION_WHEELLEG_SERVO, "locomotion.wheelleg_servo", "500-599", &g_config.wheelleg_servo, sizeof(g_config.wheelleg_servo), config_block_active_wheelleg_servo},
     {CONFIG_BLOCK_LOCOMOTION_WHEELLEG_MIT, "locomotion.wheelleg_mit", "600-699", &g_config.wheelleg_mit, sizeof(g_config.wheelleg_mit), config_block_active_wheelleg_mit},
-    {CONFIG_BLOCK_SHOOT_RM, "shoot.rm", "113-121,127,130-133,139-142,145-160", &g_config.shoot, sizeof(g_config.shoot), config_block_active_always},
+    {CONFIG_BLOCK_SHOOT_RM, "shoot.rm", "113-121,127,130-133,139-142,145-160", &g_config.shoot, sizeof(g_config.shoot), config_block_active_shoot_rm},
     {CONFIG_BLOCK_ARM_J0_UNITREE, "arm.j0_unitree", "800-803", &g_config.arm_j0_unitree, sizeof(g_config.arm_j0_unitree), config_block_active_arm},
     {CONFIG_BLOCK_COMMON_POWER, "common.power", "161-166", &g_config.power, sizeof(g_config.power), config_block_active_always},
     {CONFIG_BLOCK_COMMON_DETECT, "common.detect", "167-208,211", &g_config.detect, sizeof(g_config.detect), config_block_active_always},

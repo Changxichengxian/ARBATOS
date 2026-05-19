@@ -17,27 +17,6 @@
  * - 仅修改 RAM 中的 g_config，重启后恢复默认值
  */
 
-// 电机型号表：每种电机的固定参数。
-const motor_config_t g_motor_config =
-{
-    .model =
-        {
-            [MOTOR_MODEL_3508] = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 19.0f},
-            [MOTOR_MODEL_3510] = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 19.0f},
-            [MOTOR_MODEL_2006] = {.can_id_base = 0x200u, .max_current = 10000, .reduction_ratio = 25.0f},
-            [MOTOR_MODEL_6020] = {.can_id_base = 0x204u, .max_current = 30000, .reduction_ratio = 1.0f},
-            [MOTOR_MODEL_6623] = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 1.0f},
-            [MOTOR_MODEL_DM_J4310_2EC_V11] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 10.0f},
-            [MOTOR_MODEL_DM_J4310_2EC_V12] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 10.0f},
-            [MOTOR_MODEL_DM_J8009_2EC_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 9.0f},
-            [MOTOR_MODEL_DM_J8006_2EC_V11] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.0f},
-            [MOTOR_MODEL_DM_J8006_2EC_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.0f},
-            [MOTOR_MODEL_UNITREE_GO_M8010_6] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 6.33f},
-            [MOTOR_MODEL_DM_H3510_V10] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 1.0f},
-            [MOTOR_MODEL_DM_6215] = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 1.0f},
-        },
-};
-
 config_t g_config = {
     .profile =
         {
@@ -47,187 +26,17 @@ config_t g_config = {
         },
     .motor =
         {
-            .chassis =
-                {
-                    {MOTOR_MODEL_3508, 0u},
-                    {MOTOR_MODEL_3508, 0u},
-                    {MOTOR_MODEL_3508, 0u},
-                    {MOTOR_MODEL_3508, 0u},
-                },
-            .friction =
-                {
-                    {MOTOR_MODEL_3510, 0u},
-                    {MOTOR_MODEL_3510, 0u},
-                    {MOTOR_MODEL_3510, 0u},
-                    {MOTOR_MODEL_3510, 0u},
-                },
-            .yaw = {MOTOR_MODEL_6020, 0u},
-            .yaw_upper = {MOTOR_MODEL_6020, 0u},
-            .pitch = {MOTOR_MODEL_3510, 0u},
-            .trigger = {MOTOR_MODEL_3510, 0u},
+            // 轮腿 MIT 目前复用 ACTUATOR_ID_ARM_J0..J5 这 6 个通用 MIT 执行器槽位。
             .arm =
                 {
-                    {.model = MOTOR_MODEL_DM_H3510_V10, .can_id = 6u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 6u, .transport = MOTOR_TRANSPORT_CAN},
-                    {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 1u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 1u, .transport = MOTOR_TRANSPORT_CAN},
-                    {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 2u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 2u, .transport = MOTOR_TRANSPORT_CAN},
-                    {.model = MOTOR_MODEL_DM_J4310_2EC_V12, .can_id = 3u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 3u, .transport = MOTOR_TRANSPORT_CAN},
-                    {.model = MOTOR_MODEL_DM_J4310_2EC_V12, .can_id = 4u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 4u, .transport = MOTOR_TRANSPORT_CAN},
-                    {.model = MOTOR_MODEL_DM_H3510_V10, .can_id = 5u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 5u, .transport = MOTOR_TRANSPORT_CAN},
+                    {.model = MOTOR_MODEL_DM_H3510_V10, .can_id = 6u, .can_bus = MINIWHEELEG_MIT_MOTOR_CAN_BUS, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 6u, .transport = MOTOR_TRANSPORT_CAN},
+                    {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 1u, .can_bus = MINIWHEELEG_MIT_MOTOR_CAN_BUS, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 1u, .transport = MOTOR_TRANSPORT_CAN},
+                    {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 2u, .can_bus = MINIWHEELEG_MIT_MOTOR_CAN_BUS, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 2u, .transport = MOTOR_TRANSPORT_CAN},
+                    {.model = MOTOR_MODEL_DM_J4310_2EC_V12, .can_id = 3u, .can_bus = MINIWHEELEG_MIT_MOTOR_CAN_BUS, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 3u, .transport = MOTOR_TRANSPORT_CAN},
+                    {.model = MOTOR_MODEL_DM_J4310_2EC_V12, .can_id = 4u, .can_bus = MINIWHEELEG_MIT_MOTOR_CAN_BUS, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 4u, .transport = MOTOR_TRANSPORT_CAN},
+                    {.model = MOTOR_MODEL_DM_H3510_V10, .can_id = 5u, .can_bus = MINIWHEELEG_MIT_MOTOR_CAN_BUS, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 5u, .transport = MOTOR_TRANSPORT_CAN},
                 },
         },
-    // 云台配置
-    .gimbal =
-        {
-            .yaw_speed_pid = {2000.0f, 0.0f, 0.0f, 20000.0f, 5000.0f},   // [001]kp [002]ki [003]kd [004]max_out [005]max_iout | YAW 速度环：输出上限 20000（电压模式）
-            // PITCH 速度环：
-            // - 控制周期为 1ms，PID_calc 内部未乘 dt，因此 Ki 属于“每次迭代”的积分系数；过大极易导致抖动/风up
-            // - 默认以 P 为主（接近 YAW 的量级），I 默认先关；若需要重力补偿再通过 AUX 口逐步加一点 Ki
-            .pitch_speed_pid = {1800.0f, 0.0f, 0.0f, 10000.0f, 1000.0f},   // [006]kp [007]ki [008]kd [009]max_out [010]max_iout
-            .yaw_encode_angle_pid = {30.0f, 0.0f, 0.0f, 40.0f, 5.0f},      // [011]kp [012]ki [013]kd [014]max_out [015]max_iout | YAW 角度环（编码器）：用于编码器模式；kp 增大提高位置刚性
-            .pitch_encode_angle_pid = {4.5f, 0.0f, 0.0f, 15.0f, 0.0f},   // [016]kp [017]ki [018]kd [019]max_out [020]max_iout | PITCH 角度环（编码器）：同上
-
-            .task_init_time_ms = 201,   // 任务启动延时
-            .control_period_ms = 1,     // [022] 控制周期 1ms
-
-            .channel_yaw = 0,           // [023] 遥控通道 yaw
-            .channel_pitch = 1,         // [024] 遥控通道 pitch
-            .channel_mode = 0,          // [025] 模式通道
-
-            .yaw_rc_sen = 0.000005f,    // [026] 遥控 yaw 灵敏度（ch0 正=右转）
-            .pitch_rc_sen = 0.00001f,  // [027] 遥控 pitch 灵敏度（ch1 正=抬头）
-            .yaw_mouse_sen = 0.00005f,  // [028] 鼠标 yaw 灵敏度
-            .pitch_mouse_sen = 0.00015f,// [029] 鼠标 pitch 灵敏度
-            .yaw_encode_sen = 0.01f,    // [030] 编码器 yaw 灵敏度
-            .pitch_encode_sen = 0.01f,  // [031] 编码器 pitch 灵敏度
-            .rc_deadband = 10,          // [032] 遥控死区
-
-            .init_angle_error = 0.1f,   // 初始化容差：偏差小于此值视为对准，过小易长时间无法完成
-            .init_stop_time_ms = 100,   // 初始化停顿时间：保持稳定的判定窗口，过短易误判，过长拖慢启动
-            .init_time_ms = 6000,       // 初始化最长时间：超时即放弃，防止卡死
-            .init_pitch_speed = 0.004f, // 初始化 pitch 速度：越大收敛快但可能越过
-            .init_yaw_speed = 0.005f,   // 初始化 yaw 速度：同上
-            .init_pitch_set = 0.0f,     // 初始 pitch 设定：机械零点，偏移会导致上电姿态不同
-            .init_yaw_set = 0.0f,       // 初始 yaw 设定：同上
-
-            .yaw_middle_ecd = 1677,     // yaw 云台在车身中位时的编码器值（常用调参项）
-            .pitch_kick_up_current = 1000.0f,   // [041] pitch 抬头起步电流（静摩擦/重力补偿，持续叠加到 PID 输出上）
-            .pitch_kick_down_current = 100.0f, // [042] pitch 低头起步电流（静摩擦/重力补偿，持续叠加到 PID 输出上）
-            // pitch 软限位（以 VOFA ch0= gimbal_pitch_motor.angle 为准）：
-            // - 符号：正值为抬头，负值为低头（注意：IMU angle_deg[] 为 INS 原始坐标，可能符号相反）
-            // - 机械范围：约 +0.8 ~ -0.49 rad；
-            .pitch_soft_limit_up = 0.75f,      // [043] 抬头方向软限位（rad，正）
-            .pitch_soft_limit_down = -0.45f, // [044] 低头方向软限位（rad，负）
-            .pitch_current_limit = 4000.0f,         // [045] pitch 输出电流限幅
-
-            // pitch 补偿校准（重力维持/静摩擦起动）：数据存 SD，正常模式可作为前馈使用
-            .pitch_cali =
-                {
-                    .enable = 1u, // 默认开启：若没有校准文件则自动回退到常量参数
-                    .angle_points = 11u,
-                    .bullet_points = 1u,
-                    .bullet_source = (uint8_t)PITCH_CALI_BULLET_SRC_REFEREE,
-                    .bullet_min = 0u,
-                    .bullet_max = 50u,
-                    .bullet_manual = 0u,
-                    .angle_margin = 0.05f,
-                    .stable_angle_err = 0.01f,
-                    .stable_gyro_err = 0.05f,
-                    .stable_time_ms = 300u,
-                    .seek_k = 0.002f,
-                    .hold_avg_time_ms = 200u,
-                    .breakaway_step_current = 50u,
-                    .breakaway_step_period_ms = 10u,
-                    .breakaway_max_extra_current = 4000u,
-                    .breakaway_gyro_threshold = 0.3f,
-                    .breakaway_angle_threshold = 0.01f,
-                    .recover_time_ms = 200u,
-                },
-
-            .half_ecd_range = 4096,     // 编码器半范围：用于跳变判断
-            .full_ecd_range = 8191,     // 编码器全范围：满圈计数
-            .motor_ecd_to_rad = 0.000766990394f, // [048] 编码器计数->弧度：增大等于调大角度读数
-
-            .cali_redundant_angle = 0.1f, // [049] 校准冗余角：留 0.1rad 保护
-            .cali_motor_set = 8000,       // [050] 校准驱动值：编码器扫边时的给定
-            .cali_step_time_ms = 2000,    // [051] 校准单步时间：每步等待 2s
-            .cali_gyro_limit = 0.1f,      // [052] 校准陀螺限幅：陀螺波动大于此值则中断
-            .cali_pitch_max_step = 1,     // [053] 校准顺序 pitch max
-            .cali_pitch_min_step = 2,     // [054] 校准顺序 pitch min
-            .cali_yaw_max_step = 3,       // [055] 校准顺序 yaw max
-            .cali_yaw_min_step = 4,       // [056] 校准顺序 yaw min
-            .cali_start_step = 1,         // [057] 校准起始步
-            .cali_end_step = 5,           // [058] 校准结束步
-
-            .motionless_rc_deadline = 10.0f, // [059] 静止判定阈值：遥杆变化小于此值认为未操作
-            .motionless_time_max_ms = 3000,  // [060] 静止最长时间：超过则视为长时间无操作
-
-            .turn_speed = 0.04f,          // [061] 一键转身速度：越大转身越快，过大会抖
-            .turn_key_mask = 1u << 9,     // [062] F 键
-            .test_key_mask = 1u << 8,     // [063] R 键
-
-            .yaw_turn = 0,                // [064] yaw 不反转
-            .pitch_turn = 1,              // [065] pitch 反转
-        },
-
-    // 底盘配置
-    .chassis =
-        {
-            .motor_speed_pid = {4000.0f, 10.0f, 0.0f, 16000.0f, 2000.0f}, // [066]kp [067]ki [068]kd [069]max_out [070]max_iout | 3508 速度环
-            // 跟随云台 yaw 外环（输出底盘 wz_set，单位 rad/s）
-            // - 误差：云台-底盘相对 yaw（单位 rad）
-            // - Kd：对底盘 wz（rad/s）的阻尼项（不是“每 tick 误差差分”的 Kd）
-            // 轮距参数修正后（motor_distance_to_center=0.395m），为保持原手感，将 wz_set 相关量按 0.2/0.395≈0.506 缩放。
-            .follow_gimbal_pid = {10.13f, 0.0f, 1.0f, 3.04f, 0.2f}, // [071]kp [072]ki [073]kd [074]max_out [075]max_iout
-            .motor_dir = {1, -1, 1, -1},          // [076]LF [077]RF [078]LR [079]RR | 单轮方向系数 LF/RF/LR/RR（右侧朝内安装取 -1）
-            .wheel_type = CHASSIS_WHEEL_TYPE_MECANUM, // wheel_type: 0=mecanum, 1=xdrive
-
-            .task_init_time_ms = 357,  // 任务启动延时
-            .control_period_ms = 2,    // [081] 控制周期 2ms（500Hz）
-
-            .channel_vx = 3,           // [082] 遥控通道 前后
-            .channel_vy = 2,           // [083] 遥控通道 左右
-            .channel_wz = 0,           // [084] 遥控通道 旋转
-            .channel_mode = 0,         // [085] 模式通道
-
-            .vx_rc_sen = 0.006f,       // [086] 前后灵敏度
-            .vy_rc_sen = 0.005f,       // [087] 左右灵敏度
-            .angle_z_rc_sen = 0.000002f, // [088] 跟随角度灵敏度
-            .wz_rc_sen = 0.0051f,        // [089] 旋转灵敏度：轮距修正后按 0.2/0.395 缩放
-            .accel_x_first_order = 0.1666666667f, // [090] vx 一阶滤波
-            .accel_y_first_order = 0.3333333333f, // [091] vy 一阶滤波
-            .rc_deadband = 10,         // [092] 遥控死区
-
-            .motor_speed_to_chassis_vx = 0.25f, // [093] 电机转速->vx：比例越大同样转速车越快
-            .motor_speed_to_chassis_vy = 0.25f, // [094] 电机转速->vy
-            .motor_speed_to_chassis_wz = 0.25f, // [095] 电机转速->wz
-            .motor_distance_to_center = 0.395f,   // [096] (前后390mm + 左右400mm)/2 = 0.395m
-            .rpm_to_vector = 0.000415809748903494517209f, // [097] RPM->线速度
-
-            .max_wheel_speed = 4.0f,   // [098] 单轮最大速度：限制到电机安全区，过大易过流
-            .max_vx_forward = 2.0f,    // [099] 最大前进速度：增大则前进更快，但超功率风险高
-            .max_vx_backward = 2.0f,   // [100] 最大后退速度：同理
-            .max_vy_left = 1.5f,       // [101] 最大左移：过大侧移易打滑
-            .max_vy_right = 1.5f,      // [102] 最大右移
-
-            .wz_set_scale = 0.1f,      // [103] 预留：wz 缩放（当前未使用）
-            .swing_no_move_angle = 3.5f, // [104] 小陀螺自转角速度(rad/s)：轮距修正后按 0.2/0.395 缩放
-            .swing_move_angle = 3.5f,    // [105] 小陀螺移动/静止保持同速
-
-            .max_motor_can_current = 16000.0f, // [106] 电机电流上限：对应裁判功率限制，过大易掉线
-
-            .swing_key_mask = 1u << 5, // [107] CTRL 键
-            .swing_mode_key_mask = 1u << 10, // [249] G
-            .gyro_spin_var_key_mask = 1u << 15, // [250] B
-            .swing_amp_rad = 0.2617993878f, // [245] 15deg
-            .swing_half_period_ms = 300, // [246]
-            .swing_center_hold_min_ms = 5000, // [247]
-            .swing_center_hold_max_ms = 20000, // [248]
-            .key_front_mask = 1u << 0, // [108] W
-            .key_back_mask = 1u << 1,  // [109] S
-            .key_left_mask = 1u << 2,  // [110] A
-            .key_right_mask = 1u << 3, // [111] D
-        },
-
     // Wheel-leg MIT config
     .wheelleg_mit =
         {
@@ -269,8 +78,8 @@ config_t g_config = {
             .leg_split_pid = {30.0f, 0.0f, 1.0f, 2.0f, 0.0f},
             .turn_pid = {0.6f, 0.0f, 0.08f, 0.20f, 0.0f},
             .roll_pid = {25.0f, 0.0f, 3.0f, 15.0f, 0.0f},
-            .pitch_balance_offset_right_rad = 0.0f,
-            .pitch_balance_offset_left_rad = 0.0f,
+            .pitch_balance_offset_right_rad = 0.050f,
+            .pitch_balance_offset_left_rad = -0.050f,
             .max_v_mps = 0.45f,
             .max_yaw_rate_radps = 1.20f,
             .rc_deadband = 10u,
@@ -289,18 +98,18 @@ config_t g_config = {
             .left_test_kd = 0.16f, // [611] 速度阻尼
             .left_test_torque_ff_nm = 0.0f, // [612] 前馈力矩
             .left_test_torque_limit_nm = 0.30f, // [613] 前馈限幅
-            .left_test_front_dir = 1, // [614]
-            .left_test_back_dir = -1, // [615]
-            .right_test_front_dir = -1, // [616]
-            .right_test_back_dir = 1, // [617]
+            .left_test_front_dir = -1, // [614]
+            .left_test_back_dir = 1, // [615]
+            .right_test_front_dir = 1, // [616]
+            .right_test_back_dir = -1, // [617]
             .left_front_zero_rad = -1.0145340144f, // [618] short-leg reference pose
             .left_back_zero_rad = 0.3362703268f, // [619]
             .right_front_zero_rad = 0.2740898096f, // [620]
             .right_back_zero_rad = -2.0628290601f, // [621]
-            .left_front_dir = 1, // [622]
-            .left_back_dir = -1, // [623]
-            .right_front_dir = -1, // [624]
-            .right_back_dir = 1, // [625]
+            .left_front_dir = -1, // [622]
+            .left_back_dir = 1, // [623]
+            .right_front_dir = 1, // [624]
+            .right_back_dir = -1, // [625]
             .foot_test_zero_hold_time_ms = 1000u, // [626] 先回 0 并保持
             .foot_test_extend_time_ms = 4000u, // [627] 从 0 点伸到目标腿长
             .foot_test_swing_time_ms = 3000u, // [628] 足端每段前后移动时间
@@ -373,15 +182,6 @@ config_t g_config = {
         },
 
     // 功率配置
-    // Arm J0 Unitree timing/tuning; motor identity lives in g_config.motor.arm[0].
-    .arm_j0_unitree =
-        {
-            .control_period_ms = 5u,
-            .key_speed_rad_s = 1.0f,
-            .hold_kd = 0.2f,
-            .drive_kd = 0.4f,
-        },
-
     .power =
         {
             .power_limit = 80.0f,                  // [161] 功率上限：裁判功率阈值，越大越易超限
@@ -451,8 +251,6 @@ config_t g_config = {
             .volume = 255u,
             .loop = 1u,
             .gain_q8 = 1024u,
-            .mid_file = "YOU.U8",
-            .down_file = "hajimi.U8",
         },
         .soft_beep_psc = 49,               // [224] 软提示分频：越小音调越高
         .soft_beep_duration_ms = 180,      // [225] 软提示时长：ms
@@ -548,7 +346,7 @@ config_t g_config = {
 
     .test =
         {
-            .mode = TEST_MODE_NONE, // [244] 测试模式（AUX 口发送 244:<value>）
+            .mode = TEST_MODE_ENTERTAIN,// [244] 测试模式（AUX 口发送 244:<value>）
             // 可直接复制的取值（枚举值 / AUX value）：
             // 0: TEST_MODE_NONE,
             // 1: TEST_MODE_CHASSIS_ONLY,
@@ -564,6 +362,7 @@ config_t g_config = {
             // 11: TEST_MODE_WHEELLEG_SINGLE_MOTOR,
             // 12: TEST_MODE_WHEELLEG_LEFT_LEG_SWING,
             // 13: TEST_MODE_WHEELLEG_FOOT_TRAJECTORY,
+            // 14: TEST_MODE_IMU_GYRO_CALI,
         },
 
 	    // AUX 口 VOFA+/FireWater (JustFloat) 遥测：N*fp32 + INF 尾（实时/带宽有限）
@@ -636,6 +435,24 @@ static uint8_t config_block_active_wheelleg_mit(void)
     return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_MIT);
 }
 
+static uint8_t config_block_active_shoot_rm(void)
+{
+    if (g_config.motor.trigger.can_id != 0u)
+    {
+        return 1u;
+    }
+
+    for (uint8_t i = 0u; i < 4u; i++)
+    {
+        if (g_config.motor.friction[i].can_id != 0u)
+        {
+            return 1u;
+        }
+    }
+
+    return 0u;
+}
+
 static uint8_t config_block_active_arm(void)
 {
     return (uint8_t)(g_config.profile.arm_family != ARM_FAMILY_NONE);
@@ -649,7 +466,7 @@ static const config_block_desc_t g_config_blocks[] = {
     {CONFIG_BLOCK_LOCOMOTION_CLASSIC, "locomotion.classic", "066-075,081,086-092,098-106,245-248", &g_config.chassis, sizeof(g_config.chassis), config_block_active_locomotion_classic},
     {CONFIG_BLOCK_LOCOMOTION_WHEELLEG_SERVO, "locomotion.wheelleg_servo", "500-599", &g_config.wheelleg_servo, sizeof(g_config.wheelleg_servo), config_block_active_wheelleg_servo},
     {CONFIG_BLOCK_LOCOMOTION_WHEELLEG_MIT, "locomotion.wheelleg_mit", "600-699", &g_config.wheelleg_mit, sizeof(g_config.wheelleg_mit), config_block_active_wheelleg_mit},
-    {CONFIG_BLOCK_SHOOT_RM, "shoot.rm", "113-121,127,130-133,139-142,145-160", &g_config.shoot, sizeof(g_config.shoot), config_block_active_always},
+    {CONFIG_BLOCK_SHOOT_RM, "shoot.rm", "113-121,127,130-133,139-142,145-160", &g_config.shoot, sizeof(g_config.shoot), config_block_active_shoot_rm},
     {CONFIG_BLOCK_ARM_J0_UNITREE, "arm.j0_unitree", "800-803", &g_config.arm_j0_unitree, sizeof(g_config.arm_j0_unitree), config_block_active_arm},
     {CONFIG_BLOCK_COMMON_POWER, "common.power", "161-166", &g_config.power, sizeof(g_config.power), config_block_active_always},
     {CONFIG_BLOCK_COMMON_DETECT, "common.detect", "167-208,211", &g_config.detect, sizeof(g_config.detect), config_block_active_always},
@@ -664,14 +481,26 @@ static const config_block_desc_t g_config_blocks[] = {
     {CONFIG_BLOCK_COMMON_SDLOG, "common.sdlog", "249", &g_config.sdlog, sizeof(g_config.sdlog), config_block_active_always},
 };
 
+static config_block_desc_t g_config_active_blocks[CONFIG_BLOCK_COUNT];
+
 // 返回调参块表，同时可选返回块数量。
 const config_block_desc_t *config_get_block_table(uint32_t *count)
 {
+    uint32_t active_count = 0u;
+    for (uint32_t i = 0u; i < (uint32_t)(sizeof(g_config_blocks) / sizeof(g_config_blocks[0])); i++)
+    {
+        const config_block_desc_t *block = &g_config_blocks[i];
+        if (block->is_active == NULL || block->is_active())
+        {
+            g_config_active_blocks[active_count++] = *block;
+        }
+    }
+
     if (count != NULL)
     {
-        *count = (uint32_t)(sizeof(g_config_blocks) / sizeof(g_config_blocks[0]));
+        *count = active_count;
     }
-    return g_config_blocks;
+    return g_config_active_blocks;
 }
 
 // 按块 ID 查找调参块描述；找不到返回 NULL。
@@ -679,9 +508,11 @@ const config_block_desc_t *config_find_block(config_block_id_e id)
 {
     for (uint32_t i = 0u; i < (uint32_t)(sizeof(g_config_blocks) / sizeof(g_config_blocks[0])); i++)
     {
-        if (g_config_blocks[i].id == id)
+        const config_block_desc_t *block = &g_config_blocks[i];
+        if (block->id == id &&
+            (block->is_active == NULL || block->is_active()))
         {
-            return &g_config_blocks[i];
+            return block;
         }
     }
     return NULL;

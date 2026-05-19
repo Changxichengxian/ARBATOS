@@ -50,11 +50,15 @@ void status_led_task(void const *argument)
 
         // 额外指示：上电 2s 陀螺零偏采集状态（成功绿，失败/未完成红）
         {
-            const uint32_t calib_color = ins_is_gyro_boot_calibrated() ? LED_COLOR_GREEN : LED_COLOR_RED;
-            aRGB_led_show(calib_color);
-            osDelay(on_ms);
-            aRGB_led_show(LED_COLOR_OFF);
-            osDelay(off_ms);
+            const ins_gyro_boot_init_result_e result = ins_get_gyro_boot_initial_result();
+            if (result != INS_GYRO_BOOT_INIT_PENDING)
+            {
+                const uint32_t calib_color = (result == INS_GYRO_BOOT_INIT_SUCCESS) ? LED_COLOR_GREEN : LED_COLOR_RED;
+                aRGB_led_show(calib_color);
+                osDelay(on_ms);
+                aRGB_led_show(LED_COLOR_OFF);
+                osDelay(off_ms);
+            }
         }
 
         for (uint8_t toe = 0; toe < ERROR_LIST_LENGHT; toe++)

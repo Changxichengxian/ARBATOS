@@ -21,6 +21,7 @@
 #include "control_input.h"
 #include "INS_task.h"
 #include "gimbal_control_task.h"
+#include "robot_task_profile.h"
 
 
 //include head,gimbal,gyro,accel,mag. gyro,accel and mag have the same data struct. total 5(CALI_LIST_LENGHT) devices, need data lenght + 5 * 4 bytes(name[3]+cali)
@@ -124,26 +125,38 @@ static bool_t cali_gyro_hook(uint32_t *cali, bool_t cmd);   //gyro device cali f
   */
 static bool_t cali_gimbal_hook(uint32_t *cali, bool_t cmd); //gimbal device cali function
 
-typedef struct
+static uint8_t cali_gimbal_profile_enabled(void);
+
+__weak void set_cali_gimbal_hook(const uint16_t yaw_offset,
+                                 const uint16_t pitch_offset,
+                                 const fp32 max_yaw,
+                                 const fp32 min_yaw,
+                                 const fp32 max_pitch,
+                                 const fp32 min_pitch)
 {
-    uint16_t freq_hz;
-    uint16_t on_ms;
-    uint16_t off_ms;
-} boot_sound_step_t;
+    (void)yaw_offset;
+    (void)pitch_offset;
+    (void)max_yaw;
+    (void)min_yaw;
+    (void)max_pitch;
+    (void)min_pitch;
+}
 
-typedef enum
+__weak bool_t cmd_cali_gimbal_hook(uint16_t *yaw_offset,
+                                   uint16_t *pitch_offset,
+                                   fp32 *max_yaw,
+                                   fp32 *min_yaw,
+                                   fp32 *max_pitch,
+                                   fp32 *min_pitch)
 {
-    BOOT_SOUND_WAIT_RESULT = 0,
-    BOOT_SOUND_PLAYING = 1,
-    BOOT_SOUND_DONE = 2,
-} boot_sound_state_e;
-
-static void boot_sound_update(void);
-static uint8_t boot_sound_has_active_calibration(void);
-static void boot_sound_begin(const boot_sound_step_t *seq, uint8_t len);
-static uint8_t boot_sound_volume(void);
-
-
+    (void)yaw_offset;
+    (void)pitch_offset;
+    (void)max_yaw;
+    (void)min_yaw;
+    (void)max_pitch;
+    (void)min_pitch;
+    return 1;
+}
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
 uint32_t calibrate_task_stack;
@@ -178,18 +191,13 @@ static uint8_t cali_sensor_size[CALI_LIST_LENGHT] =
 void *cali_hook_fun[CALI_LIST_LENGHT] = {cali_head_hook, cali_gimbal_hook, cali_gyro_hook, NULL, NULL};
 
 static uint32_t calibrate_systemTick;
-static const boot_sound_step_t boot_sound_success_seq[] = {
-    {659u, 105u, 34u},
-    {784u, 110u, 36u},
-    {988u, 220u, 0u},
-};
-static boot_sound_state_e boot_sound_state = BOOT_SOUND_WAIT_RESULT;
-static const boot_sound_step_t *boot_sound_seq = NULL;
-static uint8_t boot_sound_seq_len = 0u;
-static uint8_t boot_sound_seq_idx = 0u;
-static uint16_t boot_sound_wait_ms = 0u;
-static uint8_t boot_sound_note_on = 0u;
 static uint8_t manual_cali_buzzer_enable = 0u;
+
+static uint8_t cali_gimbal_profile_enabled(void)
+{
+    return (uint8_t)(robot_profile_need_single_gimbal_control_task() ||
+                     robot_profile_need_dual_gimbal_control_task());
+}
 
 
 /**
@@ -209,8 +217,6 @@ void calibrate_task(void const *pvParameters)
 
     while (1)
     {
-        boot_sound_update();
-
         RC_cmd_to_calibrate();
 
         for (i = 0; i < CALI_LIST_LENGHT; i++)
@@ -243,115 +249,6 @@ void calibrate_task(void const *pvParameters)
     }
 }
 
-static uint8_t boot_sound_has_active_calibration(void)
-{
-    for (uint8_t i = 0u; i < CALI_LIST_LENGHT; i++)
-    {
-        if (cali_sensor[i].cali_cmd != 0u)
-        {
-            return 1u;
-        }
-    }
-    return 0u;
-}
-
-static uint8_t boot_sound_volume(void)
-{
-    uint8_t volume = (uint8_t)g_config.buzzer.pcm.volume;
-    if (volume == 0u)
-    {
-        volume = 255u;
-    }
-    return volume;
-}
-
-static void boot_sound_begin(const boot_sound_step_t *seq, uint8_t len)
-{
-    boot_sound_seq = seq;
-    boot_sound_seq_len = len;
-    boot_sound_seq_idx = 0u;
-    boot_sound_wait_ms = 0u;
-    boot_sound_note_on = 0u;
-    boot_sound_state = BOOT_SOUND_PLAYING;
-}
-
-static void boot_sound_update(void)
-{
-    if (boot_sound_state == BOOT_SOUND_DONE)
-    {
-        return;
-    }
-
-    if (boot_sound_has_active_calibration() != 0u)
-    {
-        if (boot_sound_note_on != 0u)
-        {
-            buzzer_tone_stop();
-            boot_sound_note_on = 0u;
-        }
-        return;
-    }
-
-    if (boot_sound_state == BOOT_SOUND_WAIT_RESULT)
-    {
-        const ins_gyro_boot_init_result_e result = ins_get_gyro_boot_initial_result();
-        if (result == INS_GYRO_BOOT_INIT_PENDING)
-        {
-            return;
-        }
-
-        if (result == INS_GYRO_BOOT_INIT_SUCCESS)
-        {
-            boot_sound_begin(boot_sound_success_seq, (uint8_t)(sizeof(boot_sound_success_seq) / sizeof(boot_sound_success_seq[0])));
-        }
-        else
-        {
-            boot_sound_state = BOOT_SOUND_DONE;
-            return;
-        }
-    }
-
-    if (boot_sound_state != BOOT_SOUND_PLAYING || boot_sound_seq == NULL || boot_sound_seq_len == 0u)
-    {
-        boot_sound_state = BOOT_SOUND_DONE;
-        return;
-    }
-
-    if (boot_sound_wait_ms != 0u)
-    {
-        boot_sound_wait_ms--;
-        return;
-    }
-
-    if (boot_sound_note_on == 0u)
-    {
-        if (boot_sound_seq_idx >= boot_sound_seq_len)
-        {
-            boot_sound_state = BOOT_SOUND_DONE;
-            return;
-        }
-
-        (void)buzzer_tone_start_hz(boot_sound_seq[boot_sound_seq_idx].freq_hz, boot_sound_volume());
-        boot_sound_note_on = 1u;
-        boot_sound_wait_ms = boot_sound_seq[boot_sound_seq_idx].on_ms;
-        if (boot_sound_wait_ms == 0u)
-        {
-            boot_sound_wait_ms = 1u;
-        }
-        return;
-    }
-
-    buzzer_tone_stop();
-    boot_sound_note_on = 0u;
-    boot_sound_wait_ms = boot_sound_seq[boot_sound_seq_idx].off_ms;
-    boot_sound_seq_idx++;
-
-    if (boot_sound_seq_idx >= boot_sound_seq_len && boot_sound_wait_ms == 0u)
-    {
-        boot_sound_state = BOOT_SOUND_DONE;
-    }
-}
-
 /**
   * @brief          get imu control temperature, unit ℃
   * @param[in]      none
@@ -364,6 +261,10 @@ static void boot_sound_update(void)
   */
 int8_t get_control_temperature(void)
 {
+    if ((test_mode_e)g_config.test.mode == TEST_MODE_IMU_GYRO_CALI)
+    {
+        return 40;
+    }
 
     return head_cali.temperature;
 }
@@ -410,7 +311,6 @@ static void RC_cmd_to_calibrate(void)
 {
     static const uint8_t BEGIN_FLAG   = 1;
     static const uint8_t GIMBAL_FLAG  = 2;
-    static const uint8_t GYRO_FLAG    = 3;
     static const uint8_t CHASSIS_FLAG = 4;
 
     static uint8_t  i;
@@ -442,22 +342,10 @@ static void RC_cmd_to_calibrate(void)
         //gimbal cali,
         rc_action_flag = 0;
         rc_cmd_time = 0;
-        cali_sensor[CALI_GIMBAL].cali_cmd = 1;
-        manual_cali_buzzer_enable = 1u;
-        cali_buzzer_off();
-    }
-    else if (rc_action_flag == 3 && rc_cmd_time > RC_CMD_LONG_TIME)
-    {
-        //gyro cali
-        rc_action_flag = 0;
-        rc_cmd_time = 0;
-        cali_sensor[CALI_GYRO].cali_cmd = 1;
-        manual_cali_buzzer_enable = 1u;
-        //update control temperature
-        head_cali.temperature = (int8_t)(cali_get_mcu_temperature()) + 10;
-        if (head_cali.temperature > (int8_t)(GYRO_CONST_MAX_TEMP))
+        if (cali_gimbal_profile_enabled() != 0u)
         {
-            head_cali.temperature = (int8_t)(GYRO_CONST_MAX_TEMP);
+            cali_sensor[CALI_GIMBAL].cali_cmd = 1;
+            manual_cali_buzzer_enable = 1u;
         }
         cali_buzzer_off();
     }
@@ -465,11 +353,14 @@ static void RC_cmd_to_calibrate(void)
     {
         rc_action_flag = 0;
         rc_cmd_time = 0;
-        //send CAN reset ID cmd to M3508
-        //发送CAN重设ID命令到3508
-        CAN_cmd_chassis_reset_ID();
-        CAN_cmd_chassis_reset_ID();
-        CAN_cmd_chassis_reset_ID();
+        if (robot_profile_need_classic_chassis_control_task() != 0u)
+        {
+            //send CAN reset ID cmd to M3508
+            //发送CAN重设ID命令到3508
+            CAN_cmd_chassis_reset_ID();
+            CAN_cmd_chassis_reset_ID();
+            CAN_cmd_chassis_reset_ID();
+        }
         cali_buzzer_off();
     }
 
@@ -497,8 +388,8 @@ static void RC_cmd_to_calibrate(void)
     {
         //two rocker set to ./\., hold for 2 seconds
         //两个摇杆打成./\.,保持2s
-        rc_cmd_time++;
-        rc_action_flag = GYRO_FLAG;
+        rc_cmd_time = 0;
+        rc_action_flag = 0;
     }
     else if (cali_ch0 < -RC_CALI_VALUE_HOLE && cali_ch1 > RC_CALI_VALUE_HOLE && cali_ch2 > RC_CALI_VALUE_HOLE && cali_ch3 > RC_CALI_VALUE_HOLE && switch_is_down(cali_sw_l) && switch_is_down(cali_sw_r) && rc_action_flag != 0)
     {
@@ -566,6 +457,12 @@ void cali_param_init(void)
         cali_sensor[i].cali_hook = (bool_t(*)(uint32_t *, bool_t))cali_hook_fun[i];
     }
 
+    if (cali_gimbal_profile_enabled() == 0u)
+    {
+        cali_sensor[CALI_GIMBAL].cali_hook = NULL;
+        cali_sensor[CALI_GIMBAL].cali_cmd = 0u;
+    }
+
     cali_data_read();
 
     for (i = 0; i < CALI_LIST_LENGHT; i++)
@@ -614,7 +511,7 @@ static void cali_data_read(void)
 
         offset += CALI_SENSOR_HEAD_LEGHT * 4;
 
-        if (cali_sensor[i].cali_done != CALIED_FLAG && cali_sensor[i].cali_hook != NULL)
+        if (cali_sensor[i].cali_done != CALIED_FLAG && cali_sensor[i].cali_hook != NULL && i != (uint8_t)CALI_GYRO)
         {
             cali_sensor[i].cali_cmd = 1;
         }
@@ -653,6 +550,35 @@ static void cali_data_write(void)
     cali_flash_erase(FLASH_USER_ADDR,1);
     //write data
     cali_flash_write(FLASH_USER_ADDR, (uint32_t *)flash_write_buf, (FLASH_WRITE_BUF_LENGHT + 3) / 4);
+}
+
+bool_t calibrate_gyro_offset_save(const fp32 offset[3])
+{
+    if (offset == NULL)
+    {
+        return 0;
+    }
+    if (cali_sensor[CALI_GYRO].flash_buf == NULL || cali_sensor[CALI_GYRO].flash_len == 0u)
+    {
+        return 0;
+    }
+
+    gyro_cali.offset[0] = offset[0];
+    gyro_cali.offset[1] = offset[1];
+    gyro_cali.offset[2] = offset[2];
+    gyro_cali.scale[0] = 1.0f;
+    gyro_cali.scale[1] = 1.0f;
+    gyro_cali.scale[2] = 1.0f;
+
+    cali_sensor[CALI_GYRO].name[0] = cali_name[CALI_GYRO][0];
+    cali_sensor[CALI_GYRO].name[1] = cali_name[CALI_GYRO][1];
+    cali_sensor[CALI_GYRO].name[2] = cali_name[CALI_GYRO][2];
+    cali_sensor[CALI_GYRO].cali_done = CALIED_FLAG;
+    cali_sensor[CALI_GYRO].cali_cmd = 0u;
+
+    gyro_set_cali(gyro_cali.scale, gyro_cali.offset);
+    cali_data_write();
+    return 1;
 }
 
 
@@ -776,6 +702,11 @@ static bool_t cali_gimbal_hook(uint32_t *cali, bool_t cmd)
 {
 
     gimbal_cali_t *local_cali_t = (gimbal_cali_t *)cali;
+    if (cali_gimbal_profile_enabled() == 0u)
+    {
+        return 1;
+    }
+
     if (cmd == CALI_FUNC_CMD_INIT)
     {
         set_cali_gimbal_hook(local_cali_t->yaw_offset, local_cali_t->pitch_offset,

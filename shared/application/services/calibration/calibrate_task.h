@@ -163,6 +163,8 @@ extern int8_t get_control_temperature(void);
   */
 extern void get_flash_latitude(float *latitude);
 
+extern bool_t calibrate_gyro_offset_save(const fp32 offset[3]);
+
 /**
   * @brief          calibrate task, created by main function
   * @param[in]      pvParameters: null
@@ -177,4 +179,3 @@ extern void calibrate_task(void const *pvParameters);
 
 
 #endif
-
