@@ -27,6 +27,7 @@
 - `referee_rx_task`
 - `health_monitor_task`
 - `sdlog_task`
+- `battery_monitor_task`
 - `can_command_tx_task`
 - `can_feedback_rx_task`
 - `imu_fusion_task`
@@ -34,8 +35,11 @@
 按机器人 profile 条件创建：
 
 - `chassis_control_task`
+- `wheelleg_mit_task`
 - `gimbal_control_task`
 - `arm_task`
+
+其中 `wheelleg_mit_task` 只在 `g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_MIT` 时创建。`CARRIER_DIRECT_ARM_BRINGUP` 打开时，板级入口会跳过底盘、轮腿 MIT 和云台任务，只保留直接机械臂调试需要的任务。
 
 ## 当前状态
 
@@ -43,5 +47,6 @@
 - `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` 使用 `Robotconfig/HERO-M/config.c`
 - 配置入口统一是 `config.c` / `config.h`，没有单独的板子配置文件名
 - H7 板级启动、任务挂接和 BMI088 IMU 已有 ARBATOS 自己的实现
-- AUX 口调参、ELRS 和 USB 业务任务在这套 H7 板级入口里还没有默认接上
+- USB Device 初始化在 `defaultTask` 里执行；AUX 口调参、ELRS 和 host_link 业务任务在这套 H7 板级入口里还没有默认接上
+- MIT 轮腿任务已经接入 H7 板级创建入口，当前主要服务 `MINIWHEELEG-M` 这类实验目标
 - 如果要看能直接打开编译的完整工程，去 `projects/`，别看这里

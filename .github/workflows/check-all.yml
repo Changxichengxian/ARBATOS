@@ -1,0 +1,21 @@
+name: Check all
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  local-checks:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run ARBATOS checks
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\check_all.ps1
