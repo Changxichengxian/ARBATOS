@@ -52,6 +52,7 @@ local/reference/
 local/cache/
 **/__pycache__/
 *.pyc
+/shared/generated/build_info_autogen.h
 
 # Codex (local tooling)
 codex-rule/

@@ -70,13 +70,13 @@
             <nStopU2X>0</nStopU2X>
           </BeforeCompile>
           <BeforeMake>
-            <RunUserProg1>0</RunUserProg1>
+            <RunUserProg1>1</RunUserProg1>
             <RunUserProg2>0</RunUserProg2>
-            <UserProg1Name></UserProg1Name>
+            <UserProg1Name>powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\gen_build_info.ps1</UserProg1Name>
             <UserProg2Name></UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
-            <nStopB1X>0</nStopB1X>
+            <nStopB1X>1</nStopB1X>
             <nStopB2X>0</nStopB2X>
           </BeforeMake>
           <AfterMake>
@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32H723xx,ARM_MATH_CM7,__FPU_USED=1U,__FPU_PRESENT=1U,ARM_MATH_MATRIX_CHECK,ARM_MATH_ROUNDING</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../../../Robotconfig/HERO-M;../../../boards/DM_MC02_H7/app;../../../boards/DM_MC02_H7/bsp;../../../shared/hal;../../../shared/components/devices;../../../shared/components/algorithm;../../../shared/components/controller;../../../shared/components/support;../../../shared/components/support/fatfs;../../../shared/components/algorithm/Include;../../../shared/application;../../../shared/application/robot;../../../shared/application/input;../../../shared/application/motors;../../../shared/application/chassis;../../../shared/application/gimbal;../../../shared/application/wheelleg;../../../shared/application/arm;../../../shared/application/shoot;../../../shared/application/comm/can;../../../shared/application/comm/referee;../../../shared/application/comm/host;../../../shared/application/comm/vision;../../../shared/application/services/diagnostics;../../../shared/application/services/storage;../../../shared/application/services/battery;../../../shared/application/services/buzzer;../../../shared/application/services/startup;../../../shared/application/services/servo;../../../shared/application/services/calibration</IncludePath>
+              <IncludePath>../Core/Inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../../../Robotconfig/HERO-M;../../../boards/DM_MC02_H7/app;../../../boards/DM_MC02_H7/bsp;../../../shared/hal;../../../shared/components/devices;../../../shared/components/algorithm;../../../shared/components/controller;../../../shared/components/support;../../../shared/components/support/fatfs;../../../shared/components/algorithm/Include;../../../shared/application;../../../shared/application/robot;../../../shared/application/input;../../../shared/application/motors;../../../shared/application/chassis;../../../shared/application/gimbal;../../../shared/application/wheelleg;../../../shared/application/arm;../../../shared/application/shoot;../../../shared/application/comm/can;../../../shared/application/comm/referee;../../../shared/application/comm/host;../../../shared/application/comm/vision;../../../shared/application/services/diagnostics;../../../shared/application/services/storage;../../../shared/application/services/battery;../../../shared/application/services/buzzer;../../../shared/application/services/startup;../../../shared/application/services/servo;../../../shared/application/services/calibration</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -358,7 +358,7 @@
               <MiscControls></MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>../Drivers/CMSIS/Include</IncludePath>
+              <IncludePath></IncludePath>
             </VariousControls>
           </Aads>
           <LDads>
