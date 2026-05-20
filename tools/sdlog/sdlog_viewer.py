@@ -54,6 +54,7 @@ TAG_NAMES: dict[int, str] = {
     0x004E: "RT_PROFILER",
     0x004F: "WHEELLEG_MIT_CONFIG",
     0x0050: "WHEELLEG_MIT_STATUS",
+    0x0051: "BUILD_INFO",
 }
 
 RT_PROFILER_NAMES: dict[int, str] = {
@@ -170,25 +171,6 @@ def lz4_decompress_block(src: bytes, raw_len: int) -> bytes:
     return bytes(out)
 
 
-class RecordStreamParser:
-    def __init__(self) -> None:
-        self._buf = bytearray()
-
-    def feed(self, data: bytes) -> Iterable[tuple[int, int, bytes]]:
-        self._buf.extend(data)
-        while True:
-            if len(self._buf) < 8:
-                return
-            tick_ms, tag, payload_len = struct.unpack_from("<IHH", self._buf, 0)
-            pad = (-payload_len) & 3
-            total = 8 + payload_len + pad
-            if len(self._buf) < total:
-                return
-            payload = bytes(self._buf[8 : 8 + payload_len])
-            del self._buf[:total]
-            yield tick_ms, tag, payload
-
-
 def _try_read_var_u32(buf: bytearray, off: int) -> tuple[int, int] | None:
     v = 0
     shift = 0
@@ -207,7 +189,7 @@ def _try_read_var_u32(buf: bytearray, off: int) -> tuple[int, int] | None:
     return v, i
 
 
-class VarintRecordStreamParser:
+class RecordStreamParser:
     def __init__(self, boot_tick_ms: int) -> None:
         self._buf = bytearray()
         self._tick_ms = int(boot_tick_ms)
@@ -244,6 +226,13 @@ class VarintRecordStreamParser:
 
 
 @dataclass
+class UnknownRecord:
+    tick_ms: int
+    tag: int
+    payload: bytes
+
+
+@dataclass
 class Series:
     key: str
     name: str
@@ -263,17 +252,19 @@ class Series:
 
 
 class Dataset:
-    def __init__(self, source_path: str, boot_tick_ms: int, file_version: int) -> None:
+    def __init__(self, source_path: str, boot_tick_ms: int, file_header_size: int) -> None:
         self.source_path = source_path
         self.boot_tick_ms = boot_tick_ms
-        self.file_version = file_version
+        self.file_header_size = file_header_size
         self.series: dict[str, Series] = {}
         self.unknown_tag_counts: dict[int, int] = {}
+        self.unknown_records: list[UnknownRecord] = []
 
     def add_record(self, tick_ms: int, tag: int, payload: bytes) -> None:
         extracted = extract_records(tick_ms, tag, payload)
         if extracted is None:
             self.unknown_tag_counts[tag] = self.unknown_tag_counts.get(tag, 0) + 1
+            self.unknown_records.append(UnknownRecord(tick_ms=tick_ms, tag=tag, payload=payload))
             return
 
         for sample_tick_ms, key, name, values in extracted:
@@ -302,12 +293,29 @@ class Dataset:
             {
                 "source_path": self.source_path,
                 "boot_tick_ms": self.boot_tick_ms,
-                "file_version": self.file_version,
+                "file_header_size": self.file_header_size,
                 "tags": tags,
                 "unknown": unknown,
             },
             ensure_ascii=False,
         ).encode("utf-8")
+
+    def unknown_csv(self) -> bytes:
+        text = io.StringIO()
+        w = csv.writer(text)
+        w.writerow(["tick_ms", "tag", "tag_name", "len", "crc32", "payload_hex"])
+        for rec in self.unknown_records:
+            w.writerow(
+                [
+                    rec.tick_ms,
+                    f"0x{rec.tag:04X}",
+                    TAG_NAMES.get(rec.tag, f"0x{rec.tag:04X}"),
+                    len(rec.payload),
+                    f"0x{(zlib.crc32(rec.payload) & 0xFFFFFFFF):08X}",
+                    rec.payload.hex(),
+                ]
+            )
+        return text.getvalue().encode("utf-8")
 
 
 def sdlog_tag_name(tag: int) -> str:
@@ -319,6 +327,13 @@ def _unpack_exact(fmt: str, payload: bytes) -> tuple[Any, ...] | None:
     if len(payload) != size:
         return None
     return struct.unpack(fmt, payload)
+
+
+def _cstr(raw: bytes) -> str:
+    nul = raw.find(b"\0")
+    if nul != -1:
+        raw = raw[:nul]
+    return raw.decode("utf-8", errors="replace")
 
 
 def _stream_sample_tick_ms(start_tick_ms: int, period_us: int, sample_idx: int) -> int:
@@ -1239,6 +1254,57 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
             )
         ]
 
+    if tag == 0x0051:  # BUILD_INFO
+        v = _unpack_exact("<4H2I8B32s32s16s12s9s3s", payload)
+        if v is None:
+            return None
+        (
+            version,
+            header_size,
+            schema_version,
+            _flags,
+            config_size,
+            config_crc32,
+            locomotion_family,
+            gimbal_family,
+            arm_family,
+            high_rate_div,
+            compression_enabled,
+            build_dirty,
+            _r0,
+            _r1,
+            target,
+            board,
+            git_sha,
+            build_date,
+            build_time,
+            _reserved_text,
+        ) = v
+        return [
+            (
+                name,
+                name,
+                {
+                    "version": version,
+                    "header_size": header_size,
+                    "schema_version": schema_version,
+                    "config_size": config_size,
+                    "config_crc32": f"0x{config_crc32:08X}",
+                    "locomotion_family": locomotion_family,
+                    "gimbal_family": gimbal_family,
+                    "arm_family": arm_family,
+                    "high_rate_div": high_rate_div,
+                    "compression_enabled": compression_enabled,
+                    "build_dirty": build_dirty,
+                    "target": _cstr(target),
+                    "board": _cstr(board),
+                    "git_sha": _cstr(git_sha),
+                    "build_date": _cstr(build_date),
+                    "build_time": _cstr(build_time),
+                },
+            )
+        ]
+
     if tag == 0x0041:  # SYS_STATS
         v = _unpack_exact("<BBHIIIIIiIIIIIIIIHH", payload)
         if v is None:
@@ -1540,34 +1606,21 @@ def load_dataset(path: Path) -> Dataset:
         if len(hdr0) != 16:
             raise ValueError("File too small for sdlog header")
 
-        magic, version, header_size, boot_tick_ms, reserved = struct.unpack("<IHHII", hdr0)
+        magic, header_size, file_flags, boot_tick_ms, reserved = struct.unpack("<IHHII", hdr0)
         if magic != SDLOG_FILE_MAGIC:
             raise ValueError(f"Bad sdlog magic 0x{magic:08X}")
         if header_size < 16:
             raise ValueError(f"Bad sdlog header_size {header_size}")
+        if file_flags != 0:
+            raise ValueError(f"Unsupported sdlog file flags 0x{file_flags:04X}")
         if header_size > 16:
             extra = f.read(header_size - 16)
             if len(extra) != (header_size - 16):
                 raise ValueError("Truncated sdlog header extension")
 
-        ds = Dataset(source_path=str(path), boot_tick_ms=boot_tick_ms, file_version=version)
+        ds = Dataset(source_path=str(path), boot_tick_ms=boot_tick_ms, file_header_size=header_size)
 
-        if version == 1:
-            parser = RecordStreamParser()
-            while True:
-                chunk = f.read(1024 * 1024)
-                if not chunk:
-                    break
-                for tick_ms, tag, payload in parser.feed(chunk):
-                    ds.add_record(tick_ms, tag, payload)
-            return ds
-
-        if version == 2:
-            parser = RecordStreamParser()
-        elif version == 3:
-            parser = VarintRecordStreamParser(boot_tick_ms)
-        else:
-            raise ValueError(f"Unsupported sdlog version {version}")
+        parser = RecordStreamParser(boot_tick_ms)
 
         while True:
             bh = f.read(20)
@@ -1640,6 +1693,10 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/index":
                 self._send_bytes(HTTPStatus.OK, "application/json; charset=utf-8", self.dataset.tag_index_json())
+                return
+
+            if path == "/api/unknown.csv":
+                self._send_bytes(HTTPStatus.OK, "text/csv; charset=utf-8", self.dataset.unknown_csv())
                 return
 
             if path == "/api/series":
@@ -1737,7 +1794,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description="HERO sdlog web viewer (no extra deps).")
-    ap.add_argument("input", help="Input sdlog_XXXX.bin (v1/v2)")
+    ap.add_argument("input", help="Input sdlog_XXXX.bin")
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=0, help="0 = choose a free port")
     ap.add_argument("--no-open", action="store_true", help="Do not auto-open the browser")
@@ -1749,7 +1806,7 @@ def main(argv: list[str]) -> int:
 
     print(f"[sdlog] loading: {path}")
     ds = load_dataset(path)
-    print(f"[sdlog] parsed series: {len(ds.series)} (unknown tags: {len(ds.unknown_tag_counts)})")
+    print(f"[sdlog] parsed series: {len(ds.series)} (unknown records: {len(ds.unknown_records)})")
 
     Handler.dataset = ds
     Handler.html_bytes = _load_html()

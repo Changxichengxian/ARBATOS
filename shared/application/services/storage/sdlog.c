@@ -10,7 +10,7 @@
 /*
  * 阅读地图：
  * - 前段：RAM 环形缓存、文件序号索引、CRC 和变长整数工具。
- * - 中段：小型 LZ4 块压缩、v2/v3 数据块写入。
+ * - 中段：小型 LZ4 块压缩、数据块写入。
  * - 后段：打开下一个日志文件、start/stop/write/isr_write/poll 运行接口。
  * - 设计重点：写入接口不阻塞，sdlog_poll() 在低优先级任务里慢慢刷出。
  */
@@ -25,6 +25,14 @@
 #include "sdcard.h"
 #include "rt_profiler.h"
 #include "config.h"
+
+#if defined(__CC_ARM)
+#include "../../../generated/build_info_autogen.h"
+#elif defined(__has_include)
+#if __has_include("../../../generated/build_info_autogen.h")
+#include "../../../generated/build_info_autogen.h"
+#endif
+#endif
 
 #include "fatfs/ff.h"
 
@@ -51,7 +59,29 @@
 #define SDLOG_ENABLE_COMPRESSION 0u
 #endif
 
-#define SDLOG_ALIGN 4u
+#ifndef ARBATOS_TARGET_NAME
+#define ARBATOS_TARGET_NAME "unknown-target"
+#endif
+
+#ifndef ARBATOS_BOARD_NAME
+#define ARBATOS_BOARD_NAME "unknown-board"
+#endif
+
+#ifndef ARBATOS_GIT_SHA
+#define ARBATOS_GIT_SHA "unknown"
+#endif
+
+#ifndef ARBATOS_BUILD_DIRTY
+#define ARBATOS_BUILD_DIRTY 0u
+#endif
+
+#ifndef ARBATOS_BUILD_DATE
+#define ARBATOS_BUILD_DATE __DATE__
+#endif
+
+#ifndef ARBATOS_BUILD_TIME
+#define ARBATOS_BUILD_TIME __TIME__
+#endif
 
 static FIL sdlog_fp;
 static volatile uint8_t sdlog_active = 0u;
@@ -194,6 +224,85 @@ static uint32_t sdlog_crc32_ieee(const uint8_t *data, uint32_t len)
         crc = (crc >> 4u) ^ t[crc & 0x0Fu];
     }
     return ~crc;
+}
+
+static void sdlog_copy_cstr(char *dst, uint32_t dst_len, const char *src)
+{
+    if (dst == NULL || dst_len == 0u)
+    {
+        return;
+    }
+
+    if (src == NULL)
+    {
+        src = "";
+    }
+
+    uint32_t i = 0u;
+    while (i + 1u < dst_len && src[i] != '\0')
+    {
+        dst[i] = src[i];
+        i++;
+    }
+    dst[i] = '\0';
+}
+
+static void sdlog_fill_build_info(sdlog_build_info_t *out)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    memset(out, 0, sizeof(*out));
+    out->version = SDLOG_BUILD_INFO_VERSION;
+    out->header_size = (uint16_t)sizeof(*out);
+    out->schema_version = SDLOG_SCHEMA_VERSION;
+    out->config_size = (uint32_t)sizeof(g_config);
+    out->config_crc32 = sdlog_crc32_ieee((const uint8_t *)&g_config, (uint32_t)sizeof(g_config));
+    out->locomotion_family = g_config.profile.locomotion_family;
+    out->gimbal_family = g_config.profile.gimbal_family;
+    out->arm_family = g_config.profile.arm_family;
+    out->high_rate_div = sdlog_high_rate_divider();
+    out->compression_enabled = (uint8_t)(SDLOG_ENABLE_COMPRESSION ? 1u : 0u);
+    out->build_dirty = (uint8_t)(ARBATOS_BUILD_DIRTY ? 1u : 0u);
+
+    sdlog_copy_cstr(out->target, (uint32_t)sizeof(out->target), ARBATOS_TARGET_NAME);
+    sdlog_copy_cstr(out->board, (uint32_t)sizeof(out->board), ARBATOS_BOARD_NAME);
+    sdlog_copy_cstr(out->git_sha, (uint32_t)sizeof(out->git_sha), ARBATOS_GIT_SHA);
+    sdlog_copy_cstr(out->build_date, (uint32_t)sizeof(out->build_date), ARBATOS_BUILD_DATE);
+    sdlog_copy_cstr(out->build_time, (uint32_t)sizeof(out->build_time), ARBATOS_BUILD_TIME);
+}
+
+static int sdlog_append_record_bytes(uint8_t *dst,
+                                     uint32_t dst_cap,
+                                     uint32_t *inout_len,
+                                     uint32_t dt_ms,
+                                     uint16_t tag,
+                                     const void *payload,
+                                     uint16_t len)
+{
+    if (dst == NULL || inout_len == NULL || payload == NULL || len == 0u)
+    {
+        return -1;
+    }
+
+    uint8_t hdr[16];
+    uint32_t hdr_len = 0u;
+    hdr_len += (uint32_t)sdlog_write_var_u32(&hdr[hdr_len], dt_ms);
+    hdr_len += (uint32_t)sdlog_write_var_u32(&hdr[hdr_len], (uint32_t)tag);
+    hdr_len += (uint32_t)sdlog_write_var_u32(&hdr[hdr_len], (uint32_t)len);
+
+    if ((*inout_len + hdr_len + (uint32_t)len) > dst_cap)
+    {
+        return -2;
+    }
+
+    memcpy(&dst[*inout_len], hdr, hdr_len);
+    *inout_len += hdr_len;
+    memcpy(&dst[*inout_len], payload, (uint32_t)len);
+    *inout_len += (uint32_t)len;
+    return 0;
 }
 
 static int sdlog_index_read(uint32_t *out_next)
@@ -435,7 +544,7 @@ static int sdlog_lz4_compress_block(const uint8_t *src, uint32_t src_len, uint8_
 }
 #endif
 
-static int sdlog_write_v2_block(const uint8_t *raw, uint32_t raw_len)
+static int sdlog_write_block(const uint8_t *raw, uint32_t raw_len)
 {
     if (raw == NULL || raw_len == 0u)
     {
@@ -655,7 +764,6 @@ static int sdlog_open_next_file(void)
         {
             sdlog_file_header_t hdr = {0};
             hdr.magic = SDLOG_FILE_MAGIC;
-            hdr.version = SDLOG_FILE_VERSION;
             hdr.header_size = (uint16_t)sizeof(sdlog_file_header_t);
             hdr.boot_tick_ms = bsp_time_get_tick_ms();
 
@@ -683,29 +791,31 @@ static int sdlog_open_next_file(void)
                 .heap_min_ever_free = (uint32_t)xPortGetMinimumEverFreeHeapSize(),
             };
 
-#if SDLOG_FILE_VERSION == 2u
-            sdlog_record_header_t rh = {0};
-            rh.tick_ms = hdr.boot_tick_ms;
-            rh.tag = SDLOG_TAG_META;
-            rh.len = (uint16_t)sizeof(sdlog_meta_boot_t);
+            sdlog_build_info_t build_info;
+            sdlog_fill_build_info(&build_info);
 
-            uint8_t raw[sizeof(sdlog_record_header_t) + sizeof(sdlog_meta_boot_t)];
-            memcpy(&raw[0], &rh, sizeof(rh));
-            memcpy(&raw[sizeof(rh)], &meta, sizeof(meta));
-            const uint32_t raw_len = (uint32_t)sizeof(raw);
-#elif SDLOG_FILE_VERSION == 3u
-            uint8_t raw[1u + 3u + 3u + sizeof(sdlog_meta_boot_t)];
+            uint8_t raw[192u];
             uint32_t raw_len = 0u;
-            raw_len += (uint32_t)sdlog_write_var_u32(&raw[raw_len], 0u); // dt_ms
-            raw_len += (uint32_t)sdlog_write_var_u32(&raw[raw_len], (uint32_t)SDLOG_TAG_META);
-            raw_len += (uint32_t)sdlog_write_var_u32(&raw[raw_len], (uint32_t)sizeof(sdlog_meta_boot_t));
-            memcpy(&raw[raw_len], &meta, sizeof(meta));
-            raw_len += (uint32_t)sizeof(meta);
-#else
-#error "Unsupported SDLOG_FILE_VERSION"
-#endif
+            if (sdlog_append_record_bytes(raw,
+                                          (uint32_t)sizeof(raw),
+                                          &raw_len,
+                                          0u,
+                                          SDLOG_TAG_META,
+                                          &meta,
+                                          (uint16_t)sizeof(meta)) != 0 ||
+                sdlog_append_record_bytes(raw,
+                                          (uint32_t)sizeof(raw),
+                                          &raw_len,
+                                          0u,
+                                          SDLOG_TAG_BUILD_INFO,
+                                          &build_info,
+                                          (uint16_t)sizeof(build_info)) != 0)
+            {
+                (void)f_close(&sdlog_fp);
+                return -4;
+            }
 
-            if (sdlog_write_v2_block(raw, raw_len) != 0)
+            if (sdlog_write_block(raw, raw_len) != 0)
             {
                 (void)f_close(&sdlog_fp);
                 return -4;
@@ -936,7 +1046,7 @@ void sdlog_poll(void)
             memcpy(&sdlog_flush_in[first], &sdlog_buf[0], second);
         }
 
-        if (sdlog_write_v2_block(sdlog_flush_in, chunk) != 0)
+        if (sdlog_write_block(sdlog_flush_in, chunk) != 0)
         {
             return;
         }

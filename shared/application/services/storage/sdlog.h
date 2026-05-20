@@ -14,27 +14,21 @@
 
 // ===== File format =====
 //
-// v1 (SDLOG_FILE_VERSION == 1):
-//   File header (sdlog_file_header_t), followed by a stream of records:
-//     [sdlog_record_header_t][payload bytes][0..3 bytes padding to 4B]
-//
-// v2 (SDLOG_FILE_VERSION == 2):
+// Current sdlog files use:
 //   File header (sdlog_file_header_t), followed by a stream of blocks:
 //     [sdlog_block_header_t][block bytes...]
-//   Each block contains raw bytes of the v1 record stream (flags=0), or an LZ4
-//   compressed blob that decompresses to those raw bytes (flags bit0 set).
+//   Each block stores raw record-stream bytes, or an LZ4-compressed blob that
+//   decompresses to those bytes when SDLOG_BLOCK_FLAG_COMPRESSED is set.
 //
-// v3 (SDLOG_FILE_VERSION == 3):
-//   Same container as v2 (file header + block stream), but the decompressed
-//   block bytes are a v3 record stream:
-//     record := dt_ms(varint u32) + tag(varint u32) + len(varint u32) + payload(len bytes)
-//   where dt_ms is the delta from the previous record tick, starting from
-//   sdlog_file_header_t::boot_tick_ms. No padding/alignment is used.
+// Record stream inside each raw block:
+//   record := dt_ms(varint u32) + tag(varint u32) + len(varint u32) + payload(len bytes)
+// where dt_ms is the delta from the previous record tick, starting from
+// sdlog_file_header_t::boot_tick_ms. No padding/alignment is used.
 //
 // All fields are little-endian.
 
 #define SDLOG_FILE_MAGIC 0x474C4453u /* 'SDLG' */
-#define SDLOG_FILE_VERSION 3u
+#define SDLOG_SCHEMA_VERSION 1u
 
 #define SDLOG_BLOCK_MAGIC 0x4B424453u /* 'SDBK' */
 #define SDLOG_BLOCK_FLAG_COMPRESSED 0x0001u
@@ -44,11 +38,13 @@
 typedef struct __attribute__((packed))
 {
     uint32_t magic;       // SDLOG_FILE_MAGIC
-    uint16_t version;     // SDLOG_FILE_VERSION
     uint16_t header_size; // sizeof(sdlog_file_header_t)
+    uint16_t flags;       // reserved, must be 0 for now
     uint32_t boot_tick_ms;
     uint32_t reserved;
 } sdlog_file_header_t;
+
+typedef char _check_sdlog_file_header_size[(sizeof(sdlog_file_header_t) == 16) ? 1 : -1];
 
 typedef struct __attribute__((packed))
 {
@@ -60,13 +56,8 @@ typedef struct __attribute__((packed))
     uint32_t reserved;    // CRC32(raw bytes) if SDLOG_BLOCK_FLAG_CRC32 set, otherwise reserved
 } sdlog_block_header_t;
 
-typedef struct __attribute__((packed))
-{
-    uint32_t tick_ms; // HAL_GetTick()
-    uint16_t tag;     // sdlog_tag_e
-    uint16_t len;     // payload length (bytes)
-} sdlog_record_header_t;
-
+// Tag rule: keep tag payloads append-only. If a payload changes incompatibly,
+// bump its payload version or allocate a new tag instead of reusing the old layout.
 typedef enum
 {
     SDLOG_TAG_META = 0x0000u,
@@ -134,6 +125,7 @@ typedef enum
     SDLOG_TAG_RT_PROFILER = 0x004Eu,
     SDLOG_TAG_WHEELLEG_MIT_CONFIG = 0x004Fu,
     SDLOG_TAG_WHEELLEG_MIT_STATUS = 0x0050u,
+    SDLOG_TAG_BUILD_INFO = 0x0051u,
 } sdlog_tag_e;
 
 typedef enum
@@ -197,6 +189,11 @@ typedef struct __attribute__((packed))
 } sdlog_aux_tune_t;
 
 #define SDLOG_CONFIG_VERSION 1u
+#define SDLOG_BUILD_INFO_VERSION 1u
+#define SDLOG_BUILD_INFO_TEXT_LEN 32u
+#define SDLOG_BUILD_INFO_GIT_SHA_LEN 16u
+#define SDLOG_BUILD_INFO_DATE_LEN 12u
+#define SDLOG_BUILD_INFO_TIME_LEN 9u
 
 typedef struct __attribute__((packed))
 {
@@ -205,6 +202,34 @@ typedef struct __attribute__((packed))
     uint16_t config_size; // raw config bytes copied after the header
     uint16_t flags;       // reserved
 } sdlog_config_header_t;
+
+typedef struct __attribute__((packed))
+{
+    uint16_t version;        // SDLOG_BUILD_INFO_VERSION
+    uint16_t header_size;    // sizeof(sdlog_build_info_t)
+    uint16_t schema_version; // SDLOG_SCHEMA_VERSION
+    uint16_t flags;          // reserved
+
+    uint32_t config_size;    // sizeof(config_t)
+    uint32_t config_crc32;   // CRC32(config_t bytes at log start)
+
+    uint8_t locomotion_family;
+    uint8_t gimbal_family;
+    uint8_t arm_family;
+    uint8_t high_rate_div;
+    uint8_t compression_enabled;
+    uint8_t build_dirty;
+    uint8_t reserved8[2];
+
+    char target[SDLOG_BUILD_INFO_TEXT_LEN];
+    char board[SDLOG_BUILD_INFO_TEXT_LEN];
+    char git_sha[SDLOG_BUILD_INFO_GIT_SHA_LEN];
+    char build_date[SDLOG_BUILD_INFO_DATE_LEN];
+    char build_time[SDLOG_BUILD_INFO_TIME_LEN];
+    char reserved_text[3];
+} sdlog_build_info_t;
+
+typedef char _check_sdlog_build_info_size[(sizeof(sdlog_build_info_t) == 128) ? 1 : -1];
 
 typedef struct __attribute__((packed))
 {

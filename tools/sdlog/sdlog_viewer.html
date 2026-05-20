@@ -47,6 +47,7 @@
       <div>
         <button id="csvTagBtn">Export tag CSV</button>
         <button id="csvFieldBtn">Export field CSV</button>
+        <button id="csvUnknownBtn">Export unknown CSV</button>
       </div>
       <div class="sp"></div>
       <div class="muted" id="hint"></div>
@@ -128,7 +129,8 @@
   async function loadIndex() {
     const r = await fetch('/api/index');
     indexData = await r.json();
-    $('meta').textContent = `file=${indexData.source_path}  version=${indexData.file_version}  boot_tick_ms=${indexData.boot_tick_ms}`;
+    const unknownCount = (indexData.unknown || []).reduce((sum, x) => sum + x.count, 0);
+    $('meta').textContent = `file=${indexData.source_path}  boot_tick_ms=${indexData.boot_tick_ms}  unknown=${unknownCount}`;
 
     const tagSel = $('tagSel');
     tagSel.innerHTML = '';
@@ -199,9 +201,14 @@
     download('/api/export_field.csv?' + qs.toString());
   }
 
+  function exportUnknownCsv() {
+    download('/api/unknown.csv');
+  }
+
   $('plotBtn').onclick = doPlot;
   $('csvTagBtn').onclick = exportTagCsv;
   $('csvFieldBtn').onclick = exportFieldCsv;
+  $('csvUnknownBtn').onclick = exportUnknownCsv;
   $('fieldFilter').oninput = fillFields;
 
   loadIndex().then(() => doPlot());
