@@ -194,6 +194,7 @@ extern const gimbal_motor_t *get_yaw_motor_point(void);
 extern const gimbal_motor_t *get_pitch_motor_point(void);
 
 extern void gimbal_control_task(void const *pvParameters);
+extern void dual_yaw_gimbal_control_task(void const *pvParameters);
 
 // runtime PID tuning helpers
 extern void gimbal_tune_get_yaw_speed_pid(pid_param_t *out);
@@ -228,6 +229,7 @@ extern void set_cali_gimbal_hook(
 
 extern volatile uint32_t gimbal_loop_counter;
 extern volatile int16_t gimbal_watch_yaw_current;
+extern volatile int16_t gimbal_watch_yaw_upper_current;
 extern volatile int16_t gimbal_watch_pitch_current;
 extern volatile int16_t gimbal_yaw_easytest_current;
 

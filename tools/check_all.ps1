@@ -255,6 +255,23 @@ function Test-RequiredTaskText {
     }
 }
 
+function Test-RequiredTaskTextAny {
+    param(
+        [object]$Project,
+        [string]$TaskText,
+        [string[]]$Needles
+    )
+
+    foreach ($needle in $Needles) {
+        if ($TaskText -match [regex]::Escape($needle)) {
+            return
+        }
+    }
+
+    $needleList = $Needles -join "', '"
+    Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): task creation source does not mention any of '$needleList'."
+}
+
 function Test-ProfileTaskMapping {
     param(
         [object]$Project,
@@ -268,12 +285,12 @@ function Test-ProfileTaskMapping {
     switch ($Locomotion) {
         "LOCOMOTION_FAMILY_CLASSIC_CHASSIS" {
             Test-RequiredSource $Project $SourceSet "shared\application\chassis\chassis_control_task.c"
-            Test-RequiredTaskText $Project $TaskText "robot_profile_need_classic_chassis_control_task"
+            Test-RequiredTaskTextAny $Project $TaskText @("robot_profile_need_classic_chassis_control_task", "ROBOT_TASK_MODULE_CLASSIC_CHASSIS")
             Test-RequiredTaskText $Project $TaskText "chassis_control_task"
         }
         "LOCOMOTION_FAMILY_WHEELLEG_MIT" {
             Test-RequiredSource $Project $SourceSet "shared\application\wheelleg\wheelleg_mit_task.c"
-            Test-RequiredTaskText $Project $TaskText "robot_profile_is_wheelleg_mit"
+            Test-RequiredTaskTextAny $Project $TaskText @("robot_profile_is_wheelleg_mit", "ROBOT_TASK_MODULE_WHEELLEG_MIT")
             Test-RequiredTaskText $Project $TaskText "wheelleg_mit_task"
         }
         "LOCOMOTION_FAMILY_WHEELLEG_SERVO" {
@@ -289,11 +306,13 @@ function Test-ProfileTaskMapping {
     switch ($Gimbal) {
         "GIMBAL_FAMILY_SINGLE" {
             Test-RequiredSource $Project $SourceSet "shared\application\gimbal\gimbal_control_task.c"
-            Test-RequiredTaskText $Project $TaskText "robot_profile_need_single_gimbal_control_task"
+            Test-RequiredTaskTextAny $Project $TaskText @("robot_profile_need_single_gimbal_control_task", "ROBOT_TASK_MODULE_SINGLE_GIMBAL")
             Test-RequiredTaskText $Project $TaskText "gimbal_control_task"
         }
         "GIMBAL_FAMILY_DUAL" {
-            Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): profile selects GIMBAL_DUAL, but no dual-gimbal task is wired yet."
+            Test-RequiredSource $Project $SourceSet "shared\application\gimbal\gimbal_control_task.c"
+            Test-RequiredTaskTextAny $Project $TaskText @("robot_profile_need_dual_gimbal_control_task", "ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL")
+            Test-RequiredTaskText $Project $TaskText "dual_yaw_gimbal_control_task"
         }
         "GIMBAL_FAMILY_NONE" {}
         $null {}
@@ -305,7 +324,7 @@ function Test-ProfileTaskMapping {
     switch ($Arm) {
         "ARM_FAMILY_UNIFIED" {
             Test-RequiredSource $Project $SourceSet "shared\application\arm\arm_task.c"
-            Test-RequiredTaskText $Project $TaskText "robot_profile_need_arm_task"
+            Test-RequiredTaskTextAny $Project $TaskText @("robot_profile_need_arm_task", "ROBOT_TASK_MODULE_ARM")
             Test-RequiredTaskText $Project $TaskText "arm_task"
         }
         "ARM_FAMILY_NONE" {}

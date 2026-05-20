@@ -1173,7 +1173,9 @@ static bool_t aux_tune_handle_line(const char *line)
     const bool_t is_yaw_angle = (strcmp(argv[0], "ya") == 0);
     if (is_pitch_speed || is_pitch_angle || is_yaw_speed || is_yaw_angle)
     {
-        if (!robot_profile_need_single_gimbal_control_task())
+        const bool_t single_gimbal_on = (bool_t)robot_profile_need_single_gimbal_control_task();
+        const bool_t dual_gimbal_on = (bool_t)robot_profile_need_dual_gimbal_control_task();
+        if (!single_gimbal_on && !(dual_gimbal_on && (is_yaw_speed || is_yaw_angle)))
         {
             return 0;
         }
@@ -2052,14 +2054,17 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
         const uint8_t classic_chassis_on = robot_profile_need_classic_chassis_control_task();
         const uint8_t gimbal_on = (uint8_t)(robot_profile_need_single_gimbal_control_task() ||
                                             robot_profile_need_dual_gimbal_control_task());
+        const uint8_t yaw_on = (uint8_t)(motor_cfg_node_id(&g_config.motor.yaw) != 0u);
+        const uint8_t second_gimbal_axis_on = (uint8_t)(motor_cfg_node_id(&g_config.motor.pitch) != 0u ||
+                                                        motor_cfg_node_id(&g_config.motor.yaw_upper) != 0u);
         const uint8_t trigger_on = (uint8_t)(motor_cfg_node_id(&g_config.motor.trigger) != 0u);
         if (toe_is_error(DBUS_TOE)) mask |= 1u << 0;
         if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR1_TOE)) mask |= 1u << 1;
         if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR2_TOE)) mask |= 1u << 2;
         if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR3_TOE)) mask |= 1u << 3;
         if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR4_TOE)) mask |= 1u << 4;
-        if (gimbal_on && toe_is_error(YAW_GIMBAL_MOTOR_TOE)) mask |= 1u << 5;
-        if (gimbal_on && toe_is_error(PITCH_GIMBAL_MOTOR_TOE)) mask |= 1u << 6;
+        if (gimbal_on && yaw_on && toe_is_error(YAW_GIMBAL_MOTOR_TOE)) mask |= 1u << 5;
+        if (gimbal_on && second_gimbal_axis_on && toe_is_error(PITCH_GIMBAL_MOTOR_TOE)) mask |= 1u << 6;
         if (trigger_on && toe_is_error(TRIGGER_MOTOR_TOE)) mask |= 1u << 7;
         if (toe_is_error(REFEREE_TOE)) mask |= 1u << 8;
         if (toe_is_error(RM_IMU_TOE)) mask |= 1u << 9;
@@ -2295,7 +2300,8 @@ static bool_t aux_tune_config_scope_is_active(config_param_scope_e scope)
     case CONFIG_PARAM_SCOPE_COMMON:
         return 1;
     case CONFIG_PARAM_SCOPE_GIMBAL_SINGLE:
-        return (bool_t)robot_profile_need_single_gimbal_control_task();
+        return (bool_t)(robot_profile_need_single_gimbal_control_task() ||
+                        robot_profile_need_dual_gimbal_control_task());
     case CONFIG_PARAM_SCOPE_GIMBAL_DUAL:
         return (bool_t)robot_profile_need_dual_gimbal_control_task();
     case CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC:

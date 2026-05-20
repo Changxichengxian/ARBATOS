@@ -27,8 +27,20 @@ config_t g_config = {
     .profile =
         {
             .locomotion_family = LOCOMOTION_FAMILY_CLASSIC_CHASSIS,
-            .gimbal_family = GIMBAL_FAMILY_SINGLE,
+            .gimbal_family = GIMBAL_FAMILY_DUAL,
             .arm_family = ARM_FAMILY_NONE,
+            .task_module_count = 8u,
+            .task_modules =
+                {
+                    ROBOT_TASK_MODULE_RC_SBUS,
+                    ROBOT_TASK_MODULE_HEALTH_MONITOR,
+                    ROBOT_TASK_MODULE_SDLOG,
+                    ROBOT_TASK_MODULE_CAN_COMMAND_TX,
+                    ROBOT_TASK_MODULE_CAN_FEEDBACK_RX,
+                    ROBOT_TASK_MODULE_CLASSIC_CHASSIS,
+                    ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL,
+                    ROBOT_TASK_MODULE_IMU,
+                },
         },
     .motor =
         {
@@ -47,7 +59,7 @@ config_t g_config = {
                     {MOTOR_MODEL_3510, 4u},
                 },
             .yaw = {MOTOR_MODEL_6020, 2u},
-            .yaw_upper = {MOTOR_MODEL_6020, 0u},
+            .yaw_upper = {MOTOR_MODEL_6020, 4u},
             .pitch = {MOTOR_MODEL_3510, 3u},
             .trigger = {MOTOR_MODEL_3510, 4u},
             .arm =

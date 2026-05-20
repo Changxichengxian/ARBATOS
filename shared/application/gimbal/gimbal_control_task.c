@@ -120,6 +120,10 @@ typedef struct
 #define GIMBAL_YAW_CHASSIS_SPIN_EXIT_FF_MAX_CURRENT 5000.0f
 #endif
 
+#ifndef DUAL_YAW_UPPER_TURN
+#define DUAL_YAW_UPPER_TURN 0u
+#endif
+
 #if INCLUDE_uxTaskGetStackHighWaterMark
 uint32_t gimbal_high_water;
 #endif
@@ -196,6 +200,7 @@ static void gimbal_motor_angle_control(gimbal_motor_t *gimbal_motor);
 static void gimbal_motor_raw_angle_control(gimbal_motor_t *gimbal_motor);
 
 static void gimbal_control_loop(gimbal_control_t *control_loop);
+static int16_t gimbal_apply_output_turn(int16_t current, uint8_t turn);
 /**
   * @brief          limit angle set in encoder angle mode, avoid exceeding the max angle
   * @param[out]     gimbal_motor: yaw motor or pitch motor
@@ -264,6 +269,7 @@ volatile uint32_t gimbal_loop_counter = 0;
 //发送的电机电流
 static int16_t yaw_can_set_current = 0, pitch_can_set_current = 0, shoot_can_set_current = 0;
 volatile int16_t gimbal_watch_yaw_current = 0;
+volatile int16_t gimbal_watch_yaw_upper_current = 0;
 volatile int16_t gimbal_watch_pitch_current = 0;
 volatile int16_t gimbal_yaw_easytest_current = 3000;
 
@@ -357,7 +363,10 @@ static void gimbal_write_state(void)
     state.turnaround_follow_offset_rad = gimbal_turnaround_chassis_follow_offset_rad();
     state.turnaround_frame_valid = (uint8_t)gimbal_turnaround_get_frame_yaw_relative(&state.turnaround_frame_yaw_relative);
     gimbal_fill_motor_state(&state.yaw, &gimbal_control.gimbal_yaw_motor);
-    gimbal_fill_motor_state(&state.pitch, &gimbal_control.gimbal_pitch_motor);
+    if (motor_cfg_node_id(&g_config.motor.pitch) != 0u)
+    {
+        gimbal_fill_motor_state(&state.pitch, &gimbal_control.gimbal_pitch_motor);
+    }
 
     (void)gimbal_state_write(&state);
 }
@@ -467,6 +476,11 @@ static fp32 gimbal_pitch_kick_scale(fp32 angle_err)
 static test_mode_e current_test_mode(void)
 {
     return (test_mode_e)g_config.test.mode;
+}
+
+static int16_t gimbal_apply_output_turn(int16_t current, uint8_t turn)
+{
+    return (turn != 0u) ? (int16_t)-current : current;
 }
 
 static void gimbal_snapshot_capture(gimbal_runtime_snapshot_t *snapshot, gimbal_control_t *control)
@@ -596,23 +610,8 @@ void gimbal_control_task(void const *pvParameters)
         pitch_cali_tick_post(&gimbal_control, gimbal_behaviour_watch, snapshot.test_mode);
         gimbal_write_state();
         shoot_can_set_current = shoot_control_loop();        // 拨盘电流
-        if (snapshot.yaw_turn != 0u)
-        {
-            yaw_can_set_current = -gimbal_control.gimbal_yaw_motor.given_current;
-        }
-        else
-        {
-            yaw_can_set_current = gimbal_control.gimbal_yaw_motor.given_current;
-        }
-
-        if (snapshot.pitch_turn != 0u)
-        {
-            pitch_can_set_current = -gimbal_control.gimbal_pitch_motor.given_current;
-        }
-        else
-        {
-            pitch_can_set_current = gimbal_control.gimbal_pitch_motor.given_current;
-        }
+        yaw_can_set_current = gimbal_apply_output_turn(gimbal_control.gimbal_yaw_motor.given_current, snapshot.yaw_turn);
+        pitch_can_set_current = gimbal_apply_output_turn(gimbal_control.gimbal_pitch_motor.given_current, snapshot.pitch_turn);
 
         const int16_t yaw_current_request = yaw_can_set_current;
         const int16_t pitch_current_request = pitch_can_set_current;
@@ -652,6 +651,85 @@ void gimbal_control_task(void const *pvParameters)
 #if GIMBAL_TEST_MODE
         J_scope_gimbal_test();
 #endif
+
+        rt_profiler_end(RT_PROFILER_GIMBAL_CONTROL_LOOP, loop_start_us);
+        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
+
+#if INCLUDE_uxTaskGetStackHighWaterMark
+        gimbal_high_water = uxTaskGetStackHighWaterMark(NULL);
+#endif
+    }
+}
+
+void dual_yaw_gimbal_control_task(void const *pvParameters)
+{
+    (void)pvParameters;
+    TickType_t last_wake = 0;
+
+    vTaskDelay(GIMBAL_TASK_INIT_TIME);
+    gimbal_init(&gimbal_control);
+    gimbal_write_state();
+    shoot_init();
+
+    last_wake = xTaskGetTickCount();
+    while (1)
+    {
+        const uint64_t loop_start_us = rt_profiler_begin();
+        gimbal_runtime_snapshot_t snapshot;
+
+        watch_task_beat(WATCH_TASK_GIMBAL_CONTROL);
+        gimbal_snapshot_capture(&snapshot, &gimbal_control);
+        gimbal_loop_counter++;
+
+        gimbal_set_mode(&gimbal_control);
+        gimbal_mode_change_control_transit(&gimbal_control);
+        gimbal_feedback_update(&gimbal_control, &snapshot);
+        gimbal_set_control(&gimbal_control);
+        gimbal_control_loop(&gimbal_control);
+        gimbal_write_state();
+
+        shoot_can_set_current = shoot_control_loop();
+        yaw_can_set_current = gimbal_apply_output_turn(gimbal_control.gimbal_yaw_motor.given_current, snapshot.yaw_turn);
+        pitch_can_set_current = gimbal_apply_output_turn(gimbal_control.gimbal_pitch_motor.given_current, snapshot.pitch_turn);
+
+        const int16_t yaw_current_request = yaw_can_set_current;
+        const int16_t pitch_current_request = pitch_can_set_current;
+
+        gimbal_apply_test_mode(&snapshot, &yaw_can_set_current, &pitch_can_set_current);
+
+        int16_t yaw_upper_can_set_current = gimbal_apply_output_turn(yaw_can_set_current, (uint8_t)DUAL_YAW_UPPER_TURN);
+
+        yaw_can_set_current = motor_cfg_limit_current_node(snapshot.yaw_motor_cfg, yaw_can_set_current);
+        yaw_upper_can_set_current = motor_cfg_limit_current_node(&g_config.motor.yaw_upper, yaw_upper_can_set_current);
+        pitch_can_set_current = motor_cfg_limit_current_node(snapshot.pitch_motor_cfg, pitch_can_set_current);
+        shoot_can_set_current = motor_cfg_limit_current_node(snapshot.trigger_motor_cfg, shoot_can_set_current);
+
+        gimbal_watch_yaw_current = yaw_can_set_current;
+        gimbal_watch_yaw_upper_current = yaw_upper_can_set_current;
+        gimbal_watch_pitch_current = pitch_can_set_current;
+        actuator_cmd_set_trigger_current(shoot_can_set_current);
+        actuator_cmd_set_yaw_current(yaw_can_set_current);
+        actuator_cmd_set_yaw_upper_current(yaw_upper_can_set_current);
+        actuator_cmd_set_pitch_current(pitch_can_set_current);
+
+        {
+            sdlog_gimbal_base_sample_t sample = {0};
+
+            sample.gimbal_behaviour = (uint8_t)gimbal_behaviour_watch;
+            sample.test_mode = (uint8_t)snapshot.test_mode;
+            sample.yaw_motor_mode = (uint8_t)gimbal_control.gimbal_yaw_motor.gimbal_motor_mode;
+            sample.pitch_motor_mode = (uint8_t)gimbal_control.gimbal_pitch_motor.gimbal_motor_mode;
+            sample.yaw_angle = gimbal_control.gimbal_yaw_motor.angle;
+            sample.pitch_angle = gimbal_control.gimbal_pitch_motor.angle;
+            sample.yaw_gyro = gimbal_control.gimbal_yaw_motor.motor_gyro;
+            sample.pitch_gyro = gimbal_control.gimbal_pitch_motor.motor_gyro;
+            sample.yaw_current_request = yaw_current_request;
+            sample.pitch_current_request = pitch_current_request;
+            sample.yaw_current_output = gimbal_sdlog_clamp_current(yaw_can_set_current);
+            sample.pitch_current_output = gimbal_sdlog_clamp_current(pitch_can_set_current);
+
+            gimbal_sdlog_append_base_sample(&sample, bsp_time_get_tick_ms(), snapshot.period_us);
+        }
 
         rt_profiler_end(RT_PROFILER_GIMBAL_CONTROL_LOOP, loop_start_us);
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
@@ -877,6 +955,10 @@ const gimbal_motor_t *get_yaw_motor_point(void)
   */
 const gimbal_motor_t *get_pitch_motor_point(void)
 {
+    if (motor_cfg_node_id(&g_config.motor.pitch) == 0u)
+    {
+        return NULL;
+    }
     return &gimbal_control.gimbal_pitch_motor;
 }
 

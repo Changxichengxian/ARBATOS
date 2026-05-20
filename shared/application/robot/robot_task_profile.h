@@ -124,32 +124,81 @@ static inline uint32_t robot_profile_can_feedback_rx_budget_us(void)
     return (uint32_t)ROBOT_PROFILE_CAN_FEEDBACK_RX_BUDGET_US;
 }
 
+static inline uint8_t robot_profile_module_enabled_by_family(robot_task_module_e module)
+{
+    switch (module)
+    {
+    case ROBOT_TASK_MODULE_RC_SBUS:
+    case ROBOT_TASK_MODULE_HEALTH_MONITOR:
+    case ROBOT_TASK_MODULE_SDLOG:
+    case ROBOT_TASK_MODULE_CAN_COMMAND_TX:
+    case ROBOT_TASK_MODULE_CAN_FEEDBACK_RX:
+    case ROBOT_TASK_MODULE_IMU:
+        return 1u;
+    case ROBOT_TASK_MODULE_CLASSIC_CHASSIS:
+        return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_CLASSIC_CHASSIS);
+    case ROBOT_TASK_MODULE_WHEELLEG_SERVO:
+        return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_SERVO);
+    case ROBOT_TASK_MODULE_WHEELLEG_MIT:
+        return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_MIT);
+    case ROBOT_TASK_MODULE_SINGLE_GIMBAL:
+        return (uint8_t)(g_config.profile.gimbal_family == GIMBAL_FAMILY_SINGLE);
+    case ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL:
+        return (uint8_t)(g_config.profile.gimbal_family == GIMBAL_FAMILY_DUAL);
+    case ROBOT_TASK_MODULE_ARM:
+        return (uint8_t)(g_config.profile.arm_family != ARM_FAMILY_NONE);
+    default:
+        return 0u;
+    }
+}
+
+static inline uint8_t robot_profile_module_enabled(robot_task_module_e module)
+{
+    const uint8_t count = g_config.profile.task_module_count;
+
+    if (count == 0u)
+    {
+        return robot_profile_module_enabled_by_family(module);
+    }
+
+    const uint8_t limit = (count > ROBOT_TASK_MODULE_MAX) ? ROBOT_TASK_MODULE_MAX : count;
+    for (uint8_t i = 0u; i < limit; i++)
+    {
+        if ((robot_task_module_e)g_config.profile.task_modules[i] == module)
+        {
+            return 1u;
+        }
+    }
+
+    return 0u;
+}
+
 static inline uint8_t robot_profile_need_classic_chassis_control_task(void)
 {
-    return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_CLASSIC_CHASSIS);
+    return robot_profile_module_enabled(ROBOT_TASK_MODULE_CLASSIC_CHASSIS);
 }
 
 static inline uint8_t robot_profile_need_wheelleg_servo_task(void)
 {
-    return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_SERVO);
+    return robot_profile_module_enabled(ROBOT_TASK_MODULE_WHEELLEG_SERVO);
 }
 
 static inline uint8_t robot_profile_is_wheelleg_mit(void)
 {
-    return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_MIT);
+    return robot_profile_module_enabled(ROBOT_TASK_MODULE_WHEELLEG_MIT);
 }
 
 static inline uint8_t robot_profile_need_single_gimbal_control_task(void)
 {
-    return (uint8_t)(g_config.profile.gimbal_family == GIMBAL_FAMILY_SINGLE);
+    return robot_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL);
 }
 
 static inline uint8_t robot_profile_need_dual_gimbal_control_task(void)
 {
-    return (uint8_t)(g_config.profile.gimbal_family == GIMBAL_FAMILY_DUAL);
+    return robot_profile_module_enabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL);
 }
 
 static inline uint8_t robot_profile_need_arm_task(void)
 {
-    return (uint8_t)(g_config.profile.arm_family != ARM_FAMILY_NONE);
+    return robot_profile_module_enabled(ROBOT_TASK_MODULE_ARM);
 }

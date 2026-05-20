@@ -41,6 +41,15 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef osThreadId_t (*app_task_create_fn_t)(void);
+
+typedef struct
+{
+  robot_task_module_e module;
+  osThreadId_t *handle;
+  app_task_create_fn_t create;
+} app_task_module_desc_t;
+
 osThreadId_t rcSbusTaskHandle;
 osThreadId_t detectTaskHandle;
 osThreadId_t sdlogTaskHandle;
@@ -99,6 +108,102 @@ APP_THREAD_ATTR(chassisControlTask, osPriorityAboveNormal, 512);
 APP_THREAD_ATTR(wheellegMitTask, osPriorityAboveNormal, 768);
 APP_THREAD_ATTR(gimbalControlTask, osPriorityHigh, 512);
 APP_THREAD_ATTR(imuFusionTask, osPriorityRealtime, 1024);
+
+static osThreadId_t app_create_rc_sbus_task(void)
+{
+  return APP_THREAD_CREATE(rcSbusTask, rc_sbus_task);
+}
+
+static osThreadId_t app_create_health_monitor_task(void)
+{
+  return APP_THREAD_CREATE(healthMonitorTask, health_monitor_task);
+}
+
+static osThreadId_t app_create_sdlog_task(void)
+{
+  return APP_THREAD_CREATE(sdlogTask, sdlog_task);
+}
+
+static osThreadId_t app_create_can_command_tx_task(void)
+{
+  return APP_THREAD_CREATE(canCommandTxTask, can_command_tx_task);
+}
+
+static osThreadId_t app_create_can_feedback_rx_task(void)
+{
+  return APP_THREAD_CREATE(canFeedbackRxTask, can_feedback_rx_task);
+}
+
+static osThreadId_t app_create_chassis_control_task(void)
+{
+  return APP_THREAD_CREATE(chassisControlTask, chassis_control_task);
+}
+
+static osThreadId_t app_create_wheelleg_mit_task(void)
+{
+  return APP_THREAD_CREATE(wheellegMitTask, wheelleg_mit_task);
+}
+
+static osThreadId_t app_create_single_gimbal_task(void)
+{
+  return APP_THREAD_CREATE(gimbalControlTask, gimbal_control_task);
+}
+
+static osThreadId_t app_create_dual_yaw_gimbal_task(void)
+{
+  return APP_THREAD_CREATE(gimbalControlTask, dual_yaw_gimbal_control_task);
+}
+
+static osThreadId_t app_create_imu_task(void)
+{
+  return APP_THREAD_CREATE(imuFusionTask, imu_fusion_task);
+}
+
+static void app_clear_module_task_handles(void)
+{
+  rcSbusTaskHandle = NULL;
+  detectTaskHandle = NULL;
+  sdlogTaskHandle = NULL;
+  canCommandTxTaskHandle = NULL;
+  canFeedbackRxTaskHandle = NULL;
+  chassisControlTaskHandle = NULL;
+  wheellegMitTaskHandle = NULL;
+  gimbalControlTaskHandle = NULL;
+  imuTaskHandle = NULL;
+}
+
+static void app_create_module_tasks(void)
+{
+  static const app_task_module_desc_t module_tasks[] =
+  {
+    {ROBOT_TASK_MODULE_RC_SBUS, &rcSbusTaskHandle, app_create_rc_sbus_task},
+    {ROBOT_TASK_MODULE_HEALTH_MONITOR, &detectTaskHandle, app_create_health_monitor_task},
+    {ROBOT_TASK_MODULE_SDLOG, &sdlogTaskHandle, app_create_sdlog_task},
+    {ROBOT_TASK_MODULE_CAN_COMMAND_TX, &canCommandTxTaskHandle, app_create_can_command_tx_task},
+    {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, &canFeedbackRxTaskHandle, app_create_can_feedback_rx_task},
+    {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, &chassisControlTaskHandle, app_create_chassis_control_task},
+    {ROBOT_TASK_MODULE_WHEELLEG_MIT, &wheellegMitTaskHandle, app_create_wheelleg_mit_task},
+    {ROBOT_TASK_MODULE_SINGLE_GIMBAL, &gimbalControlTaskHandle, app_create_single_gimbal_task},
+    {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL, &gimbalControlTaskHandle, app_create_dual_yaw_gimbal_task},
+    {ROBOT_TASK_MODULE_IMU, &imuTaskHandle, app_create_imu_task},
+  };
+
+  app_clear_module_task_handles();
+
+  for (uint32_t i = 0u; i < (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])); i++)
+  {
+    const app_task_module_desc_t *task = &module_tasks[i];
+    if (robot_profile_module_enabled(task->module) == 0u || task->handle == NULL || task->create == NULL)
+    {
+      continue;
+    }
+    if (*task->handle != NULL)
+    {
+      continue;
+    }
+    *task->handle = task->create();
+  }
+}
 
 /* GetIdleTaskMemory prototype (linked to static allocation support) */
 void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize );
@@ -163,44 +268,7 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = APP_THREAD_CREATE(defaultTask, StartDefaultTask);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  rcSbusTaskHandle = APP_THREAD_CREATE(rcSbusTask, rc_sbus_task);
-
-  detectTaskHandle = APP_THREAD_CREATE(healthMonitorTask, health_monitor_task);
-
-  sdlogTaskHandle = APP_THREAD_CREATE(sdlogTask, sdlog_task);
-
-  canCommandTxTaskHandle = APP_THREAD_CREATE(canCommandTxTask, can_command_tx_task);
-
-  canFeedbackRxTaskHandle = APP_THREAD_CREATE(canFeedbackRxTask, can_feedback_rx_task);
-
-  if (robot_profile_need_classic_chassis_control_task())
-  {
-    chassisControlTaskHandle = APP_THREAD_CREATE(chassisControlTask, chassis_control_task);
-  }
-  else
-  {
-    chassisControlTaskHandle = NULL;
-  }
-
-  if (robot_profile_is_wheelleg_mit())
-  {
-    wheellegMitTaskHandle = APP_THREAD_CREATE(wheellegMitTask, wheelleg_mit_task);
-  }
-  else
-  {
-    wheellegMitTaskHandle = NULL;
-  }
-
-  if (robot_profile_need_single_gimbal_control_task())
-  {
-    gimbalControlTaskHandle = APP_THREAD_CREATE(gimbalControlTask, gimbal_control_task);
-  }
-  else
-  {
-    gimbalControlTaskHandle = NULL;
-  }
-
-  imuTaskHandle = APP_THREAD_CREATE(imuFusionTask, imu_fusion_task);
+  app_create_module_tasks();
   /* USER CODE END RTOS_THREADS */
 
 }
