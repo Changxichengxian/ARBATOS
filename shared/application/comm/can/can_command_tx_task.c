@@ -37,8 +37,10 @@
 
 #define CAN_TX_MIT_WHEEL_CMD_PERIOD_MS 2u
 #define CAN_TX_MIT_JOINT_CMD_PERIOD_MS 5u
-#define CAN_TX_MIT_MODE_FRAME_REPEAT_COUNT 10u
 #define CAN_TX_MIT_MAX_FRAMES_PER_MS 3u
+#define CAN_TX_MIT_STATE_DISABLED 0u
+#define CAN_TX_MIT_STATE_ENABLED 1u
+#define CAN_TX_MIT_STATE_FAULT_MIN 8u
 
 __weak uint8_t can_tx_process_extra_item(uint8_t bus,
                                          actuator_id_e actuator_id,
@@ -141,6 +143,66 @@ static uint8_t can_tx_mit_period_due(uint32_t now_ms, uint32_t last_tick_ms, uin
 {
     return (uint8_t)(last_tick_ms == 0u ||
                      (uint32_t)(now_ms - last_tick_ms) >= (uint32_t)period_ms);
+}
+
+static uint8_t can_tx_mit_get_feedback_state(actuator_id_e actuator_id,
+                                             const motor_node_param_t *node,
+                                             actuator_feedback_t *feedback)
+{
+    const uint16_t expected_rx_id = motor_cfg_feedback_id(node);
+    const uint8_t expected_motor_low_id = (uint8_t)(motor_cfg_can_id(node) & 0x0Fu);
+
+    if (feedback == NULL || can_tx_actuator_id_valid(actuator_id) == 0u)
+    {
+        return 0u;
+    }
+
+    if (actuator_feedback_get_copy(actuator_id, feedback) == 0u ||
+        feedback->online == 0u ||
+        feedback->transport != (uint8_t)ACTUATOR_TRANSPORT_CAN ||
+        feedback->rx_id != expected_rx_id ||
+        feedback->rx_dlc < 8u)
+    {
+        return 0u;
+    }
+
+    if ((feedback->rx_data0 & 0x0Fu) != expected_motor_low_id)
+    {
+        return 0u;
+    }
+
+    return 1u;
+}
+
+static void can_tx_mit_sync_mode_state(actuator_id_e actuator_id,
+                                       const motor_node_param_t *node,
+                                       uint8_t *enabled,
+                                       uint8_t *disabled_confirmed)
+{
+    actuator_feedback_t feedback;
+
+    if (enabled == NULL || disabled_confirmed == NULL ||
+        can_tx_mit_get_feedback_state(actuator_id, node, &feedback) == 0u)
+    {
+        return;
+    }
+
+    if (feedback.state == CAN_TX_MIT_STATE_ENABLED)
+    {
+        *enabled = 1u;
+        *disabled_confirmed = 0u;
+    }
+    else if (feedback.state == CAN_TX_MIT_STATE_DISABLED ||
+             feedback.state >= CAN_TX_MIT_STATE_FAULT_MIN)
+    {
+        *enabled = 0u;
+        *disabled_confirmed = 1u;
+    }
+    else
+    {
+        *enabled = 0u;
+        *disabled_confirmed = 0u;
+    }
 }
 
 static inline int16_t can_tx_fp32_to_i16_saturated(fp32 x)
@@ -298,8 +360,7 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
                                                   int16_t current)
 {
     static uint8_t mit_enabled[ACTUATOR_ID__COUNT];
-    static uint8_t mit_enable_repeat_left[ACTUATOR_ID__COUNT];
-    static uint8_t mit_disable_repeat_left[ACTUATOR_ID__COUNT];
+    static uint8_t mit_disabled_confirmed[ACTUATOR_ID__COUNT];
     static uint32_t mit_last_enable_tick[ACTUATOR_ID__COUNT];
     static uint32_t mit_last_disable_tick[ACTUATOR_ID__COUNT];
     static uint32_t mit_last_cmd_tick[ACTUATOR_ID__COUNT];
@@ -345,17 +406,18 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
 
     if (can_tx_actuator_id_valid(actuator_id) != 0u)
     {
+        can_tx_mit_sync_mode_state(actuator_id,
+                                   node,
+                                   &mit_enabled[actuator_id],
+                                   &mit_disabled_confirmed[actuator_id]);
+
         if (active_cmd == 0u)
         {
-            mit_enable_repeat_left[actuator_id] = 0u;
             mit_last_enable_tick[actuator_id] = 0u;
+            mit_last_cmd_tick[actuator_id] = 0u;
 
-            if (mit_disable_repeat_left[actuator_id] == 0u)
-            {
-                mit_disable_repeat_left[actuator_id] = CAN_TX_MIT_MODE_FRAME_REPEAT_COUNT;
-            }
-
-            if (can_tx_mit_period_due(now, mit_last_disable_tick[actuator_id], cmd_period_ms) != 0u &&
+            if (mit_disabled_confirmed[actuator_id] == 0u &&
+                can_tx_mit_period_due(now, mit_last_disable_tick[actuator_id], cmd_period_ms) != 0u &&
                 can_tx_mit_take_frame_budget(now) != 0u)
             {
                 const int ret = can_mit_motor_send_disable(bus, std_id);
@@ -363,26 +425,16 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
                 {
                     mit_last_disable_tick[actuator_id] = now;
                     mit_enabled[actuator_id] = 0u;
-                    mit_last_cmd_tick[actuator_id] = 0u;
-                    if (mit_disable_repeat_left[actuator_id] > 0u)
-                    {
-                        mit_disable_repeat_left[actuator_id]--;
-                    }
                 }
             }
             return 1u;
         }
 
-        mit_disable_repeat_left[actuator_id] = 0u;
+        mit_disabled_confirmed[actuator_id] = 0u;
+        mit_last_disable_tick[actuator_id] = 0u;
 
         if (mit_enabled[actuator_id] == 0u)
         {
-            if (mit_enable_repeat_left[actuator_id] == 0u)
-            {
-                mit_enable_repeat_left[actuator_id] = CAN_TX_MIT_MODE_FRAME_REPEAT_COUNT;
-                mit_last_enable_tick[actuator_id] = 0u;
-            }
-
             if (can_tx_mit_period_due(now, mit_last_enable_tick[actuator_id], cmd_period_ms) != 0u &&
                 can_tx_mit_take_frame_budget(now) != 0u)
             {
@@ -390,15 +442,6 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
                 if (ret == 0)
                 {
                     mit_last_enable_tick[actuator_id] = now;
-                    if (mit_enable_repeat_left[actuator_id] > 0u)
-                    {
-                        mit_enable_repeat_left[actuator_id]--;
-                    }
-                    if (mit_enable_repeat_left[actuator_id] == 0u)
-                    {
-                        mit_enabled[actuator_id] = 1u;
-                        mit_last_cmd_tick[actuator_id] = 0u;
-                    }
                 }
             }
             return 1u;
