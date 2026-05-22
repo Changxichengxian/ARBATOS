@@ -102,6 +102,30 @@ function Get-ProfileValue {
     return $match.Groups[1].Value
 }
 
+function Get-ProfileModules {
+    param([string]$Content)
+
+    $match = [regex]::Match($Content, '\.task_modules\s*=\s*\{(?<body>.*?)\}', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if (-not $match.Success) {
+        return @()
+    }
+
+    return @([regex]::Matches($match.Groups["body"].Value, 'ROBOT_TASK_MODULE_[A-Z0-9_]+') |
+        ForEach-Object { $_.Value } |
+        Select-Object -Unique)
+}
+
+function Get-ProfileModuleCount {
+    param([string]$Content)
+
+    $match = [regex]::Match($Content, '\.task_module_count\s*=\s*(\d+)u?')
+    if (-not $match.Success) {
+        return $null
+    }
+
+    return [int]$match.Groups[1].Value
+}
+
 function Test-UvProject {
     param([object]$Project)
 
@@ -200,18 +224,22 @@ function Test-UvProject {
     }
 
     $configContent = Get-Content -LiteralPath $configC -Raw
-    $locomotion = Get-ProfileValue $configContent "locomotion_family"
-    $gimbal = Get-ProfileValue $configContent "gimbal_family"
-    $arm = Get-ProfileValue $configContent "arm_family"
+    $configHeader = Get-Content -LiteralPath $configH -Raw
+    $moduleCount = Get-ProfileModuleCount $configContent
+    $modules = @(Get-ProfileModules $configContent)
 
-    if ($null -eq $locomotion) {
-        Add-CheckError "$(Format-RepoPath $configC): cannot find .locomotion_family."
+    $profileFamilyPattern = '\.(locomotion_family|gimbal_family|arm_family)\s*=|LOCOMOTION_FAMILY_|GIMBAL_FAMILY_|ARM_FAMILY_'
+    if ($configContent -match $profileFamilyPattern -or $configHeader -match $profileFamilyPattern) {
+        Add-CheckError "$(Format-RepoPath $configC): profile task selection must use task_modules only; family fields are no longer accepted."
     }
-    if ($null -eq $gimbal) {
-        Add-CheckError "$(Format-RepoPath $configC): cannot find .gimbal_family."
+    if ($configContent -notmatch '\.task_module_count\s*=') {
+        Add-CheckError "$(Format-RepoPath $configC): cannot find .task_module_count; task creation now uses the explicit module list."
     }
-    if ($null -eq $arm) {
-        Add-CheckError "$(Format-RepoPath $configC): cannot find .arm_family."
+    if ($modules.Count -eq 0) {
+        Add-CheckError "$(Format-RepoPath $configC): cannot find any ROBOT_TASK_MODULE_* entries."
+    }
+    if ($null -ne $moduleCount -and $moduleCount -ne $modules.Count) {
+        Add-CheckError "$(Format-RepoPath $configC): .task_module_count is $moduleCount, but task_modules contains $($modules.Count) unique modules."
     }
 
     $sourceSet = New-Object System.Collections.Generic.HashSet[string]
@@ -227,7 +255,7 @@ function Test-UvProject {
         }
     }
 
-    Test-ProfileTaskMapping $Project $locomotion $gimbal $arm $sourceSet $taskText
+    Test-ProfileTaskMapping $Project $modules $sourceSet $taskText
 }
 
 function Test-RequiredSource {
@@ -272,66 +300,50 @@ function Test-RequiredTaskTextAny {
     Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): task creation source does not mention any of '$needleList'."
 }
 
+function Test-ProfileHasModule {
+    param(
+        [string[]]$Modules,
+        [string]$Module
+    )
+
+    return $Modules -contains $Module
+}
+
 function Test-ProfileTaskMapping {
     param(
         [object]$Project,
-        [string]$Locomotion,
-        [string]$Gimbal,
-        [string]$Arm,
+        [string[]]$Modules,
         [object]$SourceSet,
         [string]$TaskText
     )
 
-    switch ($Locomotion) {
-        "LOCOMOTION_FAMILY_CLASSIC_CHASSIS" {
-            Test-RequiredSource $Project $SourceSet "shared\application\chassis\chassis_control_task.c"
-            Test-RequiredTaskTextAny $Project $TaskText @("robot_profile_need_classic_chassis_control_task", "ROBOT_TASK_MODULE_CLASSIC_CHASSIS")
-            Test-RequiredTaskText $Project $TaskText "chassis_control_task"
-        }
-        "LOCOMOTION_FAMILY_WHEELLEG_MIT" {
-            Test-RequiredSource $Project $SourceSet "shared\application\wheelleg\wheelleg_mit_task.c"
-            Test-RequiredTaskTextAny $Project $TaskText @("robot_profile_is_wheelleg_mit", "ROBOT_TASK_MODULE_WHEELLEG_MIT")
-            Test-RequiredTaskText $Project $TaskText "wheelleg_mit_task"
-        }
-        "LOCOMOTION_FAMILY_WHEELLEG_SERVO" {
-            Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): profile selects WHEELLEG_SERVO, but no servo wheel-leg task is wired yet."
-        }
-        "LOCOMOTION_FAMILY_NONE" {}
-        $null {}
-        default {
-            Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): unknown locomotion family '$Locomotion'."
-        }
+    if (Test-ProfileHasModule $Modules "ROBOT_TASK_MODULE_CLASSIC_CHASSIS") {
+        Test-RequiredSource $Project $SourceSet "shared\application\chassis\chassis_control_task.c"
+        Test-RequiredTaskText $Project $TaskText "ROBOT_TASK_MODULE_CLASSIC_CHASSIS"
+        Test-RequiredTaskText $Project $TaskText "chassis_control_task"
     }
-
-    switch ($Gimbal) {
-        "GIMBAL_FAMILY_SINGLE" {
-            Test-RequiredSource $Project $SourceSet "shared\application\gimbal\gimbal_control_task.c"
-            Test-RequiredTaskTextAny $Project $TaskText @("robot_profile_need_single_gimbal_control_task", "ROBOT_TASK_MODULE_SINGLE_GIMBAL")
-            Test-RequiredTaskText $Project $TaskText "gimbal_control_task"
-        }
-        "GIMBAL_FAMILY_DUAL" {
-            Test-RequiredSource $Project $SourceSet "shared\application\gimbal\gimbal_control_task.c"
-            Test-RequiredTaskTextAny $Project $TaskText @("robot_profile_need_dual_gimbal_control_task", "ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL")
-            Test-RequiredTaskText $Project $TaskText "dual_yaw_gimbal_control_task"
-        }
-        "GIMBAL_FAMILY_NONE" {}
-        $null {}
-        default {
-            Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): unknown gimbal family '$Gimbal'."
-        }
+    if (Test-ProfileHasModule $Modules "ROBOT_TASK_MODULE_WHEELLEG_MIT") {
+        Test-RequiredSource $Project $SourceSet "shared\application\wheelleg\wheelleg_mit_task.c"
+        Test-RequiredTaskText $Project $TaskText "ROBOT_TASK_MODULE_WHEELLEG_MIT"
+        Test-RequiredTaskText $Project $TaskText "wheelleg_mit_task"
     }
-
-    switch ($Arm) {
-        "ARM_FAMILY_UNIFIED" {
-            Test-RequiredSource $Project $SourceSet "shared\application\arm\arm_task.c"
-            Test-RequiredTaskTextAny $Project $TaskText @("robot_profile_need_arm_task", "ROBOT_TASK_MODULE_ARM")
-            Test-RequiredTaskText $Project $TaskText "arm_task"
-        }
-        "ARM_FAMILY_NONE" {}
-        $null {}
-        default {
-            Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): unknown arm family '$Arm'."
-        }
+    if (Test-ProfileHasModule $Modules "ROBOT_TASK_MODULE_WHEELLEG_SERVO") {
+        Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): profile lists WHEELLEG_SERVO, but no servo wheel-leg task is wired yet."
+    }
+    if (Test-ProfileHasModule $Modules "ROBOT_TASK_MODULE_SINGLE_GIMBAL") {
+        Test-RequiredSource $Project $SourceSet "shared\application\gimbal\gimbal_control_task.c"
+        Test-RequiredTaskText $Project $TaskText "ROBOT_TASK_MODULE_SINGLE_GIMBAL"
+        Test-RequiredTaskText $Project $TaskText "gimbal_control_task"
+    }
+    if (Test-ProfileHasModule $Modules "ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL") {
+        Test-RequiredSource $Project $SourceSet "shared\application\gimbal\gimbal_control_task.c"
+        Test-RequiredTaskText $Project $TaskText "ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL"
+        Test-RequiredTaskText $Project $TaskText "dual_yaw_gimbal_control_task"
+    }
+    if (Test-ProfileHasModule $Modules "ROBOT_TASK_MODULE_ARM") {
+        Test-RequiredSource $Project $SourceSet "shared\application\arm\arm_task.c"
+        Test-RequiredTaskText $Project $TaskText "ROBOT_TASK_MODULE_ARM"
+        Test-RequiredTaskText $Project $TaskText "arm_task"
     }
 }
 

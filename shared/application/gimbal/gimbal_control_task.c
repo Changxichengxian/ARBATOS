@@ -354,16 +354,60 @@ static void gimbal_fill_motor_state(gimbal_motor_state_t *out, const gimbal_moto
 static void gimbal_write_state(void)
 {
     gimbal_state_t state = {0};
+    const uint8_t yaw_required = (motor_cfg_node_id(&g_config.motor.yaw) != 0u) ? 1u : 0u;
+    const uint8_t yaw_upper_required =
+        (robot_profile_need_dual_gimbal_control_task() != 0u && motor_cfg_node_id(&g_config.motor.yaw_upper) != 0u) ? 1u : 0u;
+    const uint8_t pitch_required = (motor_cfg_node_id(&g_config.motor.pitch) != 0u) ? 1u : 0u;
+    const uint8_t manual_offline = toe_is_error(DBUS_TOE) ? 1u : 0u;
+    const uint8_t imu_offline = toe_is_error(RM_IMU_TOE) ? 1u : 0u;
+    const uint8_t yaw_offline = (yaw_required != 0u && toe_is_error(YAW_GIMBAL_MOTOR_TOE)) ? 1u : 0u;
+    const uint8_t pitch_offline = (pitch_required != 0u && toe_is_error(PITCH_GIMBAL_MOTOR_TOE)) ? 1u : 0u;
+    const uint8_t yaw_upper_offline = 0u;
 
     state.valid = 1u;
     state.behaviour = (uint8_t)gimbal_behaviour_watch;
     state.chassis_stop = (uint8_t)gimbal_cmd_to_chassis_stop();
     state.shoot_stop = (uint8_t)gimbal_cmd_to_shoot_stop();
+    state.manual_online = (manual_offline == 0u) ? 1u : 0u;
+    state.imu_online = (imu_offline == 0u) ? 1u : 0u;
+    state.yaw_required = yaw_required;
+    state.yaw_online = (yaw_required != 0u && yaw_offline == 0u) ? 1u : 0u;
+    state.yaw_upper_required = yaw_upper_required;
+    state.yaw_upper_online = (yaw_upper_required != 0u && yaw_upper_offline == 0u) ? 1u : 0u;
+    state.pitch_required = pitch_required;
+    state.pitch_online = (pitch_required != 0u && pitch_offline == 0u) ? 1u : 0u;
+    if (manual_offline != 0u)
+    {
+        state.offline_mask |= GIMBAL_STATE_OFFLINE_DBUS;
+    }
+    if (yaw_offline != 0u)
+    {
+        state.offline_mask |= GIMBAL_STATE_OFFLINE_YAW;
+        state.required_offline_mask |= GIMBAL_STATE_OFFLINE_YAW;
+    }
+    if (yaw_upper_offline != 0u)
+    {
+        state.offline_mask |= GIMBAL_STATE_OFFLINE_YAW_UPPER;
+        state.required_offline_mask |= GIMBAL_STATE_OFFLINE_YAW_UPPER;
+    }
+    if (pitch_offline != 0u)
+    {
+        state.offline_mask |= GIMBAL_STATE_OFFLINE_PITCH;
+        state.required_offline_mask |= GIMBAL_STATE_OFFLINE_PITCH;
+    }
+    if (imu_offline != 0u)
+    {
+        state.offline_mask |= GIMBAL_STATE_OFFLINE_IMU;
+        state.required_offline_mask |= GIMBAL_STATE_OFFLINE_IMU;
+    }
+    state.online = (state.required_offline_mask == 0u) ? 1u : 0u;
+    state.controllable = (state.online != 0u && state.manual_online != 0u && state.chassis_stop == 0u) ? 1u : 0u;
+    state.fire_allowed = (state.online != 0u && state.manual_online != 0u && state.shoot_stop == 0u) ? 1u : 0u;
     state.turnaround_active = (uint8_t)gimbal_turnaround_is_active();
     state.turnaround_follow_offset_rad = gimbal_turnaround_chassis_follow_offset_rad();
     state.turnaround_frame_valid = (uint8_t)gimbal_turnaround_get_frame_yaw_relative(&state.turnaround_frame_yaw_relative);
     gimbal_fill_motor_state(&state.yaw, &gimbal_control.gimbal_yaw_motor);
-    if (motor_cfg_node_id(&g_config.motor.pitch) != 0u)
+    if (pitch_required != 0u)
     {
         gimbal_fill_motor_state(&state.pitch, &gimbal_control.gimbal_pitch_motor);
     }

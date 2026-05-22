@@ -232,7 +232,7 @@ void shoot_tune_apply_trigger_pid(void)
 static bool_t shoot_gimbal_cmd_to_shoot_stop(void)
 {
     gimbal_state_t state;
-    return (gimbal_state_read(&state) != 0u && state.valid != 0u && state.shoot_stop != 0u) ? 1 : 0;
+    return (gimbal_state_read(&state) != 0u && state.valid != 0u && state.fire_allowed == 0u) ? 1 : 0;
 }
 
 static void shoot_write_state(void)

@@ -20,6 +20,12 @@
 extern "C" {
 #endif
 
+#define GIMBAL_STATE_OFFLINE_DBUS      (1u << 0)
+#define GIMBAL_STATE_OFFLINE_YAW       (1u << 1)
+#define GIMBAL_STATE_OFFLINE_YAW_UPPER (1u << 2)
+#define GIMBAL_STATE_OFFLINE_PITCH     (1u << 3)
+#define GIMBAL_STATE_OFFLINE_IMU       (1u << 4)
+
 typedef struct
 {
     uint8_t valid;
@@ -47,6 +53,20 @@ typedef struct
     uint8_t behaviour;
     uint8_t chassis_stop;
     uint8_t shoot_stop;
+    uint8_t online;
+    uint8_t controllable;
+    uint8_t fire_allowed;
+    uint8_t manual_online;
+    uint8_t imu_online;
+    uint8_t yaw_required;
+    uint8_t yaw_online;
+    uint8_t yaw_upper_required;
+    uint8_t yaw_upper_online;
+    uint8_t pitch_required;
+    uint8_t pitch_online;
+    uint8_t reserved0;
+    uint16_t offline_mask;
+    uint16_t required_offline_mask;
     uint8_t turnaround_active;
     uint8_t turnaround_frame_valid;
     fp32 turnaround_frame_yaw_relative;

@@ -35,6 +35,7 @@
 #include "chassis_control_task.h"
 #include "gimbal_behaviour.h"
 #include "gimbal_control_task.h"
+#include "gimbal_state.h"
 #include "mem_mang.h"
 #include "manual_input.h"
 #include "CAN_receive.h"
@@ -2058,13 +2059,24 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
         const uint8_t second_gimbal_axis_on = (uint8_t)(motor_cfg_node_id(&g_config.motor.pitch) != 0u ||
                                                         motor_cfg_node_id(&g_config.motor.yaw_upper) != 0u);
         const uint8_t trigger_on = (uint8_t)(motor_cfg_node_id(&g_config.motor.trigger) != 0u);
+        gimbal_state_t gimbal_state;
+        const uint8_t gimbal_state_valid =
+            (gimbal_state_read(&gimbal_state) != 0u && gimbal_state.valid != 0u) ? 1u : 0u;
         if (toe_is_error(DBUS_TOE)) mask |= 1u << 0;
         if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR1_TOE)) mask |= 1u << 1;
         if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR2_TOE)) mask |= 1u << 2;
         if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR3_TOE)) mask |= 1u << 3;
         if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR4_TOE)) mask |= 1u << 4;
-        if (gimbal_on && yaw_on && toe_is_error(YAW_GIMBAL_MOTOR_TOE)) mask |= 1u << 5;
-        if (gimbal_on && second_gimbal_axis_on && toe_is_error(PITCH_GIMBAL_MOTOR_TOE)) mask |= 1u << 6;
+        if (gimbal_on && gimbal_state_valid != 0u)
+        {
+            if ((gimbal_state.offline_mask & GIMBAL_STATE_OFFLINE_YAW) != 0u) mask |= 1u << 5;
+            if ((gimbal_state.offline_mask & (GIMBAL_STATE_OFFLINE_PITCH | GIMBAL_STATE_OFFLINE_YAW_UPPER)) != 0u) mask |= 1u << 6;
+        }
+        else
+        {
+            if (gimbal_on && yaw_on && toe_is_error(YAW_GIMBAL_MOTOR_TOE)) mask |= 1u << 5;
+            if (gimbal_on && second_gimbal_axis_on && toe_is_error(PITCH_GIMBAL_MOTOR_TOE)) mask |= 1u << 6;
+        }
         if (trigger_on && toe_is_error(TRIGGER_MOTOR_TOE)) mask |= 1u << 7;
         if (toe_is_error(REFEREE_TOE)) mask |= 1u << 8;
         if (toe_is_error(RM_IMU_TOE)) mask |= 1u << 9;

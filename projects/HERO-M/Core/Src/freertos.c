@@ -25,12 +25,25 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "chassis_control_task.h"
 #include "control_manager.h"
+#include "gimbal_control_task.h"
+#include "INS_task.h"
+#include "robot_task_profile.h"
+#include "wheelleg_mit_task.h"
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef osThreadId_t (*app_task_create_fn_t)(void);
+
+typedef struct
+{
+  robot_task_module_e module;
+  osThreadId_t *handle;
+  app_task_create_fn_t create;
+} app_task_module_desc_t;
 
 /* USER CODE END PTD */
 
@@ -61,6 +74,9 @@ StaticTask_t ImuTaskControlBlock;
 osThreadId_t FunTestHandle;
 StackType_t FunTestBuffer[128];
 StaticTask_t FunTestControlBlock;
+osThreadId_t chassisControlTaskHandle;
+osThreadId_t wheellegMitTaskHandle;
+osThreadId_t gimbalControlTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -101,6 +117,70 @@ APP_STATIC_THREAD_ATTR(KeyTask, osPriorityRealtime, KeyTaskBuffer, KeyTaskContro
 APP_STATIC_THREAD_ATTR(LcdTask, osPriorityNormal, LcdTaskBuffer, LcdTaskControlBlock);
 APP_STATIC_THREAD_ATTR(ImuTask, osPriorityHigh, ImuTaskBuffer, ImuTaskControlBlock);
 APP_STATIC_THREAD_ATTR(FunTest, osPriorityBelowNormal, FunTestBuffer, FunTestControlBlock);
+APP_THREAD_ATTR(chassisControlTask, osPriorityAboveNormal, 512);
+APP_THREAD_ATTR(wheellegMitTask, osPriorityAboveNormal, 768);
+APP_THREAD_ATTR(gimbalControlTask, osPriorityHigh, 1024);
+
+static osThreadId_t app_create_chassis_control_task(void)
+{
+  return APP_THREAD_CREATE(chassisControlTask, chassis_control_task);
+}
+
+static osThreadId_t app_create_wheelleg_mit_task(void)
+{
+  return APP_THREAD_CREATE(wheellegMitTask, wheelleg_mit_task);
+}
+
+static osThreadId_t app_create_single_gimbal_task(void)
+{
+  return APP_THREAD_CREATE(gimbalControlTask, gimbal_control_task);
+}
+
+static osThreadId_t app_create_dual_yaw_gimbal_task(void)
+{
+  return APP_THREAD_CREATE(gimbalControlTask, dual_yaw_gimbal_control_task);
+}
+
+static osThreadId_t app_create_imu_task(void)
+{
+  return APP_THREAD_CREATE(ImuTask, imu_fusion_task);
+}
+
+static void app_clear_module_task_handles(void)
+{
+  chassisControlTaskHandle = NULL;
+  wheellegMitTaskHandle = NULL;
+  gimbalControlTaskHandle = NULL;
+  ImuTaskHandle = NULL;
+}
+
+static void app_create_module_tasks(void)
+{
+  static const app_task_module_desc_t module_tasks[] =
+  {
+    {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, &chassisControlTaskHandle, app_create_chassis_control_task},
+    {ROBOT_TASK_MODULE_WHEELLEG_MIT, &wheellegMitTaskHandle, app_create_wheelleg_mit_task},
+    {ROBOT_TASK_MODULE_SINGLE_GIMBAL, &gimbalControlTaskHandle, app_create_single_gimbal_task},
+    {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL, &gimbalControlTaskHandle, app_create_dual_yaw_gimbal_task},
+    {ROBOT_TASK_MODULE_IMU, &ImuTaskHandle, app_create_imu_task},
+  };
+
+  app_clear_module_task_handles();
+
+  for (uint32_t i = 0u; i < (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])); i++)
+  {
+    const app_task_module_desc_t *task = &module_tasks[i];
+    if (robot_profile_module_enabled(task->module) == 0u || task->handle == NULL || task->create == NULL)
+    {
+      continue;
+    }
+    if (*task->handle != NULL)
+    {
+      continue;
+    }
+    *task->handle = task->create();
+  }
+}
 
 /* GetIdleTaskMemory prototype (linked to static allocation support) */
 void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize );
@@ -165,11 +245,10 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = APP_THREAD_CREATE(defaultTask, StartDefaultTask);
   KeyTaskHandle = APP_THREAD_CREATE(KeyTask, KeyTask_Entry);
   LcdTaskHandle = APP_THREAD_CREATE(LcdTask, LcdTask_Entry);
-  ImuTaskHandle = APP_THREAD_CREATE(ImuTask, ImuTask_Entry);
   FunTestHandle = APP_THREAD_CREATE(FunTest, FunTest_Entry);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  app_create_module_tasks();
   /* USER CODE END RTOS_THREADS */
 
 }

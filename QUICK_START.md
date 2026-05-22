@@ -2,12 +2,12 @@
 
 这份文档给刚接触 ARBATOS 的人看。它不追求把每个技术细节讲完，只回答一个问题：新接一辆车时，先改哪里，怎么一步步把车调起来。
 
-如果你只是想知道仓库整体结构，看 `README.md`。如果你已经在改某一层的代码，再看 `projects/README.md`、`Robotconfig/README.md`、`boards/README.md` 和 `shared/README.md`。
+如果你只是想知道仓库整体结构，看 `README.md`。如果你要真正接一辆新车、上车检查、调 PID 或看 SD 日志，直接看 `manual/README.md`。如果你已经在改某一层的代码，再看 `projects/README.md`、`Robotconfig/README.md`、`boards/README.md` 和 `shared/README.md`。
 
 ## 先记住四个目录
 
 - `projects/<TARGET>/`：能打开、编译、下载的 Keil 工程。
-- `Robotconfig/<TARGET>/`：这台车的配置，主要是 PID、电机 ID、输入映射、任务选择。
+- `Robotconfig/<TARGET>/`：这台车的配置，主要是 PID、电机 ID、输入映射和任务模块。
 - `boards/<BOARD>/`：这块控制板的外设适配，主要是 CAN、UART、SPI、IMU、按键、蜂鸣器。
 - `shared/`：多台车共用的控制逻辑、通信、输入、电机、诊断、日志。
 
@@ -30,15 +30,14 @@
 
 然后复制对应的 `Robotconfig/<TARGET>/` 和 `projects/<TARGET>/`，再改名字和工程包含路径。
 
-### 2. 先配任务族
+### 2. 先配 profile 和任务模块
 
 在新目标的 `Robotconfig/<TARGET>/config.c` 里先看 `g_config.profile`：
 
-- `locomotion_family`：底盘类型，普通麦轮/全向轮一般用 `LOCOMOTION_FAMILY_CLASSIC_CHASSIS`。
-- `gimbal_family`：云台类型，单云台用 `GIMBAL_FAMILY_SINGLE`。
-- `arm_family`：没有机械臂就先用 `ARM_FAMILY_NONE`。
+- `task_module_count`：这台车启用多少个模块。
+- `task_modules`：显式列出这台车要创建哪些任务，比如 `ROBOT_TASK_MODULE_CLASSIC_CHASSIS`、`ROBOT_TASK_MODULE_SINGLE_GIMBAL`。
 
-任务没开，后面的 PID 和电机配得再对也不会跑。
+任务没开，后面的 PID 和电机配得再对也不会跑。现在任务创建只看 `task_modules`，所以新车先从少量模块开始，确认后再加。
 
 ### 3. 再配电机装配
 
@@ -49,7 +48,7 @@
 - `friction[]`、`trigger`：摩擦轮和拨盘。
 - `arm[]`：机械臂或轮腿实验用的关节。
 
-不用的电机先把 `can_id` 设成 `0`。新车第一次上电时，建议先只开一个子系统，不要一口气把所有电机都接上闭环。
+不用的电机先把 `can_id` 设成 `0`。达妙、宇树和 RM 电机还要确认协议、控制模式、总线和限幅。新车第一次上电时，建议先只开一个子系统，不要一口气把所有电机都接上闭环。
 
 ### 4. 配输入和安全档
 
@@ -72,6 +71,7 @@
 - TF/SD 卡、IMU、板级外设。
 
 不要为了让灯变绿就关检测。检测项乱关，后面调车会很难判断到底是代码没跑、线没接，还是设备掉线。
+检测项要和 `task_modules` 对上：开了底盘模块就关心底盘电机，开了云台模块就关心云台电机和 IMU，开了日志或主机链路就能看到对应服务状态。
 
 ## 第一次上电怎么调
 
@@ -132,7 +132,7 @@ IMU 正常后再调云台和底盘。重点看：
 
 ### 任务没跑
 
-- 看 `g_config.profile` 是否开了对应任务族。
+- 看 `g_config.profile` 和 `task_modules` 是否开了对应任务。
 - 看 `projects/<TARGET>/Core/Src/freertos.c` 或 H7 的 `board_freertos.c` 是否创建了任务。
 - 看 `g_watch` 里的任务状态和运行计数。
 
@@ -180,12 +180,21 @@ IMU 正常后再调云台和底盘。重点看：
 
 新手最容易犯的错是把参数写进共享控制任务里。短期看起来快，后面换车会非常痛苦。
 
+## 继续看
+
+更完整的操作步骤放在：
+
+- `manual/new-target.md`：新车接入流程。
+- `manual/bringup-checklist.md`：上车检查清单。
+- `manual/pid-tuning.md`：PID 调试流程。
+- `manual/sdlog.md`：SD 日志和复盘。
+
 ## 最小交付清单
 
 新车能算“初步接起来”，至少要满足：
 
 - 目标 Keil 工程能从干净状态编译。
-- `g_config.profile`、`g_config.motor`、输入映射和安全档配置正确。
+- `g_config.profile`、`task_modules`、`g_config.motor`、输入映射和安全档配置正确。
 - IMU 温控和零偏校准路径可用。
 - 遥控输入、CAN 反馈、状态灯、`g_watch` 都能观察。
 - 底盘、云台、射击每个子系统都能单独关闭或单独测试。

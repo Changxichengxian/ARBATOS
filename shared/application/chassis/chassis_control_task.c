@@ -79,6 +79,7 @@ typedef struct
 {
     const manual_input_state_t *manual_input;
     uint8_t gimbal_state_valid;
+    uint8_t gimbal_online;
     gimbal_motor_state_t yaw_motor;
     gimbal_motor_state_t pitch_motor;
     const fp32 *ins_angle;
@@ -248,12 +249,14 @@ static void chassis_snapshot_capture(chassis_runtime_snapshot_t *snapshot, chass
         if (gimbal_state_read(&gimbal_state) != 0u && gimbal_state.valid != 0u)
         {
             snapshot->gimbal_state_valid = 1u;
+            snapshot->gimbal_online = gimbal_state.online;
             snapshot->yaw_motor = gimbal_state.yaw;
             snapshot->pitch_motor = gimbal_state.pitch;
         }
         else if (control != NULL && control->gimbal_state_valid != 0u)
         {
             snapshot->gimbal_state_valid = 1u;
+            snapshot->gimbal_online = control->gimbal_online;
             snapshot->yaw_motor = control->chassis_yaw_motor;
             snapshot->pitch_motor = control->chassis_pitch_motor;
         }
@@ -288,6 +291,7 @@ static void chassis_snapshot_capture(chassis_runtime_snapshot_t *snapshot, chass
         if (snapshot->gimbal_state_valid != 0u)
         {
             control->gimbal_state_valid = 1u;
+            control->gimbal_online = snapshot->gimbal_online;
             control->chassis_yaw_motor = snapshot->yaw_motor;
             control->chassis_pitch_motor = snapshot->pitch_motor;
         }
@@ -781,6 +785,7 @@ static void chassis_init(chassis_move_t *chassis_move_init)
     chassis_INT_gyro_point = get_gyro_data_point();
     // Cache gimbal state once it becomes available.
     chassis_move_init->gimbal_state_valid = 0u;
+    chassis_move_init->gimbal_online = 0u;
     memset(&chassis_move_init->chassis_yaw_motor, 0, sizeof(chassis_move_init->chassis_yaw_motor));
     memset(&chassis_move_init->chassis_pitch_motor, 0, sizeof(chassis_move_init->chassis_pitch_motor));
 
@@ -957,20 +962,22 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update, const c
     const fp32 *gyro = (snapshot != NULL) ? snapshot->gyro : chassis_INT_gyro_point;
     const gimbal_motor_state_t *yaw_motor = NULL;
     const gimbal_motor_state_t *pitch_motor = NULL;
+    uint8_t gimbal_online = 0u;
     if (snapshot != NULL && snapshot->gimbal_state_valid != 0u)
     {
         yaw_motor = &snapshot->yaw_motor;
         pitch_motor = &snapshot->pitch_motor;
+        gimbal_online = snapshot->gimbal_online;
     }
     else if (chassis_move_update->gimbal_state_valid != 0u)
     {
         yaw_motor = &chassis_move_update->chassis_yaw_motor;
         pitch_motor = &chassis_move_update->chassis_pitch_motor;
+        gimbal_online = chassis_move_update->gimbal_online;
     }
     const fp32 *ins_angle = (snapshot != NULL) ? snapshot->ins_angle : chassis_move_update->chassis_INS_angle;
     if (test_mode != TEST_MODE_CHASSIS_ONLY &&
-        !toe_is_error(RM_IMU_TOE) &&
-        !toe_is_error(YAW_GIMBAL_MOTOR_TOE) &&
+        gimbal_online != 0u &&
         gyro != NULL &&
         yaw_motor != NULL)
     {

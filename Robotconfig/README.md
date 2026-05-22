@@ -26,7 +26,7 @@ Robotconfig/<TARGET>/
 
 ## 应该放这里
 
-- 默认参数和车型配置：`g_config`、PID、限位、输入映射、任务族选择。
+- 默认参数和车型配置：`g_config`、PID、限位、输入映射和任务模块选择。
 - 轴电机装配：哪个轴用什么电机、哪个 CAN ID、正反方向、反馈 ID。
 - 目标在线检测：这台车关心哪些设备、哪些离线算故障。
 - 目标私有的小补丁：例如某个目标不接 USB 主机链路，就放对应空实现。
@@ -45,10 +45,12 @@ Robotconfig/<TARGET>/
 
 新建目标时，建议先复制最接近的一台车，再按这个顺序改：
 
-1. `g_config.profile`：先决定底盘、云台、机械臂这些任务族开不开。
-2. `g_config.motor`：填电机型号、CAN ID、总线、反馈 ID；不用的轴先设 `can_id = 0`。
+1. `g_config.profile`：只列 `task_modules`。这台车启用什么任务，就在这里写什么模块；任务创建、调参块和观测块都按它判断。
+2. `g_config.motor`：填电机型号、CAN ID、总线、反馈 ID、协议和限幅；不用的轴先设 `can_id = 0`。
 3. `g_config.input` 和 `g_config.manual_input`：确认遥控通道、语义开关、安全档和输入源策略。
 4. 底盘、云台、射击、功率、IMU 等参数块：先保守限幅，再逐步调手感。
-5. `detect_task.c`：把这台车真正关心的设备在线检测补齐。
+5. `detect_task.c`：按已启用模块补在线检测；设备拔掉能报错、插回能恢复，才算检测有效。
 
 `g_config.test.mode` 是调试入口。常用做法是先开单子系统测试，再回到 `TEST_MODE_NONE` 做整车联调。陀螺仪零偏专门校准使用 `TEST_MODE_IMU_GYRO_CALI`：温度升到 40 度并稳定后，静止采 30 秒并保存。
+
+完整新车接入步骤见 `../manual/new-target.md`，上车检查见 `../manual/bringup-checklist.md`。

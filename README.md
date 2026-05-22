@@ -2,7 +2,7 @@
 
 ARBATOS 是一套面向 RoboMaster 类机器人的 STM32 / FreeRTOS 下位机控制代码。它的目标不是做成“大而全的上位机系统”，而是把底盘、云台、射击、机械臂、通信、诊断和日志这些下位机功能收进一套能复用、能扩展、还能保证实时性的工程结构里。
 
-这份 README 按当前代码写。旧文档如果和代码不一致，先以 `projects/`、`Robotconfig/`、`shared/`、`boards/` 里的代码为准。
+这份 README 按当前代码写。具体接车、上车、调 PID、看日志的步骤放在 `manual/`。旧文档如果和代码不一致，先以 `projects/`、`Robotconfig/`、`shared/`、`boards/` 里的代码为准。
 
 **Author:** 谢宇瀚 <2811158416@qq.com>  
 **Repo:** https://github.com/Changxichengxian/ARBATOS.git
@@ -13,20 +13,21 @@ ARBATOS 是一套面向 RoboMaster 类机器人的 STM32 / FreeRTOS 下位机控
 
 - 多目标工程入口：`HERO-C`、`HERO-M`、`INFANTRY-A`、`SENTINEL-A`、`CARRIER-A`、`MINIWHEELEG-M`、`MINIWHEELEG-C`。
 - 多硬件板支持：DJI C 板、DJI A 板、DM MC02 H7 板。
-- 静态 FreeRTOS 任务创建，并按任务族配置（profile，用配置决定启哪些任务）选择底盘、云台等任务；MC02 H7 实验入口还按配置接机械臂任务。
+- 静态 FreeRTOS 任务创建，并按 `g_config.profile.task_modules` 选择底盘、云台、轮腿、机械臂等任务。
 - 多源手动输入：DBUS/SBUS、ELRS/CRSF、图传遥控、板载按键。
 - 统一执行器命令层：控制任务只面向“轴”发命令，CAN 发送任务再决定具体协议。
 - 电机型号和协议能力表：RM 电机、达妙 3 模式 / 扩展协议、宇树 GO-M8010-6 等。
-- 运行诊断和日志：`g_watch`、运行耗时统计、TF/SD 二进制日志、AUX 口遥测和临时调参。
+- 运行诊断和日志：`g_watch`、运行耗时统计、TF/SD 二进制日志、构建身份记录、AUX 口遥测和临时调参。
 
 还有几块故意没写成“已完成”：
 
 - 高频控制任务还没有统一读快照，部分地方仍直接读 `g_config`。
-- 双云台、轮腿舵机这些任务族有配置入口，但实际控制任务还没补完整；MIT 轮腿已经有实验任务，后续重点是实车验证、参数整理和保护边界。
-- 高频日志虽然已经是环形缓冲，但仍要继续实测成本，避免影响 1ms / 2ms 控制链。
+- 双 yaw 云台已经有任务入口和共享控制任务，哨兵方向仍要继续实车验证；轮腿舵机任务族保留配置入口，当前不作为近期主线。
+- MIT 轮腿已经有实验任务和日志 tag，后续重点是实车验证、参数整理和保护边界。
+- 高频日志虽然已经是环形缓冲，但仍要继续实测成本，避免影响 1ms / 2ms 控制链；解析器已经能导出未知 tag 的原始 payload。
 - 根目录已经有轻量命令行检查和 CI 入口，但还没有接入 Keil 命令行真实编译。
 
-剩余架构和清理任务放在本地文档 `local/docs/90_待办和清理/工程整理与架构任务.md`。
+正式操作文档入口在 `manual/README.md`。本机资料和未提交记录继续放 `local/docs/`。
 
 ## 授权和商用
 
@@ -74,6 +75,9 @@ shared/
 
 projects/<TARGET>/
   可直接打开编译的 Keil 工程入口，车和实验目标的完整工程放这里
+
+manual/
+  正式操作手册，新车接入、上车检查、PID 调试、SD 日志复盘放这里
 ```
 
 `board` 和 `Robotconfig` 不是一回事：
@@ -82,6 +86,7 @@ projects/<TARGET>/
 - `Robotconfig` 是具体机器人目标，负责 PID 参数、电机 ID、通道映射和行为策略。
 - `shared` 放能跨机器人复用的代码。
 - `projects` 放最终打开编译的工程入口。`HERO-C`、`HERO-M`、`INFANTRY-A`、`SENTINEL-A`、`CARRIER-A` 这类车名目录只放在这里，`MINIWHEELEG-M`、`MINIWHEELEG-C` 这种实验入口也放这里。
+- `manual` 放正式操作手册，避免新车接入、上车检查、调 PID、日志复盘散在各处。
 
 ### 板级工程
 
@@ -105,7 +110,7 @@ projects/<TARGET>/
 
 每个 `Robotconfig/<TARGET>/` 当前至少提供：
 
-- `config.h`：参数结构、任务族、输入映射、遥测信号枚举、轴电机装配结构。
+- `config.h`：参数结构、family、任务模块、输入映射、遥测信号枚举、轴电机装配结构。
 - `config.c`：默认参数、全局变量 `g_config`、AUX 临时调参表。
 - `detect_task.c`：目标设备在线检测、状态汇总、部分日志上报。
 - 目标私有补充文件，例如 `host_link_task_stub.c`、`usb_task_stub.c`、机械臂装配表等。
@@ -154,7 +159,7 @@ main.c
         +-- MX_FREERTOS_Init
               |
               +-- 创建静态任务
-              +-- 按 g_config.profile 选择部分任务
+              +-- 按 g_config.profile.task_modules 选择任务
 ```
 
 F4 车工程主要在 `projects/<TARGET>/Core/Src/freertos.c` 创建任务。MC02 H7 板级实验入口主要在 `boards/DM_MC02_H7/app/board_freertos.c` 创建任务。
@@ -166,8 +171,9 @@ F4 车工程主要在 `projects/<TARGET>/Core/Src/freertos.c` 创建任务。MC0
 | `startup_service_task` | 启动期服务，包含 USB 初始化等 |
 | `imu_fusion_task` | IMU 姿态融合 |
 | `calibrate_task` | 校准相关处理 |
-| `chassis_control_task` | 经典底盘控制，按任务族决定是否创建 |
-| `gimbal_control_task` | 单云台控制，按任务族决定是否创建 |
+| `chassis_control_task` | 经典底盘控制，按任务模块决定是否创建 |
+| `gimbal_control_task` | 单云台控制，按任务模块决定是否创建 |
+| `dual_yaw_gimbal_control_task` | 双 yaw 云台控制，按任务模块决定是否创建 |
 | `can_feedback_rx_task` | 消费 CAN 接收环形缓冲，更新电机反馈 |
 | `can_command_tx_task` | 汇总执行器命令，统一发 CAN |
 | `rc_sbus_task` | DBUS/SBUS 输入解析 |
@@ -181,7 +187,7 @@ F4 车工程主要在 `projects/<TARGET>/Core/Src/freertos.c` 创建任务。MC0
 | `health_monitor_task` | 在线检测、状态汇总、系统统计 |
 | `status_led_task` | 状态灯和提示输出 |
 
-任务选择入口在 `shared/application/robot/robot_task_profile.h`。现在已经有经典底盘、单云台、机械臂的创建判断；双云台、轮腿舵机、轮腿 MIT 的判断入口也有，但对应实际控制任务还没补完整。
+任务选择入口在 `shared/application/robot/robot_task_profile.h`。现在只按 `task_modules` 判断：列了模块就创建对应任务，没列就不创建。检查脚本也按这张表核对工程源码和任务入口。
 
 ## 当前控制链路
 
@@ -319,7 +325,7 @@ actuator_feedback + 旧电机反馈结构
 
 - 高频控制任务读配置时逐步改成快照读取，减少直接读大块 `g_config`。
 - 高频任务里的 `sdlog_write` 调用继续实测成本，必要时降频或批量缓存。
-- 双云台、轮腿舵机、轮腿 MIT 等任务族补齐后，再接入板级任务创建。
+- 双 yaw 云台和 MIT 轮腿继续靠实车日志验证边界；轮腿舵机如果要启用，再补实际控制任务。
 - 根目录补一个可重复的命令行编译入口，后面再接自动编译检查。
 
 ## 诊断和日志
@@ -331,15 +337,16 @@ actuator_feedback + 旧电机反馈结构
 - `rt_profiler.c`：统计关键路径耗时、最大值和超预算次数。
 - `detect_task.c`：设备在线检测、状态摘要、重要事件记录。
 - `sdlog.c` / `sdlog_task.c`：TF/SD 二进制日志，先入环形缓冲，再低优先级写文件。
+- `BUILD_INFO`：每份日志启动时记录 target、board、Git、dirty、编译时间、配置 CRC 和 schema。
 - `host_link_task.c`：AUX 遥测和临时调参。
 
 常见日志内容包括：
 
 - IMU、PID、云台、底盘、CAN、电池、裁判系统、视觉链路。
 - 手动输入原始帧和图传链路统计。
-- 当前配置快照、系统统计、运行事件、运行耗时。
+- 当前配置快照、构建身份、系统统计、运行事件、运行耗时。
 
-注意：`sdlog_write` 不是直接写文件，但它仍然会复制数据并进入短临界区。高频任务里新增日志前，需要先考虑频率、数据量和最坏耗时。
+注意：`sdlog_write` 不是直接写文件，但它仍然会复制数据并进入短临界区。高频任务里新增日志前，需要先考虑频率、数据量和最坏耗时。日志使用和样例留存见 `manual/sdlog.md`。
 
 ## 共享模块入口
 
@@ -400,7 +407,7 @@ actuator_feedback + 旧电机反馈结构
 
 主要配置块包括：
 
-- `task_profile_t`：底盘、云台、机械臂等任务族选择。
+- `task_profile_t`：显式任务模块选择。
 - `test_config_t`：测试模式。
 - `gimbal_config_t`：云台 PID、软限位、灵敏度和校准参数。
 - `chassis_config_t`：底盘 PID、轮型、运动学和摇摆参数。
@@ -426,13 +433,13 @@ actuator_feedback + 旧电机反馈结构
 
 ## 快速开始
 
-如果是第一次接触这套代码，先看根目录的 `QUICK_START.md`。那份文档专门写“新接一辆车先干什么、按什么顺序调、出问题看哪里”。
+如果是第一次接触这套代码，先看根目录的 `QUICK_START.md`。要真正新接一辆车、上车检查、调 PID 或复盘日志，继续看 `manual/`。
 
 最短流程是：
 
 1. 安装 Keil MDK-ARM v5 和对应 STM32F4 / STM32H7 芯片包。
 2. 打开目标工程，例如 `projects/HERO-C/MDK-ARM/HERO-C.uvprojx`。
-3. 核对 `Robotconfig/<TARGET>/config.c`，先确认 `g_config.profile`、`g_config.motor`、输入映射和安全档。
+3. 核对 `Robotconfig/<TARGET>/config.c`，先确认 `g_config.profile`、`task_modules`、`g_config.motor`、输入映射和安全档。
 4. 核对 `boards/<BOARD>/`，确认串口、CAN、IMU、蜂鸣器、按键等板级配置匹配当前硬件。
 5. 编译下载后，先用 `g_watch`、AUX 遥测或 TF/SD 日志确认输入、电机反馈、IMU、任务状态都正常。
 6. 上车调试按“IMU -> CAN 反馈 -> 单个子系统 -> 整车联调”的顺序来，不要一开始就全功能同时开。
@@ -466,6 +473,7 @@ ARBATOS/
 |   |-- hal/
 |   `-- components/
 |-- legal/
+|-- manual/
 |-- local/
 `-- tools/
 ```
@@ -474,9 +482,14 @@ ARBATOS/
 
 ## 更多文档
 
-- `QUICK_START.md`：新手快速上手，聚焦新车接入和调试顺序。
+- `QUICK_START.md`：新手快速上手，聚焦第一次打开仓库时先看什么。
+- `manual/README.md`：正式操作手册入口。
+- `manual/new-target.md`：新车接入流程。
+- `manual/bringup-checklist.md`：上车检查清单。
+- `manual/pid-tuning.md`：PID 调试流程。
+- `manual/sdlog.md`：SD 日志查看、解压、基线留存和新增 tag 规则。
 - `legal/`：授权、商用、第三方组件和贡献边界，继续跟随 Git。
-- `local/docs/`：本地文档、接入记录、厂商资料和清理清单，不再提交到 Git。
+- `local/docs/`：本机文档、接入记录、厂商资料和临时清单，不再提交到 Git。
 - `projects/README.md`：项目入口说明。
 - `Robotconfig/README.md`：机器人配置层说明。
 - `boards/README.md`：板级适配层说明。
@@ -491,7 +504,7 @@ ARBATOS/
 
 1. 在 `Robotconfig/` 下创建新的目标目录。
 2. 准备 `config.h` / `config.c`。
-3. 配好 `g_config.profile`、`g_config.motor` 和输入映射。
+3. 配好 `g_config.profile`、`task_modules`、`g_config.motor` 和输入映射。
 4. 按需要补 `detect_task.c`、`INS_task.c` 或主机链路空实现。
 5. 在对应 Keil 工程里加入目标文件。
 
@@ -516,11 +529,11 @@ ARBATOS/
 3. 在 `manual_input_config_t` 里补优先级、超时和映射策略。
 4. 控制任务仍然只读 `control_input` 的语义接口。
 
-新增任务族时：
+新增任务模块时：
 
-1. 在 `config.h` 的任务族枚举里补新值。
-2. 在目标的 `g_config.profile` 中选择该任务族。
+1. 在 `config.h` 的 `robot_task_module_e` 里补新值。
+2. 在目标的 `g_config.profile` 和 `task_modules` 中选择它。
 3. 新建控制任务文件。
-4. 在 `robot_task_profile.h` 里补判断函数。
-5. 在对应项目工程的 `freertos.c` 或 `board_freertos.c` 里按判断结果创建任务。
-6. 给这个任务族单独准备参数块、诊断字段和最小验证方式。
+4. 在 `robot_task_profile.h` 里补简短判断函数，或者直接用 `robot_profile_module_enabled()`。
+5. 在对应项目工程的 `freertos.c` 或 `board_freertos.c` 的模块表里补创建函数。
+6. 给这个模块单独准备参数块、诊断字段和最小验证方式。

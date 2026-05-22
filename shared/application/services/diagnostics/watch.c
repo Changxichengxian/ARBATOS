@@ -280,35 +280,35 @@ static fp32 watch_rad_to_deg(fp32 rad)
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
 static uint8_t watch_block_active_locomotion_classic(void)
 {
-    return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_CLASSIC_CHASSIS);
+    return robot_profile_module_enabled(ROBOT_TASK_MODULE_CLASSIC_CHASSIS);
 }
 #endif
 
 #if WATCH_ENABLE_LOCOMOTION_WHEELLEG_SERVO
 static uint8_t watch_block_active_wheelleg_servo(void)
 {
-    return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_SERVO);
+    return robot_profile_module_enabled(ROBOT_TASK_MODULE_WHEELLEG_SERVO);
 }
 #endif
 
 #if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
 static uint8_t watch_block_active_wheelleg_mit(void)
 {
-    return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_MIT);
+    return robot_profile_module_enabled(ROBOT_TASK_MODULE_WHEELLEG_MIT);
 }
 #endif
 
 #if WATCH_ENABLE_GIMBAL_SINGLE
 static uint8_t watch_block_active_gimbal_single(void)
 {
-    return (uint8_t)(g_config.profile.gimbal_family == GIMBAL_FAMILY_SINGLE);
+    return robot_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL);
 }
 #endif
 
 #if WATCH_ENABLE_GIMBAL_DUAL
 static uint8_t watch_block_active_gimbal_dual(void)
 {
-    return (uint8_t)(g_config.profile.gimbal_family == GIMBAL_FAMILY_DUAL);
+    return robot_profile_module_enabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL);
 }
 #endif
 
@@ -335,7 +335,7 @@ static uint8_t watch_block_active_shoot_rm(void)
 #if WATCH_ENABLE_ARM_J0_UNITREE
 static uint8_t watch_block_active_arm(void)
 {
-    return (uint8_t)(g_config.profile.arm_family != ARM_FAMILY_NONE);
+    return robot_profile_module_enabled(ROBOT_TASK_MODULE_ARM);
 }
 #endif
 

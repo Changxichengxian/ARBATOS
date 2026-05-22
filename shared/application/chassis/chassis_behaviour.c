@@ -230,7 +230,10 @@ static bool_t chassis_gimbal_turnaround_get_frame_yaw_relative(fp32 *out_yaw_rel
 static bool_t chassis_gimbal_cmd_to_chassis_stop(void)
 {
     gimbal_state_t state;
-    return (chassis_read_gimbal_state(&state) != 0 && state.chassis_stop != 0u) ? 1 : 0;
+    return (chassis_read_gimbal_state(&state) != 0 &&
+            (state.chassis_stop != 0u || state.controllable == 0u))
+               ? 1
+               : 0;
 }
 
 static uint16_t chassis_get_effective_switch(uint16_t raw_sw,

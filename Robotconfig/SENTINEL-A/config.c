@@ -26,9 +26,6 @@
 config_t g_config = {
     .profile =
         {
-            .locomotion_family = LOCOMOTION_FAMILY_CLASSIC_CHASSIS,
-            .gimbal_family = GIMBAL_FAMILY_DUAL,
-            .arm_family = ARM_FAMILY_NONE,
             .task_module_count = 8u,
             .task_modules =
                 {
@@ -58,9 +55,19 @@ config_t g_config = {
                     {MOTOR_MODEL_3510, 3u},
                     {MOTOR_MODEL_3510, 4u},
                 },
-            .yaw = {MOTOR_MODEL_6020, 2u},
+            .yaw =
+                {
+                    .model = MOTOR_MODEL_UNITREE_GO_M8010_6,
+                    .can_id = 1u,
+                    .protocol = MOTOR_PROTOCOL_UNITREE_RS485,
+                    .control_mode = MOTOR_CONTROL_MODE_MIT,
+                    .transport = MOTOR_TRANSPORT_RS485,
+                    .rs485_port = 0u,
+                    .baudrate = 4000000u,
+                    .rx_timeout_ms = 50u,
+                },
             .yaw_upper = {MOTOR_MODEL_6020, 4u},
-            .pitch = {MOTOR_MODEL_3510, 3u},
+            .pitch = {MOTOR_MODEL_6020, 3u},
             .trigger = {MOTOR_MODEL_3510, 4u},
             .arm =
                 {
@@ -592,29 +599,45 @@ static uint8_t config_block_active_always(void)
     return 1u;
 }
 
+static uint8_t config_profile_module_enabled(robot_task_module_e module)
+{
+    const uint8_t count = g_config.profile.task_module_count;
+    const uint8_t limit = (count > ROBOT_TASK_MODULE_MAX) ? ROBOT_TASK_MODULE_MAX : count;
+
+    for (uint8_t i = 0u; i < limit; i++)
+    {
+        if ((robot_task_module_e)g_config.profile.task_modules[i] == module)
+        {
+            return 1u;
+        }
+    }
+
+    return 0u;
+}
+
 static uint8_t config_block_active_gimbal_single(void)
 {
-    return (uint8_t)(g_config.profile.gimbal_family == GIMBAL_FAMILY_SINGLE);
+    return config_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL);
 }
 
 static uint8_t config_block_active_gimbal_dual(void)
 {
-    return (uint8_t)(g_config.profile.gimbal_family == GIMBAL_FAMILY_DUAL);
+    return config_profile_module_enabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL);
 }
 
 static uint8_t config_block_active_locomotion_classic(void)
 {
-    return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_CLASSIC_CHASSIS);
+    return config_profile_module_enabled(ROBOT_TASK_MODULE_CLASSIC_CHASSIS);
 }
 
 static uint8_t config_block_active_wheelleg_servo(void)
 {
-    return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_SERVO);
+    return config_profile_module_enabled(ROBOT_TASK_MODULE_WHEELLEG_SERVO);
 }
 
 static uint8_t config_block_active_wheelleg_mit(void)
 {
-    return (uint8_t)(g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_MIT);
+    return config_profile_module_enabled(ROBOT_TASK_MODULE_WHEELLEG_MIT);
 }
 
 static uint8_t config_block_active_shoot_rm(void)
@@ -637,7 +660,7 @@ static uint8_t config_block_active_shoot_rm(void)
 
 static uint8_t config_block_active_arm(void)
 {
-    return (uint8_t)(g_config.profile.arm_family != ARM_FAMILY_NONE);
+    return config_profile_module_enabled(ROBOT_TASK_MODULE_ARM);
 }
 
 // AUX 调参表：只有列在这里的块能被运行时改，g_config.motor 这种装配信息不放进来。

@@ -51,6 +51,14 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef osThreadId_t (*app_task_create_fn_t)(void);
+
+typedef struct
+{
+  robot_task_module_e module;
+  osThreadId_t *handle;
+  app_task_create_fn_t create;
+} app_task_module_desc_t;
 
 osThreadId_t calibrate_tast_handle;
 osThreadId_t canCommandTxTaskHandle;
@@ -138,6 +146,158 @@ APP_STATIC_THREAD(batteryMonitorTask, battery_monitor_task, osPriorityNormal, 12
 APP_STATIC_THREAD(servoControlTask, servo_control_task, osPriorityNormal, 128);
 APP_STATIC_THREAD(SDLOG, sdlog_task, osPriorityLow, 512);
 
+static osThreadId_t app_create_startup_service_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(startupServiceTask, startup_service_task);
+}
+
+static osThreadId_t app_create_calibration_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(cali, calibrate_task);
+}
+
+static osThreadId_t app_create_chassis_control_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(chassisControlTask, chassis_control_task);
+}
+
+static osThreadId_t app_create_wheelleg_mit_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(wheellegMitTask, wheelleg_mit_task);
+}
+
+static osThreadId_t app_create_can_command_tx_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(canCommandTxTask, can_command_tx_task);
+}
+
+static osThreadId_t app_create_can_feedback_rx_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(canFeedbackRxTask, can_feedback_rx_task);
+}
+
+static osThreadId_t app_create_rc_sbus_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(RCSBUS, rc_sbus_task);
+}
+
+static osThreadId_t app_create_health_monitor_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(healthMonitorTask, health_monitor_task);
+}
+
+static osThreadId_t app_create_single_gimbal_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(gimbalControlTask, gimbal_control_task);
+}
+
+static osThreadId_t app_create_dual_yaw_gimbal_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(gimbalControlTask, dual_yaw_gimbal_control_task);
+}
+
+static osThreadId_t app_create_imu_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(imuFusionTask, imu_fusion_task);
+}
+
+static osThreadId_t app_create_status_led_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(statusLedTask, status_led_task);
+}
+
+static osThreadId_t app_create_referee_rx_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(refereeRxTask, referee_rx_task);
+}
+
+static osThreadId_t app_create_host_link_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(HostLinkTask, host_link_task);
+}
+
+static osThreadId_t app_create_elrs_link_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(ELRS_LINK, elrs_link_task);
+}
+
+static osThreadId_t app_create_battery_monitor_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(batteryMonitorTask, battery_monitor_task);
+}
+
+static osThreadId_t app_create_servo_control_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(servoControlTask, servo_control_task);
+}
+
+static osThreadId_t app_create_sdlog_task(void)
+{
+  return APP_STATIC_THREAD_CREATE(SDLOG, sdlog_task);
+}
+
+static void app_clear_module_task_handles(void)
+{
+  startupServiceTaskHandle = NULL;
+  calibrate_tast_handle = NULL;
+  canCommandTxTaskHandle = NULL;
+  canFeedbackRxTaskHandle = NULL;
+  chassisControlTaskHandle = NULL;
+  wheellegMitTaskHandle = NULL;
+  detect_handle = NULL;
+  gimbalControlTaskHandle = NULL;
+  imuTaskHandle = NULL;
+  statusLedTaskHandle = NULL;
+  rc_sbus_task_handle = NULL;
+  refereeRxTaskHandle = NULL;
+  host_link_task_handle = NULL;
+  elrs_link_thread_handle = NULL;
+  batteryMonitorTaskHandle = NULL;
+  servoControlTaskHandle = NULL;
+  sdlog_task_handle = NULL;
+}
+
+static void app_create_module_tasks(void)
+{
+  static const app_task_module_desc_t module_tasks[] =
+  {
+    {ROBOT_TASK_MODULE_STARTUP_SERVICE, &startupServiceTaskHandle, app_create_startup_service_task},
+    {ROBOT_TASK_MODULE_CALIBRATION, &calibrate_tast_handle, app_create_calibration_task},
+    {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, &chassisControlTaskHandle, app_create_chassis_control_task},
+    {ROBOT_TASK_MODULE_WHEELLEG_MIT, &wheellegMitTaskHandle, app_create_wheelleg_mit_task},
+    {ROBOT_TASK_MODULE_CAN_COMMAND_TX, &canCommandTxTaskHandle, app_create_can_command_tx_task},
+    {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, &canFeedbackRxTaskHandle, app_create_can_feedback_rx_task},
+    {ROBOT_TASK_MODULE_RC_SBUS, &rc_sbus_task_handle, app_create_rc_sbus_task},
+    {ROBOT_TASK_MODULE_HEALTH_MONITOR, &detect_handle, app_create_health_monitor_task},
+    {ROBOT_TASK_MODULE_SINGLE_GIMBAL, &gimbalControlTaskHandle, app_create_single_gimbal_task},
+    {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL, &gimbalControlTaskHandle, app_create_dual_yaw_gimbal_task},
+    {ROBOT_TASK_MODULE_IMU, &imuTaskHandle, app_create_imu_task},
+    {ROBOT_TASK_MODULE_STATUS_LED, &statusLedTaskHandle, app_create_status_led_task},
+    {ROBOT_TASK_MODULE_REFEREE_RX, &refereeRxTaskHandle, app_create_referee_rx_task},
+    {ROBOT_TASK_MODULE_HOST_LINK, &host_link_task_handle, app_create_host_link_task},
+    {ROBOT_TASK_MODULE_ELRS_LINK, &elrs_link_thread_handle, app_create_elrs_link_task},
+    {ROBOT_TASK_MODULE_BATTERY_MONITOR, &batteryMonitorTaskHandle, app_create_battery_monitor_task},
+    {ROBOT_TASK_MODULE_SERVO, &servoControlTaskHandle, app_create_servo_control_task},
+    {ROBOT_TASK_MODULE_SDLOG, &sdlog_task_handle, app_create_sdlog_task},
+  };
+
+  app_clear_module_task_handles();
+
+  for (uint32_t i = 0u; i < (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])); i++)
+  {
+    const app_task_module_desc_t *task = &module_tasks[i];
+    if (robot_profile_module_enabled(task->module) == 0u || task->handle == NULL || task->create == NULL)
+    {
+      continue;
+    }
+    if (*task->handle != NULL)
+    {
+      continue;
+    }
+    *task->handle = task->create();
+  }
+}
+
 /* GetIdleTaskMemory prototype (linked to static allocation support) */
 void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize );
 
@@ -198,71 +358,9 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  startupServiceTaskHandle = APP_STATIC_THREAD_CREATE(startupServiceTask, startup_service_task);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-    calibrate_tast_handle = APP_STATIC_THREAD_CREATE(cali, calibrate_task);
-
-    if (robot_profile_need_classic_chassis_control_task())
-    {
-      chassisControlTaskHandle = APP_STATIC_THREAD_CREATE(chassisControlTask, chassis_control_task);
-    }
-    else
-    {
-      chassisControlTaskHandle = NULL;
-    }
-
-    if (robot_profile_is_wheelleg_mit())
-    {
-      wheellegMitTaskHandle = APP_STATIC_THREAD_CREATE(wheellegMitTask, wheelleg_mit_task);
-    }
-    else
-    {
-      wheellegMitTaskHandle = NULL;
-    }
-
-    canCommandTxTaskHandle = APP_STATIC_THREAD_CREATE(canCommandTxTask, can_command_tx_task);
-
-    // CAN RX dispatcher: consume ISR ring, update motor measures and offline detect.
-    canFeedbackRxTaskHandle = APP_STATIC_THREAD_CREATE(canFeedbackRxTask, can_feedback_rx_task);
-
-    // USART3 SBUS/DBUS RX: consume ISR ring, parse frames, update manual_input_state_t.
-    rc_sbus_task_handle = APP_STATIC_THREAD_CREATE(RCSBUS, rc_sbus_task);
-
-    detect_handle = APP_STATIC_THREAD_CREATE(healthMonitorTask, health_monitor_task);
-
-    if (robot_profile_need_single_gimbal_control_task())
-    {
-      gimbalControlTaskHandle = APP_STATIC_THREAD_CREATE(gimbalControlTask, gimbal_control_task);
-    }
-    else
-    {
-      gimbalControlTaskHandle = NULL;
-    }
-
-    imuTaskHandle = APP_STATIC_THREAD_CREATE(imuFusionTask, imu_fusion_task);
-
-    statusLedTaskHandle = APP_STATIC_THREAD_CREATE(statusLedTask, status_led_task);
-
-
-    refereeRxTaskHandle = APP_STATIC_THREAD_CREATE(refereeRxTask, referee_rx_task);
-
-
-    host_link_task_handle = APP_STATIC_THREAD_CREATE(HostLinkTask, host_link_task);
-
-    // ELRS(CRSF) RX on aux link: high-priority, interrupt-driven parser (updates manual_input_state_t).
-    elrs_link_thread_handle = APP_STATIC_THREAD_CREATE(ELRS_LINK, elrs_link_task);
-
-    batteryMonitorTaskHandle = APP_STATIC_THREAD_CREATE(batteryMonitorTask, battery_monitor_task);
-
-    servoControlTaskHandle = APP_STATIC_THREAD_CREATE(servoControlTask, servo_control_task);
-
-    // TF/SD logger: low priority, flush buffered binary records to FatFs.
-    sdlog_task_handle = APP_STATIC_THREAD_CREATE(SDLOG, sdlog_task);
-
-
-
+  app_create_module_tasks();
   /* USER CODE END RTOS_THREADS */
 
 }

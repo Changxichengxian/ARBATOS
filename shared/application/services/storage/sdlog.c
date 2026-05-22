@@ -260,12 +260,22 @@ static void sdlog_fill_build_info(sdlog_build_info_t *out)
     out->schema_version = SDLOG_SCHEMA_VERSION;
     out->config_size = (uint32_t)sizeof(g_config);
     out->config_crc32 = sdlog_crc32_ieee((const uint8_t *)&g_config, (uint32_t)sizeof(g_config));
-    out->locomotion_family = g_config.profile.locomotion_family;
-    out->gimbal_family = g_config.profile.gimbal_family;
-    out->arm_family = g_config.profile.arm_family;
+    out->task_module_count = g_config.profile.task_module_count;
     out->high_rate_div = sdlog_high_rate_divider();
     out->compression_enabled = (uint8_t)(SDLOG_ENABLE_COMPRESSION ? 1u : 0u);
     out->build_dirty = (uint8_t)(ARBATOS_BUILD_DIRTY ? 1u : 0u);
+    {
+        const uint8_t count = g_config.profile.task_module_count;
+        const uint8_t limit = (count > ROBOT_TASK_MODULE_MAX) ? ROBOT_TASK_MODULE_MAX : count;
+        for (uint8_t i = 0u; i < limit; i++)
+        {
+            const uint8_t module = g_config.profile.task_modules[i];
+            if (module < 32u)
+            {
+                out->task_module_mask |= (uint32_t)1u << module;
+            }
+        }
+    }
 
     sdlog_copy_cstr(out->target, (uint32_t)sizeof(out->target), ARBATOS_TARGET_NAME);
     sdlog_copy_cstr(out->board, (uint32_t)sizeof(out->board), ARBATOS_BOARD_NAME);

@@ -27,12 +27,12 @@ shared/
 
 - `application/services/calibration/`：校准服务。`gyro_zero_cali.h` 放陀螺仪零偏采样状态机，板级 INS 只负责传入旋转函数、保存函数和安全条件；`calibrate_task.c` 负责传统设备校准和 Flash 保存；`pitch_cali.c` 负责 pitch 补偿校准。
 - `application/services/diagnostics/`：运行观察和故障状态。优先看 `watch.c`、`rt_profiler.c`。
-- `application/services/storage/`：TF/SD 日志。高频任务写日志前要先考虑频率和数据量。
+- `application/services/storage/`：TF/SD 日志。高频任务写日志前要先考虑频率和数据量；使用和留样规则见 `../manual/sdlog.md`。
 - `application/services/startup/`：启动期服务、状态灯和提示输出。
 
 ## 应该放这里
 
-- 能被多台车复用的控制任务：底盘、云台、射击、机械臂运动抽象。
+- 能被多台车复用的控制任务：底盘、云台、双 yaw 云台、射击、轮腿、机械臂运动抽象。
 - 输入链路：DBUS/SBUS、ELRS/CRSF、图传遥控、语义输入映射。
 - 执行器和电机协议：`actuator_cmd`、`motor_instance`、`motor_model_db`、CAN/MIT/Unitree 驱动。
 - 主机通信、视觉链路、裁判系统、日志、诊断观察。
@@ -44,4 +44,4 @@ shared/
 - 某块板子的引脚和端口分配：放 `boards/`。
 - Keil 工程文件和 CubeMX 工程入口：放 `projects/`。
 
-如果共享代码里必须区分车型，优先通过 `g_config`、任务族选择或电机能力表传进来，不要在共享逻辑里写死 `HERO-C`、`INFANTRY-A` 这种目标名。
+如果共享代码里必须区分车型，优先通过 `g_config`、任务模块选择或电机能力表传进来，不要在共享逻辑里写死 `HERO-C`、`INFANTRY-A` 这种目标名。

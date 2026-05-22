@@ -176,30 +176,6 @@ typedef enum
     CHASSIS_WHEEL_TYPE_XDRIVE = 1u,  // 45deg omni (X-drive)
 } chassis_wheel_type_e;
 
-// High-level task family selection.
-// Small geometry changes stay inside one family.
-// Major control changes get a new family and usually a new task.
-typedef enum
-{
-    LOCOMOTION_FAMILY_NONE = 0u,
-    LOCOMOTION_FAMILY_CLASSIC_CHASSIS = 1u,
-    LOCOMOTION_FAMILY_WHEELLEG_SERVO = 2u,
-    LOCOMOTION_FAMILY_WHEELLEG_MIT = 3u,
-} locomotion_family_e;
-
-typedef enum
-{
-    GIMBAL_FAMILY_NONE = 0u,
-    GIMBAL_FAMILY_SINGLE = 1u,
-    GIMBAL_FAMILY_DUAL = 2u,
-} gimbal_family_e;
-
-typedef enum
-{
-    ARM_FAMILY_NONE = 0u,
-    ARM_FAMILY_UNIFIED = 1u,
-} arm_family_e;
-
 #define ROBOT_TASK_MODULE_MAX 16u
 
 typedef enum
@@ -229,9 +205,6 @@ typedef enum
 
 typedef struct
 {
-    uint8_t locomotion_family; // locomotion_family_e
-    uint8_t gimbal_family;     // gimbal_family_e
-    uint8_t arm_family;        // arm_family_e
     uint8_t task_module_count;
     uint8_t task_modules[ROBOT_TASK_MODULE_MAX]; // robot_task_module_e
 } task_profile_t;

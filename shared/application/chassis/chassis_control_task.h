@@ -135,6 +135,7 @@ typedef struct
 {
     const manual_input_state_t *chassis_RC;
     uint8_t gimbal_state_valid;
+    uint8_t gimbal_online;
     gimbal_motor_state_t chassis_yaw_motor;
     gimbal_motor_state_t chassis_pitch_motor;
     const fp32 *chassis_INS_angle;

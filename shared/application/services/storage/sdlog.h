@@ -213,13 +213,11 @@ typedef struct __attribute__((packed))
     uint32_t config_size;    // sizeof(config_t)
     uint32_t config_crc32;   // CRC32(config_t bytes at log start)
 
-    uint8_t locomotion_family;
-    uint8_t gimbal_family;
-    uint8_t arm_family;
+    uint8_t task_module_count;
     uint8_t high_rate_div;
     uint8_t compression_enabled;
     uint8_t build_dirty;
-    uint8_t reserved8[2];
+    uint32_t task_module_mask;
 
     char target[SDLOG_BUILD_INFO_TEXT_LEN];
     char board[SDLOG_BUILD_INFO_TEXT_LEN];

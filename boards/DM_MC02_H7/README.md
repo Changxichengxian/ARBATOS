@@ -39,7 +39,7 @@
 - `gimbal_control_task`
 - `arm_task`
 
-其中 `wheelleg_mit_task` 只在 `g_config.profile.locomotion_family == LOCOMOTION_FAMILY_WHEELLEG_MIT` 时创建。`CARRIER_DIRECT_ARM_BRINGUP` 打开时，板级入口会跳过底盘、轮腿 MIT 和云台任务，只保留直接机械臂调试需要的任务。
+这些任务现在按 `profile.task_modules` 里的 `ROBOT_TASK_MODULE_*` 创建。`CARRIER_DIRECT_ARM_BRINGUP` 打开时，板级入口会跳过底盘、轮腿 MIT 和云台任务，只保留直接机械臂调试需要的任务。
 
 ## 当前状态
 

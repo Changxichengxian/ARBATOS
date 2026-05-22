@@ -2,6 +2,16 @@
 
 `tools/` 放本地辅助脚本。它不替代 Keil，也不替代实车调试，主要用来在改共享代码后先做一轮低成本检查。
 
+## 构建信息
+
+Keil 工程的 `BeforeMake` 会调用：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\gen_build_info.ps1
+```
+
+这个脚本生成 `shared/generated/build_info_autogen.h`，把 Git 提交、dirty 状态和编译时间带进固件。生成文件被 `.gitignore` 忽略，不需要手工提交。
+
 ## 一键检查
 
 在仓库根目录运行：
@@ -29,3 +39,10 @@ GitHub 上的 `.github/workflows/check-all.yml` 也会跑同一个脚本。也�
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\check_all.ps1 -AllText
 ```
+
+## SD 日志工具
+
+- `tools/sdlog/sdlog_viewer.py`：打开 SD 日志网页查看器，支持导出 tag、字段和未知记录 CSV。
+- `tools/sdlog/sdlog_decompress.py`：去掉当前格式日志里的 LZ4 块压缩，输出仍然是当前格式。
+
+使用流程见 `../manual/sdlog.md`。

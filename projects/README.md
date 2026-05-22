@@ -14,11 +14,12 @@
 | `MINIWHEELEG-M` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | `Robotconfig/MINIWHEELEG-M` | `boards/DM_MC02_H7` |
 | `MINIWHEELEG-C` | `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx` | `Robotconfig/MINIWHEELEG-C` | `boards/DJI_C_F407` |
 
-更完整的对应表见本地文档 `local/docs/01_当前工程说明/工程-车型-板卡对应表.md`。
+更完整的对应表见 `../manual/project-map.md`。
 
 ## 这一层负责什么
 
 - Keil 工程文件：`MDK-ARM/*.uvprojx`。
+- Keil 编译前命令，例如生成构建身份信息的 `tools/gen_build_info.ps1`。
 - CubeMX 生成的启动、外设初始化和中断入口：`Core/`。
 - HAL、CMSIS、FreeRTOS、USB 等工程内依赖：`Drivers/`、`Middlewares/`、`USB_DEVICE/`。
 - 最终固件入口如何把 `Robotconfig/`、`boards/`、`shared/` 编进来。
@@ -51,4 +52,4 @@
 4. 如果换了板卡，确认 `Core/`、`Drivers/`、`Middlewares/` 和板级 `INS_task.c` 对应同一块芯片。
 5. 第一次编译通过后，再去调 `Robotconfig/` 参数。
 
-根目录的 `QUICK_START.md` 写的是新车接入顺序；这里主要负责工程入口本身。
+根目录的 `QUICK_START.md` 写的是入门路径；完整新车接入流程见 `../manual/new-target.md`。这里主要负责工程入口本身。

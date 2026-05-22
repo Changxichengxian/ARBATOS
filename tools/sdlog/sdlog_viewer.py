@@ -1255,7 +1255,7 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
         ]
 
     if tag == 0x0051:  # BUILD_INFO
-        v = _unpack_exact("<4H2I8B32s32s16s12s9s3s", payload)
+        v = _unpack_exact("<4H2I4BI32s32s16s12s9s3s", payload)
         if v is None:
             return None
         (
@@ -1265,14 +1265,11 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
             _flags,
             config_size,
             config_crc32,
-            locomotion_family,
-            gimbal_family,
-            arm_family,
+            task_module_count,
             high_rate_div,
             compression_enabled,
             build_dirty,
-            _r0,
-            _r1,
+            task_module_mask,
             target,
             board,
             git_sha,
@@ -1290,9 +1287,8 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
                     "schema_version": schema_version,
                     "config_size": config_size,
                     "config_crc32": f"0x{config_crc32:08X}",
-                    "locomotion_family": locomotion_family,
-                    "gimbal_family": gimbal_family,
-                    "arm_family": arm_family,
+                    "task_module_count": task_module_count,
+                    "task_module_mask": f"0x{task_module_mask:08X}",
                     "high_rate_div": high_rate_div,
                     "compression_enabled": compression_enabled,
                     "build_dirty": build_dirty,
