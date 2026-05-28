@@ -21,6 +21,30 @@
 #define SDLOG_TASK_IDLE_DELAY_MS 10u
 #define SDLOG_TASK_BACKLOG_YIELD_POLLS 8u
 #define SDLOG_TASK_RT_PROFILER_PERIOD_MS 500u
+#define SDLOG_TASK_BOOT_DELAY_MS 2000u
+#define SDLOG_TASK_REMOUNT_SETTLE_MS 2000u
+#define SDLOG_TASK_REOPEN_RETRY_MS 1000u
+#define SDLOG_TASK_MOUNT_RETRY_START_MS 200u
+#define SDLOG_TASK_MOUNT_RETRY_MAX_MS 2000u
+
+static uint8_t sdlog_time_reached(uint32_t now_ms, uint32_t deadline_ms)
+{
+    return ((int32_t)(now_ms - deadline_ms) >= 0) ? 1u : 0u;
+}
+
+static void sdlog_grow_mount_retry(uint32_t *retry_ms)
+{
+    if (retry_ms == NULL || *retry_ms >= SDLOG_TASK_MOUNT_RETRY_MAX_MS)
+    {
+        return;
+    }
+
+    *retry_ms *= 2u;
+    if (*retry_ms > SDLOG_TASK_MOUNT_RETRY_MAX_MS)
+    {
+        *retry_ms = SDLOG_TASK_MOUNT_RETRY_MAX_MS;
+    }
+}
 
 static uint8_t sdlog_rt_profiler_id_active(rt_profiler_id_e id)
 {
@@ -82,7 +106,8 @@ void sdlog_task(void const *argument)
     (void)argument;
 
     // Wait for TF/SD ready (mount may be done by startup_service_task).
-    uint32_t retry_ms = 200u;
+    uint32_t retry_ms = SDLOG_TASK_MOUNT_RETRY_START_MS;
+    uint32_t next_start_ms = 0u;
     while (!sdcard_is_mounted())
     {
         const int m = sdcard_mount();
@@ -92,20 +117,17 @@ void sdlog_task(void const *argument)
         }
 
         osDelay(retry_ms);
-        if (retry_ms < 2000u)
-        {
-            retry_ms *= 2u;
-            if (retry_ms > 2000u)
-            {
-                retry_ms = 2000u;
-            }
-        }
+        sdlog_grow_mount_retry(&retry_ms);
     }
+    retry_ms = SDLOG_TASK_MOUNT_RETRY_START_MS;
 
     if ((test_mode_e)g_config.test.mode != TEST_MODE_ENTERTAIN)
     {
-        sdlog_wait_boot_delay_ms(2000u);
-        (void)sdlog_start();
+        sdlog_wait_boot_delay_ms(SDLOG_TASK_BOOT_DELAY_MS);
+        if (sdlog_start() != 0)
+        {
+            next_start_ms = bsp_time_get_tick_ms() + SDLOG_TASK_REOPEN_RETRY_MS;
+        }
     }
 
     while (1)
@@ -117,11 +139,34 @@ void sdlog_task(void const *argument)
             continue;
         }
 
+        if (!sdcard_is_mounted())
+        {
+            const int m = sdcard_mount();
+            if (m != 0)
+            {
+                osDelay(retry_ms);
+                sdlog_grow_mount_retry(&retry_ms);
+                continue;
+            }
+            retry_ms = SDLOG_TASK_MOUNT_RETRY_START_MS;
+            next_start_ms = bsp_time_get_tick_ms() + SDLOG_TASK_REMOUNT_SETTLE_MS;
+        }
+
         // If the log file was closed due to an error, try to reopen it.
         if (!sdlog_is_active() && sdcard_is_mounted())
         {
-            sdlog_wait_boot_delay_ms(2000u);
-            (void)sdlog_start();
+            const uint32_t now_ms = bsp_time_get_tick_ms();
+            if (!sdlog_time_reached(now_ms, next_start_ms))
+            {
+                osDelay(SDLOG_TASK_IDLE_DELAY_MS);
+                continue;
+            }
+
+            sdlog_wait_boot_delay_ms(SDLOG_TASK_BOOT_DELAY_MS);
+            if (sdlog_start() != 0)
+            {
+                next_start_ms = bsp_time_get_tick_ms() + SDLOG_TASK_REOPEN_RETRY_MS;
+            }
         }
 
         if (!sdlog_is_active())

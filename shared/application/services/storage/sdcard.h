@@ -17,6 +17,11 @@
 int sdcard_mount(void);
 
 /**
+  * @brief  Clear cached mount state and unregister the FatFs volume.
+  */
+void sdcard_unmount(void);
+
+/**
   * @brief  Check if SD card is mounted.
   * @retval 1 mounted, 0 not mounted.
   */
@@ -29,4 +34,3 @@ int sdcard_is_mounted(void);
 int sdcard_boot_mark(void);
 
 #endif
-

@@ -7,6 +7,22 @@
 
 #define SD_SPI_SECTOR_SIZE 512u
 
+#ifndef SD_SPI_SELECT_READY_TIMEOUT_MS
+#define SD_SPI_SELECT_READY_TIMEOUT_MS 2000u
+#endif
+
+#ifndef SD_SPI_WRITE_READY_TIMEOUT_MS
+#if defined(STM32F407xx)
+#define SD_SPI_WRITE_READY_TIMEOUT_MS 10000u
+#else
+#define SD_SPI_WRITE_READY_TIMEOUT_MS 5000u
+#endif
+#endif
+
+#ifndef SD_SPI_TRANSFER_TIMEOUT_MS
+#define SD_SPI_TRANSFER_TIMEOUT_MS 1000u
+#endif
+
 // Start slow for init, then speed up. Actual prescaler values are owned by the BSP port.
 #define SD_SPI_SPEED_INIT SD_SPI_PORT_SPEED_INIT
 #define SD_SPI_SPEED_FAST SD_SPI_PORT_SPEED_FAST
@@ -120,7 +136,7 @@ static uint8_t sd_spi_select(void)
 {
     sd_spi_cs_low();
     (void)sd_spi_txrx(0xFFu);
-    if (!sd_spi_wait_ready(200u))
+    if (!sd_spi_wait_ready(SD_SPI_SELECT_READY_TIMEOUT_MS))
     {
         sd_spi_deselect();
         return 0u;
@@ -216,17 +232,18 @@ static int sd_spi_recv_data(uint8_t *buf, uint32_t len, uint32_t timeout_ms)
 
 static int sd_spi_xmit_data(const uint8_t *buf, uint32_t len)
 {
-    if (!sd_spi_wait_ready(500u))
+    if (!sd_spi_wait_ready(SD_SPI_WRITE_READY_TIMEOUT_MS))
     {
         return -1;
     }
 
     (void)sd_spi_txrx(SD_SPI_TOKEN_START_BLOCK);
-    if (len <= SD_SPI_SECTOR_SIZE && sd_spi_txrx_dma(buf, sd_spi_dummy_rx, (uint16_t)len, 1000u) == 0)
+    if (len <= SD_SPI_SECTOR_SIZE &&
+        sd_spi_txrx_dma(buf, sd_spi_dummy_rx, (uint16_t)len, SD_SPI_TRANSFER_TIMEOUT_MS) == 0)
     {
         // ok
     }
-    else if (sd_spi_port_transmit(buf, (uint16_t)len, 1000u) != 0)
+    else if (sd_spi_port_transmit(buf, (uint16_t)len, SD_SPI_TRANSFER_TIMEOUT_MS) != 0)
     {
         return -2;
     }
@@ -241,7 +258,7 @@ static int sd_spi_xmit_data(const uint8_t *buf, uint32_t len)
         return -3;
     }
 
-    if (!sd_spi_wait_ready(500u))
+    if (!sd_spi_wait_ready(SD_SPI_WRITE_READY_TIMEOUT_MS))
     {
         return -4;
     }
@@ -469,7 +486,7 @@ int sd_spi_sync(void)
         sd_spi_unlock();
         return -2;
     }
-    const uint8_t ready = sd_spi_wait_ready(500u);
+    const uint8_t ready = sd_spi_wait_ready(SD_SPI_WRITE_READY_TIMEOUT_MS);
     sd_spi_deselect();
     sd_spi_unlock();
     return ready ? 0 : -3;

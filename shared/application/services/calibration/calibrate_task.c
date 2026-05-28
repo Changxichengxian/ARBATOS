@@ -261,12 +261,7 @@ void calibrate_task(void const *pvParameters)
   */
 int8_t get_control_temperature(void)
 {
-    if ((test_mode_e)g_config.test.mode == TEST_MODE_IMU_GYRO_CALI)
-    {
-        return 40;
-    }
-
-    return head_cali.temperature;
+    return 40;
 }
 
 /**

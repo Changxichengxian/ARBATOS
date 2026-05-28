@@ -94,8 +94,8 @@ config_t g_config = {
             .leg_split_pid = {30.0f, 0.0f, 1.0f, 2.0f, 0.0f},
             .turn_pid = {0.6f, 0.0f, 0.08f, 0.20f, 0.0f},
             .roll_pid = {25.0f, 0.0f, 3.0f, 15.0f, 0.0f},
-            .pitch_balance_offset_right_rad = 0.050f,
-            .pitch_balance_offset_left_rad = -0.050f,
+            .pitch_balance_offset_right_rad = 0.0f,
+            .pitch_balance_offset_left_rad = 0.0f,
             .max_v_mps = 0.45f,
             .max_yaw_rate_radps = 1.20f,
             .rc_deadband = 10u,
@@ -137,6 +137,9 @@ config_t g_config = {
             .foot_test_torque_ff_nm = 0.0f, // [634]
             .foot_test_torque_limit_nm = 0.30f, // [635]
             .foot_test_forward_dir = 1, // [636] 前后方向反了就改成 -1
+            .control_stage = 0u, // [637] 0 bench, 1 position+LQR, 2 VMC height, 3 VMC assist
+            .lqr_wheel_torque_scale = 0.18f, // [638]
+            .lqr_hip_torque_scale = 0.18f, // [639]
             .right_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J3,
             .right_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J4,
             .right_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J0,
@@ -242,9 +245,9 @@ config_t g_config = {
             .temperature_pid = {1600.0f, 0.2f, 0.0f, 4500.0f, 4400.0f}, // 温控 PID
             .temperature_pid_max_out = 4500.0f,                       // 输出上限
             .temperature_pid_max_iout = 4400.0f,                      // 积分上限
-            // PWM 上限需与 CubeMX 中 Heat_PWM(TIM3_CH2) 的 ARR+1 对齐：
-            // - 当前 TIM3 ARR=49 (Period=49) => pwm_max=50
-            .imu_temp_pwm_max = 50,                                   // [219] PWM 上限
+            // PWM 上限需与 CubeMX 中 IMU Heat_PWM(TIM10_CH1) 的 ARR+1 对齐：
+            // - 当前 TIM10 ARR=4999 (Period=4999) => pwm_max=5000
+            .imu_temp_pwm_max = 5000,                                 // [219] PWM 上限
             .task_init_time_ms = 7,                                   // 任务延时
         },
 
@@ -362,7 +365,7 @@ config_t g_config = {
 
     .test =
         {
-            .mode = TEST_MODE_ENTERTAIN,// [244] 测试模式（AUX 口发送 244:<value>）
+            .mode = TEST_MODE_NONE,// [244] 测试模式（AUX 口发送 244:<value>）
             // 可直接复制的取值（枚举值 / AUX value）：
             // 0: TEST_MODE_NONE,
             // 1: TEST_MODE_CHASSIS_ONLY,

@@ -69,6 +69,16 @@ int sdcard_mount(void)
     return (int)res;
 }
 
+void sdcard_unmount(void)
+{
+    sdcard_lock();
+
+    sd_mounted = 0u;
+    (void)f_mount(NULL, "0:", 0);
+
+    sdcard_unlock();
+}
+
 int sdcard_is_mounted(void)
 {
     return (sd_mounted != 0u) ? 1 : 0;

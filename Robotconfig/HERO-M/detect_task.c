@@ -13,6 +13,7 @@
 #include "cmsis_os.h"
 #include "config.h"
 #include "watch.h"
+#include "manual_input.h"
 #include "sdlog.h"
 #include "sdcard.h"
 #include "bsp_buzzer.h"
@@ -123,7 +124,7 @@ static void sdlog_pack_control_summary(sdlog_control_summary_t *out)
     }
 
     memset(out, 0, sizeof(*out));
-    out->manual_source = g_watch.diag.manual_active_source;
+    out->manual_source = remote_control_get_active_source();
     out->chassis_mode = (uint8_t)g_watch.chassis.mode;
     out->yaw_mode = (uint8_t)g_watch.gimbal.yaw_mode;
     out->pitch_mode = (uint8_t)g_watch.gimbal.pitch_mode;

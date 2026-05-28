@@ -40,15 +40,29 @@
 #include "task.h"
 
 #ifndef SDLOG_BUF_SIZE
+#if defined(STM32H723xx) || defined(STM32H7xx) || defined(STM32H7)
+#define SDLOG_BUF_SIZE (64u * 1024u)
+#elif defined(STM32F407xx)
+#define SDLOG_BUF_SIZE (32u * 1024u)
+#else
 #define SDLOG_BUF_SIZE (16u * 1024u)
+#endif
 #endif
 
 #ifndef SDLOG_FLUSH_CHUNK_MAX
+#if defined(STM32F407xx)
+#define SDLOG_FLUSH_CHUNK_MAX 512u
+#else
 #define SDLOG_FLUSH_CHUNK_MAX (2u * 1024u)
+#endif
 #endif
 
 #ifndef SDLOG_SYNC_PERIOD_MS
+#if defined(STM32H723xx) || defined(STM32H7xx) || defined(STM32H7) || defined(STM32F407xx)
+#define SDLOG_SYNC_PERIOD_MS 5000u
+#else
 #define SDLOG_SYNC_PERIOD_MS 1000u
+#endif
 #endif
 
 #ifndef SDLOG_FLUSH_BLOCKS_PER_POLL
@@ -783,6 +797,7 @@ static int sdlog_open_next_file(void)
             {
                 sdlog_last_error = (wr0 == FR_OK) ? -1 : (int32_t)wr0;
                 (void)f_close(&sdlog_fp);
+                sdcard_unmount();
                 return -3;
             }
 
@@ -828,6 +843,7 @@ static int sdlog_open_next_file(void)
             if (sdlog_write_block(raw, raw_len) != 0)
             {
                 (void)f_close(&sdlog_fp);
+                sdcard_unmount();
                 return -4;
             }
 
@@ -836,6 +852,7 @@ static int sdlog_open_next_file(void)
             {
                 sdlog_last_error = (int32_t)sync_r;
                 (void)f_close(&sdlog_fp);
+                sdcard_unmount();
                 return -6;
             }
 
@@ -857,6 +874,7 @@ static int sdlog_open_next_file(void)
         if (r != FR_EXIST)
         {
             sdlog_last_error = (int32_t)r;
+            sdcard_unmount();
             return (int)r;
         }
     }
@@ -1009,6 +1027,7 @@ static void sdlog_close_on_error(void)
 
     (void)sdlog_sync_profiled();
     (void)f_close(&sdlog_fp);
+    sdcard_unmount();
 }
 
 void sdlog_poll(void)

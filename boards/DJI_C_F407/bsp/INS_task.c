@@ -142,6 +142,7 @@ static float imu_calc_dynamic_kp(bool_t use_acc, const fp32 gyro[3], uint32_t no
 static void imu_update_euler_from_quat(const fp32 quat[4], fp32 euler[3]);
 static void imu_fusion_reset(imu_fusion_mode_e mode, const fp32 acc[3], const fp32 mag[3]);
 static void imu_rotate_gyro_raw(fp32 gyro_rot[3], const fp32 gyro_raw[3]);
+static void imu_copy_gyro_corrected(fp32 gyro_rot[3], const fp32 gyro_corrected[3]);
 static void imu_rotate_accel_raw(fp32 accel_rot[3], const fp32 accel_raw[3]);
 static void gyro_zero_apply_offset(const fp32 offset[3]);
 static void gyro_zero_runtime_update(const fp32 gyro_raw[3], const fp32 accel_raw[3], fp32 temp_c, uint32_t now_ms);
@@ -189,6 +190,10 @@ fp32 mag_cali_offset[3];
 static uint8_t first_temperate;
 static const imu_config_t *const imu_cfg = &g_config.imu;
 static pid_type_def imu_temp_pid;
+static volatile fp32 g_ins_temp_c = 0.0f;
+static volatile fp32 g_ins_heater_pid_out = 0.0f;
+static volatile uint16_t g_ins_heater_pwm = 0u;
+static volatile uint8_t g_ins_heater_mode = 0u;
 
 static const float timing_time = 0.001f;   //tast run time , unit s.任务运行的时间 单位 s
 
@@ -226,6 +231,7 @@ static imu_fusion_mode_e imu_fusion_mode_active = IMU_FUSION_MAHONY_6AXIS;
 static uint32_t imu_pid_log_tick_ms = 0;
 static uint32_t imu_trust_log_tick_ms = 0;
 static gyro_zero_cali_runtime_state_t gyro_zero_state = {0};
+static uint8_t gyro_zero_apply_delta = 0u;
 
 typedef struct
 {
@@ -365,6 +371,18 @@ static void imu_rotate_gyro_raw(fp32 gyro_rot[3], const fp32 gyro_raw[3])
     }
 }
 
+static void imu_copy_gyro_corrected(fp32 gyro_rot[3], const fp32 gyro_corrected[3])
+{
+    if (gyro_rot == NULL || gyro_corrected == NULL)
+    {
+        return;
+    }
+
+    gyro_rot[0] = gyro_corrected[0];
+    gyro_rot[1] = gyro_corrected[1];
+    gyro_rot[2] = gyro_corrected[2];
+}
+
 static void imu_rotate_accel_raw(fp32 accel_rot[3], const fp32 accel_raw[3])
 {
     if (accel_rot == NULL || accel_raw == NULL)
@@ -396,6 +414,21 @@ static void gyro_zero_apply_offset(const fp32 offset[3])
     gyro_offset[2] = gyro_cali_offset[2];
 }
 
+static void gyro_zero_apply_offset_delta(const fp32 offset_delta[3])
+{
+    if (offset_delta == NULL)
+    {
+        return;
+    }
+
+    gyro_cali_offset[0] += offset_delta[0];
+    gyro_cali_offset[1] += offset_delta[1];
+    gyro_cali_offset[2] += offset_delta[2];
+    gyro_offset[0] = gyro_cali_offset[0];
+    gyro_offset[1] = gyro_cali_offset[1];
+    gyro_offset[2] = gyro_cali_offset[2];
+}
+
 __weak bool_t calibrate_gyro_offset_save(const fp32 offset[3])
 {
     gyro_zero_apply_offset(offset);
@@ -417,7 +450,14 @@ static void gyro_zero_sample_done_cb(const gyro_zero_cali_sample_state_t *state,
 static void gyro_zero_apply_offset_cb(const fp32 offset[3], void *ctx)
 {
     (void)ctx;
-    gyro_zero_apply_offset(offset);
+    if (gyro_zero_apply_delta != 0u)
+    {
+        gyro_zero_apply_offset_delta(offset);
+    }
+    else
+    {
+        gyro_zero_apply_offset(offset);
+    }
 }
 
 static bool_t gyro_zero_save_offset_cb(const fp32 offset[3], void *ctx)
@@ -441,21 +481,26 @@ static uint8_t gyro_zero_boot_adjust_allowed_by_input(void)
 
 static void gyro_zero_runtime_update(const fp32 gyro_raw[3], const fp32 accel_raw[3], fp32 temp_c, uint32_t now_ms)
 {
+    const uint8_t test_mode_active = ((test_mode_e)g_config.test.mode == TEST_MODE_IMU_GYRO_CALI) ? 1u : 0u;
+    const fp32 *gyro_sample = (test_mode_active != 0u) ? gyro_raw : INS_gyro;
+    gyro_zero_apply_delta = (test_mode_active == 0u) ? 1u : 0u;
+
     const gyro_zero_cali_runtime_cfg_t cfg = {
-        .test_mode_active = ((test_mode_e)g_config.test.mode == TEST_MODE_IMU_GYRO_CALI) ? 1u : 0u,
+        .test_mode_active = test_mode_active,
         .temp_c = temp_c,
         .target_temp_c = (fp32)get_control_temperature(),
         .heater_stable = first_temperate,
         .boot_adjust_allowed = gyro_zero_boot_adjust_allowed_by_input(),
         .now_ms = now_ms,
-        .rotate_gyro = imu_rotate_gyro_raw,
+        .rotate_gyro = (test_mode_active != 0u) ? imu_rotate_gyro_raw : imu_copy_gyro_corrected,
         .rotate_accel = imu_rotate_accel_raw,
         .apply_offset = gyro_zero_apply_offset_cb,
         .save_offset = gyro_zero_save_offset_cb,
         .sample_done = gyro_zero_sample_done_cb,
         .ctx = NULL,
     };
-    gyro_zero_cali_runtime_update(&gyro_zero_state, &cfg, gyro_raw, accel_raw);
+    gyro_zero_cali_runtime_update(&gyro_zero_state, &cfg, gyro_sample, accel_raw);
+    gyro_zero_apply_delta = 0u;
 }
 
 
@@ -705,14 +750,19 @@ static void imu_temp_control(fp32 temp)
 {
     uint16_t tempPWM;
     static uint8_t temp_constant_time = 0;
+    g_ins_temp_c = temp;
+
     if (first_temperate)
     {
         PID_calc(&imu_temp_pid, temp, get_control_temperature());
+        g_ins_heater_pid_out = imu_temp_pid.out;
         if (imu_temp_pid.out < 0.0f)
         {
             imu_temp_pid.out = 0.0f;
         }
         tempPWM = (uint16_t)imu_temp_pid.out;
+        g_ins_heater_mode = 1u;
+        g_ins_heater_pwm = tempPWM;
         IMU_temp_PWM(tempPWM);
     }
     else
@@ -731,6 +781,9 @@ static void imu_temp_control(fp32 temp)
             }
         }
 
+        g_ins_heater_mode = 0u;
+        g_ins_heater_pid_out = (fp32)(MPU6500_TEMP_PWM_MAX - 1);
+        g_ins_heater_pwm = (uint16_t)(MPU6500_TEMP_PWM_MAX - 1);
         IMU_temp_PWM(MPU6500_TEMP_PWM_MAX - 1);
     }
 }
@@ -1050,6 +1103,26 @@ bool_t ins_is_gyro_boot_calibrating(void)
 ins_gyro_boot_init_result_e ins_get_gyro_boot_initial_result(void)
 {
     return (ins_gyro_boot_init_result_e)gyro_zero_cali_runtime_result(&gyro_zero_state);
+}
+
+fp32 ins_get_imu_temperature_c(void)
+{
+    return g_ins_temp_c;
+}
+
+uint16_t ins_get_imu_heater_pwm(void)
+{
+    return g_ins_heater_pwm;
+}
+
+uint8_t ins_get_imu_heater_mode(void)
+{
+    return g_ins_heater_mode;
+}
+
+fp32 ins_get_imu_heater_pid_out(void)
+{
+    return g_ins_heater_pid_out;
 }
 
 

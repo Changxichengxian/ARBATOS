@@ -41,6 +41,9 @@ typedef enum
     WHEELLEG_MODE_FAULT,
     WHEELLEG_MODE_BENCH = 9, // 板凳模型：关节锁初始位置，轮端 LQR，不发 VMC 关节力矩
     WHEELLEG_MODE_LEG_POSITION = 10, // 非 VMC 腿位置模式：遥控目标腿长/足端前后，关节走位置环
+    WHEELLEG_MODE_LEG_LQR = 11, // 关节位置控腿高，轮端 LQR
+    WHEELLEG_MODE_VMC_HEIGHT = 12, // VMC 控腿高，轮端 LQR
+    WHEELLEG_MODE_VMC_BALANCE = 13, // VMC 腿高和髋力矩辅助轮端 LQR
 } wheelleg_mode_e;
 
 typedef enum
@@ -111,6 +114,7 @@ typedef struct
     uint8_t controller_active;
     uint16_t active_controller_id;
     fp32 target_v_mps;
+    fp32 target_yaw_rate_radps;
     fp32 target_leg_length_m;
     fp32 target_foot_x_m;
     fp32 target_foot_y_m;

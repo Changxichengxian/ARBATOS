@@ -267,6 +267,27 @@ static const motor_model_db_entry_t s_motor_model_db[MOTOR_MODEL__COUNT] =
             .torque_current_range_a = 0.0f,
             .fb_current_meas_range_abs = 0,
         },
+    [MOTOR_MODEL_N6014B] =
+        {
+            .base = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 38.0f / 3.0f},
+            .rx_format = MOTOR_MODEL_RX_FMT_NONE,
+            .default_protocol = (uint8_t)MOTOR_PROTOCOL_N6014B_RS485,
+            .default_control_mode = (uint8_t)MOTOR_CONTROL_MODE_MIT,
+            .caps = (uint8_t)(MOTOR_MODEL_CAP_MIT |
+                               MOTOR_MODEL_CAP_POS_VEL |
+                               MOTOR_MODEL_CAP_SPEED |
+                               MOTOR_MODEL_CAP_FORCE_POS),
+            .mit_limits = {
+                .position_max = 32508.539f,
+                .velocity_max = 253.965f,
+                .kp_max = 410.725f,
+                .kd_max = 102.681f,
+                .torque_max = 162.128f,
+            },
+            .cmd_current_range_abs = 32767,
+            .torque_current_range_a = 0.0f,
+            .fb_current_meas_range_abs = 0,
+        },
     [MOTOR_MODEL_DM_H3510_V10] =
         {
             .base = {.can_id_base = 0x000u, .max_current = 0, .reduction_ratio = 1.0f},

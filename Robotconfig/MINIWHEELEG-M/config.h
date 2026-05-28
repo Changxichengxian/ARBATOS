@@ -434,6 +434,7 @@ typedef enum
     MOTOR_MODEL_DM_J8006_2EC_V11,
     MOTOR_MODEL_DM_J8006_2EC_V10,
     MOTOR_MODEL_UNITREE_GO_M8010_6,
+    MOTOR_MODEL_N6014B,
     MOTOR_MODEL_DM_H3510_V10,
     MOTOR_MODEL_DM_6215,
     MOTOR_MODEL__COUNT
@@ -447,6 +448,7 @@ typedef enum
     MOTOR_PROTOCOL_DM_EXT_V1,
     MOTOR_PROTOCOL_DM_EXT_V2,
     MOTOR_PROTOCOL_UNITREE_RS485,
+    MOTOR_PROTOCOL_N6014B_RS485,
 } motor_protocol_e;
 
 typedef enum
@@ -988,6 +990,9 @@ typedef struct
     fp32 foot_test_torque_ff_nm; // [634]
     fp32 foot_test_torque_limit_nm; // [635]
     int8_t foot_test_forward_dir; // [636]
+    uint8_t control_stage; // [637] 0 bench, 1 position+LQR, 2 VMC height, 3 VMC assist
+    fp32 lqr_wheel_torque_scale; // [638]
+    fp32 lqr_hip_torque_scale; // [639]
 
     uint8_t right_front_actuator; // actuator_id_e
     uint8_t right_back_actuator;  // actuator_id_e

@@ -83,5 +83,10 @@ $content = @"
 #endif
 "@
 
+if (-not $content.EndsWith("`r`n")) {
+    $content += "`r`n"
+}
+
 [System.IO.File]::WriteAllText($OutputPath, $content, [System.Text.Encoding]::ASCII)
 Write-Host "generated $(Resolve-Path -LiteralPath $OutputPath)"
+exit 0

@@ -9,7 +9,7 @@
 #define GYRO_ZERO_CALI_TEST_SAMPLES          30000U
 #define GYRO_ZERO_CALI_BOOT_ADJUST_SAMPLES   3000U
 #define GYRO_ZERO_CALI_TEMP_STABLE_MS        2000U
-#define GYRO_ZERO_CALI_TEMP_ERR_C            0.5f
+#define GYRO_ZERO_CALI_TEMP_ERR_C            3.0f
 #define GYRO_ZERO_CALI_MOVING_LIMIT_DPS      5.0f
 #define GYRO_ZERO_CALI_ACC_TOL_G             0.05f
 #define GYRO_ZERO_CALI_DEG_TO_RAD            0.01745329251994329577f
@@ -238,6 +238,8 @@ static __inline void gyro_zero_cali_runtime_finish_test(gyro_zero_cali_runtime_s
     state->test_finished = 1u;
     state->calibrating = 0u;
     gyro_zero_cali_sample_reset(&state->test_sample);
+    gyro_zero_cali_sample_reset(&state->boot_adjust_sample);
+    gyro_zero_cali_temp_reset(&state->boot_adjust_temp);
 }
 
 static __inline void gyro_zero_cali_runtime_finish_boot_adjust(gyro_zero_cali_runtime_state_t *state,

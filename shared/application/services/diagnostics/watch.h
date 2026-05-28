@@ -325,115 +325,145 @@ typedef struct
 
 typedef struct
 {
-    int16_t can1_1ff_status;
-    uint32_t can1_err;
-    uint32_t can2_err;
-    uint8_t can1_tx_status;
-    uint8_t can2_tx_status;
-    uint32_t can1_rx_count;
-    uint32_t can1_tx_count;
-    uint32_t can1_tx_fail_count;
-    uint32_t can1_rx_drop_count;
-    uint32_t can1_rx_fps;
-    uint32_t can1_tx_fps;
-    uint32_t can1_tx_fail_fps;
-    uint32_t can1_rx_drop_fps;
-    uint32_t can_rx_pending;
-    uint16_t can1_last_rx_id;
-    uint16_t can1_last_tx_id;
-    uint8_t can1_last_rx_dlc;
-    uint8_t can1_last_tx_dlc;
-    uint8_t can1_tx_error_count;
-    uint8_t can1_rx_error_count;
-    uint32_t can2_rx_count;
-    uint32_t can2_tx_count;
-    uint32_t can2_tx_fail_count;
-    uint32_t can2_rx_drop_count;
-    uint32_t can2_rx_fps;
-    uint32_t can2_tx_fps;
-    uint32_t can2_tx_fail_fps;
-    uint32_t can2_rx_drop_fps;
-    uint16_t can2_last_rx_id;
-    uint16_t can2_last_tx_id;
-    uint8_t can2_last_rx_dlc;
-    uint8_t can2_last_tx_dlc;
-    uint8_t can2_tx_error_count;
-    uint8_t can2_rx_error_count;
-    uint8_t manual_active_source;
-    uint8_t sd_mounted;
-    uint8_t sdlog_active;
-    uint32_t manual_sbus_frame_count;
-    uint32_t manual_set_source_count;
+    uint8_t offline_need_geometry;
+    uint8_t offline_need_mass_inertia;
+    uint8_t offline_need_com_inertia;
+    uint8_t offline_need_motor_limits;
+    uint8_t offline_need_lqr_model;
+    uint8_t offline_need_stage_k;
+    uint8_t offline_need_qr_weights;
+    uint8_t offline_need_sign_table;
 
-    fp32 battery_voltage_v;
-    fp32 battery_percent;
-    uint8_t battery_low_alarm;
-    uint8_t adc_started;
-    uint16_t adc_raw0;
-    uint16_t adc_raw1;
-    fp32 adc_voltage0_v;
-    fp32 adc_voltage1_v;
-    uint32_t adc_start_ok_count;
-    uint32_t adc_start_fail_count;
+    uint8_t power_need_imu_sign;
+    uint8_t power_need_motor_online;
+    uint8_t power_need_joint_zero_dir;
+    uint8_t power_need_wheel_dir;
+    uint8_t power_need_fk_leg_state;
+    uint8_t power_need_jacobian_dir;
+    uint8_t power_need_observer_speed;
+    uint8_t power_need_lqr_response;
 
-    uint8_t imu_task_stage;
-    uint8_t imu_bmi088_init_error;
-    uint8_t imu_bmi088_fail_reg;
-    uint8_t imu_bmi088_fail_expect;
-    uint8_t imu_bmi088_fail_actual;
-    uint8_t imu_accel_chip_id;
-    uint8_t imu_gyro_chip_id;
-    uint8_t imu_gyro_read_chip_id;
-    uint8_t imu_gyro_read_ok;
-    uint8_t imu_gyro_boot_calibrating;
-    uint8_t imu_gyro_boot_result;
-    uint8_t imu_heater_mode;
-    uint16_t imu_heater_pwm;
+    uint8_t live_profile_on;
+    uint8_t live_manual_on;
+    uint8_t live_enabled;
+    uint8_t live_control_stage;
+    uint8_t live_mode;
+    uint8_t live_status_valid;
+    uint8_t live_state_valid;
+    uint8_t live_all_mit_online;
+    uint8_t live_imu_online;
+    uint8_t live_sdlog_active;
+    uint8_t live_lqr_debug_valid;
     uint8_t reserved0;
-    uint32_t imu_bmi088_init_count;
-    uint32_t imu_bmi088_init_error_count;
-    uint32_t imu_bmi088_read_count;
-    uint32_t imu_gyro_read_bad_count;
-    uint32_t imu_task_enter_count;
-    uint32_t imu_task_stage_tick_ms;
-    fp32 imu_temp_c;
-    fp32 imu_heater_pid_out;
+    uint16_t live_fault_flags;
+    uint16_t reserved1;
 
-    uint8_t wheelleg_lqr_valid;
-    uint8_t reserved1;
-    uint8_t reserved2;
-    uint8_t reserved3;
-    fp32 wheelleg_lqr_theta_err_deg;
-    fp32 wheelleg_lqr_dtheta_degps;
-    fp32 wheelleg_lqr_x_m;
-    fp32 wheelleg_lqr_v_err_mps;
-    fp32 wheelleg_lqr_pitch_deg;
-    fp32 wheelleg_lqr_pitch_gyro_degps;
-    fp32 wheelleg_lqr_right_torque_nm;
-    fp32 wheelleg_lqr_left_torque_nm;
+    fp32 lqr_wheel_scale;
+    fp32 lqr_hip_scale;
+    fp32 max_wheel_torque_nm;
+    fp32 max_joint_torque_nm;
 
-    uint32_t watch_update_count;
-    uint32_t watch_update_tick_ms;
-    uint32_t scheduler_state;
-    uint32_t task_count;
-    uint32_t current_task_handle;
-    char current_task_name[16];
-    watch_task_diag_t task;
-    watch_irq_diag_t irq;
-    watch_boot_stage_e boot_stage;
-    watch_boot_stage_e boot_trace[4]; // [0] 最新, [1] 上一次...
-    uint32_t error_handler_count;
-    watch_boot_stage_e error_stage;
-    uint32_t error_tick_ms;
-    uint32_t error_ipsr;
-    uint32_t error_arg0;
-    uint32_t error_arg1;
+    fp32 target_v_mps;
+    fp32 target_yaw_rate_radps;
+    fp32 target_leg_length_m;
+    fp32 target_foot_x_m;
+    fp32 target_foot_y_m;
+    fp32 target_leg_theta_deg;
+
+    fp32 pitch_deg;
+    fp32 pitch_gyro_deg_s;
+    fp32 x_dot_mps;
+    fp32 left_leg_length_m;
+    fp32 right_leg_length_m;
+    fp32 left_leg_theta_deg;
+    fp32 right_leg_theta_deg;
+    fp32 left_front_rel_deg;
+    fp32 left_back_rel_deg;
+    fp32 right_front_rel_deg;
+    fp32 right_back_rel_deg;
+    fp32 left_wheel_vel_deg_s;
+    fp32 right_wheel_vel_deg_s;
+    fp32 left_wheel_cmd_torque_nm;
+    fp32 right_wheel_cmd_torque_nm;
+    fp32 wheel_balance_cmd_nm;
+    fp32 wheel_turn_cmd_nm;
+    fp32 left_wheel_fb_torque_nm;
+    fp32 right_wheel_fb_torque_nm;
+    fp32 left_support_force_n;
+    fp32 right_support_force_n;
+    fp32 left_hip_torque_nm;
+    fp32 right_hip_torque_nm;
+
+    fp32 lqr_theta_err_deg;
+    fp32 lqr_dtheta_deg_s;
+    fp32 lqr_x_m;
+    fp32 lqr_v_err_mps;
+    fp32 lqr_pitch_err_deg;
+    fp32 lqr_left_pitch_err_deg;
+    fp32 lqr_pitch_gyro_deg_s;
+    fp32 lqr_left_output_nm;
+    fp32 lqr_right_output_nm;
+
+    uint8_t run_capture_active;
+    uint8_t run_capture_valid;
+    uint16_t reserved2;
+    uint32_t run_sample_count;
+    fp32 run_target_v_avg_mps;
+    fp32 run_target_v_abs_max_mps;
+    fp32 run_target_yaw_rate_avg_radps;
+    fp32 run_target_yaw_rate_abs_max_radps;
+    fp32 run_x_dot_avg_mps;
+    fp32 run_x_dot_min_mps;
+    fp32 run_x_dot_max_mps;
+    fp32 run_pitch_avg_deg;
+    fp32 run_pitch_min_deg;
+    fp32 run_pitch_max_deg;
+    fp32 run_lqr_pitch_gyro_avg_deg_s;
+    fp32 run_lqr_pitch_gyro_min_deg_s;
+    fp32 run_lqr_pitch_gyro_max_deg_s;
+    fp32 run_yaw_gyro_avg_deg_s;
+    fp32 run_yaw_gyro_abs_max_deg_s;
+    fp32 run_wheel_sum_avg_nm;
+    fp32 run_wheel_sum_abs_max_nm;
+    fp32 run_wheel_diff_avg_nm;
+    fp32 run_wheel_diff_abs_max_nm;
+    fp32 run_wheel_balance_avg_nm;
+    fp32 run_wheel_balance_abs_max_nm;
+    fp32 run_wheel_turn_avg_nm;
+    fp32 run_wheel_turn_abs_max_nm;
+    fp32 run_lqr_v_err_avg_mps;
+    fp32 run_lqr_v_err_min_mps;
+    fp32 run_lqr_v_err_max_mps;
+    fp32 run_lqr_x_avg_m;
+    fp32 run_lqr_x_min_m;
+    fp32 run_lqr_x_max_m;
+    fp32 run_lqr_pitch_err_avg_deg;
+    fp32 run_lqr_pitch_err_min_deg;
+    fp32 run_lqr_pitch_err_max_deg;
+    fp32 run_lqr_left_pitch_err_avg_deg;
+    fp32 run_lqr_left_pitch_err_min_deg;
+    fp32 run_lqr_left_pitch_err_max_deg;
+
 } watch_diag_t;
 
 typedef struct
 {
     uint32_t heap_free;
     uint32_t heap_ever_free;
+    uint32_t watch_update_count;
+    uint32_t watch_update_tick_ms;
+    uint32_t scheduler_state;
+    uint32_t task_count;
+    uint32_t current_task_handle;
+    char current_task_name[16];
+
+    uint8_t imu_task_stage;
+    uint8_t reserved0;
+    uint16_t reserved1;
+    uint32_t imu_task_enter_count;
+    uint32_t imu_task_stage_tick_ms;
+    watch_task_diag_t task;
+    watch_irq_diag_t irq;
 
     // FreeRTOS uxTaskGetStackHighWaterMark() results (unit: words).
 #if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
@@ -454,6 +484,15 @@ typedef struct
 
 typedef struct
 {
+    watch_boot_stage_e boot_stage;
+    watch_boot_stage_e boot_trace[4]; // [0] latest, [1] previous...
+    uint32_t error_handler_count;
+    watch_boot_stage_e error_stage;
+    uint32_t error_tick_ms;
+    uint32_t error_ipsr;
+    uint32_t error_arg0;
+    uint32_t error_arg1;
+
     // Captured in HardFault_HandlerC (stm32f4xx_it.c) for post-mortem debugging.
     uint32_t hardfault_valid;
     uint32_t hardfault_r0;
@@ -566,6 +605,7 @@ typedef struct
     uint16_t fault_flags;
     uint16_t active_controller_id;
     fp32 target_v_mps;
+    fp32 target_yaw_rate_radps;
     fp32 target_leg_length_m;
     fp32 target_foot_x_m;
     fp32 target_foot_y_m;

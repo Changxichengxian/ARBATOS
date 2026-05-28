@@ -242,6 +242,9 @@ CONFIG_PARAM_F32(633, "wheelleg_mit.foot_test_kd", CONFIG_PARAM_SCOPE_LOCOMOTION
 CONFIG_PARAM_F32(634, "wheelleg_mit.foot_test_torque_ff_nm", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.foot_test_torque_ff_nm, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_F32(635, "wheelleg_mit.foot_test_torque_limit_nm", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.foot_test_torque_limit_nm, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_I8_RANGE(636, "wheelleg_mit.foot_test_forward_dir", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.foot_test_forward_dir, -1, 1, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_U8_DEFAULT(637, "wheelleg_mit.control_stage", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.control_stage, (uint8_t)3u, (uint8_t)0u, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_F32(638, "wheelleg_mit.lqr_wheel_torque_scale", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.lqr_wheel_torque_scale, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_F32(639, "wheelleg_mit.lqr_hip_torque_scale", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.lqr_hip_torque_scale, CONFIG_PARAM_APPLY_NONE)
 
 // manual input
 CONFIG_PARAM_U8_DEFAULT(300, "manual_input.active_source", CONFIG_PARAM_SCOPE_COMMON, g_config.manual_input.active_source, (uint8_t)MANUAL_INPUT_SRC_MAX, (uint8_t)MANUAL_INPUT_SRC_AUTO, CONFIG_PARAM_APPLY_REMOTE_REFRESH)

@@ -42,6 +42,49 @@
 
 watch_t g_watch;
 
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
+typedef struct
+{
+    uint8_t active;
+    uint8_t valid;
+    uint16_t reserved0;
+    uint32_t sample_count;
+    fp32 target_v_sum;
+    fp32 target_v_abs_max;
+    fp32 target_yaw_rate_sum;
+    fp32 target_yaw_rate_abs_max;
+    fp32 x_dot_sum;
+    fp32 x_dot_min;
+    fp32 x_dot_max;
+    fp32 pitch_sum;
+    fp32 pitch_min;
+    fp32 pitch_max;
+    fp32 lqr_pitch_gyro_sum;
+    fp32 lqr_pitch_gyro_min;
+    fp32 lqr_pitch_gyro_max;
+    fp32 yaw_gyro_sum;
+    fp32 yaw_gyro_abs_max;
+    fp32 wheel_sum_sum;
+    fp32 wheel_sum_abs_max;
+    fp32 wheel_diff_sum;
+    fp32 wheel_diff_abs_max;
+    fp32 lqr_v_err_sum;
+    fp32 lqr_v_err_min;
+    fp32 lqr_v_err_max;
+    fp32 lqr_x_sum;
+    fp32 lqr_x_min;
+    fp32 lqr_x_max;
+    fp32 lqr_pitch_err_sum;
+    fp32 lqr_pitch_err_min;
+    fp32 lqr_pitch_err_max;
+    fp32 lqr_left_pitch_err_sum;
+    fp32 lqr_left_pitch_err_min;
+    fp32 lqr_left_pitch_err_max;
+} watch_wheelleg_run_capture_t;
+
+static watch_wheelleg_run_capture_t s_wheelleg_run_capture;
+#endif
+
 // Some targets do not compile arm_task.c at all. Keep watch linkable there and
 // let real arm_task.c override this fallback when the Unitree executor is used.
 __weak const arm_j0_unitree_state_t *arm_j0_unitree_get_state(void)
@@ -277,6 +320,11 @@ static fp32 watch_rad_to_deg(fp32 rad)
     return rad * 57.29577951308232f;
 }
 
+static fp32 watch_abs_fp32(fp32 value)
+{
+    return (value >= 0.0f) ? value : -value;
+}
+
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
 static uint8_t watch_block_active_locomotion_classic(void)
 {
@@ -344,42 +392,42 @@ static watch_task_diag_entry_t *watch_task_diag_get(watch_task_id_e task_id)
     switch (task_id)
     {
     case WATCH_TASK_DEFAULT:
-        return &g_watch.diag.task.default_task;
+        return &g_watch.rtos.task.default_task;
     case WATCH_TASK_DETECT:
-        return &g_watch.diag.task.detect_task;
+        return &g_watch.rtos.task.detect_task;
     case WATCH_TASK_IMU:
-        return &g_watch.diag.task.imu_task;
+        return &g_watch.rtos.task.imu_task;
     case WATCH_TASK_GIMBAL_CONTROL:
 #if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
-        return &g_watch.diag.task.gimbal_control_task;
+        return &g_watch.rtos.task.gimbal_control_task;
 #else
         return NULL;
 #endif
     case WATCH_TASK_CHASSIS_CONTROL:
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
-        return &g_watch.diag.task.chassis_control_task;
+        return &g_watch.rtos.task.chassis_control_task;
 #else
         return NULL;
 #endif
     case WATCH_TASK_CAN_FEEDBACK_RX:
-        return &g_watch.diag.task.can_feedback_rx_task;
+        return &g_watch.rtos.task.can_feedback_rx_task;
     case WATCH_TASK_CAN_COMMAND_TX:
-        return &g_watch.diag.task.can_command_tx_task;
+        return &g_watch.rtos.task.can_command_tx_task;
     case WATCH_TASK_RC_SBUS:
-        return &g_watch.diag.task.rc_sbus_task;
+        return &g_watch.rtos.task.rc_sbus_task;
     case WATCH_TASK_HOST_LINK:
-        return &g_watch.diag.task.host_link_task;
+        return &g_watch.rtos.task.host_link_task;
     case WATCH_TASK_ELRS:
-        return &g_watch.diag.task.elrs_task;
+        return &g_watch.rtos.task.elrs_task;
     case WATCH_TASK_ARM:
 #if WATCH_ENABLE_ARM_J0_UNITREE
-        return &g_watch.diag.task.arm_task;
+        return &g_watch.rtos.task.arm_task;
 #else
         return NULL;
 #endif
     case WATCH_TASK_WHEELLEG_MIT:
 #if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
-        return &g_watch.diag.task.wheelleg_mit_task;
+        return &g_watch.rtos.task.wheelleg_mit_task;
 #else
         return NULL;
 #endif
@@ -393,33 +441,33 @@ static watch_irq_diag_entry_t *watch_irq_diag_get(watch_irq_id_e irq_id)
     switch (irq_id)
     {
     case WATCH_IRQ_IST8310_EXTI:
-        return &g_watch.diag.irq.ist8310_exti;
+        return &g_watch.rtos.irq.ist8310_exti;
     case WATCH_IRQ_IMU_EXTI:
-        return &g_watch.diag.irq.imu_exti;
+        return &g_watch.rtos.irq.imu_exti;
     case WATCH_IRQ_SD_EXTI:
-        return &g_watch.diag.irq.sd_exti;
+        return &g_watch.rtos.irq.sd_exti;
     case WATCH_IRQ_CAN1_RX0:
-        return &g_watch.diag.irq.can1_rx0;
+        return &g_watch.rtos.irq.can1_rx0;
     case WATCH_IRQ_CAN2_RX0:
-        return &g_watch.diag.irq.can2_rx0;
+        return &g_watch.rtos.irq.can2_rx0;
     case WATCH_IRQ_USART1:
-        return &g_watch.diag.irq.usart1;
+        return &g_watch.rtos.irq.usart1;
     case WATCH_IRQ_UART7:
-        return &g_watch.diag.irq.uart7;
+        return &g_watch.rtos.irq.uart7;
     case WATCH_IRQ_UART8:
-        return &g_watch.diag.irq.uart8;
+        return &g_watch.rtos.irq.uart8;
     case WATCH_IRQ_OTG_FS:
-        return &g_watch.diag.irq.otg_fs;
+        return &g_watch.rtos.irq.otg_fs;
     case WATCH_IRQ_TIM6_DAC:
-        return &g_watch.diag.irq.tim6_dac;
+        return &g_watch.rtos.irq.tim6_dac;
     case WATCH_IRQ_DMA_USART1_RX:
-        return &g_watch.diag.irq.dma_usart1_rx;
+        return &g_watch.rtos.irq.dma_usart1_rx;
     case WATCH_IRQ_DMA_SPI5_TX:
-        return &g_watch.diag.irq.dma_spi5_tx;
+        return &g_watch.rtos.irq.dma_spi5_tx;
     case WATCH_IRQ_DMA_SPI5_RX:
-        return &g_watch.diag.irq.dma_spi5_rx;
+        return &g_watch.rtos.irq.dma_spi5_rx;
     case WATCH_IRQ_DMA_SDIO_TX:
-        return &g_watch.diag.irq.dma_sdio_tx;
+        return &g_watch.rtos.irq.dma_sdio_tx;
     default:
         return NULL;
     }
@@ -432,16 +480,16 @@ void watch_diag_set_boot_stage(watch_boot_stage_e stage)
 
 void watch_diag_mark_error_handler(uint32_t tick_ms, uint32_t ipsr)
 {
-    g_watch.diag.error_handler_count++;
-    g_watch.diag.error_stage = g_watch.diag.boot_stage;
-    g_watch.diag.error_tick_ms = tick_ms;
-    g_watch.diag.error_ipsr = ipsr;
+    g_watch.fault.error_handler_count++;
+    g_watch.fault.error_stage = g_watch.fault.boot_stage;
+    g_watch.fault.error_tick_ms = tick_ms;
+    g_watch.fault.error_ipsr = ipsr;
 }
 
 void watch_diag_set_error_args(uint32_t arg0, uint32_t arg1)
 {
-    g_watch.diag.error_arg0 = arg0;
-    g_watch.diag.error_arg1 = arg1;
+    g_watch.fault.error_arg0 = arg0;
+    g_watch.fault.error_arg1 = arg1;
 }
 
 void watch_task_beat(watch_task_id_e task_id)
@@ -517,11 +565,11 @@ void watch_task_error(watch_task_id_e task_id)
 void watch_imu_set_stage(watch_imu_stage_e stage)
 {
     taskENTER_CRITICAL();
-    g_watch.diag.imu_task_stage = (uint8_t)stage;
-    g_watch.diag.imu_task_stage_tick_ms = HAL_GetTick();
+    g_watch.rtos.imu_task_stage = (uint8_t)stage;
+    g_watch.rtos.imu_task_stage_tick_ms = HAL_GetTick();
     if (stage == WATCH_IMU_STAGE_ENTER)
     {
-        g_watch.diag.imu_task_enter_count++;
+        g_watch.rtos.imu_task_enter_count++;
     }
     taskEXIT_CRITICAL();
 }
@@ -631,21 +679,21 @@ static void watch_diag_push_stage(watch_boot_stage_e stage)
 {
     if (stage == WATCH_BOOT_STAGE_NONE)
     {
-        g_watch.diag.boot_stage = stage;
+        g_watch.fault.boot_stage = stage;
         return;
     }
 
-    if (g_watch.diag.boot_stage == stage)
+    if (g_watch.fault.boot_stage == stage)
     {
         return;
     }
 
-    for (uint32_t i = (uint32_t)(sizeof(g_watch.diag.boot_trace) / sizeof(g_watch.diag.boot_trace[0])) - 1u; i > 0u; i--)
+    for (uint32_t i = (uint32_t)(sizeof(g_watch.fault.boot_trace) / sizeof(g_watch.fault.boot_trace[0])) - 1u; i > 0u; i--)
     {
-        g_watch.diag.boot_trace[i] = g_watch.diag.boot_trace[i - 1u];
+        g_watch.fault.boot_trace[i] = g_watch.fault.boot_trace[i - 1u];
     }
-    g_watch.diag.boot_trace[0] = stage;
-    g_watch.diag.boot_stage = stage;
+    g_watch.fault.boot_trace[0] = stage;
+    g_watch.fault.boot_stage = stage;
 }
 
 static void watch_copy_rc(void)
@@ -1119,6 +1167,7 @@ static void watch_copy_wheelleg_mit(void)
         g_watch.wheelleg_mit.controller_active = status.controller_active;
         g_watch.wheelleg_mit.active_controller_id = status.active_controller_id;
         g_watch.wheelleg_mit.target_v_mps = status.target_v_mps;
+        g_watch.wheelleg_mit.target_yaw_rate_radps = status.target_yaw_rate_radps;
         g_watch.wheelleg_mit.target_leg_length_m = status.target_leg_length_m;
         g_watch.wheelleg_mit.target_foot_x_m = status.target_foot_x_m;
         g_watch.wheelleg_mit.target_foot_y_m = status.target_foot_y_m;
@@ -1187,171 +1236,307 @@ static void watch_copy_wheelleg_mit(void)
                                   1,
                                   0u);
 }
+
+static void watch_wheelleg_run_capture_reset(void)
+{
+    memset(&s_wheelleg_run_capture, 0, sizeof(s_wheelleg_run_capture));
+}
+
+static void watch_wheelleg_run_capture_range(fp32 value, fp32 *min_value, fp32 *max_value, uint8_t first)
+{
+    if (first != 0u)
+    {
+        *min_value = value;
+        *max_value = value;
+        return;
+    }
+    if (value < *min_value)
+    {
+        *min_value = value;
+    }
+    if (value > *max_value)
+    {
+        *max_value = value;
+    }
+}
+
+static void watch_wheelleg_run_capture_update(void)
+{
+    const uint8_t active =
+        (uint8_t)((g_watch.wheelleg_mit.profile_on != 0u &&
+                   g_watch.wheelleg_mit.status_valid != 0u &&
+                   g_watch.wheelleg_mit.controller_active != 0u)
+                      ? 1u
+                      : 0u);
+    watch_wheelleg_run_capture_t *capture = &s_wheelleg_run_capture;
+    uint8_t first_sample;
+    fp32 target_v;
+    fp32 target_yaw_rate;
+    fp32 x_dot;
+    fp32 pitch;
+    fp32 lqr_pitch_gyro;
+    fp32 yaw_gyro;
+    fp32 wheel_sum;
+    fp32 wheel_diff;
+    fp32 lqr_v_err;
+    fp32 lqr_x;
+    fp32 lqr_pitch_err;
+    fp32 lqr_left_pitch_err;
+
+    if (active == 0u)
+    {
+        capture->active = 0u;
+        return;
+    }
+
+    if (capture->active == 0u)
+    {
+        watch_wheelleg_run_capture_reset();
+        capture->active = 1u;
+    }
+
+    first_sample = (capture->sample_count == 0u) ? 1u : 0u;
+    target_v = g_watch.diag.target_v_mps;
+    target_yaw_rate = g_watch.diag.target_yaw_rate_radps;
+    x_dot = g_watch.diag.x_dot_mps;
+    pitch = g_watch.diag.pitch_deg;
+    lqr_pitch_gyro = g_watch.diag.lqr_pitch_gyro_deg_s;
+    yaw_gyro = g_watch.imu.gyro_dps[INS_GYRO_Z_ADDRESS_OFFSET];
+    wheel_sum = g_watch.diag.left_wheel_cmd_torque_nm + g_watch.diag.right_wheel_cmd_torque_nm;
+    wheel_diff = g_watch.diag.right_wheel_cmd_torque_nm - g_watch.diag.left_wheel_cmd_torque_nm;
+    lqr_v_err = g_watch.diag.lqr_v_err_mps;
+    lqr_x = g_watch.diag.lqr_x_m;
+    lqr_pitch_err = g_watch.diag.lqr_pitch_err_deg;
+    lqr_left_pitch_err = g_watch.diag.lqr_left_pitch_err_deg;
+
+    capture->sample_count++;
+    capture->valid = 1u;
+    capture->target_v_sum += target_v;
+    if (watch_abs_fp32(target_v) > capture->target_v_abs_max)
+    {
+        capture->target_v_abs_max = watch_abs_fp32(target_v);
+    }
+    capture->target_yaw_rate_sum += target_yaw_rate;
+    if (watch_abs_fp32(target_yaw_rate) > capture->target_yaw_rate_abs_max)
+    {
+        capture->target_yaw_rate_abs_max = watch_abs_fp32(target_yaw_rate);
+    }
+    capture->x_dot_sum += x_dot;
+    watch_wheelleg_run_capture_range(x_dot, &capture->x_dot_min, &capture->x_dot_max, first_sample);
+    capture->pitch_sum += pitch;
+    watch_wheelleg_run_capture_range(pitch, &capture->pitch_min, &capture->pitch_max, first_sample);
+    capture->lqr_pitch_gyro_sum += lqr_pitch_gyro;
+    watch_wheelleg_run_capture_range(lqr_pitch_gyro,
+                                     &capture->lqr_pitch_gyro_min,
+                                     &capture->lqr_pitch_gyro_max,
+                                     first_sample);
+    capture->yaw_gyro_sum += yaw_gyro;
+    if (watch_abs_fp32(yaw_gyro) > capture->yaw_gyro_abs_max)
+    {
+        capture->yaw_gyro_abs_max = watch_abs_fp32(yaw_gyro);
+    }
+    capture->wheel_sum_sum += wheel_sum;
+    if (watch_abs_fp32(wheel_sum) > capture->wheel_sum_abs_max)
+    {
+        capture->wheel_sum_abs_max = watch_abs_fp32(wheel_sum);
+    }
+    capture->wheel_diff_sum += wheel_diff;
+    if (watch_abs_fp32(wheel_diff) > capture->wheel_diff_abs_max)
+    {
+        capture->wheel_diff_abs_max = watch_abs_fp32(wheel_diff);
+    }
+    capture->lqr_v_err_sum += lqr_v_err;
+    watch_wheelleg_run_capture_range(lqr_v_err,
+                                     &capture->lqr_v_err_min,
+                                     &capture->lqr_v_err_max,
+                                     first_sample);
+    capture->lqr_x_sum += lqr_x;
+    watch_wheelleg_run_capture_range(lqr_x,
+                                     &capture->lqr_x_min,
+                                     &capture->lqr_x_max,
+                                     first_sample);
+    capture->lqr_pitch_err_sum += lqr_pitch_err;
+    watch_wheelleg_run_capture_range(lqr_pitch_err,
+                                     &capture->lqr_pitch_err_min,
+                                     &capture->lqr_pitch_err_max,
+                                     first_sample);
+    capture->lqr_left_pitch_err_sum += lqr_left_pitch_err;
+    watch_wheelleg_run_capture_range(lqr_left_pitch_err,
+                                     &capture->lqr_left_pitch_err_min,
+                                     &capture->lqr_left_pitch_err_max,
+                                     first_sample);
+}
+
+static void watch_wheelleg_run_capture_copy(void)
+{
+    const watch_wheelleg_run_capture_t *capture = &s_wheelleg_run_capture;
+    fp32 inv_count;
+
+    g_watch.diag.run_capture_active = capture->active;
+    g_watch.diag.run_capture_valid = capture->valid;
+    g_watch.diag.run_sample_count = capture->sample_count;
+
+    if (capture->valid == 0u || capture->sample_count == 0u)
+    {
+        return;
+    }
+
+    inv_count = 1.0f / (fp32)capture->sample_count;
+    g_watch.diag.run_target_v_avg_mps = capture->target_v_sum * inv_count;
+    g_watch.diag.run_target_v_abs_max_mps = capture->target_v_abs_max;
+    g_watch.diag.run_target_yaw_rate_avg_radps = capture->target_yaw_rate_sum * inv_count;
+    g_watch.diag.run_target_yaw_rate_abs_max_radps = capture->target_yaw_rate_abs_max;
+    g_watch.diag.run_x_dot_avg_mps = capture->x_dot_sum * inv_count;
+    g_watch.diag.run_x_dot_min_mps = capture->x_dot_min;
+    g_watch.diag.run_x_dot_max_mps = capture->x_dot_max;
+    g_watch.diag.run_pitch_avg_deg = capture->pitch_sum * inv_count;
+    g_watch.diag.run_pitch_min_deg = capture->pitch_min;
+    g_watch.diag.run_pitch_max_deg = capture->pitch_max;
+    g_watch.diag.run_lqr_pitch_gyro_avg_deg_s = capture->lqr_pitch_gyro_sum * inv_count;
+    g_watch.diag.run_lqr_pitch_gyro_min_deg_s = capture->lqr_pitch_gyro_min;
+    g_watch.diag.run_lqr_pitch_gyro_max_deg_s = capture->lqr_pitch_gyro_max;
+    g_watch.diag.run_yaw_gyro_avg_deg_s = capture->yaw_gyro_sum * inv_count;
+    g_watch.diag.run_yaw_gyro_abs_max_deg_s = capture->yaw_gyro_abs_max;
+    g_watch.diag.run_wheel_sum_avg_nm = capture->wheel_sum_sum * inv_count;
+    g_watch.diag.run_wheel_sum_abs_max_nm = capture->wheel_sum_abs_max;
+    g_watch.diag.run_wheel_diff_avg_nm = capture->wheel_diff_sum * inv_count;
+    g_watch.diag.run_wheel_diff_abs_max_nm = capture->wheel_diff_abs_max;
+    g_watch.diag.run_wheel_balance_avg_nm = g_watch.diag.run_wheel_diff_avg_nm;
+    g_watch.diag.run_wheel_balance_abs_max_nm = g_watch.diag.run_wheel_diff_abs_max_nm;
+    g_watch.diag.run_wheel_turn_avg_nm = g_watch.diag.run_wheel_sum_avg_nm;
+    g_watch.diag.run_wheel_turn_abs_max_nm = g_watch.diag.run_wheel_sum_abs_max_nm;
+    g_watch.diag.run_lqr_v_err_avg_mps = capture->lqr_v_err_sum * inv_count;
+    g_watch.diag.run_lqr_v_err_min_mps = capture->lqr_v_err_min;
+    g_watch.diag.run_lqr_v_err_max_mps = capture->lqr_v_err_max;
+    g_watch.diag.run_lqr_x_avg_m = capture->lqr_x_sum * inv_count;
+    g_watch.diag.run_lqr_x_min_m = capture->lqr_x_min;
+    g_watch.diag.run_lqr_x_max_m = capture->lqr_x_max;
+    g_watch.diag.run_lqr_pitch_err_avg_deg = capture->lqr_pitch_err_sum * inv_count;
+    g_watch.diag.run_lqr_pitch_err_min_deg = capture->lqr_pitch_err_min;
+    g_watch.diag.run_lqr_pitch_err_max_deg = capture->lqr_pitch_err_max;
+    g_watch.diag.run_lqr_left_pitch_err_avg_deg = capture->lqr_left_pitch_err_sum * inv_count;
+    g_watch.diag.run_lqr_left_pitch_err_min_deg = capture->lqr_left_pitch_err_min;
+    g_watch.diag.run_lqr_left_pitch_err_max_deg = capture->lqr_left_pitch_err_max;
+}
 #endif
 
 static void watch_copy_diag(void)
 {
-    bmi088_diag_t bmi088_diag = {0};
-    wheelleg_debug_t wheelleg_debug = {0};
     sdlog_stats_t sd_stats = {0};
-    static uint32_t can_rate_last_tick_ms;
-    static uint32_t can_rate_last_rx_count;
-    static uint32_t can_rate_last_tx_count;
-    static uint32_t can_rate_last_tx_fail_count;
-    static uint32_t can_rate_last_rx_drop_count;
-    static uint32_t can2_rate_last_rx_count;
-    static uint32_t can2_rate_last_tx_count;
-    static uint32_t can2_rate_last_tx_fail_count;
-    static uint32_t can2_rate_last_rx_drop_count;
-    static uint32_t can1_rx_fps;
-    static uint32_t can1_tx_fps;
-    static uint32_t can1_tx_fail_fps;
-    static uint32_t can1_rx_drop_fps;
-    static uint32_t can2_rx_fps;
-    static uint32_t can2_tx_fps;
-    static uint32_t can2_tx_fail_fps;
-    static uint32_t can2_rx_drop_fps;
-    const uint32_t now_ms = HAL_GetTick();
-    const uint32_t can1_rx_count = CAN_get_can1_rx_count();
-    const uint32_t can1_tx_count = CAN_get_can1_tx_count();
-    const uint32_t can1_tx_fail_count = CAN_get_can1_tx_fail_count();
-    const uint32_t can1_rx_drop_count = CAN_get_can1_rx_drop_count();
-    const uint32_t can2_rx_count = CAN_get_can2_rx_count();
-    const uint32_t can2_tx_count = CAN_get_can2_tx_count();
-    const uint32_t can2_tx_fail_count = CAN_get_can2_tx_fail_count();
-    const uint32_t can2_rx_drop_count = CAN_get_can2_rx_drop_count();
-    const uint8_t wheelleg_debug_valid =
-        (robot_profile_is_wheelleg_mit() != 0u) ? wheelleg_debug_read(&wheelleg_debug) : 0u;
-    uint32_t elapsed_ms;
+    memset(&g_watch.diag, 0, sizeof(g_watch.diag));
 
-    g_watch.diag.can1_1ff_status = (int16_t)CAN_get_last_1ff_status();
-    g_watch.diag.can1_err = CAN_get_last_can1_error();
-    g_watch.diag.can2_err = CAN_get_last_can2_error();
-    g_watch.diag.can1_tx_status = bsp_can_get_last_tx_status(1u);
-    g_watch.diag.can2_tx_status = bsp_can_get_last_tx_status(2u);
-    if (can_rate_last_tick_ms == 0u)
-    {
-        can_rate_last_tick_ms = now_ms;
-        can_rate_last_rx_count = can1_rx_count;
-        can_rate_last_tx_count = can1_tx_count;
-        can_rate_last_tx_fail_count = can1_tx_fail_count;
-        can_rate_last_rx_drop_count = can1_rx_drop_count;
-        can2_rate_last_rx_count = can2_rx_count;
-        can2_rate_last_tx_count = can2_tx_count;
-        can2_rate_last_tx_fail_count = can2_tx_fail_count;
-        can2_rate_last_rx_drop_count = can2_rx_drop_count;
-    }
-    elapsed_ms = now_ms - can_rate_last_tick_ms;
-    if (elapsed_ms >= 1000u)
-    {
-        can1_rx_fps = ((can1_rx_count - can_rate_last_rx_count) * 1000u) / elapsed_ms;
-        can1_tx_fps = ((can1_tx_count - can_rate_last_tx_count) * 1000u) / elapsed_ms;
-        can1_tx_fail_fps = ((can1_tx_fail_count - can_rate_last_tx_fail_count) * 1000u) / elapsed_ms;
-        can1_rx_drop_fps = ((can1_rx_drop_count - can_rate_last_rx_drop_count) * 1000u) / elapsed_ms;
-        can2_rx_fps = ((can2_rx_count - can2_rate_last_rx_count) * 1000u) / elapsed_ms;
-        can2_tx_fps = ((can2_tx_count - can2_rate_last_tx_count) * 1000u) / elapsed_ms;
-        can2_tx_fail_fps = ((can2_tx_fail_count - can2_rate_last_tx_fail_count) * 1000u) / elapsed_ms;
-        can2_rx_drop_fps = ((can2_rx_drop_count - can2_rate_last_rx_drop_count) * 1000u) / elapsed_ms;
-        can_rate_last_tick_ms = now_ms;
-        can_rate_last_rx_count = can1_rx_count;
-        can_rate_last_tx_count = can1_tx_count;
-        can_rate_last_tx_fail_count = can1_tx_fail_count;
-        can_rate_last_rx_drop_count = can1_rx_drop_count;
-        can2_rate_last_rx_count = can2_rx_count;
-        can2_rate_last_tx_count = can2_tx_count;
-        can2_rate_last_tx_fail_count = can2_tx_fail_count;
-        can2_rate_last_rx_drop_count = can2_rx_drop_count;
-    }
+    g_watch.diag.offline_need_geometry = 1u;
+    g_watch.diag.offline_need_mass_inertia = 1u;
+    g_watch.diag.offline_need_com_inertia = 1u;
+    g_watch.diag.offline_need_motor_limits = 0u;
+    g_watch.diag.offline_need_lqr_model = 1u;
+    g_watch.diag.offline_need_stage_k = 1u;
+    g_watch.diag.offline_need_qr_weights = 1u;
+    g_watch.diag.offline_need_sign_table = 0u;
 
-    g_watch.diag.can1_rx_count = can1_rx_count;
-    g_watch.diag.can1_tx_count = can1_tx_count;
-    g_watch.diag.can1_tx_fail_count = can1_tx_fail_count;
-    g_watch.diag.can1_rx_drop_count = can1_rx_drop_count;
-    g_watch.diag.can1_rx_fps = can1_rx_fps;
-    g_watch.diag.can1_tx_fps = can1_tx_fps;
-    g_watch.diag.can1_tx_fail_fps = can1_tx_fail_fps;
-    g_watch.diag.can1_rx_drop_fps = can1_rx_drop_fps;
-    g_watch.diag.can_rx_pending = bsp_can_rx_pending();
-    g_watch.diag.can1_last_rx_id = CAN_get_can1_last_rx_id();
-    g_watch.diag.can1_last_tx_id = CAN_get_can1_last_tx_id();
-    g_watch.diag.can1_last_rx_dlc = CAN_get_can1_last_rx_dlc();
-    g_watch.diag.can1_last_tx_dlc = CAN_get_can1_last_tx_dlc();
-    g_watch.diag.can1_tx_error_count = CAN_get_can1_tx_error_count();
-    g_watch.diag.can1_rx_error_count = CAN_get_can1_rx_error_count();
-    g_watch.diag.can2_rx_count = can2_rx_count;
-    g_watch.diag.can2_tx_count = can2_tx_count;
-    g_watch.diag.can2_tx_fail_count = can2_tx_fail_count;
-    g_watch.diag.can2_rx_drop_count = can2_rx_drop_count;
-    g_watch.diag.can2_rx_fps = can2_rx_fps;
-    g_watch.diag.can2_tx_fps = can2_tx_fps;
-    g_watch.diag.can2_tx_fail_fps = can2_tx_fail_fps;
-    g_watch.diag.can2_rx_drop_fps = can2_rx_drop_fps;
-    g_watch.diag.can2_last_rx_id = CAN_get_can2_last_rx_id();
-    g_watch.diag.can2_last_tx_id = CAN_get_can2_last_tx_id();
-    g_watch.diag.can2_last_rx_dlc = CAN_get_can2_last_rx_dlc();
-    g_watch.diag.can2_last_tx_dlc = CAN_get_can2_last_tx_dlc();
-    g_watch.diag.can2_tx_error_count = CAN_get_can2_tx_error_count();
-    g_watch.diag.can2_rx_error_count = CAN_get_can2_rx_error_count();
-    g_watch.diag.manual_active_source = remote_control_get_active_source();
-    g_watch.diag.sd_mounted = (uint8_t)sdcard_is_mounted();
+    g_watch.diag.power_need_imu_sign = 0u;
+    g_watch.diag.power_need_motor_online = 0u;
+    g_watch.diag.power_need_joint_zero_dir = 0u;
+    g_watch.diag.power_need_wheel_dir = 0u;
+    g_watch.diag.power_need_fk_leg_state = 1u;
+    g_watch.diag.power_need_jacobian_dir = 1u;
+    g_watch.diag.power_need_observer_speed = 1u;
+    g_watch.diag.power_need_lqr_response = 1u;
+
     sdlog_get_stats(&sd_stats);
-    g_watch.diag.sdlog_active = sd_stats.active;
-    g_watch.diag.manual_sbus_frame_count = remote_control_get_sbus_frame_count();
-    g_watch.diag.manual_set_source_count = remote_control_get_set_source_count();
-    g_watch.diag.battery_voltage_v = get_battery_voltage_cached();
-    g_watch.diag.battery_percent = get_battery_percentage_fp32() * 100.0f;
-    g_watch.diag.battery_low_alarm = battery_monitor_is_low_alarm();
-    g_watch.diag.adc_started = bsp_adc_is_started();
-    g_watch.diag.adc_raw0 = bsp_adc_get_raw(0u);
-    g_watch.diag.adc_raw1 = bsp_adc_get_raw(1u);
-    g_watch.diag.adc_voltage0_v = bsp_adc_get_channel_voltage(0u);
-    g_watch.diag.adc_voltage1_v = bsp_adc_get_channel_voltage(1u);
-    g_watch.diag.adc_start_ok_count = bsp_adc_get_start_ok_count();
-    g_watch.diag.adc_start_fail_count = bsp_adc_get_start_fail_count();
+    g_watch.diag.live_sdlog_active = sd_stats.active;
+    g_watch.diag.live_imu_online =
+        (uint8_t)((toe_is_error(BOARD_GYRO_TOE) == 0u && toe_is_error(BOARD_ACCEL_TOE) == 0u) ? 1u : 0u);
+    g_watch.diag.pitch_deg = g_watch.imu.angle_deg[INS_PITCH_ADDRESS_OFFSET];
+    g_watch.diag.pitch_gyro_deg_s = g_watch.imu.gyro_dps[INS_GYRO_Y_ADDRESS_OFFSET];
 
-    BMI088_get_diag(&bmi088_diag);
-    g_watch.diag.imu_bmi088_init_error = bmi088_diag.init_last_error;
-    g_watch.diag.imu_bmi088_fail_reg = bmi088_diag.init_fail_reg;
-    g_watch.diag.imu_bmi088_fail_expect = bmi088_diag.init_fail_expect;
-    g_watch.diag.imu_bmi088_fail_actual = bmi088_diag.init_fail_actual;
-    g_watch.diag.imu_accel_chip_id = bmi088_diag.accel_chip_id;
-    g_watch.diag.imu_gyro_chip_id = bmi088_diag.gyro_chip_id;
-    g_watch.diag.imu_gyro_read_chip_id = bmi088_diag.gyro_read_chip_id;
-    g_watch.diag.imu_gyro_read_ok = bmi088_diag.gyro_read_ok;
-    g_watch.diag.imu_bmi088_init_count = bmi088_diag.init_count;
-    g_watch.diag.imu_bmi088_init_error_count = bmi088_diag.init_error_count;
-    g_watch.diag.imu_bmi088_read_count = bmi088_diag.read_count;
-    g_watch.diag.imu_gyro_read_bad_count = bmi088_diag.gyro_read_bad_count;
-    g_watch.diag.imu_gyro_boot_calibrating = (uint8_t)ins_is_gyro_boot_calibrating();
-    g_watch.diag.imu_gyro_boot_result = (uint8_t)ins_get_gyro_boot_initial_result();
-    g_watch.diag.imu_temp_c = ins_get_imu_temperature_c();
-    g_watch.diag.imu_heater_pwm = ins_get_imu_heater_pwm();
-    g_watch.diag.imu_heater_mode = ins_get_imu_heater_mode();
-    g_watch.diag.imu_heater_pid_out = ins_get_imu_heater_pid_out();
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
+    {
+        wheelleg_debug_t wheelleg_debug = {0};
+        const uint8_t wheelleg_debug_valid =
+            (robot_profile_is_wheelleg_mit() != 0u) ? wheelleg_debug_read(&wheelleg_debug) : 0u;
 
-    g_watch.diag.wheelleg_lqr_valid = wheelleg_debug_valid;
-    if (wheelleg_debug_valid != 0u)
-    {
-        g_watch.diag.wheelleg_lqr_theta_err_deg = watch_rad_to_deg(wheelleg_debug.lqr.error[0]);
-        g_watch.diag.wheelleg_lqr_dtheta_degps = watch_rad_to_deg(wheelleg_debug.lqr.error[1]);
-        g_watch.diag.wheelleg_lqr_x_m = wheelleg_debug.lqr.error[2];
-        g_watch.diag.wheelleg_lqr_v_err_mps = wheelleg_debug.lqr.error[3];
-        g_watch.diag.wheelleg_lqr_pitch_deg = watch_rad_to_deg(wheelleg_debug.lqr.error[4]);
-        g_watch.diag.wheelleg_lqr_pitch_gyro_degps = watch_rad_to_deg(wheelleg_debug.lqr.error[5]);
-        g_watch.diag.wheelleg_lqr_right_torque_nm = wheelleg_debug.lqr.output[0];
-        g_watch.diag.wheelleg_lqr_left_torque_nm = wheelleg_debug.lqr.output[1];
+        g_watch.diag.live_profile_on = g_watch.wheelleg_mit.profile_on;
+        g_watch.diag.live_manual_on = g_watch.wheelleg_mit.manual_on;
+        g_watch.diag.live_enabled = g_watch.wheelleg_mit.enabled;
+        g_watch.diag.live_control_stage = (uint8_t)g_config.wheelleg_mit.control_stage;
+        g_watch.diag.live_mode = g_watch.wheelleg_mit.mode;
+        g_watch.diag.live_status_valid = g_watch.wheelleg_mit.status_valid;
+        g_watch.diag.live_state_valid = g_watch.wheelleg_mit.state_valid;
+        g_watch.diag.live_fault_flags = g_watch.wheelleg_mit.fault_flags;
+        g_watch.diag.live_lqr_debug_valid = wheelleg_debug_valid;
+        g_watch.diag.live_all_mit_online =
+            (uint8_t)((g_watch.wheelleg_mit.joint[0].online != 0u &&
+                       g_watch.wheelleg_mit.joint[1].online != 0u &&
+                       g_watch.wheelleg_mit.joint[2].online != 0u &&
+                       g_watch.wheelleg_mit.joint[3].online != 0u &&
+                       g_watch.wheelleg_mit.wheel[0].online != 0u &&
+                       g_watch.wheelleg_mit.wheel[1].online != 0u)
+                          ? 1u
+                          : 0u);
+
+        g_watch.diag.lqr_wheel_scale = g_config.wheelleg_mit.lqr_wheel_torque_scale;
+        g_watch.diag.lqr_hip_scale = g_config.wheelleg_mit.lqr_hip_torque_scale;
+        g_watch.diag.max_wheel_torque_nm = g_config.wheelleg_mit.max_wheel_torque_nm;
+        g_watch.diag.max_joint_torque_nm = g_config.wheelleg_mit.max_joint_torque_nm;
+
+        g_watch.diag.target_v_mps = g_watch.wheelleg_mit.target_v_mps;
+        g_watch.diag.target_yaw_rate_radps = g_watch.wheelleg_mit.target_yaw_rate_radps;
+        g_watch.diag.target_leg_length_m = g_watch.wheelleg_mit.target_leg_length_m;
+        g_watch.diag.target_foot_x_m = g_watch.wheelleg_mit.target_foot_x_m;
+        g_watch.diag.target_foot_y_m = g_watch.wheelleg_mit.target_foot_y_m;
+        g_watch.diag.target_leg_theta_deg = g_watch.wheelleg_mit.target_leg_theta_deg;
+
+        if (g_watch.wheelleg_mit.status_valid != 0u)
+        {
+            g_watch.diag.pitch_deg = g_watch.wheelleg_mit.pitch_deg;
+        }
+        g_watch.diag.x_dot_mps = g_watch.wheelleg_mit.x_dot_mps;
+        g_watch.diag.left_leg_length_m = g_watch.wheelleg_mit.leg[0].length_m;
+        g_watch.diag.right_leg_length_m = g_watch.wheelleg_mit.leg[1].length_m;
+        g_watch.diag.left_leg_theta_deg = g_watch.wheelleg_mit.leg[0].theta_deg;
+        g_watch.diag.right_leg_theta_deg = g_watch.wheelleg_mit.leg[1].theta_deg;
+        g_watch.diag.left_front_rel_deg = g_watch.wheelleg_mit.joint[0].rel_position_deg;
+        g_watch.diag.left_back_rel_deg = g_watch.wheelleg_mit.joint[1].rel_position_deg;
+        g_watch.diag.right_front_rel_deg = g_watch.wheelleg_mit.joint[2].rel_position_deg;
+        g_watch.diag.right_back_rel_deg = g_watch.wheelleg_mit.joint[3].rel_position_deg;
+        g_watch.diag.left_wheel_vel_deg_s = g_watch.wheelleg_mit.wheel[0].fb_velocity_deg_s;
+        g_watch.diag.right_wheel_vel_deg_s = g_watch.wheelleg_mit.wheel[1].fb_velocity_deg_s;
+        g_watch.diag.left_wheel_cmd_torque_nm = g_watch.wheelleg_mit.wheel[0].cmd_torque_nm;
+        g_watch.diag.right_wheel_cmd_torque_nm = g_watch.wheelleg_mit.wheel[1].cmd_torque_nm;
+        g_watch.diag.wheel_balance_cmd_nm =
+            g_watch.diag.right_wheel_cmd_torque_nm - g_watch.diag.left_wheel_cmd_torque_nm;
+        g_watch.diag.wheel_turn_cmd_nm =
+            g_watch.diag.right_wheel_cmd_torque_nm + g_watch.diag.left_wheel_cmd_torque_nm;
+        g_watch.diag.left_wheel_fb_torque_nm = g_watch.wheelleg_mit.wheel[0].fb_torque_nm;
+        g_watch.diag.right_wheel_fb_torque_nm = g_watch.wheelleg_mit.wheel[1].fb_torque_nm;
+        g_watch.diag.left_support_force_n = g_watch.wheelleg_mit.leg[0].support_force_n;
+        g_watch.diag.right_support_force_n = g_watch.wheelleg_mit.leg[1].support_force_n;
+        g_watch.diag.lqr_pitch_err_deg =
+            g_watch.diag.pitch_deg - watch_rad_to_deg(g_config.wheelleg_mit.pitch_balance_offset_right_rad);
+        g_watch.diag.lqr_left_pitch_err_deg =
+            -g_watch.diag.pitch_deg - watch_rad_to_deg(g_config.wheelleg_mit.pitch_balance_offset_left_rad);
+
+        if (wheelleg_debug_valid != 0u)
+        {
+            g_watch.diag.left_hip_torque_nm = wheelleg_debug.lqr.output[3];
+            g_watch.diag.right_hip_torque_nm = wheelleg_debug.lqr.output[2];
+            g_watch.diag.lqr_theta_err_deg = watch_rad_to_deg(wheelleg_debug.lqr.error[0]);
+            g_watch.diag.lqr_dtheta_deg_s = watch_rad_to_deg(wheelleg_debug.lqr.error[1]);
+            g_watch.diag.lqr_x_m = wheelleg_debug.lqr.error[2];
+            g_watch.diag.lqr_v_err_mps = wheelleg_debug.lqr.error[3];
+            g_watch.diag.lqr_pitch_err_deg = watch_rad_to_deg(wheelleg_debug.lqr.error[4]);
+            g_watch.diag.lqr_left_pitch_err_deg =
+                -g_watch.diag.pitch_deg - watch_rad_to_deg(g_config.wheelleg_mit.pitch_balance_offset_left_rad);
+            g_watch.diag.lqr_pitch_gyro_deg_s = watch_rad_to_deg(wheelleg_debug.lqr.error[5]);
+            g_watch.diag.lqr_right_output_nm = wheelleg_debug.lqr.output[0];
+            g_watch.diag.lqr_left_output_nm = wheelleg_debug.lqr.output[1];
+        }
+
+        watch_wheelleg_run_capture_update();
+        watch_wheelleg_run_capture_copy();
     }
-    else
-    {
-        g_watch.diag.wheelleg_lqr_theta_err_deg = 0.0f;
-        g_watch.diag.wheelleg_lqr_dtheta_degps = 0.0f;
-        g_watch.diag.wheelleg_lqr_x_m = 0.0f;
-        g_watch.diag.wheelleg_lqr_v_err_mps = 0.0f;
-        g_watch.diag.wheelleg_lqr_pitch_deg = 0.0f;
-        g_watch.diag.wheelleg_lqr_pitch_gyro_degps = 0.0f;
-        g_watch.diag.wheelleg_lqr_right_torque_nm = 0.0f;
-        g_watch.diag.wheelleg_lqr_left_torque_nm = 0.0f;
-    }
+#endif
 }
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
@@ -1374,17 +1559,17 @@ static void watch_copy_rtos(void)
 
     g_watch.rtos.heap_free = heap_get_free();
     g_watch.rtos.heap_ever_free = heap_get_ever_free();
-    g_watch.diag.watch_update_count++;
-    g_watch.diag.watch_update_tick_ms = HAL_GetTick();
-    g_watch.diag.scheduler_state = (uint32_t)xTaskGetSchedulerState();
-    g_watch.diag.task_count = (uint32_t)uxTaskGetNumberOfTasks();
+    g_watch.rtos.watch_update_count++;
+    g_watch.rtos.watch_update_tick_ms = HAL_GetTick();
+    g_watch.rtos.scheduler_state = (uint32_t)xTaskGetSchedulerState();
+    g_watch.rtos.task_count = (uint32_t)uxTaskGetNumberOfTasks();
     current_task = xTaskGetCurrentTaskHandle();
-    g_watch.diag.current_task_handle = (uint32_t)current_task;
+    g_watch.rtos.current_task_handle = (uint32_t)current_task;
     current_name = pcTaskGetTaskName(NULL);
-    memset(g_watch.diag.current_task_name, 0, sizeof(g_watch.diag.current_task_name));
+    memset(g_watch.rtos.current_task_name, 0, sizeof(g_watch.rtos.current_task_name));
     if (current_name != NULL)
     {
-        (void)strncpy(g_watch.diag.current_task_name, current_name, sizeof(g_watch.diag.current_task_name) - 1u);
+        (void)strncpy(g_watch.rtos.current_task_name, current_name, sizeof(g_watch.rtos.current_task_name) - 1u);
     }
 #if INCLUDE_uxTaskGetStackHighWaterMark
 #if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
