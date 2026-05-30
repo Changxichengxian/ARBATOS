@@ -533,7 +533,7 @@ config_t g_config = {
 
     .test =
         {
-            .mode = TEST_MODE_NONE, // 测试模式默认值，只在代码里改
+            .mode = TEST_MODE_ENTERTAIN, // 测试模式默认值，只在代码里改
             // 可直接复制的取值（枚举值 / AUX value）：
             // 0: TEST_MODE_NONE,
             // 1: TEST_MODE_CHASSIS_ONLY,

@@ -97,12 +97,22 @@
 #define ARBATOS_BUILD_TIME __TIME__
 #endif
 
+#define SDLOG_RESTART_REASON_RUNTIME_IO 1u
+#define SDLOG_RESTART_REASON_OPEN_FAIL 2u
+#define SDLOG_RESTART_REASON_STARTUP_HEADER 3u
+#define SDLOG_RESTART_REASON_STARTUP_BLOCK 4u
+#define SDLOG_RESTART_REASON_STARTUP_SYNC 5u
+#define SDLOG_RESTART_REASON_STOP 6u
+
 static FIL sdlog_fp;
 static volatile uint8_t sdlog_active = 0u;
 static volatile uint32_t sdlog_dropped = 0u;
 static uint32_t sdlog_last_sync_ms = 0u;
 static volatile uint32_t sdlog_bytes_flushed = 0u;
 static volatile int32_t sdlog_last_error = 0;
+static uint16_t sdlog_prev_error_reason = 0u;
+static int32_t sdlog_prev_error_code = 0;
+static uint32_t sdlog_prev_error_bytes = 0u;
 static uint32_t sdlog_last_tick_ms = 0u;
 
 __attribute__((section(".ccmram"))) static uint8_t sdlog_buf[SDLOG_BUF_SIZE];
@@ -296,6 +306,13 @@ static void sdlog_fill_build_info(sdlog_build_info_t *out)
     sdlog_copy_cstr(out->git_sha, (uint32_t)sizeof(out->git_sha), ARBATOS_GIT_SHA);
     sdlog_copy_cstr(out->build_date, (uint32_t)sizeof(out->build_date), ARBATOS_BUILD_DATE);
     sdlog_copy_cstr(out->build_time, (uint32_t)sizeof(out->build_time), ARBATOS_BUILD_TIME);
+}
+
+static void sdlog_remember_error(uint16_t reason, int32_t error_code)
+{
+    sdlog_prev_error_reason = reason;
+    sdlog_prev_error_code = error_code;
+    sdlog_prev_error_bytes = sdlog_bytes_flushed;
 }
 
 static int sdlog_append_record_bytes(uint8_t *dst,
@@ -796,6 +813,7 @@ static int sdlog_open_next_file(void)
             if (wr0 != FR_OK || bw != (UINT)sizeof(hdr))
             {
                 sdlog_last_error = (wr0 == FR_OK) ? -1 : (int32_t)wr0;
+                sdlog_remember_error(SDLOG_RESTART_REASON_STARTUP_HEADER, sdlog_last_error);
                 (void)f_close(&sdlog_fp);
                 sdcard_unmount();
                 return -3;
@@ -819,7 +837,17 @@ static int sdlog_open_next_file(void)
             sdlog_build_info_t build_info;
             sdlog_fill_build_info(&build_info);
 
-            uint8_t raw[192u];
+            const uint16_t prev_error_reason = sdlog_prev_error_reason;
+            const int32_t prev_error_code = sdlog_prev_error_code;
+            const uint32_t prev_error_bytes = sdlog_prev_error_bytes;
+            const sdlog_event_t restart_info = {
+                .event_id = SDLOG_EVT_SDLOG_RESTART_INFO,
+                .arg0_u16 = prev_error_reason,
+                .arg1_u32 = (uint32_t)prev_error_code,
+                .arg2_u32 = prev_error_bytes,
+            };
+
+            uint8_t raw[256u];
             uint32_t raw_len = 0u;
             if (sdlog_append_record_bytes(raw,
                                           (uint32_t)sizeof(raw),
@@ -834,14 +862,24 @@ static int sdlog_open_next_file(void)
                                           0u,
                                           SDLOG_TAG_BUILD_INFO,
                                           &build_info,
-                                          (uint16_t)sizeof(build_info)) != 0)
+                                          (uint16_t)sizeof(build_info)) != 0 ||
+                (prev_error_reason != 0u &&
+                 sdlog_append_record_bytes(raw,
+                                           (uint32_t)sizeof(raw),
+                                           &raw_len,
+                                           0u,
+                                           SDLOG_TAG_EVENT,
+                                           &restart_info,
+                                           (uint16_t)sizeof(restart_info)) != 0))
             {
+                sdlog_remember_error(SDLOG_RESTART_REASON_STARTUP_BLOCK, -4);
                 (void)f_close(&sdlog_fp);
                 return -4;
             }
 
             if (sdlog_write_block(raw, raw_len) != 0)
             {
+                sdlog_remember_error(SDLOG_RESTART_REASON_STARTUP_BLOCK, sdlog_last_error);
                 (void)f_close(&sdlog_fp);
                 sdcard_unmount();
                 return -4;
@@ -851,6 +889,7 @@ static int sdlog_open_next_file(void)
             if (sync_r != FR_OK)
             {
                 sdlog_last_error = (int32_t)sync_r;
+                sdlog_remember_error(SDLOG_RESTART_REASON_STARTUP_SYNC, sdlog_last_error);
                 (void)f_close(&sdlog_fp);
                 sdcard_unmount();
                 return -6;
@@ -859,6 +898,9 @@ static int sdlog_open_next_file(void)
             sdlog_last_sync_ms = bsp_time_get_tick_ms();
             sdlog_bytes_flushed = 0u;
             sdlog_last_error = 0;
+            sdlog_prev_error_reason = 0u;
+            sdlog_prev_error_code = 0;
+            sdlog_prev_error_bytes = 0u;
 
             // Best-effort: persist the next index so next boot does not scan 0:/.
             sdlog_index_write_best_effort(i + 1u);
@@ -874,6 +916,7 @@ static int sdlog_open_next_file(void)
         if (r != FR_EXIST)
         {
             sdlog_last_error = (int32_t)r;
+            sdlog_remember_error(SDLOG_RESTART_REASON_OPEN_FAIL, sdlog_last_error);
             sdcard_unmount();
             return (int)r;
         }
@@ -907,6 +950,8 @@ void sdlog_stop(void)
     {
         return;
     }
+
+    sdlog_remember_error(SDLOG_RESTART_REASON_STOP, 0);
 
     // Best-effort: stop accepting new records first, then close the file.
     taskENTER_CRITICAL();
@@ -1017,6 +1062,8 @@ static void sdlog_close_on_error(void)
     {
         return;
     }
+
+    sdlog_remember_error(SDLOG_RESTART_REASON_RUNTIME_IO, sdlog_last_error);
 
     taskENTER_CRITICAL();
     sdlog_active = 0u;

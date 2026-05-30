@@ -365,7 +365,7 @@ config_t g_config = {
 
     .test =
         {
-            .mode = TEST_MODE_NONE,// [244] 测试模式（AUX 口发送 244:<value>）
+            .mode = TEST_MODE_ENTERTAIN,// [244] 测试模式（AUX 口发送 244:<value>）
             // 可直接复制的取值（枚举值 / AUX value）：
             // 0: TEST_MODE_NONE,
             // 1: TEST_MODE_CHASSIS_ONLY,
