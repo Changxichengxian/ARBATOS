@@ -17,6 +17,14 @@
 #include "config.h"
 #include "control_manager.h"
 
+#ifndef ROBOT_CONFIG_DEVICE_BINDING_MAX_INPUTS
+#define ROBOT_CONFIG_DEVICE_BINDING_MAX_INPUTS 8u
+#endif
+
+#ifndef ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS
+#define ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS 8u
+#endif
+
 typedef enum
 {
     ROBOT_CONFIG_DEVICE_KIND_UNKNOWN = 0u,
@@ -57,6 +65,16 @@ typedef struct
     uint16_t source_id;
     const void *config;
 } robot_config_device_t;
+
+typedef struct
+{
+    uint8_t input_count;
+    uint8_t output_count;
+    uint8_t input_resolved;
+    uint8_t output_resolved;
+    robot_config_device_t inputs[ROBOT_CONFIG_DEVICE_BINDING_MAX_INPUTS];
+    robot_config_device_t outputs[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
+} robot_config_device_binding_t;
 
 static inline uint8_t robot_config_motor_device_count(void)
 {
@@ -383,6 +401,51 @@ static inline uint8_t robot_config_device_resolve_controller_outputs(const contr
                                             controller->meta.output_count,
                                             out,
                                             out_cap);
+}
+
+static inline uint8_t robot_config_device_bind_controller(const control_controller_t *controller,
+                                                          robot_config_device_binding_t *binding)
+{
+    if (controller == NULL || binding == NULL)
+    {
+        return 0u;
+    }
+
+    if (controller->meta.input_count > (uint8_t)ROBOT_CONFIG_DEVICE_BINDING_MAX_INPUTS ||
+        controller->meta.output_count > (uint8_t)ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS)
+    {
+        return 0u;
+    }
+
+    (void)memset(binding, 0, sizeof(*binding));
+    binding->input_count = controller->meta.input_count;
+    binding->output_count = controller->meta.output_count;
+
+    if (binding->input_count != 0u)
+    {
+        binding->input_resolved =
+            robot_config_device_resolve_controller_inputs(controller,
+                                                          binding->inputs,
+                                                          (uint8_t)ROBOT_CONFIG_DEVICE_BINDING_MAX_INPUTS);
+        if (binding->input_resolved != binding->input_count)
+        {
+            return 0u;
+        }
+    }
+
+    if (binding->output_count != 0u)
+    {
+        binding->output_resolved =
+            robot_config_device_resolve_controller_outputs(controller,
+                                                           binding->outputs,
+                                                           (uint8_t)ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS);
+        if (binding->output_resolved != binding->output_count)
+        {
+            return 0u;
+        }
+    }
+
+    return 1u;
 }
 
 #endif

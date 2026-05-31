@@ -134,12 +134,11 @@ for (uint8_t i = 0; i < robot_config_device_count(); i++)
 控制器也可以直接按自己的输入/输出名字解析设备：
 
 ```c
-robot_config_device_t outputs[3];
+robot_config_device_binding_t devices;
 
-if (robot_config_device_resolve_controller_outputs(controller, outputs, 3) ==
-    controller->meta.output_count)
+if (robot_config_device_bind_controller(controller, &devices))
 {
-    /* outputs[i].name / outputs[i].kind / outputs[i].source_id */
+    /* devices.inputs[i] / devices.outputs[i] */
 }
 ```
 
