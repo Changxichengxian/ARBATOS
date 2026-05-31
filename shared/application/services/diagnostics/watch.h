@@ -10,6 +10,7 @@
 #pragma once
 
 #include "actuator_cmd.h"
+#include "control_manager.h"
 #include "config.h"
 #include "types.h"
 
@@ -33,6 +34,12 @@
 #endif
 #ifndef WATCH_ENABLE_ARM_J0_UNITREE
 #define WATCH_ENABLE_ARM_J0_UNITREE 1
+#endif
+#ifndef WATCH_RUNTIME_MAX_MOTORS
+#define WATCH_RUNTIME_MAX_MOTORS ACTUATOR_ID__COUNT
+#endif
+#ifndef WATCH_RUNTIME_MAX_CONTROLLERS
+#define WATCH_RUNTIME_MAX_CONTROLLERS CONTROL_MANAGER_MAX_CONTROLLERS
 #endif
 
 // 为减少任务间耦合，本文件不直接依赖 chassis/gimbal/shoot 等头文件；
@@ -641,10 +648,66 @@ typedef struct
     fp32 joint_position_deg;
 } watch_arm_j0_unitree_t;
 
+typedef struct
+{
+    const char *name;
+    uint16_t actuator_id;
+    uint8_t role;
+    uint8_t role_index;
+    uint8_t enabled;
+    uint8_t bus;
+} watch_runtime_motor_t;
+
+typedef struct
+{
+    const char *name;
+    uint16_t id;
+    uint16_t period_ms;
+    uint16_t phase_ms;
+    uint8_t domain;
+    uint8_t active;
+    uint8_t priority;
+    uint8_t input_count;
+    uint8_t output_count;
+} watch_runtime_controller_t;
+
+typedef struct
+{
+    const char *active_name;
+    uint16_t active_id;
+    uint16_t pending_id;
+    uint8_t domain;
+    uint8_t active;
+    uint8_t state;
+    uint8_t pending_request;
+    uint8_t last_reason;
+    uint8_t last_result;
+    uint32_t update_count;
+    uint32_t transition_count;
+    uint32_t reject_count;
+} watch_runtime_domain_t;
+
+typedef struct
+{
+    uint8_t motor_count;
+    uint8_t motor_visible_count;
+    uint8_t motor_enabled_count;
+    uint8_t controller_count;
+    uint8_t controller_visible_count;
+    uint8_t active_controller_count;
+    uint8_t domain_count;
+    uint8_t reserved0;
+    uint32_t active_claim_mask;
+    watch_runtime_motor_t motor[WATCH_RUNTIME_MAX_MOTORS];
+    watch_runtime_controller_t controller[WATCH_RUNTIME_MAX_CONTROLLERS];
+    watch_runtime_domain_t domain[CONTROL_DOMAIN__COUNT];
+} watch_runtime_t;
+
 typedef enum
 {
     WATCH_BLOCK_RC = 0u,
     WATCH_BLOCK_NEWRC,
+    WATCH_BLOCK_RUNTIME,
     WATCH_BLOCK_LOCOMOTION_CLASSIC,
     WATCH_BLOCK_LOCOMOTION_WHEELLEG_SERVO,
     WATCH_BLOCK_LOCOMOTION_WHEELLEG_MIT,
@@ -674,6 +737,7 @@ typedef struct
 {
     watch_rc_t rc;
     watch_newrc_t newrc;
+    watch_runtime_t runtime;
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
     watch_chassis_t chassis;
 #endif

@@ -23,6 +23,7 @@
 #include "battery_monitor_task.h"
 #include "bsp_adc.h"
 #include "chassis_state.h"
+#include "control_manager.h"
 #include "control_input.h"
 #include "gimbal_state.h"
 #include "INS_task.h"
@@ -31,6 +32,7 @@
 #include "mem_mang.h"
 #include "manual_input.h"
 #include "bsp_can.h"
+#include "motor_instance.h"
 #include "sdcard.h"
 #include "sdlog.h"
 #include "shoot_state.h"
@@ -234,6 +236,7 @@ static const fp32 *ins_accel_src;
 
 static void watch_copy_rc(void);
 static void watch_copy_newrc(void);
+static void watch_copy_runtime(void);
 static void watch_copy_imu(void);
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
 static void watch_copy_chassis(void);
@@ -281,6 +284,7 @@ static uint8_t watch_block_active_arm(void);
 static const watch_block_desc_t g_watch_blocks[] = {
     {WATCH_BLOCK_RC, "input.rc", &g_watch.rc, sizeof(g_watch.rc), watch_block_active_always},
     {WATCH_BLOCK_NEWRC, "input.newrc", &g_watch.newrc, sizeof(g_watch.newrc), watch_block_active_always},
+    {WATCH_BLOCK_RUNTIME, "runtime.instances", &g_watch.runtime, sizeof(g_watch.runtime), watch_block_active_always},
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
     {WATCH_BLOCK_LOCOMOTION_CLASSIC, "locomotion.classic", &g_watch.chassis, sizeof(g_watch.chassis), watch_block_active_locomotion_classic},
 #endif
@@ -608,6 +612,7 @@ void watch_update(void)
 {
     watch_copy_rc();
     watch_copy_newrc();
+    watch_copy_runtime();
     watch_copy_imu();
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
     watch_copy_chassis();
@@ -771,6 +776,107 @@ static void watch_copy_newrc(void)
     g_watch.newrc.key_v = state.key_v;
     g_watch.newrc.key_b = state.key_b;
     g_watch.newrc.last_rx_tick_ms = state.last_rx_tick_ms;
+}
+
+static void watch_copy_runtime(void)
+{
+    uint8_t motor_count;
+    uint8_t motor_visible_count;
+    uint8_t controller_count;
+    uint8_t controller_visible_count;
+
+    memset(&g_watch.runtime, 0, sizeof(g_watch.runtime));
+
+    motor_count = motor_instance_count();
+    motor_visible_count = motor_count;
+    if (motor_visible_count > (uint8_t)(sizeof(g_watch.runtime.motor) / sizeof(g_watch.runtime.motor[0])))
+    {
+        motor_visible_count = (uint8_t)(sizeof(g_watch.runtime.motor) / sizeof(g_watch.runtime.motor[0]));
+    }
+
+    g_watch.runtime.motor_count = motor_count;
+    g_watch.runtime.motor_visible_count = motor_visible_count;
+    for (uint8_t i = 0u; i < motor_visible_count; i++)
+    {
+        const motor_instance_t *inst = motor_instance_get(i);
+        watch_runtime_motor_t *dst = &g_watch.runtime.motor[i];
+
+        if (inst == NULL)
+        {
+            continue;
+        }
+
+        dst->name = motor_instance_name(inst);
+        dst->actuator_id = (uint16_t)motor_instance_actuator_id(inst);
+        dst->role = (uint8_t)inst->role;
+        dst->role_index = inst->role_index;
+        dst->enabled = motor_instance_enabled(inst);
+        dst->bus = motor_instance_bus(inst);
+        if (dst->enabled != 0u)
+        {
+            g_watch.runtime.motor_enabled_count++;
+        }
+    }
+
+    controller_count = control_manager_registered_count();
+    controller_visible_count = controller_count;
+    if (controller_visible_count > (uint8_t)(sizeof(g_watch.runtime.controller) / sizeof(g_watch.runtime.controller[0])))
+    {
+        controller_visible_count = (uint8_t)(sizeof(g_watch.runtime.controller) / sizeof(g_watch.runtime.controller[0]));
+    }
+
+    g_watch.runtime.controller_count = controller_count;
+    g_watch.runtime.controller_visible_count = controller_visible_count;
+    g_watch.runtime.active_claim_mask = control_manager_active_claim_mask();
+    for (uint8_t i = 0u; i < controller_visible_count; i++)
+    {
+        const control_controller_t *controller = control_manager_get_registered(i);
+        watch_runtime_controller_t *dst = &g_watch.runtime.controller[i];
+
+        if (controller == NULL)
+        {
+            continue;
+        }
+
+        dst->name = controller->name;
+        dst->id = controller->id;
+        dst->period_ms = controller->meta.period_ms;
+        dst->phase_ms = controller->meta.phase_ms;
+        dst->domain = (uint8_t)controller->domain;
+        dst->active = control_manager_is_active(controller->id);
+        dst->priority = controller->meta.priority;
+        dst->input_count = controller->meta.input_count;
+        dst->output_count = controller->meta.output_count;
+    }
+
+    g_watch.runtime.domain_count = (uint8_t)CONTROL_DOMAIN__COUNT;
+    for (uint8_t i = 0u; i < (uint8_t)CONTROL_DOMAIN__COUNT; i++)
+    {
+        control_domain_status_t status = {0};
+        watch_runtime_domain_t *dst = &g_watch.runtime.domain[i];
+
+        if (control_manager_get_domain_status((control_domain_e)i, &status) != CONTROL_RESULT_OK)
+        {
+            continue;
+        }
+
+        dst->active_name = status.active_name;
+        dst->active_id = status.active_id;
+        dst->pending_id = status.pending_id;
+        dst->domain = (uint8_t)status.domain;
+        dst->active = status.active;
+        dst->state = (uint8_t)status.state;
+        dst->pending_request = (uint8_t)status.pending_request;
+        dst->last_reason = (uint8_t)status.last_reason;
+        dst->last_result = (uint8_t)status.last_result;
+        dst->update_count = status.update_count;
+        dst->transition_count = status.transition_count;
+        dst->reject_count = status.reject_count;
+        if (dst->active != 0u)
+        {
+            g_watch.runtime.active_controller_count++;
+        }
+    }
 }
 
 static void watch_copy_imu(void)
