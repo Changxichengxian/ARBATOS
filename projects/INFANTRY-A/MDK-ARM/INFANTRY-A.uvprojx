@@ -1068,6 +1068,36 @@
               <FilePath>../../../shared/application/comm/host/host_link_task.c</FilePath>
             </File>
             <File>
+              <FileName>aux_port.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../../../shared/application/comm/host/aux_port.c</FilePath>
+            </File>
+            <File>
+              <FileName>aux_tune.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../../../shared/application/comm/host/aux_tune.c</FilePath>
+            </File>
+            <File>
+              <FileName>aux_param.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../../../shared/application/comm/host/aux_param.c</FilePath>
+            </File>
+            <File>
+              <FileName>aux_autotune.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../../../shared/application/comm/host/aux_autotune.c</FilePath>
+            </File>
+            <File>
+              <FileName>aux_telem.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../../../shared/application/comm/host/aux_telem.c</FilePath>
+            </File>
+            <File>
+              <FileName>host_tune_bridge.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../../../shared/application/comm/host/host_tune_bridge.c</FilePath>
+            </File>
+            <File>
               <FileName>vision_link.c</FileName>
               <FileType>1</FileType>
               <FilePath>../../../shared/application/comm/vision/vision_link.c</FilePath>
