@@ -126,6 +126,23 @@ function Get-ProfileModuleCount {
     return [int]$match.Groups[1].Value
 }
 
+function Get-TaskModuleEnums {
+    param([string]$Content)
+
+    return @([regex]::Matches($Content, 'ROBOT_TASK_MODULE_[A-Z0-9_]+\s*=') |
+        ForEach-Object { $_.Value.TrimEnd("=", " ") } |
+        Where-Object { $_ -ne "ROBOT_TASK_MODULE_NONE" } |
+        Select-Object -Unique)
+}
+
+function Get-NamedTaskModules {
+    param([string]$Content)
+
+    return @([regex]::Matches($Content, '\{\s*(ROBOT_TASK_MODULE_[A-Z0-9_]+)\s*,\s*"task\.[^"]+"\s*\}') |
+        ForEach-Object { $_.Groups[1].Value } |
+        Select-Object -Unique)
+}
+
 function Test-UvProject {
     param([object]$Project)
 
@@ -365,6 +382,38 @@ function Test-RobotconfigCoverage {
     }
 }
 
+function Test-TaskModuleNames {
+    param([object[]]$Projects)
+
+    Write-Host "[check] task module names"
+
+    $profileHeader = Join-Path $script:RepoRoot "shared\application\robot\robot_task_profile.h"
+    if (-not (Test-Path -LiteralPath $profileHeader -PathType Leaf)) {
+        Add-CheckError "Missing robot task profile header: $(Format-RepoPath $profileHeader)"
+        return
+    }
+
+    $profileContent = Get-Content -LiteralPath $profileHeader -Raw
+    $namedModules = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($module in Get-NamedTaskModules $profileContent) {
+        [void]$namedModules.Add($module)
+    }
+
+    foreach ($project in $Projects) {
+        $configHeader = Join-Path $script:RepoRoot "Robotconfig\$($project.Name)\config.h"
+        if (-not (Test-Path -LiteralPath $configHeader -PathType Leaf)) {
+            continue
+        }
+
+        $configContent = Get-Content -LiteralPath $configHeader -Raw
+        foreach ($module in Get-TaskModuleEnums $configContent) {
+            if (-not $namedModules.Contains($module)) {
+                Add-CheckError "$(Format-RepoPath $configHeader): $module has no task.* name in $(Format-RepoPath $profileHeader)."
+            }
+        }
+    }
+}
+
 function Test-PythonTools {
     Write-Host "[check] python tool syntax"
 
@@ -459,6 +508,7 @@ foreach ($project in $projects) {
 }
 
 Test-RobotconfigCoverage $projects
+Test-TaskModuleNames $projects
 Test-PythonTools
 Test-StaleText
 
