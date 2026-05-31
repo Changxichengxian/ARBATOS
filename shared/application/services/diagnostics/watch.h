@@ -41,6 +41,9 @@
 #ifndef WATCH_RUNTIME_MAX_CONTROLLERS
 #define WATCH_RUNTIME_MAX_CONTROLLERS CONTROL_MANAGER_MAX_CONTROLLERS
 #endif
+#ifndef WATCH_RUNTIME_MAX_TASK_MODULES
+#define WATCH_RUNTIME_MAX_TASK_MODULES ROBOT_TASK_MODULE_MAX
+#endif
 
 // 为减少任务间耦合，本文件不直接依赖 chassis/gimbal/shoot 等头文件；
 // mode 字段使用 watch_ 内部枚举，数值与对应模块枚举保持一致（用于调试观测）。
@@ -661,6 +664,14 @@ typedef struct
 typedef struct
 {
     const char *name;
+    uint8_t module;
+    uint8_t reserved0;
+    uint16_t reserved1;
+} watch_runtime_task_module_t;
+
+typedef struct
+{
+    const char *name;
     uint16_t id;
     uint16_t period_ms;
     uint16_t phase_ms;
@@ -695,9 +706,12 @@ typedef struct
     uint8_t controller_count;
     uint8_t controller_visible_count;
     uint8_t active_controller_count;
+    uint8_t task_module_count;
+    uint8_t task_module_visible_count;
     uint8_t domain_count;
     uint8_t reserved0;
     uint32_t active_claim_mask;
+    watch_runtime_task_module_t task_module[WATCH_RUNTIME_MAX_TASK_MODULES];
     watch_runtime_motor_t motor[WATCH_RUNTIME_MAX_MOTORS];
     watch_runtime_controller_t controller[WATCH_RUNTIME_MAX_CONTROLLERS];
     watch_runtime_domain_t domain[CONTROL_DOMAIN__COUNT];

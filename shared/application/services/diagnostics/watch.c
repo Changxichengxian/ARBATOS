@@ -784,8 +784,28 @@ static void watch_copy_runtime(void)
     uint8_t motor_visible_count;
     uint8_t controller_count;
     uint8_t controller_visible_count;
+    uint8_t task_module_count;
+    uint8_t task_module_visible_count;
 
     memset(&g_watch.runtime, 0, sizeof(g_watch.runtime));
+
+    task_module_count = robot_profile_module_count();
+    task_module_visible_count = task_module_count;
+    if (task_module_visible_count > (uint8_t)(sizeof(g_watch.runtime.task_module) / sizeof(g_watch.runtime.task_module[0])))
+    {
+        task_module_visible_count = (uint8_t)(sizeof(g_watch.runtime.task_module) / sizeof(g_watch.runtime.task_module[0]));
+    }
+
+    g_watch.runtime.task_module_count = task_module_count;
+    g_watch.runtime.task_module_visible_count = task_module_visible_count;
+    for (uint8_t i = 0u; i < task_module_visible_count; i++)
+    {
+        const robot_task_module_e module = robot_profile_module_at(i);
+        watch_runtime_task_module_t *dst = &g_watch.runtime.task_module[i];
+
+        dst->module = (uint8_t)module;
+        dst->name = robot_profile_module_name(module);
+    }
 
     motor_count = motor_instance_count();
     motor_visible_count = motor_count;

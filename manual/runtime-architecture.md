@@ -198,6 +198,7 @@ static control_result_e triple_yaw_update(const control_controller_t *controller
 
 当前已经先在 `watch` 里加了一个通用运行时块 `runtime.instances`。它会按实例收集：
 
+- 当前目标启用的任务模块名字。
 - 电机实例数量、启用数量、名字、角色、bus 和 actuator id。
 - 控制器实例数量、名字、周期、输入输出数量和激活状态。
 - 每个控制域当前激活的控制器、待处理请求和统计计数。

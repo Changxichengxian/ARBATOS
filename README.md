@@ -187,7 +187,7 @@ F4 车工程主要在 `projects/<TARGET>/Core/Src/freertos.c` 创建任务。MC0
 | `health_monitor_task` | 在线检测、状态汇总、系统统计 |
 | `status_led_task` | 状态灯和提示输出 |
 
-任务选择入口在 `shared/application/robot/robot_task_profile.h`。现在只按 `task_modules` 判断：列了模块就创建对应任务，没列就不创建。检查脚本也按这张表核对工程源码和任务入口。
+任务选择入口在 `shared/application/robot/robot_task_profile.h`。现在只按 `task_modules` 判断：列了模块就创建对应任务，没列就不创建。这个入口也提供任务模块名字查询，方便诊断和上位机按名字展示。检查脚本按这张表核对工程源码和任务入口。
 
 ## 当前控制链路
 
