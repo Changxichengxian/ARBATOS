@@ -22,6 +22,7 @@
 #include "arm_math.h"
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
+#include "motor_instance.h"
 #include "motor_config.h"
 #include "user_lib.h"
 #include "axis_current_conditioner.h"
@@ -43,6 +44,19 @@
 #include "robot_task_profile.h"
 
 #include <string.h>
+
+static const char *const gimbal_output_motor_names[] = {
+    "motor.trigger",
+    "motor.yaw",
+    "motor.pitch",
+};
+
+static const char *const dual_yaw_gimbal_output_motor_names[] = {
+    "motor.trigger",
+    "motor.yaw",
+    "motor.yaw_upper",
+    "motor.pitch",
+};
 
 __weak void shoot_init(void)
 {
@@ -669,9 +683,17 @@ void gimbal_control_task(void const *pvParameters)
         // watch 输出：观察最终下发电流（含测试模式、安全模式及方向翻转后的值）
         gimbal_watch_yaw_current = yaw_can_set_current;
         gimbal_watch_pitch_current = pitch_can_set_current;
-        actuator_cmd_set_trigger_current(shoot_can_set_current);
-        actuator_cmd_set_yaw_current(yaw_can_set_current);
-        actuator_cmd_set_pitch_current(pitch_can_set_current);
+        {
+            const int16_t gimbal_current_cmd[] = {
+                shoot_can_set_current,
+                yaw_can_set_current,
+                pitch_can_set_current,
+            };
+
+            (void)motor_instance_cmd_set_current_many_best_effort(gimbal_output_motor_names,
+                                                                  gimbal_current_cmd,
+                                                                  (uint8_t)(sizeof(gimbal_current_cmd) / sizeof(gimbal_current_cmd[0])));
+        }
 
         {
             sdlog_gimbal_base_sample_t sample = {0};
@@ -751,10 +773,18 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
         gimbal_watch_yaw_current = yaw_can_set_current;
         gimbal_watch_yaw_upper_current = yaw_upper_can_set_current;
         gimbal_watch_pitch_current = pitch_can_set_current;
-        actuator_cmd_set_trigger_current(shoot_can_set_current);
-        actuator_cmd_set_yaw_current(yaw_can_set_current);
-        actuator_cmd_set_yaw_upper_current(yaw_upper_can_set_current);
-        actuator_cmd_set_pitch_current(pitch_can_set_current);
+        {
+            const int16_t gimbal_current_cmd[] = {
+                shoot_can_set_current,
+                yaw_can_set_current,
+                yaw_upper_can_set_current,
+                pitch_can_set_current,
+            };
+
+            (void)motor_instance_cmd_set_current_many_best_effort(dual_yaw_gimbal_output_motor_names,
+                                                                  gimbal_current_cmd,
+                                                                  (uint8_t)(sizeof(gimbal_current_cmd) / sizeof(gimbal_current_cmd[0])));
+        }
 
         {
             sdlog_gimbal_base_sample_t sample = {0};

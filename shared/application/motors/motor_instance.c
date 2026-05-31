@@ -460,6 +460,54 @@ uint8_t motor_instance_cmd_set_current_many(const char *const *names, const int1
     return motor_instance_cmd_set_current_ids(ids, currents, count);
 }
 
+uint8_t motor_instance_cmd_set_current_ids_best_effort(const actuator_id_e *ids, const int16_t *currents, uint8_t count)
+{
+    uint8_t written = 0u;
+
+    if (ids == NULL || currents == NULL)
+    {
+        return 0u;
+    }
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (motor_instance_id_cmd_enabled(ids[i]) == 0u)
+        {
+            continue;
+        }
+
+        actuator_cmd_set_current(ids[i], currents[i]);
+        written++;
+    }
+
+    return written;
+}
+
+uint8_t motor_instance_cmd_set_current_many_best_effort(const char *const *names, const int16_t *currents, uint8_t count)
+{
+    uint8_t written = 0u;
+
+    if (names == NULL || currents == NULL)
+    {
+        return 0u;
+    }
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        actuator_id_e id;
+
+        if (motor_instance_resolve_cmd_target(names[i], &id) == 0u)
+        {
+            continue;
+        }
+
+        actuator_cmd_set_current(id, currents[i]);
+        written++;
+    }
+
+    return written;
+}
+
 uint8_t motor_instance_feedback_get_copy_ids(const actuator_id_e *ids, actuator_feedback_t *out, uint8_t count)
 {
     if (ids == NULL || out == NULL)

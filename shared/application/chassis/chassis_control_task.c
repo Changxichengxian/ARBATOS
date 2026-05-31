@@ -29,6 +29,7 @@
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
 #include "chassis_state.h"
+#include "motor_instance.h"
 #include "motor_config.h"
 #include "watch.h"
 #include "detect_task.h"
@@ -43,6 +44,14 @@
 #include <string.h>
 
 #define CHASSIS_MOTOR_COUNT 4U
+
+static const char *const chassis_motor_instance_names[CHASSIS_MOTOR_COUNT] = {
+    "motor.chassis0",
+    "motor.chassis1",
+    "motor.chassis2",
+    "motor.chassis3",
+};
+static const int16_t chassis_zero_current_cmd[CHASSIS_MOTOR_COUNT] = {0};
 
 // Chassis follow-yaw stop window (reduces dithering when nearly aligned).
 // NOTE: yaw error uses gimbal-relative angle (rad), wz uses chassis rotation speed (rad/s).
@@ -676,10 +685,9 @@ void chassis_control_task(void const *pvParameters)
             chassis_move.vy_set = 0.0f;
             chassis_move.wz_set = 0.0f;
 
-            for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
-            {
-                actuator_cmd_set_chassis_current(i, 0);
-            }
+            (void)motor_instance_cmd_set_current_many_best_effort(chassis_motor_instance_names,
+                                                                  chassis_zero_current_cmd,
+                                                                  CHASSIS_MOTOR_COUNT);
 
             chassis_write_state(&chassis_move);
             rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
@@ -719,10 +727,9 @@ void chassis_control_task(void const *pvParameters)
             }
         }
 
-        for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
-        {
-            actuator_cmd_set_chassis_current(i, chassis_current_cmd[i]);
-        }
+        (void)motor_instance_cmd_set_current_many_best_effort(chassis_motor_instance_names,
+                                                              chassis_current_cmd,
+                                                              CHASSIS_MOTOR_COUNT);
 
         chassis_loop_counter++;
         {

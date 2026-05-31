@@ -28,6 +28,7 @@
 
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
+#include "motor_instance.h"
 #include "motor_config.h"
 #include "gimbal_state.h"
 #include "shoot_state.h"
@@ -68,6 +69,14 @@ static void shoot_clear_fric_output(void);
 static bool_t shoot_fric_speed_ready(void);
 static bool_t shoot_gimbal_cmd_to_shoot_stop(void);
 static void shoot_write_state(void);
+
+static const char *const shoot_friction_motor_names[FRIC_MOTOR_NUM] = {
+    "motor.friction0",
+    "motor.friction1",
+    "motor.friction2",
+    "motor.friction3",
+};
+static const int16_t shoot_fric_zero_current_cmd[FRIC_MOTOR_NUM] = {0};
 
 /**
   * @brief          trigger jam reverse handling.
@@ -309,10 +318,9 @@ static void shoot_clear_fric_output(void)
         shoot_control.fric_current_set[i] = 0;
     }
 
-    for (uint8_t i = 0; i < FRIC_MOTOR_NUM; i++)
-    {
-        actuator_cmd_set_friction_current(i, 0);
-    }
+    (void)motor_instance_cmd_set_current_many_best_effort(shoot_friction_motor_names,
+                                                          shoot_fric_zero_current_cmd,
+                                                          FRIC_MOTOR_NUM);
 
     shoot_control.fric_speed_ramp.out = SHOOT_FRIC_SPEED_OFF_RPM;
     shoot_control.fric_speed_set = SHOOT_FRIC_SPEED_OFF_RPM;
@@ -541,10 +549,9 @@ int16_t shoot_control_loop(void)
             fric_current_cmd[i] = current;
         }
 
-        for (uint8_t i = 0; i < FRIC_MOTOR_NUM; i++)
-        {
-            actuator_cmd_set_friction_current(i, fric_current_cmd[i]);
-        }
+        (void)motor_instance_cmd_set_current_many_best_effort(shoot_friction_motor_names,
+                                                              fric_current_cmd,
+                                                              FRIC_MOTOR_NUM);
     }
     shoot_write_state();
     return shoot_control.given_current;
