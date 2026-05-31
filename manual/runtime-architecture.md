@@ -166,10 +166,8 @@ static control_result_e triple_yaw_enter(const control_controller_t *controller,
 {
     (void)context;
 
-    if (motor_instance_resolve_actuator_ids(controller->meta.outputs,
-                                           controller->meta.output_count,
-                                           triple_yaw_ids,
-                                           3) != controller->meta.output_count)
+    if (motor_instance_resolve_controller_outputs(controller, triple_yaw_ids, 3) !=
+        controller->meta.output_count)
     {
         return CONTROL_RESULT_BAD_ARGUMENT;
     }

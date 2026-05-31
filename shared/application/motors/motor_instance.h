@@ -16,6 +16,8 @@
 #include "CAN_receive.h"
 #include "config.h"
 
+struct control_controller;
+
 #define MOTOR_INSTANCE_INVALID_DETECT_TOE 0xFFu
 
 typedef enum
@@ -69,5 +71,8 @@ uint8_t motor_instance_cmd_set_current_ids(const actuator_id_e *ids, const int16
 uint8_t motor_instance_cmd_set_current_many(const char *const *names, const int16_t *currents, uint8_t count);
 uint8_t motor_instance_feedback_get_copy_ids(const actuator_id_e *ids, actuator_feedback_t *out, uint8_t count);
 uint8_t motor_instance_feedback_get_copy_many(const char *const *names, actuator_feedback_t *out, uint8_t count);
+uint8_t motor_instance_resolve_controller_outputs(const struct control_controller *controller,
+                                                  actuator_id_e *out,
+                                                  uint8_t out_cap);
 
 #endif

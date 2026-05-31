@@ -9,6 +9,7 @@
 
 #include "motor_instance.h"
 
+#include "control_manager.h"
 #include "detect_task.h"
 #include "motor_config.h"
 #include "robot_device_config.h"
@@ -493,6 +494,21 @@ uint8_t motor_instance_feedback_get_copy_many(const char *const *names, actuator
     }
 
     return motor_instance_feedback_get_copy_ids(ids, out, count);
+}
+
+uint8_t motor_instance_resolve_controller_outputs(const struct control_controller *controller,
+                                                  actuator_id_e *out,
+                                                  uint8_t out_cap)
+{
+    if (controller == NULL)
+    {
+        return 0u;
+    }
+
+    return motor_instance_resolve_actuator_ids(controller->meta.outputs,
+                                              controller->meta.output_count,
+                                              out,
+                                              out_cap);
 }
 
 const motor_instance_t *motor_instance_find_feedback(uint8_t bus, uint16_t std_id)
