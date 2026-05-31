@@ -115,6 +115,22 @@ g_config.devices.motor[i] = {
 
 旧字段可以先由设备表生成，或者继续作为兼容层存在一段时间。
 
+当前先补了 `robot_device_config.h` 作为兼容视图。它暂时仍然从旧的 `g_config.motor.*` 读取，但对外已经按设备条目遍历：
+
+```c
+robot_config_device_t device;
+
+for (uint8_t i = 0; i < robot_config_device_count(); i++)
+{
+    if (robot_config_device_get(i, &device))
+    {
+        /* device.name / device.kind / device.config */
+    }
+}
+```
+
+电机仍然有 `robot_config_motor_device_t` 这种更具体的读取方式，`motor_instance_refresh()` 已经改成从这层读取。后面真正把 `Robotconfig` 写成设备数组时，优先改 `robot_device_config.h` 这层，电机实例和控制器不用再跟着大改。
+
 ### 阶段 3：控制器实例化
 
 控制器不再按“云台任务、底盘任务”扩张，而是按实例描述：

@@ -11,6 +11,7 @@
 
 #include "detect_task.h"
 #include "motor_config.h"
+#include "robot_device_config.h"
 #include "robot_task_profile.h"
 
 #include <string.h>
@@ -56,6 +57,98 @@ static void motor_instance_add(actuator_id_e actuator_id,
     inst->measure = measure;
 }
 
+static motor_instance_role_e motor_instance_role_from_config(uint8_t group)
+{
+    switch ((robot_config_motor_group_e)group)
+    {
+    case ROBOT_CONFIG_MOTOR_GROUP_CHASSIS:
+        return MOTOR_INSTANCE_ROLE_CHASSIS;
+    case ROBOT_CONFIG_MOTOR_GROUP_YAW:
+        return MOTOR_INSTANCE_ROLE_YAW;
+    case ROBOT_CONFIG_MOTOR_GROUP_YAW_UPPER:
+        return MOTOR_INSTANCE_ROLE_YAW_UPPER;
+    case ROBOT_CONFIG_MOTOR_GROUP_PITCH:
+        return MOTOR_INSTANCE_ROLE_PITCH;
+    case ROBOT_CONFIG_MOTOR_GROUP_TRIGGER:
+        return MOTOR_INSTANCE_ROLE_TRIGGER;
+    case ROBOT_CONFIG_MOTOR_GROUP_FRICTION:
+        return MOTOR_INSTANCE_ROLE_FRICTION;
+    case ROBOT_CONFIG_MOTOR_GROUP_ARM:
+        return MOTOR_INSTANCE_ROLE_ARM;
+    default:
+        return MOTOR_INSTANCE_ROLE_CHASSIS;
+    }
+}
+
+static uint8_t motor_instance_detect_toe_from_config(const robot_config_motor_device_t *device)
+{
+    if (device == NULL)
+    {
+        return MOTOR_INSTANCE_INVALID_DETECT_TOE;
+    }
+
+    switch ((robot_config_motor_group_e)device->group)
+    {
+    case ROBOT_CONFIG_MOTOR_GROUP_CHASSIS:
+        return (uint8_t)(CHASSIS_MOTOR1_TOE + device->group_index);
+    case ROBOT_CONFIG_MOTOR_GROUP_YAW:
+        return YAW_GIMBAL_MOTOR_TOE;
+    case ROBOT_CONFIG_MOTOR_GROUP_PITCH:
+        return PITCH_GIMBAL_MOTOR_TOE;
+    case ROBOT_CONFIG_MOTOR_GROUP_TRIGGER:
+        return TRIGGER_MOTOR_TOE;
+    default:
+        return MOTOR_INSTANCE_INVALID_DETECT_TOE;
+    }
+}
+
+static uint8_t motor_instance_use_detect_from_config(const robot_config_motor_device_t *device)
+{
+    if (device == NULL)
+    {
+        return 0u;
+    }
+
+    switch ((robot_config_motor_group_e)device->group)
+    {
+    case ROBOT_CONFIG_MOTOR_GROUP_CHASSIS:
+    case ROBOT_CONFIG_MOTOR_GROUP_YAW:
+    case ROBOT_CONFIG_MOTOR_GROUP_PITCH:
+    case ROBOT_CONFIG_MOTOR_GROUP_TRIGGER:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+
+static motor_measure_t *motor_instance_measure_from_config(const robot_config_motor_device_t *device)
+{
+    if (device == NULL)
+    {
+        return NULL;
+    }
+
+    switch ((robot_config_motor_group_e)device->group)
+    {
+    case ROBOT_CONFIG_MOTOR_GROUP_CHASSIS:
+        return (device->group_index < 4u) ? &s_motor_chassis[device->group_index] : NULL;
+    case ROBOT_CONFIG_MOTOR_GROUP_YAW:
+        return &s_motor_yaw;
+    case ROBOT_CONFIG_MOTOR_GROUP_YAW_UPPER:
+        return &s_motor_yaw_upper;
+    case ROBOT_CONFIG_MOTOR_GROUP_PITCH:
+        return &s_motor_pitch;
+    case ROBOT_CONFIG_MOTOR_GROUP_TRIGGER:
+        return &s_motor_trigger;
+    case ROBOT_CONFIG_MOTOR_GROUP_FRICTION:
+        return (device->group_index < 4u) ? &s_motor_friction[device->group_index] : NULL;
+    case ROBOT_CONFIG_MOTOR_GROUP_ARM:
+        return (device->group_index < (uint8_t)MOTOR_ARM_JOINT_COUNT) ? &s_motor_arm[device->group_index] : NULL;
+    default:
+        return NULL;
+    }
+}
+
 static uint8_t motor_instance_arm_role_enabled(void)
 {
     return (uint8_t)(robot_profile_need_arm_task() || robot_profile_is_wheelleg_mit());
@@ -84,93 +177,36 @@ static void motor_instance_ensure(void)
 
 void motor_instance_refresh(void)
 {
-    uint8_t i = 0u;
+    const uint8_t device_count = robot_config_motor_device_count();
 
     s_motor_instance_count = 0u;
     (void)memset(s_motor_instances, 0, sizeof(s_motor_instances));
 
-    for (i = 0u; i < 4u; i++)
+    for (uint8_t i = 0u; i < device_count; i++)
     {
-        motor_instance_add(actuator_id_chassis(i),
-                           MOTOR_INSTANCE_ROLE_CHASSIS,
-                           i,
-                           1u,
-                           (uint8_t)(CHASSIS_MOTOR1_TOE + i),
-                           1u,
-                           (i == 0u) ? "motor.chassis0" :
-                           (i == 1u) ? "motor.chassis1" :
-                           (i == 2u) ? "motor.chassis2" : "motor.chassis3",
-                           &g_config.motor.chassis[i],
-                           &s_motor_chassis[i]);
-    }
+        robot_config_motor_device_t device;
+        motor_measure_t *measure;
 
-    motor_instance_add(ACTUATOR_ID_YAW,
-                       MOTOR_INSTANCE_ROLE_YAW,
-                       0u,
-                       1u,
-                       YAW_GIMBAL_MOTOR_TOE,
-                       1u,
-                       "motor.yaw",
-                       &g_config.motor.yaw,
-                       &s_motor_yaw);
-    motor_instance_add(ACTUATOR_ID_YAW_UPPER,
-                       MOTOR_INSTANCE_ROLE_YAW_UPPER,
-                       0u,
-                       1u,
-                       MOTOR_INSTANCE_INVALID_DETECT_TOE,
-                       0u,
-                       "motor.yaw_upper",
-                       &g_config.motor.yaw_upper,
-                       &s_motor_yaw_upper);
-    motor_instance_add(ACTUATOR_ID_PITCH,
-                       MOTOR_INSTANCE_ROLE_PITCH,
-                       0u,
-                       1u,
-                       PITCH_GIMBAL_MOTOR_TOE,
-                       1u,
-                       "motor.pitch",
-                       &g_config.motor.pitch,
-                       &s_motor_pitch);
-    motor_instance_add(ACTUATOR_ID_TRIGGER,
-                       MOTOR_INSTANCE_ROLE_TRIGGER,
-                       0u,
-                       1u,
-                       TRIGGER_MOTOR_TOE,
-                       1u,
-                       "motor.trigger",
-                       &g_config.motor.trigger,
-                       &s_motor_trigger);
+        if (robot_config_motor_device_get(i, &device) == 0u)
+        {
+            continue;
+        }
 
-    for (i = 0u; i < 4u; i++)
-    {
-        motor_instance_add(actuator_id_friction(i),
-                           MOTOR_INSTANCE_ROLE_FRICTION,
-                           i,
-                           2u,
-                           MOTOR_INSTANCE_INVALID_DETECT_TOE,
-                           0u,
-                           (i == 0u) ? "motor.friction0" :
-                           (i == 1u) ? "motor.friction1" :
-                           (i == 2u) ? "motor.friction2" : "motor.friction3",
-                           &g_config.motor.friction[i],
-                           &s_motor_friction[i]);
-    }
+        measure = motor_instance_measure_from_config(&device);
+        if (measure == NULL)
+        {
+            continue;
+        }
 
-    for (i = 0u; i < (uint8_t)MOTOR_ARM_JOINT_COUNT; i++)
-    {
-        motor_instance_add(actuator_id_arm_joint(i),
-                           MOTOR_INSTANCE_ROLE_ARM,
-                           i,
-                           (i == 0u) ? 1u : 2u,
-                           MOTOR_INSTANCE_INVALID_DETECT_TOE,
-                           0u,
-                           (i == 0u) ? "motor.arm0" :
-                           (i == 1u) ? "motor.arm1" :
-                           (i == 2u) ? "motor.arm2" :
-                           (i == 3u) ? "motor.arm3" :
-                           (i == 4u) ? "motor.arm4" : "motor.arm5",
-                           &g_config.motor.arm[i],
-                           &s_motor_arm[i]);
+        motor_instance_add(device.actuator_id,
+                           motor_instance_role_from_config(device.group),
+                           device.group_index,
+                           device.fallback_bus,
+                           motor_instance_detect_toe_from_config(&device),
+                           motor_instance_use_detect_from_config(&device),
+                           device.name,
+                           device.node,
+                           measure);
     }
 
     s_motor_instance_ready = 1u;

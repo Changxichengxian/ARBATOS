@@ -368,6 +368,7 @@ actuator_feedback + 旧电机反馈结构
 | 机械臂命令和状态消息 | `shared/application/arm/arm_msg.h` |
 | 轮腿命令和状态消息 | `shared/application/wheelleg/wheelleg_msg.h` |
 | 控制器生命周期 | `shared/application/robot/control_manager.c` |
+| 设备配置视图 | `shared/application/robot/robot_device_config.h` |
 | 执行器命令 | `shared/application/robot/actuator_cmd.c` |
 | 电机实例 | `shared/application/motors/motor_instance.c` |
 | 电机参数查询 | `shared/application/motors/motor_config.h` |
