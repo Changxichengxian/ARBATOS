@@ -202,6 +202,7 @@ static control_result_e triple_yaw_update(const control_controller_t *controller
 - 电机实例数量、启用数量、名字、角色、bus 和 actuator id。
 - 控制器实例数量、名字、周期、输入输出数量和激活状态。
 - 每个控制域当前激活的控制器、待处理请求和统计计数。
+- 一张统一条目表：任务、设备、控制器、控制分组都用 `runtime_instance_ref_t` 表示，上位机可以先按名字和状态遍历。
 
 这一步的价值是后续新增机器人时，观察和诊断可以先看“有哪些实例在跑”，不需要为每种机器人重新写一套观察字段。
 

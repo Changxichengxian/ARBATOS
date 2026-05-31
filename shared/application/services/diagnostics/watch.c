@@ -256,6 +256,12 @@ static void watch_copy_wheelleg_mit(void);
 static void watch_copy_diag(void);
 static void watch_copy_rtos(void);
 static void watch_diag_push_stage(watch_boot_stage_e stage);
+static void watch_runtime_add_entry(const char *name,
+                                    runtime_instance_kind_e kind,
+                                    runtime_instance_state_e state,
+                                    uint16_t source_id,
+                                    uint16_t source_index,
+                                    uint16_t parent_index);
 static watch_task_diag_entry_t *watch_task_diag_get(watch_task_id_e task_id);
 static watch_irq_diag_entry_t *watch_irq_diag_get(watch_irq_id_e irq_id);
 static uint8_t watch_block_active_always(void);
@@ -680,6 +686,34 @@ uint8_t watch_block_is_active(watch_block_id_e id)
     return block->is_active();
 }
 
+static void watch_runtime_add_entry(const char *name,
+                                    runtime_instance_kind_e kind,
+                                    runtime_instance_state_e state,
+                                    uint16_t source_id,
+                                    uint16_t source_index,
+                                    uint16_t parent_index)
+{
+    const uint8_t index = g_watch.runtime.entry_visible_count;
+
+    if (g_watch.runtime.entry_count < 0xFFu)
+    {
+        g_watch.runtime.entry_count++;
+    }
+
+    if (index >= (uint8_t)(sizeof(g_watch.runtime.entry) / sizeof(g_watch.runtime.entry[0])))
+    {
+        return;
+    }
+
+    g_watch.runtime.entry[index] = runtime_instance_ref_make(name,
+                                                            kind,
+                                                            state,
+                                                            source_id,
+                                                            source_index,
+                                                            parent_index);
+    g_watch.runtime.entry_visible_count++;
+}
+
 static void watch_diag_push_stage(watch_boot_stage_e stage)
 {
     if (stage == WATCH_BOOT_STAGE_NONE)
@@ -805,6 +839,12 @@ static void watch_copy_runtime(void)
 
         dst->module = (uint8_t)module;
         dst->name = robot_profile_module_name(module);
+        watch_runtime_add_entry(dst->name,
+                                RUNTIME_INSTANCE_KIND_TASK,
+                                RUNTIME_INSTANCE_STATE_ENABLED,
+                                (uint16_t)module,
+                                i,
+                                RUNTIME_INSTANCE_INDEX_NONE);
     }
 
     motor_count = motor_instance_count();
@@ -836,6 +876,14 @@ static void watch_copy_runtime(void)
         {
             g_watch.runtime.motor_enabled_count++;
         }
+        watch_runtime_add_entry(dst->name,
+                                RUNTIME_INSTANCE_KIND_DEVICE,
+                                (dst->enabled != 0u) ?
+                                    RUNTIME_INSTANCE_STATE_ENABLED :
+                                    RUNTIME_INSTANCE_STATE_DISABLED,
+                                dst->actuator_id,
+                                i,
+                                RUNTIME_INSTANCE_INDEX_NONE);
     }
 
     controller_count = control_manager_registered_count();
@@ -867,6 +915,14 @@ static void watch_copy_runtime(void)
         dst->priority = controller->meta.priority;
         dst->input_count = controller->meta.input_count;
         dst->output_count = controller->meta.output_count;
+        watch_runtime_add_entry(dst->name,
+                                RUNTIME_INSTANCE_KIND_CONTROLLER,
+                                (dst->active != 0u) ?
+                                    RUNTIME_INSTANCE_STATE_ACTIVE :
+                                    RUNTIME_INSTANCE_STATE_ENABLED,
+                                dst->id,
+                                i,
+                                (uint16_t)controller->domain);
     }
 
     g_watch.runtime.domain_count = (uint8_t)CONTROL_DOMAIN__COUNT;
@@ -896,6 +952,16 @@ static void watch_copy_runtime(void)
         {
             g_watch.runtime.active_controller_count++;
         }
+        watch_runtime_add_entry(control_domain_name(status.domain),
+                                RUNTIME_INSTANCE_KIND_GROUP,
+                                (status.state == CONTROL_STATE_FAULT) ?
+                                    RUNTIME_INSTANCE_STATE_FAULT :
+                                    ((dst->active != 0u) ?
+                                         RUNTIME_INSTANCE_STATE_ACTIVE :
+                                         RUNTIME_INSTANCE_STATE_DISABLED),
+                                (uint16_t)status.domain,
+                                i,
+                                RUNTIME_INSTANCE_INDEX_NONE);
     }
 }
 

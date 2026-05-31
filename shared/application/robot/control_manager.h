@@ -169,6 +169,7 @@ typedef struct
 void control_manager_init(void);
 void control_manager_reset(void);
 
+const char *control_domain_name(control_domain_e domain);
 control_result_e control_manager_register(const control_controller_t *controller);
 uint8_t control_manager_registered_count(void);
 const control_controller_t *control_manager_get_registered(uint8_t index);

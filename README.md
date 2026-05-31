@@ -388,7 +388,7 @@ actuator_feedback + 旧电机反馈结构
 | 运行耗时统计 | `shared/application/services/diagnostics/rt_profiler.c` |
 | TF/SD 日志 | `shared/application/services/storage/sdlog_task.c`、`shared/application/services/storage/sdlog.c` |
 
-`robot_msg.h` 和各 `*_state.h` / `*_msg.h` 是 ARBATOS 原生结构体消息。它们只使用 C 结构体和固定状态表，不引入动态分配、运行时反射或外部中间件。`robot_state.h` 是聚合入口，新代码也可以只包含自己需要的模块头文件。
+`robot_msg.h` 和各 `*_state.h` / `*_msg.h` 是 ARBATOS 原生结构体消息。它们只使用 C 结构体和固定状态表，不引入动态分配、运行时反射或外部中间件。`runtime_instance.h` 提供轻量运行时条目描述，方便任务、设备、控制器先按名字和状态被统一观察。`robot_state.h` 是聚合入口，新代码也可以只包含自己需要的模块头文件。
 
 `control_manager.c` 是 MCU 轻量版控制器生命周期层。它只保存静态 controller 描述、处理 pending switch/stop、按 domain 保证单 active controller，并用资源 claim mask 防止多个 controller 同时拥有同一批执行器。它不新建任务、不动态加载、不分配堆内存；真正的 `enter/update/exit/stop` 仍然在对应控制任务自己的周期内执行。
 

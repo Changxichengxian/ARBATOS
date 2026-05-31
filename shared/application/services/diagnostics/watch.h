@@ -12,6 +12,7 @@
 #include "actuator_cmd.h"
 #include "control_manager.h"
 #include "config.h"
+#include "runtime_instance.h"
 #include "types.h"
 
 #ifndef WATCH_ENABLE_LOCOMOTION_CLASSIC
@@ -43,6 +44,9 @@
 #endif
 #ifndef WATCH_RUNTIME_MAX_TASK_MODULES
 #define WATCH_RUNTIME_MAX_TASK_MODULES ROBOT_TASK_MODULE_MAX
+#endif
+#ifndef WATCH_RUNTIME_MAX_ENTRIES
+#define WATCH_RUNTIME_MAX_ENTRIES 64u
 #endif
 
 // 为减少任务间耦合，本文件不直接依赖 chassis/gimbal/shoot 等头文件；
@@ -708,9 +712,12 @@ typedef struct
     uint8_t active_controller_count;
     uint8_t task_module_count;
     uint8_t task_module_visible_count;
+    uint8_t entry_count;
+    uint8_t entry_visible_count;
     uint8_t domain_count;
     uint8_t reserved0;
     uint32_t active_claim_mask;
+    runtime_instance_ref_t entry[WATCH_RUNTIME_MAX_ENTRIES];
     watch_runtime_task_module_t task_module[WATCH_RUNTIME_MAX_TASK_MODULES];
     watch_runtime_motor_t motor[WATCH_RUNTIME_MAX_MOTORS];
     watch_runtime_controller_t controller[WATCH_RUNTIME_MAX_CONTROLLERS];

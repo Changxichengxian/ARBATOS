@@ -314,6 +314,27 @@ void control_manager_init(void)
     CONTROL_MANAGER_EXIT_CRITICAL();
 }
 
+const char *control_domain_name(control_domain_e domain)
+{
+    switch (domain)
+    {
+    case CONTROL_DOMAIN_CHASSIS:
+        return "domain.chassis";
+    case CONTROL_DOMAIN_GIMBAL:
+        return "domain.gimbal";
+    case CONTROL_DOMAIN_SHOOT:
+        return "domain.shoot";
+    case CONTROL_DOMAIN_ARM:
+        return "domain.arm";
+    case CONTROL_DOMAIN_WHEELLEG:
+        return "domain.wheelleg";
+    case CONTROL_DOMAIN_SYSTEM:
+        return "domain.system";
+    default:
+        return NULL;
+    }
+}
+
 control_result_e control_manager_register(const control_controller_t *controller)
 {
     control_result_e result = CONTROL_RESULT_OK;
