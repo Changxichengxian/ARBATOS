@@ -226,6 +226,7 @@ static control_result_e triple_yaw_update(const control_controller_t *controller
 
 - 当前目标启用的任务模块名字。
 - 电机实例数量、启用数量、名字、角色、bus 和 actuator id。
+- 配置设备数量，统一条目表里的设备项来自 `robot_config_device_get()`。
 - 控制器实例数量、名字、周期、输入输出数量和激活状态。
 - 每个控制域当前激活的控制器、待处理请求和统计计数。
 - 一张统一条目表：任务、设备、控制器、控制分组都用 `runtime_instance_ref_t` 表示，上位机可以先按名字和状态遍历。

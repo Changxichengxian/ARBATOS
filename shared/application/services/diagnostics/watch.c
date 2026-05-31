@@ -37,6 +37,7 @@
 #include "sdlog.h"
 #include "shoot_state.h"
 #include "host_link_task.h"
+#include "robot_device_config.h"
 #include "robot_task_profile.h"
 #include "rt_profiler.h"
 #include "wheelleg_mit_task.h"
@@ -262,6 +263,7 @@ static void watch_runtime_add_entry(const char *name,
                                     uint16_t source_id,
                                     uint16_t source_index,
                                     uint16_t parent_index);
+static runtime_instance_state_e watch_runtime_device_state(const robot_config_device_t *device);
 static watch_task_diag_entry_t *watch_task_diag_get(watch_task_id_e task_id);
 static watch_irq_diag_entry_t *watch_irq_diag_get(watch_irq_id_e irq_id);
 static uint8_t watch_block_active_always(void);
@@ -714,6 +716,27 @@ static void watch_runtime_add_entry(const char *name,
     g_watch.runtime.entry_visible_count++;
 }
 
+static runtime_instance_state_e watch_runtime_device_state(const robot_config_device_t *device)
+{
+    if (device == NULL)
+    {
+        return RUNTIME_INSTANCE_STATE_UNKNOWN;
+    }
+
+    switch ((robot_config_device_kind_e)device->kind)
+    {
+    case ROBOT_CONFIG_DEVICE_KIND_MOTOR:
+    {
+        const motor_instance_t *inst = motor_instance_find_by_actuator((actuator_id_e)device->source_id);
+        return (inst != NULL && motor_instance_enabled(inst) != 0u) ?
+                   RUNTIME_INSTANCE_STATE_ENABLED :
+                   RUNTIME_INSTANCE_STATE_DISABLED;
+    }
+    default:
+        return RUNTIME_INSTANCE_STATE_ENABLED;
+    }
+}
+
 static void watch_diag_push_stage(watch_boot_stage_e stage)
 {
     if (stage == WATCH_BOOT_STAGE_NONE)
@@ -820,6 +843,7 @@ static void watch_copy_runtime(void)
     uint8_t controller_visible_count;
     uint8_t task_module_count;
     uint8_t task_module_visible_count;
+    uint8_t device_count;
 
     memset(&g_watch.runtime, 0, sizeof(g_watch.runtime));
 
@@ -843,6 +867,25 @@ static void watch_copy_runtime(void)
                                 RUNTIME_INSTANCE_KIND_TASK,
                                 RUNTIME_INSTANCE_STATE_ENABLED,
                                 (uint16_t)module,
+                                i,
+                                RUNTIME_INSTANCE_INDEX_NONE);
+    }
+
+    device_count = robot_config_device_count();
+    g_watch.runtime.device_count = device_count;
+    for (uint8_t i = 0u; i < device_count; i++)
+    {
+        robot_config_device_t device;
+
+        if (robot_config_device_get(i, &device) == 0u)
+        {
+            continue;
+        }
+
+        watch_runtime_add_entry(device.name,
+                                RUNTIME_INSTANCE_KIND_DEVICE,
+                                watch_runtime_device_state(&device),
+                                device.source_id,
                                 i,
                                 RUNTIME_INSTANCE_INDEX_NONE);
     }
@@ -876,14 +919,6 @@ static void watch_copy_runtime(void)
         {
             g_watch.runtime.motor_enabled_count++;
         }
-        watch_runtime_add_entry(dst->name,
-                                RUNTIME_INSTANCE_KIND_DEVICE,
-                                (dst->enabled != 0u) ?
-                                    RUNTIME_INSTANCE_STATE_ENABLED :
-                                    RUNTIME_INSTANCE_STATE_DISABLED,
-                                dst->actuator_id,
-                                i,
-                                RUNTIME_INSTANCE_INDEX_NONE);
     }
 
     controller_count = control_manager_registered_count();

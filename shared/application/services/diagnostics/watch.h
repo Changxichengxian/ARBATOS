@@ -712,6 +712,7 @@ typedef struct
     uint8_t active_controller_count;
     uint8_t task_module_count;
     uint8_t task_module_visible_count;
+    uint8_t device_count;
     uint8_t entry_count;
     uint8_t entry_visible_count;
     uint8_t domain_count;
