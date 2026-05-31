@@ -37,6 +37,7 @@ typedef struct
     uint8_t fallback_bus;
     uint8_t detect_toe;
     uint8_t use_detect;
+    const char *name;
     const motor_node_param_t *node;
     motor_measure_t *measure;
 } motor_instance_t;
@@ -45,8 +46,11 @@ void motor_instance_refresh(void);
 uint8_t motor_instance_count(void);
 const motor_instance_t *motor_instance_get(uint8_t index);
 const motor_instance_t *motor_instance_find_by_actuator(actuator_id_e id);
+const motor_instance_t *motor_instance_find_by_name(const char *name);
 const motor_instance_t *motor_instance_find_feedback(uint8_t bus, uint16_t std_id);
 
+const char *motor_instance_name(const motor_instance_t *inst);
+actuator_id_e motor_instance_actuator_id(const motor_instance_t *inst);
 uint8_t motor_instance_bus(const motor_instance_t *inst);
 uint8_t motor_instance_enabled(const motor_instance_t *inst);
 const motor_node_param_t *motor_instance_node(actuator_id_e id);

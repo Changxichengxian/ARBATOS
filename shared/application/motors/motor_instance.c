@@ -33,6 +33,7 @@ static void motor_instance_add(actuator_id_e actuator_id,
                                uint8_t fallback_bus,
                                uint8_t detect_toe,
                                uint8_t use_detect,
+                               const char *name,
                                const motor_node_param_t *node,
                                motor_measure_t *measure)
 {
@@ -50,6 +51,7 @@ static void motor_instance_add(actuator_id_e actuator_id,
     inst->fallback_bus = fallback_bus;
     inst->detect_toe = detect_toe;
     inst->use_detect = use_detect;
+    inst->name = name;
     inst->node = node;
     inst->measure = measure;
 }
@@ -95,6 +97,9 @@ void motor_instance_refresh(void)
                            1u,
                            (uint8_t)(CHASSIS_MOTOR1_TOE + i),
                            1u,
+                           (i == 0u) ? "motor.chassis0" :
+                           (i == 1u) ? "motor.chassis1" :
+                           (i == 2u) ? "motor.chassis2" : "motor.chassis3",
                            &g_config.motor.chassis[i],
                            &s_motor_chassis[i]);
     }
@@ -105,6 +110,7 @@ void motor_instance_refresh(void)
                        1u,
                        YAW_GIMBAL_MOTOR_TOE,
                        1u,
+                       "motor.yaw",
                        &g_config.motor.yaw,
                        &s_motor_yaw);
     motor_instance_add(ACTUATOR_ID_YAW_UPPER,
@@ -113,6 +119,7 @@ void motor_instance_refresh(void)
                        1u,
                        MOTOR_INSTANCE_INVALID_DETECT_TOE,
                        0u,
+                       "motor.yaw_upper",
                        &g_config.motor.yaw_upper,
                        &s_motor_yaw_upper);
     motor_instance_add(ACTUATOR_ID_PITCH,
@@ -121,6 +128,7 @@ void motor_instance_refresh(void)
                        1u,
                        PITCH_GIMBAL_MOTOR_TOE,
                        1u,
+                       "motor.pitch",
                        &g_config.motor.pitch,
                        &s_motor_pitch);
     motor_instance_add(ACTUATOR_ID_TRIGGER,
@@ -129,6 +137,7 @@ void motor_instance_refresh(void)
                        1u,
                        TRIGGER_MOTOR_TOE,
                        1u,
+                       "motor.trigger",
                        &g_config.motor.trigger,
                        &s_motor_trigger);
 
@@ -140,6 +149,9 @@ void motor_instance_refresh(void)
                            2u,
                            MOTOR_INSTANCE_INVALID_DETECT_TOE,
                            0u,
+                           (i == 0u) ? "motor.friction0" :
+                           (i == 1u) ? "motor.friction1" :
+                           (i == 2u) ? "motor.friction2" : "motor.friction3",
                            &g_config.motor.friction[i],
                            &s_motor_friction[i]);
     }
@@ -152,6 +164,11 @@ void motor_instance_refresh(void)
                            (i == 0u) ? 1u : 2u,
                            MOTOR_INSTANCE_INVALID_DETECT_TOE,
                            0u,
+                           (i == 0u) ? "motor.arm0" :
+                           (i == 1u) ? "motor.arm1" :
+                           (i == 2u) ? "motor.arm2" :
+                           (i == 3u) ? "motor.arm3" :
+                           (i == 4u) ? "motor.arm4" : "motor.arm5",
                            &g_config.motor.arm[i],
                            &s_motor_arm[i]);
     }
@@ -188,6 +205,37 @@ const motor_instance_t *motor_instance_find_by_actuator(actuator_id_e id)
         }
     }
     return NULL;
+}
+
+const motor_instance_t *motor_instance_find_by_name(const char *name)
+{
+    uint8_t i = 0u;
+
+    if (name == NULL)
+    {
+        return NULL;
+    }
+
+    motor_instance_ensure();
+    for (i = 0u; i < s_motor_instance_count; i++)
+    {
+        if (s_motor_instances[i].name != NULL &&
+            strcmp(s_motor_instances[i].name, name) == 0)
+        {
+            return &s_motor_instances[i];
+        }
+    }
+    return NULL;
+}
+
+const char *motor_instance_name(const motor_instance_t *inst)
+{
+    return (inst != NULL) ? inst->name : NULL;
+}
+
+actuator_id_e motor_instance_actuator_id(const motor_instance_t *inst)
+{
+    return (inst != NULL) ? inst->actuator_id : ACTUATOR_ID__COUNT;
 }
 
 uint8_t motor_instance_bus(const motor_instance_t *inst)
