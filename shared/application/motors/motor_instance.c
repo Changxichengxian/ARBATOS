@@ -345,17 +345,54 @@ static uint8_t motor_instance_id_cmd_enabled(actuator_id_e id)
     return (uint8_t)(inst != NULL && motor_instance_enabled(inst) != 0u);
 }
 
-uint8_t motor_instance_cmd_clear(const char *name)
+uint8_t motor_instance_cmd_clear_id(actuator_id_e id)
 {
-    const actuator_id_e id = motor_instance_actuator_id_by_name(name);
-
-    if (id == ACTUATOR_ID__COUNT)
+    if ((uint32_t)id >= (uint32_t)ACTUATOR_ID__COUNT ||
+        motor_instance_find_by_actuator(id) == NULL)
     {
         return 0u;
     }
 
     actuator_cmd_clear(id);
     return 1u;
+}
+
+uint8_t motor_instance_cmd_set_current_id(actuator_id_e id, int16_t current)
+{
+    if (motor_instance_id_cmd_enabled(id) == 0u)
+    {
+        return 0u;
+    }
+
+    actuator_cmd_set_current(id, current);
+    return 1u;
+}
+
+uint8_t motor_instance_cmd_set_state_torque_id(actuator_id_e id, const actuator_cmd_t *cmd)
+{
+    if (cmd == NULL || motor_instance_id_cmd_enabled(id) == 0u)
+    {
+        return 0u;
+    }
+
+    actuator_cmd_set_state_torque(id, cmd);
+    return 1u;
+}
+
+uint8_t motor_instance_cmd_set_speed_id(actuator_id_e id, fp32 velocity, fp32 kd, fp32 torque)
+{
+    if (motor_instance_id_cmd_enabled(id) == 0u)
+    {
+        return 0u;
+    }
+
+    actuator_cmd_set_speed(id, velocity, kd, torque);
+    return 1u;
+}
+
+uint8_t motor_instance_cmd_clear(const char *name)
+{
+    return motor_instance_cmd_clear_id(motor_instance_actuator_id_by_name(name));
 }
 
 uint8_t motor_instance_cmd_set_current(const char *name, int16_t current)
@@ -367,21 +404,19 @@ uint8_t motor_instance_cmd_set_current(const char *name, int16_t current)
         return 0u;
     }
 
-    actuator_cmd_set_current(id, current);
-    return 1u;
+    return motor_instance_cmd_set_current_id(id, current);
 }
 
 uint8_t motor_instance_cmd_set_state_torque(const char *name, const actuator_cmd_t *cmd)
 {
     actuator_id_e id;
 
-    if (cmd == NULL || motor_instance_resolve_cmd_target(name, &id) == 0u)
+    if (motor_instance_resolve_cmd_target(name, &id) == 0u)
     {
         return 0u;
     }
 
-    actuator_cmd_set_state_torque(id, cmd);
-    return 1u;
+    return motor_instance_cmd_set_state_torque_id(id, cmd);
 }
 
 uint8_t motor_instance_cmd_set_speed(const char *name, fp32 velocity, fp32 kd, fp32 torque)
@@ -393,8 +428,7 @@ uint8_t motor_instance_cmd_set_speed(const char *name, fp32 velocity, fp32 kd, f
         return 0u;
     }
 
-    actuator_cmd_set_speed(id, velocity, kd, torque);
-    return 1u;
+    return motor_instance_cmd_set_speed_id(id, velocity, kd, torque);
 }
 
 uint8_t motor_instance_cmd_get_copy(const char *name, actuator_cmd_t *out)
@@ -438,7 +472,7 @@ uint8_t motor_instance_cmd_set_current_ids(const actuator_id_e *ids, const int16
 
     for (uint8_t i = 0u; i < count; i++)
     {
-        actuator_cmd_set_current(ids[i], currents[i]);
+        (void)motor_instance_cmd_set_current_id(ids[i], currents[i]);
     }
 
     return 1u;
@@ -476,8 +510,7 @@ uint8_t motor_instance_cmd_set_current_ids_best_effort(const actuator_id_e *ids,
             continue;
         }
 
-        actuator_cmd_set_current(ids[i], currents[i]);
-        written++;
+        written += motor_instance_cmd_set_current_id(ids[i], currents[i]);
     }
 
     return written;
@@ -501,8 +534,7 @@ uint8_t motor_instance_cmd_set_current_many_best_effort(const char *const *names
             continue;
         }
 
-        actuator_cmd_set_current(id, currents[i]);
-        written++;
+        written += motor_instance_cmd_set_current_id(id, currents[i]);
     }
 
     return written;

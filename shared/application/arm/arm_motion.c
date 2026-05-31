@@ -23,6 +23,7 @@
 
 #include "CAN_receive.h"
 #include "actuator_cmd.h"
+#include "motor_instance.h"
 #include "motor_config.h"
 #include "arm_motor_table.h"
 
@@ -292,7 +293,7 @@ static void arm_clear_mit_actuator_cmds(void)
     {
         if (g_arm_motor_table[i].driver == ARM_MOTOR_DRIVER_CAN_MIT)
         {
-            actuator_cmd_set_speed(actuator_id_arm_joint((uint8_t)i), 0.0f, 0.0f, 0.0f);
+            (void)motor_instance_cmd_set_speed_id(actuator_id_arm_joint((uint8_t)i), 0.0f, 0.0f, 0.0f);
         }
     }
 }
@@ -587,24 +588,24 @@ static void arm_write_j0_unitree_cmd(const arm_motor_entry_t *entry,
 
     if (arm_j0_unitree_enabled(entry) == 0u)
     {
-        actuator_cmd_set_speed(ACTUATOR_ID_ARM_J0, 0.0f, 0.0f, 0.0f);
+        (void)motor_instance_cmd_set_speed_id(ACTUATOR_ID_ARM_J0, 0.0f, 0.0f, 0.0f);
         return;
     }
 
     if (g_arm_deadman_hold_ctrl != 0u && ctrl_held == 0u)
     {
-        actuator_cmd_set_speed(ACTUATOR_ID_ARM_J0, 0.0f, 0.0f, 0.0f);
+        (void)motor_instance_cmd_set_speed_id(ACTUATOR_ID_ARM_J0, 0.0f, 0.0f, 0.0f);
         return;
     }
 
     if (move_key != 0u)
     {
         const fp32 dir = (reverse != 0u) ? -1.0f : 1.0f;
-        actuator_cmd_set_speed(ACTUATOR_ID_ARM_J0, dir * cfg->key_speed_rad_s, cfg->drive_kd, 0.0f);
+        (void)motor_instance_cmd_set_speed_id(ACTUATOR_ID_ARM_J0, dir * cfg->key_speed_rad_s, cfg->drive_kd, 0.0f);
     }
     else
     {
-        actuator_cmd_set_speed(ACTUATOR_ID_ARM_J0, 0.0f, cfg->hold_kd, 0.0f);
+        (void)motor_instance_cmd_set_speed_id(ACTUATOR_ID_ARM_J0, 0.0f, cfg->hold_kd, 0.0f);
     }
 }
 
@@ -719,13 +720,13 @@ static void arm_step_j0(const arm_motor_entry_t *entry, uint16_t key_mask)
 
     if (arm_j0_unitree_enabled(entry) != 0u)
     {
-        actuator_cmd_set_current(ACTUATOR_ID_ARM_J0, 0);
+        (void)motor_instance_cmd_set_current_id(ACTUATOR_ID_ARM_J0, 0);
         return;
     }
 
     if (g_arm_deadman_hold_ctrl != 0u && ctrl_held == 0u)
     {
-        actuator_cmd_set_current(ACTUATOR_ID_ARM_J0, 0);
+        (void)motor_instance_cmd_set_current_id(ACTUATOR_ID_ARM_J0, 0);
         return;
     }
 
@@ -735,11 +736,11 @@ static void arm_step_j0(const arm_motor_entry_t *entry, uint16_t key_mask)
         int16_t current = (reverse != 0u) ? (int16_t)(-current_abs) : current_abs;
 
         current = motor_cfg_limit_current_node(arm_entry_node(entry), current);
-        actuator_cmd_set_current(ACTUATOR_ID_ARM_J0, current);
+        (void)motor_instance_cmd_set_current_id(ACTUATOR_ID_ARM_J0, current);
     }
     else
     {
-        actuator_cmd_set_current(ACTUATOR_ID_ARM_J0, 0);
+        (void)motor_instance_cmd_set_current_id(ACTUATOR_ID_ARM_J0, 0);
     }
 }
 
@@ -818,11 +819,11 @@ static void arm_step_mit(uint16_t key_mask)
             const fp32 dir = (reverse != 0u) ? -1.0f : 1.0f;
             const fp32 velocity = dir * (fp32)entry->direction * entry->key_speed_rad_s * g_arm_key_speed_scale;
             const fp32 kd = arm_motion_clamp_fp32(g_arm_key_kd, 0.0f, limits->kd_max);
-            actuator_cmd_set_speed(actuator_id, velocity, kd, 0.0f);
+            (void)motor_instance_cmd_set_speed_id(actuator_id, velocity, kd, 0.0f);
         }
         else
         {
-            actuator_cmd_set_speed(actuator_id, 0.0f, 0.0f, 0.0f);
+            (void)motor_instance_cmd_set_speed_id(actuator_id, 0.0f, 0.0f, 0.0f);
         }
 
         arm_send_can_mit_from_actuator(entry, actuator_id, limits);
@@ -838,7 +839,7 @@ void arm_motion_init(void)
     g_arm_j0_unitree_last_step_tick_ms = 0u;
     g_arm_j0_unitree_cmd_output_speed_rad_s = 0.0f;
     g_arm_j0_unitree_cmd_output_kd = 0.0f;
-    actuator_cmd_set_current(ACTUATOR_ID_ARM_J0, 0);
+    (void)motor_instance_cmd_set_current_id(ACTUATOR_ID_ARM_J0, 0);
     arm_clear_mit_actuator_cmds();
     unitree_motor_driver_init();
     arm_sync_j0_unitree_state();

@@ -14,6 +14,7 @@
 #include "config.h"
 #include "control_input.h"
 #include "detect_task.h"
+#include "motor_instance.h"
 #include "robot_msg.h"
 #include "robot_task_profile.h"
 #include "sdlog.h"
@@ -1213,7 +1214,7 @@ static void wheelleg_send_torque(actuator_id_e id, fp32 torque)
 
     (void)memset(&cmd, 0, sizeof(cmd));
     cmd.torque = torque;
-    actuator_cmd_set_state_torque(id, &cmd);
+    (void)motor_instance_cmd_set_state_torque_id(id, &cmd);
 }
 
 static void wheelleg_send_joint_torque(actuator_id_e id, fp32 kinematic_torque, int8_t dir)
@@ -1241,8 +1242,7 @@ static uint8_t wheelleg_send_state_cmd(actuator_id_e id,
     cmd.kp = kp;
     cmd.kd = kd;
     cmd.torque = torque;
-    actuator_cmd_set_state_torque(id, &cmd);
-    return 1u;
+    return motor_instance_cmd_set_state_torque_id(id, &cmd);
 }
 
 static void wheelleg_clear_state_cmd(actuator_id_e id)
@@ -1252,7 +1252,7 @@ static void wheelleg_clear_state_cmd(actuator_id_e id)
         return;
     }
 
-    actuator_cmd_clear(id);
+    (void)motor_instance_cmd_clear_id(id);
 }
 
 static void wheelleg_clear_leg_virtual_outputs(void)

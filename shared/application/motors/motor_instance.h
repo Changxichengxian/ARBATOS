@@ -61,6 +61,10 @@ const motor_node_param_t *motor_instance_node(actuator_id_e id);
 motor_measure_t *motor_instance_measure(actuator_id_e id);
 const motor_measure_t *motor_instance_measure_const(actuator_id_e id);
 
+uint8_t motor_instance_cmd_clear_id(actuator_id_e id);
+uint8_t motor_instance_cmd_set_current_id(actuator_id_e id, int16_t current);
+uint8_t motor_instance_cmd_set_state_torque_id(actuator_id_e id, const actuator_cmd_t *cmd);
+uint8_t motor_instance_cmd_set_speed_id(actuator_id_e id, fp32 velocity, fp32 kd, fp32 torque);
 uint8_t motor_instance_cmd_clear(const char *name);
 uint8_t motor_instance_cmd_set_current(const char *name, int16_t current);
 uint8_t motor_instance_cmd_set_state_torque(const char *name, const actuator_cmd_t *cmd);
