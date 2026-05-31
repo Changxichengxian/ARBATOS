@@ -86,6 +86,7 @@ typedef enum
     CONTROL_RESULT_DOMAIN_MISMATCH,
     CONTROL_RESULT_RESOURCE_BUSY,
     CONTROL_RESULT_NOT_ACTIVE,
+    CONTROL_RESULT_NOT_DUE,
     CONTROL_RESULT_CALLBACK_FAILED,
 } control_result_e;
 
@@ -178,6 +179,7 @@ uint16_t control_manager_find_registered_id_by_name(const char *name);
 const char *control_controller_input_name(const control_controller_t *controller, uint8_t index);
 const char *control_controller_output_name(const control_controller_t *controller, uint8_t index);
 uint16_t control_controller_period_ms(const control_controller_t *controller);
+uint8_t control_controller_due(const control_controller_t *controller, uint32_t tick_ms);
 uint8_t control_controller_input_count(const control_controller_t *controller);
 uint8_t control_controller_output_count(const control_controller_t *controller);
 
@@ -189,6 +191,8 @@ void control_manager_clear_pending(control_domain_e domain);
 
 control_result_e control_manager_update_domain(control_domain_e domain, control_context_t *context);
 control_result_e control_manager_update_all(control_context_t *context);
+control_result_e control_manager_update_domain_due(control_domain_e domain, uint32_t tick_ms, control_context_t *context);
+control_result_e control_manager_update_due_all(uint32_t tick_ms, control_context_t *context);
 
 uint8_t control_manager_is_active(uint16_t controller_id);
 uint8_t control_manager_is_active_by_name(const char *name);

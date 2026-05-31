@@ -444,6 +444,26 @@ uint16_t control_controller_period_ms(const control_controller_t *controller)
     return (controller != NULL) ? controller->meta.period_ms : 0u;
 }
 
+uint8_t control_controller_due(const control_controller_t *controller, uint32_t tick_ms)
+{
+    uint32_t period_ms;
+    uint32_t phase_ms;
+
+    if (controller == NULL)
+    {
+        return 0u;
+    }
+
+    period_ms = (uint32_t)controller->meta.period_ms;
+    if (period_ms == 0u)
+    {
+        return 1u;
+    }
+
+    phase_ms = (uint32_t)controller->meta.phase_ms % period_ms;
+    return (((tick_ms + period_ms - phase_ms) % period_ms) == 0u) ? 1u : 0u;
+}
+
 uint8_t control_controller_input_count(const control_controller_t *controller)
 {
     return (controller != NULL) ? controller->meta.input_count : 0u;
@@ -588,6 +608,72 @@ control_result_e control_manager_update_all(control_context_t *context)
         if (first_error == CONTROL_RESULT_OK &&
             result != CONTROL_RESULT_OK &&
             result != CONTROL_RESULT_NOT_ACTIVE)
+        {
+            first_error = result;
+        }
+    }
+
+    return first_error;
+}
+
+control_result_e control_manager_update_domain_due(control_domain_e domain, uint32_t tick_ms, control_context_t *context)
+{
+    control_domain_state_t *domain_state;
+    const control_controller_t *active;
+    control_context_t local_context;
+    control_result_e result;
+
+    control_manager_init();
+    if (control_domain_valid(domain) == 0u)
+    {
+        return CONTROL_RESULT_BAD_ARGUMENT;
+    }
+
+    context = control_context_or_local(context, &local_context);
+    context->tick_ms = tick_ms;
+    domain_state = &s_domain[domain];
+
+    result = control_apply_pending(domain, context);
+    if (result != CONTROL_RESULT_OK && result != CONTROL_RESULT_NOT_ACTIVE)
+    {
+        return result;
+    }
+
+    active = domain_state->active;
+    if (active == NULL)
+    {
+        return CONTROL_RESULT_NOT_ACTIVE;
+    }
+    if (control_controller_due(active, tick_ms) == 0u)
+    {
+        return CONTROL_RESULT_NOT_DUE;
+    }
+
+    result = control_call_callback(active->update, active, context, CONTROL_REASON_NONE);
+    domain_state->update_count++;
+    domain_state->last_result = result;
+    if (result != CONTROL_RESULT_OK)
+    {
+        (void)control_stop_active(domain, CONTROL_REASON_FAULT, context);
+        domain_state->state = CONTROL_STATE_FAULT;
+        domain_state->last_result = result;
+        return CONTROL_RESULT_CALLBACK_FAILED;
+    }
+
+    return CONTROL_RESULT_OK;
+}
+
+control_result_e control_manager_update_due_all(uint32_t tick_ms, control_context_t *context)
+{
+    control_result_e first_error = CONTROL_RESULT_OK;
+
+    for (uint8_t i = 0u; i < (uint8_t)CONTROL_DOMAIN__COUNT; i++)
+    {
+        control_result_e result = control_manager_update_domain_due((control_domain_e)i, tick_ms, context);
+        if (first_error == CONTROL_RESULT_OK &&
+            result != CONTROL_RESULT_OK &&
+            result != CONTROL_RESULT_NOT_ACTIVE &&
+            result != CONTROL_RESULT_NOT_DUE)
         {
             first_error = result;
         }
