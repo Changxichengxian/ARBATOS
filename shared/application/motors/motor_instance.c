@@ -17,14 +17,7 @@
 
 #include <string.h>
 
-static motor_measure_t s_motor_chassis[4];
-static motor_measure_t s_motor_yaw;
-static motor_measure_t s_motor_yaw_upper;
-static motor_measure_t s_motor_pitch;
-static motor_measure_t s_motor_trigger;
-static motor_measure_t s_motor_friction[4];
-static motor_measure_t s_motor_arm[MOTOR_ARM_JOINT_COUNT];
-
+static motor_measure_t s_motor_measure[ACTUATOR_ID__COUNT];
 static motor_instance_t s_motor_instances[ACTUATOR_ID__COUNT];
 static uint8_t s_motor_instance_count = 0u;
 static uint8_t s_motor_instance_ready = 0u;
@@ -122,32 +115,14 @@ static uint8_t motor_instance_use_detect_from_config(const robot_config_motor_de
     }
 }
 
-static motor_measure_t *motor_instance_measure_from_config(const robot_config_motor_device_t *device)
+static motor_measure_t *motor_instance_measure_from_actuator(actuator_id_e actuator_id)
 {
-    if (device == NULL)
+    if ((uint32_t)actuator_id >= (uint32_t)ACTUATOR_ID__COUNT)
     {
         return NULL;
     }
 
-    switch ((robot_config_motor_group_e)device->group)
-    {
-    case ROBOT_CONFIG_MOTOR_GROUP_CHASSIS:
-        return (device->group_index < 4u) ? &s_motor_chassis[device->group_index] : NULL;
-    case ROBOT_CONFIG_MOTOR_GROUP_YAW:
-        return &s_motor_yaw;
-    case ROBOT_CONFIG_MOTOR_GROUP_YAW_UPPER:
-        return &s_motor_yaw_upper;
-    case ROBOT_CONFIG_MOTOR_GROUP_PITCH:
-        return &s_motor_pitch;
-    case ROBOT_CONFIG_MOTOR_GROUP_TRIGGER:
-        return &s_motor_trigger;
-    case ROBOT_CONFIG_MOTOR_GROUP_FRICTION:
-        return (device->group_index < 4u) ? &s_motor_friction[device->group_index] : NULL;
-    case ROBOT_CONFIG_MOTOR_GROUP_ARM:
-        return (device->group_index < (uint8_t)MOTOR_ARM_JOINT_COUNT) ? &s_motor_arm[device->group_index] : NULL;
-    default:
-        return NULL;
-    }
+    return &s_motor_measure[actuator_id];
 }
 
 static uint8_t motor_instance_arm_role_enabled(void)
@@ -193,7 +168,7 @@ void motor_instance_refresh(void)
             continue;
         }
 
-        measure = motor_instance_measure_from_config(&device);
+        measure = motor_instance_measure_from_actuator(device.actuator_id);
         if (measure == NULL)
         {
             continue;

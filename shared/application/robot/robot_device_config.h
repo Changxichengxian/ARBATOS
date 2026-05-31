@@ -28,20 +28,20 @@
 typedef enum
 {
     ROBOT_CONFIG_DEVICE_KIND_UNKNOWN = 0u,
-    ROBOT_CONFIG_DEVICE_KIND_MOTOR,
-    ROBOT_CONFIG_DEVICE_KIND_CUSTOM_BASE = 128u,
+    ROBOT_CONFIG_DEVICE_KIND_MOTOR = ROBOT_DEVICE_TABLE_KIND_MOTOR,
+    ROBOT_CONFIG_DEVICE_KIND_CUSTOM_BASE = ROBOT_DEVICE_TABLE_KIND_CUSTOM_BASE,
 } robot_config_device_kind_e;
 
 typedef enum
 {
-    ROBOT_CONFIG_MOTOR_GROUP_CHASSIS = 0u,
-    ROBOT_CONFIG_MOTOR_GROUP_YAW,
-    ROBOT_CONFIG_MOTOR_GROUP_YAW_UPPER,
-    ROBOT_CONFIG_MOTOR_GROUP_PITCH,
-    ROBOT_CONFIG_MOTOR_GROUP_TRIGGER,
-    ROBOT_CONFIG_MOTOR_GROUP_FRICTION,
-    ROBOT_CONFIG_MOTOR_GROUP_ARM,
-    ROBOT_CONFIG_MOTOR_GROUP_CUSTOM_BASE = 128u,
+    ROBOT_CONFIG_MOTOR_GROUP_CHASSIS = ROBOT_DEVICE_MOTOR_ROLE_CHASSIS,
+    ROBOT_CONFIG_MOTOR_GROUP_YAW = ROBOT_DEVICE_MOTOR_ROLE_YAW,
+    ROBOT_CONFIG_MOTOR_GROUP_YAW_UPPER = ROBOT_DEVICE_MOTOR_ROLE_YAW_UPPER,
+    ROBOT_CONFIG_MOTOR_GROUP_PITCH = ROBOT_DEVICE_MOTOR_ROLE_PITCH,
+    ROBOT_CONFIG_MOTOR_GROUP_TRIGGER = ROBOT_DEVICE_MOTOR_ROLE_TRIGGER,
+    ROBOT_CONFIG_MOTOR_GROUP_FRICTION = ROBOT_DEVICE_MOTOR_ROLE_FRICTION,
+    ROBOT_CONFIG_MOTOR_GROUP_ARM = ROBOT_DEVICE_MOTOR_ROLE_ARM,
+    ROBOT_CONFIG_MOTOR_GROUP_CUSTOM_BASE = ROBOT_DEVICE_MOTOR_ROLE_CUSTOM_BASE,
 } robot_config_motor_group_e;
 
 typedef struct
@@ -76,11 +76,6 @@ typedef struct
     robot_config_device_t outputs[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
 } robot_config_device_binding_t;
 
-static inline uint8_t robot_config_motor_device_legacy_count(void)
-{
-    return (uint8_t)(12u + (uint8_t)MOTOR_ARM_JOINT_COUNT);
-}
-
 static inline uint8_t robot_config_device_table_count(void)
 {
     const uint8_t count = g_config.devices.count;
@@ -90,11 +85,6 @@ static inline uint8_t robot_config_device_table_count(void)
         return 0u;
     }
     return (count > (uint8_t)ROBOT_DEVICE_CONFIG_MAX) ? (uint8_t)ROBOT_DEVICE_CONFIG_MAX : count;
-}
-
-static inline uint8_t robot_config_device_table_active(void)
-{
-    return (robot_config_device_table_count() != 0u) ? 1u : 0u;
 }
 
 static inline const char *robot_config_chassis_motor_name(uint8_t index)
@@ -157,116 +147,148 @@ static inline actuator_id_e robot_config_source_or_default(uint16_t source_id, a
     return (source_id < (uint16_t)ACTUATOR_ID__COUNT) ? (actuator_id_e)source_id : fallback;
 }
 
+static inline const void *robot_config_ptr_from_offset(uint32_t config_offset)
+{
+    if (config_offset == (uint32_t)ROBOT_DEVICE_CONFIG_OFFSET_NONE ||
+        config_offset >= (uint32_t)sizeof(g_config))
+    {
+        return NULL;
+    }
+
+    return (const void *)(((const uint8_t *)&g_config) + config_offset);
+}
+
+static inline const motor_node_param_t *robot_config_motor_node_from_offset(uint32_t config_offset)
+{
+    if (config_offset == (uint32_t)ROBOT_DEVICE_CONFIG_OFFSET_NONE ||
+        config_offset > ((uint32_t)sizeof(g_config) - (uint32_t)sizeof(motor_node_param_t)))
+    {
+        return NULL;
+    }
+
+    return (const motor_node_param_t *)robot_config_ptr_from_offset(config_offset);
+}
+
+static inline const char *robot_config_motor_default_name(uint8_t group, uint8_t group_index)
+{
+    switch ((robot_config_motor_group_e)group)
+    {
+    case ROBOT_CONFIG_MOTOR_GROUP_CHASSIS:
+        return robot_config_chassis_motor_name(group_index);
+    case ROBOT_CONFIG_MOTOR_GROUP_YAW:
+        return "motor.yaw";
+    case ROBOT_CONFIG_MOTOR_GROUP_YAW_UPPER:
+        return "motor.yaw_upper";
+    case ROBOT_CONFIG_MOTOR_GROUP_PITCH:
+        return "motor.pitch";
+    case ROBOT_CONFIG_MOTOR_GROUP_TRIGGER:
+        return "motor.trigger";
+    case ROBOT_CONFIG_MOTOR_GROUP_FRICTION:
+        return robot_config_friction_motor_name(group_index);
+    case ROBOT_CONFIG_MOTOR_GROUP_ARM:
+        return robot_config_arm_motor_name(group_index);
+    default:
+        return NULL;
+    }
+}
+
+static inline actuator_id_e robot_config_motor_default_actuator(uint8_t group, uint8_t group_index)
+{
+    switch ((robot_config_motor_group_e)group)
+    {
+    case ROBOT_CONFIG_MOTOR_GROUP_CHASSIS:
+        return actuator_id_from_range(ACTUATOR_ID_CHASSIS0, group_index, 4u);
+    case ROBOT_CONFIG_MOTOR_GROUP_YAW:
+        return ACTUATOR_ID_YAW;
+    case ROBOT_CONFIG_MOTOR_GROUP_YAW_UPPER:
+        return ACTUATOR_ID_YAW_UPPER;
+    case ROBOT_CONFIG_MOTOR_GROUP_PITCH:
+        return ACTUATOR_ID_PITCH;
+    case ROBOT_CONFIG_MOTOR_GROUP_TRIGGER:
+        return ACTUATOR_ID_TRIGGER;
+    case ROBOT_CONFIG_MOTOR_GROUP_FRICTION:
+        return actuator_id_from_range(ACTUATOR_ID_FRICTION0, group_index, 4u);
+    case ROBOT_CONFIG_MOTOR_GROUP_ARM:
+        return actuator_id_from_range(ACTUATOR_ID_ARM_J0, group_index, (uint8_t)MOTOR_ARM_JOINT_COUNT);
+    default:
+        return ACTUATOR_ID__COUNT;
+    }
+}
+
+static inline uint8_t robot_config_motor_default_bus(uint8_t group, uint8_t group_index)
+{
+    if (group == (uint8_t)ROBOT_CONFIG_MOTOR_GROUP_FRICTION)
+    {
+        return 2u;
+    }
+    if (group == (uint8_t)ROBOT_CONFIG_MOTOR_GROUP_ARM)
+    {
+        return (group_index == 0u) ? 1u : 2u;
+    }
+    return 1u;
+}
+
 static inline uint8_t robot_config_motor_device_fill(const char *name,
-                                                     uint8_t config_ref,
-                                                     uint8_t config_index,
+                                                     uint8_t group,
+                                                     uint8_t group_index,
                                                      uint8_t fallback_bus,
                                                      uint16_t source_id,
+                                                     uint32_t config_offset,
                                                      robot_config_motor_device_t *out)
 {
+    const motor_node_param_t *node;
+    const char *default_name;
+    const actuator_id_e fallback_actuator = robot_config_motor_default_actuator(group, group_index);
+    const uint8_t known_group = (group < (uint8_t)ROBOT_CONFIG_MOTOR_GROUP_CUSTOM_BASE) ? 1u : 0u;
+
     if (out == NULL)
+    {
+        return 0u;
+    }
+
+    default_name = robot_config_motor_default_name(group, group_index);
+    if (known_group != 0u && (default_name == NULL || fallback_actuator == ACTUATOR_ID__COUNT))
+    {
+        return 0u;
+    }
+
+    node = robot_config_motor_node_from_offset(config_offset);
+    if (node == NULL)
     {
         return 0u;
     }
 
     (void)memset(out, 0, sizeof(*out));
     out->kind = (uint8_t)ROBOT_CONFIG_DEVICE_KIND_MOTOR;
-    out->fallback_bus = (fallback_bus == 0u) ? 1u : fallback_bus;
+    out->name = (name != NULL) ? name : default_name;
+    out->group = group;
+    out->group_index = group_index;
+    out->fallback_bus = (fallback_bus == 0u) ? robot_config_motor_default_bus(group, group_index) : fallback_bus;
+    out->actuator_id = robot_config_source_or_default(source_id, fallback_actuator);
+    out->node = node;
 
-    switch (config_ref)
+    if (out->name == NULL || out->actuator_id == ACTUATOR_ID__COUNT)
     {
-    case ROBOT_DEVICE_CONFIG_REF_MOTOR_CHASSIS:
-        if (config_index >= 4u)
-        {
-            return 0u;
-        }
-
-        out->name = (name != NULL) ? name : robot_config_chassis_motor_name(config_index);
-        out->group = (uint8_t)ROBOT_CONFIG_MOTOR_GROUP_CHASSIS;
-        out->group_index = config_index;
-        out->actuator_id =
-            robot_config_source_or_default(source_id,
-                                           (actuator_id_e)((uint32_t)ACTUATOR_ID_CHASSIS0 + (uint32_t)config_index));
-        out->node = &g_config.motor.chassis[config_index];
-        return 1u;
-    case ROBOT_DEVICE_CONFIG_REF_MOTOR_YAW:
-        out->name = (name != NULL) ? name : "motor.yaw";
-        out->group = (uint8_t)ROBOT_CONFIG_MOTOR_GROUP_YAW;
-        out->actuator_id = robot_config_source_or_default(source_id, ACTUATOR_ID_YAW);
-        out->node = &g_config.motor.yaw;
-        return 1u;
-    case ROBOT_DEVICE_CONFIG_REF_MOTOR_YAW_UPPER:
-        out->name = (name != NULL) ? name : "motor.yaw_upper";
-        out->group = (uint8_t)ROBOT_CONFIG_MOTOR_GROUP_YAW_UPPER;
-        out->actuator_id = robot_config_source_or_default(source_id, ACTUATOR_ID_YAW_UPPER);
-        out->node = &g_config.motor.yaw_upper;
-        return 1u;
-    case ROBOT_DEVICE_CONFIG_REF_MOTOR_PITCH:
-        out->name = (name != NULL) ? name : "motor.pitch";
-        out->group = (uint8_t)ROBOT_CONFIG_MOTOR_GROUP_PITCH;
-        out->actuator_id = robot_config_source_or_default(source_id, ACTUATOR_ID_PITCH);
-        out->node = &g_config.motor.pitch;
-        return 1u;
-    case ROBOT_DEVICE_CONFIG_REF_MOTOR_TRIGGER:
-        out->name = (name != NULL) ? name : "motor.trigger";
-        out->group = (uint8_t)ROBOT_CONFIG_MOTOR_GROUP_TRIGGER;
-        out->actuator_id = robot_config_source_or_default(source_id, ACTUATOR_ID_TRIGGER);
-        out->node = &g_config.motor.trigger;
-        return 1u;
-    case ROBOT_DEVICE_CONFIG_REF_MOTOR_FRICTION:
-        if (config_index >= 4u)
-        {
-            return 0u;
-        }
-
-        out->name = (name != NULL) ? name : robot_config_friction_motor_name(config_index);
-        out->group = (uint8_t)ROBOT_CONFIG_MOTOR_GROUP_FRICTION;
-        out->group_index = config_index;
-        out->fallback_bus = (fallback_bus == 0u) ? 2u : fallback_bus;
-        out->actuator_id =
-            robot_config_source_or_default(source_id,
-                                           (actuator_id_e)((uint32_t)ACTUATOR_ID_FRICTION0 + (uint32_t)config_index));
-        out->node = &g_config.motor.friction[config_index];
-        return 1u;
-    case ROBOT_DEVICE_CONFIG_REF_MOTOR_ARM:
-        if (config_index >= (uint8_t)MOTOR_ARM_JOINT_COUNT)
-        {
-            return 0u;
-        }
-
-        out->name = (name != NULL) ? name : robot_config_arm_motor_name(config_index);
-        out->group = (uint8_t)ROBOT_CONFIG_MOTOR_GROUP_ARM;
-        out->group_index = config_index;
-        out->fallback_bus = (fallback_bus == 0u) ? ((config_index == 0u) ? 1u : 2u) : fallback_bus;
-        out->actuator_id =
-            robot_config_source_or_default(source_id,
-                                           (actuator_id_e)((uint32_t)ACTUATOR_ID_ARM_J0 + (uint32_t)config_index));
-        out->node = &g_config.motor.arm[config_index];
-        return (out->name != NULL) ? 1u : 0u;
-    default:
         return 0u;
     }
+
+    return 1u;
 }
 
 static inline uint8_t robot_config_motor_device_count(void)
 {
-    if (robot_config_device_table_active() != 0u)
+    const uint8_t count = robot_config_device_table_count();
+    uint8_t motor_count = 0u;
+
+    for (uint8_t i = 0u; i < count; i++)
     {
-        const uint8_t count = robot_config_device_table_count();
-        uint8_t motor_count = 0u;
-
-        for (uint8_t i = 0u; i < count; i++)
+        if (g_config.devices.entry[i].kind == ROBOT_DEVICE_TABLE_KIND_MOTOR)
         {
-            if (g_config.devices.entry[i].kind == ROBOT_DEVICE_TABLE_KIND_MOTOR)
-            {
-                motor_count++;
-            }
+            motor_count++;
         }
-
-        return motor_count;
     }
 
-    return robot_config_motor_device_legacy_count();
+    return motor_count;
 }
 
 static inline uint8_t robot_config_motor_device_get(uint8_t index, robot_config_motor_device_t *out)
@@ -276,84 +298,31 @@ static inline uint8_t robot_config_motor_device_get(uint8_t index, robot_config_
         return 0u;
     }
 
-    if (robot_config_device_table_active() != 0u)
-    {
-        const uint8_t count = robot_config_device_table_count();
-        uint8_t motor_index = 0u;
+    const uint8_t count = robot_config_device_table_count();
+    uint8_t motor_index = 0u;
 
-        for (uint8_t i = 0u; i < count; i++)
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        const robot_device_config_entry_t *entry = &g_config.devices.entry[i];
+
+        if (entry->kind != ROBOT_DEVICE_TABLE_KIND_MOTOR)
         {
-            const robot_device_config_entry_t *entry = &g_config.devices.entry[i];
-
-            if (entry->kind != ROBOT_DEVICE_TABLE_KIND_MOTOR)
-            {
-                continue;
-            }
-            if (motor_index == index)
-            {
-                return robot_config_motor_device_fill(entry->name,
-                                                      entry->config_ref,
-                                                      entry->config_index,
-                                                      entry->fallback_bus,
-                                                      entry->source_id,
-                                                      out);
-            }
-            motor_index++;
+            continue;
         }
-
-        return 0u;
+        if (motor_index == index)
+        {
+            return robot_config_motor_device_fill(entry->name,
+                                                  entry->role,
+                                                  entry->role_index,
+                                                  entry->fallback_bus,
+                                                  entry->source_id,
+                                                  entry->config_offset,
+                                                  out);
+        }
+        motor_index++;
     }
 
-    if (index < 4u)
-    {
-        return robot_config_motor_device_fill(NULL,
-                                              ROBOT_DEVICE_CONFIG_REF_MOTOR_CHASSIS,
-                                              index,
-                                              1u,
-                                              ROBOT_DEVICE_SOURCE_NONE,
-                                              out);
-    }
-
-    switch (index)
-    {
-    case 4u:
-        return robot_config_motor_device_fill(NULL, ROBOT_DEVICE_CONFIG_REF_MOTOR_YAW, 0u, 1u, ACTUATOR_ID_YAW, out);
-    case 5u:
-        return robot_config_motor_device_fill(NULL,
-                                              ROBOT_DEVICE_CONFIG_REF_MOTOR_YAW_UPPER,
-                                              0u,
-                                              1u,
-                                              ACTUATOR_ID_YAW_UPPER,
-                                              out);
-    case 6u:
-        return robot_config_motor_device_fill(NULL, ROBOT_DEVICE_CONFIG_REF_MOTOR_PITCH, 0u, 1u, ACTUATOR_ID_PITCH, out);
-    case 7u:
-        return robot_config_motor_device_fill(NULL,
-                                              ROBOT_DEVICE_CONFIG_REF_MOTOR_TRIGGER,
-                                              0u,
-                                              1u,
-                                              ACTUATOR_ID_TRIGGER,
-                                              out);
-    default:
-        break;
-    }
-
-    if (index < 12u)
-    {
-        return robot_config_motor_device_fill(NULL,
-                                              ROBOT_DEVICE_CONFIG_REF_MOTOR_FRICTION,
-                                              (uint8_t)(index - 8u),
-                                              2u,
-                                              ROBOT_DEVICE_SOURCE_NONE,
-                                              out);
-    }
-
-    return robot_config_motor_device_fill(NULL,
-                                          ROBOT_DEVICE_CONFIG_REF_MOTOR_ARM,
-                                          (uint8_t)(index - 12u),
-                                          0u,
-                                          ROBOT_DEVICE_SOURCE_NONE,
-                                          out);
+    return 0u;
 }
 
 static inline uint8_t robot_config_motor_device_find_by_name(const char *name, robot_config_motor_device_t *out)
@@ -409,12 +378,7 @@ static inline uint8_t robot_config_motor_device_find_by_actuator(actuator_id_e a
 
 static inline uint8_t robot_config_device_count(void)
 {
-    if (robot_config_device_table_active() != 0u)
-    {
-        return robot_config_device_table_count();
-    }
-
-    return robot_config_motor_device_count();
+    return robot_config_device_table_count();
 }
 
 static inline uint8_t robot_config_device_get(uint8_t index, robot_config_device_t *out)
@@ -428,53 +392,38 @@ static inline uint8_t robot_config_device_get(uint8_t index, robot_config_device
 
     (void)memset(out, 0, sizeof(*out));
 
-    if (robot_config_device_table_active() != 0u)
-    {
-        const robot_device_config_entry_t *entry;
+    const robot_device_config_entry_t *entry;
 
-        if (index >= robot_config_device_table_count())
-        {
-            return 0u;
-        }
-
-        entry = &g_config.devices.entry[index];
-        out->kind = entry->kind;
-        out->name = entry->name;
-        out->group = entry->config_ref;
-        out->group_index = entry->config_index;
-        out->source_id = entry->source_id;
-
-        if (entry->kind == ROBOT_DEVICE_TABLE_KIND_MOTOR &&
-            robot_config_motor_device_fill(entry->name,
-                                           entry->config_ref,
-                                           entry->config_index,
-                                           entry->fallback_bus,
-                                           entry->source_id,
-                                           &motor) != 0u)
-        {
-            out->name = motor.name;
-            out->kind = motor.kind;
-            out->group = motor.group;
-            out->group_index = motor.group_index;
-            out->source_id = (uint16_t)motor.actuator_id;
-            out->config = motor.node;
-        }
-
-        return 1u;
-    }
-
-    if (robot_config_motor_device_get(index, &motor) == 0u)
+    if (index >= robot_config_device_table_count())
     {
         return 0u;
     }
 
-    out->name = motor.name;
-    out->kind = motor.kind;
-    out->group = motor.group;
-    out->group_index = motor.group_index;
-    out->reserved0 = 0u;
-    out->source_id = (uint16_t)motor.actuator_id;
-    out->config = motor.node;
+    entry = &g_config.devices.entry[index];
+    out->kind = entry->kind;
+    out->name = entry->name;
+    out->group = entry->role;
+    out->group_index = entry->role_index;
+    out->source_id = entry->source_id;
+    out->config = robot_config_ptr_from_offset(entry->config_offset);
+
+    if (entry->kind == ROBOT_DEVICE_TABLE_KIND_MOTOR &&
+        robot_config_motor_device_fill(entry->name,
+                                       entry->role,
+                                       entry->role_index,
+                                       entry->fallback_bus,
+                                       entry->source_id,
+                                       entry->config_offset,
+                                       &motor) != 0u)
+    {
+        out->name = motor.name;
+        out->kind = motor.kind;
+        out->group = motor.group;
+        out->group_index = motor.group_index;
+        out->source_id = (uint16_t)motor.actuator_id;
+        out->config = motor.node;
+    }
+
     return 1u;
 }
 
