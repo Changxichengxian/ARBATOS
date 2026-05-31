@@ -126,6 +126,7 @@ typedef enum
     SDLOG_TAG_WHEELLEG_MIT_CONFIG = 0x004Fu,
     SDLOG_TAG_WHEELLEG_MIT_STATUS = 0x0050u,
     SDLOG_TAG_BUILD_INFO = 0x0051u,
+    SDLOG_TAG_RUNTIME_DEVICE = 0x0052u,
 } sdlog_tag_e;
 
 typedef enum
@@ -190,6 +191,7 @@ typedef struct __attribute__((packed))
 
 #define SDLOG_CONFIG_VERSION 1u
 #define SDLOG_BUILD_INFO_VERSION 1u
+#define SDLOG_RUNTIME_DEVICE_VERSION 1u
 #define SDLOG_BUILD_INFO_TEXT_LEN 32u
 #define SDLOG_BUILD_INFO_GIT_SHA_LEN 16u
 #define SDLOG_BUILD_INFO_DATE_LEN 12u
@@ -218,16 +220,31 @@ typedef struct __attribute__((packed))
     uint8_t compression_enabled;
     uint8_t build_dirty;
     uint32_t task_module_mask;
+    uint8_t runtime_device_count;
+    uint8_t motor_instance_count;
+    uint8_t controller_count;
 
     char target[SDLOG_BUILD_INFO_TEXT_LEN];
     char board[SDLOG_BUILD_INFO_TEXT_LEN];
     char git_sha[SDLOG_BUILD_INFO_GIT_SHA_LEN];
     char build_date[SDLOG_BUILD_INFO_DATE_LEN];
     char build_time[SDLOG_BUILD_INFO_TIME_LEN];
-    char reserved_text[3];
 } sdlog_build_info_t;
 
 typedef char _check_sdlog_build_info_size[(sizeof(sdlog_build_info_t) == 128) ? 1 : -1];
+
+typedef struct __attribute__((packed))
+{
+    uint8_t version;
+    uint8_t kind;
+    uint8_t group;
+    uint8_t group_index;
+    uint8_t enabled;
+    uint8_t bus;
+    uint16_t source_id;
+} sdlog_runtime_device_t;
+
+typedef char _check_sdlog_runtime_device_size[(sizeof(sdlog_runtime_device_t) == 8) ? 1 : -1];
 
 typedef struct __attribute__((packed))
 {

@@ -25,6 +25,9 @@
 #include "sdcard.h"
 #include "rt_profiler.h"
 #include "config.h"
+#include "control_manager.h"
+#include "motor_instance.h"
+#include "robot_device_config.h"
 
 #if defined(__CC_ARM)
 #include "../../../generated/build_info_autogen.h"
@@ -288,6 +291,9 @@ static void sdlog_fill_build_info(sdlog_build_info_t *out)
     out->high_rate_div = sdlog_high_rate_divider();
     out->compression_enabled = (uint8_t)(SDLOG_ENABLE_COMPRESSION ? 1u : 0u);
     out->build_dirty = (uint8_t)(ARBATOS_BUILD_DIRTY ? 1u : 0u);
+    out->runtime_device_count = robot_config_device_count();
+    out->motor_instance_count = motor_instance_count();
+    out->controller_count = control_manager_registered_count();
     {
         const uint8_t count = g_config.profile.task_module_count;
         const uint8_t limit = (count > ROBOT_TASK_MODULE_MAX) ? ROBOT_TASK_MODULE_MAX : count;
@@ -847,30 +853,72 @@ static int sdlog_open_next_file(void)
                 .arg2_u32 = prev_error_bytes,
             };
 
-            uint8_t raw[256u];
+            uint8_t raw[512u];
             uint32_t raw_len = 0u;
-            if (sdlog_append_record_bytes(raw,
-                                          (uint32_t)sizeof(raw),
-                                          &raw_len,
-                                          0u,
-                                          SDLOG_TAG_META,
-                                          &meta,
-                                          (uint16_t)sizeof(meta)) != 0 ||
-                sdlog_append_record_bytes(raw,
-                                          (uint32_t)sizeof(raw),
-                                          &raw_len,
-                                          0u,
-                                          SDLOG_TAG_BUILD_INFO,
-                                          &build_info,
-                                          (uint16_t)sizeof(build_info)) != 0 ||
-                (prev_error_reason != 0u &&
-                 sdlog_append_record_bytes(raw,
-                                           (uint32_t)sizeof(raw),
-                                           &raw_len,
-                                           0u,
-                                           SDLOG_TAG_EVENT,
-                                           &restart_info,
-                                           (uint16_t)sizeof(restart_info)) != 0))
+            int append_status = sdlog_append_record_bytes(raw,
+                                                          (uint32_t)sizeof(raw),
+                                                          &raw_len,
+                                                          0u,
+                                                          SDLOG_TAG_META,
+                                                          &meta,
+                                                          (uint16_t)sizeof(meta));
+
+            if (append_status == 0)
+            {
+                append_status = sdlog_append_record_bytes(raw,
+                                                          (uint32_t)sizeof(raw),
+                                                          &raw_len,
+                                                          0u,
+                                                          SDLOG_TAG_BUILD_INFO,
+                                                          &build_info,
+                                                          (uint16_t)sizeof(build_info));
+            }
+
+            for (uint8_t i = 0u; append_status == 0 && i < robot_config_device_count(); i++)
+            {
+                robot_config_device_t device;
+                sdlog_runtime_device_t runtime_device;
+
+                if (robot_config_device_get(i, &device) == 0u)
+                {
+                    continue;
+                }
+
+                (void)memset(&runtime_device, 0, sizeof(runtime_device));
+                runtime_device.version = SDLOG_RUNTIME_DEVICE_VERSION;
+                runtime_device.kind = device.kind;
+                runtime_device.group = device.group;
+                runtime_device.group_index = device.group_index;
+                runtime_device.source_id = device.source_id;
+                if (device.kind == (uint8_t)ROBOT_CONFIG_DEVICE_KIND_MOTOR)
+                {
+                    const motor_instance_t *inst = motor_instance_find_by_actuator((actuator_id_e)device.source_id);
+
+                    runtime_device.enabled = motor_instance_enabled(inst);
+                    runtime_device.bus = motor_instance_bus(inst);
+                }
+
+                append_status = sdlog_append_record_bytes(raw,
+                                                          (uint32_t)sizeof(raw),
+                                                          &raw_len,
+                                                          0u,
+                                                          SDLOG_TAG_RUNTIME_DEVICE,
+                                                          &runtime_device,
+                                                          (uint16_t)sizeof(runtime_device));
+            }
+
+            if (append_status == 0 && prev_error_reason != 0u)
+            {
+                append_status = sdlog_append_record_bytes(raw,
+                                                          (uint32_t)sizeof(raw),
+                                                          &raw_len,
+                                                          0u,
+                                                          SDLOG_TAG_EVENT,
+                                                          &restart_info,
+                                                          (uint16_t)sizeof(restart_info));
+            }
+
+            if (append_status != 0)
             {
                 sdlog_remember_error(SDLOG_RESTART_REASON_STARTUP_BLOCK, -4);
                 (void)f_close(&sdlog_fp);
