@@ -15,6 +15,7 @@
 
 #include "actuator_cmd.h"
 #include "config.h"
+#include "control_manager.h"
 
 typedef enum
 {
@@ -295,6 +296,93 @@ static inline uint8_t robot_config_device_find_by_name(const char *name, robot_c
     }
 
     return 0u;
+}
+
+static inline uint8_t robot_config_device_resolve_names(const char *const *names,
+                                                        uint8_t count,
+                                                        robot_config_device_t *out,
+                                                        uint8_t out_cap)
+{
+    uint8_t resolved = 0u;
+
+    if (names == NULL || out == NULL || count > out_cap)
+    {
+        return 0u;
+    }
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (robot_config_device_find_by_name(names[i], &out[i]) != 0u)
+        {
+            resolved++;
+        }
+        else
+        {
+            (void)memset(&out[i], 0, sizeof(out[i]));
+        }
+    }
+
+    return resolved;
+}
+
+static inline uint8_t robot_config_device_resolve_source_ids(const char *const *names,
+                                                             uint8_t count,
+                                                             uint16_t *out,
+                                                             uint8_t out_cap)
+{
+    uint8_t resolved = 0u;
+
+    if (names == NULL || out == NULL || count > out_cap)
+    {
+        return 0u;
+    }
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        robot_config_device_t device;
+
+        if (robot_config_device_find_by_name(names[i], &device) != 0u)
+        {
+            out[i] = device.source_id;
+            resolved++;
+        }
+        else
+        {
+            out[i] = 0xFFFFu;
+        }
+    }
+
+    return resolved;
+}
+
+static inline uint8_t robot_config_device_resolve_controller_inputs(const control_controller_t *controller,
+                                                                    robot_config_device_t *out,
+                                                                    uint8_t out_cap)
+{
+    if (controller == NULL)
+    {
+        return 0u;
+    }
+
+    return robot_config_device_resolve_names(controller->meta.inputs,
+                                            controller->meta.input_count,
+                                            out,
+                                            out_cap);
+}
+
+static inline uint8_t robot_config_device_resolve_controller_outputs(const control_controller_t *controller,
+                                                                     robot_config_device_t *out,
+                                                                     uint8_t out_cap)
+{
+    if (controller == NULL)
+    {
+        return 0u;
+    }
+
+    return robot_config_device_resolve_names(controller->meta.outputs,
+                                            controller->meta.output_count,
+                                            out,
+                                            out_cap);
 }
 
 #endif

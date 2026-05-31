@@ -276,10 +276,16 @@ uint8_t motor_instance_resolve_actuator_ids(const char *const *names, uint8_t co
 
     for (uint8_t i = 0u; i < count; i++)
     {
-        out[i] = motor_instance_actuator_id_by_name(names[i]);
-        if (out[i] != ACTUATOR_ID__COUNT)
+        robot_config_motor_device_t device;
+
+        if (robot_config_motor_device_find_by_name(names[i], &device) != 0u)
         {
+            out[i] = device.actuator_id;
             resolved++;
+        }
+        else
+        {
+            out[i] = ACTUATOR_ID__COUNT;
         }
     }
 

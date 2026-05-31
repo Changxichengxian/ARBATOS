@@ -131,6 +131,18 @@ for (uint8_t i = 0; i < robot_config_device_count(); i++)
 
 电机仍然有 `robot_config_motor_device_t` 这种更具体的读取方式，`motor_instance_refresh()` 已经改成从这层读取。后面真正把 `Robotconfig` 写成设备数组时，优先改 `robot_device_config.h` 这层，电机实例和控制器不用再跟着大改。
 
+控制器也可以直接按自己的输入/输出名字解析设备：
+
+```c
+robot_config_device_t outputs[3];
+
+if (robot_config_device_resolve_controller_outputs(controller, outputs, 3) ==
+    controller->meta.output_count)
+{
+    /* outputs[i].name / outputs[i].kind / outputs[i].source_id */
+}
+```
+
 ### 阶段 3：控制器实例化
 
 控制器不再按“云台任务、底盘任务”扩张，而是按实例描述：
