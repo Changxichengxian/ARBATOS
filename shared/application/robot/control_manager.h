@@ -124,12 +124,24 @@ struct control_controller;
 typedef control_result_e (*control_controller_callback_t)(const struct control_controller *controller,
                                                           control_context_t *context);
 
+typedef struct
+{
+    uint16_t period_ms;
+    uint16_t phase_ms;
+    uint8_t priority;
+    uint8_t input_count;
+    uint8_t output_count;
+    const char *const *inputs;
+    const char *const *outputs;
+} control_controller_meta_t;
+
 typedef struct control_controller
 {
     uint16_t id;
     control_domain_e domain;
     uint32_t claim_mask;
     const char *name;
+    control_controller_meta_t meta;
     control_controller_callback_t enter;
     control_controller_callback_t update;
     control_controller_callback_t exit;
@@ -159,8 +171,17 @@ void control_manager_reset(void);
 
 control_result_e control_manager_register(const control_controller_t *controller);
 uint8_t control_manager_registered_count(void);
+const control_controller_t *control_manager_get_registered(uint8_t index);
+const control_controller_t *control_manager_find_registered_by_name(const char *name);
+uint16_t control_manager_find_registered_id_by_name(const char *name);
+const char *control_controller_input_name(const control_controller_t *controller, uint8_t index);
+const char *control_controller_output_name(const control_controller_t *controller, uint8_t index);
+uint16_t control_controller_period_ms(const control_controller_t *controller);
+uint8_t control_controller_input_count(const control_controller_t *controller);
+uint8_t control_controller_output_count(const control_controller_t *controller);
 
 control_result_e control_manager_request_switch(uint16_t controller_id, control_transition_reason_e reason);
+control_result_e control_manager_request_switch_by_name(const char *name, control_transition_reason_e reason);
 control_result_e control_manager_request_stop(control_domain_e domain, control_transition_reason_e reason);
 void control_manager_request_stop_all(control_transition_reason_e reason);
 void control_manager_clear_pending(control_domain_e domain);
@@ -169,7 +190,9 @@ control_result_e control_manager_update_domain(control_domain_e domain, control_
 control_result_e control_manager_update_all(control_context_t *context);
 
 uint8_t control_manager_is_active(uint16_t controller_id);
+uint8_t control_manager_is_active_by_name(const char *name);
 uint16_t control_manager_active_id(control_domain_e domain);
+const char *control_manager_active_name(control_domain_e domain);
 control_result_e control_manager_get_domain_status(control_domain_e domain, control_domain_status_t *out);
 uint32_t control_manager_active_claim_mask(void);
 

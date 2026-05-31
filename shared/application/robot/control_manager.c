@@ -78,6 +78,24 @@ static const control_controller_t *control_find(uint16_t controller_id)
     return NULL;
 }
 
+static const control_controller_t *control_find_by_name(const char *name)
+{
+    if (name == NULL)
+    {
+        return NULL;
+    }
+
+    for (uint8_t i = 0u; i < s_registry.count; i++)
+    {
+        if (s_registry.controller[i].name != NULL &&
+            strcmp(s_registry.controller[i].name, name) == 0)
+        {
+            return &s_registry.controller[i];
+        }
+    }
+    return NULL;
+}
+
 static uint8_t control_reason_uses_stop_callback(control_transition_reason_e reason)
 {
     return (uint8_t)(reason == CONTROL_REASON_DISABLE ||
@@ -340,6 +358,81 @@ uint8_t control_manager_registered_count(void)
     return count;
 }
 
+const control_controller_t *control_manager_get_registered(uint8_t index)
+{
+    const control_controller_t *controller = NULL;
+
+    control_manager_init();
+
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    if (index < s_registry.count)
+    {
+        controller = &s_registry.controller[index];
+    }
+    CONTROL_MANAGER_EXIT_CRITICAL();
+
+    return controller;
+}
+
+const control_controller_t *control_manager_find_registered_by_name(const char *name)
+{
+    const control_controller_t *controller = NULL;
+
+    control_manager_init();
+
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    controller = control_find_by_name(name);
+    CONTROL_MANAGER_EXIT_CRITICAL();
+
+    return controller;
+}
+
+uint16_t control_manager_find_registered_id_by_name(const char *name)
+{
+    const control_controller_t *controller = control_manager_find_registered_by_name(name);
+
+    return (controller != NULL) ? controller->id : CONTROL_CONTROLLER_NONE;
+}
+
+const char *control_controller_input_name(const control_controller_t *controller, uint8_t index)
+{
+    if (controller == NULL ||
+        controller->meta.inputs == NULL ||
+        index >= controller->meta.input_count)
+    {
+        return NULL;
+    }
+
+    return controller->meta.inputs[index];
+}
+
+const char *control_controller_output_name(const control_controller_t *controller, uint8_t index)
+{
+    if (controller == NULL ||
+        controller->meta.outputs == NULL ||
+        index >= controller->meta.output_count)
+    {
+        return NULL;
+    }
+
+    return controller->meta.outputs[index];
+}
+
+uint16_t control_controller_period_ms(const control_controller_t *controller)
+{
+    return (controller != NULL) ? controller->meta.period_ms : 0u;
+}
+
+uint8_t control_controller_input_count(const control_controller_t *controller)
+{
+    return (controller != NULL) ? controller->meta.input_count : 0u;
+}
+
+uint8_t control_controller_output_count(const control_controller_t *controller)
+{
+    return (controller != NULL) ? controller->meta.output_count : 0u;
+}
+
 control_result_e control_manager_request_switch(uint16_t controller_id, control_transition_reason_e reason)
 {
     const control_controller_t *controller;
@@ -364,6 +457,18 @@ control_result_e control_manager_request_switch(uint16_t controller_id, control_
     CONTROL_MANAGER_EXIT_CRITICAL();
 
     return CONTROL_RESULT_OK;
+}
+
+control_result_e control_manager_request_switch_by_name(const char *name, control_transition_reason_e reason)
+{
+    const uint16_t id = control_manager_find_registered_id_by_name(name);
+
+    if (id == CONTROL_CONTROLLER_NONE)
+    {
+        return CONTROL_RESULT_NOT_FOUND;
+    }
+
+    return control_manager_request_switch(id, reason);
 }
 
 control_result_e control_manager_request_stop(control_domain_e domain, control_transition_reason_e reason)
@@ -488,6 +593,18 @@ uint8_t control_manager_is_active(uint16_t controller_id)
     return active;
 }
 
+uint8_t control_manager_is_active_by_name(const char *name)
+{
+    const uint16_t id = control_manager_find_registered_id_by_name(name);
+
+    if (id == CONTROL_CONTROLLER_NONE)
+    {
+        return 0u;
+    }
+
+    return control_manager_is_active(id);
+}
+
 uint16_t control_manager_active_id(control_domain_e domain)
 {
     uint16_t active_id = CONTROL_CONTROLLER_NONE;
@@ -505,6 +622,25 @@ uint16_t control_manager_active_id(control_domain_e domain)
     }
     CONTROL_MANAGER_EXIT_CRITICAL();
     return active_id;
+}
+
+const char *control_manager_active_name(control_domain_e domain)
+{
+    const char *name = NULL;
+
+    control_manager_init();
+    if (control_domain_valid(domain) == 0u)
+    {
+        return NULL;
+    }
+
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    if (s_domain[domain].active != NULL)
+    {
+        name = s_domain[domain].active->name;
+    }
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return name;
 }
 
 control_result_e control_manager_get_domain_status(control_domain_e domain, control_domain_status_t *out)

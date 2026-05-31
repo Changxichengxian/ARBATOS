@@ -48,13 +48,26 @@ const motor_instance_t *motor_instance_get(uint8_t index);
 const motor_instance_t *motor_instance_find_by_actuator(actuator_id_e id);
 const motor_instance_t *motor_instance_find_by_name(const char *name);
 const motor_instance_t *motor_instance_find_feedback(uint8_t bus, uint16_t std_id);
+uint8_t motor_instance_resolve_actuator_ids(const char *const *names, uint8_t count, actuator_id_e *out, uint8_t out_cap);
 
 const char *motor_instance_name(const motor_instance_t *inst);
 actuator_id_e motor_instance_actuator_id(const motor_instance_t *inst);
+actuator_id_e motor_instance_actuator_id_by_name(const char *name);
 uint8_t motor_instance_bus(const motor_instance_t *inst);
 uint8_t motor_instance_enabled(const motor_instance_t *inst);
 const motor_node_param_t *motor_instance_node(actuator_id_e id);
 motor_measure_t *motor_instance_measure(actuator_id_e id);
 const motor_measure_t *motor_instance_measure_const(actuator_id_e id);
+
+uint8_t motor_instance_cmd_clear(const char *name);
+uint8_t motor_instance_cmd_set_current(const char *name, int16_t current);
+uint8_t motor_instance_cmd_set_state_torque(const char *name, const actuator_cmd_t *cmd);
+uint8_t motor_instance_cmd_set_speed(const char *name, fp32 velocity, fp32 kd, fp32 torque);
+uint8_t motor_instance_cmd_get_copy(const char *name, actuator_cmd_t *out);
+uint8_t motor_instance_feedback_get_copy(const char *name, actuator_feedback_t *out);
+uint8_t motor_instance_cmd_set_current_ids(const actuator_id_e *ids, const int16_t *currents, uint8_t count);
+uint8_t motor_instance_cmd_set_current_many(const char *const *names, const int16_t *currents, uint8_t count);
+uint8_t motor_instance_feedback_get_copy_ids(const actuator_id_e *ids, actuator_feedback_t *out, uint8_t count);
+uint8_t motor_instance_feedback_get_copy_many(const char *const *names, actuator_feedback_t *out, uint8_t count);
 
 #endif

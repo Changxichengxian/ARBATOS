@@ -29,6 +29,40 @@ const motor_instance_t *m = motor_instance_find_by_name("motor.yaw");
 actuator_id_e id = motor_instance_actuator_id(m);
 ```
 
+如果只是发命令或读反馈，也可以直接按实例名走薄包装：
+
+```c
+motor_instance_cmd_set_current("motor.yaw", yaw_current);
+motor_instance_feedback_get_copy("motor.yaw", &feedback);
+```
+
+如果一个控制器要同时管多个执行器，可以先把名字解析成 `actuator_id_e`，后面循环里直接按 id 批量发命令：
+
+```c
+static const char *const yaw_outputs[] = {
+    "motor.yaw0",
+    "motor.yaw1",
+    "motor.yaw2",
+};
+
+static actuator_id_e yaw_ids[3];
+
+void bind_outputs(void)
+{
+    if (motor_instance_resolve_actuator_ids(yaw_outputs, 3, yaw_ids, 3) != 3)
+    {
+        return;
+    }
+}
+
+void run_outputs(void)
+{
+    int16_t current[3] = {yaw0_current, yaw1_current, yaw2_current};
+
+    (void)motor_instance_cmd_set_current_ids(yaw_ids, current, 3);
+}
+```
+
 这样后续控制器不需要只认识 `yaw`、`pitch`、`chassis0` 这类固定角色，可以先绑定到一个稳定的设备实例名。等配置层改成真正的设备表后，这些名字可以从配置来，而不是写死在代码里。
 
 ## 迁移原则
@@ -54,7 +88,8 @@ actuator_id_e id = motor_instance_actuator_id(m);
 
 - 保留 `actuator_id_e`。
 - 给 `motor_instance_t` 补稳定实例名。
-- 提供按名字查找、取 actuator id、取电机配置、取反馈的接口。
+- 提供按名字查找、取 actuator id、发命令、取电机配置、取反馈的接口。
+- 提供一组名字解析、一组电流命令、一组反馈读取的接口，减少多电机控制器里的重复代码。
 - 新代码优先从 `motor_instance_find_by_name()` 或后续配置绑定表拿执行器。
 
 ### 阶段 2：设备表进入配置
@@ -85,14 +120,75 @@ g_config.devices.motor[i] = {
 控制器不再按“云台任务、底盘任务”扩张，而是按实例描述：
 
 ```c
-{
+static const char *const triple_yaw_outputs[] = {
+    "motor.yaw0",
+    "motor.yaw1",
+    "motor.yaw2",
+};
+
+static const control_controller_t triple_yaw_controller = {
+    .id = CONTROL_CONTROLLER_CUSTOM_BASE,
+    .domain = CONTROL_DOMAIN_GIMBAL,
     .name = "controller.triple_yaw",
-    .period_ms = 1,
-    .outputs = {"motor.yaw0", "motor.yaw1", "motor.yaw2"},
+    .meta = {
+        .period_ms = 1,
+        .output_count = 3,
+        .outputs = triple_yaw_outputs,
+    },
+    .enter = triple_yaw_enter,
+    .update = triple_yaw_update,
+};
+```
+
+控制器进入时把输出名字绑定成 id，运行时只发一组命令：
+
+```c
+static actuator_id_e triple_yaw_ids[3];
+
+static control_result_e triple_yaw_enter(const control_controller_t *controller,
+                                         control_context_t *context)
+{
+    (void)context;
+
+    if (motor_instance_resolve_actuator_ids(controller->meta.outputs,
+                                           controller->meta.output_count,
+                                           triple_yaw_ids,
+                                           3) != controller->meta.output_count)
+    {
+        return CONTROL_RESULT_BAD_ARGUMENT;
+    }
+
+    return CONTROL_RESULT_OK;
+}
+
+static control_result_e triple_yaw_update(const control_controller_t *controller,
+                                          control_context_t *context)
+{
+    int16_t current[3];
+
+    (void)controller;
+    (void)context;
+
+    current[0] = yaw0_current;
+    current[1] = yaw1_current;
+    current[2] = yaw2_current;
+
+    return motor_instance_cmd_set_current_ids(triple_yaw_ids, current, 3) ?
+           CONTROL_RESULT_OK :
+           CONTROL_RESULT_BAD_ARGUMENT;
 }
 ```
 
+切换控制器也可以按名字走：
+
+```c
+(void)control_manager_request_switch_by_name("controller.triple_yaw",
+                                             CONTROL_REASON_MODE_SWITCH);
+```
+
 控制器代码只关心它拿到的输入和输出，不关心这台机器人是不是 RoboMaster。
+
+这一步当前已经先补了元信息字段和查询接口。旧控制器可以不填 `meta`，新控制器优先声明自己的输入、输出和周期。
 
 ### 阶段 4：调度和观察统一
 

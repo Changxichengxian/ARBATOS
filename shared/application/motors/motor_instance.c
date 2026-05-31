@@ -228,6 +228,27 @@ const motor_instance_t *motor_instance_find_by_name(const char *name)
     return NULL;
 }
 
+uint8_t motor_instance_resolve_actuator_ids(const char *const *names, uint8_t count, actuator_id_e *out, uint8_t out_cap)
+{
+    uint8_t resolved = 0u;
+
+    if (names == NULL || out == NULL || count > out_cap)
+    {
+        return 0u;
+    }
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        out[i] = motor_instance_actuator_id_by_name(names[i]);
+        if (out[i] != ACTUATOR_ID__COUNT)
+        {
+            resolved++;
+        }
+    }
+
+    return resolved;
+}
+
 const char *motor_instance_name(const motor_instance_t *inst)
 {
     return (inst != NULL) ? inst->name : NULL;
@@ -236,6 +257,11 @@ const char *motor_instance_name(const motor_instance_t *inst)
 actuator_id_e motor_instance_actuator_id(const motor_instance_t *inst)
 {
     return (inst != NULL) ? inst->actuator_id : ACTUATOR_ID__COUNT;
+}
+
+actuator_id_e motor_instance_actuator_id_by_name(const char *name)
+{
+    return motor_instance_actuator_id(motor_instance_find_by_name(name));
 }
 
 uint8_t motor_instance_bus(const motor_instance_t *inst)
@@ -254,6 +280,183 @@ uint8_t motor_instance_enabled(const motor_instance_t *inst)
         return 0u;
     }
     return (motor_cfg_node_id(inst->node) != 0u) ? 1u : 0u;
+}
+
+static uint8_t motor_instance_resolve_cmd_target(const char *name, actuator_id_e *out)
+{
+    const motor_instance_t *inst = motor_instance_find_by_name(name);
+
+    if (inst == NULL || out == NULL || motor_instance_enabled(inst) == 0u)
+    {
+        return 0u;
+    }
+
+    *out = inst->actuator_id;
+    return 1u;
+}
+
+static uint8_t motor_instance_id_cmd_enabled(actuator_id_e id)
+{
+    const motor_instance_t *inst = motor_instance_find_by_actuator(id);
+
+    return (uint8_t)(inst != NULL && motor_instance_enabled(inst) != 0u);
+}
+
+uint8_t motor_instance_cmd_clear(const char *name)
+{
+    const actuator_id_e id = motor_instance_actuator_id_by_name(name);
+
+    if (id == ACTUATOR_ID__COUNT)
+    {
+        return 0u;
+    }
+
+    actuator_cmd_clear(id);
+    return 1u;
+}
+
+uint8_t motor_instance_cmd_set_current(const char *name, int16_t current)
+{
+    actuator_id_e id;
+
+    if (motor_instance_resolve_cmd_target(name, &id) == 0u)
+    {
+        return 0u;
+    }
+
+    actuator_cmd_set_current(id, current);
+    return 1u;
+}
+
+uint8_t motor_instance_cmd_set_state_torque(const char *name, const actuator_cmd_t *cmd)
+{
+    actuator_id_e id;
+
+    if (cmd == NULL || motor_instance_resolve_cmd_target(name, &id) == 0u)
+    {
+        return 0u;
+    }
+
+    actuator_cmd_set_state_torque(id, cmd);
+    return 1u;
+}
+
+uint8_t motor_instance_cmd_set_speed(const char *name, fp32 velocity, fp32 kd, fp32 torque)
+{
+    actuator_id_e id;
+
+    if (motor_instance_resolve_cmd_target(name, &id) == 0u)
+    {
+        return 0u;
+    }
+
+    actuator_cmd_set_speed(id, velocity, kd, torque);
+    return 1u;
+}
+
+uint8_t motor_instance_cmd_get_copy(const char *name, actuator_cmd_t *out)
+{
+    const actuator_id_e id = motor_instance_actuator_id_by_name(name);
+
+    if (id == ACTUATOR_ID__COUNT || out == NULL)
+    {
+        return 0u;
+    }
+
+    return actuator_cmd_get_copy(id, out);
+}
+
+uint8_t motor_instance_feedback_get_copy(const char *name, actuator_feedback_t *out)
+{
+    const actuator_id_e id = motor_instance_actuator_id_by_name(name);
+
+    if (id == ACTUATOR_ID__COUNT || out == NULL)
+    {
+        return 0u;
+    }
+
+    return actuator_feedback_get_copy(id, out);
+}
+
+uint8_t motor_instance_cmd_set_current_ids(const actuator_id_e *ids, const int16_t *currents, uint8_t count)
+{
+    if (ids == NULL || currents == NULL)
+    {
+        return 0u;
+    }
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (motor_instance_id_cmd_enabled(ids[i]) == 0u)
+        {
+            return 0u;
+        }
+    }
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        actuator_cmd_set_current(ids[i], currents[i]);
+    }
+
+    return 1u;
+}
+
+uint8_t motor_instance_cmd_set_current_many(const char *const *names, const int16_t *currents, uint8_t count)
+{
+    actuator_id_e ids[ACTUATOR_ID__COUNT];
+
+    if (count > (uint8_t)ACTUATOR_ID__COUNT)
+    {
+        return 0u;
+    }
+    if (motor_instance_resolve_actuator_ids(names, count, ids, (uint8_t)ACTUATOR_ID__COUNT) != count)
+    {
+        return 0u;
+    }
+
+    return motor_instance_cmd_set_current_ids(ids, currents, count);
+}
+
+uint8_t motor_instance_feedback_get_copy_ids(const actuator_id_e *ids, actuator_feedback_t *out, uint8_t count)
+{
+    if (ids == NULL || out == NULL)
+    {
+        return 0u;
+    }
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if ((uint32_t)ids[i] >= (uint32_t)ACTUATOR_ID__COUNT)
+        {
+            return 0u;
+        }
+    }
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (actuator_feedback_get_copy(ids[i], &out[i]) == 0u)
+        {
+            return 0u;
+        }
+    }
+
+    return 1u;
+}
+
+uint8_t motor_instance_feedback_get_copy_many(const char *const *names, actuator_feedback_t *out, uint8_t count)
+{
+    actuator_id_e ids[ACTUATOR_ID__COUNT];
+
+    if (count > (uint8_t)ACTUATOR_ID__COUNT)
+    {
+        return 0u;
+    }
+    if (motor_instance_resolve_actuator_ids(names, count, ids, (uint8_t)ACTUATOR_ID__COUNT) != count)
+    {
+        return 0u;
+    }
+
+    return motor_instance_feedback_get_copy_ids(ids, out, count);
 }
 
 const motor_instance_t *motor_instance_find_feedback(uint8_t bus, uint16_t std_id)
