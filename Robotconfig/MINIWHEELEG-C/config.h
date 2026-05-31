@@ -515,6 +515,8 @@ typedef struct
     motor_node_param_t arm[MOTOR_ARM_JOINT_COUNT];
 } motor_mount_config_t;
 
+#include "robot_config_schema.h"
+
 // AUX telemetry signal IDs.
 // - AUX JustFloat telemetry (VOFA+/FireWater): N * float32 (little-endian) + tail 0x7F800000 (INF).
 #define AUX_TELEM_MAX_CH 320u
@@ -1060,6 +1062,7 @@ typedef struct
 typedef struct
 {
     task_profile_t profile;
+    robot_device_config_table_t devices;
     motor_mount_config_t motor;
     gimbal_config_t gimbal;
     dual_gimbal_config_t dual_gimbal;

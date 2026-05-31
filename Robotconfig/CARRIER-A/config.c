@@ -38,6 +38,7 @@ config_t g_config = {
                     ROBOT_TASK_MODULE_IMU,
                 },
         },
+    .devices = ROBOT_DEFAULT_DEVICE_TABLE,
     .motor =
         {
             .chassis =

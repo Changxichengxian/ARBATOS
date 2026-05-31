@@ -40,6 +40,7 @@ config_t g_config = {
                     ROBOT_TASK_MODULE_SDLOG,
                 },
         },
+    .devices = ROBOT_DEFAULT_DEVICE_TABLE,
     .motor =
         {
             // 轮腿 MIT 目前复用 ACTUATOR_ID_ARM_J0..J5 这 6 个通用 MIT 执行器槽位。
