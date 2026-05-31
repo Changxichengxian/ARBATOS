@@ -37,7 +37,7 @@
 #include "host_link_task.h"
 #include "elrs_task.h"
 #include "watch.h"
-#include "robot_task_profile.h"
+#include "app_task_bootstrap.h"
 #include "control_manager.h"
 #include "wheelleg_mit_task.h"
 
@@ -45,15 +45,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-typedef osThreadId_t (*app_task_create_fn_t)(void);
-
-typedef struct
-{
-  robot_task_module_e module;
-  osThreadId_t *handle;
-  app_task_create_fn_t create;
-} app_task_module_desc_t;
-
 osThreadId_t rcSbusTaskHandle;
 osThreadId_t detectTaskHandle;
 osThreadId_t sdlogTaskHandle;
@@ -220,19 +211,7 @@ static void app_create_module_tasks(void)
 
   app_clear_module_task_handles();
 
-  for (uint32_t i = 0u; i < (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])); i++)
-  {
-    const app_task_module_desc_t *task = &module_tasks[i];
-    if (robot_profile_module_enabled(task->module) == 0u || task->handle == NULL || task->create == NULL)
-    {
-      continue;
-    }
-    if (*task->handle != NULL)
-    {
-      continue;
-    }
-    *task->handle = task->create();
-  }
+  app_create_enabled_module_tasks(module_tasks, (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])));
 }
 
 /* GetIdleTaskMemory prototype (linked to static allocation support) */

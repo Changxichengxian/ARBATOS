@@ -858,7 +858,7 @@ static void watch_copy_runtime(void)
     g_watch.runtime.task_module_visible_count = task_module_visible_count;
     for (uint8_t i = 0u; i < task_module_visible_count; i++)
     {
-        const robot_task_module_e module = robot_profile_module_at(i);
+        const robot_task_module_id_t module = robot_profile_module_id_at(i);
         watch_runtime_task_module_t *dst = &g_watch.runtime.task_module[i];
 
         dst->module = (uint8_t)module;

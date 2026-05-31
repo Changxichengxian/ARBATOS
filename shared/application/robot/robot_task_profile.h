@@ -80,6 +80,12 @@
 #define ROBOT_PROFILE_WATCH_TASK_BEAT_MIN_PERIOD_MS 10u
 #endif
 
+#ifndef ROBOT_TASK_MODULE_CUSTOM_BASE
+#define ROBOT_TASK_MODULE_CUSTOM_BASE 128u
+#endif
+
+typedef uint8_t robot_task_module_id_t;
+
 static inline uint16_t robot_profile_period_or_default_u16(uint16_t value, uint16_t fallback)
 {
     return (value == 0u) ? fallback : value;
@@ -127,7 +133,7 @@ static inline uint32_t robot_profile_can_feedback_rx_budget_us(void)
 
 typedef struct
 {
-    robot_task_module_e module;
+    robot_task_module_id_t module;
     const char *name;
 } robot_task_module_desc_t;
 
@@ -171,17 +177,22 @@ static inline uint8_t robot_profile_module_count(void)
     return (count > ROBOT_TASK_MODULE_MAX) ? ROBOT_TASK_MODULE_MAX : count;
 }
 
-static inline robot_task_module_e robot_profile_module_at(uint8_t index)
+static inline robot_task_module_id_t robot_profile_module_id_at(uint8_t index)
 {
     if (index >= robot_profile_module_count())
     {
-        return ROBOT_TASK_MODULE_NONE;
+        return (robot_task_module_id_t)ROBOT_TASK_MODULE_NONE;
     }
 
-    return (robot_task_module_e)g_config.profile.task_modules[index];
+    return (robot_task_module_id_t)g_config.profile.task_modules[index];
 }
 
-static inline const char *robot_profile_module_name(robot_task_module_e module)
+static inline robot_task_module_e robot_profile_module_at(uint8_t index)
+{
+    return (robot_task_module_e)robot_profile_module_id_at(index);
+}
+
+static inline const char *robot_profile_module_name(robot_task_module_id_t module)
 {
     uint8_t count = 0u;
     const robot_task_module_desc_t *modules = robot_profile_known_modules(&count);
@@ -222,19 +233,24 @@ static inline uint8_t robot_profile_find_module_by_name(const char *name, robot_
     return 0u;
 }
 
-static inline uint8_t robot_profile_module_enabled(robot_task_module_e module)
+static inline uint8_t robot_profile_module_id_enabled(robot_task_module_id_t module)
 {
     const uint8_t limit = robot_profile_module_count();
 
     for (uint8_t i = 0u; i < limit; i++)
     {
-        if (robot_profile_module_at(i) == module)
+        if (robot_profile_module_id_at(i) == module)
         {
             return 1u;
         }
     }
 
     return 0u;
+}
+
+static inline uint8_t robot_profile_module_enabled(robot_task_module_e module)
+{
+    return robot_profile_module_id_enabled((robot_task_module_id_t)module);
 }
 
 static inline uint8_t robot_profile_module_enabled_by_name(const char *name)
