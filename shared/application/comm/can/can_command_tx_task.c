@@ -518,10 +518,10 @@ static void can_tx_collect_offline_cmds(void)
 
     if (allow_friction_offline)
     {
-        s_can_tx_friction_cmd[0] = actuator_cmd_get_friction_current(0);
-        s_can_tx_friction_cmd[1] = actuator_cmd_get_friction_current(1);
-        s_can_tx_friction_cmd[2] = actuator_cmd_get_friction_current(2);
-        s_can_tx_friction_cmd[3] = actuator_cmd_get_friction_current(3);
+        s_can_tx_friction_cmd[0] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION0);
+        s_can_tx_friction_cmd[1] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION1);
+        s_can_tx_friction_cmd[2] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION2);
+        s_can_tx_friction_cmd[3] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION3);
     }
     can_tx_limit_friction_cmds();
 }
@@ -533,18 +533,18 @@ static void can_tx_collect_online_cmds(void)
 
     can_tx_clear_cmd_cache();
 
-    s_can_tx_chassis_cmd[0] = allow_chassis ? actuator_cmd_get_chassis_current(0) : 0;
-    s_can_tx_chassis_cmd[1] = allow_chassis ? actuator_cmd_get_chassis_current(1) : 0;
-    s_can_tx_chassis_cmd[2] = allow_chassis ? actuator_cmd_get_chassis_current(2) : 0;
-    s_can_tx_chassis_cmd[3] = allow_chassis ? actuator_cmd_get_chassis_current(3) : 0;
-    s_can_tx_yaw_cmd = actuator_cmd_get_yaw_current();
-    s_can_tx_yaw_upper_cmd = actuator_cmd_get_yaw_upper_current();
-    s_can_tx_pitch_cmd = actuator_cmd_get_pitch_current();
-    s_can_tx_trigger_cmd = actuator_cmd_get_trigger_current();
-    s_can_tx_friction_cmd[0] = actuator_cmd_get_friction_current(0);
-    s_can_tx_friction_cmd[1] = actuator_cmd_get_friction_current(1);
-    s_can_tx_friction_cmd[2] = actuator_cmd_get_friction_current(2);
-    s_can_tx_friction_cmd[3] = actuator_cmd_get_friction_current(3);
+    s_can_tx_chassis_cmd[0] = allow_chassis ? actuator_cmd_get_current(ACTUATOR_ID_CHASSIS0) : 0;
+    s_can_tx_chassis_cmd[1] = allow_chassis ? actuator_cmd_get_current(ACTUATOR_ID_CHASSIS1) : 0;
+    s_can_tx_chassis_cmd[2] = allow_chassis ? actuator_cmd_get_current(ACTUATOR_ID_CHASSIS2) : 0;
+    s_can_tx_chassis_cmd[3] = allow_chassis ? actuator_cmd_get_current(ACTUATOR_ID_CHASSIS3) : 0;
+    s_can_tx_yaw_cmd = actuator_cmd_get_current(ACTUATOR_ID_YAW);
+    s_can_tx_yaw_upper_cmd = actuator_cmd_get_current(ACTUATOR_ID_YAW_UPPER);
+    s_can_tx_pitch_cmd = actuator_cmd_get_current(ACTUATOR_ID_PITCH);
+    s_can_tx_trigger_cmd = actuator_cmd_get_current(ACTUATOR_ID_TRIGGER);
+    s_can_tx_friction_cmd[0] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION0);
+    s_can_tx_friction_cmd[1] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION1);
+    s_can_tx_friction_cmd[2] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION2);
+    s_can_tx_friction_cmd[3] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION3);
 
     can_tx_limit_friction_cmds();
 }

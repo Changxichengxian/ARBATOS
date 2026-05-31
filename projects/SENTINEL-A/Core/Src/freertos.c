@@ -35,6 +35,7 @@
 #include "INS_task.h"
 #include "app_task_bootstrap.h"
 #include "control_manager.h"
+#include "robot_control_registry.h"
 #include "wheelleg_mit_task.h"
 
 /* USER CODE END Includes */
@@ -224,6 +225,7 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
   control_manager_init();
+  robot_control_register_profile_defaults();
 
   /* USER CODE END Init */
 

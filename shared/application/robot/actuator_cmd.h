@@ -87,9 +87,18 @@ typedef struct
     uint8_t temperature;
 } actuator_feedback_t;
 
-actuator_id_e actuator_id_chassis(uint8_t index);
-actuator_id_e actuator_id_friction(uint8_t index);
-actuator_id_e actuator_id_arm_joint(uint8_t index);
+static inline actuator_id_e actuator_id_from_range(actuator_id_e first, uint8_t index, uint8_t count)
+{
+    if (index >= count || (uint32_t)first >= (uint32_t)ACTUATOR_ID__COUNT)
+    {
+        return ACTUATOR_ID__COUNT;
+    }
+    if (((uint32_t)first + (uint32_t)index) >= (uint32_t)ACTUATOR_ID__COUNT)
+    {
+        return ACTUATOR_ID__COUNT;
+    }
+    return (actuator_id_e)((uint32_t)first + (uint32_t)index);
+}
 
 void actuator_cmd_clear_all(void);
 void actuator_cmd_clear(actuator_id_e id);
@@ -104,19 +113,5 @@ void actuator_feedback_clear_all(void);
 void actuator_feedback_update(actuator_id_e id, const actuator_feedback_t *feedback);
 uint8_t actuator_feedback_get_copy(actuator_id_e id, actuator_feedback_t *out);
 const actuator_feedback_t *actuator_feedback_get_ptr(actuator_id_e id);
-
-// Role-based current commands. Control tasks should prefer these names.
-void actuator_cmd_set_chassis_current(uint8_t index, int16_t current);
-int16_t actuator_cmd_get_chassis_current(uint8_t index);
-void actuator_cmd_set_yaw_current(int16_t current);
-int16_t actuator_cmd_get_yaw_current(void);
-void actuator_cmd_set_yaw_upper_current(int16_t current);
-int16_t actuator_cmd_get_yaw_upper_current(void);
-void actuator_cmd_set_pitch_current(int16_t current);
-int16_t actuator_cmd_get_pitch_current(void);
-void actuator_cmd_set_trigger_current(int16_t current);
-int16_t actuator_cmd_get_trigger_current(void);
-void actuator_cmd_set_friction_current(uint8_t index, int16_t current);
-int16_t actuator_cmd_get_friction_current(uint8_t index);
 
 #endif

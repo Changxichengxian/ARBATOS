@@ -190,7 +190,7 @@ typedef struct __attribute__((packed))
 } sdlog_aux_tune_t;
 
 #define SDLOG_CONFIG_VERSION 1u
-#define SDLOG_BUILD_INFO_VERSION 1u
+#define SDLOG_BUILD_INFO_VERSION 2u
 #define SDLOG_RUNTIME_DEVICE_VERSION 1u
 #define SDLOG_BUILD_INFO_TEXT_LEN 32u
 #define SDLOG_BUILD_INFO_GIT_SHA_LEN 16u

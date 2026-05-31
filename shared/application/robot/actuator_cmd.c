@@ -23,33 +23,6 @@ static uint8_t actuator_id_valid(actuator_id_e id)
     return ((uint32_t)id < (uint32_t)ACTUATOR_ID__COUNT) ? 1u : 0u;
 }
 
-actuator_id_e actuator_id_chassis(uint8_t index)
-{
-    if (index >= 4u)
-    {
-        return ACTUATOR_ID__COUNT;
-    }
-    return (actuator_id_e)((uint32_t)ACTUATOR_ID_CHASSIS0 + (uint32_t)index);
-}
-
-actuator_id_e actuator_id_friction(uint8_t index)
-{
-    if (index >= 4u)
-    {
-        return ACTUATOR_ID__COUNT;
-    }
-    return (actuator_id_e)((uint32_t)ACTUATOR_ID_FRICTION0 + (uint32_t)index);
-}
-
-actuator_id_e actuator_id_arm_joint(uint8_t index)
-{
-    if (index >= 6u)
-    {
-        return ACTUATOR_ID__COUNT;
-    }
-    return (actuator_id_e)((uint32_t)ACTUATOR_ID_ARM_J0 + (uint32_t)index);
-}
-
 void actuator_cmd_clear_all(void)
 {
     taskENTER_CRITICAL();
@@ -202,64 +175,4 @@ const actuator_feedback_t *actuator_feedback_get_ptr(actuator_id_e id)
     }
 
     return &g_actuator_feedback[id];
-}
-
-void actuator_cmd_set_chassis_current(uint8_t index, int16_t current)
-{
-    actuator_cmd_set_current(actuator_id_chassis(index), current);
-}
-
-int16_t actuator_cmd_get_chassis_current(uint8_t index)
-{
-    return actuator_cmd_get_current(actuator_id_chassis(index));
-}
-
-void actuator_cmd_set_yaw_current(int16_t current)
-{
-    actuator_cmd_set_current(ACTUATOR_ID_YAW, current);
-}
-
-int16_t actuator_cmd_get_yaw_current(void)
-{
-    return actuator_cmd_get_current(ACTUATOR_ID_YAW);
-}
-
-void actuator_cmd_set_yaw_upper_current(int16_t current)
-{
-    actuator_cmd_set_current(ACTUATOR_ID_YAW_UPPER, current);
-}
-
-int16_t actuator_cmd_get_yaw_upper_current(void)
-{
-    return actuator_cmd_get_current(ACTUATOR_ID_YAW_UPPER);
-}
-
-void actuator_cmd_set_pitch_current(int16_t current)
-{
-    actuator_cmd_set_current(ACTUATOR_ID_PITCH, current);
-}
-
-int16_t actuator_cmd_get_pitch_current(void)
-{
-    return actuator_cmd_get_current(ACTUATOR_ID_PITCH);
-}
-
-void actuator_cmd_set_trigger_current(int16_t current)
-{
-    actuator_cmd_set_current(ACTUATOR_ID_TRIGGER, current);
-}
-
-int16_t actuator_cmd_get_trigger_current(void)
-{
-    return actuator_cmd_get_current(ACTUATOR_ID_TRIGGER);
-}
-
-void actuator_cmd_set_friction_current(uint8_t index, int16_t current)
-{
-    actuator_cmd_set_current(actuator_id_friction(index), current);
-}
-
-int16_t actuator_cmd_get_friction_current(uint8_t index)
-{
-    return actuator_cmd_get_current(actuator_id_friction(index));
 }

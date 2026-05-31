@@ -12,7 +12,7 @@
 | `sensor.xxx` | sensor | CAN / UART / SPI | 设备表 | 后续接入通用设备表 |
 | `link.xxx` | link | USB / UART | 设备表 | 遥控、图传、上位机链路 |
 
-当前代码里电机先通过 `robot_device_config.h` 生成兼容设备视图。以后真正改成设备数组时，优先改这层，不要让控制器直接读 `g_config.motor.yaw` 这类固定字段。
+当前代码里设备先写在 `g_config.devices`，再通过 `robot_device_config.h` 解析成运行时设备。不要让新控制器直接读 `g_config.motor.yaw` 这类固定字段。
 
 ## 2. 绑定电机实例
 

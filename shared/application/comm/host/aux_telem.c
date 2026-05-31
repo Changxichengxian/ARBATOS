@@ -685,7 +685,8 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
             case 0: return (fp32)(mm ? mm->speed_rpm : 0);
             case 1: return (fp32)(mm ? mm->given_current : 0);
             case 2: return (fp32)(mm ? mm->temperate : 0);
-            case 3: return (fp32)actuator_cmd_get_friction_current(motor);
+            case 3:
+                return (fp32)actuator_cmd_get_current(actuator_id_from_range(ACTUATOR_ID_FRICTION0, motor, 4u));
             default: return 0.0f;
             }
         }

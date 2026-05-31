@@ -412,12 +412,12 @@ const motor_measure_t *get_trigger_motor_measure_point(void)
 
 const motor_measure_t *get_chassis_motor_measure_point(uint8_t i)
 {
-    return motor_instance_measure_const(actuator_id_chassis(i & 0x03u));
+    return motor_instance_measure_const(actuator_id_from_range(ACTUATOR_ID_CHASSIS0, (uint8_t)(i & 0x03u), 4u));
 }
 
 const motor_measure_t *get_friction_motor_measure_point(uint8_t i)
 {
-    return motor_instance_measure_const(actuator_id_friction(i & 0x03u));
+    return motor_instance_measure_const(actuator_id_from_range(ACTUATOR_ID_FRICTION0, (uint8_t)(i & 0x03u), 4u));
 }
 
 uint8_t CAN_get_last_1ff_status(void)

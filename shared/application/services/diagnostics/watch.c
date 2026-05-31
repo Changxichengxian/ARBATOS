@@ -1169,7 +1169,8 @@ static void watch_copy_shoot(void)
     g_watch.shoot.fric_speed_set_rpm = (int16_t)shoot.fric_speed_set;
     for (uint8_t i = 0; i < 4; i++)
     {
-        g_watch.shoot.fric_current_cmd[i] = actuator_cmd_get_friction_current(i);
+        g_watch.shoot.fric_current_cmd[i] =
+            actuator_cmd_get_current(actuator_id_from_range(ACTUATOR_ID_FRICTION0, i, 4u));
     }
 
     g_watch.shoot.trigger_angle_deg = shoot.angle * rad2deg;

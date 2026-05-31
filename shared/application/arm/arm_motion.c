@@ -267,7 +267,7 @@ static void arm_copy_mit_feedback(uint8_t index)
     dst->velocity = src->velocity;
     dst->torque = src->torque;
 
-    actuator_id = actuator_id_arm_joint(index);
+    actuator_id = actuator_id_from_range(ACTUATOR_ID_ARM_J0, index, MOTOR_ARM_JOINT_COUNT);
     if ((uint32_t)actuator_id < (uint32_t)ACTUATOR_ID__COUNT)
     {
         (void)memset(&fb, 0, sizeof(fb));
@@ -293,7 +293,12 @@ static void arm_clear_mit_actuator_cmds(void)
     {
         if (g_arm_motor_table[i].driver == ARM_MOTOR_DRIVER_CAN_MIT)
         {
-            (void)motor_instance_cmd_set_speed_id(actuator_id_arm_joint((uint8_t)i), 0.0f, 0.0f, 0.0f);
+            (void)motor_instance_cmd_set_speed_id(actuator_id_from_range(ACTUATOR_ID_ARM_J0,
+                                                                         (uint8_t)i,
+                                                                         MOTOR_ARM_JOINT_COUNT),
+                                                  0.0f,
+                                                  0.0f,
+                                                  0.0f);
         }
     }
 }
@@ -801,7 +806,9 @@ static void arm_step_mit(uint16_t key_mask)
     {
         const arm_motor_entry_t *entry = &g_arm_motor_table[i];
         const can_mit_motor_limits_t *limits;
-        const actuator_id_e actuator_id = actuator_id_arm_joint((uint8_t)i);
+        const actuator_id_e actuator_id = actuator_id_from_range(ACTUATOR_ID_ARM_J0,
+                                                                 (uint8_t)i,
+                                                                 MOTOR_ARM_JOINT_COUNT);
 
         if (entry->driver != ARM_MOTOR_DRIVER_CAN_MIT)
         {

@@ -28,22 +28,28 @@ static inline void app_create_enabled_module_tasks(const app_task_module_desc_t 
         return;
     }
 
-    for (uint32_t i = 0u; i < module_task_count; i++)
+    for (uint8_t profile_index = 0u; profile_index < robot_profile_module_count(); profile_index++)
     {
-        const app_task_module_desc_t *task = &module_tasks[i];
+        const robot_task_module_id_t module_id = robot_profile_module_id_at(profile_index);
 
-        if (robot_profile_module_id_enabled(task->module_id) == 0u ||
-            task->handle == NULL ||
-            task->create == NULL)
+        for (uint32_t task_index = 0u; task_index < module_task_count; task_index++)
         {
-            continue;
-        }
-        if (*task->handle != NULL)
-        {
-            continue;
-        }
+            const app_task_module_desc_t *task = &module_tasks[task_index];
 
-        *task->handle = task->create();
+            if (task->module_id != module_id ||
+                task->handle == NULL ||
+                task->create == NULL)
+            {
+                continue;
+            }
+            if (*task->handle != NULL)
+            {
+                break;
+            }
+
+            *task->handle = task->create();
+            break;
+        }
     }
 }
 
