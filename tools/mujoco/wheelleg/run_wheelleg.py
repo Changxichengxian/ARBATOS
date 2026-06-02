@@ -28,6 +28,16 @@ HERE = Path(__file__).resolve().parent
 BRIDGE_SOURCE = HERE / "wheelleg_core_bridge.c"
 DEFAULT_NATIVE_DIR = REPO_ROOT / "tmp" / "mujoco_wheelleg"
 
+SIM_TOTAL_MASS_KG = 2.25
+SIM_BODY_MASS_KG = 1.81
+SIM_WHEEL_END_MASS_TOTAL_KG = 0.320
+SIM_LEG_MASS_TOTAL_KG = 0.120
+SIM_BODY_LENGTH_M = 0.115
+SIM_BODY_HEIGHT_M = 0.055
+SIM_BODY_COM_TO_HIP_M = -0.004
+SIM_TRACK_HALF_M = 0.105
+SIM_WHEEL_WIDTH_M = 0.024
+
 SIDE_LEFT = 0
 SIDE_RIGHT = 1
 CORE_ACT_RIGHT_FRONT = 0
@@ -36,7 +46,15 @@ CORE_ACT_RIGHT_WHEEL = 2
 CORE_ACT_LEFT_FRONT = 3
 CORE_ACT_LEFT_BACK = 4
 CORE_ACT_LEFT_WHEEL = 5
-SIM_ACTUATOR_SIGNS = {
+SIM_ACTUATOR_SIGNS_DIAMOND = {
+    CORE_ACT_RIGHT_FRONT: 1.0,
+    CORE_ACT_RIGHT_BACK: 1.0,
+    CORE_ACT_RIGHT_WHEEL: 1.0,
+    CORE_ACT_LEFT_FRONT: 1.0,
+    CORE_ACT_LEFT_BACK: 1.0,
+    CORE_ACT_LEFT_WHEEL: -1.0,
+}
+SIM_ACTUATOR_SIGNS_CORE = {
     CORE_ACT_RIGHT_FRONT: 1.0,
     CORE_ACT_RIGHT_BACK: -1.0,
     CORE_ACT_RIGHT_WHEEL: 1.0,
@@ -185,6 +203,7 @@ class BridgeInput(ctypes.Structure):
         ("target_foot_x_m", ctypes.c_float),
         ("target_yaw_rate_radps", ctypes.c_float),
         ("use_vmc", ctypes.c_uint8),
+        ("support_only", ctypes.c_uint8),
     ]
 
 
@@ -234,7 +253,7 @@ def find_compiler() -> tuple[str, list[str]] | None:
 
 
 def bridge_library_path(native_dir: Path) -> Path:
-    return native_dir / ("arbatos_wheelleg_core_bridge" + lib_suffix())
+    return native_dir / f"arbatos_wheelleg_core_bridge_{os.getpid()}{lib_suffix()}"
 
 
 def source_dependencies() -> list[Path]:
@@ -436,9 +455,10 @@ def base_mode(args: argparse.Namespace) -> str:
     return "free"
 
 
-def generated_model_path(native_dir: Path, project: str, mode: str) -> Path:
+def generated_model_path(native_dir: Path, project: str, mode: str, branch: str) -> Path:
     safe_project = re.sub(r"[^A-Za-z0-9_.-]+", "_", project)
-    return native_dir / f"wheelleg_fivebar_{safe_project}_{mode}.xml"
+    safe_branch = re.sub(r"[^A-Za-z0-9_.-]+", "_", branch)
+    return native_dir / f"wheelleg_fivebar_{safe_project}_{mode}_{safe_branch}_{os.getpid()}.xml"
 
 
 def clamped_leg_length(config: BridgeConfig, target_leg_m: float | None) -> float:
@@ -450,6 +470,59 @@ def clamped_leg_length(config: BridgeConfig, target_leg_m: float | None) -> floa
     return length
 
 
+def read_project_scalar(project: str, field_name: str, fallback: float = float("nan")) -> float:
+    raw = robot_sim.extract_named_value(read_wheelleg_config_body(project), field_name)
+    return parse_float(raw, fallback)
+
+
+def print_model_params(args: argparse.Namespace, config: BridgeConfig, model_path: Path) -> None:
+    print(f"project={args.project}")
+    print(f"model={model_path}")
+    print(f"leg_branch={args.leg_branch}")
+    print("control_core=shared/application/wheelleg/wheelleg_core.h")
+    print("project_config=Robotconfig/{}/config.c: wheelleg_mit".format(args.project))
+    print(
+        "geometry_from_config="
+        f"l1={float(config.geometry.l1_m):.5f}, "
+        f"l2={float(config.geometry.l2_m):.5f}, "
+        f"l3={float(config.geometry.l3_m):.5f}, "
+        f"l4={float(config.geometry.l4_m):.5f}, "
+        f"l5={float(config.geometry.l5_m):.5f}, "
+        f"wheel_radius={float(config.wheel_radius_m):.5f}"
+    )
+    print(
+        "control_from_config="
+        f"default_leg={float(config.default_leg_length_m):.3f}, "
+        f"leg_range={float(config.min_leg_length_m):.3f}..{float(config.max_leg_length_m):.3f}, "
+        f"support_bias={float(config.support_bias_n):.2f}, "
+        f"max_wheel_torque={float(config.max_wheel_torque_nm):.2f}, "
+        f"max_joint_torque={float(config.max_joint_torque_nm):.2f}"
+    )
+    print(f"leg_mass_kg_from_config={read_project_scalar(args.project, 'leg_mass_kg'):.3f}")
+    print("lqr_mass_source=tools/wheelleg_lqr/small_3510_lqr_report.md")
+    print(
+        "lqr_mass_assumption="
+        f"total={SIM_TOTAL_MASS_KG:.3f}, "
+        f"body={SIM_BODY_MASS_KG:.3f}, "
+        f"wheel_end_total={SIM_WHEEL_END_MASS_TOTAL_KG:.3f}, "
+        f"leg_total={SIM_LEG_MASS_TOTAL_KG:.3f}"
+    )
+    print(
+        "sim_shape_assumption="
+        f"track_half={SIM_TRACK_HALF_M:.3f}, "
+        f"wheel_width={SIM_WHEEL_WIDTH_M:.3f}, "
+        f"body_length={SIM_BODY_LENGTH_M:.3f}, "
+        f"body_height={SIM_BODY_HEIGHT_M:.3f}"
+    )
+    try:
+        mujoco = import_mujoco()
+        model = mujoco.MjModel.from_xml_path(str(model_path))
+        total_mass = sum(float(model.body_mass[i]) for i in range(1, model.nbody))
+        print(f"generated_mujoco_body_mass_total={total_mass:.3f}")
+    except Exception as exc:
+        print(f"generated_mujoco_body_mass_total=unavailable ({exc})")
+
+
 def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float, mode: str = "free") -> str:
     validate_fivebar_config(config)
     l1 = float(config.geometry.l1_m)
@@ -459,13 +532,21 @@ def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float, mode: st
     l5 = float(config.geometry.l5_m)
     wheel_radius = float(config.wheel_radius_m)
     half_l5 = l5 * 0.5
-    track_half = 0.105
-    wheel_width = 0.024
+    track_half = SIM_TRACK_HALF_M
+    wheel_width = SIM_WHEEL_WIDTH_M
     crank_radius = 0.0045
     rod_radius = 0.0038
     pivot_radius = 0.0070
-    carrier_mass = 0.045
-    body_mass = 1.35
+    carrier_mass = SIM_WHEEL_END_MASS_TOTAL_KG * 0.0625
+    wheel_mass = SIM_WHEEL_END_MASS_TOTAL_KG * 0.4375
+    upper_link_mass = SIM_LEG_MASS_TOTAL_KG * 0.1000
+    lower_link_mass = SIM_LEG_MASS_TOTAL_KG * 0.1417
+    pivot_mass = SIM_LEG_MASS_TOTAL_KG * 0.0083
+    crossbar_mass = 0.015
+    body_mass = SIM_BODY_MASS_KG - 2.0 * crossbar_mass
+    body_half_x = SIM_BODY_LENGTH_M * 0.5
+    body_half_y = 0.052
+    body_half_z = SIM_BODY_HEIGHT_M * 0.5
 
     if mode == "bench":
         base_joints = ""
@@ -487,35 +568,35 @@ def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float, mode: st
         <body name="{prefix}_wheel" pos="0 0 0">
           <joint name="{prefix}_wheel_hinge" type="hinge" axis="0 1 0" damping="0.004"/>
           <geom name="{prefix}_wheel_geom" type="cylinder" size="{f6(wheel_radius)} {f6(wheel_width)}"
-                euler="1.5707963268 0 0" mass="0.080" material="wheel_mat"
+                euler="1.5707963268 0 0" mass="{f6(wheel_mass)}" material="wheel_mat"
                 friction="1.8 0.04 0.002"/>
         </body>
       </body>
 
       <body name="{prefix}_front_crank" pos="{f6(-half_l5)} {f6(y)} 0">
-        <joint name="{prefix}_front_hinge" type="hinge" axis="0 1 0" range="-3.20 1.20" damping="0.02"/>
-        <geom name="{prefix}_front_pivot_geom" type="sphere" size="{f6(pivot_radius)}" mass="0.003"
+        <joint name="{prefix}_front_hinge" type="hinge" axis="0 1 0" range="-3.40 3.40" damping="0.02"/>
+        <geom name="{prefix}_front_pivot_geom" type="sphere" size="{f6(pivot_radius)}" mass="{f6(pivot_mass)}"
               material="{material}" contype="0" conaffinity="0"/>
         <geom name="{prefix}_front_crank_geom" type="capsule" fromto="0 0 0 0 0 {f6(-l1)}"
-              size="{f6(crank_radius)}" mass="0.020" material="{material}" contype="0" conaffinity="0"/>
+              size="{f6(crank_radius)}" mass="{f6(upper_link_mass)}" material="{material}" contype="0" conaffinity="0"/>
         <body name="{prefix}_front_rod" pos="0 0 {f6(-l1)}">
           <joint name="{prefix}_front_knee" type="hinge" axis="0 1 0" range="-3.40 3.40" damping="0.01"/>
           <geom name="{prefix}_front_rod_geom" type="capsule" fromto="0 0 0 0 0 {f6(-l2)}"
-                size="{f6(rod_radius)}" mass="0.025" material="{material}" contype="0" conaffinity="0"/>
+                size="{f6(rod_radius)}" mass="{f6(lower_link_mass)}" material="{material}" contype="0" conaffinity="0"/>
           <site name="{prefix}_front_rod_end" pos="0 0 {f6(-l2)}" size="0.004"/>
         </body>
       </body>
 
       <body name="{prefix}_back_crank" pos="{f6(half_l5)} {f6(y)} 0">
-        <joint name="{prefix}_back_hinge" type="hinge" axis="0 1 0" range="-3.20 1.20" damping="0.02"/>
-        <geom name="{prefix}_back_pivot_geom" type="sphere" size="{f6(pivot_radius)}" mass="0.003"
+        <joint name="{prefix}_back_hinge" type="hinge" axis="0 1 0" range="-3.40 3.40" damping="0.02"/>
+        <geom name="{prefix}_back_pivot_geom" type="sphere" size="{f6(pivot_radius)}" mass="{f6(pivot_mass)}"
               material="{material}" contype="0" conaffinity="0"/>
         <geom name="{prefix}_back_crank_geom" type="capsule" fromto="0 0 0 0 0 {f6(-l4)}"
-              size="{f6(crank_radius)}" mass="0.020" material="{material}" contype="0" conaffinity="0"/>
+              size="{f6(crank_radius)}" mass="{f6(upper_link_mass)}" material="{material}" contype="0" conaffinity="0"/>
         <body name="{prefix}_back_rod" pos="0 0 {f6(-l4)}">
           <joint name="{prefix}_back_knee" type="hinge" axis="0 1 0" range="-3.40 3.40" damping="0.01"/>
           <geom name="{prefix}_back_rod_geom" type="capsule" fromto="0 0 0 0 0 {f6(-l3)}"
-                size="{f6(rod_radius)}" mass="0.025" material="{material}" contype="0" conaffinity="0"/>
+                size="{f6(rod_radius)}" mass="{f6(lower_link_mass)}" material="{material}" contype="0" conaffinity="0"/>
           <site name="{prefix}_back_rod_end" pos="0 0 {f6(-l3)}" size="0.004"/>
         </body>
       </body>"""
@@ -547,12 +628,12 @@ def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float, mode: st
     <body name="base" pos="0 0 {f6(base_height_m)}">
       {base_joints}
       <site name="imu" pos="0 0 0" size="0.006"/>
-      <geom name="body" type="box" pos="0 0 0.036" size="0.080 0.052 0.026"
+      <geom name="body" type="box" pos="0 0 {f6(body_half_z + 0.012)}" size="{f6(body_half_x)} {f6(body_half_y)} {f6(body_half_z)}"
             mass="{f6(body_mass)}" material="body_mat"/>
       <geom name="front_crossbar" type="capsule" fromto="{f6(-half_l5)} -0.116 0 {f6(-half_l5)} 0.116 0"
-            size="0.0045" mass="0.015" material="body_mat" contype="0" conaffinity="0"/>
+            size="0.0045" mass="{f6(crossbar_mass)}" material="body_mat" contype="0" conaffinity="0"/>
       <geom name="back_crossbar" type="capsule" fromto="{f6(half_l5)} -0.116 0 {f6(half_l5)} 0.116 0"
-            size="0.0045" mass="0.015" material="body_mat" contype="0" conaffinity="0"/>
+            size="0.0045" mass="{f6(crossbar_mass)}" material="body_mat" contype="0" conaffinity="0"/>
 {side_xml("right", -track_half, "right_mat")}
 {side_xml("left", track_half, "left_mat")}
     </body>
@@ -586,7 +667,7 @@ def resolve_model_path(args: argparse.Namespace, config: BridgeConfig) -> Path:
     length = clamped_leg_length(config, args.target_leg)
     base_height = length + float(config.wheel_radius_m) + 0.002
     mode = base_mode(args)
-    model_path = generated_model_path(Path(args.native_dir), args.project, mode)
+    model_path = generated_model_path(Path(args.native_dir), args.project, mode, args.leg_branch)
     model_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = model_path.with_name(model_path.name + ".tmp")
     tmp_path.write_text(build_fivebar_model_xml(config, base_height, mode), encoding="utf-8")
@@ -656,6 +737,7 @@ def inverse_fivebar_point(
     foot_y_m: float,
     front_ref: float = -math.pi,
     back_ref: float = -math.pi,
+    prefer_outward: bool = True,
 ) -> tuple[float, float]:
     l1 = float(config.geometry.l1_m)
     l2 = float(config.geometry.l2_m)
@@ -692,6 +774,8 @@ def inverse_fivebar_point(
 
     best: tuple[float, float] | None = None
     best_score = float("inf")
+    outward_best: tuple[float, float] | None = None
+    outward_best_score = float("inf")
     for front in front_candidates:
         for back in back_candidates:
             points = fivebar_points(config, front, back)
@@ -700,9 +784,16 @@ def inverse_fivebar_point(
             if err > 0.003:
                 continue
             score = abs(wrap_pi(front - front_ref)) + abs(wrap_pi(back - back_ref)) + err * 1000.0
+            outward = points["front_elbow"][0] < -l5 * 0.5 and points["back_elbow"][0] > l5 * 0.5
+            candidate = (wrap_pi(front), wrap_pi(back))
+            if outward and (outward_best is None or score < outward_best_score):
+                outward_best = candidate
+                outward_best_score = score
             if best is None or score < best_score:
-                best = (front, back)
+                best = candidate
                 best_score = score
+    if prefer_outward and outward_best is not None:
+        return outward_best
     if best is None:
         raise RuntimeError("initial five-bar target has no matching branch")
     return best
@@ -740,7 +831,7 @@ def initialize_model_pose(mujoco, model, data, config: BridgeConfig, front_home:
 
 def initial_home_pose(config: BridgeConfig, args: argparse.Namespace) -> tuple[float, float]:
     length = clamped_leg_length(config, args.target_leg)
-    return inverse_fivebar_point(config, float(args.target_foot_x), length)
+    return inverse_fivebar_point(config, float(args.target_foot_x), length, prefer_outward=args.leg_branch == "diamond")
 
 
 def import_mujoco():
@@ -798,11 +889,13 @@ def fill_bridge_input(mujoco, model, data, args: argparse.Namespace) -> BridgeIn
         target_foot_x_m=float(args.target_foot_x),
         target_yaw_rate_radps=float(args.target_yaw_rate),
         use_vmc=1 if args.vmc else 0,
+        support_only=1 if args.support_only else 0,
     )
 
 
 def sim_actuator_torque(core_index: int, output: BridgeOutput, args: argparse.Namespace) -> float:
-    torque = float(output.actuator_torque_nm[core_index]) * SIM_ACTUATOR_SIGNS.get(core_index, 1.0)
+    signs = SIM_ACTUATOR_SIGNS_CORE if args.leg_branch == "core" else SIM_ACTUATOR_SIGNS_DIAMOND
+    torque = float(output.actuator_torque_nm[core_index]) * signs.get(core_index, 1.0)
     if core_index in WHEEL_ACTUATORS:
         torque *= float(args.sim_wheel_scale)
     if args.support_only and core_index in WHEEL_ACTUATORS:
@@ -832,6 +925,50 @@ def run_step(lib, config: BridgeConfig, state: BridgeState, mujoco, model, data,
 def applied_wheel_torque(output: BridgeOutput, side: int, args: argparse.Namespace) -> float:
     core_index = CORE_ACT_RIGHT_WHEEL if side == SIDE_RIGHT else CORE_ACT_LEFT_WHEEL
     return sim_actuator_torque(core_index, output, args)
+
+
+def clamp_float(value: float, min_value: float, max_value: float) -> float:
+    return max(min_value, min(value, max_value))
+
+
+def keyboard_callback(args: argparse.Namespace):
+    def on_key(key: int) -> None:
+        if key < 0 or key > 255:
+            return
+        ch = chr(key).lower()
+        changed = True
+        if ch == "w":
+            args.target_v = clamp_float(float(args.target_v) + 0.05, -0.45, 0.45)
+        elif ch == "s":
+            args.target_v = clamp_float(float(args.target_v) - 0.05, -0.45, 0.45)
+        elif ch == "a":
+            args.target_yaw_rate = clamp_float(float(args.target_yaw_rate) + 0.15, -1.20, 1.20)
+        elif ch == "d":
+            args.target_yaw_rate = clamp_float(float(args.target_yaw_rate) - 0.15, -1.20, 1.20)
+        elif ch == "q":
+            args.target_leg = clamp_float(float(args.target_leg) - 0.005, 0.085, 0.120)
+        elif ch == "e":
+            args.target_leg = clamp_float(float(args.target_leg) + 0.005, 0.085, 0.120)
+        elif ch == "z":
+            args.target_foot_x = clamp_float(float(args.target_foot_x) - 0.005, -0.030, 0.030)
+        elif ch == "c":
+            args.target_foot_x = clamp_float(float(args.target_foot_x) + 0.005, -0.030, 0.030)
+        elif ch == "x":
+            args.target_v = 0.0
+            args.target_yaw_rate = 0.0
+            args.target_foot_x = 0.0
+        else:
+            changed = False
+        if changed:
+            print(
+                "target "
+                f"v={float(args.target_v):+.2f}m/s "
+                f"yaw_rate={float(args.target_yaw_rate):+.2f}rad/s "
+                f"leg={float(args.target_leg):.3f}m "
+                f"foot_x={float(args.target_foot_x):+.3f}m"
+            )
+
+    return on_key
 
 
 def run_sim(args: argparse.Namespace) -> None:
@@ -882,6 +1019,7 @@ def run_sim(args: argparse.Namespace) -> None:
             roll, pitch, _yaw, _gyro_x, _gyro_y, _gyro_z = base_orientation(mujoco, model, data)
             print(
                 f"t={data.time:6.3f}s pitch={pitch:+.3f} roll={roll:+.3f} "
+                f"target_v={float(args.target_v):+.2f} target_yaw={float(args.target_yaw_rate):+.2f} "
                 f"v={output.observer_v_mps:+.3f} "
                 f"tau_wheel_r={applied_wheel_torque(output, SIDE_RIGHT, args):+.3f} "
                 f"tau_wheel_l={applied_wheel_torque(output, SIDE_LEFT, args):+.3f}"
@@ -894,7 +1032,8 @@ def run_sim(args: argparse.Namespace) -> None:
     if args.viewer:
         import mujoco.viewer  # type: ignore
 
-        with mujoco.viewer.launch_passive(model, data) as viewer:
+        key_callback = keyboard_callback(args) if args.keyboard else None
+        with mujoco.viewer.launch_passive(model, data, key_callback=key_callback) as viewer:
             for step_index in range(steps):
                 if not viewer.is_running():
                     break
@@ -916,11 +1055,14 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     parser.add_argument("--target-leg", type=float, default=0.10)
     parser.add_argument("--target-foot-x", type=float, default=0.0)
     parser.add_argument("--target-yaw-rate", type=float, default=0.0)
+    parser.add_argument("--leg-branch", choices=("diamond", "core"), default="diamond")
     parser.add_argument("--vmc", action="store_true", help="Enable VMC joint torque output.")
     parser.add_argument("--sim-wheel-scale", type=float, default=1.0, help="Scale wheel torques applied in MuJoCo.")
     parser.add_argument("--support-only", action="store_true", help="Disable wheel torques and keep only VMC leg support.")
     parser.add_argument("--planar", action="store_true", help="Use a 2D base for pitch-plane standing tests.")
     parser.add_argument("--bench", action="store_true", help="Fix the base to inspect PID/VMC output on a virtual bench.")
+    parser.add_argument("--keyboard", action="store_true", help="Enable viewer keyboard control: W/S speed, A/D turn, Q/E leg, Z/C foot, X stop.")
+    parser.add_argument("--print-params", action="store_true", help="Print project and MuJoCo model parameter sources.")
     parser.add_argument("--viewer", action="store_true", help="Open the MuJoCo viewer.")
     parser.add_argument("--realtime", action="store_true", help="Sleep to roughly match wall time.")
     parser.add_argument("--print-every", type=int, default=100)
@@ -937,6 +1079,9 @@ def main(argv: Iterable[str] | None = None) -> int:
     load_project_config(config, args.project)
     model_path = resolve_model_path(args, config)
     body = read_wheelleg_config_body(args.project)
+    if args.print_params:
+        print_model_params(args, config, model_path)
+        return 0
     if args.check:
         lqr_rows = robot_sim.extract_initializer(body, "lqr_poly")
         row_count = len(robot_sim.split_top_level(lqr_rows or ""))

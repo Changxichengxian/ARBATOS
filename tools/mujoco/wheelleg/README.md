@@ -43,32 +43,38 @@ python .\tools\mujoco\wheelleg\run_wheelleg.py --check --project MINIWHEELEG-C
 Bench PID output:
 
 ```powershell
-python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --bench --viewer --realtime
+python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --bench --leg-branch diamond --viewer --realtime
 ```
 
 Bench VMC output:
 
 ```powershell
-python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --bench --vmc --viewer --realtime
+python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --bench --vmc --leg-branch diamond --viewer --realtime
 ```
 
-Free 3D VMC standing check:
+Print the parameters used by the generated model:
 
 ```powershell
-python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --vmc --sim-wheel-scale 0.05 --viewer --realtime
+python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --print-params
 ```
 
-Leg support only, with wheel torques disabled:
+Keyboard control in the viewer:
 
 ```powershell
-python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --support-only --viewer --realtime
+python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --bench --keyboard --viewer --realtime
 ```
 
-2D pitch-plane standing check:
+Keys:
 
-```powershell
-python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --planar --support-only --viewer --realtime
-```
+- `W` / `S`: target speed up/down;
+- `A` / `D`: yaw rate left/right;
+- `Q` / `E`: target leg length down/up;
+- `Z` / `C`: target foot x backward/forward;
+- `X`: stop speed, yaw, and foot x target.
+
+The default leg branch is `diamond`, which matches the expected five-bar shape.
+`--leg-branch core` is kept as a diagnostic branch close to the control core's
+old initialization branch.
 
 Use a custom MJCF instead of the generated five-bar model:
 
@@ -85,13 +91,12 @@ This runner is good for checking:
 - wheel torque direction;
 - five-bar closed-chain geometry and basic wheel-ground contact;
 - bench PID/VMC output without needing the body to balance;
-- 2D and free-3D VMC standing checks;
+- diamond and core five-bar initialization branches;
 - whether the reusable core can run outside FreeRTOS.
 
-It is still not a final calibrated robot model. Link masses, inertia, friction,
-motor limits, contact material, and body dimensions are conservative starting
-values. The full wheel LQR output is intentionally available with
-`--sim-wheel-scale 1.0`, but the current generated model needs a smaller
-simulation-side wheel scale, such as `0.05`, for stable free-3D standing. The
-next physics step is to measure or CAD-export those values and tune the
-contact/friction model against the real wheel-leg behavior.
+It is still not a final calibrated robot model. Geometry and control gains come
+from `Robotconfig/<project>/config.c`, and the default mass assumptions come
+from `tools/wheelleg_lqr/small_3510_lqr_report.md`. Track width, wheel width,
+contact material, joint damping, and detailed inertia are still simulation
+assumptions. The diamond branch fixes the visible five-bar shape, but VMC
+standing on that branch still needs motor direction, zero, and contact tuning.

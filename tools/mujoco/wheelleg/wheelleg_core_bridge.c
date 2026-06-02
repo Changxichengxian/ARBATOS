@@ -77,6 +77,7 @@ typedef struct
     fp32 target_foot_x_m;
     fp32 target_yaw_rate_radps;
     uint8_t use_vmc;
+    uint8_t support_only;
 } arbatos_wheelleg_bridge_input_t;
 
 typedef struct
@@ -352,8 +353,8 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
                                        -input->pitch_rad - config->pitch_balance_offset_left_rad,
                                        -input->gyro_y_radps);
 
-    hip_scale = (input->use_vmc != 0u) ? config->lqr_hip_torque_scale : 0.0f;
-    if (input->use_vmc != 0u)
+    hip_scale = (input->use_vmc != 0u && input->support_only == 0u) ? config->lqr_hip_torque_scale : 0.0f;
+    if (input->use_vmc != 0u && input->support_only == 0u)
     {
         split_tp = wheelleg_core_pid_calc(&state->split_pid,
                                           state->leg[WHEELLEG_SIDE_RIGHT].theta +
