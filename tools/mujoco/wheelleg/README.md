@@ -28,7 +28,7 @@ Compiler options on Windows:
 
 The runner builds `tools/mujoco/wheelleg/wheelleg_core_bridge.c` into
 `tmp/mujoco_wheelleg/arbatos_wheelleg_core_bridge.dll` on first run. It also
-writes the generated MJCF to `tmp/mujoco_wheelleg/wheelleg_fivebar_<project>.xml`.
+writes generated MJCF files to `tmp/mujoco_wheelleg/`.
 
 ## Smoke check
 
@@ -40,22 +40,34 @@ python .\tools\mujoco\wheelleg\run_wheelleg.py --check --project MINIWHEELEG-C
 
 ## Run
 
-Headless:
+Bench PID output:
 
 ```powershell
-python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --duration-s 5
+python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --bench --viewer --realtime
 ```
 
-Viewer:
+Bench VMC output:
 
 ```powershell
-python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --viewer --realtime
+python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --bench --vmc --viewer --realtime
 ```
 
-Use VMC joint torques:
+Free 3D VMC standing check:
 
 ```powershell
-python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --vmc --viewer --realtime
+python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --vmc --sim-wheel-scale 0.05 --viewer --realtime
+```
+
+Leg support only, with wheel torques disabled:
+
+```powershell
+python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --support-only --viewer --realtime
+```
+
+2D pitch-plane standing check:
+
+```powershell
+python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --planar --support-only --viewer --realtime
 ```
 
 Use a custom MJCF instead of the generated five-bar model:
@@ -72,9 +84,14 @@ This runner is good for checking:
 - sensor sign conventions;
 - wheel torque direction;
 - five-bar closed-chain geometry and basic wheel-ground contact;
+- bench PID/VMC output without needing the body to balance;
+- 2D and free-3D VMC standing checks;
 - whether the reusable core can run outside FreeRTOS.
 
 It is still not a final calibrated robot model. Link masses, inertia, friction,
 motor limits, contact material, and body dimensions are conservative starting
-values. The next physics step is to measure or CAD-export those values and tune
-the contact/friction model against the real wheel-leg behavior.
+values. The full wheel LQR output is intentionally available with
+`--sim-wheel-scale 1.0`, but the current generated model needs a smaller
+simulation-side wheel scale, such as `0.05`, for stable free-3D standing. The
+next physics step is to measure or CAD-export those values and tune the
+contact/friction model against the real wheel-leg behavior.

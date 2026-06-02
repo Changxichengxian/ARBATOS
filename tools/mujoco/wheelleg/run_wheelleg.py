@@ -36,6 +36,15 @@ CORE_ACT_RIGHT_WHEEL = 2
 CORE_ACT_LEFT_FRONT = 3
 CORE_ACT_LEFT_BACK = 4
 CORE_ACT_LEFT_WHEEL = 5
+SIM_ACTUATOR_SIGNS = {
+    CORE_ACT_RIGHT_FRONT: 1.0,
+    CORE_ACT_RIGHT_BACK: -1.0,
+    CORE_ACT_RIGHT_WHEEL: 1.0,
+    CORE_ACT_LEFT_FRONT: 1.0,
+    CORE_ACT_LEFT_BACK: -1.0,
+    CORE_ACT_LEFT_WHEEL: -1.0,
+}
+WHEEL_ACTUATORS = {CORE_ACT_RIGHT_WHEEL, CORE_ACT_LEFT_WHEEL}
 
 
 class Geometry(ctypes.Structure):
@@ -419,12 +428,29 @@ def f6(value: float) -> str:
     return f"{float(value):.6f}"
 
 
-def generated_model_path(native_dir: Path, project: str) -> Path:
+def base_mode(args: argparse.Namespace) -> str:
+    if getattr(args, "bench", False):
+        return "bench"
+    if getattr(args, "planar", False):
+        return "planar"
+    return "free"
+
+
+def generated_model_path(native_dir: Path, project: str, mode: str) -> Path:
     safe_project = re.sub(r"[^A-Za-z0-9_.-]+", "_", project)
-    return native_dir / f"wheelleg_fivebar_{safe_project}.xml"
+    return native_dir / f"wheelleg_fivebar_{safe_project}_{mode}.xml"
 
 
-def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float) -> str:
+def clamped_leg_length(config: BridgeConfig, target_leg_m: float | None) -> float:
+    length = float(target_leg_m if target_leg_m is not None and target_leg_m > 0.02 else config.default_leg_length_m)
+    if length <= 0.02:
+        length = float(config.min_leg_length_m if config.min_leg_length_m > 0.02 else 0.10)
+    if config.min_leg_length_m > 0.02 and config.max_leg_length_m > config.min_leg_length_m:
+        length = max(float(config.min_leg_length_m), min(length, float(config.max_leg_length_m)))
+    return length
+
+
+def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float, mode: str = "free") -> str:
     validate_fivebar_config(config)
     l1 = float(config.geometry.l1_m)
     l2 = float(config.geometry.l2_m)
@@ -433,12 +459,22 @@ def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float) -> str:
     l5 = float(config.geometry.l5_m)
     wheel_radius = float(config.wheel_radius_m)
     half_l5 = l5 * 0.5
-    track_half = 0.085
-    wheel_width = 0.012
+    track_half = 0.105
+    wheel_width = 0.024
     crank_radius = 0.0045
     rod_radius = 0.0038
+    pivot_radius = 0.0070
     carrier_mass = 0.045
     body_mass = 1.35
+
+    if mode == "bench":
+        base_joints = ""
+    elif mode == "planar":
+        base_joints = """<joint name="base_x" type="slide" axis="1 0 0" damping="0.02"/>
+      <joint name="base_z" type="slide" axis="0 0 1" damping="0.02"/>
+      <joint name="base_pitch" type="hinge" axis="0 1 0" damping="0.01"/>"""
+    else:
+        base_joints = """<freejoint name="base_free"/>"""
 
     def side_xml(prefix: str, y: float, material: str) -> str:
         return f"""
@@ -458,6 +494,8 @@ def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float) -> str:
 
       <body name="{prefix}_front_crank" pos="{f6(-half_l5)} {f6(y)} 0">
         <joint name="{prefix}_front_hinge" type="hinge" axis="0 1 0" range="-3.20 1.20" damping="0.02"/>
+        <geom name="{prefix}_front_pivot_geom" type="sphere" size="{f6(pivot_radius)}" mass="0.003"
+              material="{material}" contype="0" conaffinity="0"/>
         <geom name="{prefix}_front_crank_geom" type="capsule" fromto="0 0 0 0 0 {f6(-l1)}"
               size="{f6(crank_radius)}" mass="0.020" material="{material}" contype="0" conaffinity="0"/>
         <body name="{prefix}_front_rod" pos="0 0 {f6(-l1)}">
@@ -470,6 +508,8 @@ def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float) -> str:
 
       <body name="{prefix}_back_crank" pos="{f6(half_l5)} {f6(y)} 0">
         <joint name="{prefix}_back_hinge" type="hinge" axis="0 1 0" range="-3.20 1.20" damping="0.02"/>
+        <geom name="{prefix}_back_pivot_geom" type="sphere" size="{f6(pivot_radius)}" mass="0.003"
+              material="{material}" contype="0" conaffinity="0"/>
         <geom name="{prefix}_back_crank_geom" type="capsule" fromto="0 0 0 0 0 {f6(-l4)}"
               size="{f6(crank_radius)}" mass="0.020" material="{material}" contype="0" conaffinity="0"/>
         <body name="{prefix}_back_rod" pos="0 0 {f6(-l4)}">
@@ -505,9 +545,14 @@ def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float) -> str:
     <geom name="floor" type="plane" size="5 5 0.1" material="floor_mat"/>
 
     <body name="base" pos="0 0 {f6(base_height_m)}">
-      <freejoint name="base_free"/>
+      {base_joints}
       <site name="imu" pos="0 0 0" size="0.006"/>
-      <geom name="body" type="box" size="0.095 0.120 0.035" mass="{f6(body_mass)}" material="body_mat"/>
+      <geom name="body" type="box" pos="0 0 0.036" size="0.080 0.052 0.026"
+            mass="{f6(body_mass)}" material="body_mat"/>
+      <geom name="front_crossbar" type="capsule" fromto="{f6(-half_l5)} -0.116 0 {f6(-half_l5)} 0.116 0"
+            size="0.0045" mass="0.015" material="body_mat" contype="0" conaffinity="0"/>
+      <geom name="back_crossbar" type="capsule" fromto="{f6(half_l5)} -0.116 0 {f6(half_l5)} 0.116 0"
+            size="0.0045" mass="0.015" material="body_mat" contype="0" conaffinity="0"/>
 {side_xml("right", -track_half, "right_mat")}
 {side_xml("left", track_half, "left_mat")}
     </body>
@@ -538,13 +583,14 @@ def resolve_model_path(args: argparse.Namespace, config: BridgeConfig) -> Path:
         return args.model
 
     validate_fivebar_config(config)
-    length = float(config.min_leg_length_m if config.min_leg_length_m > 0.02 else config.default_leg_length_m)
-    if config.max_leg_length_m > 0.02:
-        length = max(0.02, min(length, float(config.max_leg_length_m)))
+    length = clamped_leg_length(config, args.target_leg)
     base_height = length + float(config.wheel_radius_m) + 0.002
-    model_path = generated_model_path(Path(args.native_dir), args.project)
+    mode = base_mode(args)
+    model_path = generated_model_path(Path(args.native_dir), args.project, mode)
     model_path.parent.mkdir(parents=True, exist_ok=True)
-    model_path.write_text(build_fivebar_model_xml(config, base_height), encoding="utf-8")
+    tmp_path = model_path.with_name(model_path.name + ".tmp")
+    tmp_path.write_text(build_fivebar_model_xml(config, base_height, mode), encoding="utf-8")
+    os.replace(tmp_path, model_path)
     validate_model_xml(model_path)
     return model_path
 
@@ -604,6 +650,64 @@ def fivebar_points(config: BridgeConfig, front_pos: float, back_pos: float) -> d
     }
 
 
+def inverse_fivebar_point(
+    config: BridgeConfig,
+    foot_x_m: float,
+    foot_y_m: float,
+    front_ref: float = -math.pi,
+    back_ref: float = -math.pi,
+) -> tuple[float, float]:
+    l1 = float(config.geometry.l1_m)
+    l2 = float(config.geometry.l2_m)
+    l3 = float(config.geometry.l3_m)
+    l4 = float(config.geometry.l4_m)
+    l5 = float(config.geometry.l5_m)
+    cx = l5 * 0.5 + float(foot_x_m)
+    cy = float(foot_y_m)
+    front_r = math.hypot(cx, cy)
+    back_dx = cx - l5
+    back_r = math.hypot(back_dx, cy)
+    if front_r <= 0.001 or back_r <= 0.001:
+        raise RuntimeError("initial five-bar target is too close to a pivot")
+
+    front_cos = (l1 * l1 + front_r * front_r - l2 * l2) / (2.0 * l1 * front_r)
+    back_cos = (l4 * l4 + back_r * back_r - l3 * l3) / (2.0 * l4 * back_r)
+    if front_cos > 1.0001 or front_cos < -1.0001 or back_cos > 1.0001 or back_cos < -1.0001:
+        raise RuntimeError("initial five-bar target is not reachable")
+
+    front_cos = max(-1.0, min(1.0, front_cos))
+    back_cos = max(-1.0, min(1.0, back_cos))
+    front_base = math.atan2(cy, cx)
+    back_base = math.atan2(cy, back_dx)
+    front_q = math.acos(front_cos)
+    back_q = math.acos(back_cos)
+    front_candidates = [
+        front_ref + wrap_pi(front_base + front_q - math.pi * 0.5 - front_ref),
+        front_ref + wrap_pi(front_base - front_q - math.pi * 0.5 - front_ref),
+    ]
+    back_candidates = [
+        back_ref + wrap_pi(back_base + back_q - math.pi * 0.5 - back_ref),
+        back_ref + wrap_pi(back_base - back_q - math.pi * 0.5 - back_ref),
+    ]
+
+    best: tuple[float, float] | None = None
+    best_score = float("inf")
+    for front in front_candidates:
+        for back in back_candidates:
+            points = fivebar_points(config, front, back)
+            foot = points["foot"]
+            err = abs(foot[0] - foot_x_m) + abs(-foot[1] - foot_y_m)
+            if err > 0.003:
+                continue
+            score = abs(wrap_pi(front - front_ref)) + abs(wrap_pi(back - back_ref)) + err * 1000.0
+            if best is None or score < best_score:
+                best = (front, back)
+                best_score = score
+    if best is None:
+        raise RuntimeError("initial five-bar target has no matching branch")
+    return best
+
+
 def joint_exists(mujoco, model, name: str) -> bool:
     return mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name) >= 0
 
@@ -634,6 +738,11 @@ def initialize_model_pose(mujoco, model, data, config: BridgeConfig, front_home:
     initialize_leg_pose(mujoco, model, data, "left", config, front_home, back_home)
 
 
+def initial_home_pose(config: BridgeConfig, args: argparse.Namespace) -> tuple[float, float]:
+    length = clamped_leg_length(config, args.target_leg)
+    return inverse_fivebar_point(config, float(args.target_foot_x), length)
+
+
 def import_mujoco():
     try:
         import mujoco  # type: ignore
@@ -650,6 +759,17 @@ def joint_qvel(data, name: str) -> float:
     return float(data.joint(name).qvel[0])
 
 
+def base_orientation(mujoco, model, data) -> tuple[float, float, float, float, float, float]:
+    if joint_exists(mujoco, model, "base_free"):
+        base_qpos = data.joint("base_free").qpos
+        base_qvel = data.joint("base_free").qvel
+        roll, pitch, yaw = quat_to_euler_wxyz(base_qpos[3:7])
+        return roll, pitch, yaw, float(base_qvel[3]), float(base_qvel[4]), float(base_qvel[5])
+    if joint_exists(mujoco, model, "base_pitch"):
+        return 0.0, float(data.joint("base_pitch").qpos[0]), 0.0, 0.0, float(data.joint("base_pitch").qvel[0]), 0.0
+    return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+
+
 def actuator_id(mujoco, model, name: str) -> int:
     idx = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
     if idx < 0:
@@ -657,18 +777,16 @@ def actuator_id(mujoco, model, name: str) -> int:
     return int(idx)
 
 
-def fill_bridge_input(data, args: argparse.Namespace) -> BridgeInput:
-    base_qpos = data.joint("base_free").qpos
-    base_qvel = data.joint("base_free").qvel
-    roll, pitch, yaw = quat_to_euler_wxyz(base_qpos[3:7])
+def fill_bridge_input(mujoco, model, data, args: argparse.Namespace) -> BridgeInput:
+    roll, pitch, yaw, gyro_x, gyro_y, gyro_z = base_orientation(mujoco, model, data)
     return BridgeInput(
         dt_s=float(args.dt),
         pitch_rad=float(pitch),
         roll_rad=float(roll),
         yaw_rad=float(yaw),
-        gyro_x_radps=float(base_qvel[3]),
-        gyro_y_radps=float(base_qvel[4]),
-        gyro_z_radps=float(base_qvel[5]),
+        gyro_x_radps=float(gyro_x),
+        gyro_y_radps=float(gyro_y),
+        gyro_z_radps=float(gyro_z),
         right_front_pos_rad=joint_qpos(data, "right_front_hinge"),
         right_back_pos_rad=joint_qpos(data, "right_back_hinge"),
         right_wheel_vel_radps=joint_qvel(data, "right_wheel_hinge"),
@@ -683,13 +801,22 @@ def fill_bridge_input(data, args: argparse.Namespace) -> BridgeInput:
     )
 
 
-def apply_output(mujoco, model, data, actuator_ids: dict[int, int], output: BridgeOutput) -> None:
+def sim_actuator_torque(core_index: int, output: BridgeOutput, args: argparse.Namespace) -> float:
+    torque = float(output.actuator_torque_nm[core_index]) * SIM_ACTUATOR_SIGNS.get(core_index, 1.0)
+    if core_index in WHEEL_ACTUATORS:
+        torque *= float(args.sim_wheel_scale)
+    if args.support_only and core_index in WHEEL_ACTUATORS:
+        torque = 0.0
+    return torque
+
+
+def apply_output(mujoco, model, data, actuator_ids: dict[int, int], output: BridgeOutput, args: argparse.Namespace) -> None:
     for core_index, mj_index in actuator_ids.items():
-        data.ctrl[mj_index] = output.actuator_torque_nm[core_index]
+        data.ctrl[mj_index] = sim_actuator_torque(core_index, output, args)
 
 
-def run_step(lib, config: BridgeConfig, state: BridgeState, data, args: argparse.Namespace) -> BridgeOutput:
-    bridge_input = fill_bridge_input(data, args)
+def run_step(lib, config: BridgeConfig, state: BridgeState, mujoco, model, data, args: argparse.Namespace) -> BridgeOutput:
+    bridge_input = fill_bridge_input(mujoco, model, data, args)
     output = BridgeOutput()
     ok = lib.arbatos_wheelleg_bridge_step(
         ctypes.byref(config),
@@ -700,6 +827,11 @@ def run_step(lib, config: BridgeConfig, state: BridgeState, data, args: argparse
     if ok == 0 or output.ok == 0:
         raise RuntimeError("wheelleg core bridge step failed")
     return output
+
+
+def applied_wheel_torque(output: BridgeOutput, side: int, args: argparse.Namespace) -> float:
+    core_index = CORE_ACT_RIGHT_WHEEL if side == SIDE_RIGHT else CORE_ACT_LEFT_WHEEL
+    return sim_actuator_torque(core_index, output, args)
 
 
 def run_sim(args: argparse.Namespace) -> None:
@@ -716,13 +848,20 @@ def run_sim(args: argparse.Namespace) -> None:
     state = BridgeState()
     lib.arbatos_wheelleg_bridge_state_init(ctypes.byref(state), ctypes.byref(config))
 
-    front_home = ctypes.c_float()
-    back_home = ctypes.c_float()
-    if lib.arbatos_wheelleg_bridge_home_pose(ctypes.byref(config), ctypes.byref(front_home), ctypes.byref(back_home)) == 0:
-        front_home.value = -2.0
-        back_home.value = -2.0
+    try:
+        front_home_value, back_home_value = initial_home_pose(config, args)
+    except RuntimeError:
+        front_home = ctypes.c_float()
+        back_home = ctypes.c_float()
+        if lib.arbatos_wheelleg_bridge_home_pose(
+            ctypes.byref(config), ctypes.byref(front_home), ctypes.byref(back_home)
+        ) == 0:
+            front_home.value = -2.0
+            back_home.value = -2.0
+        front_home_value = float(front_home.value)
+        back_home_value = float(back_home.value)
 
-    initialize_model_pose(mujoco, model, data, config, front_home.value, back_home.value)
+    initialize_model_pose(mujoco, model, data, config, front_home_value, back_home_value)
     mujoco.mj_forward(model, data)
 
     actuator_ids = {
@@ -736,16 +875,16 @@ def run_sim(args: argparse.Namespace) -> None:
 
     def step_once(step_index: int) -> None:
         start = time.perf_counter()
-        output = run_step(lib, config, state, data, args)
-        apply_output(mujoco, model, data, actuator_ids, output)
+        output = run_step(lib, config, state, mujoco, model, data, args)
+        apply_output(mujoco, model, data, actuator_ids, output, args)
         mujoco.mj_step(model, data)
         if args.print_every > 0 and step_index % args.print_every == 0:
-            roll, pitch, _yaw = quat_to_euler_wxyz(data.joint("base_free").qpos[3:7])
+            roll, pitch, _yaw, _gyro_x, _gyro_y, _gyro_z = base_orientation(mujoco, model, data)
             print(
                 f"t={data.time:6.3f}s pitch={pitch:+.3f} roll={roll:+.3f} "
                 f"v={output.observer_v_mps:+.3f} "
-                f"tau_wheel_r={output.wheel_torque_nm[SIDE_RIGHT]:+.3f} "
-                f"tau_wheel_l={output.wheel_torque_nm[SIDE_LEFT]:+.3f}"
+                f"tau_wheel_r={applied_wheel_torque(output, SIDE_RIGHT, args):+.3f} "
+                f"tau_wheel_l={applied_wheel_torque(output, SIDE_LEFT, args):+.3f}"
             )
         if args.realtime:
             elapsed = time.perf_counter() - start
@@ -778,6 +917,10 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     parser.add_argument("--target-foot-x", type=float, default=0.0)
     parser.add_argument("--target-yaw-rate", type=float, default=0.0)
     parser.add_argument("--vmc", action="store_true", help="Enable VMC joint torque output.")
+    parser.add_argument("--sim-wheel-scale", type=float, default=1.0, help="Scale wheel torques applied in MuJoCo.")
+    parser.add_argument("--support-only", action="store_true", help="Disable wheel torques and keep only VMC leg support.")
+    parser.add_argument("--planar", action="store_true", help="Use a 2D base for pitch-plane standing tests.")
+    parser.add_argument("--bench", action="store_true", help="Fix the base to inspect PID/VMC output on a virtual bench.")
     parser.add_argument("--viewer", action="store_true", help="Open the MuJoCo viewer.")
     parser.add_argument("--realtime", action="store_true", help="Sleep to roughly match wall time.")
     parser.add_argument("--print-every", type=int, default=100)
@@ -788,6 +931,8 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
 
 def main(argv: Iterable[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    if args.support_only:
+        args.vmc = True
     config = BridgeConfig()
     load_project_config(config, args.project)
     model_path = resolve_model_path(args, config)
