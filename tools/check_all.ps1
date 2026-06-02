@@ -245,6 +245,13 @@ function Test-UvProject {
     $moduleCount = Get-ProfileModuleCount $configContent
     $modules = @(Get-ProfileModules $configContent)
 
+    if ($configHeader -notmatch '#include\s+"robot_config_types\.h"') {
+        Add-CheckError "$(Format-RepoPath $configH): target config.h must include the shared robot_config_types.h."
+    }
+    if ($configHeader -match '(?m)^\s*typedef\s+(struct|enum)\b') {
+        Add-CheckError "$(Format-RepoPath $configH): target config.h must only carry target identity/build macros; common config types belong in shared\application\robot\robot_config_types.h."
+    }
+
     $profileFamilyPattern = '\.(locomotion_family|gimbal_family|arm_family)\s*=|LOCOMOTION_FAMILY_|GIMBAL_FAMILY_|ARM_FAMILY_'
     if ($configContent -match $profileFamilyPattern -or $configHeader -match $profileFamilyPattern) {
         Add-CheckError "$(Format-RepoPath $configC): profile task selection must use task_modules only; family fields are no longer accepted."
@@ -258,6 +265,13 @@ function Test-UvProject {
     if ($null -ne $moduleCount -and $moduleCount -ne $modules.Count) {
         Add-CheckError "$(Format-RepoPath $configC): .task_module_count is $moduleCount, but task_modules contains $($modules.Count) unique modules."
     }
+    if ($configHeader -match 'robot_device_config_table_t\s+devices\s*;' -and
+        $configContent -notmatch '\.devices\s*=') {
+        Add-CheckError "$(Format-RepoPath $configC): cannot find .devices initializer; motor_instance now uses the runtime device table."
+    }
+    if ($configContent -match '\.devices\s*=\s*\{\s*\.count\s*=\s*0u?\s*[,}]') {
+        Add-CheckError "$(Format-RepoPath $configC): runtime device table count is 0; motor_instance would have no configured devices."
+    }
 
     $sourceSet = New-Object System.Collections.Generic.HashSet[string]
     foreach ($file in $Project.ResolvedFiles) {
@@ -270,6 +284,16 @@ function Test-UvProject {
         if (Test-Path -LiteralPath $taskSource -PathType Leaf) {
             $taskText += "`n" + (Get-Content -LiteralPath $taskSource -Raw)
         }
+    }
+
+    if ($taskText -notmatch 'app_create_enabled_module_tasks') {
+        Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): task creation must use shared app_create_enabled_module_tasks()."
+    }
+    if ($taskText -notmatch 'robot_control_register_profile_defaults') {
+        Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): FreeRTOS init must register default controllers with robot_control_register_profile_defaults()."
+    }
+    if ($taskText -match 'typedef\s+struct[\s\S]*?app_task_module_desc_t') {
+        Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): task source must use app_task_bootstrap.h instead of redefining app_task_module_desc_t locally."
     }
 
     Test-ProfileTaskMapping $Project $modules $sourceSet $taskText
@@ -388,16 +412,49 @@ function Test-TaskModuleNames {
     Write-Host "[check] task module names"
 
     $profileHeader = Join-Path $script:RepoRoot "shared\application\robot\robot_task_profile.h"
+    $schemaHeader = Join-Path $script:RepoRoot "shared\application\robot\robot_config_schema.h"
     if (-not (Test-Path -LiteralPath $profileHeader -PathType Leaf)) {
         Add-CheckError "Missing robot task profile header: $(Format-RepoPath $profileHeader)"
         return
     }
+    if (-not (Test-Path -LiteralPath $schemaHeader -PathType Leaf)) {
+        Add-CheckError "Missing robot config schema header: $(Format-RepoPath $schemaHeader)"
+        return
+    }
 
     $profileContent = Get-Content -LiteralPath $profileHeader -Raw
+    $schemaContent = Get-Content -LiteralPath $schemaHeader -Raw
     $namedModules = New-Object System.Collections.Generic.HashSet[string]
     foreach ($module in Get-NamedTaskModules $profileContent) {
         [void]$namedModules.Add($module)
     }
+
+    foreach ($module in Get-TaskModuleEnums $schemaContent) {
+        if (-not $namedModules.Contains($module)) {
+            Add-CheckError "$(Format-RepoPath $schemaHeader): $module has no task.* name in $(Format-RepoPath $profileHeader)."
+        }
+    }
+}
+
+function Test-ProfileIdentity {
+    param([object[]]$Projects)
+
+    Write-Host "[check] profile identity"
+
+    $knownProfileKinds = @(
+        "ROBOT_PROFILE_KIND_HERO",
+        "ROBOT_PROFILE_KIND_INFANTRY",
+        "ROBOT_PROFILE_KIND_WHEELLEG",
+        "ROBOT_PROFILE_KIND_SENTRY",
+        "ROBOT_PROFILE_KIND_CARRIER",
+        "ROBOT_PROFILE_KIND_CUSTOM"
+    )
+    $knownBoardKinds = @(
+        "ROBOT_BOARD_KIND_STM32F407",
+        "ROBOT_BOARD_KIND_STM32F427",
+        "ROBOT_BOARD_KIND_STM32H7",
+        "ROBOT_BOARD_KIND_CUSTOM"
+    )
 
     foreach ($project in $Projects) {
         $configHeader = Join-Path $script:RepoRoot "Robotconfig\$($project.Name)\config.h"
@@ -405,11 +462,144 @@ function Test-TaskModuleNames {
             continue
         }
 
-        $configContent = Get-Content -LiteralPath $configHeader -Raw
-        foreach ($module in Get-TaskModuleEnums $configContent) {
-            if (-not $namedModules.Contains($module)) {
-                Add-CheckError "$(Format-RepoPath $configHeader): $module has no task.* name in $(Format-RepoPath $profileHeader)."
+        $content = Get-Content -LiteralPath $configHeader -Raw
+        foreach ($macro in @(
+                "ARBATOS_TARGET_NAME",
+                "ARBATOS_BOARD_NAME",
+                "ROBOT_PROFILE_KIND",
+                "ROBOT_BOARD_KIND",
+                "ROBOT_BOARD_CPU_HZ",
+                "ROBOT_BOARD_CAN_BUS_COUNT",
+                "ROBOT_BOARD_HAS_FPU"
+            )) {
+            if ($content -notmatch "(?m)^\s*#define\s+$macro\b") {
+                Add-CheckError "$(Format-RepoPath $configHeader): missing $macro."
             }
+        }
+
+        $profileKind = [regex]::Match($content, '(?m)^\s*#define\s+ROBOT_PROFILE_KIND\s+([A-Z0-9_]+)\b')
+        if ($profileKind.Success -and $knownProfileKinds -notcontains $profileKind.Groups[1].Value) {
+            Add-CheckError "$(Format-RepoPath $configHeader): unknown ROBOT_PROFILE_KIND '$($profileKind.Groups[1].Value)'."
+        }
+
+        $boardKind = [regex]::Match($content, '(?m)^\s*#define\s+ROBOT_BOARD_KIND\s+([A-Z0-9_]+)\b')
+        if ($boardKind.Success -and $knownBoardKinds -notcontains $boardKind.Groups[1].Value) {
+            Add-CheckError "$(Format-RepoPath $configHeader): unknown ROBOT_BOARD_KIND '$($boardKind.Groups[1].Value)'."
+        }
+
+        $cpuHz = [regex]::Match($content, '(?m)^\s*#define\s+ROBOT_BOARD_CPU_HZ\s+(\d+)u?\b')
+        if ($cpuHz.Success -and [uint64]$cpuHz.Groups[1].Value -eq 0) {
+            Add-CheckError "$(Format-RepoPath $configHeader): ROBOT_BOARD_CPU_HZ must be non-zero."
+        }
+        $canBusCount = [regex]::Match($content, '(?m)^\s*#define\s+ROBOT_BOARD_CAN_BUS_COUNT\s+(\d+)u?\b')
+        if ($canBusCount.Success) {
+            $value = [int]$canBusCount.Groups[1].Value
+            if ($value -lt 1 -or $value -gt 3) {
+                Add-CheckError "$(Format-RepoPath $configHeader): ROBOT_BOARD_CAN_BUS_COUNT '$value' looks invalid."
+            }
+        }
+    }
+}
+
+function Test-ProfileProductRules {
+    param([object[]]$Projects)
+
+    Write-Host "[check] profile product rules"
+
+    $expectedKinds = @{
+        "CARRIER-A" = "ROBOT_PROFILE_KIND_CARRIER"
+        "HERO-C" = "ROBOT_PROFILE_KIND_HERO"
+        "HERO-M" = "ROBOT_PROFILE_KIND_HERO"
+        "INFANTRY-A" = "ROBOT_PROFILE_KIND_INFANTRY"
+        "MINIWHEELEG-C" = "ROBOT_PROFILE_KIND_WHEELLEG"
+        "MINIWHEELEG-M" = "ROBOT_PROFILE_KIND_WHEELLEG"
+        "SENTINEL-A" = "ROBOT_PROFILE_KIND_SENTRY"
+    }
+
+    foreach ($project in $Projects) {
+        $configHeader = Join-Path $script:RepoRoot "Robotconfig\$($project.Name)\config.h"
+        $configC = Join-Path $script:RepoRoot "Robotconfig\$($project.Name)\config.c"
+        if (-not (Test-Path -LiteralPath $configHeader -PathType Leaf) -or
+            -not (Test-Path -LiteralPath $configC -PathType Leaf)) {
+            continue
+        }
+
+        $headerContent = Get-Content -LiteralPath $configHeader -Raw
+        $configContent = Get-Content -LiteralPath $configC -Raw
+        $modules = @(Get-ProfileModules $configContent)
+
+        if ($expectedKinds.ContainsKey($project.Name)) {
+            $expectedKind = $expectedKinds[$project.Name]
+            if ($headerContent -notmatch "(?m)^\s*#define\s+ROBOT_PROFILE_KIND\s+$expectedKind\b") {
+                Add-CheckError "$(Format-RepoPath $configHeader): $($project.Name) should use $expectedKind."
+            }
+        }
+
+        if ($project.Name -like "HERO-*") {
+            foreach ($forbiddenModule in @(
+                    "ROBOT_TASK_MODULE_ARM",
+                    "ROBOT_TASK_MODULE_WHEELLEG_MIT",
+                    "ROBOT_TASK_MODULE_WHEELLEG_SERVO"
+                )) {
+                if ($modules -contains $forbiddenModule) {
+                    Add-CheckError "$(Format-RepoPath $configC): HERO profile must not enable $forbiddenModule."
+                }
+            }
+            foreach ($requiredZero in @(
+                    '\.arm\s*=\s*\{\s*0\s*\}',
+                    '\.wheelleg_mit\s*=\s*\{\s*0\s*\}',
+                    '\.arm_j0_unitree\s*=\s*\{\s*0\s*\}'
+                )) {
+                if ($configContent -notmatch $requiredZero) {
+                    Add-CheckError "$(Format-RepoPath $configC): HERO profile should keep ARM/wheelleg configs zeroed."
+                }
+            }
+        }
+
+        if ($project.Name -like "MINIWHEELEG-*") {
+            if ($modules -notcontains "ROBOT_TASK_MODULE_WHEELLEG_MIT") {
+                Add-CheckError "$(Format-RepoPath $configC): wheelleg profile should enable ROBOT_TASK_MODULE_WHEELLEG_MIT."
+            }
+            if ($modules -contains "ROBOT_TASK_MODULE_ARM") {
+                Add-CheckError "$(Format-RepoPath $configC): wheelleg profile should not enable ROBOT_TASK_MODULE_ARM."
+            }
+        }
+    }
+}
+
+function Test-RtProfilerDescriptors {
+    Write-Host "[check] rt profiler descriptors"
+
+    $profilerHeader = Join-Path $script:RepoRoot "shared\application\services\diagnostics\rt_profiler.h"
+    $profilerSource = Join-Path $script:RepoRoot "shared\application\services\diagnostics\rt_profiler.c"
+    if (-not (Test-Path -LiteralPath $profilerHeader -PathType Leaf)) {
+        Add-CheckError "Missing rt profiler header: $(Format-RepoPath $profilerHeader)"
+        return
+    }
+    if (-not (Test-Path -LiteralPath $profilerSource -PathType Leaf)) {
+        Add-CheckError "Missing rt profiler source: $(Format-RepoPath $profilerSource)"
+        return
+    }
+
+    $headerContent = Get-Content -LiteralPath $profilerHeader -Raw
+    $sourceContent = Get-Content -LiteralPath $profilerSource -Raw
+    $profilerIds = @([regex]::Matches($headerContent, '(?m)^\s*(RT_PROFILER_[A-Z0-9_]+)\s*(?:=|,)') |
+        ForEach-Object { $_.Groups[1].Value } |
+        Where-Object { $_ -ne "RT_PROFILER_COUNT" } |
+        Select-Object -Unique)
+
+    $descMatch = [regex]::Match($sourceContent,
+        's_rt_profiler_desc\s*\[[^\]]+\]\s*=\s*\{(?<body>.*?)\};',
+        [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if (-not $descMatch.Success) {
+        Add-CheckError "$(Format-RepoPath $profilerSource): cannot find s_rt_profiler_desc table."
+        return
+    }
+
+    $descBody = $descMatch.Groups["body"].Value
+    foreach ($profilerId in $profilerIds) {
+        if ($descBody -notmatch [regex]::Escape($profilerId)) {
+            Add-CheckError "$(Format-RepoPath $profilerSource): $profilerId has no descriptor entry."
         }
     }
 }
@@ -434,6 +624,85 @@ function Test-PythonTools {
         if ($LASTEXITCODE -ne 0) {
             Add-CheckError "$(Format-RepoPath $pythonFile.FullName): Python syntax check failed: $output"
         }
+    }
+}
+
+function Test-SimulationTools {
+    Write-Host "[check] simulation tools"
+
+    $simTool = Join-Path $script:RepoRoot "tools\sim\robot_sim.py"
+    if (-not (Test-Path -LiteralPath $simTool -PathType Leaf)) {
+        Add-CheckWarning "simulation tool not found; skipped pressure simulation smoke checks."
+        return
+    }
+
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -eq $python) {
+        Add-CheckWarning "python is not available; skipped simulation tool smoke checks."
+        return
+    }
+
+    foreach ($projectName in @("HERO-C", "MINIWHEELEG-C")) {
+        $output = & $python.Source $simTool --project $projectName --json 2>&1
+        $jsonText = ($output -join "`n")
+        if ($LASTEXITCODE -ne 0) {
+            Add-CheckError "tools\sim\robot_sim.py $projectName failed: $jsonText"
+            continue
+        }
+
+        try {
+            $report = $jsonText | ConvertFrom-Json
+            if ($report.project.name -ne $projectName) {
+                Add-CheckError "tools\sim\robot_sim.py $projectName returned project '$($report.project.name)'."
+            }
+            if ($null -eq $report.can.buses -or $report.can.buses.Count -eq 0) {
+                Add-CheckError "tools\sim\robot_sim.py $projectName returned no CAN bus report."
+            }
+        }
+        catch {
+            Add-CheckError "tools\sim\robot_sim.py $projectName returned invalid JSON: $($_.Exception.Message)"
+        }
+    }
+}
+
+function Test-BuildManifestTools {
+    param([int]$ExpectedProjectCount)
+
+    Write-Host "[check] build manifest tools"
+
+    $manifestTool = Join-Path $script:RepoRoot "tools\build\project_manifest.py"
+    if (-not (Test-Path -LiteralPath $manifestTool -PathType Leaf)) {
+        Add-CheckError "Missing build manifest tool: $(Format-RepoPath $manifestTool)"
+        return
+    }
+
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -eq $python) {
+        Add-CheckWarning "python is not available; skipped build manifest smoke checks."
+        return
+    }
+
+    $output = & $python.Source $manifestTool --all --check --json --summary-only 2>&1
+    $jsonText = ($output -join "`n")
+    if ($LASTEXITCODE -ne 0) {
+        Add-CheckError "tools\build\project_manifest.py --all --check failed: $jsonText"
+        return
+    }
+
+    try {
+        $report = $jsonText | ConvertFrom-Json
+        if ($report.summary.project_count -ne $ExpectedProjectCount) {
+            Add-CheckError "tools\build\project_manifest.py returned $($report.summary.project_count) project(s), expected $ExpectedProjectCount."
+        }
+        if ($report.summary.validation_errors -ne 0) {
+            Add-CheckError "tools\build\project_manifest.py reported $($report.summary.validation_errors) validation error(s)."
+        }
+        if ($null -eq $report.projects -or $report.projects.Count -eq 0) {
+            Add-CheckError "tools\build\project_manifest.py returned no project manifests."
+        }
+    }
+    catch {
+        Add-CheckError "tools\build\project_manifest.py returned invalid JSON: $($_.Exception.Message)"
     }
 }
 
@@ -495,6 +764,183 @@ function Test-StaleText {
     }
 }
 
+function Test-HighRateApiBoundaries {
+    Write-Host "[check] high-rate API boundaries"
+
+    $highRateFiles = @(
+        "shared\application\chassis\chassis_control_task.c",
+        "shared\application\gimbal\gimbal_control_task.c",
+        "shared\application\shoot\shoot.c",
+        "shared\application\comm\can\can_command_tx_task.c",
+        "shared\application\wheelleg\wheelleg_mit_task.c"
+    )
+    $forbiddenPatterns = @(
+        [pscustomobject]@{
+            Pattern = 'motor_instance_cmd_set_current_many_best_effort\s*\('
+            Message = 'resolve motor current outputs during init, then use current bindings in the fast loop.'
+        },
+        [pscustomobject]@{
+            Pattern = 'motor_instance_cmd_set_current_many\s*\('
+            Message = 'name-based motor current output is not allowed in high-rate task sources.'
+        },
+        [pscustomobject]@{
+            Pattern = 'motor_instance_cmd_set_current\s*\('
+            Message = 'name-based single motor current output is not allowed in high-rate task sources.'
+        },
+        [pscustomobject]@{
+            Pattern = 'motor_instance_find_by_name\s*\('
+            Message = 'name lookup belongs in init/config/diagnostics paths, not high-rate task sources.'
+        },
+        [pscustomobject]@{
+            Pattern = 'robot_config_(motor_)?device_find_by_name\s*\('
+            Message = 'device-table name lookup belongs in init/config/diagnostics paths, not high-rate task sources.'
+        },
+        [pscustomobject]@{
+            Pattern = 'control_manager_[A-Za-z0-9_]*by_name\s*\('
+            Message = 'controller name lookup belongs in command or diagnostics paths, not high-rate task sources.'
+        },
+        [pscustomobject]@{
+            Pattern = 'strcmp\s*\('
+            Message = 'string compare is not allowed in high-rate task sources.'
+        }
+    )
+
+    foreach ($repoPath in $highRateFiles) {
+        $fullPath = Join-Path $script:RepoRoot $repoPath
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+            Add-CheckError "Missing high-rate source: $repoPath"
+            continue
+        }
+
+        $content = Get-Content -LiteralPath $fullPath -Raw
+        foreach ($forbidden in $forbiddenPatterns) {
+            if ($content -match $forbidden.Pattern) {
+                Add-CheckError "${repoPath}: $($forbidden.Message)"
+            }
+        }
+    }
+}
+
+function Test-CanTxDeviceConfigBoundaries {
+    Write-Host "[check] CAN TX device config boundaries"
+
+    $repoPath = "shared\application\comm\can\can_command_tx_task.c"
+    $fullPath = Join-Path $script:RepoRoot $repoPath
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        Add-CheckError "Missing CAN TX source: $repoPath"
+        return
+    }
+
+    $content = Get-Content -LiteralPath $fullPath -Raw
+    $rmUsesResolvedBus = $content -match 'static\s+inline\s+void\s+can_tx_process_rm_axis[\s\S]*?const\s+uint8_t\s+node_bus\s*=\s*can_tx_node_bus\s*\(\s*fallback_bus\s*,\s*node\s*\)\s*;[\s\S]*?can_tx_store_rm_current\s*\(\s*node_bus\s*,'
+    if (-not $rmUsesResolvedBus) {
+        Add-CheckError "${repoPath}: RM group send path must use the resolved node CAN bus, not the fixed fallback bus."
+    }
+}
+
+function Test-ControlRegistryBoundaries {
+    Write-Host "[check] control registry boundaries"
+
+    $repoPath = "shared\application\robot\robot_control_registry.h"
+    $fullPath = Join-Path $script:RepoRoot $repoPath
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        Add-CheckError "Missing control registry header: $repoPath"
+        return
+    }
+
+    $content = Get-Content -LiteralPath $fullPath -Raw
+    foreach ($forbidden in @("control_manager_request_switch", "control_manager_update_all", "control_manager_update_due_all")) {
+        if ($content -match [regex]::Escape($forbidden)) {
+            Add-CheckError "${repoPath}: default controller registry must not mark controllers active during boot via '$forbidden'."
+        }
+    }
+}
+
+function Test-RobotDeviceSchema {
+    Write-Host "[check] robot device schema"
+
+    $schemaPath = Join-Path $script:RepoRoot "shared\application\robot\robot_config_schema.h"
+    $devicePath = Join-Path $script:RepoRoot "shared\application\robot\robot_device_config.h"
+    if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
+        Add-CheckError "Missing robot config schema header: $(Format-RepoPath $schemaPath)"
+        return
+    }
+    if (-not (Test-Path -LiteralPath $devicePath -PathType Leaf)) {
+        Add-CheckError "Missing robot device config header: $(Format-RepoPath $devicePath)"
+        return
+    }
+
+    $schemaContent = Get-Content -LiteralPath $schemaPath -Raw
+    $deviceContent = Get-Content -LiteralPath $devicePath -Raw
+
+    foreach ($macro in @(
+            "ROBOT_DEFAULT_DEVICE_TABLE_COUNT",
+            "ROBOT_DEVICE_TABLE_KIND_SENSOR",
+            "ROBOT_DEVICE_TABLE_KIND_INPUT",
+            "ROBOT_DEVICE_TABLE_KIND_COMM",
+            "ROBOT_DEVICE_TABLE_KIND_SERVICE",
+            "ROBOT_DEVICE_ENTRY_SENSOR",
+            "ROBOT_DEVICE_ENTRY_INPUT",
+            "ROBOT_DEVICE_ENTRY_COMM",
+            "ROBOT_DEVICE_ENTRY_SERVICE"
+        )) {
+        if ($schemaContent -notmatch "(?m)^\s*#define\s+$macro\b") {
+            Add-CheckError "$(Format-RepoPath $schemaPath): missing $macro."
+        }
+    }
+
+    foreach ($kind in @(
+            "ROBOT_CONFIG_DEVICE_KIND_SENSOR",
+            "ROBOT_CONFIG_DEVICE_KIND_INPUT",
+            "ROBOT_CONFIG_DEVICE_KIND_COMM",
+            "ROBOT_CONFIG_DEVICE_KIND_SERVICE"
+        )) {
+        if ($deviceContent -notmatch "\b$kind\b") {
+            Add-CheckError "$(Format-RepoPath $devicePath): missing $kind."
+        }
+    }
+
+    if ($schemaContent -notmatch '\.count\s*=\s*\(uint8_t\)ROBOT_DEFAULT_DEVICE_TABLE_COUNT') {
+        Add-CheckError "$(Format-RepoPath $schemaPath): ROBOT_DEFAULT_DEVICE_TABLE must use ROBOT_DEFAULT_DEVICE_TABLE_COUNT."
+    }
+
+    foreach ($deviceName in @(
+            "sensor.imu",
+            "input.manual",
+            "sensor.battery",
+            "link.aux_telem",
+            "service.sdlog"
+        )) {
+        if ($schemaContent -notmatch [regex]::Escape($deviceName)) {
+            Add-CheckError "$(Format-RepoPath $schemaPath): default device table is missing '$deviceName'."
+        }
+    }
+}
+
+function Test-SharedConfigTypes {
+    Write-Host "[check] shared config types"
+
+    $typesPath = Join-Path $script:RepoRoot "shared\application\robot\robot_config_types.h"
+    if (-not (Test-Path -LiteralPath $typesPath -PathType Leaf)) {
+        Add-CheckError "Missing shared config types header: $(Format-RepoPath $typesPath)"
+        return
+    }
+
+    $content = Get-Content -LiteralPath $typesPath -Raw
+    if ($content -match '\bARBATOS_TARGET_NAME\b|\bROBOT_PROFILE_KIND\s+ROBOT_PROFILE_KIND_|\bROBOT_BOARD_KIND\s+ROBOT_BOARD_KIND_') {
+        Add-CheckError "$(Format-RepoPath $typesPath): shared config types must not contain target identity macros."
+    }
+    if ($content -notmatch 'typedef\s+struct[\s\S]*?\}\s*config_t\s*;') {
+        Add-CheckError "$(Format-RepoPath $typesPath): cannot find shared config_t definition."
+    }
+    if ($content -notmatch '#ifndef\s+MOTOR_ARM_JOINT_COUNT[\s\S]*?#define\s+MOTOR_ARM_JOINT_COUNT\s+6u[\s\S]*?#endif') {
+        Add-CheckError "$(Format-RepoPath $typesPath): MOTOR_ARM_JOINT_COUNT must be a target-overridable default."
+    }
+    if ($content -notmatch '#include\s+"robot_config_schema\.h"') {
+        Add-CheckError "$(Format-RepoPath $typesPath): shared config types must include robot_config_schema.h."
+    }
+}
+
 Write-Host "ARBATOS local checks"
 Write-Host "repo: $RepoRoot"
 
@@ -509,8 +955,18 @@ foreach ($project in $projects) {
 
 Test-RobotconfigCoverage $projects
 Test-TaskModuleNames $projects
+Test-ProfileIdentity $projects
+Test-ProfileProductRules $projects
+Test-RtProfilerDescriptors
 Test-PythonTools
+Test-SimulationTools
+Test-BuildManifestTools $projects.Count
 Test-StaleText
+Test-HighRateApiBoundaries
+Test-CanTxDeviceConfigBoundaries
+Test-ControlRegistryBoundaries
+Test-RobotDeviceSchema
+Test-SharedConfigTypes
 
 Write-Host ""
 Write-Host "checked projects: $($projects.Count)"

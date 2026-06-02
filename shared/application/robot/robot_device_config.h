@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 Xie Yuhan <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 Xie Yuhan <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -29,8 +28,23 @@ typedef enum
 {
     ROBOT_CONFIG_DEVICE_KIND_UNKNOWN = 0u,
     ROBOT_CONFIG_DEVICE_KIND_MOTOR = ROBOT_DEVICE_TABLE_KIND_MOTOR,
+    ROBOT_CONFIG_DEVICE_KIND_SENSOR = ROBOT_DEVICE_TABLE_KIND_SENSOR,
+    ROBOT_CONFIG_DEVICE_KIND_INPUT = ROBOT_DEVICE_TABLE_KIND_INPUT,
+    ROBOT_CONFIG_DEVICE_KIND_COMM = ROBOT_DEVICE_TABLE_KIND_COMM,
+    ROBOT_CONFIG_DEVICE_KIND_SERVICE = ROBOT_DEVICE_TABLE_KIND_SERVICE,
     ROBOT_CONFIG_DEVICE_KIND_CUSTOM_BASE = ROBOT_DEVICE_TABLE_KIND_CUSTOM_BASE,
 } robot_config_device_kind_e;
+
+typedef enum
+{
+    ROBOT_CONFIG_DEVICE_ROLE_NONE = ROBOT_DEVICE_ROLE_NONE,
+    ROBOT_CONFIG_DEVICE_ROLE_IMU = ROBOT_DEVICE_ROLE_IMU,
+    ROBOT_CONFIG_DEVICE_ROLE_MANUAL_INPUT = ROBOT_DEVICE_ROLE_MANUAL_INPUT,
+    ROBOT_CONFIG_DEVICE_ROLE_BATTERY = ROBOT_DEVICE_ROLE_BATTERY,
+    ROBOT_CONFIG_DEVICE_ROLE_AUX_TELEM = ROBOT_DEVICE_ROLE_AUX_TELEM,
+    ROBOT_CONFIG_DEVICE_ROLE_SDLOG = ROBOT_DEVICE_ROLE_SDLOG,
+    ROBOT_CONFIG_DEVICE_ROLE_CUSTOM_BASE = ROBOT_DEVICE_ROLE_CUSTOM_BASE,
+} robot_config_device_role_e;
 
 typedef enum
 {
@@ -325,6 +339,7 @@ static inline uint8_t robot_config_motor_device_get(uint8_t index, robot_config_
     return 0u;
 }
 
+/* Device-table scans are for init/config/diagnostics, not high-rate control loops. */
 static inline uint8_t robot_config_motor_device_find_by_name(const char *name, robot_config_motor_device_t *out)
 {
     const uint8_t count = robot_config_motor_device_count();
@@ -427,6 +442,7 @@ static inline uint8_t robot_config_device_get(uint8_t index, robot_config_device
     return 1u;
 }
 
+/* Name resolution below walks the configured device list; resolve once before fast loops. */
 static inline uint8_t robot_config_device_find_by_name(const char *name, robot_config_device_t *out)
 {
     const uint8_t count = robot_config_device_count();

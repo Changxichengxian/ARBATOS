@@ -15,19 +15,11 @@
 #include "rc_sbus_task.h"
 #include "referee_rx_task.h"
 #include "sdlog_task.h"
-#include "robot_task_profile.h"
+#include "app_task_bootstrap.h"
 #include "control_manager.h"
+#include "robot_control_registry.h"
 #include "watch.h"
 #include "wheelleg_mit_task.h"
-
-typedef osThreadId_t (*app_task_create_fn_t)(void);
-
-typedef struct
-{
-    robot_task_module_e module;
-    osThreadId_t *handle;
-    app_task_create_fn_t create;
-} app_task_module_desc_t;
 
 osThreadId_t defaultTaskHandle;
 osThreadId_t rcSbusTaskHandle;
@@ -176,19 +168,7 @@ static void app_create_module_tasks(void)
 
     app_clear_module_task_handles();
 
-    for (uint32_t i = 0u; i < (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])); i++)
-    {
-        const app_task_module_desc_t *task = &module_tasks[i];
-        if (robot_profile_module_enabled(task->module) == 0u || task->handle == NULL || task->create == NULL)
-        {
-            continue;
-        }
-        if (*task->handle != NULL)
-        {
-            continue;
-        }
-        *task->handle = task->create();
-    }
+    app_create_enabled_module_tasks(module_tasks, (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])));
 }
 
 static StaticTask_t xIdleTaskTCBBuffer;
@@ -217,6 +197,7 @@ void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
 void MX_FREERTOS_Init(void)
 {
     control_manager_init();
+    robot_control_register_profile_defaults();
 
     defaultTaskHandle = APP_THREAD_CREATE(defaultTask, StartDefaultTask);
 
