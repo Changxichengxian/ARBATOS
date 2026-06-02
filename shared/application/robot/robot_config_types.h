@@ -907,7 +907,7 @@ typedef struct
     uint16_t rc_deadband;
     uint8_t enable_switch_pos; // MANUAL_INPUT_SWITCH_POS_*
 
-    uint8_t single_test_actuator; // [600] actuator_id_e
+    uint8_t single_test_actuator; // [600] MotorId
     fp32 single_test_position_rad; // [601]
     fp32 single_test_velocity_radps; // [602]
     fp32 single_test_kp; // [603]
@@ -949,12 +949,12 @@ typedef struct
     fp32 lqr_wheel_torque_scale; // [638]
     fp32 lqr_hip_torque_scale; // [639]
 
-    uint8_t right_front_actuator; // actuator_id_e
-    uint8_t right_back_actuator;  // actuator_id_e
-    uint8_t right_wheel_actuator; // actuator_id_e
-    uint8_t left_front_actuator;  // actuator_id_e
-    uint8_t left_back_actuator;   // actuator_id_e
-    uint8_t left_wheel_actuator;  // actuator_id_e
+    uint8_t right_front_actuator; // MotorId
+    uint8_t right_back_actuator;  // MotorId
+    uint8_t right_wheel_actuator; // MotorId
+    uint8_t left_front_actuator;  // MotorId
+    uint8_t left_back_actuator;   // MotorId
+    uint8_t left_wheel_actuator;  // MotorId
 } wheelleg_mit_config_t;
 
 typedef struct

@@ -37,7 +37,7 @@ USART3(DBUS) -> manual_input -> behaviour -> chassis_control_task / gimbal_contr
 INS(BMI088/IST) -> INS_task -> 角度/角速度/四元数
 CAN RX -> CAN_receive -> 电机反馈(measure)
 
-chassis_control_task/gimbal_control_task -> actuator_cmd -> can_command_tx_task -> CAN1(0x200/0x1FF)
+chassis_control_task/gimbal_control_task -> LowCmd -> can_command_tx_task -> CAN1(0x200/0x1FF)
 
 USART6(裁判) -> referee_rx_task -> referee.c -> 功率/热量等
 

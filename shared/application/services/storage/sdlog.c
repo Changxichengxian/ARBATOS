@@ -900,7 +900,7 @@ static int sdlog_open_next_file(void)
                 runtime_device.source_id = device.source_id;
                 if (device.kind == (uint8_t)ROBOT_CONFIG_DEVICE_KIND_MOTOR)
                 {
-                    const motor_instance_t *inst = motor_instance_find_by_actuator((actuator_id_e)device.source_id);
+                    const motor_instance_t *inst = motor_instance_find_by_actuator((MotorId)device.source_id);
 
                     runtime_device.enabled = motor_instance_enabled(inst);
                     runtime_device.bus = motor_instance_bus(inst);

@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 #include "control_manager.h"
 #include "config.h"
 #include "runtime_instance.h"
@@ -36,7 +36,7 @@
 #define WATCH_ENABLE_ARM_J0_UNITREE 1
 #endif
 #ifndef WATCH_RUNTIME_MAX_MOTORS
-#define WATCH_RUNTIME_MAX_MOTORS ACTUATOR_ID__COUNT
+#define WATCH_RUNTIME_MAX_MOTORS MotorCount
 #endif
 #ifndef WATCH_RUNTIME_MAX_CONTROLLERS
 #define WATCH_RUNTIME_MAX_CONTROLLERS CONTROL_MANAGER_MAX_CONTROLLERS

@@ -1,6 +1,6 @@
 # 新机器人和新模块接入模板
 
-这份模板用于新增一台机器人、换一种底盘、增加一个三云台机构，或者接入完全不同的模块。核心原则是先描述实例，再写控制器；少改项目入口，少复制固定分支。
+这份模板用于新增一台机器人、换一种底盘、增加一个三云台机构，或者接入完全不同的模块。核心原则是先描述实例，再写控制器；少改项目入口，少复制固定分支；安全策略先明确，再逐步收束到控制器或调度层。
 
 ## 1. 先写清实例
 
@@ -29,7 +29,7 @@ static const char *const outputs[] = {
 控制器启动时解析一次：
 
 ```c
-static actuator_id_e output_ids[3];
+static MotorId output_ids[3];
 
 if (motor_instance_resolve_actuator_ids(outputs, 3, output_ids, 3) != 3)
 {
@@ -79,6 +79,12 @@ static const control_controller_t triple_yaw_controller = {
 (void)control_manager_update_due_all(now_ms, &context);
 ```
 
+新控制器至少要想清楚三类安全动作：
+
+- 进入条件不满足时返回错误，避免半初始化后继续输出。
+- `stop` 或故障分支要清掉自己占用的执行器命令。
+- 运行时发现输入、反馈、姿态或限幅不可信时，优先进入可解释的故障状态。
+
 ## 4. 加任务模块
 
 确实需要新任务时，再加任务模块。已有项目都用 `app_task_bootstrap.h` 创建启用任务：
@@ -96,7 +102,7 @@ static const control_controller_t triple_yaw_controller = {
 2. 新增 `controller.triple_yaw`，`outputs` 填这三个名字。
 3. 控制器 `enter` 阶段解析输出，`update` 阶段批量写电流。
 4. 如果旧云台任务能承载，就只注册新控制器；如果需要独立调度，再加一个自定义任务模块。
-5. `watch.runtime` 和 SD 日志会按设备、控制器实例记录，不需要单独加“三云台日志字段”。
+5. `watch.runtime` 会看到设备和控制器实例。SD 日志启动记录会写设备条目；控制器状态主要通过 `watch` 块观察，不需要单独加“三云台日志字段”。
 
 ## 6. 换底盘示例
 
@@ -120,4 +126,5 @@ git diff --check
 - `watch.runtime` 能看到对应实例。
 - SD 日志启动记录里有设备条目。
 - 控制器输出都走 `motor_instance_*` 接口。
+- 安全档、输入离线、反馈离线或控制器故障时，相关执行器命令能被清零或切到安全输出。
 - 新模块没有继续扩大固定的云台、底盘、发射分支。

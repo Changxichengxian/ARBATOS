@@ -11,7 +11,7 @@
  * - 前段：云台快照、PID 调参入口、yaw/pitch 电机反馈整理。
  * - 中段：初始化、校准、模式设置，以及角度/速度目标生成。
  * - 后段：双环 PID 算电流、离线保护、日志采样。
- * - 入口：gimbal_control_task() 按任务周期运行，最后把电流写入 actuator_cmd。
+ * - 入口：gimbal_control_task() 按任务周期运行，最后把电流写入 LowCmd。
  */
 
 #include "gimbal_control_task.h"
@@ -21,7 +21,7 @@
 
 #include "arm_math.h"
 #include "CAN_receive.h"
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 #include "motor_instance.h"
 #include "motor_config.h"
 #include "user_lib.h"

@@ -23,13 +23,14 @@ The current codebase is beyond a basic STM32 port. It includes:
 - Explicit FreeRTOS task selection through `g_config.profile.task_modules`.
 - Multiple manual input sources: DBUS/SBUS, ELRS/CRSF, image-transmission remote
   control, USB-reserved input, and board keys.
-- A unified actuator command path. Control tasks write commands by actuator role;
-  the CAN transmit task maps those commands to RM, DM, MIT-style, or Unitree
-  protocols.
-- Runtime motor instances, a device table, and a lightweight controller manager
-  for moving away from hard-coded robot roles.
+- A unified actuator command path. Control tasks write transport-independent
+  commands; the transmit task maps those commands to RM, DM, MIT-style, or
+  Unitree protocols.
+- Runtime motor instances, a device table, controller registry, and
+  `watch.runtime` observation for moving away from hard-coded robot roles.
 - Diagnostics and logging through `g_watch`, `rt_profiler`, TF/SD binary logs,
-  build identity records, AUX telemetry, and temporary AUX parameter tuning.
+  build identity records, runtime device records, AUX telemetry, and temporary
+  AUX parameter tuning.
 - Local checks, Keil project manifest extraction, SD log tools, a PID autotune
   tool, and a configuration pressure simulator.
 
@@ -41,8 +42,9 @@ Important limits are also documented here:
   files, and ARMCC libraries on some F4 targets.
 - Some high-rate control paths still read `g_config` directly. Snapshot-based
   reads are the preferred direction for future work.
-- Dual-yaw gimbal and MIT wheel-leg control paths are wired, but real-robot
-  validation and protection boundaries are still active work.
+- Dual-yaw gimbal and MIT wheel-leg control paths are wired. Subsystem-level
+  protection already exists, while real-robot validation and a more unified
+  safety policy are still active work.
 
 ## License
 
@@ -203,7 +205,7 @@ DBUS/SBUS       ELRS/CRSF       image remote       board keys
         |                  |                  |
         +------------------+------------------+
                            |
-                    actuator_cmd
+                    LowCmd
                            |
                   can_command_tx_task
                            |
@@ -221,7 +223,7 @@ can_feedback_rx_task
   |
 CAN_receive / motor_instance
   |
-actuator_feedback and legacy motor feedback structs
+LowState and legacy motor feedback structs
   |
 control tasks / g_watch / sdlog
 ```
@@ -244,7 +246,7 @@ Useful entry points:
 | Host link | `shared/application/comm/host/host_link_task.c` |
 | Vision link | `shared/application/comm/vision/vision_link.c` |
 | Referee link | `shared/application/comm/referee/referee_rx_task.c` |
-| Actuator commands | `shared/application/robot/actuator_cmd.c` |
+| Actuator commands | `shared/application/robot/LowCmd.c` |
 | Device configuration view | `shared/application/robot/robot_device_config.h` |
 | Runtime state store | `shared/application/robot/state_store.c`, `robot_state.h` |
 | Controller manager | `shared/application/robot/control_manager.c` |

@@ -63,7 +63,7 @@ typedef struct
     uint8_t mit_deadman_active;
     uint8_t mit_move_key_active;
     uint8_t j0_move_key_active;
-    actuator_cmd_t cmd[ARM_CORE_JOINT_COUNT];
+    MotorCmd cmd[ARM_CORE_JOINT_COUNT];
 } arm_core_output_t;
 
 static inline uint8_t arm_core_key_active(const arm_core_joint_param_t *param, uint16_t key_mask)

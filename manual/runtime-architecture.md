@@ -1,6 +1,6 @@
-# 运行层演进方向
+# 运行层当前状态和演进方向
 
-这份文档记录 ARBATOS 后续从 RoboMaster 多车型工程，往更通用机器人控制运行层演进的方向。
+这份文档按当前代码状态记录 ARBATOS 从 RoboMaster 多车型工程，往更通用机器人控制运行层演进的方向。
 
 目标不是把更多机器人硬塞进“云台、底盘、射击”这些固定概念里，而是让新机器人由下面几类东西组合出来：
 
@@ -10,23 +10,31 @@
 - 调度属性：周期、优先级、超时、安全策略。
 - 观察接口：状态、诊断、日志、遥测。
 
-## 当前第一步
+## 当前代码状态
 
-当前代码已经先在电机侧补了一层实例名。
+当前代码已经不只是“先在电机侧补一层实例名”，运行层的几块基础已经接上：
 
-旧代码仍然可以继续用：
+- `g_config.profile.task_modules` 是任务创建的入口。`app_task_bootstrap.h` 会按配置表创建启用任务。
+- `g_config.devices` 已经进入配置层，`robot_device_config.h` 负责统一解析设备条目。
+- `motor_instance_refresh()` 已经从设备表生成电机实例，控制任务可以按稳定实例名绑定输出。
+- `LowCmd` 是控制任务到执行器发送任务之间的统一命令缓存。底盘、云台、射击等高频任务已经使用预绑定输出，循环里按绑定写电流。
+- `control_manager` 已经提供控制域、控制器注册、资源声明、切换、停止和故障状态。默认控制器由 `robot_control_registry.h` 按 profile 注册。
+- `watch.runtime` 已经能按任务、设备、电机、控制器、控制域收集运行实例。SD 日志启动记录也会写设备条目。
+- 安全保护已经存在，但当前主要分布在各任务和控制环里，例如安全档、测试模式、离线检测、限幅、轮腿 fault。后续仍在往控制器或调度策略收束。
+
+当前仍保留兼容层。旧代码可以继续按固定 actuator id 写命令：
 
 ```c
-ACTUATOR_ID_YAW
-ACTUATOR_ID_PITCH
-actuator_cmd_set_yaw_current(...)
+Motor4
+Motor6
+LowCmdSetCurrent(Motor4, yaw_current);
 ```
 
 新代码可以逐步改成按实例查询：
 
 ```c
 const motor_instance_t *m = motor_instance_find_by_name("motor.yaw");
-actuator_id_e id = motor_instance_actuator_id(m);
+MotorId id = motor_instance_actuator_id(m);
 ```
 
 如果只是发命令或读反馈，也可以直接按实例名走薄包装：
@@ -36,7 +44,7 @@ motor_instance_cmd_set_current("motor.yaw", yaw_current);
 motor_instance_feedback_get_copy("motor.yaw", &feedback);
 ```
 
-如果一个控制器要同时管多个执行器，可以先把名字解析成 `actuator_id_e`，后面循环里直接按 id 批量发命令：
+如果一个控制器要同时管多个执行器，可以先把名字解析成 `MotorId`，后面循环里直接按 id 批量发命令：
 
 ```c
 static const char *const yaw_outputs[] = {
@@ -45,7 +53,7 @@ static const char *const yaw_outputs[] = {
     "motor.yaw2",
 };
 
-static actuator_id_e yaw_ids[3];
+static MotorId yaw_ids[3];
 
 void bind_outputs(void)
 {
@@ -71,7 +79,7 @@ void run_outputs(void)
    现有车要能继续编译和上车，不为了架构升级打断当前调试。
 
 2. 新接口先旁路接入。
-   新机器人、新机构、新实验任务优先用实例表和控制器表，不继续新增大量 `ROBOT_TASK_MODULE_XXX` 分支。
+   新机器人、新机构、新实验任务优先用实例表和控制器表；只有确实需要新的调度周期或独立任务栈时，才新增 `ROBOT_TASK_MODULE_XXX` 或项目私有模块。
 
 3. 先统一执行器，再统一控制器。
    执行器是所有控制器最终写入的地方，先把这里从固定角色过渡到实例表，收益最大。
@@ -86,7 +94,7 @@ void run_outputs(void)
 
 ### 阶段 1：执行器实例化
 
-- 保留 `actuator_id_e`。
+- 保留 `MotorId`。
 - 给 `motor_instance_t` 补稳定实例名。
 - 提供按名字查找、取 actuator id、发命令、取电机配置、取反馈的接口。
 - 提供一组名字解析、一组电流命令、一组反馈读取的接口，减少多电机控制器里的重复代码。
@@ -170,7 +178,7 @@ static const control_controller_t triple_yaw_controller = {
 控制器进入时把输出名字绑定成 id，运行时只发一组命令：
 
 ```c
-static actuator_id_e triple_yaw_ids[3];
+static MotorId triple_yaw_ids[3];
 
 static control_result_e triple_yaw_enter(const control_controller_t *controller,
                                          control_context_t *context)
@@ -213,15 +221,17 @@ static control_result_e triple_yaw_update(const control_controller_t *controller
 
 控制器代码只关心它拿到的输入和输出，不关心这台机器人是不是 RoboMaster。
 
-这一步当前已经先补了元信息字段和查询接口。旧控制器可以不填 `meta`，新控制器优先声明自己的输入、输出和周期。
+这一步当前已经有 `control_manager`、控制器元信息、注册表、按名字切换、按周期更新和运行时观察。旧的底盘、云台、射击任务仍然保留自己的主循环和状态机，新控制器优先声明输入、输出、周期和资源占用。
 
 ### 阶段 4：调度和观察统一
 
-- 少量周期调度任务负责跑控制器实例。
-- 检测、日志、遥测按设备表和控制器表遍历。
-- RoboMaster 相关逻辑保留为一组控制器和配置，不再作为整个项目结构的中心。
+- 当前 `watch.runtime` 已经按设备表和控制器表遍历运行实例。
+- 当前 SD 日志启动记录会写 build info、原始配置和运行时设备条目。
+- 后续少量周期调度任务负责跑控制器实例，逐步减少“一个机构一套任务主循环”的写法。
+- 后续安全策略继续往控制器或调度层集中，保留各子系统必要的本地限幅和故障处理。
+- RoboMaster 相关逻辑保留为一组控制器和配置，不作为整个项目结构的中心。
 
-当前已经先在 `watch` 里加了一个通用运行时块 `runtime.instances`。它会按实例收集：
+`watch` 里的通用运行时块 `runtime.instances` 会按实例收集：
 
 - 当前目标启用的任务模块名字。
 - 电机实例数量、启用数量、名字、角色、bus 和 actuator id。
@@ -238,4 +248,4 @@ static control_result_e triple_yaw_update(const control_controller_t *controller
 - 新控制算法：先抽象成控制器实例。
 - 新机器人形态：优先改配置和实例绑定表。
 - 新协议：放到设备驱动或传输层。
-- 新安全规则：放到控制器或调度策略里，不散在具体车型代码里。
+- 新安全规则：优先放到控制器或调度策略里；迁移没完成前，可以先放在对应子系统任务里，但不要散到具体车型代码里。

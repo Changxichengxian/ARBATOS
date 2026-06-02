@@ -7,7 +7,7 @@
  */
 
 #include "config.h"
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 
 /*
  * 这份表现在分两类：

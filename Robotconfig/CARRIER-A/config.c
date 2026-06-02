@@ -7,7 +7,7 @@
  */
 
 #include "config.h"
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 
 /*
  * 这份表现在分两类：
@@ -268,7 +268,7 @@ config_t g_config = {
             .max_yaw_rate_radps = 0.60f,
             .rc_deadband = 10u,
             .enable_switch_pos = MANUAL_INPUT_SWITCH_POS_MID,
-            .single_test_actuator = (uint8_t)ACTUATOR_ID_ARM_J1, // [600] 单电机测试目标
+            .single_test_actuator = (uint8_t)Motor13, // [600] 单电机测试目标
             .single_test_position_rad = 0.0f, // [601] MIT 位置给定；kp=0 时不生效
             .single_test_velocity_radps = 0.0f, // [602] MIT 速度给定
             .single_test_kp = 0.0f, // [603] 位置刚度，默认关闭位置环
@@ -294,12 +294,12 @@ config_t g_config = {
             .left_back_dir = 1, // [623]
             .right_front_dir = 1, // [624]
             .right_back_dir = 1, // [625]
-            .right_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J1,
-            .right_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J2,
-            .right_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J0,
-            .left_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J4,
-            .left_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J5,
-            .left_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J3,
+            .right_front_actuator = (uint8_t)Motor13,
+            .right_back_actuator = (uint8_t)Motor14,
+            .right_wheel_actuator = (uint8_t)Motor12,
+            .left_front_actuator = (uint8_t)Motor16,
+            .left_back_actuator = (uint8_t)Motor17,
+            .left_wheel_actuator = (uint8_t)Motor15,
         },
 
     // Shoot config

@@ -128,7 +128,7 @@ typedef struct
 {
     wheelleg_status_t status;
     wheelleg_debug_t debug;
-    actuator_cmd_t actuator[WHEELLEG_CORE_ACTUATOR_COUNT];
+    MotorCmd actuator[WHEELLEG_CORE_ACTUATOR_COUNT];
     uint8_t fault_flags;
     uint8_t actuator_count;
 } wheelleg_core_output_t;

@@ -34,7 +34,7 @@ shared/
 
 - 能被多台车复用的控制任务：底盘、云台、双 yaw 云台、射击、轮腿、机械臂运动抽象。
 - 输入链路：DBUS/SBUS、ELRS/CRSF、图传遥控、语义输入映射。
-- 执行器和电机协议：`actuator_cmd`、`motor_instance`、`motor_model_db`、CAN/MIT/Unitree 驱动。
+- 执行器和电机协议：`LowCmd`、`motor_instance`、`motor_model_db`、CAN/MIT/Unitree 驱动。
 - 主机通信、视觉链路、裁判系统、日志、诊断观察。
 - 通用算法、校准状态机和控制器：PID、滤波、AHRS、陀螺零偏采样、功率限制等。
 

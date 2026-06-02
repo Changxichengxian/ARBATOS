@@ -11,7 +11,7 @@
  * - 前段：拨杆/图传输入解释、娱乐模式蜂鸣器音乐、摩擦轮/拨弹输出清零。
  * - 中段：shoot_control_loop() 串起状态机、反馈更新、PID 电流输出。
  * - 后段：shoot_set_mode() 决定射击状态，feedback_update() 维护编码器圈数和堵转信息。
- * - 输出：拨弹电流作为返回值，摩擦轮电流写入 actuator_cmd。
+ * - 输出：拨弹电流作为返回值，摩擦轮电流写入 LowCmd。
  */
 
 
@@ -26,7 +26,7 @@
 #include "referee.h"
 
 #include "CAN_receive.h"
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 #include "motor_instance.h"
 #include "motor_config.h"
 #include "gimbal_state.h"
@@ -493,7 +493,7 @@ int16_t shoot_control_loop(void)
     if(shoot_control.shoot_mode == SHOOT_STOP)
     {
         shoot_laser_off();
-        // STOP overwrites actuator_cmd with zero current. Do not run the speed PID toward 0 RPM.
+        // STOP overwrites LowCmd with zero current. Do not run the speed PID toward 0 RPM.
         shoot_clear_trigger_output();
         shoot_clear_fric_output();
     }

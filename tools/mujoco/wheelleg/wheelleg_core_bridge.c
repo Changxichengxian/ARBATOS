@@ -78,6 +78,7 @@ typedef struct
     fp32 target_yaw_rate_radps;
     uint8_t use_vmc;
     uint8_t support_only;
+    fp32 jump_force_n;
 } arbatos_wheelleg_bridge_input_t;
 
 typedef struct
@@ -400,6 +401,7 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
                                wheelleg_core_pid_calc(&state->leg_pid[i],
                                                       state->leg[i].length,
                                                       input->target_leg_m);
+            state->leg[i].f0 += input->jump_force_n;
             state->leg[i].f0 += (i == WHEELLEG_SIDE_RIGHT) ? roll_f0 : -roll_f0;
             state->leg[i].f0 = wheelleg_core_clamp(state->leg[i].f0,
                                                    -config->max_support_force_n,
@@ -448,7 +450,7 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
 
     for (i = 0u; i < WHEELLEG_CORE_ACTUATOR_COUNT; i++)
     {
-        output->actuator_torque_nm[i] = core_output.actuator[i].torque;
+        output->actuator_torque_nm[i] = core_output.actuator[i].tau;
     }
     output->observer_x_m = state->observer.x_m;
     output->observer_v_mps = state->observer.v_mps;

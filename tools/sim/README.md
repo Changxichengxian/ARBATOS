@@ -56,7 +56,7 @@ five-bar leg constraints are modeled.
 Physics simulators such as MuJoCo should call the reusable control core instead
 of the FreeRTOS task entry points. Firmware tasks read sensors/manual input and
 write actuator commands; simulation runners should provide the same core input
-from simulator state and apply the returned `actuator_cmd_t` outputs to the
+from simulator state and apply the returned `MotorCmd` outputs to the
 simulator actuators.
 
 Current core boundary files:

@@ -205,7 +205,7 @@ CONFIG_PARAM_U16(248, "chassis.swing_center_hold_max_ms", CONFIG_PARAM_SCOPE_LOC
 CONFIG_PARAM_U8_DEFAULT(249, "sdlog.high_rate_div", CONFIG_PARAM_SCOPE_COMMON, g_config.sdlog.high_rate_div, 4u, 2u, CONFIG_PARAM_APPLY_NONE)
 
 // wheel-leg MIT single motor bring-up
-CONFIG_PARAM_U8_DEFAULT(600, "wheelleg_mit.single_test_actuator", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.single_test_actuator, (uint8_t)(ACTUATOR_ID__COUNT - 1u), (uint8_t)ACTUATOR_ID_ARM_J1, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_U8_DEFAULT(600, "wheelleg_mit.single_test_actuator", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.single_test_actuator, (uint8_t)(MotorCount - 1u), (uint8_t)Motor13, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_F32(601, "wheelleg_mit.single_test_position_rad", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.single_test_position_rad, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_F32(602, "wheelleg_mit.single_test_velocity_radps", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.single_test_velocity_radps, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_F32(603, "wheelleg_mit.single_test_kp", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.single_test_kp, CONFIG_PARAM_APPLY_NONE)

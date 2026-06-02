@@ -35,7 +35,7 @@ SIM_LEG_MASS_TOTAL_KG = 0.120
 SIM_BODY_LENGTH_M = 0.115
 SIM_BODY_HEIGHT_M = 0.055
 SIM_BODY_COM_TO_HIP_M = -0.004
-SIM_TRACK_HALF_M = 0.105
+SIM_TRACK_HALF_M = 0.090
 SIM_WHEEL_WIDTH_M = 0.024
 
 SIDE_LEFT = 0
@@ -204,6 +204,7 @@ class BridgeInput(ctypes.Structure):
         ("target_yaw_rate_radps", ctypes.c_float),
         ("use_vmc", ctypes.c_uint8),
         ("support_only", ctypes.c_uint8),
+        ("jump_force_n", ctypes.c_float),
     ]
 
 
@@ -261,7 +262,7 @@ def source_dependencies() -> list[Path]:
         BRIDGE_SOURCE,
         REPO_ROOT / "shared" / "application" / "wheelleg" / "wheelleg_core.h",
         REPO_ROOT / "shared" / "application" / "robot" / "control_core.h",
-        REPO_ROOT / "shared" / "application" / "robot" / "actuator_cmd.h",
+        REPO_ROOT / "shared" / "application" / "robot" / "LowCmd.h",
         REPO_ROOT / "shared" / "application" / "wheelleg" / "wheelleg_msg.h",
     ]
 
@@ -450,6 +451,10 @@ def f6(value: float) -> str:
 def base_mode(args: argparse.Namespace) -> str:
     if getattr(args, "bench", False):
         return "bench"
+    if getattr(args, "drive_plane", False):
+        return "drive_plane"
+    if getattr(args, "yaw_plane", False):
+        return "yaw_plane"
     if getattr(args, "planar", False):
         return "planar"
     return "free"
@@ -532,7 +537,7 @@ def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float, mode: st
     l5 = float(config.geometry.l5_m)
     wheel_radius = float(config.wheel_radius_m)
     half_l5 = l5 * 0.5
-    track_half = SIM_TRACK_HALF_M
+    track_half = 0.090
     wheel_width = SIM_WHEEL_WIDTH_M
     crank_radius = 0.0045
     rod_radius = 0.0038
@@ -550,6 +555,17 @@ def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float, mode: st
 
     if mode == "bench":
         base_joints = ""
+    elif mode == "drive_plane":
+        base_joints = """<joint name="base_x" type="slide" axis="1 0 0" damping="0.02"/>
+      <joint name="base_y" type="slide" axis="0 1 0" damping="0.02"/>
+      <joint name="base_z" type="slide" axis="0 0 1" damping="0.02"/>
+      <joint name="base_yaw" type="hinge" axis="0 0 1" damping="0.01"/>"""
+    elif mode == "yaw_plane":
+        base_joints = """<joint name="base_x" type="slide" axis="1 0 0" damping="0.02"/>
+      <joint name="base_y" type="slide" axis="0 1 0" damping="0.02"/>
+      <joint name="base_z" type="slide" axis="0 0 1" damping="0.02"/>
+      <joint name="base_yaw" type="hinge" axis="0 0 1" damping="0.01"/>
+      <joint name="base_pitch" type="hinge" axis="0 1 0" damping="0.01"/>"""
     elif mode == "planar":
         base_joints = """<joint name="base_x" type="slide" axis="1 0 0" damping="0.02"/>
       <joint name="base_z" type="slide" axis="0 0 1" damping="0.02"/>
@@ -630,9 +646,9 @@ def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float, mode: st
       <site name="imu" pos="0 0 0" size="0.006"/>
       <geom name="body" type="box" pos="0 0 {f6(body_half_z + 0.012)}" size="{f6(body_half_x)} {f6(body_half_y)} {f6(body_half_z)}"
             mass="{f6(body_mass)}" material="body_mat"/>
-      <geom name="front_crossbar" type="capsule" fromto="{f6(-half_l5)} -0.116 0 {f6(-half_l5)} 0.116 0"
+      <geom name="front_crossbar" type="capsule" fromto="{f6(-half_l5)} -0.100 0 {f6(-half_l5)} 0.100 0"
             size="0.0045" mass="{f6(crossbar_mass)}" material="body_mat" contype="0" conaffinity="0"/>
-      <geom name="back_crossbar" type="capsule" fromto="{f6(half_l5)} -0.116 0 {f6(half_l5)} 0.116 0"
+      <geom name="back_crossbar" type="capsule" fromto="{f6(half_l5)} -0.100 0 {f6(half_l5)} 0.100 0"
             size="0.0045" mass="{f6(crossbar_mass)}" material="body_mat" contype="0" conaffinity="0"/>
 {side_xml("right", -track_half, "right_mat")}
 {side_xml("left", track_half, "left_mat")}
@@ -856,8 +872,12 @@ def base_orientation(mujoco, model, data) -> tuple[float, float, float, float, f
         base_qvel = data.joint("base_free").qvel
         roll, pitch, yaw = quat_to_euler_wxyz(base_qpos[3:7])
         return roll, pitch, yaw, float(base_qvel[3]), float(base_qvel[4]), float(base_qvel[5])
-    if joint_exists(mujoco, model, "base_pitch"):
-        return 0.0, float(data.joint("base_pitch").qpos[0]), 0.0, 0.0, float(data.joint("base_pitch").qvel[0]), 0.0
+    yaw = float(data.joint("base_yaw").qpos[0]) if joint_exists(mujoco, model, "base_yaw") else 0.0
+    gyro_z = float(data.joint("base_yaw").qvel[0]) if joint_exists(mujoco, model, "base_yaw") else 0.0
+    pitch = float(data.joint("base_pitch").qpos[0]) if joint_exists(mujoco, model, "base_pitch") else 0.0
+    gyro_y = float(data.joint("base_pitch").qvel[0]) if joint_exists(mujoco, model, "base_pitch") else 0.0
+    if joint_exists(mujoco, model, "base_yaw") or joint_exists(mujoco, model, "base_pitch"):
+        return 0.0, pitch, yaw, 0.0, gyro_y, gyro_z
     return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
 
@@ -890,6 +910,7 @@ def fill_bridge_input(mujoco, model, data, args: argparse.Namespace) -> BridgeIn
         target_yaw_rate_radps=float(args.target_yaw_rate),
         use_vmc=1 if args.vmc else 0,
         support_only=1 if args.support_only else 0,
+        jump_force_n=float(args.jump_force_n) if time.perf_counter() < float(args.jump_until_perf) else 0.0,
     )
 
 
@@ -933,17 +954,15 @@ def clamp_float(value: float, min_value: float, max_value: float) -> float:
 
 def keyboard_callback(args: argparse.Namespace):
     def on_key(key: int) -> None:
-        if key < 0 or key > 255:
-            return
-        ch = chr(key).lower()
+        ch = chr(key).lower() if 0 <= key <= 255 else ""
         changed = True
-        if ch == "w":
+        if key == 265:
             args.target_v = clamp_float(float(args.target_v) + 0.05, -0.45, 0.45)
-        elif ch == "s":
+        elif key == 264:
             args.target_v = clamp_float(float(args.target_v) - 0.05, -0.45, 0.45)
-        elif ch == "a":
+        elif key == 263:
             args.target_yaw_rate = clamp_float(float(args.target_yaw_rate) + 0.15, -1.20, 1.20)
-        elif ch == "d":
+        elif key == 262:
             args.target_yaw_rate = clamp_float(float(args.target_yaw_rate) - 0.15, -1.20, 1.20)
         elif ch == "q":
             args.target_leg = clamp_float(float(args.target_leg) - 0.005, 0.085, 0.120)
@@ -957,6 +976,10 @@ def keyboard_callback(args: argparse.Namespace):
             args.target_v = 0.0
             args.target_yaw_rate = 0.0
             args.target_foot_x = 0.0
+        elif ch == " ":
+            args.vmc = True
+            args.jump_until_perf = time.perf_counter() + float(args.jump_duration_s)
+            print(f"jump force={float(args.jump_force_n):.1f}N duration={float(args.jump_duration_s):.2f}s")
         else:
             changed = False
         if changed:
@@ -1060,8 +1083,12 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     parser.add_argument("--sim-wheel-scale", type=float, default=1.0, help="Scale wheel torques applied in MuJoCo.")
     parser.add_argument("--support-only", action="store_true", help="Disable wheel torques and keep only VMC leg support.")
     parser.add_argument("--planar", action="store_true", help="Use a 2D base for pitch-plane standing tests.")
+    parser.add_argument("--yaw-plane", action="store_true", help="Lock roll while allowing x/y/z, yaw, and pitch for driving tests.")
+    parser.add_argument("--drive-plane", action="store_true", help="Lock roll and pitch while allowing x/y/z/yaw for interactive driving tests.")
     parser.add_argument("--bench", action="store_true", help="Fix the base to inspect PID/VMC output on a virtual bench.")
-    parser.add_argument("--keyboard", action="store_true", help="Enable viewer keyboard control: W/S speed, A/D turn, Q/E leg, Z/C foot, X stop.")
+    parser.add_argument("--keyboard", action="store_true", help="Enable viewer keyboard control: arrows speed/turn, Q/E leg, Z/C foot, X stop, Space jump.")
+    parser.add_argument("--jump-force-n", type=float, default=55.0, help="Extra VMC support force while Space jump is active.")
+    parser.add_argument("--jump-duration-s", type=float, default=0.16, help="Space jump force duration.")
     parser.add_argument("--print-params", action="store_true", help="Print project and MuJoCo model parameter sources.")
     parser.add_argument("--viewer", action="store_true", help="Open the MuJoCo viewer.")
     parser.add_argument("--realtime", action="store_true", help="Sleep to roughly match wall time.")
@@ -1073,6 +1100,7 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
 
 def main(argv: Iterable[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    args.jump_until_perf = 0.0
     if args.support_only:
         args.vmc = True
     config = BridgeConfig()

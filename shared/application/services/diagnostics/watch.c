@@ -17,7 +17,7 @@
 #include "task.h"
 
 #include "CAN_receive.h"
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 #include "arm_task.h"
 #include "battery_monitor_task.h"
 #include "bsp_adc.h"
@@ -726,7 +726,7 @@ static runtime_instance_state_e watch_runtime_device_state(const robot_config_de
     {
     case ROBOT_CONFIG_DEVICE_KIND_MOTOR:
     {
-        const motor_instance_t *inst = motor_instance_find_by_actuator((actuator_id_e)device->source_id);
+        const motor_instance_t *inst = motor_instance_find_by_actuator((MotorId)device->source_id);
         return (inst != NULL && motor_instance_enabled(inst) != 0u) ?
                    RUNTIME_INSTANCE_STATE_ENABLED :
                    RUNTIME_INSTANCE_STATE_DISABLED;
@@ -916,7 +916,7 @@ static void watch_copy_runtime(void)
     {
         const motor_instance_t *inst = motor_instance_get(i);
         watch_runtime_motor_t *dst = &g_watch.runtime.motor[i];
-        actuator_id_e actuator_id;
+        MotorId actuator_id;
 
         if (inst == NULL)
         {
@@ -1190,7 +1190,7 @@ static void watch_copy_shoot(void)
     for (uint8_t i = 0; i < 4; i++)
     {
         g_watch.shoot.fric_current_cmd[i] =
-            actuator_cmd_get_current(actuator_id_from_range(ACTUATOR_ID_FRICTION0, i, 4u));
+            LowCmdGetCurrent(MotorIdRange(Motor8, i, 4u));
     }
 
     g_watch.shoot.trigger_angle_deg = shoot.angle * rad2deg;
@@ -1287,56 +1287,56 @@ static void watch_copy_wheelleg_mit_motor(watch_wheelleg_mit_motor_t *out,
                                           int8_t dir,
                                           uint8_t use_rel_position)
 {
-    actuator_cmd_t cmd;
-    actuator_feedback_t fb;
-    actuator_id_e id;
+    MotorCmd cmd;
+    MotorState fb;
+    MotorId id;
 
     if (out == NULL)
     {
         return;
     }
     out->id = raw_id;
-    if ((uint32_t)raw_id >= (uint32_t)ACTUATOR_ID__COUNT)
+    if ((uint32_t)raw_id >= (uint32_t)MotorCount)
     {
         return;
     }
 
-    id = (actuator_id_e)raw_id;
-    if (actuator_cmd_get_copy(id, &cmd) != 0u)
+    id = (MotorId)raw_id;
+    if (LowCmdGetMotor(id, &cmd) != 0u)
     {
         out->cmd_active = cmd.active;
         out->cmd_mode = cmd.mode;
-        out->cmd_position_deg = watch_rad_to_deg(cmd.position);
-        out->cmd_velocity_deg_s = watch_rad_to_deg(cmd.velocity);
+        out->cmd_position_deg = watch_rad_to_deg(cmd.q);
+        out->cmd_velocity_deg_s = watch_rad_to_deg(cmd.dq);
         out->cmd_kp = cmd.kp;
         out->cmd_kd = cmd.kd;
-        out->cmd_torque_nm = cmd.torque;
+        out->cmd_torque_nm = cmd.tau;
     }
 
-    if (actuator_feedback_get_copy(id, &fb) != 0u)
+    if (LowStateGetMotor(id, &fb) != 0u)
     {
         out->online = fb.online;
         out->fb_bus = fb.bus;
-        out->fb_rx_dlc = fb.rx_dlc;
-        out->fb_rx_data0 = fb.rx_data0;
-        out->fb_rx_data0_low4 = (uint8_t)(fb.rx_data0 & 0x0Fu);
-        out->fb_rx_data0_high4 = (uint8_t)(fb.rx_data0 >> 4);
-        out->fb_motor_id = fb.motor_id;
+        out->fb_rx_dlc = fb.rxDlc;
+        out->fb_rx_data0 = fb.rxData0;
+        out->fb_rx_data0_low4 = (uint8_t)(fb.rxData0 & 0x0Fu);
+        out->fb_rx_data0_high4 = (uint8_t)(fb.rxData0 >> 4);
+        out->fb_motor_id = fb.motorId;
         out->fb_state = fb.state;
-        out->fb_rx_id = fb.rx_id;
-        out->fb_rx_count = fb.rx_count;
-        out->fb_last_rx_tick_ms = fb.last_rx_tick;
-        out->fb_position_deg = watch_rad_to_deg(fb.position);
-        out->fb_velocity_deg_s = watch_rad_to_deg(fb.velocity);
-        out->fb_torque_nm = fb.torque;
+        out->fb_rx_id = fb.rxId;
+        out->fb_rx_count = fb.rxCount;
+        out->fb_last_rx_tick_ms = fb.lastRxTick;
+        out->fb_position_deg = watch_rad_to_deg(fb.q);
+        out->fb_velocity_deg_s = watch_rad_to_deg(fb.dq);
+        out->fb_torque_nm = fb.tauEst;
         if (use_rel_position != 0u)
         {
-            const fp32 rel_position_rad = (fb.position - zero_rad) * watch_wheelleg_dir_sign(dir);
+            const fp32 rel_position_rad = (fb.q - zero_rad) * watch_wheelleg_dir_sign(dir);
             out->rel_position_deg = watch_rad_to_deg(rel_position_rad);
         }
         if (out->cmd_active != 0u)
         {
-            out->cmd_minus_fb_deg = watch_rad_to_deg(cmd.position - fb.position);
+            out->cmd_minus_fb_deg = watch_rad_to_deg(cmd.q - fb.q);
         }
     }
 }

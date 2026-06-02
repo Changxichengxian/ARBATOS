@@ -9,7 +9,7 @@
 #include "aux_param.h"
 
 #include <string.h>
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 #include "host_tune_bridge.h"
 #include "manual_input.h"
 #include "robot_task_profile.h"

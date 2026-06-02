@@ -12,7 +12,7 @@
 
 #include "bsp_can.h"
 #include "bsp_time.h"
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 #include "can_mit_motor_driver.h"
 #include "detect_task.h"
 #include "motor_config.h"
@@ -99,41 +99,41 @@ static int16_t can_rx_torque_to_current_like(const can_mit_motor_limits_t *limit
 }
 
 // 把大疆类反馈帧同步到通用执行器反馈，供新控制链按轴读取。
-static void can_rx_update_actuator_feedback_from_measure(actuator_id_e actuator_id,
+static void can_rx_update_LowState_from_measure(MotorId actuator_id,
                                                          uint8_t bus,
                                                          uint16_t std_id,
                                                          uint8_t dlc,
                                                          const motor_measure_t *measure)
 {
-    actuator_feedback_t prev;
-    actuator_feedback_t fb;
+    MotorState prev;
+    MotorState fb;
     uint32_t prev_rx_count = 0u;
 
-    if ((uint32_t)actuator_id >= (uint32_t)ACTUATOR_ID__COUNT || measure == NULL)
+    if ((uint32_t)actuator_id >= (uint32_t)MotorCount || measure == NULL)
     {
         return;
     }
 
     (void)memset(&fb, 0, sizeof(fb));
-    if (actuator_feedback_get_copy(actuator_id, &prev) != 0u)
+    if (LowStateGetMotor(actuator_id, &prev) != 0u)
     {
-        prev_rx_count = prev.rx_count;
+        prev_rx_count = prev.rxCount;
     }
     fb.online = 1u;
     fb.bus = bus;
-    fb.rx_dlc = dlc;
-    fb.transport = (uint8_t)ACTUATOR_TRANSPORT_CAN;
-    fb.rx_id = std_id;
-    fb.rx_count = prev_rx_count + 1u;
-    fb.last_rx_tick = bsp_time_get_tick_ms();
+    fb.rxDlc = dlc;
+    fb.transport = (uint8_t)MotorTransportCAN;
+    fb.rxId = std_id;
+    fb.rxCount = prev_rx_count + 1u;
+    fb.lastRxTick = bsp_time_get_tick_ms();
     fb.ecd = measure->ecd;
-    fb.speed_rpm = measure->speed_rpm;
+    fb.speedRpm = measure->speed_rpm;
     fb.current = measure->given_current;
     fb.temperature = measure->temperate;
-    fb.position = ((fp32)measure->ecd) * CAN_RX_TWO_PI / CAN_RX_ECD_RANGE_F;
-    fb.velocity = ((fp32)measure->speed_rpm) * CAN_RX_RPM_TO_RADPS;
-    fb.torque = (fp32)measure->given_current;
-    actuator_feedback_update(actuator_id, &fb);
+    fb.q = ((fp32)measure->ecd) * CAN_RX_TWO_PI / CAN_RX_ECD_RANGE_F;
+    fb.dq = ((fp32)measure->speed_rpm) * CAN_RX_RPM_TO_RADPS;
+    fb.tauEst = (fp32)measure->given_current;
+    LowStateUpdateMotor(actuator_id, &fb);
 }
 
 // MIT 反馈没有旧 ecd/rpm/current 格式，这里合成一份给老任务继续用。
@@ -160,14 +160,14 @@ static uint8_t can_rx_process_mit_node_frame(motor_measure_t *measure,
                                              uint16_t std_id,
                                              uint8_t dlc,
                                              const uint8_t data[8],
-                                             actuator_id_e actuator_id,
+                                             MotorId actuator_id,
                                              uint8_t detect_toe,
                                              uint8_t use_detect)
 {
     const can_mit_motor_limits_t *limits;
     can_mit_motor_feedback_t mit;
-    actuator_feedback_t prev;
-    actuator_feedback_t fb;
+    MotorState prev;
+    MotorState fb;
     uint32_t prev_rx_count = 0u;
 
     if (node == NULL)
@@ -189,30 +189,30 @@ static uint8_t can_rx_process_mit_node_frame(motor_measure_t *measure,
 
     can_rx_synthesize_measure_from_mit(measure, limits, &mit);
 
-    if ((uint32_t)actuator_id < (uint32_t)ACTUATOR_ID__COUNT)
+    if ((uint32_t)actuator_id < (uint32_t)MotorCount)
     {
         (void)memset(&fb, 0, sizeof(fb));
-        if (actuator_feedback_get_copy(actuator_id, &prev) != 0u)
+        if (LowStateGetMotor(actuator_id, &prev) != 0u)
         {
-            prev_rx_count = prev.rx_count;
+            prev_rx_count = prev.rxCount;
         }
         fb.online = 1u;
         fb.bus = bus;
-        fb.rx_dlc = dlc;
-        fb.rx_data0 = data[0];
-        fb.transport = (uint8_t)ACTUATOR_TRANSPORT_CAN;
-        fb.motor_id = mit.motor_id;
+        fb.rxDlc = dlc;
+        fb.rxData0 = data[0];
+        fb.transport = (uint8_t)MotorTransportCAN;
+        fb.motorId = mit.motor_id;
         fb.state = mit.state;
-        fb.rx_id = std_id;
-        fb.rx_count = prev_rx_count + 1u;
-        fb.last_rx_tick = mit.last_rx_tick;
-        fb.position = mit.position;
-        fb.velocity = mit.velocity;
-        fb.torque = mit.torque;
+        fb.rxId = std_id;
+        fb.rxCount = prev_rx_count + 1u;
+        fb.lastRxTick = mit.last_rx_tick;
+        fb.q = mit.position;
+        fb.dq = mit.velocity;
+        fb.tauEst = mit.torque;
         if (measure != NULL)
         {
             fb.ecd = measure->ecd;
-            fb.speed_rpm = measure->speed_rpm;
+            fb.speedRpm = measure->speed_rpm;
             fb.current = measure->given_current;
             fb.temperature = measure->temperate;
         }
@@ -220,7 +220,7 @@ static uint8_t can_rx_process_mit_node_frame(motor_measure_t *measure,
         {
             fb.temperature = mit.mos_temperature;
         }
-        actuator_feedback_update(actuator_id, &fb);
+        LowStateUpdateMotor(actuator_id, &fb);
     }
 
     if (use_detect != 0u)
@@ -278,7 +278,7 @@ static uint8_t can_rx_process_node_frame(motor_measure_t *measure,
                                          const uint8_t data[8],
                                          uint8_t detect_toe,
                                          uint8_t use_detect,
-                                         actuator_id_e actuator_id)
+                                         MotorId actuator_id)
 {
     if (node == NULL)
     {
@@ -292,7 +292,7 @@ static uint8_t can_rx_process_node_frame(motor_measure_t *measure,
         {
             detect_hook(detect_toe);
         }
-        can_rx_update_actuator_feedback_from_measure(actuator_id, bus, std_id, dlc, measure);
+        can_rx_update_LowState_from_measure(actuator_id, bus, std_id, dlc, measure);
         return 1u;
     }
 
@@ -391,32 +391,32 @@ void CAN_cmd_chassis_reset_ID(void)
 
 const motor_measure_t *get_yaw_gimbal_motor_measure_point(void)
 {
-    return motor_instance_measure_const(ACTUATOR_ID_YAW);
+    return motor_instance_measure_const(Motor4);
 }
 
 const motor_measure_t *get_yaw_upper_gimbal_motor_measure_point(void)
 {
-    return motor_instance_measure_const(ACTUATOR_ID_YAW_UPPER);
+    return motor_instance_measure_const(Motor5);
 }
 
 const motor_measure_t *get_pitch_gimbal_motor_measure_point(void)
 {
-    return motor_instance_measure_const(ACTUATOR_ID_PITCH);
+    return motor_instance_measure_const(Motor6);
 }
 
 const motor_measure_t *get_trigger_motor_measure_point(void)
 {
-    return motor_instance_measure_const(ACTUATOR_ID_TRIGGER);
+    return motor_instance_measure_const(Motor7);
 }
 
 const motor_measure_t *get_chassis_motor_measure_point(uint8_t i)
 {
-    return motor_instance_measure_const(actuator_id_from_range(ACTUATOR_ID_CHASSIS0, (uint8_t)(i & 0x03u), 4u));
+    return motor_instance_measure_const(MotorIdRange(Motor0, (uint8_t)(i & 0x03u), 4u));
 }
 
 const motor_measure_t *get_friction_motor_measure_point(uint8_t i)
 {
-    return motor_instance_measure_const(actuator_id_from_range(ACTUATOR_ID_FRICTION0, (uint8_t)(i & 0x03u), 4u));
+    return motor_instance_measure_const(MotorIdRange(Motor8, (uint8_t)(i & 0x03u), 4u));
 }
 
 uint8_t CAN_get_last_1ff_status(void)

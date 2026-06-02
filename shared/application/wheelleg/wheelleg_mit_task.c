@@ -11,7 +11,7 @@
 #include "task.h"
 
 #include "INS_task.h"
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 #include "config.h"
 #include "control_input.h"
 #include "detect_task.h"
@@ -106,9 +106,9 @@
 
 typedef struct
 {
-    actuator_id_e front;
-    actuator_id_e back;
-    actuator_id_e wheel;
+    MotorId front;
+    MotorId back;
+    MotorId wheel;
 } wheelleg_actuator_map_t;
 
 typedef wheelleg_core_pid_t wheelleg_pid_t;
@@ -161,9 +161,9 @@ static void wheelleg_local_point_from_core(const wheelleg_core_foot_point_t *src
 typedef struct
 {
     wheelleg_actuator_map_t actuator[WHEELLEG_SIDE_COUNT];
-    actuator_feedback_t front_fb[WHEELLEG_SIDE_COUNT];
-    actuator_feedback_t back_fb[WHEELLEG_SIDE_COUNT];
-    actuator_feedback_t wheel_fb[WHEELLEG_SIDE_COUNT];
+    MotorState front_fb[WHEELLEG_SIDE_COUNT];
+    MotorState back_fb[WHEELLEG_SIDE_COUNT];
+    MotorState wheel_fb[WHEELLEG_SIDE_COUNT];
     wheelleg_leg_calc_t leg[WHEELLEG_SIDE_COUNT];
     wheelleg_pid_t leg_pid[WHEELLEG_SIDE_COUNT];
     wheelleg_pid_t split_pid;
@@ -804,7 +804,7 @@ static void wheelleg_sdlog_write_status(uint16_t faults,
     for (side = 0u; side < WHEELLEG_SIDE_COUNT; side++)
     {
         const wheelleg_leg_calc_t *leg = &s_wheelleg.leg[side];
-        const actuator_feedback_t *wheel_fb = &s_wheelleg.wheel_fb[side];
+        const MotorState *wheel_fb = &s_wheelleg.wheel_fb[side];
 
         log.leg_length_m[side] = leg->length;
         log.leg_theta_rad[side] = leg->theta;
@@ -814,8 +814,8 @@ static void wheelleg_sdlog_write_status(uint16_t faults,
         log.hip_torque_nm[side] = leg->tp;
         log.joint_torque_nm[side][0] = leg->joint_torque[0];
         log.joint_torque_nm[side][1] = leg->joint_torque[1];
-        log.wheel_pos_rad[side] = wheel_fb->position;
-        log.wheel_vel_radps[side] = wheel_fb->velocity;
+        log.wheel_pos_rad[side] = wheel_fb->q;
+        log.wheel_vel_radps[side] = wheel_fb->dq;
         log.wheel_torque_nm[side] = (wheel_torque != NULL) ? wheel_torque[side] : 0.0f;
         log.contact[side] = leg->contact;
     }
@@ -843,31 +843,31 @@ static void wheelleg_sdlog_write_status(uint16_t faults,
     sdlog_write(SDLOG_TAG_WHEELLEG_MIT_STATUS, &log, (uint16_t)sizeof(log));
 }
 
-static actuator_id_e wheelleg_actuator_from_u8(uint8_t id)
+static MotorId wheelleg_actuator_from_u8(uint8_t id)
 {
-    if ((uint32_t)id >= (uint32_t)ACTUATOR_ID__COUNT)
+    if ((uint32_t)id >= (uint32_t)MotorCount)
     {
-        return ACTUATOR_ID__COUNT;
+        return MotorCount;
     }
-    return (actuator_id_e)id;
+    return (MotorId)id;
 }
 
-static uint8_t wheelleg_feedback_fresh(const actuator_feedback_t *fb, uint32_t now_ms)
+static uint8_t wheelleg_feedback_fresh(const MotorState *fb, uint32_t now_ms)
 {
     if (fb == NULL || fb->online == 0u)
     {
         return 0u;
     }
-    return ((uint32_t)(now_ms - fb->last_rx_tick) <= WHEELLEG_FEEDBACK_TIMEOUT_MS) ? 1u : 0u;
+    return ((uint32_t)(now_ms - fb->lastRxTick) <= WHEELLEG_FEEDBACK_TIMEOUT_MS) ? 1u : 0u;
 }
 
-static uint8_t wheelleg_read_feedback(actuator_id_e id, actuator_feedback_t *out, uint32_t now_ms)
+static uint8_t wheelleg_read_feedback(MotorId id, MotorState *out, uint32_t now_ms)
 {
-    if ((uint32_t)id >= (uint32_t)ACTUATOR_ID__COUNT || out == NULL)
+    if ((uint32_t)id >= (uint32_t)MotorCount || out == NULL)
     {
         return 0u;
     }
-    if (actuator_feedback_get_copy(id, out) == 0u)
+    if (LowStateGetMotor(id, out) == 0u)
     {
         return 0u;
     }
@@ -967,16 +967,16 @@ static uint8_t wheelleg_calc_vmc(wheelleg_leg_calc_t *leg)
     return wheelleg_core_calc_vmc(leg);
 }
 
-static void wheelleg_fill_torque_cmd(actuator_cmd_t *cmd, fp32 torque)
+static void wheelleg_fill_torque_cmd(MotorCmd *cmd, fp32 torque)
 {
     control_core_cmd_set_state_torque(cmd, 0.0f, 0.0f, 0.0f, 0.0f, torque);
 }
 
-static void wheelleg_send_torque(actuator_id_e id, fp32 torque)
+static void wheelleg_send_torque(MotorId id, fp32 torque)
 {
-    actuator_cmd_t cmd;
+    MotorCmd cmd;
 
-    if ((uint32_t)id >= (uint32_t)ACTUATOR_ID__COUNT)
+    if ((uint32_t)id >= (uint32_t)MotorCount)
     {
         return;
     }
@@ -985,16 +985,16 @@ static void wheelleg_send_torque(actuator_id_e id, fp32 torque)
     (void)motor_instance_cmd_set_ids(&id, &cmd, 1u);
 }
 
-static uint8_t wheelleg_send_state_cmd(actuator_id_e id,
+static uint8_t wheelleg_send_state_cmd(MotorId id,
                                        fp32 position,
                                        fp32 velocity,
                                        fp32 kp,
                                        fp32 kd,
                                        fp32 torque)
 {
-    actuator_cmd_t cmd;
+    MotorCmd cmd;
 
-    if ((uint32_t)id >= (uint32_t)ACTUATOR_ID__COUNT)
+    if ((uint32_t)id >= (uint32_t)MotorCount)
     {
         return 0u;
     }
@@ -1003,9 +1003,9 @@ static uint8_t wheelleg_send_state_cmd(actuator_id_e id,
     return motor_instance_cmd_set_state_torque_id(id, &cmd);
 }
 
-static void wheelleg_clear_state_cmd(actuator_id_e id)
+static void wheelleg_clear_state_cmd(MotorId id)
 {
-    if ((uint32_t)id >= (uint32_t)ACTUATOR_ID__COUNT)
+    if ((uint32_t)id >= (uint32_t)MotorCount)
     {
         return;
     }
@@ -1038,7 +1038,7 @@ static void wheelleg_clear_all_control_cmds(void)
         wheelleg_clear_state_cmd(map->back);
         wheelleg_clear_state_cmd(map->wheel);
     }
-    wheelleg_clear_state_cmd((actuator_id_e)g_config.wheelleg_mit.single_test_actuator);
+    wheelleg_clear_state_cmd((MotorId)g_config.wheelleg_mit.single_test_actuator);
 }
 
 static uint8_t wheelleg_control_stage_from_config(void)
@@ -1170,7 +1170,7 @@ static void wheelleg_balance_idle_reset(int16_t vx_axis, int16_t yaw_axis, fp32 
     s_wheelleg.balance_idle_latched = 1u;
 }
 
-static actuator_id_e wheelleg_core_actuator_to_id(wheelleg_core_actuator_e actuator)
+static MotorId wheelleg_core_actuator_to_id(wheelleg_core_actuator_e actuator)
 {
     const wheelleg_actuator_map_t *right_map = &s_wheelleg.actuator[WHEELLEG_SIDE_RIGHT];
     const wheelleg_actuator_map_t *left_map = &s_wheelleg.actuator[WHEELLEG_SIDE_LEFT];
@@ -1190,14 +1190,14 @@ static actuator_id_e wheelleg_core_actuator_to_id(wheelleg_core_actuator_e actua
     case WHEELLEG_CORE_ACT_LEFT_WHEEL:
         return left_map->wheel;
     default:
-        return ACTUATOR_ID__COUNT;
+        return MotorCount;
     }
 }
 
 static uint8_t wheelleg_send_core_output(const wheelleg_core_output_t *out)
 {
-    actuator_id_e ids[WHEELLEG_CORE_ACTUATOR_COUNT];
-    actuator_cmd_t cmds[WHEELLEG_CORE_ACTUATOR_COUNT];
+    MotorId ids[WHEELLEG_CORE_ACTUATOR_COUNT];
+    MotorCmd cmds[WHEELLEG_CORE_ACTUATOR_COUNT];
     uint8_t written = 0u;
     uint8_t i;
 
@@ -1208,7 +1208,7 @@ static uint8_t wheelleg_send_core_output(const wheelleg_core_output_t *out)
 
     for (i = 0u; i < out->actuator_count && i < WHEELLEG_CORE_ACTUATOR_COUNT; i++)
     {
-        actuator_id_e id;
+        MotorId id;
 
         if (out->actuator[i].active == 0u)
         {
@@ -1216,7 +1216,7 @@ static uint8_t wheelleg_send_core_output(const wheelleg_core_output_t *out)
         }
 
         id = wheelleg_core_actuator_to_id((wheelleg_core_actuator_e)i);
-        if ((uint32_t)id >= (uint32_t)ACTUATOR_ID__COUNT)
+        if ((uint32_t)id >= (uint32_t)MotorCount)
         {
             return 0u;
         }
@@ -1274,7 +1274,7 @@ static void wheelleg_clear_joint_test_cmds(void)
     wheelleg_clear_state_cmd(right_map->front);
     wheelleg_clear_state_cmd(right_map->back);
     wheelleg_clear_state_cmd(right_map->wheel);
-    wheelleg_clear_state_cmd((actuator_id_e)g_config.wheelleg_mit.single_test_actuator);
+    wheelleg_clear_state_cmd((MotorId)g_config.wheelleg_mit.single_test_actuator);
 }
 
 static void wheelleg_bench_hold_prepare_default(void)
@@ -1341,7 +1341,7 @@ static void wheelleg_bench_hold_update_pose_target(void)
 static uint8_t wheelleg_single_test_apply(int16_t speed_axis)
 {
     const wheelleg_mit_config_t *cfg = &g_config.wheelleg_mit;
-    const actuator_id_e id = (actuator_id_e)cfg->single_test_actuator;
+    const MotorId id = (MotorId)cfg->single_test_actuator;
     const fp32 velocity = wheelleg_axis_to_fp32(speed_axis,
                                                cfg->single_test_velocity_radps,
                                                cfg->rc_deadband);
@@ -1628,7 +1628,7 @@ static uint8_t wheelleg_foot_test_apply_wheel(const wheelleg_actuator_map_t *map
     s_wheelleg.foot_test_wheel_dx_m[side] = dx;
     s_wheelleg.foot_test_wheel_comp_rad[side] = dx / radius;
 
-    if ((uint32_t)map->wheel >= (uint32_t)ACTUATOR_ID__COUNT)
+    if ((uint32_t)map->wheel >= (uint32_t)MotorCount)
     {
         s_wheelleg.foot_test_wheel_target_rad[side] = s_wheelleg.foot_test_wheel_comp_rad[side];
         return 1u;
@@ -1637,7 +1637,7 @@ static uint8_t wheelleg_foot_test_apply_wheel(const wheelleg_actuator_map_t *map
     if (s_wheelleg.foot_test_wheel_zero_valid[side] == 0u)
     {
         s_wheelleg.foot_test_wheel_zero_rad[side] =
-            (s_wheelleg.wheel_fb[side].online != 0u) ? s_wheelleg.wheel_fb[side].position : 0.0f;
+            (s_wheelleg.wheel_fb[side].online != 0u) ? s_wheelleg.wheel_fb[side].q : 0.0f;
         s_wheelleg.foot_test_wheel_zero_valid[side] = 1u;
     }
 
@@ -2066,8 +2066,8 @@ static void wheelleg_update_observer(fp32 dt, const fp32 gyro[3])
     wheelleg_core_observer_update(&observer,
                                   left,
                                   right,
-                                  s_wheelleg.wheel_fb[WHEELLEG_SIDE_LEFT].velocity,
-                                  s_wheelleg.wheel_fb[WHEELLEG_SIDE_RIGHT].velocity,
+                                  s_wheelleg.wheel_fb[WHEELLEG_SIDE_LEFT].dq,
+                                  s_wheelleg.wheel_fb[WHEELLEG_SIDE_RIGHT].dq,
                                   g_config.wheelleg_mit.wheel_radius_m,
                                   gyro_y,
                                   lpf,
@@ -2138,7 +2138,7 @@ static void wheelleg_publish(uint16_t faults,
     for (side = 0u; side < WHEELLEG_SIDE_COUNT; side++)
     {
         const wheelleg_leg_calc_t *leg = &s_wheelleg.leg[side];
-        const actuator_feedback_t *wheel_fb = &s_wheelleg.wheel_fb[side];
+        const MotorState *wheel_fb = &s_wheelleg.wheel_fb[side];
 
         state.leg[side].length_m = leg->length;
         state.leg[side].theta_rad = leg->theta;
@@ -2151,8 +2151,8 @@ static void wheelleg_publish(uint16_t faults,
         state.leg[side].contact = leg->contact;
         state.leg[side].motor_online[0] = s_wheelleg.front_fb[side].online;
         state.leg[side].motor_online[1] = s_wheelleg.back_fb[side].online;
-        state.wheel_pos_rad[side] = wheel_fb->position;
-        state.wheel_vel_radps[side] = wheel_fb->velocity;
+        state.wheel_pos_rad[side] = wheel_fb->q;
+        state.wheel_vel_radps[side] = wheel_fb->dq;
         state.wheel_torque_nm[side] = wheel_torque[side];
         state.wheel_online[side] = wheel_fb->online;
 
@@ -2231,19 +2231,19 @@ uint8_t wheelleg_update_leg_kinematics(fp32 pitch, const fp32 gyro[3], fp32 dt)
         return 0u;
     }
 
-    right_front_pos = wheelleg_raw_to_kinematic(s_wheelleg.front_fb[WHEELLEG_SIDE_RIGHT].position,
+    right_front_pos = wheelleg_raw_to_kinematic(s_wheelleg.front_fb[WHEELLEG_SIDE_RIGHT].q,
                                                 g_config.wheelleg_mit.right_front_zero_rad,
                                                 g_config.wheelleg_mit.right_front_dir,
                                                 front_kin_zero);
-    right_back_pos = wheelleg_raw_to_kinematic(s_wheelleg.back_fb[WHEELLEG_SIDE_RIGHT].position,
+    right_back_pos = wheelleg_raw_to_kinematic(s_wheelleg.back_fb[WHEELLEG_SIDE_RIGHT].q,
                                                g_config.wheelleg_mit.right_back_zero_rad,
                                                g_config.wheelleg_mit.right_back_dir,
                                                back_kin_zero);
-    left_front_pos = wheelleg_raw_to_kinematic(s_wheelleg.front_fb[WHEELLEG_SIDE_LEFT].position,
+    left_front_pos = wheelleg_raw_to_kinematic(s_wheelleg.front_fb[WHEELLEG_SIDE_LEFT].q,
                                                g_config.wheelleg_mit.left_front_zero_rad,
                                                g_config.wheelleg_mit.left_front_dir,
                                                front_kin_zero);
-    left_back_pos = wheelleg_raw_to_kinematic(s_wheelleg.back_fb[WHEELLEG_SIDE_LEFT].position,
+    left_back_pos = wheelleg_raw_to_kinematic(s_wheelleg.back_fb[WHEELLEG_SIDE_LEFT].q,
                                               g_config.wheelleg_mit.left_back_zero_rad,
                                               g_config.wheelleg_mit.left_back_dir,
                                               back_kin_zero);
@@ -2656,7 +2656,7 @@ void wheelleg_mit_task(void const *pvParameters)
 
         if (single_test == 0u)
         {
-            wheelleg_clear_state_cmd((actuator_id_e)g_config.wheelleg_mit.single_test_actuator);
+            wheelleg_clear_state_cmd((MotorId)g_config.wheelleg_mit.single_test_actuator);
         }
 
         if (single_test != 0u)

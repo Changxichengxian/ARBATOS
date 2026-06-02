@@ -490,9 +490,9 @@
               <FilePath>..\\..\\..\\shared\\application\\input\\control_input.c</FilePath>
             </File>
             <File>
-              <FileName>actuator_cmd.c</FileName>
+              <FileName>LowCmd.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\robot\\actuator_cmd.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\robot\\LowCmd.c</FilePath>
             </File>
             <File>
               <FileName>state_store.c</FileName>

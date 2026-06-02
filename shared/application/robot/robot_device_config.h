@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 #include "config.h"
 #include "control_manager.h"
 
@@ -65,7 +65,7 @@ typedef struct
     uint8_t group;
     uint8_t group_index;
     uint8_t fallback_bus;
-    actuator_id_e actuator_id;
+    MotorId actuator_id;
     const motor_node_param_t *node;
 } robot_config_motor_device_t;
 
@@ -156,9 +156,9 @@ static inline const char *robot_config_arm_motor_name(uint8_t index)
     }
 }
 
-static inline actuator_id_e robot_config_source_or_default(uint16_t source_id, actuator_id_e fallback)
+static inline MotorId robot_config_source_or_default(uint16_t source_id, MotorId fallback)
 {
-    return (source_id < (uint16_t)ACTUATOR_ID__COUNT) ? (actuator_id_e)source_id : fallback;
+    return (source_id < (uint16_t)MotorCount) ? (MotorId)source_id : fallback;
 }
 
 static inline const void *robot_config_ptr_from_offset(uint32_t config_offset)
@@ -206,26 +206,26 @@ static inline const char *robot_config_motor_default_name(uint8_t group, uint8_t
     }
 }
 
-static inline actuator_id_e robot_config_motor_default_actuator(uint8_t group, uint8_t group_index)
+static inline MotorId robot_config_motor_default_actuator(uint8_t group, uint8_t group_index)
 {
     switch ((robot_config_motor_group_e)group)
     {
     case ROBOT_CONFIG_MOTOR_GROUP_CHASSIS:
-        return actuator_id_from_range(ACTUATOR_ID_CHASSIS0, group_index, 4u);
+        return MotorIdRange(Motor0, group_index, 4u);
     case ROBOT_CONFIG_MOTOR_GROUP_YAW:
-        return ACTUATOR_ID_YAW;
+        return Motor4;
     case ROBOT_CONFIG_MOTOR_GROUP_YAW_UPPER:
-        return ACTUATOR_ID_YAW_UPPER;
+        return Motor5;
     case ROBOT_CONFIG_MOTOR_GROUP_PITCH:
-        return ACTUATOR_ID_PITCH;
+        return Motor6;
     case ROBOT_CONFIG_MOTOR_GROUP_TRIGGER:
-        return ACTUATOR_ID_TRIGGER;
+        return Motor7;
     case ROBOT_CONFIG_MOTOR_GROUP_FRICTION:
-        return actuator_id_from_range(ACTUATOR_ID_FRICTION0, group_index, 4u);
+        return MotorIdRange(Motor8, group_index, 4u);
     case ROBOT_CONFIG_MOTOR_GROUP_ARM:
-        return actuator_id_from_range(ACTUATOR_ID_ARM_J0, group_index, (uint8_t)MOTOR_ARM_JOINT_COUNT);
+        return MotorIdRange(Motor12, group_index, (uint8_t)MOTOR_ARM_JOINT_COUNT);
     default:
-        return ACTUATOR_ID__COUNT;
+        return MotorCount;
     }
 }
 
@@ -252,7 +252,7 @@ static inline uint8_t robot_config_motor_device_fill(const char *name,
 {
     const motor_node_param_t *node;
     const char *default_name;
-    const actuator_id_e fallback_actuator = robot_config_motor_default_actuator(group, group_index);
+    const MotorId fallback_actuator = robot_config_motor_default_actuator(group, group_index);
     const uint8_t known_group = (group < (uint8_t)ROBOT_CONFIG_MOTOR_GROUP_CUSTOM_BASE) ? 1u : 0u;
 
     if (out == NULL)
@@ -261,7 +261,7 @@ static inline uint8_t robot_config_motor_device_fill(const char *name,
     }
 
     default_name = robot_config_motor_default_name(group, group_index);
-    if (known_group != 0u && (default_name == NULL || fallback_actuator == ACTUATOR_ID__COUNT))
+    if (known_group != 0u && (default_name == NULL || fallback_actuator == MotorCount))
     {
         return 0u;
     }
@@ -281,7 +281,7 @@ static inline uint8_t robot_config_motor_device_fill(const char *name,
     out->actuator_id = robot_config_source_or_default(source_id, fallback_actuator);
     out->node = node;
 
-    if (out->name == NULL || out->actuator_id == ACTUATOR_ID__COUNT)
+    if (out->name == NULL || out->actuator_id == MotorCount)
     {
         return 0u;
     }
@@ -368,7 +368,7 @@ static inline uint8_t robot_config_motor_device_find_by_name(const char *name, r
     return 0u;
 }
 
-static inline uint8_t robot_config_motor_device_find_by_actuator(actuator_id_e actuator_id,
+static inline uint8_t robot_config_motor_device_find_by_actuator(MotorId actuator_id,
                                                                  robot_config_motor_device_t *out)
 {
     const uint8_t count = robot_config_motor_device_count();

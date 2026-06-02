@@ -55,7 +55,7 @@ typedef struct
 {
     fp32 wheel_speed_set[CHASSIS_CORE_WHEEL_COUNT];
     int16_t current[CHASSIS_CORE_WHEEL_COUNT];
-    actuator_cmd_t actuator[CHASSIS_CORE_WHEEL_COUNT];
+    MotorCmd actuator[CHASSIS_CORE_WHEEL_COUNT];
 } chassis_core_output_t;
 
 static inline fp32 chassis_core_abs_fp32(fp32 value)

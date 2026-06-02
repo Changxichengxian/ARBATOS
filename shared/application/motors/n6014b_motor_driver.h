@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 #include "config.h"
 #include "types.h"
 
@@ -38,7 +38,7 @@ typedef struct
 
 void n6014b_motor_driver_init(void);
 int n6014b_motor_send_actuator(uint8_t port,
-                               actuator_id_e actuator_id,
+                               MotorId actuator_id,
                                const motor_node_param_t *node,
                                int16_t current);
-const n6014b_motor_state_t *n6014b_motor_get_state(actuator_id_e actuator_id);
+const n6014b_motor_state_t *n6014b_motor_get_state(MotorId actuator_id);

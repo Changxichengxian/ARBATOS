@@ -11,7 +11,7 @@
  * - 前段：底盘运行快照、日志缓存、调参接口。
  * - 中段：模式/反馈更新、运动学换算、功率限制前后的电流计算。
  * - 后段：chassis_control_task() 主循环，处理测试模式、离线保护和日志。
- * - 输出：电流命令写入 actuator_cmd，由 CAN 发送任务统一发出。
+ * - 输出：电流命令写入 LowCmd，由 CAN 发送任务统一发出。
  */
 
 #include "chassis_control_task.h"
@@ -27,7 +27,7 @@
 #include "manual_input.h"
 #include "control_input.h"
 #include "CAN_receive.h"
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 #include "chassis_state.h"
 #include "motor_instance.h"
 #include "motor_config.h"

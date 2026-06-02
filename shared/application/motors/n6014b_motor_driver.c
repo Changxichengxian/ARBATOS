@@ -45,14 +45,14 @@ typedef struct
     uint32_t rx_parse_error_count;
 } n6014b_port_state_t;
 
-static n6014b_motor_state_t g_n6014b_state[ACTUATOR_ID__COUNT];
-static uint8_t g_n6014b_axis_configured[ACTUATOR_ID__COUNT];
-static uint16_t g_n6014b_axis_timeout_ms[ACTUATOR_ID__COUNT];
+static n6014b_motor_state_t g_n6014b_state[MotorCount];
+static uint8_t g_n6014b_axis_configured[MotorCount];
+static uint16_t g_n6014b_axis_timeout_ms[MotorCount];
 static n6014b_port_state_t g_n6014b_port[2];
 
-static uint8_t n6014b_actuator_id_valid(actuator_id_e id)
+static uint8_t n6014b_actuator_id_valid(MotorId id)
 {
-    return ((uint32_t)id < (uint32_t)ACTUATOR_ID__COUNT) ? 1u : 0u;
+    return ((uint32_t)id < (uint32_t)MotorCount) ? 1u : 0u;
 }
 
 static fp32 n6014b_clamp_fp32(fp32 value, fp32 min_value, fp32 max_value)
@@ -295,16 +295,17 @@ static uint8_t n6014b_node_disabled(const motor_node_param_t *node)
                      node->can_id == 0u);
 }
 
-static uint8_t n6014b_cmd_mode_uses_position(actuator_cmd_mode_e mode)
+static uint8_t n6014b_cmd_mode_uses_position(MotorMode mode)
 {
-    return (uint8_t)(mode == ACTUATOR_CMD_MODE_STATE_TORQUE ||
-                     mode == ACTUATOR_CMD_MODE_POS_VEL ||
-                     mode == ACTUATOR_CMD_MODE_FORCE_POS);
+    return (uint8_t)(mode == MotorModeStateTorque ||
+                     mode == MotorModePosVel ||
+                     mode == MotorModeForcePos);
 }
 
-static uint8_t n6014b_cmd_mode_uses_velocity(actuator_cmd_mode_e mode)
+static uint8_t n6014b_cmd_mode_uses_velocity(MotorMode mode)
 {
-    return (uint8_t)(mode == ACTUATOR_CMD_MODE_SPEED);
+    return (uint8_t)(mode == MotorModeSpeed ||
+                     mode == MotorModeDamping);
 }
 
 static fp32 n6014b_current_to_torque(const motor_node_param_t *node,
@@ -331,7 +332,7 @@ static fp32 n6014b_current_to_torque(const motor_node_param_t *node,
 }
 
 static uint8_t n6014b_build_cmd_from_actuator(const motor_node_param_t *node,
-                                              actuator_id_e actuator_id,
+                                              MotorId actuator_id,
                                               int16_t current,
                                               n6014b_mode_e *mode,
                                               fp32 *position,
@@ -341,10 +342,10 @@ static uint8_t n6014b_build_cmd_from_actuator(const motor_node_param_t *node,
                                               fp32 *torque)
 {
     const motor_model_mit_limits_t *limits = motor_cfg_mit_limits(node);
-    actuator_cmd_t src;
+    MotorCmd src;
     uint8_t have_cmd;
     uint8_t active_cmd;
-    actuator_cmd_mode_e cmd_mode = ACTUATOR_CMD_MODE_CURRENT;
+    MotorMode cmd_mode = MotorModeCurrent;
 
     if (mode == NULL || position == NULL || velocity == NULL ||
         kp == NULL || kd == NULL || torque == NULL)
@@ -365,10 +366,10 @@ static uint8_t n6014b_build_cmd_from_actuator(const motor_node_param_t *node,
     }
 
     (void)memset(&src, 0, sizeof(src));
-    have_cmd = actuator_cmd_get_copy(actuator_id, &src);
+    have_cmd = LowCmdGetMotor(actuator_id, &src);
     active_cmd = (uint8_t)(have_cmd != 0u &&
                            src.active != 0u &&
-                           src.mode != (uint8_t)ACTUATOR_CMD_MODE_NONE);
+                           src.mode != (uint8_t)MotorModeNone);
 
     if (active_cmd == 0u && current == 0)
     {
@@ -378,22 +379,27 @@ static uint8_t n6014b_build_cmd_from_actuator(const motor_node_param_t *node,
     *mode = N6014B_MODE_FOC;
     if (active_cmd != 0u)
     {
-        cmd_mode = (actuator_cmd_mode_e)src.mode;
+        cmd_mode = (MotorMode)src.mode;
+    }
+
+    if (cmd_mode == MotorModeDisable)
+    {
+        return 1u;
     }
 
     if (active_cmd != 0u && n6014b_cmd_mode_uses_position(cmd_mode) != 0u)
     {
-        *position = src.position;
-        *velocity = src.velocity;
+        *position = src.q;
+        *velocity = src.dq;
         *kp = src.kp;
         *kd = src.kd;
-        *torque = src.torque;
+        *torque = src.tau;
     }
     else if (active_cmd != 0u && n6014b_cmd_mode_uses_velocity(cmd_mode) != 0u)
     {
-        *velocity = src.velocity;
+        *velocity = src.dq;
         *kd = src.kd;
-        *torque = src.torque;
+        *torque = src.tau;
     }
     else
     {
@@ -446,7 +452,7 @@ static void n6014b_build_tx_frame(uint8_t frame[N6014B_TX_FRAME_SIZE],
     n6014b_write_u32_le(&frame[16], crc);
 }
 
-static void n6014b_copy_state_from_isr(actuator_id_e id,
+static void n6014b_copy_state_from_isr(MotorId id,
                                        uint8_t port,
                                        uint8_t mode,
                                        uint8_t timeout,
@@ -487,21 +493,21 @@ static void n6014b_copy_state_from_isr(actuator_id_e id,
     taskEXIT_CRITICAL_FROM_ISR(saved);
 }
 
-static actuator_id_e n6014b_find_axis_from_isr(uint8_t port, uint8_t motor_id)
+static MotorId n6014b_find_axis_from_isr(uint8_t port, uint8_t motor_id)
 {
-    for (uint8_t i = 0u; i < (uint8_t)ACTUATOR_ID__COUNT; i++)
+    for (uint8_t i = 0u; i < (uint8_t)MotorCount; i++)
     {
         if (g_n6014b_axis_configured[i] != 0u &&
             g_n6014b_state[i].rs485_port == port &&
             g_n6014b_state[i].motor_id == motor_id)
         {
-            return (actuator_id_e)i;
+            return (MotorId)i;
         }
     }
-    return ACTUATOR_ID__COUNT;
+    return MotorCount;
 }
 
-static void n6014b_mark_axis_crc_error_from_isr(actuator_id_e id)
+static void n6014b_mark_axis_crc_error_from_isr(MotorId id)
 {
     UBaseType_t saved;
 
@@ -523,7 +529,7 @@ static void n6014b_process_rx_frame_from_isr(uint8_t port, const uint8_t *frame)
     uint8_t timeout;
     uint32_t crc_expect;
     uint32_t crc_actual;
-    actuator_id_e axis;
+    MotorId axis;
     fp32 torque;
     fp32 velocity;
     fp32 position;
@@ -734,7 +740,7 @@ static int n6014b_tx(uint8_t port, const uint8_t frame[N6014B_TX_FRAME_SIZE])
     return 1;
 }
 
-static void n6014b_update_axis_config(actuator_id_e id,
+static void n6014b_update_axis_config(MotorId id,
                                       uint8_t port,
                                       uint8_t motor_id,
                                       uint16_t timeout_ms)
@@ -756,7 +762,7 @@ static void n6014b_update_axis_config(actuator_id_e id,
     taskEXIT_CRITICAL();
 }
 
-static void n6014b_record_tx_result(actuator_id_e id, int ret)
+static void n6014b_record_tx_result(MotorId id, int ret)
 {
     if (n6014b_actuator_id_valid(id) == 0u)
     {
@@ -773,11 +779,11 @@ static void n6014b_record_tx_result(actuator_id_e id, int ret)
     taskEXIT_CRITICAL();
 }
 
-static void n6014b_refresh_feedback(actuator_id_e id, const motor_node_param_t *node)
+static void n6014b_refresh_feedback(MotorId id, const motor_node_param_t *node)
 {
     const motor_model_mit_limits_t *limits = motor_cfg_mit_limits(node);
     n6014b_motor_state_t state;
-    actuator_feedback_t fb;
+    MotorState fb;
     motor_measure_t *measure;
     uint16_t timeout_ms;
     uint32_t now_ms;
@@ -809,28 +815,28 @@ static void n6014b_refresh_feedback(actuator_id_e id, const motor_node_param_t *
     (void)memset(&fb, 0, sizeof(fb));
     fb.online = state.online;
     fb.bus = state.rs485_port;
-    fb.rx_dlc = N6014B_RX_FRAME_SIZE;
-    fb.transport = (uint8_t)ACTUATOR_TRANSPORT_RS485;
-    fb.motor_id = state.motor_id;
+    fb.rxDlc = N6014B_RX_FRAME_SIZE;
+    fb.transport = (uint8_t)MotorTransportRS485;
+    fb.motorId = state.motor_id;
     fb.state = state.mode;
-    fb.rx_id = state.motor_id;
-    fb.rx_count = state.rx_frame_count;
-    fb.last_rx_tick = state.last_rx_tick_ms;
-    fb.position = state.position_rad;
-    fb.velocity = state.speed_rad_s;
-    fb.torque = state.torque_nm;
+    fb.rxId = state.motor_id;
+    fb.rxCount = state.rx_frame_count;
+    fb.lastRxTick = state.last_rx_tick_ms;
+    fb.q = state.position_rad;
+    fb.dq = state.speed_rad_s;
+    fb.tauEst = state.torque_nm;
     fb.ecd = n6014b_position_to_ecd(state.position_rad);
-    fb.speed_rpm = n6014b_float_to_i16(state.speed_rad_s * N6014B_RADPS_TO_RPM);
+    fb.speedRpm = n6014b_float_to_i16(state.speed_rad_s * N6014B_RADPS_TO_RPM);
     fb.current = n6014b_torque_to_current_like(limits, state.torque_nm);
     fb.temperature = (uint8_t)state.motor_temp;
-    actuator_feedback_update(id, &fb);
+    LowStateUpdateMotor(id, &fb);
 
     measure = motor_instance_measure(id);
     if (measure != NULL)
     {
         measure->last_ecd = (int16_t)measure->ecd;
         measure->ecd = fb.ecd;
-        measure->speed_rpm = fb.speed_rpm;
+        measure->speed_rpm = fb.speedRpm;
         measure->given_current = fb.current;
         measure->temperate = fb.temperature;
     }
@@ -847,7 +853,7 @@ void n6014b_motor_driver_init(void)
 }
 
 int n6014b_motor_send_actuator(uint8_t port,
-                               actuator_id_e actuator_id,
+                               MotorId actuator_id,
                                const motor_node_param_t *node,
                                int16_t current)
 {
@@ -909,7 +915,7 @@ int n6014b_motor_send_actuator(uint8_t port,
     return ret;
 }
 
-const n6014b_motor_state_t *n6014b_motor_get_state(actuator_id_e actuator_id)
+const n6014b_motor_state_t *n6014b_motor_get_state(MotorId actuator_id)
 {
     if (n6014b_actuator_id_valid(actuator_id) == 0u)
     {
@@ -919,7 +925,7 @@ const n6014b_motor_state_t *n6014b_motor_get_state(actuator_id_e actuator_id)
 }
 
 uint8_t can_tx_process_extra_item(uint8_t bus,
-                                  actuator_id_e actuator_id,
+                                  MotorId actuator_id,
                                   const motor_node_param_t *node,
                                   int16_t current)
 {

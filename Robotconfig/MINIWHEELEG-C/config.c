@@ -7,7 +7,7 @@
  */
 
 #include "config.h"
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 
 /*
  * AUX 口临时改参：发送 "<id>:<value>"（例如 "1:1000"）
@@ -42,7 +42,7 @@ config_t g_config = {
     .devices = ROBOT_DEFAULT_DEVICE_TABLE,
     .motor =
         {
-            // 轮腿 MIT 目前复用 ACTUATOR_ID_ARM_J0..J5 这 6 个通用 MIT 执行器槽位。
+            // 轮腿 MIT 目前复用 Motor12..J5 这 6 个通用 MIT 执行器槽位。
             .arm =
                 {
                     {.model = MOTOR_MODEL_DM_H3510_V10, .can_id = 6u, .can_bus = MINIWHEELEG_MIT_MOTOR_CAN_BUS, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_MIT, .master_id = 6u, .transport = MOTOR_TRANSPORT_CAN},
@@ -100,7 +100,7 @@ config_t g_config = {
             .max_yaw_rate_radps = 1.20f,
             .rc_deadband = 10u,
             .enable_switch_pos = MANUAL_INPUT_SWITCH_POS_MID,
-            .single_test_actuator = (uint8_t)ACTUATOR_ID_ARM_J5, // [600] 单电机测试目标：达妙 H3510，CAN1 ID 5
+            .single_test_actuator = (uint8_t)Motor17, // [600] 单电机测试目标：达妙 H3510，CAN1 ID 5
             .single_test_position_rad = 0.0f, // [601] MIT 位置给定；kp=0 时不生效
             .single_test_velocity_radps = 30.0f, // [602] ch3 满杆速度，rad/s；改负数可反向
             .single_test_kp = 0.0f, // [603] 位置刚度，默认关闭位置环
@@ -140,12 +140,12 @@ config_t g_config = {
             .control_stage = 0u, // [637] 0 bench, 1 position+LQR, 2 VMC height, 3 VMC assist
             .lqr_wheel_torque_scale = 0.18f, // [638]
             .lqr_hip_torque_scale = 0.18f, // [639]
-            .right_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J3,
-            .right_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J4,
-            .right_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J0,
-            .left_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J1,
-            .left_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J2,
-            .left_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J5,
+            .right_front_actuator = (uint8_t)Motor15,
+            .right_back_actuator = (uint8_t)Motor16,
+            .right_wheel_actuator = (uint8_t)Motor12,
+            .left_front_actuator = (uint8_t)Motor13,
+            .left_back_actuator = (uint8_t)Motor14,
+            .left_wheel_actuator = (uint8_t)Motor17,
         },
 
     // Shoot config

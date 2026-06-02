@@ -65,13 +65,13 @@ typedef struct
     fp32 gyro_set_radps;
     fp32 current_set;
     int16_t given_current;
-    actuator_cmd_t actuator;
+    MotorCmd actuator;
 } gimbal_core_axis_output_t;
 
 typedef struct
 {
     int16_t current[GIMBAL_CORE_AXIS_COUNT];
-    actuator_cmd_t actuator[GIMBAL_CORE_AXIS_COUNT];
+    MotorCmd actuator[GIMBAL_CORE_AXIS_COUNT];
 } gimbal_core_output_t;
 
 static inline void gimbal_core_step_axis_base(gimbal_PID_t *angle_pid,

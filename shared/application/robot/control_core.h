@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 #include "types.h"
 
 #ifdef __cplusplus
@@ -53,16 +53,16 @@ static inline int16_t control_core_abs_i16(int16_t value)
     return (value < 0) ? (int16_t)(-value) : value;
 }
 
-static inline void control_core_cmd_clear(actuator_cmd_t *cmd)
+static inline void control_core_cmd_clear(MotorCmd *cmd)
 {
     if (cmd != NULL)
     {
         (void)memset(cmd, 0, sizeof(*cmd));
-        cmd->mode = (uint8_t)ACTUATOR_CMD_MODE_NONE;
+        cmd->mode = (uint8_t)MotorModeNone;
     }
 }
 
-static inline void control_core_cmd_clear_many(actuator_cmd_t *cmds, uint8_t count)
+static inline void control_core_cmd_clear_many(MotorCmd *cmds, uint8_t count)
 {
     uint8_t i;
 
@@ -77,31 +77,31 @@ static inline void control_core_cmd_clear_many(actuator_cmd_t *cmds, uint8_t cou
     }
 }
 
-static inline void control_core_cmd_set_current(actuator_cmd_t *cmd, int16_t current)
+static inline void control_core_cmd_set_current(MotorCmd *cmd, int16_t current)
 {
     if (cmd != NULL)
     {
         control_core_cmd_clear(cmd);
         cmd->active = 1u;
-        cmd->mode = (uint8_t)ACTUATOR_CMD_MODE_CURRENT;
+        cmd->mode = (uint8_t)MotorModeCurrent;
         cmd->current = current;
     }
 }
 
-static inline void control_core_cmd_set_speed(actuator_cmd_t *cmd, fp32 velocity, fp32 kd, fp32 torque)
+static inline void control_core_cmd_set_speed(MotorCmd *cmd, fp32 velocity, fp32 kd, fp32 torque)
 {
     if (cmd != NULL)
     {
         control_core_cmd_clear(cmd);
         cmd->active = 1u;
-        cmd->mode = (uint8_t)ACTUATOR_CMD_MODE_SPEED;
-        cmd->velocity = velocity;
+        cmd->mode = (uint8_t)MotorModeSpeed;
+        cmd->dq = velocity;
         cmd->kd = kd;
-        cmd->torque = torque;
+        cmd->tau = torque;
     }
 }
 
-static inline void control_core_cmd_set_state_torque(actuator_cmd_t *cmd,
+static inline void control_core_cmd_set_state_torque(MotorCmd *cmd,
                                                      fp32 position,
                                                      fp32 velocity,
                                                      fp32 kp,
@@ -112,12 +112,12 @@ static inline void control_core_cmd_set_state_torque(actuator_cmd_t *cmd,
     {
         control_core_cmd_clear(cmd);
         cmd->active = 1u;
-        cmd->mode = (uint8_t)ACTUATOR_CMD_MODE_STATE_TORQUE;
-        cmd->position = position;
-        cmd->velocity = velocity;
+        cmd->mode = (uint8_t)MotorModeStateTorque;
+        cmd->q = position;
+        cmd->dq = velocity;
         cmd->kp = kp;
         cmd->kd = kd;
-        cmd->torque = torque;
+        cmd->tau = torque;
     }
 }
 

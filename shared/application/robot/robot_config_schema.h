@@ -9,7 +9,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 
 #ifndef ROBOT_TASK_MODULE_MAX
 #define ROBOT_TASK_MODULE_MAX 16u
@@ -135,24 +135,24 @@ typedef struct
     { \
         .count = (uint8_t)ROBOT_DEFAULT_DEVICE_TABLE_COUNT, \
         .entry = { \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.chassis0", ROBOT_DEVICE_MOTOR_ROLE_CHASSIS, 0u, 1u, ACTUATOR_ID_CHASSIS0, motor.chassis[0]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.chassis1", ROBOT_DEVICE_MOTOR_ROLE_CHASSIS, 1u, 1u, ACTUATOR_ID_CHASSIS1, motor.chassis[1]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.chassis2", ROBOT_DEVICE_MOTOR_ROLE_CHASSIS, 2u, 1u, ACTUATOR_ID_CHASSIS2, motor.chassis[2]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.chassis3", ROBOT_DEVICE_MOTOR_ROLE_CHASSIS, 3u, 1u, ACTUATOR_ID_CHASSIS3, motor.chassis[3]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.yaw", ROBOT_DEVICE_MOTOR_ROLE_YAW, 0u, 1u, ACTUATOR_ID_YAW, motor.yaw), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.yaw_upper", ROBOT_DEVICE_MOTOR_ROLE_YAW_UPPER, 0u, 1u, ACTUATOR_ID_YAW_UPPER, motor.yaw_upper), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.pitch", ROBOT_DEVICE_MOTOR_ROLE_PITCH, 0u, 1u, ACTUATOR_ID_PITCH, motor.pitch), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.trigger", ROBOT_DEVICE_MOTOR_ROLE_TRIGGER, 0u, 1u, ACTUATOR_ID_TRIGGER, motor.trigger), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.friction0", ROBOT_DEVICE_MOTOR_ROLE_FRICTION, 0u, 2u, ACTUATOR_ID_FRICTION0, motor.friction[0]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.friction1", ROBOT_DEVICE_MOTOR_ROLE_FRICTION, 1u, 2u, ACTUATOR_ID_FRICTION1, motor.friction[1]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.friction2", ROBOT_DEVICE_MOTOR_ROLE_FRICTION, 2u, 2u, ACTUATOR_ID_FRICTION2, motor.friction[2]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.friction3", ROBOT_DEVICE_MOTOR_ROLE_FRICTION, 3u, 2u, ACTUATOR_ID_FRICTION3, motor.friction[3]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.arm0", ROBOT_DEVICE_MOTOR_ROLE_ARM, 0u, 1u, ACTUATOR_ID_ARM_J0, motor.arm[0]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.arm1", ROBOT_DEVICE_MOTOR_ROLE_ARM, 1u, 2u, ACTUATOR_ID_ARM_J1, motor.arm[1]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.arm2", ROBOT_DEVICE_MOTOR_ROLE_ARM, 2u, 2u, ACTUATOR_ID_ARM_J2, motor.arm[2]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.arm3", ROBOT_DEVICE_MOTOR_ROLE_ARM, 3u, 2u, ACTUATOR_ID_ARM_J3, motor.arm[3]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.arm4", ROBOT_DEVICE_MOTOR_ROLE_ARM, 4u, 2u, ACTUATOR_ID_ARM_J4, motor.arm[4]), \
-            ROBOT_DEVICE_ENTRY_MOTOR("motor.arm5", ROBOT_DEVICE_MOTOR_ROLE_ARM, 5u, 2u, ACTUATOR_ID_ARM_J5, motor.arm[5]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.chassis0", ROBOT_DEVICE_MOTOR_ROLE_CHASSIS, 0u, 1u, Motor0, motor.chassis[0]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.chassis1", ROBOT_DEVICE_MOTOR_ROLE_CHASSIS, 1u, 1u, Motor1, motor.chassis[1]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.chassis2", ROBOT_DEVICE_MOTOR_ROLE_CHASSIS, 2u, 1u, Motor2, motor.chassis[2]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.chassis3", ROBOT_DEVICE_MOTOR_ROLE_CHASSIS, 3u, 1u, Motor3, motor.chassis[3]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.yaw", ROBOT_DEVICE_MOTOR_ROLE_YAW, 0u, 1u, Motor4, motor.yaw), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.yaw_upper", ROBOT_DEVICE_MOTOR_ROLE_YAW_UPPER, 0u, 1u, Motor5, motor.yaw_upper), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.pitch", ROBOT_DEVICE_MOTOR_ROLE_PITCH, 0u, 1u, Motor6, motor.pitch), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.trigger", ROBOT_DEVICE_MOTOR_ROLE_TRIGGER, 0u, 1u, Motor7, motor.trigger), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.friction0", ROBOT_DEVICE_MOTOR_ROLE_FRICTION, 0u, 2u, Motor8, motor.friction[0]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.friction1", ROBOT_DEVICE_MOTOR_ROLE_FRICTION, 1u, 2u, Motor9, motor.friction[1]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.friction2", ROBOT_DEVICE_MOTOR_ROLE_FRICTION, 2u, 2u, Motor10, motor.friction[2]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.friction3", ROBOT_DEVICE_MOTOR_ROLE_FRICTION, 3u, 2u, Motor11, motor.friction[3]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.arm0", ROBOT_DEVICE_MOTOR_ROLE_ARM, 0u, 1u, Motor12, motor.arm[0]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.arm1", ROBOT_DEVICE_MOTOR_ROLE_ARM, 1u, 2u, Motor13, motor.arm[1]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.arm2", ROBOT_DEVICE_MOTOR_ROLE_ARM, 2u, 2u, Motor14, motor.arm[2]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.arm3", ROBOT_DEVICE_MOTOR_ROLE_ARM, 3u, 2u, Motor15, motor.arm[3]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.arm4", ROBOT_DEVICE_MOTOR_ROLE_ARM, 4u, 2u, Motor16, motor.arm[4]), \
+            ROBOT_DEVICE_ENTRY_MOTOR("motor.arm5", ROBOT_DEVICE_MOTOR_ROLE_ARM, 5u, 2u, Motor17, motor.arm[5]), \
             ROBOT_DEVICE_ENTRY_SENSOR("sensor.imu", ROBOT_DEVICE_ROLE_IMU, 0u, imu), \
             ROBOT_DEVICE_ENTRY_INPUT("input.manual", ROBOT_DEVICE_ROLE_MANUAL_INPUT, 0u, manual_input), \
             ROBOT_DEVICE_ENTRY_SENSOR("sensor.battery", ROBOT_DEVICE_ROLE_BATTERY, 0u, voltage), \

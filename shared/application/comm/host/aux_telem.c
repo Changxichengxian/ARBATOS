@@ -14,7 +14,7 @@
 #include "task.h"
 #include "CAN_receive.h"
 #include "INS_task.h"
-#include "actuator_cmd.h"
+#include "LowCmd.h"
 #include "aux_port.h"
 #include "aux_tune.h"
 #include "battery_monitor_task.h"
@@ -685,7 +685,7 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
             case 1: return (fp32)(mm ? mm->given_current : 0);
             case 2: return (fp32)(mm ? mm->temperate : 0);
             case 3:
-                return (fp32)actuator_cmd_get_current(actuator_id_from_range(ACTUATOR_ID_FRICTION0, motor, 4u));
+                return (fp32)LowCmdGetCurrent(MotorIdRange(Motor8, motor, 4u));
             default: return 0.0f;
             }
         }
@@ -900,19 +900,19 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
         return ctx->trigger_meas ? (fp32)ctx->trigger_meas->given_current : 0.0f;
 
     case AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS0_CURRENT:
-        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_CHASSIS0);
+        return (fp32)LowCmdGetCurrent(Motor0);
     case AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS1_CURRENT:
-        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_CHASSIS1);
+        return (fp32)LowCmdGetCurrent(Motor1);
     case AUX_TELEM_SIG_DIAG_ACTUATOR_PITCH_CURRENT:
-        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_PITCH);
+        return (fp32)LowCmdGetCurrent(Motor6);
     case AUX_TELEM_SIG_DIAG_ACTUATOR_TRIGGER_CURRENT:
-        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_TRIGGER);
+        return (fp32)LowCmdGetCurrent(Motor7);
     case AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS3_CURRENT:
-        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_CHASSIS3);
+        return (fp32)LowCmdGetCurrent(Motor3);
     case AUX_TELEM_SIG_DIAG_ACTUATOR_YAW_CURRENT:
-        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_YAW);
+        return (fp32)LowCmdGetCurrent(Motor4);
     case AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS2_CURRENT:
-        return (fp32)actuator_cmd_get_current(ACTUATOR_ID_CHASSIS2);
+        return (fp32)LowCmdGetCurrent(Motor2);
     case AUX_TELEM_SIG_DIAG_RM_GROUP_1FF_STATUS:
         return (fp32)CAN_get_last_1ff_status();
     case AUX_TELEM_SIG_DIAG_CAN_BUS1_ERR:

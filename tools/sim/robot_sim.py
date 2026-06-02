@@ -95,27 +95,27 @@ MOTOR_MODELS: dict[str, dict[str, Any]] = {
     },
 }
 
-ACTUATOR_ID_BY_NAME: dict[str, int] = {
-    "ACTUATOR_ID_CHASSIS0": 0,
-    "ACTUATOR_ID_CHASSIS1": 1,
-    "ACTUATOR_ID_CHASSIS2": 2,
-    "ACTUATOR_ID_CHASSIS3": 3,
-    "ACTUATOR_ID_YAW": 4,
-    "ACTUATOR_ID_YAW_UPPER": 5,
-    "ACTUATOR_ID_PITCH": 6,
-    "ACTUATOR_ID_TRIGGER": 7,
-    "ACTUATOR_ID_FRICTION0": 8,
-    "ACTUATOR_ID_FRICTION1": 9,
-    "ACTUATOR_ID_FRICTION2": 10,
-    "ACTUATOR_ID_FRICTION3": 11,
-    "ACTUATOR_ID_ARM_J0": 12,
-    "ACTUATOR_ID_ARM_J1": 13,
-    "ACTUATOR_ID_ARM_J2": 14,
-    "ACTUATOR_ID_ARM_J3": 15,
-    "ACTUATOR_ID_ARM_J4": 16,
-    "ACTUATOR_ID_ARM_J5": 17,
+MOTOR_ID_BY_NAME: dict[str, int] = {
+    "Motor0": 0,
+    "Motor1": 1,
+    "Motor2": 2,
+    "Motor3": 3,
+    "Motor4": 4,
+    "Motor5": 5,
+    "Motor6": 6,
+    "Motor7": 7,
+    "Motor8": 8,
+    "Motor9": 9,
+    "Motor10": 10,
+    "Motor11": 11,
+    "Motor12": 12,
+    "Motor13": 13,
+    "Motor14": 14,
+    "Motor15": 15,
+    "Motor16": 16,
+    "Motor17": 17,
 }
-ACTUATOR_NAME_BY_ID = {value: key for key, value in ACTUATOR_ID_BY_NAME.items()}
+MOTOR_NAME_BY_ID = {value: key for key, value in MOTOR_ID_BY_NAME.items()}
 
 PROTOCOL_NAMES = {
     "MOTOR_PROTOCOL_INHERIT",
@@ -141,13 +141,13 @@ TRANSPORT_NAMES = {
 }
 
 ROLE_SPECS = [
-    ("chassis", "motor.chassis", 4, "ACTUATOR_ID_CHASSIS", 1),
-    ("friction", "motor.friction", 4, "ACTUATOR_ID_FRICTION", 2),
-    ("yaw", "motor.yaw", 1, "ACTUATOR_ID_YAW", 1),
-    ("yaw_upper", "motor.yaw_upper", 1, "ACTUATOR_ID_YAW_UPPER", 1),
-    ("pitch", "motor.pitch", 1, "ACTUATOR_ID_PITCH", 1),
-    ("trigger", "motor.trigger", 1, "ACTUATOR_ID_TRIGGER", 1),
-    ("arm", "motor.arm", 6, "ACTUATOR_ID_ARM_J", 0),
+    ("chassis", "motor.chassis", 4, 0, 1),
+    ("friction", "motor.friction", 4, 8, 2),
+    ("yaw", "motor.yaw", 1, 4, 1),
+    ("yaw_upper", "motor.yaw_upper", 1, 5, 1),
+    ("pitch", "motor.pitch", 1, 6, 1),
+    ("trigger", "motor.trigger", 1, 7, 1),
+    ("arm", "motor.arm", 6, 12, 0),
 ]
 
 
@@ -390,8 +390,8 @@ def parse_int_expr(expr: str | None, macros: dict[str, str], fallback: int = 0) 
     token_match = re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", cleaned)
     if token_match:
         token = token_match.group(0)
-        if token in ACTUATOR_ID_BY_NAME:
-            return ACTUATOR_ID_BY_NAME[token]
+        if token in MOTOR_ID_BY_NAME:
+            return MOTOR_ID_BY_NAME[token]
         if token in macros and macros[token] != cleaned:
             return parse_int_expr(macros[token], macros, fallback)
         return fallback
@@ -399,8 +399,8 @@ def parse_int_expr(expr: str | None, macros: dict[str, str], fallback: int = 0) 
     token_match = re.search(r"[A-Za-z_][A-Za-z0-9_]*", cleaned)
     if token_match:
         token = token_match.group(0)
-        if token in ACTUATOR_ID_BY_NAME:
-            return ACTUATOR_ID_BY_NAME[token]
+        if token in MOTOR_ID_BY_NAME:
+            return MOTOR_ID_BY_NAME[token]
         if token in macros:
             return parse_int_expr(macros[token], macros, fallback)
 
@@ -504,17 +504,16 @@ def parse_node_initializer(
     return node
 
 
-def default_actuator_id(prefix: str, index: int) -> int:
-    if prefix in ACTUATOR_ID_BY_NAME:
-        return ACTUATOR_ID_BY_NAME[prefix]
-    return ACTUATOR_ID_BY_NAME.get(f"{prefix}{index}", 255)
+def default_actuator_id(base_id: int, index: int) -> int:
+    motor_id = base_id + index
+    return motor_id if motor_id in MOTOR_NAME_BY_ID else 255
 
 
 def parse_motor_nodes(config_c: str, macros: dict[str, str]) -> list[MotorNode]:
     motors: list[MotorNode] = []
     motor_body = extract_initializer(config_c, "motor") or ""
 
-    for role, base_name, count, actuator_prefix, fallback_bus in ROLE_SPECS:
+    for role, base_name, count, motor_base_id, fallback_bus in ROLE_SPECS:
         if role == "arm":
             effective_fallback = lambda idx: 1 if idx == 0 else 2
         else:
@@ -530,10 +529,10 @@ def parse_motor_nodes(config_c: str, macros: dict[str, str]) -> list[MotorNode]:
         for index in range(count):
             if role in ("yaw", "yaw_upper", "pitch", "trigger"):
                 motor_name = base_name
-                actuator_id = default_actuator_id(actuator_prefix, index)
+                actuator_id = default_actuator_id(motor_base_id, index)
             else:
                 motor_name = f"{base_name}{index}"
-                actuator_id = default_actuator_id(actuator_prefix, index)
+                actuator_id = default_actuator_id(motor_base_id, index)
             motors.append(
                 parse_node_initializer(
                     items[index],
@@ -934,7 +933,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
     enabled_motors = [
         {
             "name": motor.name,
-            "actuator": ACTUATOR_NAME_BY_ID.get(motor.actuator_id, str(motor.actuator_id)),
+            "actuator": MOTOR_NAME_BY_ID.get(motor.actuator_id, str(motor.actuator_id)),
             "model": motor.model,
             "bus": motor.bus,
             "can_id": motor.can_id,
