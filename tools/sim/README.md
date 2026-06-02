@@ -33,6 +33,24 @@ The tool is a pressure simulator, not a physics simulator. It is meant to catch
 configuration-level overload before flashing firmware. The CPU number should be
 read as an estimate until paired with real `rt_profiler` data from logs.
 
+## MuJoCo physics entry
+
+The first wheel-leg MuJoCo entry lives under:
+
+```powershell
+python .\tools\mujoco\wheelleg\run_wheelleg.py --check --project MINIWHEELEG-C
+python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --duration-s 5
+python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --viewer --realtime
+```
+
+`--check` only validates the MJCF file and project configuration. A real run
+requires the Python `mujoco` package and a local C compiler so the runner can
+build the tiny native bridge that calls `wheelleg_core.h`.
+
+The current MJCF is a minimal fixture, not a final wheel-leg dynamics model.
+It is meant to validate the control-core-to-physics path before the full
+five-bar leg constraints are modeled.
+
 ## Control core simulation path
 
 Physics simulators such as MuJoCo should call the reusable control core instead

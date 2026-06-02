@@ -663,6 +663,14 @@ function Test-SimulationTools {
             Add-CheckError "tools\sim\robot_sim.py $projectName returned invalid JSON: $($_.Exception.Message)"
         }
     }
+
+    $mujocoWheellegTool = Join-Path $script:RepoRoot "tools\mujoco\wheelleg\run_wheelleg.py"
+    if (Test-Path -LiteralPath $mujocoWheellegTool -PathType Leaf) {
+        $output = & $python.Source $mujocoWheellegTool --check --project MINIWHEELEG-C 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Add-CheckError "tools\mujoco\wheelleg\run_wheelleg.py --check failed: $($output -join "`n")"
+        }
+    }
 }
 
 function Test-BuildManifestTools {

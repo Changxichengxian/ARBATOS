@@ -1,0 +1,78 @@
+<mujoco model="arbatos_wheelleg_minimal">
+  <compiler angle="radian" autolimits="true"/>
+  <option timestep="0.003" integrator="RK4" gravity="0 0 -9.81"/>
+
+  <default>
+    <joint damping="0.02" armature="0.0002"/>
+    <geom condim="3" friction="1.2 0.02 0.001" solref="0.01 1"/>
+    <motor ctrllimited="true"/>
+  </default>
+
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512"
+             rgb1="0.18 0.19 0.20" rgb2="0.23 0.24 0.25"/>
+    <material name="floor_mat" texture="grid" texrepeat="10 10" reflectance="0.15"/>
+    <material name="body_mat" rgba="0.22 0.35 0.50 1"/>
+    <material name="right_mat" rgba="0.75 0.28 0.20 1"/>
+    <material name="left_mat" rgba="0.24 0.58 0.35 1"/>
+    <material name="wheel_mat" rgba="0.05 0.05 0.05 1"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 -3 3" dir="0 1 -1" diffuse="0.8 0.8 0.8"/>
+    <geom name="floor" type="plane" size="5 5 0.1" material="floor_mat"/>
+
+    <body name="base" pos="0 0 0.16">
+      <freejoint name="base_free"/>
+      <site name="imu" pos="0 0 0" size="0.006"/>
+      <geom name="body" type="box" size="0.095 0.120 0.035" mass="1.35" material="body_mat"/>
+
+      <body name="right_wheel" pos="0 -0.085 -0.095">
+        <joint name="right_wheel_hinge" type="hinge" axis="0 1 0"/>
+        <geom name="right_wheel_geom" type="cylinder" size="0.03275 0.010"
+              euler="1.5707963268 0 0" mass="0.08" material="wheel_mat"
+              friction="1.6 0.02 0.001"/>
+      </body>
+
+      <body name="left_wheel" pos="0 0.085 -0.095">
+        <joint name="left_wheel_hinge" type="hinge" axis="0 1 0"/>
+        <geom name="left_wheel_geom" type="cylinder" size="0.03275 0.010"
+              euler="1.5707963268 0 0" mass="0.08" material="wheel_mat"
+              friction="1.6 0.02 0.001"/>
+      </body>
+
+      <body name="right_front_link" pos="-0.030 -0.070 -0.020">
+        <joint name="right_front_hinge" type="hinge" axis="0 1 0" range="-3.2 1.0"/>
+        <geom name="right_front_geom" type="capsule" fromto="0 0 0 0.060 0 -0.085"
+              size="0.005" mass="0.025" material="right_mat" contype="0" conaffinity="0"/>
+      </body>
+
+      <body name="right_back_link" pos="0.030 -0.070 -0.020">
+        <joint name="right_back_hinge" type="hinge" axis="0 1 0" range="-3.2 1.0"/>
+        <geom name="right_back_geom" type="capsule" fromto="0 0 0 -0.060 0 -0.085"
+              size="0.005" mass="0.025" material="right_mat" contype="0" conaffinity="0"/>
+      </body>
+
+      <body name="left_front_link" pos="-0.030 0.070 -0.020">
+        <joint name="left_front_hinge" type="hinge" axis="0 1 0" range="-3.2 1.0"/>
+        <geom name="left_front_geom" type="capsule" fromto="0 0 0 0.060 0 -0.085"
+              size="0.005" mass="0.025" material="left_mat" contype="0" conaffinity="0"/>
+      </body>
+
+      <body name="left_back_link" pos="0.030 0.070 -0.020">
+        <joint name="left_back_hinge" type="hinge" axis="0 1 0" range="-3.2 1.0"/>
+        <geom name="left_back_geom" type="capsule" fromto="0 0 0 -0.060 0 -0.085"
+              size="0.005" mass="0.025" material="left_mat" contype="0" conaffinity="0"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor name="right_front_motor" joint="right_front_hinge" ctrlrange="-3 3"/>
+    <motor name="right_back_motor" joint="right_back_hinge" ctrlrange="-3 3"/>
+    <motor name="right_wheel_motor" joint="right_wheel_hinge" ctrlrange="-0.45 0.45"/>
+    <motor name="left_front_motor" joint="left_front_hinge" ctrlrange="-3 3"/>
+    <motor name="left_back_motor" joint="left_back_hinge" ctrlrange="-3 3"/>
+    <motor name="left_wheel_motor" joint="left_wheel_hinge" ctrlrange="-0.45 0.45"/>
+  </actuator>
+</mujoco>
