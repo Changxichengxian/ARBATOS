@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -190,7 +189,7 @@ typedef struct __attribute__((packed))
 } sdlog_aux_tune_t;
 
 #define SDLOG_CONFIG_VERSION 1u
-#define SDLOG_BUILD_INFO_VERSION 2u
+#define SDLOG_BUILD_INFO_VERSION 3u
 #define SDLOG_RUNTIME_DEVICE_VERSION 1u
 #define SDLOG_BUILD_INFO_TEXT_LEN 32u
 #define SDLOG_BUILD_INFO_GIT_SHA_LEN 16u
@@ -223,6 +222,11 @@ typedef struct __attribute__((packed))
     uint8_t runtime_device_count;
     uint8_t motor_instance_count;
     uint8_t controller_count;
+    uint8_t profile_kind;
+    uint8_t board_kind;
+    uint8_t rt_profiler_count;
+    uint8_t board_can_bus_count;
+    uint32_t board_cpu_hz;
 
     char target[SDLOG_BUILD_INFO_TEXT_LEN];
     char board[SDLOG_BUILD_INFO_TEXT_LEN];
@@ -231,7 +235,7 @@ typedef struct __attribute__((packed))
     char build_time[SDLOG_BUILD_INFO_TIME_LEN];
 } sdlog_build_info_t;
 
-typedef char _check_sdlog_build_info_size[(sizeof(sdlog_build_info_t) == 128) ? 1 : -1];
+typedef char _check_sdlog_build_info_size[(sizeof(sdlog_build_info_t) == 136) ? 1 : -1];
 
 typedef struct __attribute__((packed))
 {

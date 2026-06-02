@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 Xie Yuhan <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef APP_TASK_BOOTSTRAP_H

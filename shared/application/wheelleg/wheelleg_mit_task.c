@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 Xie Yuhan <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 #include "wheelleg_mit_task.h"
@@ -1203,6 +1203,19 @@ static uint8_t wheelleg_calc_vmc(wheelleg_leg_calc_t *leg)
     return 1u;
 }
 
+static void wheelleg_fill_torque_cmd(actuator_cmd_t *cmd, fp32 torque)
+{
+    if (cmd == NULL)
+    {
+        return;
+    }
+
+    (void)memset(cmd, 0, sizeof(*cmd));
+    cmd->active = 1u;
+    cmd->mode = (uint8_t)ACTUATOR_CMD_MODE_STATE_TORQUE;
+    cmd->torque = torque;
+}
+
 static void wheelleg_send_torque(actuator_id_e id, fp32 torque)
 {
     actuator_cmd_t cmd;
@@ -1212,14 +1225,8 @@ static void wheelleg_send_torque(actuator_id_e id, fp32 torque)
         return;
     }
 
-    (void)memset(&cmd, 0, sizeof(cmd));
-    cmd.torque = torque;
-    (void)motor_instance_cmd_set_state_torque_id(id, &cmd);
-}
-
-static void wheelleg_send_joint_torque(actuator_id_e id, fp32 kinematic_torque, int8_t dir)
-{
-    wheelleg_send_torque(id, kinematic_torque * wheelleg_dir_sign(dir));
+    wheelleg_fill_torque_cmd(&cmd, torque);
+    (void)motor_instance_cmd_set_ids(&id, &cmd, 1u);
 }
 
 static uint8_t wheelleg_send_state_cmd(actuator_id_e id,
@@ -1419,13 +1426,19 @@ static void wheelleg_send_wheel_torques(const fp32 wheel_torque[WHEELLEG_SIDE_CO
 {
     const wheelleg_actuator_map_t *right_map = &s_wheelleg.actuator[WHEELLEG_SIDE_RIGHT];
     const wheelleg_actuator_map_t *left_map = &s_wheelleg.actuator[WHEELLEG_SIDE_LEFT];
+    actuator_id_e ids[WHEELLEG_SIDE_COUNT];
+    actuator_cmd_t cmds[WHEELLEG_SIDE_COUNT];
 
     if (wheel_torque == NULL)
     {
         return;
     }
-    wheelleg_send_torque(right_map->wheel, wheel_torque[WHEELLEG_SIDE_RIGHT]);
-    wheelleg_send_torque(left_map->wheel, wheel_torque[WHEELLEG_SIDE_LEFT]);
+
+    ids[0] = right_map->wheel;
+    ids[1] = left_map->wheel;
+    wheelleg_fill_torque_cmd(&cmds[0], wheel_torque[WHEELLEG_SIDE_RIGHT]);
+    wheelleg_fill_torque_cmd(&cmds[1], wheel_torque[WHEELLEG_SIDE_LEFT]);
+    (void)motor_instance_cmd_set_ids(ids, cmds, (uint8_t)WHEELLEG_SIDE_COUNT);
 }
 
 static void wheelleg_send_vmc_joint_torques(void)
@@ -1433,19 +1446,26 @@ static void wheelleg_send_vmc_joint_torques(void)
     const wheelleg_mit_config_t *cfg = &g_config.wheelleg_mit;
     const wheelleg_actuator_map_t *right_map = &s_wheelleg.actuator[WHEELLEG_SIDE_RIGHT];
     const wheelleg_actuator_map_t *left_map = &s_wheelleg.actuator[WHEELLEG_SIDE_LEFT];
+    actuator_id_e ids[4];
+    actuator_cmd_t cmds[4];
 
-    wheelleg_send_joint_torque(right_map->front,
-                               s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].joint_torque[0],
-                               cfg->right_front_dir);
-    wheelleg_send_joint_torque(right_map->back,
-                               s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].joint_torque[1],
-                               cfg->right_back_dir);
-    wheelleg_send_joint_torque(left_map->front,
-                               s_wheelleg.leg[WHEELLEG_SIDE_LEFT].joint_torque[0],
-                               cfg->left_front_dir);
-    wheelleg_send_joint_torque(left_map->back,
-                               s_wheelleg.leg[WHEELLEG_SIDE_LEFT].joint_torque[1],
-                               cfg->left_back_dir);
+    ids[0] = right_map->front;
+    ids[1] = right_map->back;
+    ids[2] = left_map->front;
+    ids[3] = left_map->back;
+    wheelleg_fill_torque_cmd(&cmds[0],
+                             s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].joint_torque[0] *
+                                 wheelleg_dir_sign(cfg->right_front_dir));
+    wheelleg_fill_torque_cmd(&cmds[1],
+                             s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].joint_torque[1] *
+                                 wheelleg_dir_sign(cfg->right_back_dir));
+    wheelleg_fill_torque_cmd(&cmds[2],
+                             s_wheelleg.leg[WHEELLEG_SIDE_LEFT].joint_torque[0] *
+                                 wheelleg_dir_sign(cfg->left_front_dir));
+    wheelleg_fill_torque_cmd(&cmds[3],
+                             s_wheelleg.leg[WHEELLEG_SIDE_LEFT].joint_torque[1] *
+                                 wheelleg_dir_sign(cfg->left_back_dir));
+    (void)motor_instance_cmd_set_ids(ids, cmds, 4u);
 }
 
 static void wheelleg_clear_joint_test_cmds(void)

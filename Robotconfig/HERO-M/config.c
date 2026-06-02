@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -62,15 +61,7 @@ config_t g_config = {
             .yaw_upper = {MOTOR_MODEL_6020, 0u},
             .pitch = {MOTOR_MODEL_3510, 3u},
             .trigger = {MOTOR_MODEL_3510, 4u},
-            .arm =
-                {
-                    [0] = {.model = MOTOR_MODEL_DM_6215, .can_id = 1u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 0u, .feedback_id_enable = 1u},
-                    [1] = {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 6u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 3u, .feedback_id_enable = 1u},
-                    [2] = {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 8u, .can_bus = 1u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 4u, .feedback_id_enable = 1u},
-                    [3] = {.model = MOTOR_MODEL_DM_6215, .can_id = 1u, .can_bus = 2u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 0u, .feedback_id_enable = 1u},
-                    [4] = {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 6u, .can_bus = 2u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 3u, .feedback_id_enable = 1u},
-                    [5] = {.model = MOTOR_MODEL_DM_J4310_2EC_V11, .can_id = 8u, .can_bus = 2u, .protocol = MOTOR_PROTOCOL_INHERIT, .control_mode = MOTOR_CONTROL_MODE_INHERIT, .transport = MOTOR_TRANSPORT_CAN, .feedback_id = 4u, .feedback_id_enable = 1u},
-                },
+            .arm = {0},
         },
     // 云台配置
     .gimbal =
@@ -225,86 +216,7 @@ config_t g_config = {
             .key_right_mask = 1u << 3, // 右移键：D
         },
 
-    // Wheel-leg MIT config
-    .wheelleg_mit =
-        {
-            .task_init_time_ms = 250u,
-            .control_period_ms = 3u,
-            .l1_m = 0.05000f,
-            .l2_m = 0.11404f,
-            .l3_m = 0.11404f,
-            .l4_m = 0.05000f,
-            .l5_m = 0.06000f,
-            .wheel_radius_m = 0.03275f,
-            .lqr_poly =
-                {
-                    {-243.932f, 105.148f, -19.1838f, -0.199759f},
-                    {-6.33721f, 2.6174f, -1.08798f, -0.0047227f},
-                    {-43.8763f, 16.3233f, -2.10154f, -0.127721f},
-                    {-52.0411f, 19.3719f, -2.60375f, -0.168927f},
-                    {-805.793f, 328.293f, -48.8092f, 2.92903f},
-                    {-40.1396f, 16.7832f, -2.61208f, 0.17602f},
-                    {-962.682f, 417.508f, -67.9889f, 4.84346f},
-                    {-89.4595f, 37.3246f, -5.80403f, 0.414703f},
-                    {-618.557f, 251.264f, -37.1404f, 2.18751f},
-                    {-800.904f, 324.39f, -47.7682f, 2.80481f},
-                    {3575.2f, -1332.91f, 172.196f, 9.48315f},
-                    {202.812f, -76.6035f, 10.1013f, 0.345984f},
-                },
-            .support_bias_n = 11.0f,
-            .leg_mass_kg = 0.12f,
-            .default_leg_length_m = 0.095f,
-            .min_leg_length_m = 0.085f,
-            .max_leg_length_m = 0.120f,
-            .max_wheel_torque_nm = 0.45f,
-            .max_joint_torque_nm = 3.0f,
-            .max_jump_joint_torque_nm = 3.0f,
-            .max_support_force_n = 60.0f,
-            .attitude_limit_rad = 0.45f,
-            .observer_lpf = 0.18f,
-            .leg_length_pid = {280.0f, 0.0f, 1200.0f, 35.0f, 0.0f},
-            .leg_split_pid = {30.0f, 0.0f, 1.0f, 2.0f, 0.0f},
-            .turn_pid = {0.6f, 0.0f, 0.08f, 0.10f, 0.0f},
-            .roll_pid = {25.0f, 0.0f, 3.0f, 15.0f, 0.0f},
-            .pitch_balance_offset_right_rad = 0.0f,
-            .pitch_balance_offset_left_rad = 0.0f,
-            .max_v_mps = 0.30f,
-            .max_yaw_rate_radps = 0.60f,
-            .rc_deadband = 10u,
-            .enable_switch_pos = MANUAL_INPUT_SWITCH_POS_MID,
-            .single_test_actuator = (uint8_t)ACTUATOR_ID_ARM_J1, // [600] 单电机测试目标
-            .single_test_position_rad = 0.0f, // [601] MIT 位置给定；kp=0 时不生效
-            .single_test_velocity_radps = 0.0f, // [602] MIT 速度给定
-            .single_test_kp = 0.0f, // [603] 位置刚度，默认关闭位置环
-            .single_test_kd = 0.10f, // [604] 速度阻尼
-            .single_test_torque_nm = 0.0f, // [605] 单电机测试力矩，默认 0
-            .single_test_torque_limit_nm = 0.30f, // [606] 测试力矩限幅
-            .left_test_zero_time_ms = 1000u, // [607] 上电后先回 0 并保持
-            .left_test_move_time_ms = 1500u, // [608] 每段 90deg 扫动时间
-            .left_test_angle_rad = 1.5707963268f, // [609] 90deg
-            .left_test_kp = 1.0f, // [610] 位置刚度，先保守
-            .left_test_kd = 0.12f, // [611] 速度阻尼
-            .left_test_torque_ff_nm = 0.0f, // [612] 前馈力矩
-            .left_test_torque_limit_nm = 0.30f, // [613] 前馈限幅
-            .left_test_front_dir = 1, // [614]
-            .left_test_back_dir = 1, // [615]
-            .right_test_front_dir = 1, // [616]
-            .right_test_back_dir = 1, // [617]
-            .left_front_zero_rad = 0.0f, // [618]
-            .left_back_zero_rad = 0.0f, // [619]
-            .right_front_zero_rad = 0.0f, // [620]
-            .right_back_zero_rad = 0.0f, // [621]
-            .left_front_dir = 1, // [622]
-            .left_back_dir = 1, // [623]
-            .right_front_dir = 1, // [624]
-            .right_back_dir = 1, // [625]
-            .right_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J1,
-            .right_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J2,
-            .right_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J0,
-            .left_front_actuator = (uint8_t)ACTUATOR_ID_ARM_J4,
-            .left_back_actuator = (uint8_t)ACTUATOR_ID_ARM_J5,
-            .left_wheel_actuator = (uint8_t)ACTUATOR_ID_ARM_J3,
-        },
+    .wheelleg_mit = {0},
 
     // Shoot config
     .shoot =
@@ -359,13 +271,7 @@ config_t g_config = {
         },
 
     // 功率配置
-    .arm_j0_unitree =
-        {
-            .control_period_ms = 5u,
-            .key_speed_rad_s = 1.0f,
-            .hold_kd = 0.2f,
-            .drive_kd = 0.4f,
-        },
+    .arm_j0_unitree = {0},
 
     .power =
         {

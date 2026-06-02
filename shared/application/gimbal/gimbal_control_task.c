@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -45,18 +44,23 @@
 
 #include <string.h>
 
-static const char *const gimbal_output_motor_names[] = {
+#define GIMBAL_OUTPUT_MOTOR_COUNT 3u
+#define DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT 4u
+
+static const char *const gimbal_output_motor_names[GIMBAL_OUTPUT_MOTOR_COUNT] = {
     "motor.trigger",
     "motor.yaw",
     "motor.pitch",
 };
+static motor_instance_current_binding_t gimbal_output_current_bindings[GIMBAL_OUTPUT_MOTOR_COUNT];
 
-static const char *const dual_yaw_gimbal_output_motor_names[] = {
+static const char *const dual_yaw_gimbal_output_motor_names[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT] = {
     "motor.trigger",
     "motor.yaw",
     "motor.yaw_upper",
     "motor.pitch",
 };
+static motor_instance_current_binding_t dual_yaw_gimbal_output_current_bindings[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT];
 
 __weak void shoot_init(void)
 {
@@ -690,9 +694,9 @@ void gimbal_control_task(void const *pvParameters)
                 pitch_can_set_current,
             };
 
-            (void)motor_instance_cmd_set_current_many_best_effort(gimbal_output_motor_names,
-                                                                  gimbal_current_cmd,
-                                                                  (uint8_t)(sizeof(gimbal_current_cmd) / sizeof(gimbal_current_cmd[0])));
+            (void)motor_instance_cmd_set_current_bindings_best_effort(gimbal_output_current_bindings,
+                                                                      gimbal_current_cmd,
+                                                                      GIMBAL_OUTPUT_MOTOR_COUNT);
         }
 
         {
@@ -781,9 +785,9 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
                 pitch_can_set_current,
             };
 
-            (void)motor_instance_cmd_set_current_many_best_effort(dual_yaw_gimbal_output_motor_names,
-                                                                  gimbal_current_cmd,
-                                                                  (uint8_t)(sizeof(gimbal_current_cmd) / sizeof(gimbal_current_cmd[0])));
+            (void)motor_instance_cmd_set_current_bindings_best_effort(dual_yaw_gimbal_output_current_bindings,
+                                                                      gimbal_current_cmd,
+                                                                      DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT);
         }
 
         {
@@ -1047,6 +1051,14 @@ static void gimbal_init(gimbal_control_t *init)
 
     const fp32 Pitch_speed_pid[3] = {PITCH_SPEED_PID_KP, PITCH_SPEED_PID_KI, PITCH_SPEED_PID_KD};
     const fp32 Yaw_speed_pid[3] = {YAW_SPEED_PID_KP, YAW_SPEED_PID_KI, YAW_SPEED_PID_KD};
+    (void)motor_instance_bind_current_outputs(gimbal_output_motor_names,
+                                              GIMBAL_OUTPUT_MOTOR_COUNT,
+                                              gimbal_output_current_bindings,
+                                              GIMBAL_OUTPUT_MOTOR_COUNT);
+    (void)motor_instance_bind_current_outputs(dual_yaw_gimbal_output_motor_names,
+                                              DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT,
+                                              dual_yaw_gimbal_output_current_bindings,
+                                              DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT);
     //电机数据指针获取
     init->gimbal_yaw_motor.gimbal_motor_measure = get_yaw_gimbal_motor_measure_point();
     init->gimbal_pitch_motor.gimbal_motor_measure = get_pitch_gimbal_motor_measure_point();

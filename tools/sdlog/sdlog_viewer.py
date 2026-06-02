@@ -63,7 +63,28 @@ RT_PROFILER_NAMES: dict[int, str] = {
     2: "CAN_COMMAND_TX_LOOP",
     3: "CAN_FEEDBACK_RX_WAKE",
     4: "SDLOG_WRITE",
-    5: "WATCH_TASK_BEAT",
+    5: "SDLOG_COMPRESS",
+    6: "SDLOG_BLOCK_WRITE",
+    7: "SDLOG_SYNC",
+    8: "WATCH_TASK_BEAT",
+}
+
+PROFILE_KIND_NAMES: dict[int, str] = {
+    0: "unknown",
+    1: "hero",
+    2: "infantry",
+    3: "wheelleg",
+    4: "sentry",
+    5: "carrier",
+    6: "custom",
+}
+
+BOARD_KIND_NAMES: dict[int, str] = {
+    0: "unknown",
+    1: "stm32f407",
+    2: "stm32f427",
+    3: "stm32h7",
+    4: "custom",
 }
 
 PID_NAMES: dict[int, str] = {
@@ -1255,28 +1276,69 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
         ]
 
     if tag == 0x0051:  # BUILD_INFO
-        v = _unpack_exact("<4H2I4BI32s32s16s12s9s3s", payload)
-        if v is None:
+        if len(payload) < 2:
             return None
-        (
-            version,
-            header_size,
-            schema_version,
-            _flags,
-            config_size,
-            config_crc32,
-            task_module_count,
-            high_rate_div,
-            compression_enabled,
-            build_dirty,
-            task_module_mask,
-            target,
-            board,
-            git_sha,
-            build_date,
-            build_time,
-            _reserved_text,
-        ) = v
+        version = struct.unpack_from("<H", payload, 0)[0]
+        if version >= 3:
+            v = _unpack_exact("<4H2I4BI3B4BI32s32s16s12s9s", payload)
+            if v is None:
+                return None
+            (
+                version,
+                header_size,
+                schema_version,
+                _flags,
+                config_size,
+                config_crc32,
+                task_module_count,
+                high_rate_div,
+                compression_enabled,
+                build_dirty,
+                task_module_mask,
+                runtime_device_count,
+                motor_instance_count,
+                controller_count,
+                profile_kind,
+                board_kind,
+                rt_profiler_count,
+                board_can_bus_count,
+                board_cpu_hz,
+                target,
+                board,
+                git_sha,
+                build_date,
+                build_time,
+            ) = v
+        else:
+            v = _unpack_exact("<4H2I4BI3B32s32s16s12s9s", payload)
+            if v is None:
+                return None
+            (
+                version,
+                header_size,
+                schema_version,
+                _flags,
+                config_size,
+                config_crc32,
+                task_module_count,
+                high_rate_div,
+                compression_enabled,
+                build_dirty,
+                task_module_mask,
+                runtime_device_count,
+                motor_instance_count,
+                controller_count,
+                target,
+                board,
+                git_sha,
+                build_date,
+                build_time,
+            ) = v
+            profile_kind = 0
+            board_kind = 0
+            rt_profiler_count = 0
+            board_can_bus_count = 0
+            board_cpu_hz = 0
         return [
             (
                 name,
@@ -1292,6 +1354,16 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
                     "high_rate_div": high_rate_div,
                     "compression_enabled": compression_enabled,
                     "build_dirty": build_dirty,
+                    "runtime_device_count": runtime_device_count,
+                    "motor_instance_count": motor_instance_count,
+                    "controller_count": controller_count,
+                    "profile_kind": profile_kind,
+                    "profile_kind_name": PROFILE_KIND_NAMES.get(profile_kind, f"kind_{profile_kind}"),
+                    "board_kind": board_kind,
+                    "board_kind_name": BOARD_KIND_NAMES.get(board_kind, f"kind_{board_kind}"),
+                    "rt_profiler_count": rt_profiler_count,
+                    "board_can_bus_count": board_can_bus_count,
+                    "board_cpu_hz": board_cpu_hz,
                     "target": _cstr(target),
                     "board": _cstr(board),
                     "git_sha": _cstr(git_sha),

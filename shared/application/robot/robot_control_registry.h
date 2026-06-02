@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 Xie Yuhan <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef ROBOT_CONTROL_REGISTRY_H
@@ -9,8 +9,8 @@
 #include "control_manager.h"
 #include "robot_task_profile.h"
 
-static inline void robot_control_register_and_activate(const control_controller_t *controller,
-                                                       robot_task_module_e module)
+static inline void robot_control_register_if_enabled(const control_controller_t *controller,
+                                                     robot_task_module_e module)
 {
     if (controller == NULL || robot_profile_module_enabled(module) == 0u)
     {
@@ -18,7 +18,6 @@ static inline void robot_control_register_and_activate(const control_controller_
     }
 
     (void)control_manager_register(controller);
-    (void)control_manager_request_switch(controller->id, CONTROL_REASON_PROFILE);
 }
 
 static inline void robot_control_register_profile_defaults(void)
@@ -126,22 +125,16 @@ static inline void robot_control_register_profile_defaults(void)
         },
     };
 
-    control_context_t context = {0};
-
-    robot_control_register_and_activate(&classic_chassis, ROBOT_TASK_MODULE_CLASSIC_CHASSIS);
-    robot_control_register_and_activate(&single_gimbal, ROBOT_TASK_MODULE_SINGLE_GIMBAL);
-    robot_control_register_and_activate(&dual_yaw_gimbal, ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL);
+    robot_control_register_if_enabled(&classic_chassis, ROBOT_TASK_MODULE_CLASSIC_CHASSIS);
+    robot_control_register_if_enabled(&single_gimbal, ROBOT_TASK_MODULE_SINGLE_GIMBAL);
+    robot_control_register_if_enabled(&dual_yaw_gimbal, ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL);
     if (robot_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
         robot_profile_module_enabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
     {
         (void)control_manager_register(&shoot);
-        (void)control_manager_request_switch(shoot.id, CONTROL_REASON_PROFILE);
     }
-    robot_control_register_and_activate(&arm, ROBOT_TASK_MODULE_ARM);
-    robot_control_register_and_activate(&wheelleg_mit, ROBOT_TASK_MODULE_WHEELLEG_MIT);
-
-    context.reason = CONTROL_REASON_PROFILE;
-    (void)control_manager_update_all(&context);
+    robot_control_register_if_enabled(&arm, ROBOT_TASK_MODULE_ARM);
+    robot_control_register_if_enabled(&wheelleg_mit, ROBOT_TASK_MODULE_WHEELLEG_MIT);
 }
 
 #endif

@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 Xie Yuhan <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 Xie Yuhan <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -175,6 +174,8 @@ const char *control_domain_name(control_domain_e domain);
 control_result_e control_manager_register(const control_controller_t *controller);
 uint8_t control_manager_registered_count(void);
 const control_controller_t *control_manager_get_registered(uint8_t index);
+
+/* Registry/name helpers may scan strings; keep them in init, commands, or diagnostics. */
 const control_controller_t *control_manager_find_registered_by_name(const char *name);
 uint16_t control_manager_find_registered_id_by_name(const char *name);
 const char *control_controller_input_name(const control_controller_t *controller, uint8_t index);
@@ -185,6 +186,7 @@ uint8_t control_controller_input_count(const control_controller_t *controller);
 uint8_t control_controller_output_count(const control_controller_t *controller);
 
 control_result_e control_manager_request_switch(uint16_t controller_id, control_transition_reason_e reason);
+/* By-name switch/status helpers are for low-rate command paths. */
 control_result_e control_manager_request_switch_by_name(const char *name, control_transition_reason_e reason);
 control_result_e control_manager_request_stop(control_domain_e domain, control_transition_reason_e reason);
 void control_manager_request_stop_all(control_transition_reason_e reason);

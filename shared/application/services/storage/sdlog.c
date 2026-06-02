@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -28,6 +27,7 @@
 #include "control_manager.h"
 #include "motor_instance.h"
 #include "robot_device_config.h"
+#include "robot_task_profile.h"
 
 #if defined(__CC_ARM)
 #include "../../../generated/build_info_autogen.h"
@@ -276,6 +276,8 @@ static void sdlog_copy_cstr(char *dst, uint32_t dst_len, const char *src)
 
 static void sdlog_fill_build_info(sdlog_build_info_t *out)
 {
+    uint8_t rt_profiler_count = 0u;
+
     if (out == NULL)
     {
         return;
@@ -294,6 +296,12 @@ static void sdlog_fill_build_info(sdlog_build_info_t *out)
     out->runtime_device_count = robot_config_device_count();
     out->motor_instance_count = motor_instance_count();
     out->controller_count = control_manager_registered_count();
+    out->profile_kind = (uint8_t)robot_profile_kind();
+    out->board_kind = (uint8_t)robot_board_kind();
+    (void)rt_profiler_descriptors(&rt_profiler_count);
+    out->rt_profiler_count = rt_profiler_count;
+    out->board_can_bus_count = robot_board_can_bus_count();
+    out->board_cpu_hz = robot_board_cpu_hz();
     {
         const uint8_t count = g_config.profile.task_module_count;
         const uint8_t limit = (count > ROBOT_TASK_MODULE_MAX) ? ROBOT_TASK_MODULE_MAX : count;
@@ -307,8 +315,8 @@ static void sdlog_fill_build_info(sdlog_build_info_t *out)
         }
     }
 
-    sdlog_copy_cstr(out->target, (uint32_t)sizeof(out->target), ARBATOS_TARGET_NAME);
-    sdlog_copy_cstr(out->board, (uint32_t)sizeof(out->board), ARBATOS_BOARD_NAME);
+    sdlog_copy_cstr(out->target, (uint32_t)sizeof(out->target), robot_profile_name());
+    sdlog_copy_cstr(out->board, (uint32_t)sizeof(out->board), robot_board_name());
     sdlog_copy_cstr(out->git_sha, (uint32_t)sizeof(out->git_sha), ARBATOS_GIT_SHA);
     sdlog_copy_cstr(out->build_date, (uint32_t)sizeof(out->build_date), ARBATOS_BUILD_DATE);
     sdlog_copy_cstr(out->build_time, (uint32_t)sizeof(out->build_time), ARBATOS_BUILD_TIME);

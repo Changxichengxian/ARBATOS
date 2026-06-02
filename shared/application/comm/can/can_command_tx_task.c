@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -29,6 +28,7 @@
 #include "watch.h"
 #include "detect_task.h"
 #include "motor_config.h"
+#include "motor_instance.h"
 #include "sdlog.h"
 #include "rt_profiler.h"
 #include "robot_task_profile.h"
@@ -42,6 +42,23 @@
 #define CAN_TX_MIT_STATE_ENABLED 1u
 #define CAN_TX_MIT_STATE_FAULT_MIN 8u
 
+typedef enum
+{
+    CAN_TX_CURRENT_CHASSIS0 = 0u,
+    CAN_TX_CURRENT_CHASSIS1,
+    CAN_TX_CURRENT_CHASSIS2,
+    CAN_TX_CURRENT_CHASSIS3,
+    CAN_TX_CURRENT_YAW,
+    CAN_TX_CURRENT_YAW_UPPER,
+    CAN_TX_CURRENT_PITCH,
+    CAN_TX_CURRENT_TRIGGER,
+    CAN_TX_CURRENT_FRICTION0,
+    CAN_TX_CURRENT_FRICTION1,
+    CAN_TX_CURRENT_FRICTION2,
+    CAN_TX_CURRENT_FRICTION3,
+    CAN_TX_CURRENT_COUNT,
+} can_tx_current_index_e;
+
 __weak uint8_t can_tx_process_extra_item(uint8_t bus,
                                          actuator_id_e actuator_id,
                                          const motor_node_param_t *node,
@@ -53,6 +70,9 @@ static int16_t s_can_tx_yaw_cmd;
 static int16_t s_can_tx_yaw_upper_cmd;
 static int16_t s_can_tx_pitch_cmd;
 static int16_t s_can_tx_trigger_cmd;
+static int16_t s_can_tx_arm_cmd[MOTOR_ARM_JOINT_COUNT];
+static actuator_cmd_t s_can_tx_cmd_cache[ACTUATOR_ID__COUNT];
+static uint8_t s_can_tx_cmd_cache_valid[ACTUATOR_ID__COUNT];
 
 static int16_t s_can_tx_can1_200[4];
 static int16_t s_can_tx_can1_1ff[4];
@@ -60,6 +80,31 @@ static int16_t s_can_tx_can2_200[4];
 static int16_t s_can_tx_can2_1ff[4];
 static uint32_t s_can_tx_mit_budget_tick_ms;
 static uint8_t s_can_tx_mit_budget_used;
+static uint8_t s_can_tx_rm_group_configured[2][2];
+
+static const actuator_id_e s_can_tx_current_ids[CAN_TX_CURRENT_COUNT] = {
+    ACTUATOR_ID_CHASSIS0,
+    ACTUATOR_ID_CHASSIS1,
+    ACTUATOR_ID_CHASSIS2,
+    ACTUATOR_ID_CHASSIS3,
+    ACTUATOR_ID_YAW,
+    ACTUATOR_ID_YAW_UPPER,
+    ACTUATOR_ID_PITCH,
+    ACTUATOR_ID_TRIGGER,
+    ACTUATOR_ID_FRICTION0,
+    ACTUATOR_ID_FRICTION1,
+    ACTUATOR_ID_FRICTION2,
+    ACTUATOR_ID_FRICTION3,
+};
+
+static const actuator_id_e s_can_tx_arm_current_ids[MOTOR_ARM_JOINT_COUNT] = {
+    ACTUATOR_ID_ARM_J0,
+    ACTUATOR_ID_ARM_J1,
+    ACTUATOR_ID_ARM_J2,
+    ACTUATOR_ID_ARM_J3,
+    ACTUATOR_ID_ARM_J4,
+    ACTUATOR_ID_ARM_J5,
+};
 
 // 测试模式会限制底盘输出，避免只测云台或射击时底盘误动。
 static inline bool_t can_tx_allow_chassis(void)
@@ -102,6 +147,138 @@ static inline fp32 can_tx_clamp_fp32(fp32 x, fp32 x_min, fp32 x_max)
 static inline uint8_t can_tx_actuator_id_valid(actuator_id_e id)
 {
     return ((uint32_t)id < (uint32_t)ACTUATOR_ID__COUNT) ? 1u : 0u;
+}
+
+static uint8_t can_tx_get_cmd_copy(actuator_id_e id, actuator_cmd_t *out)
+{
+    if (out == NULL || can_tx_actuator_id_valid(id) == 0u)
+    {
+        return 0u;
+    }
+
+    if (s_can_tx_cmd_cache_valid[id] != 0u)
+    {
+        *out = s_can_tx_cmd_cache[id];
+        return 1u;
+    }
+
+    return actuator_cmd_get_copy(id, out);
+}
+
+static int16_t can_tx_cached_current(actuator_id_e id)
+{
+    if (can_tx_actuator_id_valid(id) == 0u || s_can_tx_cmd_cache_valid[id] == 0u)
+    {
+        return 0;
+    }
+
+    return s_can_tx_cmd_cache[id].current;
+}
+
+static void can_tx_cache_cmd_copies(const actuator_id_e *ids, uint8_t count)
+{
+    actuator_cmd_t cmds[ACTUATOR_ID__COUNT];
+
+    if (ids == NULL || count > (uint8_t)ACTUATOR_ID__COUNT)
+    {
+        return;
+    }
+    if (actuator_cmd_get_copy_many(ids, cmds, count) == 0u)
+    {
+        return;
+    }
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (can_tx_actuator_id_valid(ids[i]) == 0u)
+        {
+            continue;
+        }
+
+        s_can_tx_cmd_cache[ids[i]] = cmds[i];
+        s_can_tx_cmd_cache_valid[ids[i]] = 1u;
+    }
+}
+
+static uint8_t can_tx_bus_index(uint8_t bus, uint8_t *out)
+{
+    if (out == NULL || (bus != 1u && bus != 2u))
+    {
+        return 0u;
+    }
+
+    *out = (uint8_t)(bus - 1u);
+    return 1u;
+}
+
+static uint8_t can_tx_rm_group_index(uint16_t group_id, uint8_t *out)
+{
+    if (out == NULL)
+    {
+        return 0u;
+    }
+    if (group_id == (uint16_t)CAN_RM_GROUP_0X200_ID)
+    {
+        *out = 0u;
+        return 1u;
+    }
+    if (group_id == (uint16_t)CAN_RM_GROUP_0X1FF_ID)
+    {
+        *out = 1u;
+        return 1u;
+    }
+    return 0u;
+}
+
+static void can_tx_mark_rm_group_configured(uint8_t bus, uint16_t can_id)
+{
+    uint8_t bus_index = 0u;
+    uint8_t group_index = 0u;
+
+    if (can_id >= 0x201u && can_id <= 0x204u)
+    {
+        group_index = 0u;
+    }
+    else if (can_id >= 0x205u && can_id <= 0x208u)
+    {
+        group_index = 1u;
+    }
+    else
+    {
+        return;
+    }
+
+    if (can_tx_bus_index(bus, &bus_index) == 0u)
+    {
+        return;
+    }
+
+    s_can_tx_rm_group_configured[bus_index][group_index] = 1u;
+}
+
+static void can_tx_cache_rm_groups(void)
+{
+    const uint8_t count = motor_instance_count();
+
+    (void)memset(s_can_tx_rm_group_configured, 0, sizeof(s_can_tx_rm_group_configured));
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        const motor_instance_t *inst = motor_instance_get(i);
+        const uint16_t can_id = (inst != NULL) ? motor_cfg_can_id(inst->node) : 0u;
+
+        if (inst == NULL ||
+            motor_instance_enabled(inst) == 0u ||
+            motor_instance_bus(inst) == 0u ||
+            motor_cfg_transport(inst->node) != MOTOR_TRANSPORT_CAN ||
+            motor_cfg_is_rm_group_protocol(inst->node) == 0u ||
+            can_id == 0u)
+        {
+            continue;
+        }
+
+        can_tx_mark_rm_group_configured(motor_instance_bus(inst), can_id);
+    }
 }
 
 static uint8_t can_tx_mit_is_wheelleg_wheel(actuator_id_e actuator_id)
@@ -255,7 +432,7 @@ static int16_t can_tx_build_rm_current_from_actuator(actuator_id_e actuator_id,
     actuator_cmd_mode_e mode;
     fp32 rm_current;
 
-    if (actuator_cmd_get_copy(actuator_id, &cmd) == 0u || cmd.active == 0u)
+    if (can_tx_get_cmd_copy(actuator_id, &cmd) == 0u || cmd.active == 0u)
     {
         return current;
     }
@@ -385,7 +562,7 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
     }
 
     (void)memset(&cmd, 0, sizeof(cmd));
-    have_cmd = actuator_cmd_get_copy(actuator_id, &cmd);
+    have_cmd = can_tx_get_cmd_copy(actuator_id, &cmd);
     active_cmd = (uint8_t)(have_cmd != 0u &&
                            cmd.active != 0u &&
                            cmd.mode != (uint8_t)ACTUATOR_CMD_MODE_NONE);
@@ -491,10 +668,26 @@ static void can_tx_clear_cmd_cache(void)
 {
     (void)memset(s_can_tx_chassis_cmd, 0, sizeof(s_can_tx_chassis_cmd));
     (void)memset(s_can_tx_friction_cmd, 0, sizeof(s_can_tx_friction_cmd));
+    (void)memset(s_can_tx_arm_cmd, 0, sizeof(s_can_tx_arm_cmd));
+    (void)memset(s_can_tx_cmd_cache_valid, 0, sizeof(s_can_tx_cmd_cache_valid));
     s_can_tx_yaw_cmd = 0;
     s_can_tx_yaw_upper_cmd = 0;
     s_can_tx_pitch_cmd = 0;
     s_can_tx_trigger_cmd = 0;
+}
+
+static void can_tx_collect_arm_currents_if_needed(void)
+{
+    if (robot_profile_need_arm_task() == 0u && robot_profile_is_wheelleg_mit() == 0u)
+    {
+        return;
+    }
+
+    can_tx_cache_cmd_copies(s_can_tx_arm_current_ids, (uint8_t)MOTOR_ARM_JOINT_COUNT);
+    for (uint8_t i = 0u; i < (uint8_t)MOTOR_ARM_JOINT_COUNT; i++)
+    {
+        s_can_tx_arm_cmd[i] = can_tx_cached_current(s_can_tx_arm_current_ids[i]);
+    }
 }
 
 static void can_tx_limit_friction_cmds(void)
@@ -515,14 +708,16 @@ static void can_tx_collect_offline_cmds(void)
     const bool_t allow_friction_offline = (mode == TEST_MODE_ENTERTAIN);
 
     can_tx_clear_cmd_cache();
+    can_tx_cache_cmd_copies(s_can_tx_current_ids, (uint8_t)CAN_TX_CURRENT_COUNT);
 
     if (allow_friction_offline)
     {
-        s_can_tx_friction_cmd[0] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION0);
-        s_can_tx_friction_cmd[1] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION1);
-        s_can_tx_friction_cmd[2] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION2);
-        s_can_tx_friction_cmd[3] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION3);
+        s_can_tx_friction_cmd[0] = can_tx_cached_current(ACTUATOR_ID_FRICTION0);
+        s_can_tx_friction_cmd[1] = can_tx_cached_current(ACTUATOR_ID_FRICTION1);
+        s_can_tx_friction_cmd[2] = can_tx_cached_current(ACTUATOR_ID_FRICTION2);
+        s_can_tx_friction_cmd[3] = can_tx_cached_current(ACTUATOR_ID_FRICTION3);
     }
+    can_tx_collect_arm_currents_if_needed();
     can_tx_limit_friction_cmds();
 }
 
@@ -533,19 +728,21 @@ static void can_tx_collect_online_cmds(void)
 
     can_tx_clear_cmd_cache();
 
-    s_can_tx_chassis_cmd[0] = allow_chassis ? actuator_cmd_get_current(ACTUATOR_ID_CHASSIS0) : 0;
-    s_can_tx_chassis_cmd[1] = allow_chassis ? actuator_cmd_get_current(ACTUATOR_ID_CHASSIS1) : 0;
-    s_can_tx_chassis_cmd[2] = allow_chassis ? actuator_cmd_get_current(ACTUATOR_ID_CHASSIS2) : 0;
-    s_can_tx_chassis_cmd[3] = allow_chassis ? actuator_cmd_get_current(ACTUATOR_ID_CHASSIS3) : 0;
-    s_can_tx_yaw_cmd = actuator_cmd_get_current(ACTUATOR_ID_YAW);
-    s_can_tx_yaw_upper_cmd = actuator_cmd_get_current(ACTUATOR_ID_YAW_UPPER);
-    s_can_tx_pitch_cmd = actuator_cmd_get_current(ACTUATOR_ID_PITCH);
-    s_can_tx_trigger_cmd = actuator_cmd_get_current(ACTUATOR_ID_TRIGGER);
-    s_can_tx_friction_cmd[0] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION0);
-    s_can_tx_friction_cmd[1] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION1);
-    s_can_tx_friction_cmd[2] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION2);
-    s_can_tx_friction_cmd[3] = actuator_cmd_get_current(ACTUATOR_ID_FRICTION3);
+    can_tx_cache_cmd_copies(s_can_tx_current_ids, (uint8_t)CAN_TX_CURRENT_COUNT);
+    s_can_tx_chassis_cmd[0] = allow_chassis ? can_tx_cached_current(ACTUATOR_ID_CHASSIS0) : 0;
+    s_can_tx_chassis_cmd[1] = allow_chassis ? can_tx_cached_current(ACTUATOR_ID_CHASSIS1) : 0;
+    s_can_tx_chassis_cmd[2] = allow_chassis ? can_tx_cached_current(ACTUATOR_ID_CHASSIS2) : 0;
+    s_can_tx_chassis_cmd[3] = allow_chassis ? can_tx_cached_current(ACTUATOR_ID_CHASSIS3) : 0;
+    s_can_tx_yaw_cmd = can_tx_cached_current(ACTUATOR_ID_YAW);
+    s_can_tx_yaw_upper_cmd = can_tx_cached_current(ACTUATOR_ID_YAW_UPPER);
+    s_can_tx_pitch_cmd = can_tx_cached_current(ACTUATOR_ID_PITCH);
+    s_can_tx_trigger_cmd = can_tx_cached_current(ACTUATOR_ID_TRIGGER);
+    s_can_tx_friction_cmd[0] = can_tx_cached_current(ACTUATOR_ID_FRICTION0);
+    s_can_tx_friction_cmd[1] = can_tx_cached_current(ACTUATOR_ID_FRICTION1);
+    s_can_tx_friction_cmd[2] = can_tx_cached_current(ACTUATOR_ID_FRICTION2);
+    s_can_tx_friction_cmd[3] = can_tx_cached_current(ACTUATOR_ID_FRICTION3);
 
+    can_tx_collect_arm_currents_if_needed();
     can_tx_limit_friction_cmds();
 }
 
@@ -588,12 +785,12 @@ static void can_tx_clear_rm_frames(void)
     (void)memset(s_can_tx_can2_1ff, 0, sizeof(s_can_tx_can2_1ff));
 }
 
-static inline void can_tx_store_rm_current(uint8_t fallback_bus,
+static inline void can_tx_store_rm_current(uint8_t bus,
                                            uint16_t can_id,
                                            int16_t current)
 {
-    int16_t *frame_200 = (fallback_bus == 1u) ? s_can_tx_can1_200 : s_can_tx_can2_200;
-    int16_t *frame_1ff = (fallback_bus == 1u) ? s_can_tx_can1_1ff : s_can_tx_can2_1ff;
+    int16_t *frame_200 = (bus == 1u) ? s_can_tx_can1_200 : s_can_tx_can2_200;
+    int16_t *frame_1ff = (bus == 1u) ? s_can_tx_can1_1ff : s_can_tx_can2_1ff;
 
     if (can_id >= 0x201u && can_id <= 0x204u)
     {
@@ -637,10 +834,11 @@ static inline void can_tx_process_rm_axis(uint8_t fallback_bus,
                                           uint16_t can_id,
                                           int16_t current)
 {
+    const uint8_t node_bus = can_tx_node_bus(fallback_bus, node);
     const int16_t rm_current = can_tx_build_rm_current_from_actuator(actuator_id, current);
     const int16_t limited_current = motor_cfg_limit_current_node(node, rm_current);
 
-    can_tx_store_rm_current(fallback_bus, can_id, limited_current);
+    can_tx_store_rm_current(node_bus, can_id, limited_current);
 }
 
 static inline void can_tx_process_axis(uint8_t fallback_bus,
@@ -801,17 +999,20 @@ static inline void can_tx_exec_arm(uint8_t index)
 {
     const actuator_id_e actuator_id = CAN_TX_AXIS_ARM_ACTUATOR_ID(index);
     const motor_node_param_t *node = CAN_TX_AXIS_ARM_NODE(index);
+    const uint16_t can_id = motor_cfg_can_id(node);
     actuator_cmd_t cmd;
-    const int16_t current = actuator_cmd_get_current(actuator_id);
+    const int16_t current = (index < (uint8_t)MOTOR_ARM_JOINT_COUNT) ? s_can_tx_arm_cmd[index] : 0;
 
-    if (motor_cfg_transport(node) != MOTOR_TRANSPORT_CAN)
+    if (node == NULL ||
+        motor_cfg_transport(node) != MOTOR_TRANSPORT_CAN ||
+        can_id == 0u)
     {
         return;
     }
 
     (void)memset(&cmd, 0, sizeof(cmd));
     if (current == 0 &&
-        (actuator_cmd_get_copy(actuator_id, &cmd) == 0u ||
+        (can_tx_get_cmd_copy(actuator_id, &cmd) == 0u ||
          cmd.active == 0u ||
          cmd.mode == (uint8_t)ACTUATOR_CMD_MODE_NONE))
     {
@@ -825,12 +1026,17 @@ static inline void can_tx_exec_arm(uint8_t index)
                      actuator_id,
                      node,
                      CAN_TX_AXIS_ARM_IS_RM_GROUP(index),
-                     CAN_TX_AXIS_ARM_CAN_ID(index),
+                     can_id,
                      current);
 }
 
 static inline void can_tx_exec_arm_all(void)
 {
+    if (robot_profile_need_arm_task() == 0u && robot_profile_is_wheelleg_mit() == 0u)
+    {
+        return;
+    }
+
     can_tx_exec_arm(0u);
     can_tx_exec_arm(1u);
     can_tx_exec_arm(2u);
@@ -881,33 +1087,16 @@ static uint8_t can_tx_rm_frame_has_output(const int16_t frame[4])
 
 static uint8_t can_tx_rm_group_has_config(uint8_t bus, uint16_t group_id)
 {
-    const uint16_t min_id = (group_id == (uint16_t)CAN_RM_GROUP_0X200_ID) ? 0x201u : 0x205u;
-    const uint16_t max_id = (group_id == (uint16_t)CAN_RM_GROUP_0X200_ID) ? 0x204u : 0x208u;
-    const uint8_t count = motor_instance_count();
-    uint8_t i;
+    uint8_t bus_index = 0u;
+    uint8_t group_index = 0u;
 
-    for (i = 0u; i < count; i++)
+    if (can_tx_bus_index(bus, &bus_index) == 0u ||
+        can_tx_rm_group_index(group_id, &group_index) == 0u)
     {
-        const motor_instance_t *inst = motor_instance_get(i);
-        uint16_t can_id;
-
-        if (inst == NULL ||
-            motor_instance_enabled(inst) == 0u ||
-            motor_instance_bus(inst) != bus ||
-            motor_cfg_transport(inst->node) != MOTOR_TRANSPORT_CAN ||
-            motor_cfg_is_rm_group_protocol(inst->node) == 0u)
-        {
-            continue;
-        }
-
-        can_id = motor_cfg_can_id(inst->node);
-        if (can_id >= min_id && can_id <= max_id)
-        {
-            return 1u;
-        }
+        return 0u;
     }
 
-    return 0u;
+    return s_can_tx_rm_group_configured[bus_index][group_index];
 }
 
 static void can_tx_emit_rm_group_if_needed(uint8_t bus, uint16_t group_id, const int16_t frame[4])
@@ -1000,6 +1189,7 @@ void can_command_tx_task(void const *pvParameters)
     (void)pvParameters;
 
     TickType_t last_wake = xTaskGetTickCount();
+    can_tx_cache_rm_groups();
 
     while (1)
     {

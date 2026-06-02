@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 闄堣僵 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 闄堣僵 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -44,6 +43,17 @@ typedef struct
     motor_measure_t *measure;
 } motor_instance_t;
 
+typedef struct
+{
+    actuator_id_e actuator_id;
+    uint8_t enabled;
+} motor_instance_current_binding_t;
+
+/*
+ * Usage budget:
+ * - Init/config/diagnostics code may use name lookup and resolve helpers.
+ * - High-rate control loops should use actuator_id or pre-bound current bindings.
+ */
 void motor_instance_refresh(void);
 uint8_t motor_instance_count(void);
 const motor_instance_t *motor_instance_get(uint8_t index);
@@ -51,6 +61,10 @@ const motor_instance_t *motor_instance_find_by_actuator(actuator_id_e id);
 const motor_instance_t *motor_instance_find_by_name(const char *name);
 const motor_instance_t *motor_instance_find_feedback(uint8_t bus, uint16_t std_id);
 uint8_t motor_instance_resolve_actuator_ids(const char *const *names, uint8_t count, actuator_id_e *out, uint8_t out_cap);
+uint8_t motor_instance_bind_current_outputs(const char *const *names,
+                                            uint8_t count,
+                                            motor_instance_current_binding_t *out,
+                                            uint8_t out_cap);
 
 const char *motor_instance_name(const motor_instance_t *inst);
 actuator_id_e motor_instance_actuator_id(const motor_instance_t *inst);
@@ -60,10 +74,22 @@ uint8_t motor_instance_enabled(const motor_instance_t *inst);
 const motor_node_param_t *motor_instance_node(actuator_id_e id);
 motor_measure_t *motor_instance_measure(actuator_id_e id);
 const motor_measure_t *motor_instance_measure_const(actuator_id_e id);
+uint8_t motor_instance_model_id(actuator_id_e id);
+uint8_t motor_instance_transport_id(actuator_id_e id);
+uint8_t motor_instance_protocol_id(actuator_id_e id);
+uint8_t motor_instance_control_mode_id(actuator_id_e id);
+uint8_t motor_instance_cmd_caps_id(actuator_id_e id);
+uint8_t motor_instance_cmd_mode_supported_id(actuator_id_e id, actuator_cmd_mode_e mode);
 
 uint8_t motor_instance_cmd_clear_id(actuator_id_e id);
+uint8_t motor_instance_cmd_set_ids(const actuator_id_e *ids, const actuator_cmd_t *cmds, uint8_t count);
+uint8_t motor_instance_cmd_set_ids_best_effort(const actuator_id_e *ids, const actuator_cmd_t *cmds, uint8_t count);
 uint8_t motor_instance_cmd_set_current_id(actuator_id_e id, int16_t current);
 uint8_t motor_instance_cmd_set_state_torque_id(actuator_id_e id, const actuator_cmd_t *cmd);
+uint8_t motor_instance_cmd_set_state_torque_ids(const actuator_id_e *ids, const actuator_cmd_t *cmds, uint8_t count);
+uint8_t motor_instance_cmd_set_state_torque_ids_best_effort(const actuator_id_e *ids,
+                                                            const actuator_cmd_t *cmds,
+                                                            uint8_t count);
 uint8_t motor_instance_cmd_set_speed_id(actuator_id_e id, fp32 velocity, fp32 kd, fp32 torque);
 uint8_t motor_instance_cmd_clear(const char *name);
 uint8_t motor_instance_cmd_set_current(const char *name, int16_t current);
@@ -75,6 +101,9 @@ uint8_t motor_instance_cmd_set_current_ids(const actuator_id_e *ids, const int16
 uint8_t motor_instance_cmd_set_current_many(const char *const *names, const int16_t *currents, uint8_t count);
 uint8_t motor_instance_cmd_set_current_ids_best_effort(const actuator_id_e *ids, const int16_t *currents, uint8_t count);
 uint8_t motor_instance_cmd_set_current_many_best_effort(const char *const *names, const int16_t *currents, uint8_t count);
+uint8_t motor_instance_cmd_set_current_bindings_best_effort(const motor_instance_current_binding_t *bindings,
+                                                            const int16_t *currents,
+                                                            uint8_t count);
 uint8_t motor_instance_feedback_get_copy_ids(const actuator_id_e *ids, actuator_feedback_t *out, uint8_t count);
 uint8_t motor_instance_feedback_get_copy_many(const char *const *names, actuator_feedback_t *out, uint8_t count);
 uint8_t motor_instance_resolve_controller_outputs(const struct control_controller *controller,

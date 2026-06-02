@@ -18,4 +18,4 @@ jobs:
 
       - name: Run ARBATOS checks
         shell: powershell
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\check_all.ps1
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check

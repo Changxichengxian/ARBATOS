@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 陈轮 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 陈轮 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-09
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -13,6 +12,166 @@
 #include <string.h>
 
 #include "config.h"
+
+typedef enum
+{
+    ROBOT_PROFILE_KIND_UNKNOWN = 0u,
+    ROBOT_PROFILE_KIND_HERO,
+    ROBOT_PROFILE_KIND_INFANTRY,
+    ROBOT_PROFILE_KIND_WHEELLEG,
+    ROBOT_PROFILE_KIND_SENTRY,
+    ROBOT_PROFILE_KIND_CARRIER,
+    ROBOT_PROFILE_KIND_CUSTOM,
+} robot_profile_kind_e;
+
+typedef enum
+{
+    ROBOT_BOARD_KIND_UNKNOWN = 0u,
+    ROBOT_BOARD_KIND_STM32F407,
+    ROBOT_BOARD_KIND_STM32F427,
+    ROBOT_BOARD_KIND_STM32H7,
+    ROBOT_BOARD_KIND_CUSTOM,
+} robot_board_kind_e;
+
+#ifndef ROBOT_PROFILE_KIND
+#define ROBOT_PROFILE_KIND ROBOT_PROFILE_KIND_CUSTOM
+#endif
+
+#ifndef ROBOT_BOARD_KIND
+#define ROBOT_BOARD_KIND ROBOT_BOARD_KIND_CUSTOM
+#endif
+
+#ifndef ROBOT_PROFILE_NAME
+#ifdef ARBATOS_TARGET_NAME
+#define ROBOT_PROFILE_NAME ARBATOS_TARGET_NAME
+#else
+#define ROBOT_PROFILE_NAME "unknown-target"
+#endif
+#endif
+
+#ifndef ROBOT_BOARD_NAME
+#ifdef ARBATOS_BOARD_NAME
+#define ROBOT_BOARD_NAME ARBATOS_BOARD_NAME
+#else
+#define ROBOT_BOARD_NAME "unknown-board"
+#endif
+#endif
+
+#ifndef ROBOT_BOARD_CPU_HZ
+#define ROBOT_BOARD_CPU_HZ 0u
+#endif
+
+#ifndef ROBOT_BOARD_CAN_BUS_COUNT
+#define ROBOT_BOARD_CAN_BUS_COUNT 2u
+#endif
+
+#ifndef ROBOT_BOARD_HAS_FPU
+#define ROBOT_BOARD_HAS_FPU 1u
+#endif
+
+typedef struct
+{
+    const char *profile_name;
+    const char *profile_kind_name;
+    const char *board_name;
+    const char *board_kind_name;
+    uint8_t profile_kind;
+    uint8_t board_kind;
+    uint8_t can_bus_count;
+    uint8_t has_fpu;
+    uint32_t cpu_hz;
+} robot_profile_identity_t;
+
+static inline const char *robot_profile_name(void)
+{
+    return ROBOT_PROFILE_NAME;
+}
+
+static inline robot_profile_kind_e robot_profile_kind(void)
+{
+    return (robot_profile_kind_e)ROBOT_PROFILE_KIND;
+}
+
+static inline const char *robot_profile_kind_name(robot_profile_kind_e kind)
+{
+    switch (kind)
+    {
+    case ROBOT_PROFILE_KIND_HERO:
+        return "hero";
+    case ROBOT_PROFILE_KIND_INFANTRY:
+        return "infantry";
+    case ROBOT_PROFILE_KIND_WHEELLEG:
+        return "wheelleg";
+    case ROBOT_PROFILE_KIND_SENTRY:
+        return "sentry";
+    case ROBOT_PROFILE_KIND_CARRIER:
+        return "carrier";
+    case ROBOT_PROFILE_KIND_CUSTOM:
+        return "custom";
+    default:
+        return "unknown";
+    }
+}
+
+static inline const char *robot_board_name(void)
+{
+    return ROBOT_BOARD_NAME;
+}
+
+static inline robot_board_kind_e robot_board_kind(void)
+{
+    return (robot_board_kind_e)ROBOT_BOARD_KIND;
+}
+
+static inline const char *robot_board_kind_name(robot_board_kind_e kind)
+{
+    switch (kind)
+    {
+    case ROBOT_BOARD_KIND_STM32F407:
+        return "stm32f407";
+    case ROBOT_BOARD_KIND_STM32F427:
+        return "stm32f427";
+    case ROBOT_BOARD_KIND_STM32H7:
+        return "stm32h7";
+    case ROBOT_BOARD_KIND_CUSTOM:
+        return "custom";
+    default:
+        return "unknown";
+    }
+}
+
+static inline uint32_t robot_board_cpu_hz(void)
+{
+    return (uint32_t)ROBOT_BOARD_CPU_HZ;
+}
+
+static inline uint8_t robot_board_can_bus_count(void)
+{
+    return (uint8_t)ROBOT_BOARD_CAN_BUS_COUNT;
+}
+
+static inline uint8_t robot_board_has_fpu(void)
+{
+    return (uint8_t)((ROBOT_BOARD_HAS_FPU != 0u) ? 1u : 0u);
+}
+
+static inline void robot_profile_identity(robot_profile_identity_t *out)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    out->profile_name = robot_profile_name();
+    out->profile_kind = (uint8_t)robot_profile_kind();
+    out->profile_kind_name = robot_profile_kind_name(robot_profile_kind());
+    out->board_name = robot_board_name();
+    out->board_kind = (uint8_t)robot_board_kind();
+    out->board_kind_name = robot_board_kind_name(robot_board_kind());
+    out->cpu_hz = robot_board_cpu_hz();
+    out->can_bus_count = robot_board_can_bus_count();
+    out->has_fpu = robot_board_has_fpu();
+}
 
 // Platform defaults. A target can override these macros in project defines
 // without changing the fast-path task code.

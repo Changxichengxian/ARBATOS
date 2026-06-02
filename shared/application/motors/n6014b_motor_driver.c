@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 #include "n6014b_motor_driver.h"

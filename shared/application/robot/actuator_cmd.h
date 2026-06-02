@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -45,7 +44,18 @@ typedef enum
     ACTUATOR_CMD_MODE_POS_VEL,
     ACTUATOR_CMD_MODE_SPEED,
     ACTUATOR_CMD_MODE_FORCE_POS,
+    ACTUATOR_CMD_MODE__COUNT,
 } actuator_cmd_mode_e;
+
+typedef enum
+{
+    ACTUATOR_CMD_CAP_CURRENT = 1u << 0,
+    ACTUATOR_CMD_CAP_STATE_TORQUE = 1u << 1,
+    ACTUATOR_CMD_CAP_POS_VEL = 1u << 2,
+    ACTUATOR_CMD_CAP_SPEED = 1u << 3,
+    ACTUATOR_CMD_CAP_FORCE_POS = 1u << 4,
+    ACTUATOR_CMD_CAP_FEEDBACK = 1u << 5,
+} actuator_cmd_cap_e;
 
 typedef enum
 {
@@ -100,18 +110,30 @@ static inline actuator_id_e actuator_id_from_range(actuator_id_e first, uint8_t 
     return (actuator_id_e)((uint32_t)first + (uint32_t)index);
 }
 
+static inline uint8_t actuator_cmd_mode_known(uint8_t mode)
+{
+    return (mode < (uint8_t)ACTUATOR_CMD_MODE__COUNT) ? 1u : 0u;
+}
+
 void actuator_cmd_clear_all(void);
 void actuator_cmd_clear(actuator_id_e id);
+uint8_t actuator_cmd_set_copy(actuator_id_e id, const actuator_cmd_t *cmd);
+uint8_t actuator_cmd_set_many(const actuator_id_e *ids, const actuator_cmd_t *cmds, uint8_t count);
+const char *actuator_cmd_mode_name(actuator_cmd_mode_e mode);
 void actuator_cmd_set_current(actuator_id_e id, int16_t current);
+uint8_t actuator_cmd_set_current_many(const actuator_id_e *ids, const int16_t *currents, uint8_t count);
 int16_t actuator_cmd_get_current(actuator_id_e id);
+uint8_t actuator_cmd_get_current_many(const actuator_id_e *ids, int16_t *out, uint8_t count);
 void actuator_cmd_set_state_torque(actuator_id_e id, const actuator_cmd_t *cmd);
 void actuator_cmd_set_speed(actuator_id_e id, fp32 velocity, fp32 kd, fp32 torque);
 uint8_t actuator_cmd_get_copy(actuator_id_e id, actuator_cmd_t *out);
+uint8_t actuator_cmd_get_copy_many(const actuator_id_e *ids, actuator_cmd_t *out, uint8_t count);
 const actuator_cmd_t *actuator_cmd_get_ptr(actuator_id_e id);
 
 void actuator_feedback_clear_all(void);
 void actuator_feedback_update(actuator_id_e id, const actuator_feedback_t *feedback);
 uint8_t actuator_feedback_get_copy(actuator_id_e id, actuator_feedback_t *out);
+uint8_t actuator_feedback_get_copy_many(const actuator_id_e *ids, actuator_feedback_t *out, uint8_t count);
 const actuator_feedback_t *actuator_feedback_get_ptr(actuator_id_e id);
 
 #endif

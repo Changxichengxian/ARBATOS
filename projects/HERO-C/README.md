@@ -200,6 +200,8 @@ Python 打包示例（小端）：
 
 ## 本地日志和脚本
 
+- 本地检查入口：在仓库根目录运行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check`
+- 工程清单：在仓库根目录运行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project HERO-C`
 - 日志解压脚本：在仓库根目录运行 `python tools/sdlog/sdlog_decompress.py sdlog_0000.bin`
 - Web 查看脚本：在仓库根目录运行 `python tools/sdlog/sdlog_viewer.py sdlog_0000.bin`
 - 本机输出和临时材料：`local/logs/`

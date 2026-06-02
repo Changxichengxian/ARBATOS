@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -48,23 +47,16 @@ static void sdlog_grow_mount_retry(uint32_t *retry_ms)
 
 static uint8_t sdlog_rt_profiler_id_active(rt_profiler_id_e id)
 {
-    switch (id)
-    {
-    case RT_PROFILER_GIMBAL_CONTROL_LOOP:
-        return (uint8_t)(robot_profile_need_single_gimbal_control_task() ||
-                         robot_profile_need_dual_gimbal_control_task());
-    case RT_PROFILER_CHASSIS_CONTROL_LOOP:
-        return robot_profile_need_classic_chassis_control_task();
-    default:
-        return 1u;
-    }
+    return rt_profiler_active(id);
 }
 
 static void sdlog_write_rt_profiler_sample(void)
 {
     sdlog_rt_profiler_t sample = {0};
+    uint8_t profiler_count = 0u;
+    (void)rt_profiler_descriptors(&profiler_count);
 
-    for (uint32_t i = 0u; i < (uint32_t)RT_PROFILER_COUNT; i++)
+    for (uint8_t i = 0u; i < profiler_count; i++)
     {
         if (sample.count >= (uint8_t)SDLOG_RT_PROFILER_MAX)
         {

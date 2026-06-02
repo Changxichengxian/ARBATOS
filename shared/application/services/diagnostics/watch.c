@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -844,8 +843,22 @@ static void watch_copy_runtime(void)
     uint8_t task_module_count;
     uint8_t task_module_visible_count;
     uint8_t device_count;
+    rt_profiler_summary_t profiler_summary;
 
     memset(&g_watch.runtime, 0, sizeof(g_watch.runtime));
+    rt_profiler_get_summary(&profiler_summary);
+    g_watch.runtime.profile_kind = (uint8_t)robot_profile_kind();
+    g_watch.runtime.board_kind = (uint8_t)robot_board_kind();
+    g_watch.runtime.board_can_bus_count = robot_board_can_bus_count();
+    g_watch.runtime.board_has_fpu = robot_board_has_fpu();
+    g_watch.runtime.board_cpu_hz = robot_board_cpu_hz();
+    g_watch.runtime.rt_profiler_count = profiler_summary.total_count;
+    g_watch.runtime.rt_profiler_active_count = profiler_summary.active_count;
+    g_watch.runtime.rt_profiler_over_budget_count = profiler_summary.over_budget_count;
+    g_watch.runtime.rt_profiler_total_overrun_count = profiler_summary.total_overrun_count;
+    g_watch.runtime.rt_profiler_max_last_us = profiler_summary.max_last_us;
+    g_watch.runtime.rt_profiler_max_budget_us = profiler_summary.max_budget_us;
+    g_watch.runtime.rt_profiler_max_over_budget_us = profiler_summary.max_over_budget_us;
 
     task_module_count = robot_profile_module_count();
     task_module_visible_count = task_module_count;
@@ -903,18 +916,25 @@ static void watch_copy_runtime(void)
     {
         const motor_instance_t *inst = motor_instance_get(i);
         watch_runtime_motor_t *dst = &g_watch.runtime.motor[i];
+        actuator_id_e actuator_id;
 
         if (inst == NULL)
         {
             continue;
         }
 
+        actuator_id = motor_instance_actuator_id(inst);
         dst->name = motor_instance_name(inst);
-        dst->actuator_id = (uint16_t)motor_instance_actuator_id(inst);
+        dst->actuator_id = (uint16_t)actuator_id;
         dst->role = (uint8_t)inst->role;
         dst->role_index = inst->role_index;
         dst->enabled = motor_instance_enabled(inst);
         dst->bus = motor_instance_bus(inst);
+        dst->transport = motor_instance_transport_id(actuator_id);
+        dst->protocol = motor_instance_protocol_id(actuator_id);
+        dst->control_mode = motor_instance_control_mode_id(actuator_id);
+        dst->cmd_caps = motor_instance_cmd_caps_id(actuator_id);
+        dst->model = motor_instance_model_id(actuator_id);
         if (dst->enabled != 0u)
         {
             g_watch.runtime.motor_enabled_count++;

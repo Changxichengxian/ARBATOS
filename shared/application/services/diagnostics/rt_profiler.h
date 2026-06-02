@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 闄堣僵 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 闄堣僵 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -42,6 +41,40 @@ typedef struct
     uint32_t overrun_count;
 } rt_profiler_stats_t;
 
+typedef enum
+{
+    RT_PROFILER_KIND_LOOP = 0u,
+    RT_PROFILER_KIND_WAKE,
+    RT_PROFILER_KIND_IO,
+    RT_PROFILER_KIND_SERVICE,
+} rt_profiler_kind_e;
+
+#define RT_PROFILER_FLAG_FAST_PATH (1u << 0)
+#define RT_PROFILER_FLAG_EVENT_DRIVEN (1u << 1)
+
+typedef struct
+{
+    rt_profiler_id_e id;
+    uint8_t module;
+    uint8_t module_alt;
+    uint8_t kind;
+    uint8_t flags;
+    const char *name;
+    uint32_t default_budget_us;
+} rt_profiler_desc_t;
+
+typedef struct
+{
+    uint8_t total_count;
+    uint8_t active_count;
+    uint8_t over_budget_count;
+    uint8_t reserved0;
+    uint32_t total_overrun_count;
+    uint32_t max_last_us;
+    uint32_t max_budget_us;
+    uint32_t max_over_budget_us;
+} rt_profiler_summary_t;
+
 static inline uint64_t rt_profiler_begin(void)
 {
 #if RT_PROFILER_ENABLE
@@ -57,5 +90,12 @@ void rt_profiler_reset(rt_profiler_id_e id);
 void rt_profiler_reset_all(void);
 void rt_profiler_set_budget_us(rt_profiler_id_e id, uint32_t budget_us);
 void rt_profiler_get(rt_profiler_id_e id, rt_profiler_stats_t *out);
+const rt_profiler_desc_t *rt_profiler_descriptors(uint8_t *count);
+const rt_profiler_desc_t *rt_profiler_descriptor(rt_profiler_id_e id);
+uint32_t rt_profiler_period_ms(rt_profiler_id_e id);
+uint32_t rt_profiler_budget_us(rt_profiler_id_e id);
+uint8_t rt_profiler_over_budget(rt_profiler_id_e id);
+uint8_t rt_profiler_active(rt_profiler_id_e id);
+void rt_profiler_get_summary(rt_profiler_summary_t *out);
 
 #endif

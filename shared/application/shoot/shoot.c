@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -76,6 +75,7 @@ static const char *const shoot_friction_motor_names[FRIC_MOTOR_NUM] = {
     "motor.friction2",
     "motor.friction3",
 };
+static motor_instance_current_binding_t shoot_friction_current_bindings[FRIC_MOTOR_NUM];
 static const int16_t shoot_fric_zero_current_cmd[FRIC_MOTOR_NUM] = {0};
 
 /**
@@ -318,9 +318,9 @@ static void shoot_clear_fric_output(void)
         shoot_control.fric_current_set[i] = 0;
     }
 
-    (void)motor_instance_cmd_set_current_many_best_effort(shoot_friction_motor_names,
-                                                          shoot_fric_zero_current_cmd,
-                                                          FRIC_MOTOR_NUM);
+    (void)motor_instance_cmd_set_current_bindings_best_effort(shoot_friction_current_bindings,
+                                                              shoot_fric_zero_current_cmd,
+                                                              FRIC_MOTOR_NUM);
 
     shoot_control.fric_speed_ramp.out = SHOOT_FRIC_SPEED_OFF_RPM;
     shoot_control.fric_speed_set = SHOOT_FRIC_SPEED_OFF_RPM;
@@ -368,6 +368,10 @@ void shoot_init(void)
 
     const fp32 Trigger_speed_pid[3] = {TRIGGER_ANGLE_PID_KP, TRIGGER_ANGLE_PID_KI, TRIGGER_ANGLE_PID_KD};
     const fp32 Fric_speed_pid[3] = {g_config.shoot.fric_speed_pid.kp, g_config.shoot.fric_speed_pid.ki, g_config.shoot.fric_speed_pid.kd};
+    (void)motor_instance_bind_current_outputs(shoot_friction_motor_names,
+                                              FRIC_MOTOR_NUM,
+                                              shoot_friction_current_bindings,
+                                              FRIC_MOTOR_NUM);
     shoot_control.shoot_mode = SHOOT_STOP;
     //遥控器指针
     shoot_control.shoot_rc = get_remote_control_point();
@@ -549,9 +553,9 @@ int16_t shoot_control_loop(void)
             fric_current_cmd[i] = current;
         }
 
-        (void)motor_instance_cmd_set_current_many_best_effort(shoot_friction_motor_names,
-                                                              fric_current_cmd,
-                                                              FRIC_MOTOR_NUM);
+        (void)motor_instance_cmd_set_current_bindings_best_effort(shoot_friction_current_bindings,
+                                                                  fric_current_cmd,
+                                                                  FRIC_MOTOR_NUM);
     }
     shoot_write_state();
     return shoot_control.given_current;

@@ -4,6 +4,16 @@
 
 ## 当前入口
 
+对外统一先走根目录的 `tools/build.ps1`：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project HERO-C
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action probe
+```
+
+Keil 工程仍是当前可直接编译和下载的完整入口；脚本入口会从 `.uvprojx` 解析工程清单，给后续 GCC / CMake 迁移用。
+
 | Project | Keil 工程 | 使用的 Robotconfig | 使用的 board |
 |---|---|---|---|
 | `HERO-C` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | `Robotconfig/HERO-C` | `boards/DJI_C_F407` |
@@ -18,6 +28,8 @@
 
 ## 这一层负责什么
 
+- 统一脚本入口：`../tools/build.ps1`。
+- 工程清单解析：`../tools/build/project_manifest.py`。
 - Keil 工程文件：`MDK-ARM/*.uvprojx`。
 - Keil 编译前命令，例如生成构建身份信息的 `tools/gen_build_info.ps1`。
 - CubeMX 生成的启动、外设初始化和中断入口：`Core/`。

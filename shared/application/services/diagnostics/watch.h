@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -663,6 +662,12 @@ typedef struct
     uint8_t role_index;
     uint8_t enabled;
     uint8_t bus;
+    uint8_t transport;
+    uint8_t protocol;
+    uint8_t control_mode;
+    uint8_t cmd_caps;
+    uint8_t model;
+    uint8_t reserved0;
 } watch_runtime_motor_t;
 
 typedef struct
@@ -716,7 +721,19 @@ typedef struct
     uint8_t entry_count;
     uint8_t entry_visible_count;
     uint8_t domain_count;
+    uint8_t profile_kind;
+    uint8_t board_kind;
+    uint8_t board_can_bus_count;
+    uint8_t board_has_fpu;
+    uint8_t rt_profiler_count;
+    uint8_t rt_profiler_active_count;
+    uint8_t rt_profiler_over_budget_count;
     uint8_t reserved0;
+    uint32_t board_cpu_hz;
+    uint32_t rt_profiler_total_overrun_count;
+    uint32_t rt_profiler_max_last_us;
+    uint32_t rt_profiler_max_budget_us;
+    uint32_t rt_profiler_max_over_budget_us;
     uint32_t active_claim_mask;
     runtime_instance_ref_t entry[WATCH_RUNTIME_MAX_ENTRIES];
     watch_runtime_task_module_t task_module[WATCH_RUNTIME_MAX_TASK_MODULES];

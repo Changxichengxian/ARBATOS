@@ -1,7 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
- * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
- * Required Notice: Copyright 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
  * Use of this file is governed by the LICENSE file in the repository root.
@@ -51,6 +50,7 @@ static const char *const chassis_motor_instance_names[CHASSIS_MOTOR_COUNT] = {
     "motor.chassis2",
     "motor.chassis3",
 };
+static motor_instance_current_binding_t chassis_motor_current_bindings[CHASSIS_MOTOR_COUNT];
 static const int16_t chassis_zero_current_cmd[CHASSIS_MOTOR_COUNT] = {0};
 
 // Chassis follow-yaw stop window (reduces dithering when nearly aligned).
@@ -685,9 +685,9 @@ void chassis_control_task(void const *pvParameters)
             chassis_move.vy_set = 0.0f;
             chassis_move.wz_set = 0.0f;
 
-            (void)motor_instance_cmd_set_current_many_best_effort(chassis_motor_instance_names,
-                                                                  chassis_zero_current_cmd,
-                                                                  CHASSIS_MOTOR_COUNT);
+            (void)motor_instance_cmd_set_current_bindings_best_effort(chassis_motor_current_bindings,
+                                                                      chassis_zero_current_cmd,
+                                                                      CHASSIS_MOTOR_COUNT);
 
             chassis_write_state(&chassis_move);
             rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
@@ -727,9 +727,9 @@ void chassis_control_task(void const *pvParameters)
             }
         }
 
-        (void)motor_instance_cmd_set_current_many_best_effort(chassis_motor_instance_names,
-                                                              chassis_current_cmd,
-                                                              CHASSIS_MOTOR_COUNT);
+        (void)motor_instance_cmd_set_current_bindings_best_effort(chassis_motor_current_bindings,
+                                                                  chassis_current_cmd,
+                                                                  CHASSIS_MOTOR_COUNT);
 
         chassis_loop_counter++;
         {
@@ -785,6 +785,10 @@ static void chassis_init(chassis_move_t *chassis_move_init)
     uint8_t i;
 
     chassis_move_init->chassis_mode = CHASSIS_VECTOR_RAW;
+    (void)motor_instance_bind_current_outputs(chassis_motor_instance_names,
+                                              CHASSIS_MOTOR_COUNT,
+                                              chassis_motor_current_bindings,
+                                              CHASSIS_MOTOR_COUNT);
     //get remote control point
     chassis_move_init->chassis_RC = get_remote_control_point();
     //get gyro sensor euler angle point
