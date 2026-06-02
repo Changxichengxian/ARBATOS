@@ -915,7 +915,11 @@ function Test-ControlCoreBoundaries {
         [pscustomobject]@{
             Source = "shared\application\wheelleg\wheelleg_mit_task.c"
             Include = '#include "wheelleg_core.h"'
-            Step = 'wheelleg_core_calc_kinematics'
+            Step = @(
+                'wheelleg_core_calc_kinematics',
+                'wheelleg_core_set_wheel_torques',
+                'wheelleg_core_lqr_wheel_output'
+            )
         }
     )
 
@@ -930,8 +934,10 @@ function Test-ControlCoreBoundaries {
         if ($content -notmatch [regex]::Escape($adapter.Include)) {
             Add-CheckError "$($adapter.Source): must include $($adapter.Include)."
         }
-        if ($null -ne $adapter.Step -and $content -notmatch [regex]::Escape($adapter.Step)) {
-            Add-CheckError "$($adapter.Source): must call $($adapter.Step) so the firmware path uses the reusable core."
+        foreach ($step in @($adapter.Step)) {
+            if ($null -ne $step -and $content -notmatch [regex]::Escape($step)) {
+                Add-CheckError "$($adapter.Source): must call $step so the firmware path uses the reusable core."
+            }
         }
     }
 }

@@ -18,6 +18,9 @@ extern "C" {
 #endif
 
 #define WHEELLEG_CORE_ACTUATOR_COUNT 6u
+#define WHEELLEG_CORE_JOINT_COUNT 2u
+#define WHEELLEG_CORE_LQR_ROW_COUNT 12u
+#define WHEELLEG_CORE_LQR_COEFF_COUNT 4u
 #define WHEELLEG_CORE_PI 3.14159265358979323846f
 #define WHEELLEG_CORE_TWO_PI 6.28318530717958647692f
 
@@ -30,6 +33,12 @@ typedef enum
     WHEELLEG_CORE_ACT_LEFT_BACK,
     WHEELLEG_CORE_ACT_LEFT_WHEEL,
 } wheelleg_core_actuator_e;
+
+typedef enum
+{
+    WHEELLEG_CORE_JOINT_FRONT = 0u,
+    WHEELLEG_CORE_JOINT_BACK,
+} wheelleg_core_joint_e;
 
 typedef struct
 {
@@ -205,6 +214,105 @@ static inline fp32 wheelleg_core_lerp(fp32 start, fp32 end, uint32_t elapsed_ms,
     }
     u = (fp32)elapsed_ms / (fp32)duration_ms;
     return start + (end - start) * u;
+}
+
+static inline fp32 wheelleg_core_poly4(const fp32 coe[WHEELLEG_CORE_LQR_COEFF_COUNT], fp32 x)
+{
+    if (coe == NULL)
+    {
+        return 0.0f;
+    }
+    return ((coe[0] * x + coe[1]) * x + coe[2]) * x + coe[3];
+}
+
+static inline uint8_t wheelleg_core_lqr_row_is_zero(const fp32 coe[WHEELLEG_CORE_LQR_COEFF_COUNT])
+{
+    return (coe == NULL ||
+            (coe[0] == 0.0f && coe[1] == 0.0f && coe[2] == 0.0f && coe[3] == 0.0f))
+               ? 1u
+               : 0u;
+}
+
+static inline fp32 wheelleg_core_lqr_x_error(fp32 observer_x_m,
+                                            fp32 target_v_mps,
+                                            fp32 target_yaw_rate_radps,
+                                            fp32 hold_limit_m,
+                                            fp32 motion_eps)
+{
+    if (wheelleg_core_abs(target_v_mps) > motion_eps ||
+        wheelleg_core_abs(target_yaw_rate_radps) > motion_eps)
+    {
+        return 0.0f;
+    }
+    return wheelleg_core_clamp(observer_x_m, -hold_limit_m, hold_limit_m);
+}
+
+static inline fp32 wheelleg_core_lqr_wheel_output(const fp32 k[WHEELLEG_CORE_LQR_ROW_COUNT],
+                                                  fp32 theta_err,
+                                                  fp32 d_theta,
+                                                  fp32 x_err,
+                                                  fp32 v_err,
+                                                  fp32 pitch_err,
+                                                  fp32 gyro_y)
+{
+    if (k == NULL)
+    {
+        return 0.0f;
+    }
+
+    return k[0] * theta_err +
+           k[1] * d_theta +
+           k[2] * x_err +
+           k[3] * v_err +
+           k[4] * pitch_err +
+           k[5] * gyro_y;
+}
+
+static inline fp32 wheelleg_core_lqr_hip_output(const fp32 k[WHEELLEG_CORE_LQR_ROW_COUNT],
+                                                fp32 theta_err,
+                                                fp32 d_theta,
+                                                fp32 x_err,
+                                                fp32 v_err,
+                                                fp32 pitch_err,
+                                                fp32 gyro_y,
+                                                fp32 split_tp)
+{
+    if (k == NULL)
+    {
+        return 0.0f;
+    }
+
+    return k[6] * theta_err +
+           k[7] * d_theta +
+           k[8] * x_err +
+           k[9] * v_err +
+           k[10] * pitch_err +
+           k[11] * gyro_y +
+           split_tp;
+}
+
+static inline fp32 wheelleg_core_turn_torque(fp32 yaw_set,
+                                             fp32 yaw,
+                                             fp32 yaw_gyro,
+                                             fp32 kp,
+                                             fp32 kd,
+                                             fp32 max_out)
+{
+    const fp32 out = kp * wheelleg_core_wrap_pi(yaw_set - yaw) - kd * yaw_gyro;
+
+    return wheelleg_core_clamp(out, -max_out, max_out);
+}
+
+static inline fp32 wheelleg_core_roll_force(fp32 roll_set,
+                                            fp32 roll,
+                                            fp32 roll_gyro,
+                                            fp32 kp,
+                                            fp32 kd,
+                                            fp32 max_out)
+{
+    const fp32 out = kp * (roll_set - roll) - kd * roll_gyro;
+
+    return wheelleg_core_clamp(out, -max_out, max_out);
 }
 
 static inline uint8_t wheelleg_core_limit_foot_xy(fp32 min_leg_m,
@@ -568,6 +676,58 @@ static inline void wheelleg_core_set_state_torque(wheelleg_core_output_t *out,
                                       kp,
                                       kd,
                                       torque_nm);
+}
+
+static inline void wheelleg_core_set_wheel_torques(wheelleg_core_output_t *out,
+                                                   const fp32 wheel_torque_nm[WHEELLEG_SIDE_COUNT])
+{
+    if (out == NULL || wheel_torque_nm == NULL)
+    {
+        return;
+    }
+
+    wheelleg_core_set_joint_torque(out,
+                                   WHEELLEG_CORE_ACT_RIGHT_WHEEL,
+                                   wheel_torque_nm[WHEELLEG_SIDE_RIGHT]);
+    wheelleg_core_set_joint_torque(out,
+                                   WHEELLEG_CORE_ACT_LEFT_WHEEL,
+                                   wheel_torque_nm[WHEELLEG_SIDE_LEFT]);
+}
+
+static inline void wheelleg_core_set_vmc_joint_torques(wheelleg_core_output_t *out,
+                                                       const wheelleg_core_leg_calc_t leg[WHEELLEG_SIDE_COUNT],
+                                                       int8_t right_front_dir,
+                                                       int8_t right_back_dir,
+                                                       int8_t left_front_dir,
+                                                       int8_t left_back_dir)
+{
+    const wheelleg_core_leg_calc_t *right_leg;
+    const wheelleg_core_leg_calc_t *left_leg;
+
+    if (out == NULL || leg == NULL)
+    {
+        return;
+    }
+
+    right_leg = &leg[WHEELLEG_SIDE_RIGHT];
+    left_leg = &leg[WHEELLEG_SIDE_LEFT];
+
+    wheelleg_core_set_joint_torque(out,
+                                   WHEELLEG_CORE_ACT_RIGHT_FRONT,
+                                   right_leg->joint_torque[(uint8_t)WHEELLEG_CORE_JOINT_FRONT] *
+                                       wheelleg_core_dir_sign(right_front_dir));
+    wheelleg_core_set_joint_torque(out,
+                                   WHEELLEG_CORE_ACT_RIGHT_BACK,
+                                   right_leg->joint_torque[(uint8_t)WHEELLEG_CORE_JOINT_BACK] *
+                                       wheelleg_core_dir_sign(right_back_dir));
+    wheelleg_core_set_joint_torque(out,
+                                   WHEELLEG_CORE_ACT_LEFT_FRONT,
+                                   left_leg->joint_torque[(uint8_t)WHEELLEG_CORE_JOINT_FRONT] *
+                                       wheelleg_core_dir_sign(left_front_dir));
+    wheelleg_core_set_joint_torque(out,
+                                   WHEELLEG_CORE_ACT_LEFT_BACK,
+                                   left_leg->joint_torque[(uint8_t)WHEELLEG_CORE_JOINT_BACK] *
+                                       wheelleg_core_dir_sign(left_back_dir));
 }
 
 static inline void wheelleg_core_output_clear(wheelleg_core_output_t *out)
