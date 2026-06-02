@@ -915,7 +915,7 @@ function Test-ControlCoreBoundaries {
         [pscustomobject]@{
             Source = "shared\application\wheelleg\wheelleg_mit_task.c"
             Include = '#include "wheelleg_core.h"'
-            Step = $null
+            Step = 'wheelleg_core_calc_kinematics'
         }
     )
 

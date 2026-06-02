@@ -8,6 +8,8 @@
 
 #include <stdint.h>
 
+#include <math.h>
+
 #include "control_core.h"
 #include "wheelleg_msg.h"
 
@@ -16,6 +18,8 @@ extern "C" {
 #endif
 
 #define WHEELLEG_CORE_ACTUATOR_COUNT 6u
+#define WHEELLEG_CORE_PI 3.14159265358979323846f
+#define WHEELLEG_CORE_TWO_PI 6.28318530717958647692f
 
 typedef enum
 {
@@ -26,6 +30,54 @@ typedef enum
     WHEELLEG_CORE_ACT_LEFT_BACK,
     WHEELLEG_CORE_ACT_LEFT_WHEEL,
 } wheelleg_core_actuator_e;
+
+typedef struct
+{
+    fp32 l1_m;
+    fp32 l2_m;
+    fp32 l3_m;
+    fp32 l4_m;
+    fp32 l5_m;
+} wheelleg_core_geometry_t;
+
+typedef struct
+{
+    fp32 x_m;
+    fp32 y_m;
+    fp32 length_m;
+} wheelleg_core_foot_point_t;
+
+typedef struct
+{
+    fp32 l1;
+    fp32 l2;
+    fp32 l3;
+    fp32 l4;
+    fp32 l5;
+    fp32 phi1;
+    fp32 phi2;
+    fp32 phi3;
+    fp32 phi4;
+    fp32 phi0;
+    fp32 alpha;
+    fp32 d_alpha;
+    fp32 length;
+    fp32 d_length;
+    fp32 dd_length;
+    fp32 theta;
+    fp32 d_theta;
+    fp32 dd_theta;
+    fp32 f0;
+    fp32 tp;
+    fp32 fn;
+    fp32 joint_torque[2];
+    fp32 last_phi0;
+    fp32 last_length;
+    fp32 last_d_length;
+    fp32 last_d_theta;
+    uint8_t first;
+    uint8_t contact;
+} wheelleg_core_leg_calc_t;
 
 typedef struct
 {
@@ -46,6 +98,439 @@ typedef struct
     uint8_t fault_flags;
     uint8_t actuator_count;
 } wheelleg_core_output_t;
+
+static inline fp32 wheelleg_core_clamp(fp32 value, fp32 min_value, fp32 max_value)
+{
+    if (value < min_value)
+    {
+        return min_value;
+    }
+    if (value > max_value)
+    {
+        return max_value;
+    }
+    return value;
+}
+
+static inline fp32 wheelleg_core_abs(fp32 value)
+{
+    return (value >= 0.0f) ? value : -value;
+}
+
+static inline uint8_t wheelleg_core_axis_in_deadband(int16_t axis, uint16_t deadband)
+{
+    return (axis > -(int16_t)deadband && axis < (int16_t)deadband) ? 1u : 0u;
+}
+
+static inline fp32 wheelleg_core_target_theta_from_foot_x(fp32 foot_x_m, fp32 leg_length_m)
+{
+    fp32 ratio;
+
+    if (leg_length_m < 0.02f)
+    {
+        leg_length_m = 0.02f;
+    }
+    ratio = wheelleg_core_clamp(foot_x_m / leg_length_m, -0.98f, 0.98f);
+    return asinf(ratio);
+}
+
+static inline fp32 wheelleg_core_slew_fp32(fp32 current, fp32 target, fp32 max_delta)
+{
+    const fp32 delta = target - current;
+
+    if (delta > max_delta)
+    {
+        return current + max_delta;
+    }
+    if (delta < -max_delta)
+    {
+        return current - max_delta;
+    }
+    return target;
+}
+
+static inline fp32 wheelleg_core_dir_sign(int8_t dir)
+{
+    return (dir < 0) ? -1.0f : 1.0f;
+}
+
+static inline fp32 wheelleg_core_joint_to_raw(fp32 kinematic_position, fp32 zero_position, int8_t dir)
+{
+    return zero_position + kinematic_position * wheelleg_core_dir_sign(dir);
+}
+
+static inline fp32 wheelleg_core_raw_to_kinematic(fp32 raw_position,
+                                                 fp32 raw_zero_position,
+                                                 fp32 kinematic_zero_position,
+                                                 int8_t dir)
+{
+    return kinematic_zero_position +
+           (raw_position - raw_zero_position) * wheelleg_core_dir_sign(dir);
+}
+
+static inline fp32 wheelleg_core_kinematic_to_raw(fp32 kinematic_position,
+                                                 fp32 raw_zero_position,
+                                                 fp32 kinematic_zero_position,
+                                                 int8_t dir)
+{
+    return raw_zero_position +
+           (kinematic_position - kinematic_zero_position) * wheelleg_core_dir_sign(dir);
+}
+
+static inline fp32 wheelleg_core_wrap_pi(fp32 value)
+{
+    while (value > WHEELLEG_CORE_PI)
+    {
+        value -= WHEELLEG_CORE_TWO_PI;
+    }
+    while (value < -WHEELLEG_CORE_PI)
+    {
+        value += WHEELLEG_CORE_TWO_PI;
+    }
+    return value;
+}
+
+static inline fp32 wheelleg_core_near_angle(fp32 value, fp32 reference)
+{
+    return reference + wheelleg_core_wrap_pi(value - reference);
+}
+
+static inline fp32 wheelleg_core_lerp(fp32 start, fp32 end, uint32_t elapsed_ms, uint32_t duration_ms)
+{
+    fp32 u;
+
+    if (duration_ms == 0u || elapsed_ms >= duration_ms)
+    {
+        return end;
+    }
+    u = (fp32)elapsed_ms / (fp32)duration_ms;
+    return start + (end - start) * u;
+}
+
+static inline uint8_t wheelleg_core_limit_foot_xy(fp32 min_leg_m,
+                                                  fp32 max_leg_m,
+                                                  fp32 max_foot_x_range_m,
+                                                  fp32 *x_m,
+                                                  fp32 *y_m,
+                                                  fp32 *length_m)
+{
+    fp32 x;
+    fp32 y;
+    fp32 max_x_sq;
+    fp32 max_abs_x;
+    fp32 length;
+
+    if (x_m == NULL || y_m == NULL || length_m == NULL)
+    {
+        return 0u;
+    }
+
+    if (min_leg_m <= 0.02f)
+    {
+        min_leg_m = 0.02f;
+    }
+    if (max_leg_m < min_leg_m)
+    {
+        max_leg_m = min_leg_m;
+    }
+
+    y = wheelleg_core_clamp(*y_m, min_leg_m, max_leg_m);
+    max_x_sq = max_leg_m * max_leg_m - y * y;
+    max_abs_x = (max_x_sq > 0.0f) ? sqrtf(max_x_sq) : 0.0f;
+    if (max_abs_x > max_foot_x_range_m)
+    {
+        max_abs_x = max_foot_x_range_m;
+    }
+
+    x = wheelleg_core_clamp(*x_m, -max_abs_x, max_abs_x);
+    length = sqrtf(x * x + y * y);
+    if (length <= 0.02f || length > max_leg_m + 0.0001f)
+    {
+        return 0u;
+    }
+
+    *x_m = x;
+    *y_m = y;
+    *length_m = length;
+    return 1u;
+}
+
+static inline uint8_t wheelleg_core_forward_point(const wheelleg_core_geometry_t *geo,
+                                                  fp32 front_pos,
+                                                  fp32 back_pos,
+                                                  wheelleg_core_foot_point_t *out)
+{
+    const fp32 l1 = (geo != NULL) ? geo->l1_m : 0.0f;
+    const fp32 l2 = (geo != NULL) ? geo->l2_m : 0.0f;
+    const fp32 l3 = (geo != NULL) ? geo->l3_m : 0.0f;
+    const fp32 l4 = (geo != NULL) ? geo->l4_m : 0.0f;
+    const fp32 l5 = (geo != NULL) ? geo->l5_m : 0.0f;
+    const fp32 phi1 = WHEELLEG_CORE_PI * 0.5f + front_pos;
+    const fp32 phi4 = WHEELLEG_CORE_PI * 0.5f + back_pos;
+    const fp32 xb = l1 * cosf(phi1);
+    const fp32 yb = l1 * sinf(phi1);
+    const fp32 xd = l5 + l4 * cosf(phi4);
+    const fp32 yd = l4 * sinf(phi4);
+    const fp32 lbd = sqrtf((xd - xb) * (xd - xb) + (yd - yb) * (yd - yb));
+    fp32 a0;
+    fp32 b0;
+    fp32 c0;
+    fp32 discr;
+    fp32 phi2;
+    fp32 xc;
+    fp32 yc;
+
+    if (out == NULL || l1 <= 0.0f || l2 <= 0.0f || l3 <= 0.0f || l4 <= 0.0f || l5 <= 0.0f)
+    {
+        return 0u;
+    }
+    if (lbd <= 0.001f)
+    {
+        return 0u;
+    }
+
+    a0 = 2.0f * l2 * (xd - xb);
+    b0 = 2.0f * l2 * (yd - yb);
+    c0 = l2 * l2 + lbd * lbd - l3 * l3;
+    discr = a0 * a0 + b0 * b0 - c0 * c0;
+    if (discr < -0.000001f || wheelleg_core_abs(a0 + c0) < 0.000001f)
+    {
+        return 0u;
+    }
+    if (discr < 0.0f)
+    {
+        discr = 0.0f;
+    }
+
+    phi2 = 2.0f * atan2f(b0 + sqrtf(discr), a0 + c0);
+    xc = xb + l2 * cosf(phi2);
+    yc = yb + l2 * sinf(phi2);
+    out->x_m = xc - l5 * 0.5f;
+    out->y_m = yc;
+    out->length_m = sqrtf(out->x_m * out->x_m + out->y_m * out->y_m);
+    return (out->length_m > 0.01f) ? 1u : 0u;
+}
+
+static inline uint8_t wheelleg_core_calc_kinematics(const wheelleg_core_geometry_t *geo,
+                                                    wheelleg_core_leg_calc_t *leg,
+                                                    fp32 front_pos,
+                                                    fp32 back_pos,
+                                                    fp32 pitch,
+                                                    fp32 gyro_y,
+                                                    uint8_t left_side,
+                                                    fp32 dt)
+{
+    fp32 xb;
+    fp32 yb;
+    fp32 xd;
+    fp32 yd;
+    fp32 lbd;
+    fp32 a0;
+    fp32 b0;
+    fp32 c0;
+    fp32 discr;
+    fp32 xc;
+    fp32 yc;
+    fp32 length;
+    fp32 pitch_side = pitch;
+    fp32 gyro_side = gyro_y;
+
+    if (geo == NULL || leg == NULL || dt <= 0.0f)
+    {
+        return 0u;
+    }
+
+    if (left_side != 0u)
+    {
+        pitch_side = -pitch;
+        gyro_side = -gyro_y;
+    }
+
+    leg->l1 = geo->l1_m;
+    leg->l2 = geo->l2_m;
+    leg->l3 = geo->l3_m;
+    leg->l4 = geo->l4_m;
+    leg->l5 = geo->l5_m;
+    leg->phi1 = WHEELLEG_CORE_PI * 0.5f + front_pos;
+    leg->phi4 = WHEELLEG_CORE_PI * 0.5f + back_pos;
+
+    xb = leg->l1 * cosf(leg->phi1);
+    yb = leg->l1 * sinf(leg->phi1);
+    xd = leg->l5 + leg->l4 * cosf(leg->phi4);
+    yd = leg->l4 * sinf(leg->phi4);
+    lbd = sqrtf((xd - xb) * (xd - xb) + (yd - yb) * (yd - yb));
+    a0 = 2.0f * leg->l2 * (xd - xb);
+    b0 = 2.0f * leg->l2 * (yd - yb);
+    c0 = leg->l2 * leg->l2 + lbd * lbd - leg->l3 * leg->l3;
+    discr = a0 * a0 + b0 * b0 - c0 * c0;
+    if (discr < 0.0f || (a0 + c0) == 0.0f)
+    {
+        return 0u;
+    }
+
+    leg->phi2 = 2.0f * atan2f(b0 + sqrtf(discr), a0 + c0);
+    leg->phi3 = atan2f(yb - yd + leg->l2 * sinf(leg->phi2),
+                       xb - xd + leg->l2 * cosf(leg->phi2));
+    xc = xb + leg->l2 * cosf(leg->phi2);
+    yc = yb + leg->l2 * sinf(leg->phi2);
+    length = sqrtf((xc - leg->l5 * 0.5f) * (xc - leg->l5 * 0.5f) + yc * yc);
+    if (length <= 0.01f)
+    {
+        return 0u;
+    }
+
+    leg->phi0 = atan2f(yc, xc - leg->l5 * 0.5f);
+    leg->alpha = WHEELLEG_CORE_PI * 0.5f - leg->phi0;
+    if (leg->first == 0u)
+    {
+        leg->last_phi0 = leg->phi0;
+        leg->last_length = length;
+        leg->last_d_length = 0.0f;
+        leg->last_d_theta = 0.0f;
+        leg->first = 1u;
+    }
+
+    leg->d_alpha = -(leg->phi0 - leg->last_phi0) / dt;
+    leg->theta = leg->alpha - pitch_side;
+    leg->d_theta = leg->d_alpha - gyro_side;
+    leg->length = length;
+    leg->d_length = (leg->length - leg->last_length) / dt;
+    leg->dd_length = (leg->d_length - leg->last_d_length) / dt;
+    leg->dd_theta = (leg->d_theta - leg->last_d_theta) / dt;
+    leg->last_phi0 = leg->phi0;
+    leg->last_length = leg->length;
+    leg->last_d_length = leg->d_length;
+    leg->last_d_theta = leg->d_theta;
+    return 1u;
+}
+
+static inline uint8_t wheelleg_core_calc_vmc(wheelleg_core_leg_calc_t *leg)
+{
+    fp32 sin32;
+    fp32 j11;
+    fp32 j12;
+    fp32 j21;
+    fp32 j22;
+
+    if (leg == NULL || leg->length <= 0.01f)
+    {
+        return 0u;
+    }
+
+    sin32 = sinf(leg->phi3 - leg->phi2);
+    if (wheelleg_core_abs(sin32) < 0.0001f)
+    {
+        return 0u;
+    }
+
+    j11 = leg->l1 * sinf(leg->phi0 - leg->phi3) * sinf(leg->phi1 - leg->phi2) / sin32;
+    j12 = leg->l1 * cosf(leg->phi0 - leg->phi3) * sinf(leg->phi1 - leg->phi2) / (leg->length * sin32);
+    j21 = leg->l4 * sinf(leg->phi0 - leg->phi2) * sinf(leg->phi3 - leg->phi4) / sin32;
+    j22 = leg->l4 * cosf(leg->phi0 - leg->phi2) * sinf(leg->phi3 - leg->phi4) / (leg->length * sin32);
+    leg->joint_torque[0] = j11 * leg->f0 + j12 * leg->tp;
+    leg->joint_torque[1] = j21 * leg->f0 + j22 * leg->tp;
+    return 1u;
+}
+
+static inline uint8_t wheelleg_core_inverse_point(const wheelleg_core_geometry_t *geo,
+                                                  const wheelleg_core_foot_point_t *target,
+                                                  fp32 front_ref,
+                                                  fp32 back_ref,
+                                                  fp32 *front_out,
+                                                  fp32 *back_out)
+{
+    const fp32 l1 = (geo != NULL) ? geo->l1_m : 0.0f;
+    const fp32 l2 = (geo != NULL) ? geo->l2_m : 0.0f;
+    const fp32 l3 = (geo != NULL) ? geo->l3_m : 0.0f;
+    const fp32 l4 = (geo != NULL) ? geo->l4_m : 0.0f;
+    const fp32 l5 = (geo != NULL) ? geo->l5_m : 0.0f;
+    const fp32 cx = l5 * 0.5f + ((target != NULL) ? target->x_m : 0.0f);
+    const fp32 cy = (target != NULL) ? target->y_m : 0.0f;
+    const fp32 front_r = sqrtf(cx * cx + cy * cy);
+    const fp32 back_dx = cx - l5;
+    const fp32 back_r = sqrtf(back_dx * back_dx + cy * cy);
+    fp32 front_cos;
+    fp32 back_cos;
+    fp32 front_base;
+    fp32 back_base;
+    fp32 front_q;
+    fp32 back_q;
+    fp32 front_raw[2];
+    fp32 back_raw[2];
+    fp32 best_front = 0.0f;
+    fp32 best_back = 0.0f;
+    fp32 best_score = 1000000.0f;
+    uint8_t found = 0u;
+    uint8_t i;
+    uint8_t j;
+
+    if (target == NULL || front_out == NULL || back_out == NULL ||
+        l1 <= 0.0f || l2 <= 0.0f || l3 <= 0.0f || l4 <= 0.0f ||
+        front_r <= 0.001f || back_r <= 0.001f)
+    {
+        return 0u;
+    }
+
+    front_cos = (l1 * l1 + front_r * front_r - l2 * l2) / (2.0f * l1 * front_r);
+    back_cos = (l4 * l4 + back_r * back_r - l3 * l3) / (2.0f * l4 * back_r);
+    if (front_cos > 1.0001f || front_cos < -1.0001f ||
+        back_cos > 1.0001f || back_cos < -1.0001f)
+    {
+        return 0u;
+    }
+
+    front_cos = wheelleg_core_clamp(front_cos, -1.0f, 1.0f);
+    back_cos = wheelleg_core_clamp(back_cos, -1.0f, 1.0f);
+    front_base = atan2f(cy, cx);
+    back_base = atan2f(cy, back_dx);
+    front_q = acosf(front_cos);
+    back_q = acosf(back_cos);
+
+    front_raw[0] = wheelleg_core_near_angle(front_base + front_q - WHEELLEG_CORE_PI * 0.5f, front_ref);
+    front_raw[1] = wheelleg_core_near_angle(front_base - front_q - WHEELLEG_CORE_PI * 0.5f, front_ref);
+    back_raw[0] = wheelleg_core_near_angle(back_base + back_q - WHEELLEG_CORE_PI * 0.5f, back_ref);
+    back_raw[1] = wheelleg_core_near_angle(back_base - back_q - WHEELLEG_CORE_PI * 0.5f, back_ref);
+
+    for (i = 0u; i < 2u; i++)
+    {
+        for (j = 0u; j < 2u; j++)
+        {
+            wheelleg_core_foot_point_t check;
+            fp32 err;
+            fp32 score;
+
+            if (wheelleg_core_forward_point(geo, front_raw[i], back_raw[j], &check) == 0u)
+            {
+                continue;
+            }
+            err = wheelleg_core_abs(check.x_m - target->x_m) + wheelleg_core_abs(check.y_m - target->y_m);
+            if (err > 0.003f)
+            {
+                continue;
+            }
+
+            score = wheelleg_core_abs(wheelleg_core_wrap_pi(front_raw[i] - front_ref)) +
+                    wheelleg_core_abs(wheelleg_core_wrap_pi(back_raw[j] - back_ref)) +
+                    err * 1000.0f;
+            if (found == 0u || score < best_score)
+            {
+                best_score = score;
+                best_front = front_raw[i];
+                best_back = back_raw[j];
+                found = 1u;
+            }
+        }
+    }
+
+    if (found == 0u)
+    {
+        return 0u;
+    }
+
+    *front_out = best_front;
+    *back_out = best_back;
+    return 1u;
+}
 
 static inline void wheelleg_core_set_joint_torque(wheelleg_core_output_t *out,
                                                   wheelleg_core_actuator_e actuator,
