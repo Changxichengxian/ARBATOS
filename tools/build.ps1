@@ -1,12 +1,14 @@
 param(
-    [ValidateSet("check", "manifest", "probe")]
+    [ValidateSet("check", "manifest", "probe", "sim")]
     [string]$Action = "check",
 
     [string]$Project = "all",
 
     [switch]$Json,
 
-    [switch]$FailOnGccBlockers
+    [switch]$FailOnGccBlockers,
+
+    [switch]$FailOnRisk
 )
 
 $ErrorActionPreference = "Stop"
@@ -78,6 +80,53 @@ switch ($Action) {
         }
 
         Invoke-PythonTool -ToolPath (Join-Path $RepoRoot "tools\build\project_manifest.py") -Arguments $arguments.ToArray()
+    }
+
+    "sim" {
+        if ($Json -and $Project -eq "all") {
+            Write-Error "-Json is only supported with -Project <name> for sim output."
+        }
+
+        $python = Get-Command python -ErrorAction SilentlyContinue
+        if ($null -eq $python) {
+            Write-Error "python is not available. Install Python or run tools\sim\robot_sim.py directly."
+        }
+
+        $simTool = Join-Path $RepoRoot "tools\sim\robot_sim.py"
+        $projects = @()
+        if ($Project -eq "all") {
+            $projects = @(Get-ChildItem -Path (Join-Path $RepoRoot "Robotconfig") -Directory |
+                Sort-Object Name |
+                ForEach-Object { $_.Name })
+        }
+        else {
+            $projects = @($Project)
+        }
+
+        $exitCode = 0
+        foreach ($projectName in $projects) {
+            $arguments = New-Object System.Collections.Generic.List[string]
+            $arguments.Add("--project")
+            $arguments.Add($projectName)
+            if ($Json) {
+                $arguments.Add("--json")
+            }
+            if ($FailOnRisk) {
+                $arguments.Add("--fail-on-risk")
+            }
+
+            if ($projects.Count -gt 1) {
+                Write-Host ""
+                Write-Host ("[sim] {0}" -f $projectName)
+            }
+
+            & $python.Source $simTool @($arguments.ToArray())
+            if ($LASTEXITCODE -ne 0) {
+                $exitCode = $LASTEXITCODE
+            }
+        }
+
+        exit $exitCode
     }
 
     "probe" {

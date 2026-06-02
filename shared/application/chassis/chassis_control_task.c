@@ -16,6 +16,7 @@
 
 #include "chassis_control_task.h"
 #include "chassis_behaviour.h"
+#include "chassis_core.h"
 
 #include "cmsis_os.h"
 
@@ -935,7 +936,7 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update, const c
     // - vx: forward is positive
     // - vy: left is positive
     // - wz: CCW is positive
-    // NOTE: keep consistent with chassis_vector_to_mecanum_wheel_speed() and g_config.chassis.wheel_type.
+    // NOTE: keep consistent with chassis_core_vector_to_wheel_speed() and g_config.chassis.wheel_type.
     const fp32 w0 = chassis_move_update->motor_chassis[0].speed;
     const fp32 w1 = chassis_move_update->motor_chassis[1].speed;
     const fp32 w2 = chassis_move_update->motor_chassis[2].speed;
@@ -1261,20 +1262,27 @@ static void chassis_control_loop(chassis_move_t *chassis_move_control_loop,
                                  const chassis_runtime_snapshot_t *snapshot,
                                  int16_t pre_power_current[CHASSIS_MOTOR_COUNT])
 {
-    fp32 max_vector = 0.0f, vector_rate = 0.0f;
-    fp32 temp = 0.0f;
-    fp32 wheel_speed[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    chassis_core_kinematic_config_t core_cfg;
+    chassis_core_cmd_t core_cmd;
+    chassis_core_output_t core_output;
     uint8_t i = 0;
 
     chassis_power_control_apply_speed_limit(chassis_move_control_loop);
 
     //mecanum wheel speed calculation
     //麦轮运动分解
-    chassis_vector_to_mecanum_wheel_speed(chassis_move_control_loop->vx_set,
-                                          chassis_move_control_loop->vy_set,
-                                          chassis_move_control_loop->wz_set,
-                                          snapshot,
-                                          wheel_speed);
+    (void)memset(&core_cfg, 0, sizeof(core_cfg));
+    (void)memset(&core_cmd, 0, sizeof(core_cmd));
+    (void)memset(&core_output, 0, sizeof(core_output));
+    core_cfg.wheel_type = (snapshot != NULL) ? snapshot->wheel_type : g_config.chassis.wheel_type;
+    core_cfg.motor_distance_to_center = (snapshot != NULL) ? snapshot->motor_distance_to_center : MOTOR_DISTANCE_TO_CENTER;
+    core_cfg.max_wheel_speed = (snapshot != NULL) ? snapshot->max_wheel_speed : MAX_WHEEL_SPEED;
+    core_cmd.enabled = 1u;
+    core_cmd.raw_output = (chassis_move_control_loop->chassis_mode == CHASSIS_VECTOR_RAW) ? 1u : 0u;
+    core_cmd.vx_mps = chassis_move_control_loop->vx_set;
+    core_cmd.vy_mps = chassis_move_control_loop->vy_set;
+    core_cmd.wz_radps = chassis_move_control_loop->wz_set;
+    chassis_core_step_velocity(&core_cfg, &core_cmd, &core_output);
 
     if (chassis_move_control_loop->chassis_mode == CHASSIS_VECTOR_RAW)
     {
@@ -1282,7 +1290,7 @@ static void chassis_control_loop(chassis_move_t *chassis_move_control_loop,
         for (i = 0; i < 4; i++)
         {
             const int8_t motor_dir = (snapshot != NULL) ? snapshot->motor_dir[i] : g_config.chassis.motor_dir[i];
-            chassis_move_control_loop->motor_chassis[i].give_current = (int16_t)(wheel_speed[i] * (fp32)motor_dir);
+            chassis_move_control_loop->motor_chassis[i].give_current = (int16_t)(core_output.wheel_speed_set[i] * (fp32)motor_dir);
             if (pre_power_current != NULL)
             {
                 pre_power_current[i] = chassis_move_control_loop->motor_chassis[i].give_current;
@@ -1297,22 +1305,7 @@ static void chassis_control_loop(chassis_move_t *chassis_move_control_loop,
     //计算轮子控制最大速度，并限制其最大速度
     for (i = 0; i < 4; i++)
     {
-        chassis_move_control_loop->motor_chassis[i].speed_set = wheel_speed[i];
-        temp = fabs(chassis_move_control_loop->motor_chassis[i].speed_set);
-        if (max_vector < temp)
-        {
-            max_vector = temp;
-        }
-    }
-
-    const fp32 max_wheel_speed = (snapshot != NULL) ? snapshot->max_wheel_speed : MAX_WHEEL_SPEED;
-    if (max_vector > max_wheel_speed)
-    {
-        vector_rate = max_wheel_speed / max_vector;
-        for (i = 0; i < 4; i++)
-        {
-            chassis_move_control_loop->motor_chassis[i].speed_set *= vector_rate;
-        }
+        chassis_move_control_loop->motor_chassis[i].speed_set = core_output.wheel_speed_set[i];
     }
 
     //calculate pid

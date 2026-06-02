@@ -13,6 +13,8 @@ defines, and shared profile defaults. It estimates:
 Run from the repository root:
 
 ```powershell
+.\tools\build.ps1 -Action sim -Project MINIWHEELEG-C
+.\tools\build.ps1 -Action sim -Project all
 python .\tools\sim\robot_sim.py --project HERO-C
 python .\tools\sim\robot_sim.py --project MINIWHEELEG-C
 python .\tools\sim\robot_sim.py --project HERO-C --json
@@ -30,3 +32,23 @@ Useful options:
 The tool is a pressure simulator, not a physics simulator. It is meant to catch
 configuration-level overload before flashing firmware. The CPU number should be
 read as an estimate until paired with real `rt_profiler` data from logs.
+
+## Control core simulation path
+
+Physics simulators such as MuJoCo should call the reusable control core instead
+of the FreeRTOS task entry points. Firmware tasks read sensors/manual input and
+write actuator commands; simulation runners should provide the same core input
+from simulator state and apply the returned `actuator_cmd_t` outputs to the
+simulator actuators.
+
+Current core boundary files:
+
+- `shared/application/robot/control_core.h`: shared step metadata and actuator
+  command helpers.
+- `shared/application/arm/arm_core.h`: manual arm joint command core.
+- `shared/application/chassis/chassis_core.h`: chassis command/state/output
+  contract.
+- `shared/application/gimbal/gimbal_core.h`: gimbal axis command/state/output
+  contract.
+- `shared/application/wheelleg/wheelleg_core.h`: wheel-leg command/state/output
+  contract for future MuJoCo runners.

@@ -15,6 +15,7 @@
  */
 
 #include "gimbal_control_task.h"
+#include "gimbal_core.h"
 
 #include "cmsis_os.h"
 
@@ -1465,6 +1466,8 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
   */
 static void gimbal_motor_angle_control(gimbal_motor_t *gimbal_motor)
 {
+    gimbal_core_axis_input_t core_input;
+    gimbal_core_axis_output_t core_output;
     fp32 pitch_err;
     fp32 kick_up;
     fp32 kick_down;
@@ -1480,13 +1483,19 @@ static void gimbal_motor_angle_control(gimbal_motor_t *gimbal_motor)
         return;
     }
 
-    gimbal_motor->motor_gyro_set = gimbal_PID_calc(&gimbal_motor->gimbal_motor_angle_pid,
-                                                   gimbal_motor->angle,
-                                                   gimbal_motor->angle_set,
-                                                   gimbal_motor->motor_gyro);
-    gimbal_motor->current_set = PID_calc(&gimbal_motor->gimbal_motor_gyro_pid,
-                                         gimbal_motor->motor_gyro,
-                                         gimbal_motor->motor_gyro_set);
+    memset(&core_input, 0, sizeof(core_input));
+    memset(&core_output, 0, sizeof(core_output));
+    core_input.mode = (uint8_t)GIMBAL_CORE_MODE_ANGLE;
+    core_input.angle_rad = gimbal_motor->angle;
+    core_input.angle_set_rad = gimbal_motor->angle_set;
+    core_input.gyro_radps = gimbal_motor->motor_gyro;
+    gimbal_core_step_axis_base(&gimbal_motor->gimbal_motor_angle_pid,
+                               &gimbal_motor->gimbal_motor_gyro_pid,
+                               &core_input,
+                               &core_output);
+    gimbal_motor->motor_gyro_set = core_output.gyro_set_radps;
+    gimbal_motor->current_set = core_output.current_set;
+    gimbal_motor->given_current = core_output.given_current;
 
     if (gimbal_motor == &gimbal_control.gimbal_yaw_motor)
     {
@@ -1544,12 +1553,26 @@ static void gimbal_motor_angle_control(gimbal_motor_t *gimbal_motor)
 
 static void gimbal_motor_raw_angle_control(gimbal_motor_t *gimbal_motor)
 {
+    gimbal_core_axis_input_t core_input;
+    gimbal_core_axis_output_t core_output;
+
     if (gimbal_motor == NULL)
     {
         return;
     }
-    gimbal_motor->current_set = gimbal_motor->raw_cmd_current;
-    gimbal_motor->given_current = (int16_t)(gimbal_motor->current_set);
+
+    memset(&core_input, 0, sizeof(core_input));
+    memset(&core_output, 0, sizeof(core_output));
+    core_input.mode = (uint8_t)GIMBAL_CORE_MODE_RAW;
+    core_input.gyro_set_radps = gimbal_motor->motor_gyro_set;
+    core_input.raw_current = gimbal_motor->raw_cmd_current;
+    gimbal_core_step_axis_base(&gimbal_motor->gimbal_motor_angle_pid,
+                               &gimbal_motor->gimbal_motor_gyro_pid,
+                               &core_input,
+                               &core_output);
+    gimbal_motor->motor_gyro_set = core_output.gyro_set_radps;
+    gimbal_motor->current_set = core_output.current_set;
+    gimbal_motor->given_current = core_output.given_current;
 }
 
 #if GIMBAL_TEST_MODE

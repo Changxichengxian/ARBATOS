@@ -856,6 +856,86 @@ function Test-ControlRegistryBoundaries {
     }
 }
 
+function Test-ControlCoreBoundaries {
+    Write-Host "[check] control core boundaries"
+
+    $coreFiles = @(
+        "shared\application\robot\control_core.h",
+        "shared\application\arm\arm_core.h",
+        "shared\application\chassis\chassis_core.h",
+        "shared\application\gimbal\gimbal_core.h",
+        "shared\application\wheelleg\wheelleg_core.h"
+    )
+    $forbiddenPatterns = @(
+        'FreeRTOS\.h',
+        'cmsis_os\.h',
+        'task\.h',
+        'CAN_receive\.h',
+        'motor_instance\.h',
+        'INS_task\.h',
+        'sdlog\.h',
+        'watch\.h',
+        'config\.h',
+        '\bg_config\b',
+        '\bosDelay\s*\(',
+        '\bxTaskGetTickCount\s*\('
+    )
+
+    foreach ($repoPath in $coreFiles) {
+        $fullPath = Join-Path $script:RepoRoot $repoPath
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+            Add-CheckError "Missing control core file: $repoPath"
+            continue
+        }
+
+        $content = Get-Content -LiteralPath $fullPath -Raw
+        foreach ($pattern in $forbiddenPatterns) {
+            if ($content -match $pattern) {
+                Add-CheckError "${repoPath}: core files must stay independent from RTOS/HAL/config runtime dependency '$pattern'."
+            }
+        }
+    }
+
+    $adapterIncludes = @(
+        [pscustomobject]@{
+            Source = "shared\application\arm\arm_motion.c"
+            Include = '#include "arm_core.h"'
+            Step = 'arm_core_step_manual'
+        },
+        [pscustomobject]@{
+            Source = "shared\application\chassis\chassis_control_task.c"
+            Include = '#include "chassis_core.h"'
+            Step = 'chassis_core_step_velocity'
+        },
+        [pscustomobject]@{
+            Source = "shared\application\gimbal\gimbal_control_task.c"
+            Include = '#include "gimbal_core.h"'
+            Step = 'gimbal_core_step_axis_base'
+        },
+        [pscustomobject]@{
+            Source = "shared\application\wheelleg\wheelleg_mit_task.c"
+            Include = '#include "wheelleg_core.h"'
+            Step = $null
+        }
+    )
+
+    foreach ($adapter in $adapterIncludes) {
+        $fullPath = Join-Path $script:RepoRoot $adapter.Source
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+            Add-CheckError "Missing control adapter source: $($adapter.Source)"
+            continue
+        }
+
+        $content = Get-Content -LiteralPath $fullPath -Raw
+        if ($content -notmatch [regex]::Escape($adapter.Include)) {
+            Add-CheckError "$($adapter.Source): must include $($adapter.Include)."
+        }
+        if ($null -ne $adapter.Step -and $content -notmatch [regex]::Escape($adapter.Step)) {
+            Add-CheckError "$($adapter.Source): must call $($adapter.Step) so the firmware path uses the reusable core."
+        }
+    }
+}
+
 function Test-RobotDeviceSchema {
     Write-Host "[check] robot device schema"
 
@@ -965,6 +1045,7 @@ Test-StaleText
 Test-HighRateApiBoundaries
 Test-CanTxDeviceConfigBoundaries
 Test-ControlRegistryBoundaries
+Test-ControlCoreBoundaries
 Test-RobotDeviceSchema
 Test-SharedConfigTypes
 

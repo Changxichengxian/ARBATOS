@@ -27,6 +27,7 @@
 #include "arm_motor_table.h"
 
 #include "arm_motion.h"
+#include "arm_core.h"
 #include "can_mit_motor_driver.h"
 #include "mit_motor.h"
 #include "unitree_motor_driver.h"
@@ -49,10 +50,6 @@ static uint32_t g_arm_j0_unitree_last_step_tick_ms = 0u;
 static fp32 g_arm_j0_unitree_cmd_output_speed_rad_s = 0.0f;
 static fp32 g_arm_j0_unitree_cmd_output_kd = 0.0f;
 
-static fp32 arm_motion_clamp_fp32(fp32 x, fp32 x_min, fp32 x_max);
-static uint8_t arm_key_active(const arm_motor_entry_t *entry, uint16_t key_mask);
-static uint8_t arm_any_keys_active(uint16_t key_mask);
-static uint8_t arm_any_mit_keys_active(uint16_t key_mask);
 static const arm_motor_entry_t *arm_j0_entry(void);
 static const motor_node_param_t *arm_entry_node(const arm_motor_entry_t *entry);
 static uint8_t arm_entry_can_bus(const arm_motor_entry_t *entry);
@@ -94,72 +91,56 @@ static void arm_j0_unitree_cmd_from_mit(const arm_motor_entry_t *entry,
                                         const mit_motor_cmd_t *src,
                                         unitree_motor_cmd_t *out);
 static void arm_update_j0_actuator_feedback_from_unitree(void);
-static void arm_write_j0_unitree_cmd(const arm_motor_entry_t *entry,
-                                     uint8_t move_key,
-                                     uint8_t reverse,
-                                     uint8_t ctrl_held);
 static void arm_sync_j0_unitree_state(void);
 static void arm_step_j0_unitree(const arm_motor_entry_t *entry);
-static void arm_step_j0(const arm_motor_entry_t *entry, uint16_t key_mask);
-static void arm_step_mit(uint16_t key_mask);
+static void arm_build_core_config(arm_core_config_t *out);
+static void arm_build_core_joint_params(arm_core_joint_param_t *out, uint8_t out_count);
+static void arm_apply_j0_core_output(const arm_core_output_t *core_output);
+static void arm_step_j0(const arm_core_output_t *core_output);
+static void arm_step_mit(const arm_core_output_t *core_output);
 
-static fp32 arm_motion_clamp_fp32(fp32 x, fp32 x_min, fp32 x_max)
+static void arm_build_core_config(arm_core_config_t *out)
 {
-    if (x < x_min)
+    if (out == NULL)
     {
-        return x_min;
+        return;
     }
-    if (x > x_max)
-    {
-        return x_max;
-    }
-    return x;
+
+    (void)memset(out, 0, sizeof(*out));
+    out->deadman_hold_ctrl = g_arm_deadman_hold_ctrl;
+    out->key_speed_scale = g_arm_key_speed_scale;
+    out->key_kd = g_arm_key_kd;
+    out->j0_current = g_arm_j0_current;
+    out->j0_unitree_key_speed_rad_s = g_config.arm_j0_unitree.key_speed_rad_s;
+    out->j0_unitree_hold_kd = g_config.arm_j0_unitree.hold_kd;
+    out->j0_unitree_drive_kd = g_config.arm_j0_unitree.drive_kd;
 }
 
-static uint8_t arm_key_active(const arm_motor_entry_t *entry, uint16_t key_mask)
+static void arm_build_core_joint_params(arm_core_joint_param_t *out, uint8_t out_count)
 {
-    if (entry == NULL)
+    uint8_t i;
+
+    if (out == NULL)
     {
-        return 0u;
+        return;
     }
 
-    return ((key_mask & entry->key_mask) != 0u) ? 1u : 0u;
-}
+    (void)memset(out, 0, (size_t)out_count * sizeof(out[0]));
 
-static uint8_t arm_any_keys_active(uint16_t key_mask)
-{
-    uint32_t i;
-
-    for (i = 0u; i < ARM_MOTOR_COUNT; i++)
-    {
-        if (arm_key_active(&g_arm_motor_table[i], key_mask) != 0u)
-        {
-            return 1u;
-        }
-    }
-
-    return 0u;
-}
-
-static uint8_t arm_any_mit_keys_active(uint16_t key_mask)
-{
-    uint32_t i;
-
-    for (i = 0u; i < ARM_MOTOR_COUNT; i++)
+    for (i = 0u; i < out_count && i < ARM_MOTOR_COUNT; i++)
     {
         const arm_motor_entry_t *entry = &g_arm_motor_table[i];
+        const can_mit_motor_limits_t *limits = arm_mit_limits(entry);
 
-        if (entry->driver != ARM_MOTOR_DRIVER_CAN_MIT)
-        {
-            continue;
-        }
-        if (arm_key_active(entry, key_mask) != 0u)
-        {
-            return 1u;
-        }
+        out[i].enabled = 1u;
+        out[i].role = (i == ARM_J0_INDEX) ? (uint8_t)ARM_CORE_JOINT_ROLE_J0 :
+            ((entry->driver == ARM_MOTOR_DRIVER_CAN_MIT) ? (uint8_t)ARM_CORE_JOINT_ROLE_MIT_SPEED :
+             (uint8_t)ARM_CORE_JOINT_ROLE_NONE);
+        out[i].direction = entry->direction;
+        out[i].key_mask = entry->key_mask;
+        out[i].key_speed_rad_s = entry->key_speed_rad_s;
+        out[i].max_kd = (limits != NULL) ? limits->kd_max : 0.0f;
     }
-
-    return 0u;
 }
 
 static const arm_motor_entry_t *arm_j0_entry(void)
@@ -583,33 +564,41 @@ static void arm_sync_j0_unitree_state(void)
     arm_update_j0_actuator_feedback_from_unitree();
 }
 
-static void arm_write_j0_unitree_cmd(const arm_motor_entry_t *entry,
-                                     uint8_t move_key,
-                                     uint8_t reverse,
-                                     uint8_t ctrl_held)
+static void arm_apply_j0_core_output(const arm_core_output_t *core_output)
 {
-    const arm_j0_unitree_config_t *cfg = &g_config.arm_j0_unitree;
+    const arm_motor_entry_t *entry = arm_j0_entry();
+    const actuator_cmd_t *cmd = NULL;
 
-    if (arm_j0_unitree_enabled(entry) == 0u)
+    if (core_output != NULL && core_output->joint_count > ARM_J0_INDEX)
+    {
+        cmd = &core_output->cmd[ARM_J0_INDEX];
+    }
+
+    if (cmd == NULL || cmd->active == 0u)
     {
         (void)motor_instance_cmd_set_speed_id(ACTUATOR_ID_ARM_J0, 0.0f, 0.0f, 0.0f);
         return;
     }
 
-    if (g_arm_deadman_hold_ctrl != 0u && ctrl_held == 0u)
+    if (arm_j0_unitree_enabled(entry) != 0u)
     {
-        (void)motor_instance_cmd_set_speed_id(ACTUATOR_ID_ARM_J0, 0.0f, 0.0f, 0.0f);
-        return;
+        if (cmd->mode == (uint8_t)ACTUATOR_CMD_MODE_SPEED)
+        {
+            (void)motor_instance_cmd_set_speed_id(ACTUATOR_ID_ARM_J0, cmd->velocity, cmd->kd, cmd->torque);
+        }
+        else
+        {
+            (void)motor_instance_cmd_set_speed_id(ACTUATOR_ID_ARM_J0, 0.0f, 0.0f, 0.0f);
+        }
     }
-
-    if (move_key != 0u)
+    else if (cmd->mode == (uint8_t)ACTUATOR_CMD_MODE_CURRENT)
     {
-        const fp32 dir = (reverse != 0u) ? -1.0f : 1.0f;
-        (void)motor_instance_cmd_set_speed_id(ACTUATOR_ID_ARM_J0, dir * cfg->key_speed_rad_s, cfg->drive_kd, 0.0f);
+        const int16_t current = motor_cfg_limit_current_node(arm_entry_node(entry), cmd->current);
+        (void)motor_instance_cmd_set_current_id(ACTUATOR_ID_ARM_J0, current);
     }
     else
     {
-        (void)motor_instance_cmd_set_speed_id(ACTUATOR_ID_ARM_J0, 0.0f, cfg->hold_kd, 0.0f);
+        (void)motor_instance_cmd_set_current_id(ACTUATOR_ID_ARM_J0, 0);
     }
 }
 
@@ -713,50 +702,22 @@ static void arm_refresh_j0_feedback(void)
     }
 }
 
-static void arm_step_j0(const arm_motor_entry_t *entry, uint16_t key_mask)
+static void arm_step_j0(const arm_core_output_t *core_output)
 {
-    const uint8_t ctrl_held = ((key_mask & KEY_PRESSED_OFFSET_CTRL) != 0u) ? 1u : 0u;
-    const uint8_t reverse = ((key_mask & KEY_PRESSED_OFFSET_SHIFT) != 0u) ? 1u : 0u;
-    const uint8_t move_key = arm_key_active(entry, key_mask);
+    const arm_motor_entry_t *entry = arm_j0_entry();
 
-    arm_write_j0_unitree_cmd(entry, move_key, reverse, ctrl_held);
+    arm_apply_j0_core_output(core_output);
     arm_step_j0_unitree(entry);
-
     if (arm_j0_unitree_enabled(entry) != 0u)
-    {
-        (void)motor_instance_cmd_set_current_id(ACTUATOR_ID_ARM_J0, 0);
-        return;
-    }
-
-    if (g_arm_deadman_hold_ctrl != 0u && ctrl_held == 0u)
-    {
-        (void)motor_instance_cmd_set_current_id(ACTUATOR_ID_ARM_J0, 0);
-        return;
-    }
-
-    if (move_key != 0u)
-    {
-        const int16_t current_abs = (g_arm_j0_current >= 0) ? g_arm_j0_current : (int16_t)(-g_arm_j0_current);
-        int16_t current = (reverse != 0u) ? (int16_t)(-current_abs) : current_abs;
-
-        current = motor_cfg_limit_current_node(arm_entry_node(entry), current);
-        (void)motor_instance_cmd_set_current_id(ACTUATOR_ID_ARM_J0, current);
-    }
-    else
     {
         (void)motor_instance_cmd_set_current_id(ACTUATOR_ID_ARM_J0, 0);
     }
 }
 
-static void arm_step_mit(uint16_t key_mask)
+static void arm_step_mit(const arm_core_output_t *core_output)
 {
-    const uint8_t ctrl_held = ((key_mask & KEY_PRESSED_OFFSET_CTRL) != 0u) ? 1u : 0u;
-    const uint8_t reverse = ((key_mask & KEY_PRESSED_OFFSET_SHIFT) != 0u) ? 1u : 0u;
-    const uint8_t any_keys = arm_any_keys_active(key_mask);
-    const uint8_t dm_active = arm_any_mit_keys_active(key_mask);
-    const uint8_t deadman = (g_arm_deadman_hold_ctrl != 0u) ?
-        (((ctrl_held != 0u) && (any_keys != 0u)) ? 1u : 0u) :
-        any_keys;
+    const uint8_t deadman = (core_output != NULL) ? core_output->mit_deadman_active : 0u;
+    const uint8_t dm_active = (core_output != NULL) ? core_output->mit_move_key_active : 0u;
     uint32_t i;
 
     if (deadman == 0u)
@@ -820,12 +781,15 @@ static void arm_step_mit(uint16_t key_mask)
             continue;
         }
 
-        if (arm_key_active(entry, key_mask) != 0u)
+        if (core_output != NULL &&
+            i < core_output->joint_count &&
+            core_output->cmd[i].active != 0u &&
+            core_output->cmd[i].mode == (uint8_t)ACTUATOR_CMD_MODE_SPEED)
         {
-            const fp32 dir = (reverse != 0u) ? -1.0f : 1.0f;
-            const fp32 velocity = dir * (fp32)entry->direction * entry->key_speed_rad_s * g_arm_key_speed_scale;
-            const fp32 kd = arm_motion_clamp_fp32(g_arm_key_kd, 0.0f, limits->kd_max);
-            (void)motor_instance_cmd_set_speed_id(actuator_id, velocity, kd, 0.0f);
+            (void)motor_instance_cmd_set_speed_id(actuator_id,
+                                                  core_output->cmd[i].velocity,
+                                                  core_output->cmd[i].kd,
+                                                  core_output->cmd[i].torque);
         }
         else
         {
@@ -854,9 +818,25 @@ void arm_motion_init(void)
 
 void arm_motion_step_manual(uint16_t key_mask)
 {
-    arm_step_j0(&g_arm_motor_table[ARM_J0_INDEX], key_mask);
+    arm_core_config_t core_cfg;
+    arm_core_joint_param_t core_joint[ARM_MOTOR_COUNT];
+    arm_core_input_t core_input;
+    arm_core_output_t core_output;
+
+    arm_build_core_config(&core_cfg);
+    arm_build_core_joint_params(core_joint, (uint8_t)ARM_MOTOR_COUNT);
+
+    (void)memset(&core_input, 0, sizeof(core_input));
+    core_input.key_mask = key_mask;
+    core_input.ctrl_held = ((key_mask & KEY_PRESSED_OFFSET_CTRL) != 0u) ? 1u : 0u;
+    core_input.reverse = ((key_mask & KEY_PRESSED_OFFSET_SHIFT) != 0u) ? 1u : 0u;
+    core_input.j0_unitree_enabled = arm_j0_unitree_enabled(arm_j0_entry());
+
+    arm_core_step_manual(&core_cfg, core_joint, (uint8_t)ARM_MOTOR_COUNT, &core_input, &core_output);
+
+    arm_step_j0(&core_output);
     arm_refresh_j0_feedback();
-    arm_step_mit(key_mask);
+    arm_step_mit(&core_output);
 }
 
 const arm_motor_feedback_t *arm_motion_get_feedback(uint8_t index)
