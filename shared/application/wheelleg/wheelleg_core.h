@@ -58,6 +58,20 @@ typedef struct
 
 typedef struct
 {
+    fp32 x_m;
+    fp32 v_mps;
+} wheelleg_core_observer_t;
+
+typedef struct
+{
+    fp32 foot_x_m;
+    fp32 foot_y_m;
+    fp32 length_m;
+    uint8_t valid;
+} wheelleg_core_target_smooth_t;
+
+typedef struct
+{
     fp32 l1;
     fp32 l2;
     fp32 l3;
@@ -129,6 +143,18 @@ static inline fp32 wheelleg_core_abs(fp32 value)
 static inline uint8_t wheelleg_core_axis_in_deadband(int16_t axis, uint16_t deadband)
 {
     return (axis > -(int16_t)deadband && axis < (int16_t)deadband) ? 1u : 0u;
+}
+
+static inline fp32 wheelleg_core_axis_to_fp32(int16_t axis,
+                                             fp32 max_abs,
+                                             uint16_t deadband,
+                                             int16_t axis_abs)
+{
+    if (axis_abs <= 0 || wheelleg_core_axis_in_deadband(axis, deadband) != 0u)
+    {
+        return 0.0f;
+    }
+    return wheelleg_core_clamp(((fp32)axis) / (fp32)axis_abs, -1.0f, 1.0f) * max_abs;
 }
 
 static inline fp32 wheelleg_core_target_theta_from_foot_x(fp32 foot_x_m, fp32 leg_length_m)
@@ -315,6 +341,42 @@ static inline fp32 wheelleg_core_roll_force(fp32 roll_set,
     return wheelleg_core_clamp(out, -max_out, max_out);
 }
 
+static inline void wheelleg_core_observer_update(wheelleg_core_observer_t *observer,
+                                                 const wheelleg_core_leg_calc_t *left_leg,
+                                                 const wheelleg_core_leg_calc_t *right_leg,
+                                                 fp32 left_wheel_velocity_radps,
+                                                 fp32 right_wheel_velocity_radps,
+                                                 fp32 wheel_radius_m,
+                                                 fp32 gyro_y,
+                                                 fp32 lpf,
+                                                 fp32 dt)
+{
+    fp32 wr;
+    fp32 wl;
+    fp32 vr;
+    fp32 vl;
+    fp32 v_meas;
+
+    if (observer == NULL || left_leg == NULL || right_leg == NULL || dt <= 0.0f)
+    {
+        return;
+    }
+
+    lpf = wheelleg_core_clamp(lpf, 0.01f, 1.0f);
+    wr = -right_wheel_velocity_radps + right_leg->d_alpha - gyro_y;
+    wl = left_wheel_velocity_radps + left_leg->d_alpha - gyro_y;
+    vr = wr * wheel_radius_m +
+         right_leg->length * right_leg->d_theta * cosf(right_leg->theta) +
+         right_leg->d_length * sinf(right_leg->theta);
+    vl = wl * wheel_radius_m +
+         left_leg->length * left_leg->d_theta * cosf(left_leg->theta) +
+         left_leg->d_length * sinf(left_leg->theta);
+    v_meas = (vr + vl) * 0.5f;
+
+    observer->v_mps += lpf * (v_meas - observer->v_mps);
+    observer->x_m += observer->v_mps * dt;
+}
+
 static inline uint8_t wheelleg_core_limit_foot_xy(fp32 min_leg_m,
                                                   fp32 max_leg_m,
                                                   fp32 max_foot_x_range_m,
@@ -361,6 +423,95 @@ static inline uint8_t wheelleg_core_limit_foot_xy(fp32 min_leg_m,
     *y_m = y;
     *length_m = length;
     return 1u;
+}
+
+static inline void wheelleg_core_target_smooth_clear(wheelleg_core_target_smooth_t *smooth)
+{
+    if (smooth == NULL)
+    {
+        return;
+    }
+
+    smooth->foot_x_m = 0.0f;
+    smooth->foot_y_m = 0.0f;
+    smooth->length_m = 0.0f;
+    smooth->valid = 0u;
+}
+
+static inline uint8_t wheelleg_core_target_smooth_update_xy(wheelleg_core_target_smooth_t *smooth,
+                                                            fp32 target_foot_x_m,
+                                                            fp32 target_foot_y_m,
+                                                            fp32 measured_leg_m,
+                                                            fp32 measured_alpha_rad,
+                                                            fp32 min_leg_m,
+                                                            fp32 max_leg_m,
+                                                            fp32 max_foot_x_range_m,
+                                                            fp32 foot_x_slew_mps,
+                                                            fp32 foot_y_slew_mps,
+                                                            fp32 default_dt,
+                                                            fp32 dt)
+{
+    fp32 measured_x;
+    fp32 measured_y;
+    fp32 measured_length;
+    fp32 target_length;
+
+    if (smooth == NULL)
+    {
+        return 0u;
+    }
+    if (dt <= 0.0f)
+    {
+        dt = default_dt;
+    }
+
+    if (wheelleg_core_limit_foot_xy(min_leg_m,
+                                    max_leg_m,
+                                    max_foot_x_range_m,
+                                    &target_foot_x_m,
+                                    &target_foot_y_m,
+                                    &target_length) == 0u)
+    {
+        return 0u;
+    }
+
+    if (smooth->valid == 0u)
+    {
+        measured_alpha_rad = wheelleg_core_clamp(measured_alpha_rad, -1.2f, 1.2f);
+        measured_length = wheelleg_core_clamp(measured_leg_m, min_leg_m, max_leg_m);
+        measured_x = measured_length * sinf(measured_alpha_rad);
+        measured_y = measured_length * cosf(measured_alpha_rad);
+        if (wheelleg_core_limit_foot_xy(min_leg_m,
+                                        max_leg_m,
+                                        max_foot_x_range_m,
+                                        &measured_x,
+                                        &measured_y,
+                                        &measured_length) == 0u)
+        {
+            measured_x = target_foot_x_m;
+            measured_y = target_foot_y_m;
+            measured_length = target_length;
+        }
+
+        smooth->foot_x_m = measured_x;
+        smooth->foot_y_m = measured_y;
+        smooth->length_m = measured_length;
+        smooth->valid = 1u;
+    }
+
+    smooth->foot_x_m = wheelleg_core_slew_fp32(smooth->foot_x_m,
+                                               target_foot_x_m,
+                                               foot_x_slew_mps * dt);
+    smooth->foot_y_m = wheelleg_core_slew_fp32(smooth->foot_y_m,
+                                               target_foot_y_m,
+                                               foot_y_slew_mps * dt);
+    smooth->length_m = target_length;
+    return wheelleg_core_limit_foot_xy(min_leg_m,
+                                       max_leg_m,
+                                       max_foot_x_range_m,
+                                       &smooth->foot_x_m,
+                                       &smooth->foot_y_m,
+                                       &smooth->length_m);
 }
 
 static inline uint8_t wheelleg_core_forward_point(const wheelleg_core_geometry_t *geo,

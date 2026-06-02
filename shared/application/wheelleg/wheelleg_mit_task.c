@@ -344,11 +344,6 @@ static fp32 wheelleg_target_theta_from_foot_x(fp32 foot_x_m, fp32 leg_length_m)
     return wheelleg_core_target_theta_from_foot_x(foot_x_m, leg_length_m);
 }
 
-static fp32 wheelleg_slew_fp32(fp32 current, fp32 target, fp32 max_delta)
-{
-    return wheelleg_core_slew_fp32(current, target, max_delta);
-}
-
 static fp32 wheelleg_bench_default_leg_m(void)
 {
     const wheelleg_mit_config_t *cfg = &g_config.wheelleg_mit;
@@ -393,14 +388,37 @@ static uint8_t wheelleg_limit_foot_xy(fp32 *x_m, fp32 *y_m, fp32 *length_m)
                                        length_m);
 }
 
+static wheelleg_core_target_smooth_t wheelleg_target_smooth_from_state(void)
+{
+    wheelleg_core_target_smooth_t smooth;
+
+    smooth.foot_x_m = s_wheelleg.target_foot_x_smooth;
+    smooth.foot_y_m = s_wheelleg.target_foot_y_smooth;
+    smooth.length_m = s_wheelleg.target_leg_smooth;
+    smooth.valid = s_wheelleg.target_smooth_valid;
+    return smooth;
+}
+
+static void wheelleg_target_smooth_to_state(const wheelleg_core_target_smooth_t *smooth)
+{
+    if (smooth == NULL)
+    {
+        return;
+    }
+
+    s_wheelleg.target_foot_x_smooth = smooth->foot_x_m;
+    s_wheelleg.target_foot_y_smooth = smooth->foot_y_m;
+    s_wheelleg.target_leg_smooth = smooth->length_m;
+    s_wheelleg.target_smooth_valid = smooth->valid;
+}
+
 static void wheelleg_target_smooth_reset(void)
 {
+    wheelleg_core_target_smooth_t smooth;
     uint8_t side;
 
-    s_wheelleg.target_smooth_valid = 0u;
-    s_wheelleg.target_leg_smooth = 0.0f;
-    s_wheelleg.target_foot_x_smooth = 0.0f;
-    s_wheelleg.target_foot_y_smooth = 0.0f;
+    wheelleg_core_target_smooth_clear(&smooth);
+    wheelleg_target_smooth_to_state(&smooth);
     s_wheelleg.auto_leg_stage = 0u;
     s_wheelleg.auto_leg_stage_tick_ms = 0u;
     s_wheelleg.bench_hold_pose_valid = 0u;
@@ -427,57 +445,28 @@ static void wheelleg_balance_state_reset(void)
 
 static void wheelleg_target_smooth_update_xy(fp32 target_foot_x, fp32 target_foot_y, fp32 dt)
 {
+    wheelleg_core_target_smooth_t smooth = wheelleg_target_smooth_from_state();
+    const wheelleg_mit_config_t *cfg = &g_config.wheelleg_mit;
     const fp32 measured_leg =
         (s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].length + s_wheelleg.leg[WHEELLEG_SIDE_LEFT].length) * 0.5f;
-    fp32 measured_alpha =
+    const fp32 measured_alpha =
         (s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].alpha + s_wheelleg.leg[WHEELLEG_SIDE_LEFT].alpha) * 0.5f;
-    fp32 measured_x;
-    fp32 measured_y;
-    fp32 measured_length;
-    fp32 target_length;
 
-    if (dt <= 0.0f)
+    if (wheelleg_core_target_smooth_update_xy(&smooth,
+                                              target_foot_x,
+                                              target_foot_y,
+                                              measured_leg,
+                                              measured_alpha,
+                                              cfg->min_leg_length_m,
+                                              cfg->max_leg_length_m,
+                                              WHEELLEG_MANUAL_FOOT_X_RANGE_M,
+                                              WHEELLEG_TARGET_FOOT_X_SLEW_MPS,
+                                              WHEELLEG_TARGET_LEG_SLEW_MPS,
+                                              0.003f,
+                                              dt) != 0u)
     {
-        dt = 0.003f;
+        wheelleg_target_smooth_to_state(&smooth);
     }
-
-    if (wheelleg_limit_foot_xy(&target_foot_x, &target_foot_y, &target_length) == 0u)
-    {
-        return;
-    }
-
-    if (s_wheelleg.target_smooth_valid == 0u)
-    {
-        measured_alpha = wheelleg_clamp(measured_alpha, -1.2f, 1.2f);
-        measured_length = wheelleg_clamp(measured_leg,
-                                         g_config.wheelleg_mit.min_leg_length_m,
-                                         g_config.wheelleg_mit.max_leg_length_m);
-        measured_x = measured_length * sinf(measured_alpha);
-        measured_y = measured_length * cosf(measured_alpha);
-        if (wheelleg_limit_foot_xy(&measured_x, &measured_y, &measured_length) == 0u)
-        {
-            measured_x = target_foot_x;
-            measured_y = target_foot_y;
-            measured_length = target_length;
-        }
-        s_wheelleg.target_foot_x_smooth = measured_x;
-        s_wheelleg.target_foot_y_smooth = measured_y;
-        s_wheelleg.target_leg_smooth = measured_length;
-        s_wheelleg.target_smooth_valid = 1u;
-    }
-
-    s_wheelleg.target_foot_x_smooth =
-        wheelleg_slew_fp32(s_wheelleg.target_foot_x_smooth,
-                           target_foot_x,
-                           WHEELLEG_TARGET_FOOT_X_SLEW_MPS * dt);
-    s_wheelleg.target_foot_y_smooth =
-        wheelleg_slew_fp32(s_wheelleg.target_foot_y_smooth,
-                           target_foot_y,
-                           WHEELLEG_TARGET_LEG_SLEW_MPS * dt);
-    s_wheelleg.target_leg_smooth = target_length;
-    (void)wheelleg_limit_foot_xy(&s_wheelleg.target_foot_x_smooth,
-                                 &s_wheelleg.target_foot_y_smooth,
-                                 &s_wheelleg.target_leg_smooth);
 }
 
 #if WHEELLEG_ENABLE_VMC_BALANCE
@@ -2088,31 +2077,30 @@ static uint8_t wheelleg_left_leg_test_apply(uint32_t now_ms)
 
 static fp32 wheelleg_axis_to_fp32(int16_t axis, fp32 max_abs, uint16_t deadband)
 {
-    if (wheelleg_axis_in_deadband(axis, deadband) != 0u)
-    {
-        return 0.0f;
-    }
-    return wheelleg_clamp(((fp32)axis) / (fp32)RC_CH_VALUE_ABS_LEGACY, -1.0f, 1.0f) * max_abs;
+    return wheelleg_core_axis_to_fp32(axis, max_abs, deadband, RC_CH_VALUE_ABS_LEGACY);
 }
 
 static void wheelleg_update_observer(fp32 dt, const fp32 gyro[3])
 {
     wheelleg_leg_calc_t *left = &s_wheelleg.leg[WHEELLEG_SIDE_LEFT];
     wheelleg_leg_calc_t *right = &s_wheelleg.leg[WHEELLEG_SIDE_RIGHT];
+    wheelleg_core_observer_t observer;
     const fp32 lpf = wheelleg_clamp(g_config.wheelleg_mit.observer_lpf, 0.01f, 1.0f);
     fp32 gyro_y = (gyro != NULL) ? gyro[INS_GYRO_Y_ADDRESS_OFFSET] : 0.0f;
-    fp32 wr = -s_wheelleg.wheel_fb[WHEELLEG_SIDE_RIGHT].velocity + right->d_alpha - gyro_y;
-    fp32 wl = s_wheelleg.wheel_fb[WHEELLEG_SIDE_LEFT].velocity + left->d_alpha - gyro_y;
-    fp32 vr = wr * g_config.wheelleg_mit.wheel_radius_m +
-              right->length * right->d_theta * cosf(right->theta) +
-              right->d_length * sinf(right->theta);
-    fp32 vl = wl * g_config.wheelleg_mit.wheel_radius_m +
-              left->length * left->d_theta * cosf(left->theta) +
-              left->d_length * sinf(left->theta);
-    fp32 v_meas = (vr + vl) * 0.5f;
 
-    s_wheelleg.v_mps += lpf * (v_meas - s_wheelleg.v_mps);
-    s_wheelleg.x_m += s_wheelleg.v_mps * dt;
+    observer.x_m = s_wheelleg.x_m;
+    observer.v_mps = s_wheelleg.v_mps;
+    wheelleg_core_observer_update(&observer,
+                                  left,
+                                  right,
+                                  s_wheelleg.wheel_fb[WHEELLEG_SIDE_LEFT].velocity,
+                                  s_wheelleg.wheel_fb[WHEELLEG_SIDE_RIGHT].velocity,
+                                  g_config.wheelleg_mit.wheel_radius_m,
+                                  gyro_y,
+                                  lpf,
+                                  dt);
+    s_wheelleg.x_m = observer.x_m;
+    s_wheelleg.v_mps = observer.v_mps;
 }
 
 static void wheelleg_publish(uint16_t faults,
