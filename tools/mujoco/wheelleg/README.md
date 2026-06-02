@@ -1,12 +1,14 @@
 # MuJoCo wheel-leg runner
 
-This is the first MuJoCo entry for the ARBATOS wheel-leg control core.
+This is the MuJoCo entry for the ARBATOS wheel-leg control core.
 
-It is intentionally a minimal physics fixture:
+The runner generates a project-specific five-bar wheel-leg model from
+`Robotconfig/<project>/config.c`:
 
 - wheels are real contact wheels attached to a free base;
-- front/back leg joints are exposed so `wheelleg_core.h` can compute kinematics;
-- the full closed-chain five-bar leg geometry is not modeled yet;
+- front/back active joints use the same names as `wheelleg_core.h` expects;
+- each side has a constrained five-bar leg with passive knee joints;
+- the wheel carrier follows the closed chain through MuJoCo equality constraints;
 - the runner calls a tiny native C bridge that includes `wheelleg_core.h`.
 
 ## Requirements
@@ -25,7 +27,8 @@ Compiler options on Windows:
 - Zig, providing `zig`.
 
 The runner builds `tools/mujoco/wheelleg/wheelleg_core_bridge.c` into
-`tmp/mujoco_wheelleg/arbatos_wheelleg_core_bridge.dll` on first run.
+`tmp/mujoco_wheelleg/arbatos_wheelleg_core_bridge.dll` on first run. It also
+writes the generated MJCF to `tmp/mujoco_wheelleg/wheelleg_fivebar_<project>.xml`.
 
 ## Smoke check
 
@@ -55,6 +58,12 @@ Use VMC joint torques:
 python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --vmc --viewer --realtime
 ```
 
+Use a custom MJCF instead of the generated five-bar model:
+
+```powershell
+python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --model .\tools\mujoco\wheelleg\wheelleg_minimal.xml
+```
+
 ## Current limits
 
 This runner is good for checking:
@@ -62,8 +71,10 @@ This runner is good for checking:
 - MuJoCo setup;
 - sensor sign conventions;
 - wheel torque direction;
+- five-bar closed-chain geometry and basic wheel-ground contact;
 - whether the reusable core can run outside FreeRTOS.
 
-It is not a faithful wheel-leg dynamics model yet. The next physics step is to
-replace the dummy front/back links with a constrained five-bar leg or a reduced
-leg model whose wheel position follows the same geometry as `wheelleg_core.h`.
+It is still not a final calibrated robot model. Link masses, inertia, friction,
+motor limits, contact material, and body dimensions are conservative starting
+values. The next physics step is to measure or CAD-export those values and tune
+the contact/friction model against the real wheel-leg behavior.

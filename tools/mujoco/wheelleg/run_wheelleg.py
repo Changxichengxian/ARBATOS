@@ -25,7 +25,6 @@ import robot_sim  # type: ignore  # noqa: E402
 
 
 HERE = Path(__file__).resolve().parent
-DEFAULT_MODEL = HERE / "wheelleg_minimal.xml"
 BRIDGE_SOURCE = HERE / "wheelleg_core_bridge.c"
 DEFAULT_NATIVE_DIR = REPO_ROOT / "tmp" / "mujoco_wheelleg"
 
@@ -402,6 +401,154 @@ def validate_model_xml(model_path: Path) -> None:
         raise SystemExit(f"Invalid MJCF XML {model_path}: {exc}") from exc
 
 
+def validate_fivebar_config(config: BridgeConfig) -> None:
+    values = {
+        "l1_m": config.geometry.l1_m,
+        "l2_m": config.geometry.l2_m,
+        "l3_m": config.geometry.l3_m,
+        "l4_m": config.geometry.l4_m,
+        "l5_m": config.geometry.l5_m,
+        "wheel_radius_m": config.wheel_radius_m,
+    }
+    invalid = [name for name, value in values.items() if float(value) <= 0.0]
+    if invalid:
+        raise SystemExit(f"Invalid wheelleg geometry config: {', '.join(invalid)} must be positive")
+
+
+def f6(value: float) -> str:
+    return f"{float(value):.6f}"
+
+
+def generated_model_path(native_dir: Path, project: str) -> Path:
+    safe_project = re.sub(r"[^A-Za-z0-9_.-]+", "_", project)
+    return native_dir / f"wheelleg_fivebar_{safe_project}.xml"
+
+
+def build_fivebar_model_xml(config: BridgeConfig, base_height_m: float) -> str:
+    validate_fivebar_config(config)
+    l1 = float(config.geometry.l1_m)
+    l2 = float(config.geometry.l2_m)
+    l3 = float(config.geometry.l3_m)
+    l4 = float(config.geometry.l4_m)
+    l5 = float(config.geometry.l5_m)
+    wheel_radius = float(config.wheel_radius_m)
+    half_l5 = l5 * 0.5
+    track_half = 0.085
+    wheel_width = 0.012
+    crank_radius = 0.0045
+    rod_radius = 0.0038
+    carrier_mass = 0.045
+    body_mass = 1.35
+
+    def side_xml(prefix: str, y: float, material: str) -> str:
+        return f"""
+      <body name="{prefix}_carrier" pos="0 {f6(y)} 0">
+        <joint name="{prefix}_carrier_x" type="slide" axis="1 0 0" range="-0.090 0.090" damping="0.4"/>
+        <joint name="{prefix}_carrier_z" type="slide" axis="0 0 1" range="-0.180 -0.030" damping="0.4"/>
+        <geom name="{prefix}_carrier_geom" type="sphere" size="0.010" mass="{f6(carrier_mass)}"
+              material="{material}" contype="0" conaffinity="0"/>
+        <site name="{prefix}_foot_site" pos="0 0 0" size="0.004"/>
+        <body name="{prefix}_wheel" pos="0 0 0">
+          <joint name="{prefix}_wheel_hinge" type="hinge" axis="0 1 0" damping="0.004"/>
+          <geom name="{prefix}_wheel_geom" type="cylinder" size="{f6(wheel_radius)} {f6(wheel_width)}"
+                euler="1.5707963268 0 0" mass="0.080" material="wheel_mat"
+                friction="1.8 0.04 0.002"/>
+        </body>
+      </body>
+
+      <body name="{prefix}_front_crank" pos="{f6(-half_l5)} {f6(y)} 0">
+        <joint name="{prefix}_front_hinge" type="hinge" axis="0 1 0" range="-3.20 1.20" damping="0.02"/>
+        <geom name="{prefix}_front_crank_geom" type="capsule" fromto="0 0 0 0 0 {f6(-l1)}"
+              size="{f6(crank_radius)}" mass="0.020" material="{material}" contype="0" conaffinity="0"/>
+        <body name="{prefix}_front_rod" pos="0 0 {f6(-l1)}">
+          <joint name="{prefix}_front_knee" type="hinge" axis="0 1 0" range="-3.40 3.40" damping="0.01"/>
+          <geom name="{prefix}_front_rod_geom" type="capsule" fromto="0 0 0 0 0 {f6(-l2)}"
+                size="{f6(rod_radius)}" mass="0.025" material="{material}" contype="0" conaffinity="0"/>
+          <site name="{prefix}_front_rod_end" pos="0 0 {f6(-l2)}" size="0.004"/>
+        </body>
+      </body>
+
+      <body name="{prefix}_back_crank" pos="{f6(half_l5)} {f6(y)} 0">
+        <joint name="{prefix}_back_hinge" type="hinge" axis="0 1 0" range="-3.20 1.20" damping="0.02"/>
+        <geom name="{prefix}_back_crank_geom" type="capsule" fromto="0 0 0 0 0 {f6(-l4)}"
+              size="{f6(crank_radius)}" mass="0.020" material="{material}" contype="0" conaffinity="0"/>
+        <body name="{prefix}_back_rod" pos="0 0 {f6(-l4)}">
+          <joint name="{prefix}_back_knee" type="hinge" axis="0 1 0" range="-3.40 3.40" damping="0.01"/>
+          <geom name="{prefix}_back_rod_geom" type="capsule" fromto="0 0 0 0 0 {f6(-l3)}"
+                size="{f6(rod_radius)}" mass="0.025" material="{material}" contype="0" conaffinity="0"/>
+          <site name="{prefix}_back_rod_end" pos="0 0 {f6(-l3)}" size="0.004"/>
+        </body>
+      </body>"""
+
+    return f"""<mujoco model="arbatos_wheelleg_fivebar">
+  <compiler angle="radian" autolimits="true"/>
+  <option timestep="0.003" integrator="RK4" gravity="0 0 -9.81"/>
+
+  <default>
+    <joint armature="0.0002"/>
+    <geom condim="4" friction="1.2 0.04 0.002" solref="0.01 1"/>
+    <motor ctrllimited="true"/>
+  </default>
+
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512"
+             rgb1="0.18 0.19 0.20" rgb2="0.23 0.24 0.25"/>
+    <material name="floor_mat" texture="grid" texrepeat="10 10" reflectance="0.15"/>
+    <material name="body_mat" rgba="0.22 0.35 0.50 1"/>
+    <material name="right_mat" rgba="0.75 0.28 0.20 1"/>
+    <material name="left_mat" rgba="0.24 0.58 0.35 1"/>
+    <material name="wheel_mat" rgba="0.04 0.04 0.04 1"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 -3 3" dir="0 1 -1" diffuse="0.8 0.8 0.8"/>
+    <geom name="floor" type="plane" size="5 5 0.1" material="floor_mat"/>
+
+    <body name="base" pos="0 0 {f6(base_height_m)}">
+      <freejoint name="base_free"/>
+      <site name="imu" pos="0 0 0" size="0.006"/>
+      <geom name="body" type="box" size="0.095 0.120 0.035" mass="{f6(body_mass)}" material="body_mat"/>
+{side_xml("right", -track_half, "right_mat")}
+{side_xml("left", track_half, "left_mat")}
+    </body>
+  </worldbody>
+
+  <equality>
+    <connect name="right_front_loop" site1="right_front_rod_end" site2="right_foot_site" solref="0.004 1"/>
+    <connect name="right_back_loop" site1="right_back_rod_end" site2="right_foot_site" solref="0.004 1"/>
+    <connect name="left_front_loop" site1="left_front_rod_end" site2="left_foot_site" solref="0.004 1"/>
+    <connect name="left_back_loop" site1="left_back_rod_end" site2="left_foot_site" solref="0.004 1"/>
+  </equality>
+
+  <actuator>
+    <motor name="right_front_motor" joint="right_front_hinge" ctrlrange="-3 3"/>
+    <motor name="right_back_motor" joint="right_back_hinge" ctrlrange="-3 3"/>
+    <motor name="right_wheel_motor" joint="right_wheel_hinge" ctrlrange="-0.45 0.45"/>
+    <motor name="left_front_motor" joint="left_front_hinge" ctrlrange="-3 3"/>
+    <motor name="left_back_motor" joint="left_back_hinge" ctrlrange="-3 3"/>
+    <motor name="left_wheel_motor" joint="left_wheel_hinge" ctrlrange="-0.45 0.45"/>
+  </actuator>
+</mujoco>
+"""
+
+
+def resolve_model_path(args: argparse.Namespace, config: BridgeConfig) -> Path:
+    if args.model is not None:
+        validate_model_xml(args.model)
+        return args.model
+
+    validate_fivebar_config(config)
+    length = float(config.min_leg_length_m if config.min_leg_length_m > 0.02 else config.default_leg_length_m)
+    if config.max_leg_length_m > 0.02:
+        length = max(0.02, min(length, float(config.max_leg_length_m)))
+    base_height = length + float(config.wheel_radius_m) + 0.002
+    model_path = generated_model_path(Path(args.native_dir), args.project)
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    model_path.write_text(build_fivebar_model_xml(config, base_height), encoding="utf-8")
+    validate_model_xml(model_path)
+    return model_path
+
+
 def quat_to_euler_wxyz(quat: Iterable[float]) -> tuple[float, float, float]:
     w, x, y, z = quat
     sinr_cosp = 2.0 * (w * x + y * z)
@@ -413,6 +560,78 @@ def quat_to_euler_wxyz(quat: Iterable[float]) -> tuple[float, float, float]:
     cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
     yaw = math.atan2(siny_cosp, cosy_cosp)
     return roll, pitch, yaw
+
+
+def angle_from_down(dx: float, dz: float) -> float:
+    return math.atan2(-dx, -dz)
+
+
+def wrap_pi(value: float) -> float:
+    while value > math.pi:
+        value -= 2.0 * math.pi
+    while value < -math.pi:
+        value += 2.0 * math.pi
+    return value
+
+
+def fivebar_points(config: BridgeConfig, front_pos: float, back_pos: float) -> dict[str, tuple[float, float]]:
+    l1 = float(config.geometry.l1_m)
+    l2 = float(config.geometry.l2_m)
+    l3 = float(config.geometry.l3_m)
+    l4 = float(config.geometry.l4_m)
+    l5 = float(config.geometry.l5_m)
+    phi1 = math.pi * 0.5 + front_pos
+    phi4 = math.pi * 0.5 + back_pos
+    xb = l1 * math.cos(phi1)
+    yb = l1 * math.sin(phi1)
+    xd = l5 + l4 * math.cos(phi4)
+    yd = l4 * math.sin(phi4)
+    lbd = math.hypot(xd - xb, yd - yb)
+    a0 = 2.0 * l2 * (xd - xb)
+    b0 = 2.0 * l2 * (yd - yb)
+    c0 = l2 * l2 + lbd * lbd - l3 * l3
+    discr = a0 * a0 + b0 * b0 - c0 * c0
+    if discr < 0.0 or abs(a0 + c0) < 1.0e-9:
+        raise RuntimeError("home five-bar pose is not reachable")
+    phi2 = 2.0 * math.atan2(b0 + math.sqrt(max(0.0, discr)), a0 + c0)
+    xc = xb + l2 * math.cos(phi2)
+    yc = yb + l2 * math.sin(phi2)
+    half_l5 = l5 * 0.5
+    return {
+        "front_elbow": (xb - half_l5, -yb),
+        "back_elbow": (xd - half_l5, -yd),
+        "foot": (xc - half_l5, -yc),
+    }
+
+
+def joint_exists(mujoco, model, name: str) -> bool:
+    return mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name) >= 0
+
+
+def set_joint_qpos_if_exists(mujoco, model, data, name: str, value: float) -> None:
+    if joint_exists(mujoco, model, name):
+        data.joint(name).qpos[0] = value
+
+
+def initialize_leg_pose(mujoco, model, data, prefix: str, config: BridgeConfig, front_pos: float, back_pos: float) -> None:
+    points = fivebar_points(config, front_pos, back_pos)
+    front_elbow = points["front_elbow"]
+    back_elbow = points["back_elbow"]
+    foot = points["foot"]
+    front_rod_world = angle_from_down(foot[0] - front_elbow[0], foot[1] - front_elbow[1])
+    back_rod_world = angle_from_down(foot[0] - back_elbow[0], foot[1] - back_elbow[1])
+
+    set_joint_qpos_if_exists(mujoco, model, data, f"{prefix}_front_hinge", front_pos)
+    set_joint_qpos_if_exists(mujoco, model, data, f"{prefix}_back_hinge", back_pos)
+    set_joint_qpos_if_exists(mujoco, model, data, f"{prefix}_front_knee", wrap_pi(front_rod_world - front_pos))
+    set_joint_qpos_if_exists(mujoco, model, data, f"{prefix}_back_knee", wrap_pi(back_rod_world - back_pos))
+    set_joint_qpos_if_exists(mujoco, model, data, f"{prefix}_carrier_x", foot[0])
+    set_joint_qpos_if_exists(mujoco, model, data, f"{prefix}_carrier_z", foot[1])
+
+
+def initialize_model_pose(mujoco, model, data, config: BridgeConfig, front_home: float, back_home: float) -> None:
+    initialize_leg_pose(mujoco, model, data, "right", config, front_home, back_home)
+    initialize_leg_pose(mujoco, model, data, "left", config, front_home, back_home)
 
 
 def import_mujoco():
@@ -429,10 +648,6 @@ def joint_qpos(data, name: str) -> float:
 
 def joint_qvel(data, name: str) -> float:
     return float(data.joint(name).qvel[0])
-
-
-def set_joint_qpos(data, name: str, value: float) -> None:
-    data.joint(name).qpos[0] = value
 
 
 def actuator_id(mujoco, model, name: str) -> int:
@@ -493,8 +708,9 @@ def run_sim(args: argparse.Namespace) -> None:
     config = BridgeConfig()
     lib.arbatos_wheelleg_bridge_config_defaults(ctypes.byref(config))
     load_project_config(config, args.project)
+    model_path = resolve_model_path(args, config)
 
-    model = mujoco.MjModel.from_xml_path(str(args.model))
+    model = mujoco.MjModel.from_xml_path(str(model_path))
     model.opt.timestep = float(args.dt)
     data = mujoco.MjData(model)
     state = BridgeState()
@@ -506,10 +722,7 @@ def run_sim(args: argparse.Namespace) -> None:
         front_home.value = -2.0
         back_home.value = -2.0
 
-    set_joint_qpos(data, "right_front_hinge", front_home.value)
-    set_joint_qpos(data, "right_back_hinge", back_home.value)
-    set_joint_qpos(data, "left_front_hinge", front_home.value)
-    set_joint_qpos(data, "left_back_hinge", back_home.value)
+    initialize_model_pose(mujoco, model, data, config, front_home.value, back_home.value)
     mujoco.mj_forward(model, data)
 
     actuator_ids = {
@@ -556,7 +769,7 @@ def run_sim(args: argparse.Namespace) -> None:
 def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", default="MINIWHEELEG-C")
-    parser.add_argument("--model", type=Path, default=DEFAULT_MODEL)
+    parser.add_argument("--model", type=Path, default=None, help="Use a custom MJCF file instead of generated five-bar.")
     parser.add_argument("--native-dir", type=Path, default=DEFAULT_NATIVE_DIR)
     parser.add_argument("--duration-s", type=float, default=5.0)
     parser.add_argument("--dt", type=float, default=0.003)
@@ -575,12 +788,14 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
 
 def main(argv: Iterable[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    validate_model_xml(args.model)
+    config = BridgeConfig()
+    load_project_config(config, args.project)
+    model_path = resolve_model_path(args, config)
     body = read_wheelleg_config_body(args.project)
     if args.check:
         lqr_rows = robot_sim.extract_initializer(body, "lqr_poly")
         row_count = len(robot_sim.split_top_level(lqr_rows or ""))
-        print(f"MuJoCo wheelleg check ok: project={args.project} model={args.model} lqr_rows={row_count}")
+        print(f"MuJoCo wheelleg check ok: project={args.project} model={model_path} lqr_rows={row_count}")
         return 0
     run_sim(args)
     return 0
