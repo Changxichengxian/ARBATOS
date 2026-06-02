@@ -106,22 +106,12 @@
 
 typedef struct
 {
-    fp32 kp;
-    fp32 ki;
-    fp32 kd;
-    fp32 max_out;
-    fp32 max_iout;
-    fp32 iout;
-    fp32 last_err;
-} wheelleg_pid_t;
-
-typedef struct
-{
     actuator_id_e front;
     actuator_id_e back;
     actuator_id_e wheel;
 } wheelleg_actuator_map_t;
 
+typedef wheelleg_core_pid_t wheelleg_pid_t;
 typedef wheelleg_core_leg_calc_t wheelleg_leg_calc_t;
 
 typedef struct
@@ -561,39 +551,22 @@ static void wheelleg_pid_apply(wheelleg_pid_t *pid, const pid_param_t *cfg)
     {
         return;
     }
-    pid->kp = cfg->kp;
-    pid->ki = cfg->ki;
-    pid->kd = cfg->kd;
-    pid->max_out = cfg->max_out;
-    pid->max_iout = cfg->max_iout;
+    wheelleg_core_pid_configure(pid,
+                                cfg->kp,
+                                cfg->ki,
+                                cfg->kd,
+                                cfg->max_out,
+                                cfg->max_iout);
 }
 
 static void wheelleg_pid_clear(wheelleg_pid_t *pid)
 {
-    if (pid == NULL)
-    {
-        return;
-    }
-    pid->iout = 0.0f;
-    pid->last_err = 0.0f;
+    wheelleg_core_pid_clear(pid);
 }
 
 static fp32 wheelleg_pid_calc(wheelleg_pid_t *pid, fp32 ref, fp32 set)
 {
-    fp32 err;
-    fp32 out;
-
-    if (pid == NULL)
-    {
-        return 0.0f;
-    }
-
-    err = set - ref;
-    pid->iout += pid->ki * err;
-    pid->iout = wheelleg_clamp(pid->iout, -pid->max_iout, pid->max_iout);
-    out = pid->kp * err + pid->iout + pid->kd * (err - pid->last_err);
-    pid->last_err = err;
-    return wheelleg_clamp(out, -pid->max_out, pid->max_out);
+    return wheelleg_core_pid_calc(pid, ref, set);
 }
 
 static fp32 wheelleg_poly(const fp32 coe[4], fp32 len)

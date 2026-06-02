@@ -920,7 +920,8 @@ function Test-ControlCoreBoundaries {
                 'wheelleg_core_set_wheel_torques',
                 'wheelleg_core_lqr_wheel_output',
                 'wheelleg_core_target_smooth_update_xy',
-                'wheelleg_core_observer_update'
+                'wheelleg_core_observer_update',
+                'wheelleg_core_pid_calc'
             )
         }
     )

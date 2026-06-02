@@ -72,6 +72,17 @@ typedef struct
 
 typedef struct
 {
+    fp32 kp;
+    fp32 ki;
+    fp32 kd;
+    fp32 max_out;
+    fp32 max_iout;
+    fp32 iout;
+    fp32 last_err;
+} wheelleg_core_pid_t;
+
+typedef struct
+{
     fp32 l1;
     fp32 l2;
     fp32 l3;
@@ -339,6 +350,54 @@ static inline fp32 wheelleg_core_roll_force(fp32 roll_set,
     const fp32 out = kp * (roll_set - roll) - kd * roll_gyro;
 
     return wheelleg_core_clamp(out, -max_out, max_out);
+}
+
+static inline void wheelleg_core_pid_configure(wheelleg_core_pid_t *pid,
+                                               fp32 kp,
+                                               fp32 ki,
+                                               fp32 kd,
+                                               fp32 max_out,
+                                               fp32 max_iout)
+{
+    if (pid == NULL)
+    {
+        return;
+    }
+
+    pid->kp = kp;
+    pid->ki = ki;
+    pid->kd = kd;
+    pid->max_out = max_out;
+    pid->max_iout = max_iout;
+}
+
+static inline void wheelleg_core_pid_clear(wheelleg_core_pid_t *pid)
+{
+    if (pid == NULL)
+    {
+        return;
+    }
+
+    pid->iout = 0.0f;
+    pid->last_err = 0.0f;
+}
+
+static inline fp32 wheelleg_core_pid_calc(wheelleg_core_pid_t *pid, fp32 ref, fp32 set)
+{
+    fp32 err;
+    fp32 out;
+
+    if (pid == NULL)
+    {
+        return 0.0f;
+    }
+
+    err = set - ref;
+    pid->iout += pid->ki * err;
+    pid->iout = wheelleg_core_clamp(pid->iout, -pid->max_iout, pid->max_iout);
+    out = pid->kp * err + pid->iout + pid->kd * (err - pid->last_err);
+    pid->last_err = err;
+    return wheelleg_core_clamp(out, -pid->max_out, pid->max_out);
 }
 
 static inline void wheelleg_core_observer_update(wheelleg_core_observer_t *observer,
