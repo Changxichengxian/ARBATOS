@@ -214,6 +214,11 @@ def find_compiler() -> tuple[str, list[str]] | None:
     zig = shutil.which("zig")
     if zig:
         return zig, ["zig"]
+    local_appdata = os.environ.get("LOCALAPPDATA")
+    if local_appdata:
+        winget_zig = Path(local_appdata) / "Microsoft" / "WinGet" / "Links" / "zig.exe"
+        if winget_zig.exists():
+            return str(winget_zig), ["zig"]
     cl = shutil.which("cl")
     if cl:
         return cl, ["msvc"]

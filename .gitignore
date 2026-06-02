@@ -30,6 +30,7 @@
 *.iex
 *.ini
 /tmp_*
+/tmp/mujoco_wheelleg/
 
 # Keil build outputs/dirs
 MDK-ARM/standard_tpye_c/
