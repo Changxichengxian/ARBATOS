@@ -207,6 +207,10 @@ static inline void robot_profile_identity(robot_profile_identity_t *out)
 #define ROBOT_PROFILE_CHASSIS_CONTROL_BUDGET_US 1200u
 #endif
 
+#ifndef ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_BUDGET_US
+#define ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_BUDGET_US 1500u
+#endif
+
 #ifndef ROBOT_PROFILE_CAN_COMMAND_TX_BUDGET_US
 #define ROBOT_PROFILE_CAN_COMMAND_TX_BUDGET_US 300u
 #endif

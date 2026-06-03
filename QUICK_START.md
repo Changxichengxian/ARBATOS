@@ -32,7 +32,7 @@
 
 ### 2. 先配 profile 和任务模块
 
-在新目标的 `Robotconfig/<TARGET>/config.c` 里先看 `g_config.profile`：
+在新目标的 `Robotconfig/<TARGET>/config_operation.inc` 里先看 `.profile`：
 
 - `task_module_count`：这台车启用多少个模块。
 - `task_modules`：显式列出这台车要创建哪些任务，比如 `ROBOT_TASK_MODULE_CLASSIC_CHASSIS`、`ROBOT_TASK_MODULE_SINGLE_GIMBAL`。
@@ -41,7 +41,7 @@
 
 ### 3. 再配电机装配
 
-看 `g_config.motor`，先把每个轴的电机型号和 CAN ID 填对：
+看 `Robotconfig/<TARGET>/config_hardware.inc` 里的 `.motor`，先把每个轴的电机型号和 CAN ID 填对：
 
 - `chassis[]`：底盘轮子。
 - `yaw`、`pitch`：云台轴。
@@ -57,9 +57,9 @@
 - `manual_input`：决定 DBUS/SBUS、ELRS、图传遥控这些输入源怎么选。
 - `input`：把遥控通道映射成“底盘前后、底盘左右、云台 yaw、云台 pitch、模式拨杆”这些语义输入。
 
-优先改 `g_config.input.axis` 和 `g_config.input.sw`，控制任务里尽量不要直接写死遥控通道号。
+优先改 `Robotconfig/<TARGET>/config_input.inc` 里的 `.input.axis` 和 `.input.sw`，控制任务里尽量不要直接写死遥控通道号。
 
-安全档位置在 `g_config.manual_input.semantics` 里。现在 IMU 陀螺零偏微调也会看安全档：温度稳定后，遥控器未连接，或者云台和底盘都在安全档，才会采 3 秒静止数据做微调。
+安全档位置在 `config_input.inc` 的 `.manual_input.semantics` 里。现在 IMU 陀螺零偏微调也会看安全档：温度稳定后，遥控器未连接，或者云台和底盘都在安全档，才会采 3 秒静止数据做微调。
 
 ### 5. 配检测项
 
@@ -99,7 +99,7 @@ IMU 正常后再调云台和底盘。重点看：
 陀螺仪零偏有两种路径：
 
 - 正常上电：温度稳定后，遥控器未连接或处于安全档，静止 3 秒后自动微调一次。
-- 专门校准：把 `g_config.test.mode` 设成 `TEST_MODE_IMU_GYRO_CALI`，温度升到 40 度并稳定后，静止采 30 秒，然后保存到 Flash。
+- 专门校准：把 `g_config.operation.mode` 设成 `ROBOT_RUN_MODE_CALIBRATION`，`g_config.operation.cali_target` 设成 `ROBOT_CALI_TARGET_IMU_GYRO`，温度升到 40 度并稳定后，静止采 30 秒，然后保存到 Flash。
 
 做专门校准时不要碰车，也不要让风扇、线束、桌面震动影响机体。
 
@@ -132,20 +132,20 @@ IMU 正常后再调云台和底盘。重点看：
 
 ### 任务没跑
 
-- 看 `g_config.profile` 和 `task_modules` 是否开了对应任务。
+- 看 `config_operation.inc` 里的 `.profile.task_modules` 是否开了对应任务。
 - 看 `projects/<TARGET>/Core/Src/freertos.c` 或 H7 的 `board_freertos.c` 是否创建了任务。
 - 看 `g_watch` 里的任务状态和运行计数。
 
 ### 电机不动
 
-- 先看 `g_config.motor` 的型号、CAN ID、总线、反馈 ID。
+- 先看 `config_hardware.inc` 里的 `.motor` 型号、CAN ID、总线、反馈 ID。
 - 再看 CAN 收发统计和电机在线检测。
 - 确认控制任务是否真的写了执行器命令。
 - 最后再看 PID 输出和限幅。
 
 ### 电机方向反了
 
-- 底盘轮子优先改 `g_config.chassis.motor_dir`。
+- 底盘轮子优先改 `config_tuning.inc` 里的 `.chassis.motor_dir`。
 - 云台方向优先改 `yaw_turn`、`pitch_turn` 或安装矩阵相关配置。
 - 不要靠换 CAN ID 来掩盖方向问题。
 
@@ -154,20 +154,20 @@ IMU 正常后再调云台和底盘。重点看：
 - 看输入源是否在线。
 - 看 `manual_input_get_active_source()` 当前选的是哪个源。
 - 看 `control_input` 的语义轴和语义开关有没有变化。
-- 检查 `g_config.input.axis`、`g_config.input.sw` 映射。
+- 检查 `config_input.inc` 里的 `.input.axis`、`.input.sw` 映射。
 
 ### 姿态漂或上电不准
 
 - 先确认 IMU 温控稳定。
-- 做一次 `TEST_MODE_IMU_GYRO_CALI` 专门校准。
+- 做一次 `ROBOT_RUN_MODE_CALIBRATION + ROBOT_CALI_TARGET_IMU_GYRO` 专门校准。
 - 正常上电后保持安全档和静止，等 3 秒微调完成。
 - 如果车一上电手还扶着，微调会因为检测到扰动而放弃。
 
 ### AUX 调参改了没效果
 
 - 只有 `config.c` 的 `g_config_blocks` 表里列出的字段能临时改。
-- `g_config.motor` 这类装配信息默认不走 AUX 临时调参，改完要重新编译下载。
-- AUX 只改 RAM 里的当前值，重启会回到 `config.c` 默认值。
+- `config_hardware.inc` 里的 `.motor` 这类装配信息默认不走 AUX 临时调参，改完要重新编译下载。
+- AUX 只改 RAM 里的当前值，重启会回到 `config_*.inc` 默认值。
 
 ## 什么时候该改 shared
 
@@ -194,7 +194,7 @@ IMU 正常后再调云台和底盘。重点看：
 新车能算“初步接起来”，至少要满足：
 
 - 目标 Keil 工程能从干净状态编译。
-- `g_config.profile`、`task_modules`、`g_config.motor`、输入映射和安全档配置正确。
+- `config_operation.inc`、`config_hardware.inc`、`config_input.inc` 里的任务、电机、输入映射和安全档配置正确。
 - IMU 温控和零偏校准路径可用。
 - 遥控输入、CAN 反馈、状态灯、`g_watch` 都能观察。
 - 底盘、云台、射击每个子系统都能单独关闭或单独测试。

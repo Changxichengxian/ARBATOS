@@ -8,7 +8,7 @@
 
 /*
  * 阅读地图：
- * - 前段：行为模式到控制模式的选择，安全档和测试模式优先。
+ * - 前段：行为模式到控制模式的选择，安全档和运行模式优先。
  * - 中段：各模式的 vx/vy/wz 或目标角输出，包括跟随、小陀螺、摇摆。
  * - 后段：摇摆中心随机切换和云台 yaw 相对角辅助函数。
  * - 被调用方：chassis_control_task 先问这里要目标，再做运动学和 PID。
@@ -298,7 +298,7 @@ void chassis_behaviour_mode_set(chassis_move_t *chassis_move_mode)
         return;
     }
 
-    // 函数地图：先处理安全档/测试模式；再按拨杆和按键选行为；最后映射到底盘控制模式。
+    // 函数地图：先处理安全档/运行模式；再按拨杆和按键选行为；最后映射到底盘控制模式。
     const chassis_control_snapshot_t *fast = &chassis_move_mode->fast;
     const uint16_t chassis_sw = fast->mode_sw;
     const uint16_t chassis_sw_effective = chassis_get_effective_switch(chassis_sw,
@@ -316,7 +316,7 @@ void chassis_behaviour_mode_set(chassis_move_t *chassis_move_mode)
     }
 
     // chassis-only test mode: ignore gimbal follow and always use yaw stick to rotate chassis
-    if (fast->test_mode == TEST_MODE_CHASSIS_ONLY)
+    if (fast->chassis_only_mode != 0u)
     {
         chassis_behaviour_mode = CHASSIS_NO_FOLLOW_YAW;
         chassis_move_mode->chassis_mode = CHASSIS_VECTOR_NO_FOLLOW_YAW;

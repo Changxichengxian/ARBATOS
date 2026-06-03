@@ -45,14 +45,59 @@ typedef struct
     uint32_t rx_parse_error_count;
 } n6014b_port_state_t;
 
-static n6014b_motor_state_t g_n6014b_state[MotorCount];
-static uint8_t g_n6014b_axis_configured[MotorCount];
-static uint16_t g_n6014b_axis_timeout_ms[MotorCount];
+typedef struct
+{
+    uint8_t configured;
+    uint8_t actuator_id;
+    uint16_t timeout_ms;
+    n6014b_motor_state_t state;
+} n6014b_axis_slot_t;
+
+static n6014b_axis_slot_t g_n6014b_axis[N6014B_MOTOR_MAX_AXIS];
 static n6014b_port_state_t g_n6014b_port[2];
 
 static uint8_t n6014b_actuator_id_valid(MotorId id)
 {
     return ((uint32_t)id < (uint32_t)MotorCount) ? 1u : 0u;
+}
+
+static n6014b_axis_slot_t *n6014b_find_axis_slot(MotorId id)
+{
+    if (n6014b_actuator_id_valid(id) == 0u)
+    {
+        return NULL;
+    }
+
+    for (uint8_t i = 0u; i < (uint8_t)N6014B_MOTOR_MAX_AXIS; i++)
+    {
+        n6014b_axis_slot_t *slot = &g_n6014b_axis[i];
+        if (slot->configured != 0u && slot->actuator_id == (uint8_t)id)
+        {
+            return slot;
+        }
+    }
+    return NULL;
+}
+
+static n6014b_axis_slot_t *n6014b_alloc_axis_slot(MotorId id)
+{
+    if (n6014b_actuator_id_valid(id) == 0u)
+    {
+        return NULL;
+    }
+
+    for (uint8_t i = 0u; i < (uint8_t)N6014B_MOTOR_MAX_AXIS; i++)
+    {
+        n6014b_axis_slot_t *slot = &g_n6014b_axis[i];
+        if (slot->configured == 0u)
+        {
+            (void)memset(slot, 0, sizeof(*slot));
+            slot->configured = 1u;
+            slot->actuator_id = (uint8_t)id;
+            return slot;
+        }
+    }
+    return NULL;
 }
 
 static fp32 n6014b_clamp_fp32(fp32 value, fp32 min_value, fp32 max_value)
@@ -308,6 +353,23 @@ static uint8_t n6014b_cmd_mode_uses_velocity(MotorMode mode)
                      mode == MotorModeDamping);
 }
 
+static uint8_t n6014b_drive_state(uint8_t online, uint8_t mode)
+{
+    if (online == 0u)
+    {
+        return (uint8_t)MotorDriveStateOffline;
+    }
+    if (mode == (uint8_t)N6014B_MODE_LOCK)
+    {
+        return (uint8_t)MotorDriveStateDisabled;
+    }
+    if (mode == (uint8_t)N6014B_MODE_FOC)
+    {
+        return (uint8_t)MotorDriveStateEnabled;
+    }
+    return (uint8_t)MotorDriveStateReady;
+}
+
 static fp32 n6014b_current_to_torque(const motor_node_param_t *node,
                                      int16_t current,
                                      const motor_model_mit_limits_t *limits)
@@ -465,6 +527,7 @@ static void n6014b_copy_state_from_isr(MotorId id,
                                        fp32 velocity,
                                        fp32 position)
 {
+    n6014b_axis_slot_t *slot;
     n6014b_motor_state_t *state;
     UBaseType_t saved;
 
@@ -473,7 +536,13 @@ static void n6014b_copy_state_from_isr(MotorId id,
         return;
     }
 
-    state = &g_n6014b_state[id];
+    slot = n6014b_find_axis_slot(id);
+    if (slot == NULL)
+    {
+        return;
+    }
+
+    state = &slot->state;
     saved = taskENTER_CRITICAL_FROM_ISR();
     state->enabled = 1u;
     state->online = 1u;
@@ -495,13 +564,14 @@ static void n6014b_copy_state_from_isr(MotorId id,
 
 static MotorId n6014b_find_axis_from_isr(uint8_t port, uint8_t motor_id)
 {
-    for (uint8_t i = 0u; i < (uint8_t)MotorCount; i++)
+    for (uint8_t i = 0u; i < (uint8_t)N6014B_MOTOR_MAX_AXIS; i++)
     {
-        if (g_n6014b_axis_configured[i] != 0u &&
-            g_n6014b_state[i].rs485_port == port &&
-            g_n6014b_state[i].motor_id == motor_id)
+        const n6014b_axis_slot_t *slot = &g_n6014b_axis[i];
+        if (slot->configured != 0u &&
+            slot->state.rs485_port == port &&
+            slot->state.motor_id == motor_id)
         {
-            return (MotorId)i;
+            return (MotorId)slot->actuator_id;
         }
     }
     return MotorCount;
@@ -509,6 +579,7 @@ static MotorId n6014b_find_axis_from_isr(uint8_t port, uint8_t motor_id)
 
 static void n6014b_mark_axis_crc_error_from_isr(MotorId id)
 {
+    n6014b_axis_slot_t *slot;
     UBaseType_t saved;
 
     if (n6014b_actuator_id_valid(id) == 0u)
@@ -516,8 +587,14 @@ static void n6014b_mark_axis_crc_error_from_isr(MotorId id)
         return;
     }
 
+    slot = n6014b_find_axis_slot(id);
+    if (slot == NULL)
+    {
+        return;
+    }
+
     saved = taskENTER_CRITICAL_FROM_ISR();
-    g_n6014b_state[id].rx_crc_fail_count++;
+    slot->state.rx_crc_fail_count++;
     taskEXIT_CRITICAL_FROM_ISR(saved);
 }
 
@@ -740,41 +817,61 @@ static int n6014b_tx(uint8_t port, const uint8_t frame[N6014B_TX_FRAME_SIZE])
     return 1;
 }
 
-static void n6014b_update_axis_config(MotorId id,
-                                      uint8_t port,
-                                      uint8_t motor_id,
-                                      uint16_t timeout_ms)
+static uint8_t n6014b_update_axis_config(MotorId id,
+                                         uint8_t port,
+                                         uint8_t motor_id,
+                                         uint16_t timeout_ms)
 {
+    n6014b_axis_slot_t *slot;
     n6014b_motor_state_t *state;
 
     if (n6014b_actuator_id_valid(id) == 0u)
     {
-        return;
+        return 0u;
     }
 
     taskENTER_CRITICAL();
-    state = &g_n6014b_state[id];
+    slot = n6014b_find_axis_slot(id);
+    if (slot == NULL)
+    {
+        slot = n6014b_alloc_axis_slot(id);
+    }
+    if (slot == NULL)
+    {
+        taskEXIT_CRITICAL();
+        return 0u;
+    }
+
+    state = &slot->state;
     state->enabled = 1u;
     state->rs485_port = port;
     state->motor_id = motor_id;
-    g_n6014b_axis_configured[id] = 1u;
-    g_n6014b_axis_timeout_ms[id] = timeout_ms;
+    slot->timeout_ms = timeout_ms;
     taskEXIT_CRITICAL();
+    return 1u;
 }
 
 static void n6014b_record_tx_result(MotorId id, int ret)
 {
+    n6014b_axis_slot_t *slot;
+
     if (n6014b_actuator_id_valid(id) == 0u)
     {
         return;
     }
 
+    slot = n6014b_find_axis_slot(id);
+    if (slot == NULL)
+    {
+        return;
+    }
+
     taskENTER_CRITICAL();
-    g_n6014b_state[id].tx_count++;
-    g_n6014b_state[id].last_tx_status = (uint8_t)ret;
+    slot->state.tx_count++;
+    slot->state.last_tx_status = (uint8_t)ret;
     if (ret != 0)
     {
-        g_n6014b_state[id].tx_fail_count++;
+        slot->state.tx_fail_count++;
     }
     taskEXIT_CRITICAL();
 }
@@ -782,6 +879,7 @@ static void n6014b_record_tx_result(MotorId id, int ret)
 static void n6014b_refresh_feedback(MotorId id, const motor_node_param_t *node)
 {
     const motor_model_mit_limits_t *limits = motor_cfg_mit_limits(node);
+    n6014b_axis_slot_t *slot;
     n6014b_motor_state_t state;
     MotorState fb;
     motor_measure_t *measure;
@@ -793,9 +891,15 @@ static void n6014b_refresh_feedback(MotorId id, const motor_node_param_t *node)
         return;
     }
 
+    slot = n6014b_find_axis_slot(id);
+    if (slot == NULL)
+    {
+        return;
+    }
+
     taskENTER_CRITICAL();
-    state = g_n6014b_state[id];
-    timeout_ms = g_n6014b_axis_timeout_ms[id];
+    state = slot->state;
+    timeout_ms = slot->timeout_ms;
     taskEXIT_CRITICAL();
 
     if (timeout_ms == 0u)
@@ -808,7 +912,7 @@ static void n6014b_refresh_feedback(MotorId id, const motor_node_param_t *node)
     {
         state.online = 0u;
         taskENTER_CRITICAL();
-        g_n6014b_state[id].online = 0u;
+        slot->state.online = 0u;
         taskEXIT_CRITICAL();
     }
 
@@ -819,6 +923,7 @@ static void n6014b_refresh_feedback(MotorId id, const motor_node_param_t *node)
     fb.transport = (uint8_t)MotorTransportRS485;
     fb.motorId = state.motor_id;
     fb.state = state.mode;
+    fb.driveState = n6014b_drive_state(state.online, state.mode);
     fb.rxId = state.motor_id;
     fb.rxCount = state.rx_frame_count;
     fb.lastRxTick = state.last_rx_tick_ms;
@@ -842,12 +947,64 @@ static void n6014b_refresh_feedback(MotorId id, const motor_node_param_t *node)
     }
 }
 
+static void n6014b_update_applied(MotorId id,
+                                  uint8_t port,
+                                  uint8_t motor_id,
+                                  const motor_node_param_t *node,
+                                  n6014b_mode_e mode,
+                                  fp32 position,
+                                  fp32 velocity,
+                                  fp32 kp,
+                                  fp32 kd,
+                                  fp32 torque,
+                                  int16_t current,
+                                  int ret)
+{
+    MotorApplied applied;
+    MotorCmd cmd;
+
+    if (n6014b_actuator_id_valid(id) == 0u)
+    {
+        return;
+    }
+
+    (void)memset(&applied, 0, sizeof(applied));
+    applied.active = 1u;
+    applied.mode = (uint8_t)MotorModeCurrent;
+    applied.driveState = (mode == N6014B_MODE_LOCK) ?
+                             (uint8_t)MotorDriveStateDisabled :
+                             (uint8_t)MotorDriveStateEnabled;
+    applied.bus = port;
+    applied.transport = (uint8_t)MotorTransportRS485;
+    applied.protocol = (uint8_t)motor_cfg_protocol(node);
+    applied.txId = motor_id;
+    applied.tick = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+    applied.current = current;
+    applied.q = position;
+    applied.dq = velocity;
+    applied.kp = kp;
+    applied.kd = kd;
+    applied.tau = torque;
+    if (mode == N6014B_MODE_LOCK)
+    {
+        applied.mode = (uint8_t)MotorModeDisable;
+    }
+    else if (LowCmdGetMotor(id, &cmd) != 0u && cmd.active != 0u && cmd.mode != (uint8_t)MotorModeNone)
+    {
+        applied.mode = cmd.mode;
+    }
+    if (ret != 0)
+    {
+        applied.flags |= (uint8_t)MotorAppliedFlagSkipped;
+    }
+
+    LowStateUpdateApplied(id, &applied);
+}
+
 void n6014b_motor_driver_init(void)
 {
     taskENTER_CRITICAL();
-    (void)memset(g_n6014b_state, 0, sizeof(g_n6014b_state));
-    (void)memset(g_n6014b_axis_configured, 0, sizeof(g_n6014b_axis_configured));
-    (void)memset(g_n6014b_axis_timeout_ms, 0, sizeof(g_n6014b_axis_timeout_ms));
+    (void)memset(g_n6014b_axis, 0, sizeof(g_n6014b_axis));
     (void)memset(g_n6014b_port, 0, sizeof(g_n6014b_port));
     taskEXIT_CRITICAL();
 }
@@ -886,7 +1043,10 @@ int n6014b_motor_send_actuator(uint8_t port,
         return 1;
     }
 
-    n6014b_update_axis_config(actuator_id, port, motor_id, timeout_ms);
+    if (n6014b_update_axis_config(actuator_id, port, motor_id, timeout_ms) == 0u)
+    {
+        return 1;
+    }
     if (n6014b_setup_port(port, baudrate) == 0u)
     {
         n6014b_record_tx_result(actuator_id, 1);
@@ -910,6 +1070,7 @@ int n6014b_motor_send_actuator(uint8_t port,
 
     n6014b_build_tx_frame(frame, motor_id, mode, position, velocity, kp, kd, torque);
     ret = n6014b_tx(port, frame);
+    n6014b_update_applied(actuator_id, port, motor_id, node, mode, position, velocity, kp, kd, torque, current, ret);
     n6014b_record_tx_result(actuator_id, ret);
     n6014b_refresh_feedback(actuator_id, node);
     return ret;
@@ -917,11 +1078,15 @@ int n6014b_motor_send_actuator(uint8_t port,
 
 const n6014b_motor_state_t *n6014b_motor_get_state(MotorId actuator_id)
 {
+    const n6014b_axis_slot_t *slot;
+
     if (n6014b_actuator_id_valid(actuator_id) == 0u)
     {
         return 0;
     }
-    return &g_n6014b_state[actuator_id];
+
+    slot = n6014b_find_axis_slot(actuator_id);
+    return (slot != NULL) ? &slot->state : 0;
 }
 
 uint8_t can_tx_process_extra_item(uint8_t bus,

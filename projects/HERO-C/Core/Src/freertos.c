@@ -46,6 +46,7 @@
 #include "watch.h"
 #include "app_task_bootstrap.h"
 #include "control_manager.h"
+#include "robot_fault_guard.h"
 #include "robot_control_registry.h"
 #include "wheelleg_mit_task.h"
 /* USER CODE END Includes */
@@ -370,61 +371,23 @@ __weak void startup_service_task(void const * argument)
 /* USER CODE BEGIN Application */
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
-  (void)xTask;
-
-  g_watch.rtos.fatal_reason = 1U;
-  g_watch.rtos.fatal_task_handle = (uint32_t)xTask;
-  for (uint32_t i = 0; i < (uint32_t)sizeof(g_watch.rtos.fatal_task_name); i++)
-  {
-    const char c = (pcTaskName != NULL) ? pcTaskName[i] : '\0';
-    g_watch.rtos.fatal_task_name[i] = c;
-    if (c == '\0')
-    {
-      break;
-    }
-  }
-  g_watch.rtos.fatal_task_name[sizeof(g_watch.rtos.fatal_task_name) - 1] = '\0';
-
-  if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)
-  {
-    __BKPT(0);
-  }
-
-  taskDISABLE_INTERRUPTS();
-  for (;;)
-  {
-    __NOP();
-  }
+  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
+                                  0u,
+                                  0u,
+                                  (uint32_t)xTask,
+                                  pcTaskName);
+  robot_fault_halt_forever();
 }
 
 void vApplicationMallocFailedHook(void)
 {
-  g_watch.rtos.fatal_reason = 2U;
-  g_watch.rtos.fatal_task_handle = (uint32_t)xTaskGetCurrentTaskHandle();
-  {
-    const char *name = pcTaskGetTaskName(NULL);
-    for (uint32_t i = 0; i < (uint32_t)sizeof(g_watch.rtos.fatal_task_name); i++)
-    {
-      const char c = (name != NULL) ? name[i] : '\0';
-      g_watch.rtos.fatal_task_name[i] = c;
-      if (c == '\0')
-      {
-        break;
-      }
-    }
-    g_watch.rtos.fatal_task_name[sizeof(g_watch.rtos.fatal_task_name) - 1] = '\0';
-  }
-
-  if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)
-  {
-    __BKPT(0);
-  }
-
-  taskDISABLE_INTERRUPTS();
-  for (;;)
-  {
-    __NOP();
-  }
+  TaskHandle_t current_task = xTaskGetCurrentTaskHandle();
+  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
+                                  0u,
+                                  0u,
+                                  (uint32_t)current_task,
+                                  pcTaskGetTaskName(NULL));
+  robot_fault_halt_forever();
 }
 
 /* USER CODE END Application */

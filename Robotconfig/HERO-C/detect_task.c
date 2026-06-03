@@ -9,6 +9,7 @@
 
 
 #include "detect_task.h"
+#include "detect_common.h"
 #include "cmsis_os.h"
 #include "config.h"
 #include "watch.h"
@@ -21,6 +22,7 @@
 #include "cpu_usage.h"
 #include "shoot.h"
 #include "host_link_task.h"
+#include "robot_mode.h"
 #include <string.h>
 
 #include "FreeRTOS.h"
@@ -56,6 +58,7 @@ static void detect_init(uint32_t time);
 
 
 error_t error_list[ERROR_LIST_LENGHT + 1];
+static uint32_t g_last_tick_ms[ERROR_LIST_LENGHT];
 static const detect_config_t *const detect_cfg = &g_config.detect;
 
 
@@ -197,7 +200,7 @@ void detect_task(void const *pvParameters)
     uint32_t last_bsp_cfg_tick = system_time;
     uint32_t last_watch_snapshot_tick = system_time;
 
-    uint8_t test_mode_last = (uint8_t)g_config.test.mode;
+    uint8_t run_variant_last = (uint8_t)robot_mode_variant();
     uint8_t gimbal_behaviour_last = (uint8_t)gimbal_behaviour_watch;
     uint8_t chassis_behaviour_last = (uint8_t)chassis_behaviour_mode;
     const shoot_control_t *shoot_watch = get_shoot_control_point();
@@ -218,66 +221,26 @@ void detect_task(void const *pvParameters)
         error_list[ERROR_LIST_LENGHT].is_lost = 0;
         error_list[ERROR_LIST_LENGHT].error_exist = 0;
 
-        for (int i = 0; i < ERROR_LIST_LENGHT; i++)
+        detect_common_refresh_all(error_list,
+                                  g_last_tick_ms,
+                                  (uint8_t)ERROR_LIST_LENGHT,
+                                  system_time);
+
+        for (uint8_t i = 0u; i < (uint8_t)ERROR_LIST_LENGHT; i++)
         {
-            //disable, continue
-            //未使能，跳过
-            if (error_list[i].enable == 0)
+            if (error_list[i].enable == 0u || error_list[i].error_exist == 0u)
             {
                 continue;
             }
 
-            //judge offline.判断掉线
-            if (system_time - error_list[i].new_time > error_list[i].set_offline_time)
+            error_list[ERROR_LIST_LENGHT].error_exist = 1u;
+            if (error_list[i].is_lost != 0u)
             {
-                //record error and time
-                // mark as lost so LED shows red
-                error_list[i].is_lost = 1;
-                error_list[i].error_exist = 1;
-                error_list[i].lost_time = system_time;
-                //judge the priority,save the highest priority ,
-                //判断错误优先级， 保存优先级最高的错误码
-                if (error_list[i].priority > error_list[error_num_display].priority)
-                {
-                    error_num_display = i;
-                }
-
-
-                error_list[ERROR_LIST_LENGHT].is_lost = 1;
-                error_list[ERROR_LIST_LENGHT].error_exist = 1;
-                //if solve_lost_fun != NULL, run it
-                //如果提供解决函数，运行解决函数
-                if (error_list[i].solve_lost_fun != NULL)
-                {
-                    error_list[i].solve_lost_fun();
-                }
+                error_list[ERROR_LIST_LENGHT].is_lost = 1u;
             }
-            else if (system_time - error_list[i].work_time < error_list[i].set_online_time)
+            if (error_list[i].priority > error_list[error_num_display].priority)
             {
-                //just online, maybe unstable, only record
-                //刚刚上线，可能存在数据不稳定，只记录不丢失，
-                error_list[i].is_lost = 0;
-                error_list[i].error_exist = 1;
-            }
-            else
-            {
-                error_list[i].is_lost = 0;
-                //判断是否存在数据错误
-                //judge if exist data error
-                if (error_list[i].data_is_error_fun != NULL)
-                {
-                    error_list[i].error_exist = 1;
-                }
-                else
-                {
-                    error_list[i].error_exist = 0;
-                }
-                //calc frequency
-                //计算频率
-                if (error_list[i].new_time > error_list[i].last_time)
-                {
-                    error_list[i].frequency = configTICK_RATE_HZ / (fp32)(error_list[i].new_time - error_list[i].last_time);
-                }
+                error_num_display = i;
             }
         }
 
@@ -337,11 +300,11 @@ void detect_task(void const *pvParameters)
             buzzer_pcm_set_stream_gain_q8(gain_q8);
         }
 
-        const uint8_t test_mode_now = (uint8_t)g_config.test.mode;
-        if (test_mode_now != test_mode_last)
+        const uint8_t run_variant_now = (uint8_t)robot_mode_variant();
+        if (run_variant_now != run_variant_last)
         {
-            sdlog_emit_event(SDLOG_EVT_TEST_MODE, test_mode_now, test_mode_last, 0u);
-            test_mode_last = test_mode_now;
+            sdlog_emit_event(SDLOG_EVT_TEST_MODE, run_variant_now, run_variant_last, 0u);
+            run_variant_last = run_variant_now;
         }
 
         const uint8_t gimbal_behaviour_now = (uint8_t)gimbal_behaviour_watch;
@@ -434,7 +397,7 @@ void detect_task(void const *pvParameters)
             }
         }
 
-        vTaskDelay(DETECT_CONTROL_TIME);
+        vTaskDelay(DETECT_COMMON_RUNTIME_POLL_MS);
 #if INCLUDE_uxTaskGetStackHighWaterMark
         detect_task_stack = uxTaskGetStackHighWaterMark(NULL);
 #endif
@@ -454,7 +417,11 @@ void detect_task(void const *pvParameters)
   */
 bool_t toe_is_error(uint8_t toe)
 {
-    return (error_list[toe].error_exist == 1);
+    return detect_common_is_error(error_list,
+                                  g_last_tick_ms,
+                                  (uint8_t)ERROR_LIST_LENGHT,
+                                  toe,
+                                  xTaskGetTickCount());
 }
 
 /**
@@ -469,36 +436,7 @@ bool_t toe_is_error(uint8_t toe)
   */
 void detect_hook(uint8_t toe)
 {
-    error_list[toe].last_time = error_list[toe].new_time;
-    error_list[toe].new_time = xTaskGetTickCount();
-
-    if (error_list[toe].is_lost)
-    {
-        error_list[toe].is_lost = 0;
-        error_list[toe].work_time = error_list[toe].new_time;
-    }
-
-    if (error_list[toe].data_is_error_fun != NULL)
-    {
-        if (error_list[toe].data_is_error_fun())
-        {
-            error_list[toe].error_exist = 1;
-            error_list[toe].data_is_error = 1;
-
-            if (error_list[toe].solve_data_error_fun != NULL)
-            {
-                error_list[toe].solve_data_error_fun();
-            }
-        }
-        else
-        {
-            error_list[toe].data_is_error = 0;
-        }
-    }
-    else
-    {
-        error_list[toe].data_is_error = 0;
-    }
+    detect_common_hook(error_list, g_last_tick_ms, (uint8_t)ERROR_LIST_LENGHT, toe, xTaskGetTickCount());
 }
 
 /**
@@ -537,6 +475,7 @@ static void detect_init(uint32_t time)
         error_list[i].last_time = time;
         error_list[i].lost_time = time;
         error_list[i].work_time = time;
+        g_last_tick_ms[i] = time;
     }
 
 //    error_list[DBUSTOE].dataIsErrorFun = RC_data_is_error;

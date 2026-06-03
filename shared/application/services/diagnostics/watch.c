@@ -38,11 +38,27 @@
 #include "host_link_task.h"
 #include "robot_device_config.h"
 #include "robot_task_profile.h"
+#include "robot_mode.h"
 #include "rt_profiler.h"
 #include "wheelleg_mit_task.h"
 #include "wheelleg_msg.h"
 
 watch_t g_watch;
+
+typedef struct
+{
+    uint8_t used;
+    uint8_t module;
+    uint8_t create_state;
+    uint8_t reserved0;
+    uint16_t create_fail_count;
+    uint16_t reserved1;
+    uint32_t thread_handle;
+    uint32_t create_attempt_count;
+    const char *name;
+} watch_task_module_create_slot_t;
+
+static watch_task_module_create_slot_t s_task_module_create[WATCH_RUNTIME_MAX_TASK_MODULES];
 
 #if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
 typedef struct
@@ -265,6 +281,7 @@ static void watch_runtime_add_entry(const char *name,
 static runtime_instance_state_e watch_runtime_device_state(const robot_config_device_t *device);
 static watch_task_diag_entry_t *watch_task_diag_get(watch_task_id_e task_id);
 static watch_irq_diag_entry_t *watch_irq_diag_get(watch_irq_id_e irq_id);
+static const watch_task_module_create_slot_t *watch_task_module_create_find(uint8_t module);
 static uint8_t watch_block_active_always(void);
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
 static uint8_t watch_block_active_locomotion_classic(void);
@@ -503,6 +520,56 @@ void watch_diag_set_error_args(uint32_t arg0, uint32_t arg1)
     g_watch.fault.error_arg1 = arg1;
 }
 
+void watch_diag_mark_fatal(uint32_t reason, uint32_t task_handle, const char *task_name)
+{
+    g_watch.rtos.fatal_reason = reason;
+    g_watch.rtos.fatal_task_handle = task_handle;
+    memset(g_watch.rtos.fatal_task_name, 0, sizeof(g_watch.rtos.fatal_task_name));
+    if (task_name != NULL)
+    {
+        (void)strncpy(g_watch.rtos.fatal_task_name, task_name, sizeof(g_watch.rtos.fatal_task_name) - 1u);
+    }
+}
+
+void watch_task_module_create_reset(void)
+{
+    memset(s_task_module_create, 0, sizeof(s_task_module_create));
+}
+
+void watch_task_module_create_result(uint8_t module, const char *name, uint32_t thread_handle, uint8_t state)
+{
+    watch_task_module_create_slot_t *slot = NULL;
+
+    for (uint8_t i = 0u; i < (uint8_t)(sizeof(s_task_module_create) / sizeof(s_task_module_create[0])); i++)
+    {
+        if (s_task_module_create[i].used != 0u && s_task_module_create[i].module == module)
+        {
+            slot = &s_task_module_create[i];
+            break;
+        }
+        if (slot == NULL && s_task_module_create[i].used == 0u)
+        {
+            slot = &s_task_module_create[i];
+        }
+    }
+
+    if (slot == NULL)
+    {
+        return;
+    }
+
+    slot->used = 1u;
+    slot->module = module;
+    slot->name = name;
+    slot->thread_handle = thread_handle;
+    slot->create_state = state;
+    slot->create_attempt_count++;
+    if (state >= 3u && slot->create_fail_count < 0xFFFFu)
+    {
+        slot->create_fail_count++;
+    }
+}
+
 void watch_task_beat(watch_task_id_e task_id)
 {
     const uint32_t now_ms = HAL_GetTick();
@@ -715,6 +782,19 @@ static void watch_runtime_add_entry(const char *name,
     g_watch.runtime.entry_visible_count++;
 }
 
+static const watch_task_module_create_slot_t *watch_task_module_create_find(uint8_t module)
+{
+    for (uint8_t i = 0u; i < (uint8_t)(sizeof(s_task_module_create) / sizeof(s_task_module_create[0])); i++)
+    {
+        if (s_task_module_create[i].used != 0u && s_task_module_create[i].module == module)
+        {
+            return &s_task_module_create[i];
+        }
+    }
+
+    return NULL;
+}
+
 static runtime_instance_state_e watch_runtime_device_state(const robot_config_device_t *device)
 {
     if (device == NULL)
@@ -844,9 +924,11 @@ static void watch_copy_runtime(void)
     uint8_t task_module_visible_count;
     uint8_t device_count;
     rt_profiler_summary_t profiler_summary;
+    LowCmdDiag lowcmd_diag = {0};
 
     memset(&g_watch.runtime, 0, sizeof(g_watch.runtime));
     rt_profiler_get_summary(&profiler_summary);
+    (void)LowCmdGetDiag(&lowcmd_diag);
     g_watch.runtime.profile_kind = (uint8_t)robot_profile_kind();
     g_watch.runtime.board_kind = (uint8_t)robot_board_kind();
     g_watch.runtime.board_can_bus_count = robot_board_can_bus_count();
@@ -859,6 +941,14 @@ static void watch_copy_runtime(void)
     g_watch.runtime.rt_profiler_max_last_us = profiler_summary.max_last_us;
     g_watch.runtime.rt_profiler_max_budget_us = profiler_summary.max_budget_us;
     g_watch.runtime.rt_profiler_max_over_budget_us = profiler_summary.max_over_budget_us;
+    g_watch.runtime.lowcmd_seq = lowcmd_diag.seq;
+    g_watch.runtime.lowcmd_rejected_count = lowcmd_diag.rejected_count;
+    g_watch.runtime.lowcmd_emergency_stop_count = lowcmd_diag.emergency_stop_count;
+    g_watch.runtime.lowcmd_last_reject_tick_ms = lowcmd_diag.last_reject_tick;
+    g_watch.runtime.lowcmd_last_reject_writer = lowcmd_diag.last_reject_writer;
+    g_watch.runtime.lowcmd_last_reject_owner = lowcmd_diag.last_reject_owner;
+    g_watch.runtime.lowcmd_emergency_writer = lowcmd_diag.emergency_writer;
+    g_watch.runtime.lowcmd_emergency_active = lowcmd_diag.emergency_active;
 
     task_module_count = robot_profile_module_count();
     task_module_visible_count = task_module_count;
@@ -873,12 +963,28 @@ static void watch_copy_runtime(void)
     {
         const robot_task_module_id_t module = robot_profile_module_id_at(i);
         watch_runtime_task_module_t *dst = &g_watch.runtime.task_module[i];
+        const watch_task_module_create_slot_t *create = watch_task_module_create_find((uint8_t)module);
 
         dst->module = (uint8_t)module;
         dst->name = robot_profile_module_name(module);
+        if (create != NULL)
+        {
+            if (create->name != NULL)
+            {
+                dst->name = create->name;
+            }
+            dst->create_state = create->create_state;
+            dst->create_fail_count = create->create_fail_count;
+            dst->thread_handle = create->thread_handle;
+            dst->create_attempt_count = create->create_attempt_count;
+        }
         watch_runtime_add_entry(dst->name,
                                 RUNTIME_INSTANCE_KIND_TASK,
-                                RUNTIME_INSTANCE_STATE_ENABLED,
+                                (dst->create_state == 2u) ?
+                                    RUNTIME_INSTANCE_STATE_ACTIVE :
+                                    ((dst->create_state >= 3u) ?
+                                         RUNTIME_INSTANCE_STATE_FAULT :
+                                         RUNTIME_INSTANCE_STATE_ENABLED),
                                 (uint16_t)module,
                                 i,
                                 RUNTIME_INSTANCE_INDEX_NONE);
@@ -903,7 +1009,7 @@ static void watch_copy_runtime(void)
                                 RUNTIME_INSTANCE_INDEX_NONE);
     }
 
-    motor_count = motor_instance_count();
+    motor_count = motor_route_count();
     motor_visible_count = motor_count;
     if (motor_visible_count > (uint8_t)(sizeof(g_watch.runtime.motor) / sizeof(g_watch.runtime.motor[0])))
     {
@@ -914,27 +1020,41 @@ static void watch_copy_runtime(void)
     g_watch.runtime.motor_visible_count = motor_visible_count;
     for (uint8_t i = 0u; i < motor_visible_count; i++)
     {
-        const motor_instance_t *inst = motor_instance_get(i);
+        const motor_route_t *route = motor_route_get(i);
         watch_runtime_motor_t *dst = &g_watch.runtime.motor[i];
+        MotorState fb;
+        MotorApplied applied;
         MotorId actuator_id;
 
-        if (inst == NULL)
+        if (route == NULL)
         {
             continue;
         }
 
-        actuator_id = motor_instance_actuator_id(inst);
-        dst->name = motor_instance_name(inst);
+        actuator_id = route->motorId;
+        dst->name = route->name;
         dst->actuator_id = (uint16_t)actuator_id;
-        dst->role = (uint8_t)inst->role;
-        dst->role_index = inst->role_index;
-        dst->enabled = motor_instance_enabled(inst);
-        dst->bus = motor_instance_bus(inst);
-        dst->transport = motor_instance_transport_id(actuator_id);
-        dst->protocol = motor_instance_protocol_id(actuator_id);
-        dst->control_mode = motor_instance_control_mode_id(actuator_id);
-        dst->cmd_caps = motor_instance_cmd_caps_id(actuator_id);
-        dst->model = motor_instance_model_id(actuator_id);
+        dst->role = (uint8_t)route->role;
+        dst->role_index = route->roleIndex;
+        dst->enabled = route->enabled;
+        dst->bus = route->bus;
+        dst->transport = route->transport;
+        dst->protocol = route->protocol;
+        dst->control_mode = route->controlMode;
+        dst->cmd_caps = route->cmdCaps;
+        dst->model = route->model;
+        if (LowStateGetMotor(actuator_id, &fb) != 0u)
+        {
+            dst->drive_state = fb.driveState;
+        }
+        if (LowStateGetApplied(actuator_id, &applied) != 0u)
+        {
+            dst->applied_mode = applied.mode;
+            dst->applied_flags = applied.flags;
+            dst->applied_current = applied.current;
+            dst->applied_tick_ms = applied.tick;
+            dst->applied_torque_nm = applied.tau;
+        }
         if (dst->enabled != 0u)
         {
             g_watch.runtime.motor_enabled_count++;
@@ -1379,7 +1499,7 @@ static void watch_copy_wheelleg_mit(void)
 {
     const uint8_t profile_on = watch_block_active_wheelleg_mit();
     const uint8_t chassis_sw = input_switch(INPUT_SW_CHASSIS_MODE);
-    const uint8_t test_mode = g_config.test.mode;
+    const uint8_t run_variant = (uint8_t)robot_mode_variant();
     wheelleg_status_t status;
     wheelleg_state_t state;
     uint8_t status_valid;
@@ -1400,7 +1520,7 @@ static void watch_copy_wheelleg_mit(void)
     g_watch.wheelleg_mit.input_chassis_switch = chassis_sw;
     g_watch.wheelleg_mit.enable_switch_pos = g_config.wheelleg_mit.enable_switch_pos;
     g_watch.wheelleg_mit.manual_on = watch_wheelleg_manual_enabled_by_switch(chassis_sw);
-    g_watch.wheelleg_mit.test_mode = test_mode;
+    g_watch.wheelleg_mit.test_mode = run_variant;
     g_watch.wheelleg_mit.foot_test_phase = wheelleg_mit_get_foot_test_phase();
     g_watch.wheelleg_mit.foot_test_ik_ok = wheelleg_mit_get_foot_test_ik_ok();
     watch_copy_wheelleg_mit_foot_test((uint8_t)WHEELLEG_SIDE_LEFT);

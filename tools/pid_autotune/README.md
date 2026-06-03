@@ -71,15 +71,15 @@ python tools\pid_autotune\arbatos_pid_autotune.py `
   --model your-model-name
 ```
 
-## 测试模式
+## 运行编排
 
-工具默认会自动切到一个更适合单环观察的测试模式：
+工具默认会自动切到一个更适合单环观察的运行编排：
 
-- `ps` / `pa` -> `TEST_MODE_PITCH_ONLY`
-- `ys` / `ya` -> `TEST_MODE_YAW_ONLY`
-- `cf` / `cm` -> `TEST_MODE_CHASSIS_ONLY`
+- `ps` / `pa` -> `ROBOT_RUN_MODE_SINGLE_TASK + ROBOT_RUN_VARIANT_GIMBAL_PITCH_ONLY`
+- `ys` / `ya` -> `ROBOT_RUN_MODE_SINGLE_TASK + ROBOT_RUN_VARIANT_GIMBAL_YAW_ONLY`
+- `cf` / `cm` -> `ROBOT_RUN_MODE_SINGLE_TASK + ROBOT_RUN_VARIANT_CHASSIS_ONLY`
 
-如果你不想让工具改测试模式，加 `--test-mode none`。
+如果你不想让工具改运行编排，加 `--operation none`。
 
 ## 现阶段建议
 

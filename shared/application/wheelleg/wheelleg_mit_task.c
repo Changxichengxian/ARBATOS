@@ -18,6 +18,8 @@
 #include "motor_instance.h"
 #include "robot_msg.h"
 #include "robot_task_profile.h"
+#include "robot_mode.h"
+#include "rt_profiler.h"
 #include "sdlog.h"
 #include "watch.h"
 #include "wheelleg_msg.h"
@@ -214,6 +216,7 @@ static uint32_t s_wheelleg_sdlog_last_status_ms = 0u;
 
 static fp32 wheelleg_axis_to_fp32(int16_t axis, fp32 max_abs, uint16_t deadband);
 static fp32 wheelleg_lqr_x_error(fp32 target_v, fp32 target_yaw_rate);
+static MotorId wheelleg_single_test_actuator(void);
 
 uint8_t wheelleg_mit_get_foot_test_phase(void)
 {
@@ -779,7 +782,7 @@ static void wheelleg_sdlog_write_status(uint16_t faults,
     log.controller_active = controller_active;
     log.fault_flags = faults;
     log.feedback_faults = s_wheelleg.feedback_faults;
-    log.test_mode = (uint8_t)g_config.test.mode;
+    log.test_mode = (uint8_t)robot_mode_variant();
     log.profile_on = robot_profile_is_wheelleg_mit();
     log.manual_on = wheelleg_manual_enabled_by_switch();
 
@@ -1038,7 +1041,7 @@ static void wheelleg_clear_all_control_cmds(void)
         wheelleg_clear_state_cmd(map->back);
         wheelleg_clear_state_cmd(map->wheel);
     }
-    wheelleg_clear_state_cmd((MotorId)g_config.wheelleg_mit.single_test_actuator);
+    wheelleg_clear_state_cmd(wheelleg_single_test_actuator());
 }
 
 static uint8_t wheelleg_control_stage_from_config(void)
@@ -1274,7 +1277,7 @@ static void wheelleg_clear_joint_test_cmds(void)
     wheelleg_clear_state_cmd(right_map->front);
     wheelleg_clear_state_cmd(right_map->back);
     wheelleg_clear_state_cmd(right_map->wheel);
-    wheelleg_clear_state_cmd((MotorId)g_config.wheelleg_mit.single_test_actuator);
+    wheelleg_clear_state_cmd(wheelleg_single_test_actuator());
 }
 
 static void wheelleg_bench_hold_prepare_default(void)
@@ -1338,10 +1341,39 @@ static void wheelleg_bench_hold_update_pose_target(void)
     wheelleg_bench_hold_prepare_default();
 }
 
+static MotorId wheelleg_single_test_actuator(void)
+{
+    const MotorId target = robot_mode_target_motor();
+    return (target != MotorCount) ? target : (MotorId)g_config.wheelleg_mit.single_test_actuator;
+}
+
+static uint8_t wheelleg_single_test_target_is_wheelleg(MotorId id)
+{
+    const wheelleg_mit_config_t *cfg = &g_config.wheelleg_mit;
+
+    return (uint8_t)((id == (MotorId)cfg->left_front_actuator) ||
+                     (id == (MotorId)cfg->left_back_actuator) ||
+                     (id == (MotorId)cfg->left_wheel_actuator) ||
+                     (id == (MotorId)cfg->right_front_actuator) ||
+                     (id == (MotorId)cfg->right_back_actuator) ||
+                     (id == (MotorId)cfg->right_wheel_actuator));
+}
+
+static uint8_t wheelleg_single_test_enabled(void)
+{
+    if (robot_mode_variant() == ROBOT_RUN_VARIANT_WHEELLEG_SINGLE_MOTOR)
+    {
+        return 1u;
+    }
+
+    return (uint8_t)(robot_mode_current() == ROBOT_RUN_MODE_SINGLE_MOTOR &&
+                     wheelleg_single_test_target_is_wheelleg(robot_mode_target_motor()) != 0u);
+}
+
 static uint8_t wheelleg_single_test_apply(int16_t speed_axis)
 {
     const wheelleg_mit_config_t *cfg = &g_config.wheelleg_mit;
-    const MotorId id = (MotorId)cfg->single_test_actuator;
+    const MotorId id = wheelleg_single_test_actuator();
     const fp32 velocity = wheelleg_axis_to_fp32(speed_axis,
                                                cfg->single_test_velocity_radps,
                                                cfg->rc_deadband);
@@ -2550,6 +2582,7 @@ void wheelleg_mit_task(void const *pvParameters)
 
     while (1)
     {
+        const uint64_t profiler_start_us = rt_profiler_begin();
         watch_task_beat(WATCH_TASK_WHEELLEG_MIT);
         const uint32_t loop_start = wheelleg_tick_ms();
         const uint16_t period_ms = wheelleg_period_ms();
@@ -2566,7 +2599,6 @@ void wheelleg_mit_task(void const *pvParameters)
         const int16_t yaw_axis = input_axis(INPUT_AXIS_CHASSIS_WZ);
         const int16_t single_test_axis = input_axis(INPUT_AXIS_CALIB_3);
         const int16_t leg_axis = input_axis(INPUT_AXIS_CHASSIS_Y);
-        const test_mode_e test_mode = (test_mode_e)g_config.test.mode;
         const uint8_t control_stage = wheelleg_control_stage_from_config();
         fp32 target_v = 0.0f;
         fp32 target_yaw_rate = 0.0f;
@@ -2579,13 +2611,10 @@ void wheelleg_mit_task(void const *pvParameters)
         const uint8_t manual_on = wheelleg_manual_enabled_by_switch();
         const uint8_t imu_ok =
             (toe_is_error(BOARD_GYRO_TOE) == 0u && toe_is_error(BOARD_ACCEL_TOE) == 0u) ? 1u : 0u;
-        const uint8_t single_test =
-            (test_mode == TEST_MODE_WHEELLEG_SINGLE_MOTOR) ? 1u : 0u;
-        const uint8_t left_leg_test =
-            (test_mode == TEST_MODE_WHEELLEG_LEFT_LEG_SWING) ? 1u : 0u;
-        const uint8_t foot_test =
-            (test_mode == TEST_MODE_WHEELLEG_FOOT_TRAJECTORY) ? 1u : 0u;
-        const uint8_t test_mode_active =
+        const uint8_t single_test = wheelleg_single_test_enabled();
+        const uint8_t left_leg_test = robot_mode_wheelleg_left_leg_swing();
+        const uint8_t foot_test = robot_mode_wheelleg_foot_trajectory();
+        const uint8_t operation_test_active =
             (single_test != 0u || left_leg_test != 0u || foot_test != 0u) ? 1u : 0u;
         uint8_t enabled;
         uint8_t controller_active = 0u;
@@ -2604,7 +2633,7 @@ void wheelleg_mit_task(void const *pvParameters)
         {
             faults |= WHEELLEG_FAULT_MANUAL_OFFLINE;
         }
-        if (test_mode_active == 0u)
+        if (operation_test_active == 0u)
         {
             if (imu_ok == 0u)
             {
@@ -2650,13 +2679,14 @@ void wheelleg_mit_task(void const *pvParameters)
             target_foot_x = s_wheelleg.bench_hold_target_foot_x_m;
             wheelleg_publish(faults, s_wheelleg.mode, pitch, roll, yaw, gyro_wheelleg,
                              target_v, target_leg, target_foot_x, target_yaw_rate, wheel_torque, 0u);
+            rt_profiler_end(RT_PROFILER_WHEELLEG_MIT_CONTROL_LOOP, profiler_start_us);
             vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(period_ms));
             continue;
         }
 
         if (single_test == 0u)
         {
-            wheelleg_clear_state_cmd((MotorId)g_config.wheelleg_mit.single_test_actuator);
+            wheelleg_clear_state_cmd(wheelleg_single_test_actuator());
         }
 
         if (single_test != 0u)
@@ -2694,6 +2724,7 @@ void wheelleg_mit_task(void const *pvParameters)
             {
                 s_wheelleg.overrun_count++;
             }
+            rt_profiler_end(RT_PROFILER_WHEELLEG_MIT_CONTROL_LOOP, profiler_start_us);
             vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(period_ms));
             continue;
         }
@@ -2732,6 +2763,7 @@ void wheelleg_mit_task(void const *pvParameters)
             {
                 s_wheelleg.overrun_count++;
             }
+            rt_profiler_end(RT_PROFILER_WHEELLEG_MIT_CONTROL_LOOP, profiler_start_us);
             vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(period_ms));
             continue;
         }
@@ -2768,6 +2800,7 @@ void wheelleg_mit_task(void const *pvParameters)
             {
                 s_wheelleg.overrun_count++;
             }
+            rt_profiler_end(RT_PROFILER_WHEELLEG_MIT_CONTROL_LOOP, profiler_start_us);
             vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(period_ms));
             continue;
         }
@@ -2983,6 +3016,7 @@ void wheelleg_mit_task(void const *pvParameters)
         {
             s_wheelleg.overrun_count++;
         }
+        rt_profiler_end(RT_PROFILER_WHEELLEG_MIT_CONTROL_LOOP, profiler_start_us);
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(period_ms));
     }
 }

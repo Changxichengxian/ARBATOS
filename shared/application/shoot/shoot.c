@@ -33,6 +33,7 @@
 #include "shoot_state.h"
 #include "control_input.h"
 #include "detect_task.h"
+#include "robot_mode.h"
 #include "pid.h"
 #include "host_link_task.h"
 
@@ -284,21 +285,6 @@ static void shoot_write_state(void)
     (void)shoot_state_write(&state);
 }
 
-static test_mode_e shoot_test_mode(void)
-{
-    return (test_mode_e)g_config.test.mode;
-}
-
-static bool_t shoot_allow_fric(test_mode_e mode)
-{
-    return (mode == TEST_MODE_NONE) || (mode == TEST_MODE_FRIC_ONLY) || (mode == TEST_MODE_SHOOT_COMBO);
-}
-
-static bool_t shoot_allow_trigger(test_mode_e mode)
-{
-    return (mode == TEST_MODE_NONE) || (mode == TEST_MODE_TRIGGER_ONLY) || (mode == TEST_MODE_SHOOT_COMBO);
-}
-
 static void shoot_clear_trigger_output(void)
 {
     PID_clear(&shoot_control.trigger_motor_pid);
@@ -412,8 +398,7 @@ int16_t shoot_control_loop(void)
     static uint8_t entertain_entered = 0u;
 
     // 函数地图：先处理娱乐模式；再跑射击状态机；最后分别输出拨弹和摩擦轮电流。
-    const test_mode_e test_mode = shoot_test_mode();
-    if (test_mode == TEST_MODE_ENTERTAIN)
+    if (robot_mode_is_entertain() != 0u)
     {
         if (entertain_entered == 0u)
         {
@@ -435,8 +420,8 @@ int16_t shoot_control_loop(void)
 
     shoot_set_mode();        //设置状态机
     shoot_feedback_update(); // update feedback data
-    const bool_t allow_fric = shoot_allow_fric(test_mode);
-    const bool_t allow_trigger = shoot_allow_trigger(test_mode);
+    const bool_t allow_fric = (robot_mode_allow_shoot_fric() != 0u) ? 1 : 0;
+    const bool_t allow_trigger = (robot_mode_allow_shoot_trigger() != 0u) ? 1 : 0;
     const uint16_t shoot_sw = shoot_get_effective_switch();
     const bool_t sw_ready = shoot_switch_is_ready(shoot_sw);
     const bool_t sw_fire = shoot_switch_is_fire(shoot_sw);
@@ -568,10 +553,9 @@ int16_t shoot_control_loop(void)
   */
 static void shoot_set_mode(void)
 {
-    // 函数地图：先按拨杆定大状态，再叠加测试模式、鼠标/微动开关和完成/堵转条件。
-    const test_mode_e test_mode = shoot_test_mode();
-    const bool_t allow_fric = shoot_allow_fric(test_mode);
-    const bool_t allow_trigger = shoot_allow_trigger(test_mode);
+    // 函数地图：先按拨杆定大状态，再叠加运行模式、鼠标/微动开关和完成/堵转条件。
+    const bool_t allow_fric = (robot_mode_allow_shoot_fric() != 0u) ? 1 : 0;
+    const bool_t allow_trigger = (robot_mode_allow_shoot_trigger() != 0u) ? 1 : 0;
     const uint16_t shoot_sw = shoot_get_raw_switch();
     const bool_t sw_fire = shoot_switch_is_fire(shoot_sw);
 

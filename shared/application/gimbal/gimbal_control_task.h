@@ -159,7 +159,8 @@ typedef struct
 typedef struct
 {
     bool_t dbus_offline;
-    test_mode_e test_mode;
+    robot_run_variant_e run_variant;
+    uint8_t pitch_cali_mode;
     uint8_t mode_sw;
     uint8_t safe_pos;
     uint8_t active_source;

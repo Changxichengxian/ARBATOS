@@ -41,14 +41,14 @@ bool_t pitch_cali_get_builtin_default(pitch_cali_builtin_desc_t *out);
 
 // Called every gimbal loop before gimbal_mode_change_control_transit().
 // - It may override pitch motor mode (RAW/ENCODE) when running in pitch calibration mode.
-void pitch_cali_tick_pre(gimbal_control_t *gimbal, gimbal_behaviour_e behaviour, test_mode_e test_mode);
+void pitch_cali_tick_pre(gimbal_control_t *gimbal, gimbal_behaviour_e behaviour, uint8_t pitch_cali_mode);
 
 // Called by gimbal_behaviour_control_set() when behaviour == GIMBAL_PITCH_CALI.
 // - It sets yaw/pitch commands (either angle increment or raw current, depending on motor mode).
 void pitch_cali_control(fp32 *yaw_cmd, fp32 *pitch_cmd, gimbal_control_t *gimbal);
 
 // Called every gimbal loop after gimbal_control_loop() to update calibration state machine and capture data.
-void pitch_cali_tick_post(const gimbal_control_t *gimbal, gimbal_behaviour_e behaviour, test_mode_e test_mode);
+void pitch_cali_tick_post(const gimbal_control_t *gimbal, gimbal_behaviour_e behaviour, uint8_t pitch_cali_mode);
 
 // Query current compensation (gravity hold + static friction breakaway currents).
 // Returns 1 if table is valid and enabled; otherwise 0 and outputs are set to 0.

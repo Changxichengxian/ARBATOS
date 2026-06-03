@@ -20,9 +20,13 @@ extern "C" {
 #endif
 
 /*
- * If switch/stop requests are made from multiple tasks, the project can define
- * CONTROL_MANAGER_ENTER_CRITICAL() and CONTROL_MANAGER_EXIT_CRITICAL() before
- * compiling control_manager.c. The default uses FreeRTOS task critical sections.
+ * Current role:
+ * - register controllers and the resources they claim;
+ * - expose runtime status for diagnostics;
+ * - arbitrate explicit low-rate switch/stop requests.
+ *
+ * Real-time control loops are still owned by their task modules. A controller is
+ * only executed when a task deliberately calls control_manager_update_*().
  */
 
 typedef enum

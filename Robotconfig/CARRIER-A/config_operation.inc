@@ -1,0 +1,24 @@
+// Included by config.c inside g_config's initializer; do not compile directly.
+    .profile =
+        {
+            .task_module_count = 7u,
+            .task_modules =
+                {
+                    ROBOT_TASK_MODULE_RC_SBUS,
+                    ROBOT_TASK_MODULE_HEALTH_MONITOR,
+                    ROBOT_TASK_MODULE_SDLOG,
+                    ROBOT_TASK_MODULE_CAN_COMMAND_TX,
+                    ROBOT_TASK_MODULE_CAN_FEEDBACK_RX,
+                    ROBOT_TASK_MODULE_CLASSIC_CHASSIS,
+                    ROBOT_TASK_MODULE_IMU,
+                },
+        },
+
+    .operation =
+        {
+            .mode = ROBOT_RUN_MODE_SINGLE_TASK,
+            .target_task = ROBOT_TASK_MODULE_CLASSIC_CHASSIS,
+            .target_motor = (uint8_t)MotorCount,
+            .variant = ROBOT_RUN_VARIANT_CHASSIS_ONLY,
+            .cali_target = ROBOT_CALI_TARGET_NONE,
+        },

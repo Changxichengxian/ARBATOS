@@ -448,14 +448,14 @@ static void gimbal_behavour_set(gimbal_control_t *gimbal_mode_set)
         return;
     }
 
-    // 函数地图：安全/测试模式优先；再处理校准和初始化；最后把拨杆状态写成行为模式。
+    // 函数地图：安全/运行模式优先；再处理校准和初始化；最后把拨杆状态写成行为模式。
     const gimbal_control_snapshot_t *fast = &gimbal_mode_set->fast;
     const bool_t dbus_offline = fast->dbus_offline;
     const uint8_t gimbal_sw = fast->mode_sw;
     const bool_t switch_safe = input_switch_is_pos(gimbal_sw, fast->safe_pos);
-    const bool_t yaw_only_mode = fast->test_mode == TEST_MODE_YAW_ONLY;
-    const bool_t yaw_easy_test_mode = fast->test_mode == TEST_MODE_YAW_EASY_TEST;
-    const bool_t pitch_cali_mode = fast->test_mode == TEST_MODE_PITCH_CALI;
+    const bool_t yaw_only_mode = fast->run_variant == ROBOT_RUN_VARIANT_GIMBAL_YAW_ONLY;
+    const bool_t yaw_easy_test_mode = fast->run_variant == ROBOT_RUN_VARIANT_GIMBAL_YAW_EASY;
+    const bool_t pitch_cali_mode = fast->pitch_cali_mode != 0u;
 
     // 安全模式最高优先级：遥控上档或离线直接降为零力矩
     if (dbus_offline || switch_safe)
@@ -464,7 +464,7 @@ static void gimbal_behavour_set(gimbal_control_t *gimbal_mode_set)
         return;
     }
 
-    // yaw-only / yaw-easy 测试模式：直接启用 yaw 角度控制，跳过 pitch 零点/校准检查
+    // yaw-only / yaw-easy 运行变体：直接启用 yaw 角度控制，跳过 pitch 零点/校准检查
     if (yaw_only_mode || yaw_easy_test_mode)
     {
         gimbal_behaviour = GIMBAL_ANGLE;
@@ -724,8 +724,9 @@ static void gimbal_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimba
     }
     static int16_t yaw_channel = 0, pitch_channel = 0;
     const gimbal_control_snapshot_t *fast = &gimbal_control_set->fast;
-    const test_mode_e test_mode = fast->test_mode;
-    const bool_t yaw_test_mode = (test_mode == TEST_MODE_YAW_ONLY) || (test_mode == TEST_MODE_YAW_EASY_TEST);
+    const robot_run_variant_e variant = fast->run_variant;
+    const bool_t yaw_test_mode = (variant == ROBOT_RUN_VARIANT_GIMBAL_YAW_ONLY) ||
+                                 (variant == ROBOT_RUN_VARIANT_GIMBAL_YAW_EASY);
 
     rc_deadband_limit(fast->yaw_axis, yaw_channel, fast->rc_deadband);
     rc_deadband_limit(fast->pitch_axis, pitch_channel, fast->rc_deadband);
@@ -745,7 +746,7 @@ static void gimbal_angle_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *gimba
     }
     s_turn.key_prev = turn_key_down;
 
-    // yaw 测试模式：放宽限幅防止 ±pi 卡死
+    // yaw 单轴运行变体：放宽限幅防止 ±pi 卡死
     if (yaw_test_mode)
     {
         gimbal_control_set->gimbal_yaw_motor.max_angle = 100.0f;

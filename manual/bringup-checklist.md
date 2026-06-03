@@ -32,7 +32,7 @@
 - [ ] 静止时 gyro 接近 0。
 - [ ] 轻轻转动车体时 yaw / pitch / roll 方向符合预期。
 - [ ] 姿态没有明显跳变。
-- [ ] 正常上电微调或 `TEST_MODE_IMU_GYRO_CALI` 路径明确。
+- [ ] 正常上电微调或 `ROBOT_RUN_MODE_CALIBRATION + ROBOT_CALI_TARGET_IMU_GYRO` 路径明确。
 
 IMU 不可信时，不继续调云台、底盘和轮腿。轮腿尤其不要在 IMU 不可信时给站立或平衡输出。
 
@@ -105,7 +105,7 @@ local/logs/sdlog/<TARGET>/<YYYY-MM-DD>/
 
 ## 7. 结束后
 
-- [ ] 把有价值的参数改回 `Robotconfig/<TARGET>/config.c`。
+- [ ] 把有价值的参数改回 `Robotconfig/<TARGET>/config_*.inc`。
 - [ ] 重新 Rebuild，确认参数不是只停留在 RAM 临时值。
 - [ ] 把关键结论写到 `local/docs/02_接入记录/` 或正式手册。
 - [ ] 如果发现代码问题，先留日志和复现步骤，再改代码。

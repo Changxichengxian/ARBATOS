@@ -28,6 +28,22 @@ void watch_diag_set_error_args(uint32_t arg0, uint32_t arg1)
     (void)arg1;
 }
 
+void watch_diag_mark_fatal(uint32_t reason, uint32_t task_handle, const char *task_name)
+{
+    (void)reason;
+    (void)task_handle;
+    (void)task_name;
+}
+
+void watch_task_module_create_reset(void) {}
+void watch_task_module_create_result(uint8_t module, const char *name, uint32_t thread_handle, uint8_t state)
+{
+    (void)module;
+    (void)name;
+    (void)thread_handle;
+    (void)state;
+}
+
 void watch_task_beat(watch_task_id_e task_id) { (void)task_id; }
 void watch_task_wait(watch_task_id_e task_id) { (void)task_id; }
 void watch_task_timeout(watch_task_id_e task_id) { (void)task_id; }

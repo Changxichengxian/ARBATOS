@@ -29,6 +29,7 @@
 #include <string.h>
 
 #include "config.h"
+#include "robot_mode.h"
 #include "control_input.h"
 #include "manual_input.h"
 #include "sdlog.h"
@@ -361,7 +362,7 @@ static uint8_t gyro_zero_boot_adjust_allowed_by_input(void)
 static void gyro_zero_runtime_update(const fp32 gyro_raw[3], const fp32 accel_raw[3], fp32 temp_c, uint32_t now_ms)
 {
     const gyro_zero_cali_runtime_cfg_t cfg = {
-        .test_mode_active = ((test_mode_e)g_config.test.mode == TEST_MODE_IMU_GYRO_CALI) ? 1u : 0u,
+        .test_mode_active = robot_mode_is_calibration(ROBOT_CALI_TARGET_IMU_GYRO),
         .temp_c = temp_c,
         .target_temp_c = (fp32)get_control_temperature(),
         .heater_stable = first_temperate,

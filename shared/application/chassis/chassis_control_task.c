@@ -10,7 +10,7 @@
  * 阅读地图：
  * - 前段：底盘运行快照、日志缓存、调参接口。
  * - 中段：模式/反馈更新、运动学换算、功率限制前后的电流计算。
- * - 后段：chassis_control_task() 主循环，处理测试模式、离线保护和日志。
+ * - 后段：chassis_control_task() 主循环，处理运行模式、离线保护和日志。
  * - 输出：电流命令写入 LowCmd，由 CAN 发送任务统一发出。
  */
 
@@ -40,6 +40,7 @@
 #include "sdlog.h"
 #include "rt_profiler.h"
 #include "robot_task_profile.h"
+#include "robot_mode.h"
 
 #include <string.h>
 
@@ -96,7 +97,7 @@ typedef struct
     const fp32 *gyro;
     const motor_measure_t *motor_measure[CHASSIS_MOTOR_COUNT];
     const motor_node_param_t *motor_cfg[CHASSIS_MOTOR_COUNT];
-    test_mode_e test_mode;
+    uint8_t chassis_only_mode;
     uint16_t period_ms;
     uint32_t period_us;
     fp32 period_s;
@@ -239,10 +240,10 @@ static fp32 chassis_wz_kf_step(fp32 wz_wheel, bool_t imu_valid, fp32 wz_imu)
 }
 
 static void chassis_snapshot_capture(chassis_runtime_snapshot_t *snapshot, chassis_move_t *control);
-static bool_t test_mode_allow_chassis(const chassis_runtime_snapshot_t *snapshot)
+static bool_t operation_mode_allow_chassis(const chassis_runtime_snapshot_t *snapshot)
 {
-    test_mode_e mode = (snapshot != NULL) ? snapshot->test_mode : (test_mode_e)g_config.test.mode;
-    return (mode == TEST_MODE_NONE) || (mode == TEST_MODE_ENTERTAIN) || (mode == TEST_MODE_CHASSIS_ONLY);
+    (void)snapshot;
+    return (robot_mode_allow_chassis() != 0u) ? 1 : 0;
 }
 
 static void chassis_snapshot_capture(chassis_runtime_snapshot_t *snapshot, chassis_move_t *control)
@@ -273,7 +274,7 @@ static void chassis_snapshot_capture(chassis_runtime_snapshot_t *snapshot, chass
     }
     snapshot->ins_angle = (control != NULL) ? control->chassis_INS_angle : get_INS_angle_point();
     snapshot->gyro = chassis_INT_gyro_point;
-    snapshot->test_mode = (test_mode_e)g_config.test.mode;
+    snapshot->chassis_only_mode = robot_mode_force_chassis_only();
     snapshot->period_ms = robot_profile_chassis_control_period_ms();
     snapshot->period_us = (uint32_t)snapshot->period_ms * 1000u;
     snapshot->period_s = (fp32)robot_profile_chassis_control_period_s();
@@ -307,7 +308,7 @@ static void chassis_snapshot_capture(chassis_runtime_snapshot_t *snapshot, chass
         }
 
         fast.manual_online = toe_is_error(DBUS_TOE) ? 0u : 1u;
-        fast.test_mode = snapshot->test_mode;
+        fast.chassis_only_mode = snapshot->chassis_only_mode;
         fast.mode_sw = input_switch(INPUT_SW_CHASSIS_MODE);
         fast.safe_pos = g_config.manual_input.semantics.chassis_safe_pos;
         fast.follow_pos = g_config.manual_input.semantics.chassis_follow_pos;
@@ -673,7 +674,7 @@ void chassis_control_task(void const *pvParameters)
         chassis_feedback_update(&chassis_move, &snapshot);
 
         // test mode: only none/chassis_only allow normal chassis control
-        if (!test_mode_allow_chassis(&snapshot))
+        if (!operation_mode_allow_chassis(&snapshot))
         {
             chassis_sdlog_flush_base_stream();
             for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
@@ -967,10 +968,10 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update, const c
     chassis_move_update->wz = wz_wheel;
 
     // Fuse yaw-rate using IMU (on gimbal) if available.
-    // - In chassis-only test mode, keep wheel odom only to avoid relying on IMU/gimbal signals.
+    // - 底盘单跑时只用轮速里程计，避免依赖 IMU/云台信号。
     bool_t imu_valid = 0;
     fp32 wz_imu = 0.0f;
-    const test_mode_e test_mode = (snapshot != NULL) ? snapshot->test_mode : (test_mode_e)g_config.test.mode;
+    const uint8_t chassis_only_mode = (snapshot != NULL) ? snapshot->chassis_only_mode : robot_mode_force_chassis_only();
     const fp32 *gyro = (snapshot != NULL) ? snapshot->gyro : chassis_INT_gyro_point;
     const gimbal_motor_state_t *yaw_motor = NULL;
     const gimbal_motor_state_t *pitch_motor = NULL;
@@ -988,7 +989,7 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update, const c
         gimbal_online = chassis_move_update->gimbal_online;
     }
     const fp32 *ins_angle = (snapshot != NULL) ? snapshot->ins_angle : chassis_move_update->chassis_INS_angle;
-    if (test_mode != TEST_MODE_CHASSIS_ONLY &&
+    if (chassis_only_mode == 0u &&
         gimbal_online != 0u &&
         gyro != NULL &&
         yaw_motor != NULL)
@@ -1001,7 +1002,7 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update, const c
     chassis_move_update->wz = chassis_wz_kf_step(wz_wheel, imu_valid, wz_imu);
 
     //calculate chassis euler angle, if chassis add a new gyro sensor,please change this code
-    if (test_mode == TEST_MODE_CHASSIS_ONLY)
+    if (chassis_only_mode != 0u)
     {
         chassis_move_update->chassis_yaw = 0.0f;
         chassis_move_update->chassis_pitch = 0.0f;

@@ -38,6 +38,7 @@
 #include "host_link_task.h"
 #include "watch.h"
 #include "sdlog.h"
+#include "robot_mode.h"
 #include "pitch_cali.h"
 #include "bsp_time.h"
 #include "rt_profiler.h"
@@ -82,7 +83,8 @@ typedef struct
     const motor_node_param_t *yaw_motor_cfg;
     const motor_node_param_t *pitch_motor_cfg;
     const motor_node_param_t *trigger_motor_cfg;
-    test_mode_e test_mode;
+    robot_run_variant_e run_variant;
+    uint8_t pitch_cali_mode;
     uint16_t period_ms;
     uint32_t period_us;
     uint8_t yaw_turn;
@@ -536,11 +538,6 @@ static fp32 gimbal_pitch_kick_scale(fp32 angle_err)
     return (err_abs - PITCH_KICK_ERR_OFF_RAD) / (PITCH_KICK_ERR_ON_RAD - PITCH_KICK_ERR_OFF_RAD);
 }
 
-static test_mode_e current_test_mode(void)
-{
-    return (test_mode_e)g_config.test.mode;
-}
-
 static int16_t gimbal_apply_output_turn(int16_t current, uint8_t turn)
 {
     return (turn != 0u) ? (int16_t)-current : current;
@@ -562,7 +559,8 @@ static void gimbal_snapshot_capture(gimbal_runtime_snapshot_t *snapshot, gimbal_
     snapshot->yaw_motor_cfg = &g_config.motor.yaw;
     snapshot->pitch_motor_cfg = &g_config.motor.pitch;
     snapshot->trigger_motor_cfg = &g_config.motor.trigger;
-    snapshot->test_mode = current_test_mode();
+    snapshot->run_variant = robot_mode_variant();
+    snapshot->pitch_cali_mode = robot_mode_gimbal_pitch_cali();
     snapshot->period_ms = robot_profile_gimbal_control_period_ms();
     snapshot->period_us = (uint32_t)snapshot->period_ms * 1000u;
     snapshot->yaw_turn = YAW_TURN ? 1u : 0u;
@@ -574,7 +572,8 @@ static void gimbal_snapshot_capture(gimbal_runtime_snapshot_t *snapshot, gimbal_
         const manual_input_state_t *manual_input = snapshot->manual_input;
 
         fast.dbus_offline = toe_is_error(DBUS_TOE);
-        fast.test_mode = snapshot->test_mode;
+        fast.run_variant = snapshot->run_variant;
+        fast.pitch_cali_mode = snapshot->pitch_cali_mode;
         fast.mode_sw = input_switch(INPUT_SW_GIMBAL_MODE);
         fast.safe_pos = g_config.manual_input.semantics.gimbal_safe_pos;
         fast.active_source = remote_control_get_active_source();
@@ -596,9 +595,10 @@ static void gimbal_snapshot_capture(gimbal_runtime_snapshot_t *snapshot, gimbal_
     }
 }
 
-static void gimbal_apply_test_mode(const gimbal_runtime_snapshot_t *snapshot, int16_t *yaw_current, int16_t *pitch_current)
+static void gimbal_apply_operation_mode(const gimbal_runtime_snapshot_t *snapshot, int16_t *yaw_current, int16_t *pitch_current)
 {
-    const test_mode_e mode = (snapshot != NULL) ? snapshot->test_mode : current_test_mode();
+    const robot_run_variant_e variant = (snapshot != NULL) ? snapshot->run_variant : robot_mode_variant();
+    const uint8_t pitch_cali_mode = (snapshot != NULL) ? snapshot->pitch_cali_mode : robot_mode_gimbal_pitch_cali();
 
     if (gimbal_behaviour_watch == GIMBAL_ZERO_FORCE)
     {
@@ -608,24 +608,27 @@ static void gimbal_apply_test_mode(const gimbal_runtime_snapshot_t *snapshot, in
         return;
     }
 
-    switch (mode)
+    if (pitch_cali_mode != 0u)
     {
-    case TEST_MODE_NONE:
-    case TEST_MODE_GIMBAL_DUAL:
-    case TEST_MODE_ENTERTAIN:
-    case TEST_MODE_PITCH_CALI:
         return;
-    case TEST_MODE_YAW_ONLY:
+    }
+
+    switch (variant)
+    {
+    case ROBOT_RUN_VARIANT_NORMAL:
+    case ROBOT_RUN_VARIANT_GIMBAL_DUAL:
+        return;
+    case ROBOT_RUN_VARIANT_GIMBAL_YAW_ONLY:
         gimbal_PID_clear(&gimbal_control.gimbal_pitch_motor.gimbal_motor_angle_pid);
         PID_clear(&gimbal_control.gimbal_pitch_motor.gimbal_motor_gyro_pid);
         *pitch_current = 0;
         return;
-    case TEST_MODE_PITCH_ONLY:
+    case ROBOT_RUN_VARIANT_GIMBAL_PITCH_ONLY:
         gimbal_PID_clear(&gimbal_control.gimbal_yaw_motor.gimbal_motor_angle_pid);
         PID_clear(&gimbal_control.gimbal_yaw_motor.gimbal_motor_gyro_pid);
         *yaw_current = 0;
         return;
-    case TEST_MODE_YAW_EASY_TEST:
+    case ROBOT_RUN_VARIANT_GIMBAL_YAW_EASY:
         gimbal_total_pid_clear(&gimbal_control);
         *yaw_current = gimbal_yaw_easytest_current;
         *pitch_current = 0;
@@ -665,12 +668,12 @@ void gimbal_control_task(void const *pvParameters)
         gimbal_snapshot_capture(&snapshot, &gimbal_control);
         gimbal_loop_counter++;
         gimbal_set_mode(&gimbal_control);                    //设置云台控制模式
-        pitch_cali_tick_pre(&gimbal_control, gimbal_behaviour_watch, snapshot.test_mode);
+        pitch_cali_tick_pre(&gimbal_control, gimbal_behaviour_watch, snapshot.pitch_cali_mode);
         gimbal_mode_change_control_transit(&gimbal_control); //控制模式切换 控制数据过渡
         gimbal_feedback_update(&gimbal_control, &snapshot);  //云台数据反馈
         gimbal_set_control(&gimbal_control);
         gimbal_control_loop(&gimbal_control);
-        pitch_cali_tick_post(&gimbal_control, gimbal_behaviour_watch, snapshot.test_mode);
+        pitch_cali_tick_post(&gimbal_control, gimbal_behaviour_watch, snapshot.pitch_cali_mode);
         gimbal_write_state();
         shoot_can_set_current = shoot_control_loop();        // 拨盘电流
         yaw_can_set_current = gimbal_apply_output_turn(gimbal_control.gimbal_yaw_motor.given_current, snapshot.yaw_turn);
@@ -679,13 +682,13 @@ void gimbal_control_task(void const *pvParameters)
         const int16_t yaw_current_request = yaw_can_set_current;
         const int16_t pitch_current_request = pitch_can_set_current;
 
-        gimbal_apply_test_mode(&snapshot, &yaw_can_set_current, &pitch_can_set_current);
+        gimbal_apply_operation_mode(&snapshot, &yaw_can_set_current, &pitch_can_set_current);
 
         yaw_can_set_current = motor_cfg_limit_current_node(snapshot.yaw_motor_cfg, yaw_can_set_current);
         pitch_can_set_current = motor_cfg_limit_current_node(snapshot.pitch_motor_cfg, pitch_can_set_current);
         shoot_can_set_current = motor_cfg_limit_current_node(snapshot.trigger_motor_cfg, shoot_can_set_current);
 
-        // watch 输出：观察最终下发电流（含测试模式、安全模式及方向翻转后的值）
+        // watch 输出：观察最终下发电流（含运行模式、安全模式及方向翻转后的值）
         gimbal_watch_yaw_current = yaw_can_set_current;
         gimbal_watch_pitch_current = pitch_can_set_current;
         {
@@ -704,7 +707,7 @@ void gimbal_control_task(void const *pvParameters)
             sdlog_gimbal_base_sample_t sample = {0};
 
             sample.gimbal_behaviour = (uint8_t)gimbal_behaviour_watch;
-            sample.test_mode = (uint8_t)snapshot.test_mode;
+            sample.test_mode = (uint8_t)snapshot.run_variant;
             sample.yaw_motor_mode = (uint8_t)gimbal_control.gimbal_yaw_motor.gimbal_motor_mode;
             sample.pitch_motor_mode = (uint8_t)gimbal_control.gimbal_pitch_motor.gimbal_motor_mode;
             sample.yaw_angle = gimbal_control.gimbal_yaw_motor.angle;
@@ -766,7 +769,7 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
         const int16_t yaw_current_request = yaw_can_set_current;
         const int16_t pitch_current_request = pitch_can_set_current;
 
-        gimbal_apply_test_mode(&snapshot, &yaw_can_set_current, &pitch_can_set_current);
+        gimbal_apply_operation_mode(&snapshot, &yaw_can_set_current, &pitch_can_set_current);
 
         int16_t yaw_upper_can_set_current = gimbal_apply_output_turn(yaw_can_set_current, (uint8_t)DUAL_YAW_UPPER_TURN);
 
@@ -795,7 +798,7 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
             sdlog_gimbal_base_sample_t sample = {0};
 
             sample.gimbal_behaviour = (uint8_t)gimbal_behaviour_watch;
-            sample.test_mode = (uint8_t)snapshot.test_mode;
+            sample.test_mode = (uint8_t)snapshot.run_variant;
             sample.yaw_motor_mode = (uint8_t)gimbal_control.gimbal_yaw_motor.gimbal_motor_mode;
             sample.pitch_motor_mode = (uint8_t)gimbal_control.gimbal_pitch_motor.gimbal_motor_mode;
             sample.yaw_angle = gimbal_control.gimbal_yaw_motor.angle;

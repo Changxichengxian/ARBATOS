@@ -7,6 +7,7 @@
  */
 
 #include "detect_task.h"
+#include "detect_common.h"
 
 #include "config.h"
 #include "motor_config.h"
@@ -58,22 +59,17 @@ static void detect_init_once(void)
     }
     g_detect_inited = 1u;
 
-    memset(g_error_list, 0, sizeof(g_error_list));
-    memset(g_last_tick_ms, 0, sizeof(g_last_tick_ms));
-
+    detect_common_init_from_config(g_error_list,
+                                   g_last_tick_ms,
+                                   (uint8_t)ERROR_LIST_LENGHT,
+                                   &g_config.detect,
+                                   HAL_GetTick());
     for (uint8_t i = 0u; i < (uint8_t)ERROR_LIST_LENGHT; i++)
     {
-        const detect_item_t *item = &g_config.detect.items[i];
-        const uint8_t enabled_by_config = (uint8_t)((g_config.detect.enable_mask >> i) & 0x1u);
-        const uint8_t enabled = (uint8_t)(enabled_by_config && detect_toe_enabled_by_profile(i));
-
-        g_error_list[i].enable = enabled;
-        g_error_list[i].priority = item->priority;
-        g_error_list[i].set_online_time = item->online_time_ms;
-        g_error_list[i].set_offline_time = item->offline_time_ms;
-        g_error_list[i].error_exist = enabled;
-        g_error_list[i].is_lost = enabled;
-        g_error_list[i].data_is_error = enabled;
+        g_error_list[i].enable = (uint8_t)(g_error_list[i].enable && detect_toe_enabled_by_profile(i));
+        g_error_list[i].error_exist = g_error_list[i].enable;
+        g_error_list[i].is_lost = g_error_list[i].enable;
+        g_error_list[i].data_is_error = g_error_list[i].enable;
     }
 }
 
@@ -91,13 +87,7 @@ void detect_hook(uint8_t toe)
         return;
     }
 
-    const uint32_t now_ms = HAL_GetTick();
-    g_last_tick_ms[toe] = now_ms;
-    g_error_list[toe].new_time = now_ms;
-    g_error_list[toe].last_time = now_ms;
-    g_error_list[toe].error_exist = 0u;
-    g_error_list[toe].is_lost = 0u;
-    g_error_list[toe].data_is_error = 0u;
+    detect_common_hook(g_error_list, g_last_tick_ms, (uint8_t)ERROR_LIST_LENGHT, toe, HAL_GetTick());
 }
 
 bool_t toe_is_error(uint8_t err)
@@ -109,26 +99,11 @@ bool_t toe_is_error(uint8_t err)
         return 1u;
     }
 
-    const error_t *e = &g_error_list[err];
-    if (e->enable == 0u)
-    {
-        return 0u;
-    }
-
-    const uint16_t offline_ms = e->set_offline_time;
-    if (offline_ms == 0u)
-    {
-        return 0u;
-    }
-
-    const uint32_t last = g_last_tick_ms[err];
-    if (last == 0u)
-    {
-        return 1u;
-    }
-
-    const uint32_t now_ms = HAL_GetTick();
-    return ((uint32_t)(now_ms - last) > (uint32_t)offline_ms) ? 1u : 0u;
+    return detect_common_is_error(g_error_list,
+                                  g_last_tick_ms,
+                                  (uint8_t)ERROR_LIST_LENGHT,
+                                  err,
+                                  HAL_GetTick());
 }
 
 const error_t *get_error_list_point(void)
@@ -152,19 +127,7 @@ void detect_task(void const *pvParameters)
     for (;;)
     {
         const uint32_t now_ms = HAL_GetTick();
-        for (uint8_t i = 0u; i < (uint8_t)ERROR_LIST_LENGHT; i++)
-        {
-            error_t *e = &g_error_list[i];
-            if (e->enable == 0u || e->set_offline_time == 0u)
-            {
-                continue;
-            }
-
-            const uint32_t last = g_last_tick_ms[i];
-            const uint8_t lost = (last == 0u) ? 1u : (((uint32_t)(now_ms - last) > (uint32_t)e->set_offline_time) ? 1u : 0u);
-            e->is_lost = lost;
-            e->error_exist = lost;
-        }
+        detect_common_refresh_all(g_error_list, g_last_tick_ms, (uint8_t)ERROR_LIST_LENGHT, now_ms);
 
         // Log configuration snapshot once after boot (when SD log is active).
         if (!config_logged && sdlog_is_active())
@@ -188,6 +151,6 @@ void detect_task(void const *pvParameters)
             watch_update();
         }
 
-        osDelay(DETECT_CONTROL_TIME);
+        osDelay(DETECT_COMMON_RUNTIME_POLL_MS);
     }
 }

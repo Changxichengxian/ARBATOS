@@ -100,7 +100,7 @@ typedef struct
 typedef struct
 {
     bool_t manual_online;
-    test_mode_e test_mode;
+    uint8_t chassis_only_mode;
     uint16_t mode_sw;
     uint8_t safe_pos;
     uint8_t follow_pos;

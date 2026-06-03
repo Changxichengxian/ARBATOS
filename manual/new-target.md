@@ -35,7 +35,7 @@
 
 ## 3. 配 profile 和任务模块
 
-先改 `Robotconfig/<TARGET>/config.c` 里的 `g_config.profile`。
+先改 `Robotconfig/<TARGET>/config_operation.inc` 里的 `.profile`。
 
 现在 profile 只做一件事：列出这台车要启用哪些任务模块。任务创建、调参块是否显示、观测块是否显示，都按这张表走。例子：
 
@@ -67,7 +67,7 @@
 
 ## 4. 配电机装配
 
-看 `g_config.motor`。新车第一次上电前至少确认：
+看 `Robotconfig/<TARGET>/config_hardware.inc` 里的 `.motor`。新车第一次上电前至少确认：
 
 - 每个轴的 `model` 是否正确。RM 电流电机、达妙 MIT、宇树电机不要混填。
 - `can_id`、`can_bus`、`feedback_id` 是否和实物一致；RS485 电机还要确认串口、波特率和超时。

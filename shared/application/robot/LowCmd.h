@@ -13,6 +13,19 @@
 
 #include "types.h"
 
+#define LOWCMD_DEFAULT_TIMEOUT_MS 100u
+#define LOWCMD_PRIORITY_HOLD_MS 100u
+
+typedef enum
+{
+    LOWCMD_WRITER_NONE = 0u,
+    LOWCMD_WRITER_CONTROL = 10u,
+    LOWCMD_WRITER_MANUAL = 20u,
+    LOWCMD_WRITER_HOST = 30u,
+    LOWCMD_WRITER_SAFETY = 240u,
+    LOWCMD_WRITER_FAULT = 255u,
+} LowCmdWriter;
+
 typedef enum
 {
     Motor0 = 0u,
@@ -51,6 +64,16 @@ typedef enum
 
 typedef enum
 {
+    MotorDriveStateUnknown = 0u,
+    MotorDriveStateOffline,
+    MotorDriveStateDisabled,
+    MotorDriveStateReady,
+    MotorDriveStateEnabled,
+    MotorDriveStateFault,
+} MotorDriveState;
+
+typedef enum
+{
     MotorCmdCapCurrent = 1u << 0,
     MotorCmdCapStateTorque = 1u << 1,
     MotorCmdCapPosVel = 1u << 2,
@@ -65,6 +88,14 @@ typedef enum
     MotorTransportCAN,
     MotorTransportRS485,
 } MotorTransport;
+
+typedef enum
+{
+    MotorAppliedFlagLimited = 1u << 0,
+    MotorAppliedFlagForceDisabled = 1u << 1,
+    MotorAppliedFlagCmdExpired = 1u << 2,
+    MotorAppliedFlagSkipped = 1u << 3,
+} MotorAppliedFlag;
 
 typedef struct
 {
@@ -91,6 +122,7 @@ typedef struct
     uint8_t transport; // MotorTransport
     uint8_t motorId;   // MIT feedback motor id when available
     uint8_t state;     // MIT feedback state when available
+    uint8_t driveState; // MotorDriveState
     uint16_t rxId;
     uint32_t rxCount;
     uint32_t lastRxTick;
@@ -105,6 +137,26 @@ typedef struct
 
 typedef struct
 {
+    uint8_t active;
+    uint8_t mode;       // MotorMode
+    uint8_t driveState; // MotorDriveState
+    uint8_t flags;      // MotorAppliedFlag
+    uint8_t bus;
+    uint8_t transport; // MotorTransport
+    uint8_t protocol;
+    uint8_t reserved0;
+    uint16_t txId;
+    uint32_t tick;
+    int16_t current;
+    fp32 q;
+    fp32 dq;
+    fp32 kp;
+    fp32 kd;
+    fp32 tau;
+} MotorApplied;
+
+typedef struct
+{
     uint32_t seq;
     uint32_t tick;
     MotorCmd motorCmd[MotorCount];
@@ -114,7 +166,21 @@ typedef struct
 {
     uint32_t tick;
     MotorState motorState[MotorCount];
+    MotorApplied motorApplied[MotorCount];
 } LowState;
+
+typedef struct
+{
+    uint32_t seq;
+    uint32_t rejected_count;
+    uint32_t emergency_stop_count;
+    uint32_t last_reject_tick;
+    uint16_t last_reject_writer;
+    uint16_t last_reject_owner;
+    uint16_t emergency_writer;
+    uint8_t emergency_active;
+    uint8_t reserved0;
+} LowCmdDiag;
 
 static inline MotorId MotorIdRange(MotorId first, uint8_t index, uint8_t count)
 {
@@ -138,11 +204,17 @@ void LowCmdClearAll(void);
 void LowCmdClear(MotorId id);
 uint8_t LowCmdSetMotor(MotorId id, const MotorCmd *cmd);
 uint8_t LowCmdSetMotorMany(const MotorId *ids, const MotorCmd *cmds, uint8_t count);
+uint8_t LowCmdSetMotorFrom(MotorId id, const MotorCmd *cmd, uint16_t writer);
+uint8_t LowCmdSetMotorManyFrom(const MotorId *ids, const MotorCmd *cmds, uint8_t count, uint16_t writer);
 const char *MotorModeName(MotorMode mode);
 uint32_t LowCmdSeq(void);
 uint8_t LowCmdGet(LowCmd *out);
+void LowCmdSetDisable(MotorId id);
+void LowCmdSetDisableFrom(MotorId id, uint16_t writer);
+void LowCmdSetDamping(MotorId id, fp32 kd, fp32 tau);
 void LowCmdSetCurrent(MotorId id, int16_t current);
 uint8_t LowCmdSetCurrentMany(const MotorId *ids, const int16_t *currents, uint8_t count);
+uint8_t LowCmdSetCurrentManyFrom(const MotorId *ids, const int16_t *currents, uint8_t count, uint16_t writer);
 int16_t LowCmdGetCurrent(MotorId id);
 uint8_t LowCmdGetCurrentMany(const MotorId *ids, int16_t *out, uint8_t count);
 void LowCmdSetStateTorque(MotorId id, const MotorCmd *cmd);
@@ -150,12 +222,19 @@ void LowCmdSetSpeed(MotorId id, fp32 velocity, fp32 kd, fp32 torque);
 uint8_t LowCmdGetMotor(MotorId id, MotorCmd *out);
 uint8_t LowCmdGetMotorMany(const MotorId *ids, MotorCmd *out, uint8_t count);
 const MotorCmd *LowCmdGetMotorPtr(MotorId id);
+uint8_t LowCmdEnterEmergencyStop(uint16_t writer);
+uint8_t LowCmdClearEmergencyStop(uint16_t writer);
+uint8_t LowCmdEmergencyActive(void);
+uint8_t LowCmdGetDiag(LowCmdDiag *out);
 
 void LowStateClearAll(void);
 void LowStateUpdateMotor(MotorId id, const MotorState *feedback);
+void LowStateUpdateApplied(MotorId id, const MotorApplied *applied);
 uint8_t LowStateGet(LowState *out);
 uint8_t LowStateGetMotor(MotorId id, MotorState *out);
 uint8_t LowStateGetMotorMany(const MotorId *ids, MotorState *out, uint8_t count);
 const MotorState *LowStateGetMotorPtr(MotorId id);
+uint8_t LowStateGetApplied(MotorId id, MotorApplied *out);
+const MotorApplied *LowStateGetAppliedPtr(MotorId id);
 
 #endif

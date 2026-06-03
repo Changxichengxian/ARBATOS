@@ -667,15 +667,24 @@ typedef struct
     uint8_t control_mode;
     uint8_t cmd_caps;
     uint8_t model;
+    uint8_t drive_state;
+    uint8_t applied_mode;
+    uint8_t applied_flags;
     uint8_t reserved0;
+    int16_t applied_current;
+    uint16_t reserved1;
+    uint32_t applied_tick_ms;
+    fp32 applied_torque_nm;
 } watch_runtime_motor_t;
 
 typedef struct
 {
     const char *name;
     uint8_t module;
-    uint8_t reserved0;
-    uint16_t reserved1;
+    uint8_t create_state;
+    uint16_t create_fail_count;
+    uint32_t thread_handle;
+    uint32_t create_attempt_count;
 } watch_runtime_task_module_t;
 
 typedef struct
@@ -734,6 +743,15 @@ typedef struct
     uint32_t rt_profiler_max_last_us;
     uint32_t rt_profiler_max_budget_us;
     uint32_t rt_profiler_max_over_budget_us;
+    uint32_t lowcmd_seq;
+    uint32_t lowcmd_rejected_count;
+    uint32_t lowcmd_emergency_stop_count;
+    uint32_t lowcmd_last_reject_tick_ms;
+    uint16_t lowcmd_last_reject_writer;
+    uint16_t lowcmd_last_reject_owner;
+    uint16_t lowcmd_emergency_writer;
+    uint8_t lowcmd_emergency_active;
+    uint8_t reserved1;
     uint32_t active_claim_mask;
     runtime_instance_ref_t entry[WATCH_RUNTIME_MAX_ENTRIES];
     watch_runtime_task_module_t task_module[WATCH_RUNTIME_MAX_TASK_MODULES];
@@ -810,6 +828,9 @@ void watch_update(void);
 void watch_diag_set_boot_stage(watch_boot_stage_e stage);
 void watch_diag_mark_error_handler(uint32_t tick_ms, uint32_t ipsr);
 void watch_diag_set_error_args(uint32_t arg0, uint32_t arg1);
+void watch_diag_mark_fatal(uint32_t reason, uint32_t task_handle, const char *task_name);
+void watch_task_module_create_reset(void);
+void watch_task_module_create_result(uint8_t module, const char *name, uint32_t thread_handle, uint8_t state);
 void watch_task_beat(watch_task_id_e task_id);
 void watch_task_wait(watch_task_id_e task_id);
 void watch_task_timeout(watch_task_id_e task_id);

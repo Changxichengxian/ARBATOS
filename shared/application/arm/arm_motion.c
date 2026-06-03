@@ -221,6 +221,23 @@ static const can_mit_motor_limits_t *arm_mit_limits(const arm_motor_entry_t *ent
     return motor_cfg_mit_limits(node);
 }
 
+static uint8_t arm_mit_drive_state(uint8_t online, uint8_t state)
+{
+    if (online == 0u)
+    {
+        return (uint8_t)MotorDriveStateOffline;
+    }
+    if (state == 1u)
+    {
+        return (uint8_t)MotorDriveStateEnabled;
+    }
+    if (state >= 8u)
+    {
+        return (uint8_t)MotorDriveStateFault;
+    }
+    return (uint8_t)MotorDriveStateDisabled;
+}
+
 static void arm_copy_mit_feedback(uint8_t index)
 {
     const can_mit_motor_feedback_t *src;
@@ -255,6 +272,8 @@ static void arm_copy_mit_feedback(uint8_t index)
         fb.bus = arm_entry_can_bus(entry);
         fb.rxDlc = src->rx_dlc;
         fb.transport = (uint8_t)MotorTransportCAN;
+        fb.state = src->state;
+        fb.driveState = arm_mit_drive_state(src->online, src->state);
         fb.rxId = src->rx_id;
         fb.rxCount = src->rx_count;
         fb.lastRxTick = src->last_rx_tick;
@@ -516,6 +535,9 @@ static void arm_update_j0_LowState_from_unitree(void)
     fb.online = g_arm_j0_unitree_state.online;
     fb.bus = g_arm_j0_unitree_state.rs485_port;
     fb.transport = (uint8_t)MotorTransportRS485;
+    fb.driveState = (g_arm_j0_unitree_state.online != 0u) ?
+                        (uint8_t)MotorDriveStateEnabled :
+                        (uint8_t)MotorDriveStateOffline;
     fb.rxId = g_arm_j0_unitree_state.motor_id;
     fb.rxCount = g_arm_j0_unitree_state.rx_frame_count;
     fb.lastRxTick = g_arm_j0_unitree_state.last_rx_tick_ms;
@@ -584,7 +606,7 @@ static void arm_apply_j0_core_output(const arm_core_output_t *core_output)
     {
         if (cmd->mode == (uint8_t)MotorModeSpeed)
         {
-            (void)motor_instance_cmd_set_speed_id(Motor12, cmd->velocity, cmd->kd, cmd->torque);
+            (void)motor_instance_cmd_set_speed_id(Motor12, cmd->dq, cmd->kd, cmd->tau);
         }
         else
         {

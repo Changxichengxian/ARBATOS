@@ -23,31 +23,6 @@ typedef struct
     fp32 max_iout; // 积分上限
 } pid_param_t;
 
-// 测试模式选项
-typedef enum
-{
-    TEST_MODE_NONE = 0,      // 關閉測試，正常模式
-    TEST_MODE_CHASSIS_ONLY,  // 只測底盤
-    TEST_MODE_YAW_ONLY,      // 只測雲台 yaw
-    TEST_MODE_YAW_EASY_TEST, // yaw 轴简单上电：固定电流输出
-    TEST_MODE_PITCH_ONLY,    // 只測雲台 pitch
-    TEST_MODE_GIMBAL_DUAL,   // 雲台雙軸
-    TEST_MODE_FRIC_ONLY,     // 只開摩擦輪
-    TEST_MODE_TRIGGER_ONLY,  // 只撥盤
-    TEST_MODE_SHOOT_COMBO,   // 摩擦+撥盤
-    TEST_MODE_ENTERTAIN,     // 娛樂模式：禁用摩擦輪/撥盤，左撥杆控制 TF 音樂（上=停，中/下=播）
-    TEST_MODE_PITCH_CALI,    // pitch 校准：测重力维持电流 & 静摩擦起动电流（存 SD，非安全档才运行）
-    TEST_MODE_WHEELLEG_SINGLE_MOTOR, // 轮腿单电机测试：只给指定执行器发 MIT 状态力矩命令
-    TEST_MODE_WHEELLEG_LEFT_LEG_SWING, // 轮腿左腿关节测试：归零后正反转 90 度
-    TEST_MODE_WHEELLEG_FOOT_TRAJECTORY, // 轮腿足端轨迹测试：归零、伸腿、前后 3cm
-    TEST_MODE_IMU_GYRO_CALI, // 陀螺仪零偏校准：40C 稳温后采 30s 并保存
-} test_mode_e;
-
-typedef struct
-{
-    uint8_t mode; // test_mode_e
-} test_config_t;
-
 // Pitch compensation (gravity hold + static friction breakaway) calibration.
 typedef enum
 {
@@ -455,6 +430,51 @@ typedef struct
 } motor_mount_config_t;
 
 #include "robot_config_schema.h"
+
+// 运行编排：决定当前整车怎么跑。任务仍静态创建，这里只决定谁允许输出。
+typedef enum
+{
+    ROBOT_RUN_MODE_FULL = 0u,       // 全任务正常运行
+    ROBOT_RUN_MODE_SINGLE_TASK,     // 只放行一个主要功能任务
+    ROBOT_RUN_MODE_SINGLE_MOTOR,    // 只放行一个电机输出
+    ROBOT_RUN_MODE_CALIBRATION,     // 校准流程
+    ROBOT_RUN_MODE_ENTERTAIN,       // 娱乐/演示
+    ROBOT_RUN_MODE_MAX = ROBOT_RUN_MODE_ENTERTAIN
+} robot_run_mode_e;
+
+typedef enum
+{
+    ROBOT_RUN_VARIANT_NORMAL = 0u,
+    ROBOT_RUN_VARIANT_CHASSIS_ONLY,
+    ROBOT_RUN_VARIANT_GIMBAL_YAW_ONLY,
+    ROBOT_RUN_VARIANT_GIMBAL_YAW_EASY,
+    ROBOT_RUN_VARIANT_GIMBAL_PITCH_ONLY,
+    ROBOT_RUN_VARIANT_GIMBAL_DUAL,
+    ROBOT_RUN_VARIANT_SHOOT_FRIC_ONLY,
+    ROBOT_RUN_VARIANT_SHOOT_TRIGGER_ONLY,
+    ROBOT_RUN_VARIANT_SHOOT_COMBO,
+    ROBOT_RUN_VARIANT_WHEELLEG_SINGLE_MOTOR,
+    ROBOT_RUN_VARIANT_WHEELLEG_LEFT_LEG_SWING,
+    ROBOT_RUN_VARIANT_WHEELLEG_FOOT_TRAJECTORY,
+    ROBOT_RUN_VARIANT_MAX = ROBOT_RUN_VARIANT_WHEELLEG_FOOT_TRAJECTORY
+} robot_run_variant_e;
+
+typedef enum
+{
+    ROBOT_CALI_TARGET_NONE = 0u,
+    ROBOT_CALI_TARGET_PITCH,
+    ROBOT_CALI_TARGET_IMU_GYRO,
+    ROBOT_CALI_TARGET_MAX = ROBOT_CALI_TARGET_IMU_GYRO
+} robot_cali_target_e;
+
+typedef struct
+{
+    uint8_t mode;        // robot_run_mode_e
+    uint8_t target_task; // robot_task_module_e, only used by SINGLE_TASK
+    uint8_t target_motor; // MotorId, only used by SINGLE_MOTOR
+    uint8_t variant;     // robot_run_variant_e
+    uint8_t cali_target; // robot_cali_target_e
+} operation_config_t;
 
 // AUX telemetry signal IDs.
 // - AUX JustFloat telemetry (VOFA+/FireWater): N * float32 (little-endian) + tail 0x7F800000 (INF).
@@ -984,7 +1004,7 @@ typedef enum
     CONFIG_BLOCK_COMMON_MANUAL_INPUT,
     CONFIG_BLOCK_COMMON_INPUT,
     CONFIG_BLOCK_COMMON_AUX_TELEM,
-    CONFIG_BLOCK_COMMON_TEST,
+    CONFIG_BLOCK_COMMON_OPERATION,
     CONFIG_BLOCK_COMMON_SDLOG,
     CONFIG_BLOCK_COUNT
 } config_block_id_e;
@@ -1022,7 +1042,7 @@ typedef struct
     manual_input_config_t manual_input;
     input_config_t input;
     aux_telem_config_t aux_telem;
-    test_config_t test;
+    operation_config_t operation;
     sdlog_config_t sdlog;
 } config_t;
 

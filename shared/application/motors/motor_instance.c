@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2026 闄堣僵 <2811158416@qq.com>
+ * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
  * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
@@ -29,9 +29,14 @@ typedef struct
 static motor_measure_t s_motor_measure[MotorCount];
 static motor_instance_t s_motor_instances[MotorCount];
 static motor_instance_t *s_motor_instance_by_actuator[MotorCount];
+static motor_route_t s_motor_routes[MotorCount];
+static motor_route_t *s_motor_route_by_motor[MotorCount];
 static motor_instance_feedback_lookup_slot_t s_motor_feedback_lookup[MOTOR_INSTANCE_FEEDBACK_LOOKUP_CAPACITY];
 static uint8_t s_motor_instance_count = 0u;
+static uint8_t s_motor_route_count = 0u;
 static uint8_t s_motor_instance_ready = 0u;
+
+static uint8_t motor_instance_node_cmd_caps(const motor_node_param_t *node);
 
 static void motor_instance_add(MotorId actuator_id,
                                motor_instance_role_e role,
@@ -227,6 +232,67 @@ static void motor_instance_feedback_lookup_rebuild(void)
     }
 }
 
+static uint8_t motor_route_node_bus(const motor_instance_t *inst)
+{
+    if (inst == NULL || inst->node == NULL)
+    {
+        return 0u;
+    }
+    if (motor_cfg_transport(inst->node) == MOTOR_TRANSPORT_RS485)
+    {
+        return inst->node->rs485_port;
+    }
+    return motor_cfg_can_bus(inst->fallback_bus, inst->node);
+}
+
+static void motor_route_add(const motor_instance_t *inst)
+{
+    motor_route_t *route;
+
+    if (inst == NULL ||
+        inst->node == NULL ||
+        motor_instance_enabled(inst) == 0u ||
+        s_motor_route_count >= (uint8_t)MotorCount ||
+        (uint32_t)inst->actuator_id >= (uint32_t)MotorCount)
+    {
+        return;
+    }
+
+    route = &s_motor_routes[s_motor_route_count++];
+    (void)memset(route, 0, sizeof(*route));
+    route->motorId = inst->actuator_id;
+    route->role = inst->role;
+    route->roleIndex = inst->role_index;
+    route->fallbackBus = inst->fallback_bus;
+    route->bus = motor_route_node_bus(inst);
+    route->enabled = 1u;
+    route->transport = (uint8_t)motor_cfg_transport(inst->node);
+    route->protocol = (uint8_t)motor_cfg_protocol(inst->node);
+    route->controlMode = (uint8_t)motor_cfg_control_mode(inst->node);
+    route->isRmGroup = motor_cfg_is_rm_group_protocol(inst->node);
+    route->cmdCaps = motor_instance_node_cmd_caps(inst->node);
+    route->model = (uint8_t)inst->node->model;
+    route->canId = motor_cfg_can_id(inst->node);
+    route->feedbackId = motor_cfg_feedback_id(inst->node);
+    route->name = inst->name;
+    route->node = inst->node;
+    route->measure = inst->measure;
+    route->mitLimits = motor_cfg_mit_limits(inst->node);
+    s_motor_route_by_motor[route->motorId] = route;
+}
+
+static void motor_route_rebuild(void)
+{
+    s_motor_route_count = 0u;
+    (void)memset(s_motor_routes, 0, sizeof(s_motor_routes));
+    (void)memset(s_motor_route_by_motor, 0, sizeof(s_motor_route_by_motor));
+
+    for (uint8_t i = 0u; i < s_motor_instance_count; i++)
+    {
+        motor_route_add(&s_motor_instances[i]);
+    }
+}
+
 static const motor_instance_t *motor_instance_feedback_lookup_get(uint8_t bus, uint16_t std_id)
 {
     const uint8_t slot = motor_instance_feedback_hash(bus, std_id);
@@ -294,6 +360,7 @@ void motor_instance_refresh(void)
     }
 
     motor_instance_feedback_lookup_rebuild();
+    motor_route_rebuild();
     s_motor_instance_ready = 1u;
 }
 
@@ -342,6 +409,32 @@ const motor_instance_t *motor_instance_find_by_name(const char *name)
         }
     }
     return NULL;
+}
+
+uint8_t motor_route_count(void)
+{
+    motor_instance_ensure();
+    return s_motor_route_count;
+}
+
+const motor_route_t *motor_route_get(uint8_t index)
+{
+    motor_instance_ensure();
+    if (index >= s_motor_route_count)
+    {
+        return NULL;
+    }
+    return &s_motor_routes[index];
+}
+
+const motor_route_t *motor_route_find_by_motor(MotorId id)
+{
+    motor_instance_ensure();
+    if ((uint32_t)id >= (uint32_t)MotorCount)
+    {
+        return NULL;
+    }
+    return s_motor_route_by_motor[id];
 }
 
 uint8_t motor_instance_resolve_actuator_ids(const char *const *names, uint8_t count, MotorId *out, uint8_t out_cap)
@@ -718,6 +811,29 @@ uint8_t motor_instance_cmd_set_state_torque_ids_best_effort(const MotorId *ids,
     return motor_instance_cmd_set_ids_best_effort(ids, prepared, count);
 }
 
+uint8_t motor_instance_cmd_set_disable_id(MotorId id)
+{
+    MotorCmd cmd;
+
+    (void)memset(&cmd, 0, sizeof(cmd));
+    cmd.active = 1u;
+    cmd.mode = (uint8_t)MotorModeDisable;
+    return motor_instance_cmd_set_ids(&id, &cmd, 1u);
+}
+
+uint8_t motor_instance_cmd_set_damping_id(MotorId id, fp32 kd, fp32 tau)
+{
+    MotorCmd cmd;
+
+    (void)memset(&cmd, 0, sizeof(cmd));
+    cmd.active = 1u;
+    cmd.mode = (uint8_t)MotorModeDamping;
+    cmd.dq = 0.0f;
+    cmd.kd = kd;
+    cmd.tau = tau;
+    return motor_instance_cmd_set_ids(&id, &cmd, 1u);
+}
+
 uint8_t motor_instance_cmd_set_speed_id(MotorId id, fp32 velocity, fp32 kd, fp32 torque)
 {
     MotorCmd cmd;
@@ -734,6 +850,30 @@ uint8_t motor_instance_cmd_set_speed_id(MotorId id, fp32 velocity, fp32 kd, fp32
 uint8_t motor_instance_cmd_clear(const char *name)
 {
     return motor_instance_cmd_clear_id(motor_instance_actuator_id_by_name(name));
+}
+
+uint8_t motor_instance_cmd_set_disable(const char *name)
+{
+    MotorId id;
+
+    if (motor_instance_resolve_cmd_target(name, &id) == 0u)
+    {
+        return 0u;
+    }
+
+    return motor_instance_cmd_set_disable_id(id);
+}
+
+uint8_t motor_instance_cmd_set_damping(const char *name, fp32 kd, fp32 tau)
+{
+    MotorId id;
+
+    if (motor_instance_resolve_cmd_target(name, &id) == 0u)
+    {
+        return 0u;
+    }
+
+    return motor_instance_cmd_set_damping_id(id, kd, tau);
 }
 
 uint8_t motor_instance_cmd_set_current(const char *name, int16_t current)

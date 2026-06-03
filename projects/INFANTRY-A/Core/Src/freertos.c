@@ -22,7 +22,6 @@
 #include "task.h"
 #include "main.h"
 #include "cmsis_os2.h"
-#include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -39,6 +38,7 @@
 #include "watch.h"
 #include "app_task_bootstrap.h"
 #include "control_manager.h"
+#include "robot_fault_guard.h"
 #include "robot_control_registry.h"
 #include "wheelleg_mit_task.h"
 
@@ -79,7 +79,6 @@ osThreadId_t defaultTaskHandle;
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 static const char *watch_rtos_task_name_from_handle(TaskHandle_t xTask, const char *fallback_name);
-static void watch_rtos_copy_task_name(char *dst, uint32_t dst_size, const char *src);
 
 /* USER CODE END FunctionPrototypes */
 
@@ -372,61 +371,27 @@ static const char *watch_rtos_task_name_from_handle(TaskHandle_t xTask, const ch
   return "?";
 }
 
-static void watch_rtos_copy_task_name(char *dst, uint32_t dst_size, const char *src)
-{
-  if (dst == NULL || dst_size == 0u)
-  {
-    return;
-  }
-
-  (void)memset(dst, 0, dst_size);
-  if (src != NULL)
-  {
-    (void)strncpy(dst, src, (size_t)dst_size - 1u);
-  }
-}
-
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
-  g_watch.rtos.fatal_reason = 1U;
-  g_watch.rtos.fatal_task_handle = (uint32_t)xTask;
-  watch_rtos_copy_task_name(g_watch.rtos.fatal_task_name,
-                                (uint32_t)sizeof(g_watch.rtos.fatal_task_name),
-                                watch_rtos_task_name_from_handle(xTask, pcTaskName));
-
-  if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)
-  {
-    __BKPT(0);
-  }
-
-  taskDISABLE_INTERRUPTS();
-  for (;;)
-  {
-    __NOP();
-  }
+  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
+                                  0u,
+                                  0u,
+                                  (uint32_t)xTask,
+                                  watch_rtos_task_name_from_handle(xTask, pcTaskName));
+  robot_fault_halt_forever();
 }
 
 void vApplicationMallocFailedHook(void)
 {
   const TaskHandle_t current_task = xTaskGetCurrentTaskHandle();
 
-  g_watch.rtos.fatal_reason = 2U;
-  g_watch.rtos.fatal_task_handle = (uint32_t)current_task;
-  watch_rtos_copy_task_name(g_watch.rtos.fatal_task_name,
-                                (uint32_t)sizeof(g_watch.rtos.fatal_task_name),
-                                watch_rtos_task_name_from_handle(current_task,
-                                                                     pcTaskGetTaskName(NULL)));
-
-  if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)
-  {
-    __BKPT(0);
-  }
-
-  taskDISABLE_INTERRUPTS();
-  for (;;)
-  {
-    __NOP();
-  }
+  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
+                                  0u,
+                                  0u,
+                                  (uint32_t)current_task,
+                                  watch_rtos_task_name_from_handle(current_task,
+                                                                    pcTaskGetTaskName(NULL)));
+  robot_fault_halt_forever();
 }
 
 /* USER CODE END Application */

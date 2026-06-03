@@ -194,7 +194,11 @@ CONFIG_PARAM_U16(240, "led.slot_gap_ms", CONFIG_PARAM_SCOPE_COMMON, g_config.led
 CONFIG_PARAM_U8(241, "aux_telem.enable", CONFIG_PARAM_SCOPE_COMMON, g_config.aux_telem.enable, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_U16(242, "aux_telem.period_ms", CONFIG_PARAM_SCOPE_COMMON, g_config.aux_telem.period_ms, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_U16(243, "aux_telem.channel_num", CONFIG_PARAM_SCOPE_COMMON, g_config.aux_telem.channel_num, CONFIG_PARAM_APPLY_NONE)
-CONFIG_PARAM_U8_DEFAULT(244, "test.mode", CONFIG_PARAM_SCOPE_COMMON, g_config.test.mode, (uint8_t)TEST_MODE_NONE, (uint8_t)TEST_MODE_NONE, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_U8_DEFAULT(244, "operation.mode", CONFIG_PARAM_SCOPE_COMMON, g_config.operation.mode, (uint8_t)ROBOT_RUN_MODE_MAX, (uint8_t)ROBOT_RUN_MODE_FULL, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_U8_DEFAULT(250, "operation.target_task", CONFIG_PARAM_SCOPE_COMMON, g_config.operation.target_task, (uint8_t)ROBOT_TASK_MODULE_STARTUP_SERVICE, (uint8_t)ROBOT_TASK_MODULE_NONE, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_U8_DEFAULT(251, "operation.target_motor", CONFIG_PARAM_SCOPE_COMMON, g_config.operation.target_motor, (uint8_t)MotorCount, (uint8_t)MotorCount, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_U8_DEFAULT(252, "operation.variant", CONFIG_PARAM_SCOPE_COMMON, g_config.operation.variant, (uint8_t)ROBOT_RUN_VARIANT_MAX, (uint8_t)ROBOT_RUN_VARIANT_NORMAL, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_U8_DEFAULT(253, "operation.cali_target", CONFIG_PARAM_SCOPE_COMMON, g_config.operation.cali_target, (uint8_t)ROBOT_CALI_TARGET_MAX, (uint8_t)ROBOT_CALI_TARGET_NONE, CONFIG_PARAM_APPLY_NONE)
 
 // chassis swing
 CONFIG_PARAM_F32(245, "chassis.swing_amp_rad", CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC, g_config.chassis.swing_amp_rad, CONFIG_PARAM_APPLY_NONE)

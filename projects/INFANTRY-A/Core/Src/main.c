@@ -35,6 +35,7 @@
 #include "bsp_buzzer.h"
 #include "bsp_can.h"
 #include "manual_input.h"
+#include "robot_fault_guard.h"
 
 /* USER CODE END Includes */
 
@@ -242,11 +243,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  watch_diag_mark_error_handler(HAL_GetTick(), __get_IPSR());
-  __disable_irq();
-  while (1)
-  {
-  }
+  robot_fault_record_and_halt((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT

@@ -86,7 +86,7 @@ typedef struct
 {
     pitch_cali_table_t table;
 
-    test_mode_e last_test_mode;
+    uint8_t last_active;
     gimbal_behaviour_e last_behaviour;
 
     pitch_cali_state_e state;
@@ -818,9 +818,9 @@ static int pitch_cali_save_to_sd(const pitch_cali_table_t *tab, uint16_t complet
 static void pitch_cali_state_reset(void)
 {
     // Keep the (possibly already loaded) calibration table, only reset runtime state.
-    const size_t off = offsetof(pitch_cali_ctx_t, last_test_mode);
+    const size_t off = offsetof(pitch_cali_ctx_t, last_active);
     memset((uint8_t *)&s_ctx + off, 0, sizeof(s_ctx) - off);
-    s_ctx.last_test_mode = TEST_MODE_NONE;
+    s_ctx.last_active = 0u;
     s_ctx.last_behaviour = GIMBAL_ZERO_FORCE;
     s_ctx.state = PITCH_CALI_STATE_IDLE;
     s_ctx.beep_on = 0u;
@@ -1036,16 +1036,16 @@ static bool_t pitch_cali_try_snap_endpoint_target(fp32 angle, fp32 gyro, const p
     return 1;
 }
 
-void pitch_cali_tick_pre(gimbal_control_t *gimbal, gimbal_behaviour_e behaviour, test_mode_e test_mode)
+void pitch_cali_tick_pre(gimbal_control_t *gimbal, gimbal_behaviour_e behaviour, uint8_t pitch_cali_mode)
 {
     (void)gimbal;
 
-    // 函数地图：先确认测试模式和 SD 卡，再准备/恢复网格，最后决定本周期 pitch 电机控制方式。
-    if (test_mode != TEST_MODE_PITCH_CALI)
+    // 函数地图：先确认校准入口和 SD 卡，再准备/恢复网格，最后决定本周期 pitch 电机控制方式。
+    if (pitch_cali_mode == 0u)
     {
         pitch_cali_buzzer_update(bsp_time_get_tick_ms(), 0);
         s_ctx.running = 0u;
-        s_ctx.last_test_mode = test_mode;
+        s_ctx.last_active = 0u;
         s_ctx.last_behaviour = behaviour;
         if (s_ctx.state != PITCH_CALI_STATE_IDLE)
         {
@@ -1063,7 +1063,7 @@ void pitch_cali_tick_pre(gimbal_control_t *gimbal, gimbal_behaviour_e behaviour,
             s_ctx.running = 0u;
             s_ctx.last_error = m;
             pitch_cali_state_enter(PITCH_CALI_STATE_ERROR, bsp_time_get_tick_ms());
-            s_ctx.last_test_mode = test_mode;
+            s_ctx.last_active = pitch_cali_mode;
             s_ctx.last_behaviour = behaviour;
             return;
         }
@@ -1074,7 +1074,7 @@ void pitch_cali_tick_pre(gimbal_control_t *gimbal, gimbal_behaviour_e behaviour,
     {
         pitch_cali_buzzer_update(bsp_time_get_tick_ms(), 0);
         s_ctx.running = 0u;
-        s_ctx.last_test_mode = test_mode;
+        s_ctx.last_active = pitch_cali_mode;
         s_ctx.last_behaviour = behaviour;
         return;
     }
@@ -1136,7 +1136,7 @@ void pitch_cali_tick_pre(gimbal_control_t *gimbal, gimbal_behaviour_e behaviour,
         gimbal->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCONDE;
     }
 
-    s_ctx.last_test_mode = test_mode;
+    s_ctx.last_active = pitch_cali_mode;
     s_ctx.last_behaviour = behaviour;
 }
 
@@ -1166,9 +1166,9 @@ void pitch_cali_control(fp32 *yaw_cmd, fp32 *pitch_cmd, gimbal_control_t *gimbal
     *pitch_cmd = cmd - gimbal->gimbal_pitch_motor.angle_set;
 }
 
-void pitch_cali_tick_post(const gimbal_control_t *gimbal, gimbal_behaviour_e behaviour, test_mode_e test_mode)
+void pitch_cali_tick_post(const gimbal_control_t *gimbal, gimbal_behaviour_e behaviour, uint8_t pitch_cali_mode)
 {
-    if (test_mode != TEST_MODE_PITCH_CALI || gimbal == NULL)
+    if (pitch_cali_mode == 0u || gimbal == NULL)
     {
         return;
     }

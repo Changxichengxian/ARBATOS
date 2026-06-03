@@ -370,7 +370,7 @@ def read_wheelleg_config_body(project: str) -> str:
     config_path = REPO_ROOT / "Robotconfig" / project / "config.c"
     if not config_path.exists():
         raise SystemExit(f"Missing project config: {config_path}")
-    text = robot_sim.strip_c_comments(config_path.read_text(encoding="utf-8", errors="ignore"))
+    text = robot_sim.strip_c_comments(robot_sim.read_text_with_local_config_includes(config_path))
     body = robot_sim.extract_initializer(text, "wheelleg_mit")
     if body is None:
         raise SystemExit(f"{config_path} has no wheelleg_mit initializer")

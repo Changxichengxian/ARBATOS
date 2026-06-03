@@ -26,6 +26,9 @@
 #define CAN_RX_RADPS_TO_RPM 9.54929659f
 #define CAN_RX_RPM_TO_RADPS 0.104719755f
 #define CAN_RX_ECD_RANGE_F 8191.0f
+#define CAN_RX_MIT_STATE_DISABLED 0u
+#define CAN_RX_MIT_STATE_ENABLED 1u
+#define CAN_RX_MIT_STATE_FAULT_MIN 8u
 
 static volatile uint8_t last_can1ff_status = 0u;
 
@@ -98,6 +101,23 @@ static int16_t can_rx_torque_to_current_like(const can_mit_motor_limits_t *limit
     return can_rx_float_to_i16_saturated(scaled);
 }
 
+static uint8_t can_rx_mit_drive_state(uint8_t state)
+{
+    if (state == CAN_RX_MIT_STATE_ENABLED)
+    {
+        return (uint8_t)MotorDriveStateEnabled;
+    }
+    if (state == CAN_RX_MIT_STATE_DISABLED)
+    {
+        return (uint8_t)MotorDriveStateDisabled;
+    }
+    if (state >= CAN_RX_MIT_STATE_FAULT_MIN)
+    {
+        return (uint8_t)MotorDriveStateFault;
+    }
+    return (uint8_t)MotorDriveStateReady;
+}
+
 // 把大疆类反馈帧同步到通用执行器反馈，供新控制链按轴读取。
 static void can_rx_update_LowState_from_measure(MotorId actuator_id,
                                                          uint8_t bus,
@@ -123,6 +143,7 @@ static void can_rx_update_LowState_from_measure(MotorId actuator_id,
     fb.bus = bus;
     fb.rxDlc = dlc;
     fb.transport = (uint8_t)MotorTransportCAN;
+    fb.driveState = (uint8_t)MotorDriveStateEnabled;
     fb.rxId = std_id;
     fb.rxCount = prev_rx_count + 1u;
     fb.lastRxTick = bsp_time_get_tick_ms();
@@ -203,6 +224,7 @@ static uint8_t can_rx_process_mit_node_frame(motor_measure_t *measure,
         fb.transport = (uint8_t)MotorTransportCAN;
         fb.motorId = mit.motor_id;
         fb.state = mit.state;
+        fb.driveState = can_rx_mit_drive_state(mit.state);
         fb.rxId = std_id;
         fb.rxCount = prev_rx_count + 1u;
         fb.lastRxTick = mit.last_rx_tick;

@@ -35,6 +35,7 @@
 #include "INS_task.h"
 #include "app_task_bootstrap.h"
 #include "control_manager.h"
+#include "robot_fault_guard.h"
 #include "robot_control_registry.h"
 #include "wheelleg_mit_task.h"
 
@@ -277,5 +278,19 @@ void StartDefaultTask(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
+                                  0u, 0u, (uint32_t)xTask, pcTaskName);
+  robot_fault_halt_forever();
+}
+
+void vApplicationMallocFailedHook(void)
+{
+  TaskHandle_t current_task = xTaskGetCurrentTaskHandle();
+  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
+                                  0u, 0u, (uint32_t)current_task, pcTaskGetTaskName(NULL));
+  robot_fault_halt_forever();
+}
 
 /* USER CODE END Application */

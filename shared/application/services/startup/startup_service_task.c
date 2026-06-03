@@ -25,6 +25,7 @@
 #include "manual_input.h"
 #include "referee.h"
 #include "sdcard.h"
+#include "robot_mode.h"
 
 #define TEST_TASK_PERIOD_MS 2U
 #define SOFT_BEEP_GAP_MS 100U
@@ -289,7 +290,7 @@ static void entertainment_music_tick(void)
     static char last_cmd_path[ENTERTAIN_MUSIC_PATH_MAX] = {0};
     uint8_t reload_path = 0u;
 
-    if ((test_mode_e)g_config.test.mode != TEST_MODE_ENTERTAIN)
+    if (robot_mode_is_entertain() == 0u)
     {
         if (last_mode_entertain != 0u && buzzer_pcm_is_stream_mode() != 0u)
         {
@@ -444,8 +445,7 @@ void startup_service_task(void const * argument)
             startup_lost_beep_mute_ticks--;
         }
 
-        const uint8_t entertainment_mode =
-            ((test_mode_e)g_config.test.mode == TEST_MODE_ENTERTAIN) ? 1u : 0u;
+        const uint8_t entertainment_mode = robot_mode_is_entertain();
         entertainment_music_tick();
 
         if(error == 0)

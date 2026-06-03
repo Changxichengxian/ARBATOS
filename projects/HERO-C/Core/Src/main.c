@@ -49,6 +49,7 @@
 #include "referee_rx_task.h"
 #include "host_link_task.h"
 #include "battery_monitor_task.h"
+#include "robot_fault_guard.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -247,6 +248,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+  robot_fault_record_and_halt((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
 
   /* USER CODE END Error_Handler_Debug */
 }

@@ -16,6 +16,7 @@
 #include "sdlog.h"
 #include "rt_profiler.h"
 #include "robot_task_profile.h"
+#include "robot_mode.h"
 
 #define SDLOG_TASK_IDLE_DELAY_MS 10u
 #define SDLOG_TASK_BACKLOG_YIELD_POLLS 8u
@@ -113,7 +114,7 @@ void sdlog_task(void const *argument)
     }
     retry_ms = SDLOG_TASK_MOUNT_RETRY_START_MS;
 
-    if ((test_mode_e)g_config.test.mode != TEST_MODE_ENTERTAIN)
+    if (robot_mode_is_entertain() == 0u)
     {
         sdlog_wait_boot_delay_ms(SDLOG_TASK_BOOT_DELAY_MS);
         if (sdlog_start() != 0)
@@ -124,7 +125,7 @@ void sdlog_task(void const *argument)
 
     while (1)
     {
-        if ((test_mode_e)g_config.test.mode == TEST_MODE_ENTERTAIN)
+        if (robot_mode_is_entertain() != 0u)
         {
             sdlog_stop();
             osDelay(SDLOG_TASK_IDLE_DELAY_MS);

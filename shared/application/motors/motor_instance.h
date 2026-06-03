@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2026 闄堣僵 <2811158416@qq.com>
+ * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
  * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
@@ -45,6 +45,28 @@ typedef struct
 
 typedef struct
 {
+    MotorId motorId;
+    motor_instance_role_e role;
+    uint8_t roleIndex;
+    uint8_t fallbackBus;
+    uint8_t bus;
+    uint8_t enabled;
+    uint8_t transport;
+    uint8_t protocol;
+    uint8_t controlMode;
+    uint8_t isRmGroup;
+    uint8_t cmdCaps;
+    uint8_t model;
+    uint16_t canId;
+    uint16_t feedbackId;
+    const char *name;
+    const motor_node_param_t *node;
+    motor_measure_t *measure;
+    const motor_model_mit_limits_t *mitLimits;
+} motor_route_t;
+
+typedef struct
+{
     MotorId actuator_id;
     uint8_t enabled;
 } motor_instance_current_binding_t;
@@ -60,6 +82,9 @@ const motor_instance_t *motor_instance_get(uint8_t index);
 const motor_instance_t *motor_instance_find_by_actuator(MotorId id);
 const motor_instance_t *motor_instance_find_by_name(const char *name);
 const motor_instance_t *motor_instance_find_feedback(uint8_t bus, uint16_t std_id);
+uint8_t motor_route_count(void);
+const motor_route_t *motor_route_get(uint8_t index);
+const motor_route_t *motor_route_find_by_motor(MotorId id);
 uint8_t motor_instance_resolve_actuator_ids(const char *const *names, uint8_t count, MotorId *out, uint8_t out_cap);
 uint8_t motor_instance_bind_current_outputs(const char *const *names,
                                             uint8_t count,
@@ -90,8 +115,12 @@ uint8_t motor_instance_cmd_set_state_torque_ids(const MotorId *ids, const MotorC
 uint8_t motor_instance_cmd_set_state_torque_ids_best_effort(const MotorId *ids,
                                                             const MotorCmd *cmds,
                                                             uint8_t count);
+uint8_t motor_instance_cmd_set_disable_id(MotorId id);
+uint8_t motor_instance_cmd_set_damping_id(MotorId id, fp32 kd, fp32 tau);
 uint8_t motor_instance_cmd_set_speed_id(MotorId id, fp32 velocity, fp32 kd, fp32 torque);
 uint8_t motor_instance_cmd_clear(const char *name);
+uint8_t motor_instance_cmd_set_disable(const char *name);
+uint8_t motor_instance_cmd_set_damping(const char *name, fp32 kd, fp32 tau);
 uint8_t motor_instance_cmd_set_current(const char *name, int16_t current);
 uint8_t motor_instance_cmd_set_state_torque(const char *name, const MotorCmd *cmd);
 uint8_t motor_instance_cmd_set_speed(const char *name, fp32 velocity, fp32 kd, fp32 torque);

@@ -22,6 +22,10 @@ static inline void robot_control_register_if_enabled(const control_controller_t 
 
 static inline void robot_control_register_profile_defaults(void)
 {
+    /*
+     * Default registration declares resources for diagnostics/arbitration only.
+     * It does not make controllers active during boot.
+     */
     static const char *const chassis_outputs[] = {
         "motor.chassis0",
         "motor.chassis1",

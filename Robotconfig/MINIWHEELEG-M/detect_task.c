@@ -7,6 +7,7 @@
  */
 
 #include "detect_task.h"
+#include "detect_common.h"
 
 #include "config.h"
 
@@ -34,18 +35,11 @@ static void detect_init_once(void)
     }
     g_detect_inited = 1u;
 
-    memset(g_error_list, 0, sizeof(g_error_list));
-    memset(g_last_tick_ms, 0, sizeof(g_last_tick_ms));
-
-    // Default offline thresholds (ms). Tune later if needed.
-    for (uint8_t i = 0u; i < (uint8_t)ERROR_LIST_LENGHT; i++)
-    {
-        g_error_list[i].enable = 1u;
-        g_error_list[i].priority = 0u;
-        g_error_list[i].set_online_time = 0u;
-        g_error_list[i].set_offline_time = 200u;
-    }
-    g_error_list[DBUS_TOE].set_offline_time = 100u;
+    detect_common_init_from_config(g_error_list,
+                                   g_last_tick_ms,
+                                   (uint8_t)ERROR_LIST_LENGHT,
+                                   &g_config.detect,
+                                   HAL_GetTick());
 }
 
 void health_monitor_task(void const *pvParameters)
@@ -62,13 +56,7 @@ void detect_hook(uint8_t toe)
         return;
     }
 
-    const uint32_t now_ms = HAL_GetTick();
-    g_last_tick_ms[toe] = now_ms;
-    g_error_list[toe].new_time = now_ms;
-    g_error_list[toe].last_time = now_ms;
-    g_error_list[toe].error_exist = 0u;
-    g_error_list[toe].is_lost = 0u;
-    g_error_list[toe].data_is_error = 0u;
+    detect_common_hook(g_error_list, g_last_tick_ms, (uint8_t)ERROR_LIST_LENGHT, toe, HAL_GetTick());
 }
 
 bool_t toe_is_error(uint8_t err)
@@ -80,26 +68,11 @@ bool_t toe_is_error(uint8_t err)
         return 1u;
     }
 
-    const error_t *e = &g_error_list[err];
-    if (e->enable == 0u)
-    {
-        return 0u;
-    }
-
-    const uint16_t offline_ms = e->set_offline_time;
-    if (offline_ms == 0u)
-    {
-        return 0u;
-    }
-
-    const uint32_t last = g_last_tick_ms[err];
-    if (last == 0u)
-    {
-        return 1u;
-    }
-
-    const uint32_t now_ms = HAL_GetTick();
-    return ((uint32_t)(now_ms - last) > (uint32_t)offline_ms) ? 1u : 0u;
+    return detect_common_is_error(g_error_list,
+                                  g_last_tick_ms,
+                                  (uint8_t)ERROR_LIST_LENGHT,
+                                  err,
+                                  HAL_GetTick());
 }
 
 const error_t *get_error_list_point(void)
@@ -121,19 +94,7 @@ void detect_task(void const *pvParameters)
     for (;;)
     {
         const uint32_t now_ms = HAL_GetTick();
-        for (uint8_t i = 0u; i < (uint8_t)ERROR_LIST_LENGHT; i++)
-        {
-            error_t *e = &g_error_list[i];
-            if (e->enable == 0u || e->set_offline_time == 0u)
-            {
-                continue;
-            }
-
-            const uint32_t last = g_last_tick_ms[i];
-            const uint8_t lost = (last == 0u) ? 1u : (((uint32_t)(now_ms - last) > (uint32_t)e->set_offline_time) ? 1u : 0u);
-            e->is_lost = lost;
-            e->error_exist = lost;
-        }
+        detect_common_refresh_all(g_error_list, g_last_tick_ms, (uint8_t)ERROR_LIST_LENGHT, now_ms);
 
         // Log configuration snapshot once after boot (when SD log is active).
         if (!config_logged && sdlog_is_active())
@@ -151,6 +112,6 @@ void detect_task(void const *pvParameters)
             config_logged = 1u;
         }
 
-        osDelay(DETECT_CONTROL_TIME);
+        osDelay(DETECT_COMMON_RUNTIME_POLL_MS);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2026 闄堣僵 <2811158416@qq.com>
+ * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
  * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
@@ -21,6 +21,7 @@ typedef enum
 {
     RT_PROFILER_GIMBAL_CONTROL_LOOP = 0,
     RT_PROFILER_CHASSIS_CONTROL_LOOP,
+    RT_PROFILER_WHEELLEG_MIT_CONTROL_LOOP,
     RT_PROFILER_CAN_COMMAND_TX_LOOP,
     RT_PROFILER_CAN_FEEDBACK_RX_WAKE,
     RT_PROFILER_SDLOG_WRITE,

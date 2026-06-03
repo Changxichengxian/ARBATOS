@@ -241,6 +241,24 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
 
 
+def read_text_with_local_config_includes(path: Path, stack: tuple[Path, ...] = ()) -> str:
+    path = path.resolve()
+    if path in stack:
+        chain = " -> ".join(str(item) for item in (*stack, path))
+        raise ValueError(f"recursive config include: {chain}")
+
+    text = read_text(path)
+    include_re = re.compile(r'(?m)^\s*#\s*include\s+"(config_[A-Za-z0-9_]+\.inc)"\s*$')
+
+    def expand(match: re.Match[str]) -> str:
+        include_path = path.parent / match.group(1)
+        if not include_path.exists():
+            raise FileNotFoundError(f"missing config include: {include_path}")
+        return read_text_with_local_config_includes(include_path, (*stack, path))
+
+    return include_re.sub(expand, text)
+
+
 def strip_c_comments(text: str) -> str:
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
     text = re.sub(r"//.*", "", text)
@@ -601,7 +619,7 @@ def load_project(project: str) -> ProjectConfig:
     macros.update(project_macros)
     macros.update(can_tx_source_macros)
 
-    config_c = strip_c_comments(read_text(config_c_path))
+    config_c = strip_c_comments(read_text_with_local_config_includes(config_c_path))
     return ProjectConfig(
         project=project,
         config_dir=config_dir,

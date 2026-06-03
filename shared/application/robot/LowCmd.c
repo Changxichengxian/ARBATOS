@@ -10,18 +10,56 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "main.h"
 
 #include <stddef.h>
 #include <string.h>
 
 static MotorCmd gMotorCmd[MotorCount];
 static MotorState gMotorState[MotorCount];
+static MotorApplied gMotorApplied[MotorCount];
 static uint32_t gLowCmdSeq;
 static uint32_t gLowStateTick;
+static LowCmdDiag gLowCmdDiag;
+
+typedef struct
+{
+    uint8_t from_isr;
+    UBaseType_t saved_mask;
+} LowCmdCriticalState;
 
 static uint32_t LowCmdNowMs(void)
 {
-    return (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+    return HAL_GetTick();
+}
+
+static LowCmdCriticalState LowCmdEnterCritical(void)
+{
+    LowCmdCriticalState state;
+
+    state.from_isr = (__get_IPSR() != 0U) ? 1u : 0u;
+    state.saved_mask = 0u;
+    if (state.from_isr != 0u)
+    {
+        state.saved_mask = taskENTER_CRITICAL_FROM_ISR();
+    }
+    else
+    {
+        taskENTER_CRITICAL();
+    }
+    return state;
+}
+
+static void LowCmdExitCritical(LowCmdCriticalState state)
+{
+    if (state.from_isr != 0u)
+    {
+        taskEXIT_CRITICAL_FROM_ISR(state.saved_mask);
+    }
+    else
+    {
+        taskEXIT_CRITICAL();
+    }
 }
 
 static uint8_t MotorIdValid(MotorId id)
@@ -34,6 +72,33 @@ static uint8_t MotorCmdValid(const MotorCmd *cmd)
     return (uint8_t)(cmd != NULL && MotorModeKnown(cmd->mode));
 }
 
+static uint16_t LowCmdWriterOrDefault(uint16_t writer)
+{
+    return (writer == (uint16_t)LOWCMD_WRITER_NONE) ? (uint16_t)LOWCMD_WRITER_CONTROL : writer;
+}
+
+static uint8_t LowCmdModeSafe(uint8_t mode)
+{
+    return (uint8_t)(mode == (uint8_t)MotorModeDisable ||
+                     mode == (uint8_t)MotorModeDamping ||
+                     mode == (uint8_t)MotorModeNone);
+}
+
+static uint8_t MotorModeNeedsDefaultTimeout(uint8_t mode)
+{
+    switch ((MotorMode)mode)
+    {
+    case MotorModeCurrent:
+    case MotorModeStateTorque:
+    case MotorModePosVel:
+    case MotorModeSpeed:
+    case MotorModeForcePos:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+
 static void LowCmdStamp(MotorCmd *cmd, uint32_t seq, uint32_t tick)
 {
     if (cmd == NULL)
@@ -43,28 +108,85 @@ static void LowCmdStamp(MotorCmd *cmd, uint32_t seq, uint32_t tick)
 
     cmd->seq = seq;
     cmd->tick = tick;
+    if (cmd->timeoutMs == 0u && MotorModeNeedsDefaultTimeout(cmd->mode) != 0u)
+    {
+        cmd->timeoutMs = (uint16_t)LOWCMD_DEFAULT_TIMEOUT_MS;
+    }
 }
 
-static void LowCmdSetMotorMany_unchecked(const MotorId *ids, const MotorCmd *cmds, uint8_t count)
+static void LowCmdRecordReject(uint16_t writer, uint16_t owner, uint32_t tick)
+{
+    gLowCmdDiag.rejected_count++;
+    gLowCmdDiag.last_reject_tick = tick;
+    gLowCmdDiag.last_reject_writer = writer;
+    gLowCmdDiag.last_reject_owner = owner;
+}
+
+static uint8_t LowCmdCanWriteLocked(MotorId id, uint16_t writer, const MotorCmd *cmd, uint32_t tick)
+{
+    const MotorCmd *owner = &gMotorCmd[id];
+
+    if (gLowCmdDiag.emergency_active != 0u &&
+        writer < gLowCmdDiag.emergency_writer &&
+        (cmd == NULL || LowCmdModeSafe(cmd->mode) == 0u))
+    {
+        LowCmdRecordReject(writer, gLowCmdDiag.emergency_writer, tick);
+        return 0u;
+    }
+
+    if (owner->active != 0u &&
+        owner->writer != (uint16_t)LOWCMD_WRITER_NONE &&
+        writer < owner->writer &&
+        (uint32_t)(tick - owner->tick) < (uint32_t)LOWCMD_PRIORITY_HOLD_MS)
+    {
+        LowCmdRecordReject(writer, owner->writer, tick);
+        return 0u;
+    }
+
+    return 1u;
+}
+
+static uint8_t LowCmdSetMotorMany_checked(const MotorId *ids, const MotorCmd *cmds, uint8_t count, uint16_t writer)
 {
     const uint32_t tick = LowCmdNowMs();
+    const uint16_t resolved_writer = LowCmdWriterOrDefault(writer);
 
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        const uint16_t cmd_writer = (cmds[i].writer != (uint16_t)LOWCMD_WRITER_NONE) ?
+                                        cmds[i].writer :
+                                        resolved_writer;
+        if (LowCmdCanWriteLocked(ids[i], cmd_writer, &cmds[i], tick) == 0u)
+        {
+            LowCmdExitCritical(critical);
+            return 0u;
+        }
+    }
+
     gLowCmdSeq++;
     for (uint8_t i = 0u; i < count; i++)
     {
+        const uint16_t cmd_writer = (cmds[i].writer != (uint16_t)LOWCMD_WRITER_NONE) ?
+                                        cmds[i].writer :
+                                        resolved_writer;
         gMotorCmd[ids[i]] = cmds[i];
+        gMotorCmd[ids[i]].writer = cmd_writer;
         LowCmdStamp(&gMotorCmd[ids[i]], gLowCmdSeq, tick);
     }
-    taskEXIT_CRITICAL();
+    gLowCmdDiag.seq = gLowCmdSeq;
+    LowCmdExitCritical(critical);
+    return 1u;
 }
 
 void LowCmdClearAll(void)
 {
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
     (void)memset(gMotorCmd, 0, sizeof(gMotorCmd));
+    (void)memset(&gLowCmdDiag, 0, sizeof(gLowCmdDiag));
     gLowCmdSeq++;
-    taskEXIT_CRITICAL();
+    gLowCmdDiag.seq = gLowCmdSeq;
+    LowCmdExitCritical(critical);
 }
 
 void LowCmdClear(MotorId id)
@@ -74,14 +196,27 @@ void LowCmdClear(MotorId id)
         return;
     }
 
-    taskENTER_CRITICAL();
-    (void)memset(&gMotorCmd[id], 0, sizeof(gMotorCmd[id]));
-    gMotorCmd[id].seq = ++gLowCmdSeq;
-    gMotorCmd[id].tick = LowCmdNowMs();
-    taskEXIT_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
+    {
+        const uint32_t tick = LowCmdNowMs();
+        const uint16_t writer = (uint16_t)LOWCMD_WRITER_CONTROL;
+        if (LowCmdCanWriteLocked(id, writer, NULL, tick) != 0u)
+        {
+            (void)memset(&gMotorCmd[id], 0, sizeof(gMotorCmd[id]));
+            gMotorCmd[id].seq = ++gLowCmdSeq;
+            gMotorCmd[id].tick = tick;
+            gLowCmdDiag.seq = gLowCmdSeq;
+        }
+    }
+    LowCmdExitCritical(critical);
 }
 
 uint8_t LowCmdSetMotorMany(const MotorId *ids, const MotorCmd *cmds, uint8_t count)
+{
+    return LowCmdSetMotorManyFrom(ids, cmds, count, LOWCMD_WRITER_CONTROL);
+}
+
+uint8_t LowCmdSetMotorManyFrom(const MotorId *ids, const MotorCmd *cmds, uint8_t count, uint16_t writer)
 {
     if (count > (uint8_t)MotorCount)
     {
@@ -100,13 +235,17 @@ uint8_t LowCmdSetMotorMany(const MotorId *ids, const MotorCmd *cmds, uint8_t cou
         }
     }
 
-    LowCmdSetMotorMany_unchecked(ids, cmds, count);
-    return 1u;
+    return LowCmdSetMotorMany_checked(ids, cmds, count, writer);
 }
 
 uint8_t LowCmdSetMotor(MotorId id, const MotorCmd *cmd)
 {
-    return LowCmdSetMotorMany(&id, cmd, 1u);
+    return LowCmdSetMotorFrom(id, cmd, LOWCMD_WRITER_CONTROL);
+}
+
+uint8_t LowCmdSetMotorFrom(MotorId id, const MotorCmd *cmd, uint16_t writer)
+{
+    return LowCmdSetMotorManyFrom(&id, cmd, 1u, writer);
 }
 
 const char *MotorModeName(MotorMode mode)
@@ -138,9 +277,9 @@ uint32_t LowCmdSeq(void)
 {
     uint32_t seq;
 
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
     seq = gLowCmdSeq;
-    taskEXIT_CRITICAL();
+    LowCmdExitCritical(critical);
     return seq;
 }
 
@@ -151,12 +290,41 @@ uint8_t LowCmdGet(LowCmd *out)
         return 0u;
     }
 
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
     out->seq = gLowCmdSeq;
     out->tick = LowCmdNowMs();
     (void)memcpy(out->motorCmd, gMotorCmd, sizeof(gMotorCmd));
-    taskEXIT_CRITICAL();
+    LowCmdExitCritical(critical);
     return 1u;
+}
+
+void LowCmdSetDisable(MotorId id)
+{
+    LowCmdSetDisableFrom(id, LOWCMD_WRITER_CONTROL);
+}
+
+void LowCmdSetDisableFrom(MotorId id, uint16_t writer)
+{
+    MotorCmd cmd;
+
+    (void)memset(&cmd, 0, sizeof(cmd));
+    cmd.active = 1u;
+    cmd.mode = (uint8_t)MotorModeDisable;
+    cmd.writer = LowCmdWriterOrDefault(writer);
+    (void)LowCmdSetMotorFrom(id, &cmd, writer);
+}
+
+void LowCmdSetDamping(MotorId id, fp32 kd, fp32 tau)
+{
+    MotorCmd cmd;
+
+    (void)memset(&cmd, 0, sizeof(cmd));
+    cmd.active = 1u;
+    cmd.mode = (uint8_t)MotorModeDamping;
+    cmd.dq = 0.0f;
+    cmd.kd = kd;
+    cmd.tau = tau;
+    (void)LowCmdSetMotor(id, &cmd);
 }
 
 void LowCmdSetCurrent(MotorId id, int16_t current)
@@ -172,7 +340,13 @@ void LowCmdSetCurrent(MotorId id, int16_t current)
 
 uint8_t LowCmdSetCurrentMany(const MotorId *ids, const int16_t *currents, uint8_t count)
 {
+    return LowCmdSetCurrentManyFrom(ids, currents, count, LOWCMD_WRITER_CONTROL);
+}
+
+uint8_t LowCmdSetCurrentManyFrom(const MotorId *ids, const int16_t *currents, uint8_t count, uint16_t writer)
+{
     MotorCmd cmds[MotorCount];
+    const uint16_t resolved_writer = LowCmdWriterOrDefault(writer);
 
     if (count > (uint8_t)MotorCount)
     {
@@ -194,10 +368,10 @@ uint8_t LowCmdSetCurrentMany(const MotorId *ids, const int16_t *currents, uint8_
         cmds[i].active = 1u;
         cmds[i].mode = (uint8_t)MotorModeCurrent;
         cmds[i].current = currents[i];
+        cmds[i].writer = resolved_writer;
     }
 
-    LowCmdSetMotorMany_unchecked(ids, cmds, count);
-    return 1u;
+    return LowCmdSetMotorMany_checked(ids, cmds, count, resolved_writer);
 }
 
 int16_t LowCmdGetCurrent(MotorId id)
@@ -209,9 +383,9 @@ int16_t LowCmdGetCurrent(MotorId id)
         return 0;
     }
 
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
     current = gMotorCmd[id].current;
-    taskEXIT_CRITICAL();
+    LowCmdExitCritical(critical);
     return current;
 }
 
@@ -230,12 +404,12 @@ uint8_t LowCmdGetCurrentMany(const MotorId *ids, int16_t *out, uint8_t count)
         }
     }
 
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
     for (uint8_t i = 0u; i < count; i++)
     {
         out[i] = gMotorCmd[ids[i]].current;
     }
-    taskEXIT_CRITICAL();
+    LowCmdExitCritical(critical);
     return 1u;
 }
 
@@ -274,9 +448,9 @@ uint8_t LowCmdGetMotor(MotorId id, MotorCmd *out)
         return 0u;
     }
 
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
     *out = gMotorCmd[id];
-    taskEXIT_CRITICAL();
+    LowCmdExitCritical(critical);
     return 1u;
 }
 
@@ -295,12 +469,12 @@ uint8_t LowCmdGetMotorMany(const MotorId *ids, MotorCmd *out, uint8_t count)
         }
     }
 
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
     for (uint8_t i = 0u; i < count; i++)
     {
         out[i] = gMotorCmd[ids[i]];
     }
-    taskEXIT_CRITICAL();
+    LowCmdExitCritical(critical);
     return 1u;
 }
 
@@ -314,12 +488,79 @@ const MotorCmd *LowCmdGetMotorPtr(MotorId id)
     return &gMotorCmd[id];
 }
 
+uint8_t LowCmdEnterEmergencyStop(uint16_t writer)
+{
+    const uint32_t tick = LowCmdNowMs();
+    const uint16_t resolved_writer = LowCmdWriterOrDefault(writer);
+
+    LowCmdCriticalState critical = LowCmdEnterCritical();
+    gLowCmdSeq++;
+    gLowCmdDiag.emergency_active = 1u;
+    gLowCmdDiag.emergency_writer = resolved_writer;
+    gLowCmdDiag.emergency_stop_count++;
+    gLowCmdDiag.seq = gLowCmdSeq;
+    for (uint8_t i = 0u; i < (uint8_t)MotorCount; i++)
+    {
+        (void)memset(&gMotorCmd[i], 0, sizeof(gMotorCmd[i]));
+        gMotorCmd[i].active = 1u;
+        gMotorCmd[i].mode = (uint8_t)MotorModeDisable;
+        gMotorCmd[i].writer = resolved_writer;
+        LowCmdStamp(&gMotorCmd[i], gLowCmdSeq, tick);
+    }
+    LowCmdExitCritical(critical);
+    return 1u;
+}
+
+uint8_t LowCmdClearEmergencyStop(uint16_t writer)
+{
+    const uint16_t resolved_writer = LowCmdWriterOrDefault(writer);
+
+    LowCmdCriticalState critical = LowCmdEnterCritical();
+    if (gLowCmdDiag.emergency_active != 0u &&
+        resolved_writer < gLowCmdDiag.emergency_writer)
+    {
+        LowCmdRecordReject(resolved_writer, gLowCmdDiag.emergency_writer, LowCmdNowMs());
+        LowCmdExitCritical(critical);
+        return 0u;
+    }
+
+    gLowCmdDiag.emergency_active = 0u;
+    gLowCmdDiag.emergency_writer = (uint16_t)LOWCMD_WRITER_NONE;
+    LowCmdExitCritical(critical);
+    return 1u;
+}
+
+uint8_t LowCmdEmergencyActive(void)
+{
+    uint8_t active;
+
+    LowCmdCriticalState critical = LowCmdEnterCritical();
+    active = gLowCmdDiag.emergency_active;
+    LowCmdExitCritical(critical);
+    return active;
+}
+
+uint8_t LowCmdGetDiag(LowCmdDiag *out)
+{
+    if (out == NULL)
+    {
+        return 0u;
+    }
+
+    LowCmdCriticalState critical = LowCmdEnterCritical();
+    *out = gLowCmdDiag;
+    out->seq = gLowCmdSeq;
+    LowCmdExitCritical(critical);
+    return 1u;
+}
+
 void LowStateClearAll(void)
 {
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
     (void)memset(gMotorState, 0, sizeof(gMotorState));
+    (void)memset(gMotorApplied, 0, sizeof(gMotorApplied));
     gLowStateTick = LowCmdNowMs();
-    taskEXIT_CRITICAL();
+    LowCmdExitCritical(critical);
 }
 
 void LowStateUpdateMotor(MotorId id, const MotorState *feedback)
@@ -329,10 +570,23 @@ void LowStateUpdateMotor(MotorId id, const MotorState *feedback)
         return;
     }
 
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
     gMotorState[id] = *feedback;
     gLowStateTick = feedback->lastRxTick;
-    taskEXIT_CRITICAL();
+    LowCmdExitCritical(critical);
+}
+
+void LowStateUpdateApplied(MotorId id, const MotorApplied *applied)
+{
+    if (MotorIdValid(id) == 0u || applied == NULL)
+    {
+        return;
+    }
+
+    LowCmdCriticalState critical = LowCmdEnterCritical();
+    gMotorApplied[id] = *applied;
+    gLowStateTick = applied->tick;
+    LowCmdExitCritical(critical);
 }
 
 uint8_t LowStateGet(LowState *out)
@@ -342,10 +596,11 @@ uint8_t LowStateGet(LowState *out)
         return 0u;
     }
 
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
     out->tick = gLowStateTick;
     (void)memcpy(out->motorState, gMotorState, sizeof(gMotorState));
-    taskEXIT_CRITICAL();
+    (void)memcpy(out->motorApplied, gMotorApplied, sizeof(gMotorApplied));
+    LowCmdExitCritical(critical);
     return 1u;
 }
 
@@ -356,9 +611,9 @@ uint8_t LowStateGetMotor(MotorId id, MotorState *out)
         return 0u;
     }
 
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
     *out = gMotorState[id];
-    taskEXIT_CRITICAL();
+    LowCmdExitCritical(critical);
     return 1u;
 }
 
@@ -377,12 +632,12 @@ uint8_t LowStateGetMotorMany(const MotorId *ids, MotorState *out, uint8_t count)
         }
     }
 
-    taskENTER_CRITICAL();
+    LowCmdCriticalState critical = LowCmdEnterCritical();
     for (uint8_t i = 0u; i < count; i++)
     {
         out[i] = gMotorState[ids[i]];
     }
-    taskEXIT_CRITICAL();
+    LowCmdExitCritical(critical);
     return 1u;
 }
 
@@ -394,4 +649,27 @@ const MotorState *LowStateGetMotorPtr(MotorId id)
     }
 
     return &gMotorState[id];
+}
+
+uint8_t LowStateGetApplied(MotorId id, MotorApplied *out)
+{
+    if (MotorIdValid(id) == 0u || out == NULL)
+    {
+        return 0u;
+    }
+
+    LowCmdCriticalState critical = LowCmdEnterCritical();
+    *out = gMotorApplied[id];
+    LowCmdExitCritical(critical);
+    return 1u;
+}
+
+const MotorApplied *LowStateGetAppliedPtr(MotorId id)
+{
+    if (MotorIdValid(id) == 0u)
+    {
+        return NULL;
+    }
+
+    return &gMotorApplied[id];
 }

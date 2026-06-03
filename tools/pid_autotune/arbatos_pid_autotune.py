@@ -42,15 +42,17 @@ FRAME_FLOATS = 9
 FRAME_BYTES = FRAME_FLOATS * 4
 HISTORY_LIMIT = 5
 
-TARGET_TEST_MODE = {
-    "ps": 4,
-    "pa": 4,
-    "ys": 2,
-    "ya": 2,
-    "cf": 1,
-    "cm": 1,
+TARGET_OPERATION = {
+    "ps": (1, 9, 4),  # SINGLE_TASK, SINGLE_GIMBAL, GIMBAL_PITCH_ONLY
+    "pa": (1, 9, 4),
+    "ys": (1, 9, 2),  # SINGLE_TASK, SINGLE_GIMBAL, GIMBAL_YAW_ONLY
+    "ya": (1, 9, 2),
+    "cf": (1, 6, 1),  # SINGLE_TASK, CLASSIC_CHASSIS, CHASSIS_ONLY
+    "cm": (1, 6, 1),
 }
-TEST_MODE_PARAM_ID = 244
+OPERATION_MODE_PARAM_ID = 244
+OPERATION_TARGET_TASK_PARAM_ID = 250
+OPERATION_VARIANT_PARAM_ID = 252
 
 TARGET_LABEL = {
     "ps": "pitch speed",
@@ -210,8 +212,10 @@ class SerialTunerBridge:
         if pause_s > 0.0:
             time.sleep(pause_s)
 
-    def set_test_mode(self, value: int) -> None:
-        self.write_command(f"{TEST_MODE_PARAM_ID}:{value}")
+    def set_operation(self, mode: int, target_task: int, variant: int) -> None:
+        self.write_command(f"{OPERATION_MODE_PARAM_ID}:{mode}")
+        self.write_command(f"{OPERATION_TARGET_TASK_PARAM_ID}:{target_task}")
+        self.write_command(f"{OPERATION_VARIANT_PARAM_ID}:{variant}")
 
     def arm_autotune_target(self, target: str, period_ms: int) -> None:
         self.write_command("at off")
@@ -241,9 +245,9 @@ def parse_args() -> argparse.Namespace:
         help="本轮要整定的单环目标",
     )
     parser.add_argument(
-        "--test-mode",
+        "--operation",
         default="auto",
-        help="测试模式编号，默认 auto；传 none 表示不改",
+        help="运行编排，默认 auto；传 none 表示不改；也可传 mode,target_task,variant",
     )
     parser.add_argument("--period-ms", type=int, default=20, help="固件输出窗口周期")
     parser.add_argument("--window", type=int, default=120, help="每轮采样点数")
@@ -691,13 +695,16 @@ def collect_window(
     return samples
 
 
-def resolve_test_mode(args: argparse.Namespace) -> int | None:
-    raw = str(args.test_mode).strip().lower()
+def resolve_operation(args: argparse.Namespace) -> tuple[int, int, int] | None:
+    raw = str(args.operation).strip().lower()
     if raw in {"", "none", "skip"}:
         return None
     if raw == "auto":
-        return TARGET_TEST_MODE.get(args.target)
-    return int(raw)
+        return TARGET_OPERATION.get(args.target)
+    parts = [p.strip() for p in raw.split(",")]
+    if len(parts) != 3:
+        raise ValueError("--operation 需要是 auto、none 或 mode,target_task,variant")
+    return int(parts[0]), int(parts[1]), int(parts[2])
 
 
 def print_metrics(round_index: int, metrics: Metrics) -> None:
@@ -720,10 +727,10 @@ def main() -> int:
         print(f"串口: {args.port} @ {args.baud}")
         print(f"目标: {args.target} ({TARGET_LABEL[args.target]})")
 
-        test_mode = resolve_test_mode(args)
-        if test_mode is not None:
-            bridge.set_test_mode(test_mode)
-            print(f"已切到测试模式 {test_mode}")
+        operation = resolve_operation(args)
+        if operation is not None:
+            bridge.set_operation(*operation)
+            print(f"已切到运行编排 mode={operation[0]} target_task={operation[1]} variant={operation[2]}")
 
         bridge.flush_input()
         bridge.arm_autotune_target(args.target, args.period_ms)

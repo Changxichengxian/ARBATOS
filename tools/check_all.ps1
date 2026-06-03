@@ -29,6 +29,43 @@ function Format-RepoPath {
     return $fullPath
 }
 
+function Get-RobotConfigContent {
+    param(
+        [string]$Path,
+        [System.Collections.Generic.HashSet[string]]$Seen = $null
+    )
+
+    if ($null -eq $Seen) {
+        $Seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    }
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    if ($Seen.Contains($fullPath)) {
+        Add-CheckError "$(Format-RepoPath $fullPath): recursive config include."
+        return ""
+    }
+
+    [void]$Seen.Add($fullPath)
+    $content = Get-Content -LiteralPath $fullPath -Raw -Encoding UTF8
+    $baseDir = Split-Path -Parent $fullPath
+    $includePattern = '(?m)^\s*#\s*include\s+"(config_[A-Za-z0-9_]+\.inc)"\s*$'
+
+    $expanded = [regex]::Replace($content, $includePattern, {
+            param($match)
+
+            $includePath = Join-Path $baseDir $match.Groups[1].Value
+            if (-not (Test-Path -LiteralPath $includePath -PathType Leaf)) {
+                Add-CheckError "$(Format-RepoPath $fullPath): missing config include $($match.Groups[1].Value)."
+                return ""
+            }
+
+            return Get-RobotConfigContent -Path $includePath -Seen $Seen
+        })
+
+    [void]$Seen.Remove($fullPath)
+    return $expanded
+}
+
 function Resolve-ProjectPath {
     param(
         [string]$ProjectDir,
@@ -240,7 +277,7 @@ function Test-UvProject {
         return
     }
 
-    $configContent = Get-Content -LiteralPath $configC -Raw
+    $configContent = Get-RobotConfigContent -Path $configC
     $configHeader = Get-Content -LiteralPath $configH -Raw
     $moduleCount = Get-ProfileModuleCount $configContent
     $modules = @(Get-ProfileModules $configContent)
@@ -525,7 +562,7 @@ function Test-ProfileProductRules {
         }
 
         $headerContent = Get-Content -LiteralPath $configHeader -Raw
-        $configContent = Get-Content -LiteralPath $configC -Raw
+        $configContent = Get-RobotConfigContent -Path $configC
         $modules = @(Get-ProfileModules $configContent)
 
         if ($expectedKinds.ContainsKey($project.Name)) {
@@ -864,6 +901,54 @@ function Test-ControlRegistryBoundaries {
     }
 }
 
+function Test-FaultGuardBoundaries {
+    Write-Host "[check] fault guard boundaries"
+
+    $mainFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "projects") -Recurse -Filter "main.c" |
+        Where-Object { $_.FullName -match '\\Core\\Src\\main\.c$' } |
+        Sort-Object FullName)
+
+    foreach ($mainFile in $mainFiles) {
+        $content = Get-Content -LiteralPath $mainFile.FullName -Raw
+        $repoPath = Format-RepoPath $mainFile.FullName
+        if ($content -notmatch '#include\s+"robot_fault_guard\.h"') {
+            Add-CheckError "${repoPath}: Error_Handler must include robot_fault_guard.h."
+        }
+        if ($content -notmatch 'void\s+Error_Handler\s*\(\s*void\s*\)[\s\S]*?robot_fault_record_and_halt\s*\(') {
+            Add-CheckError "${repoPath}: Error_Handler must record the fault and enter the shared safe halt path."
+        }
+    }
+
+    $h7ItFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "projects") -Recurse -Filter "stm32h7xx_it.c" |
+        Sort-Object FullName)
+    foreach ($itFile in $h7ItFiles) {
+        $content = Get-Content -LiteralPath $itFile.FullName -Raw
+        $repoPath = Format-RepoPath $itFile.FullName
+        foreach ($reason in @(
+                "ROBOT_FAULT_REASON_HARDFAULT",
+                "ROBOT_FAULT_REASON_MEMMANAGE",
+                "ROBOT_FAULT_REASON_BUSFAULT",
+                "ROBOT_FAULT_REASON_USAGEFAULT"
+            )) {
+            if ($content -notmatch $reason) {
+                Add-CheckError "${repoPath}: Cortex fault handler must record $reason."
+            }
+        }
+    }
+
+    $freertosFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "projects") -Recurse -Filter "freertos.c" |
+        Where-Object { $_.FullName -match '\\Core\\Src\\freertos\.c$' } |
+        Sort-Object FullName)
+    foreach ($freertosFile in $freertosFiles) {
+        $content = Get-Content -LiteralPath $freertosFile.FullName -Raw
+        $repoPath = Format-RepoPath $freertosFile.FullName
+        if ($content -match 'void\s+vApplication(StackOverflowHook|MallocFailedHook)\s*\(' -and
+            $content -notmatch 'robot_fault_enter_safe_state_ex\s*\(') {
+            Add-CheckError "${repoPath}: FreeRTOS fatal hooks must enter the shared safe state."
+        }
+    }
+}
+
 function Test-ControlCoreBoundaries {
     Write-Host "[check] control core boundaries"
 
@@ -1062,6 +1147,7 @@ Test-StaleText
 Test-HighRateApiBoundaries
 Test-CanTxDeviceConfigBoundaries
 Test-ControlRegistryBoundaries
+Test-FaultGuardBoundaries
 Test-ControlCoreBoundaries
 Test-RobotDeviceSchema
 Test-SharedConfigTypes

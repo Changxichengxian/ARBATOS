@@ -88,6 +88,29 @@ static inline void control_core_cmd_set_current(MotorCmd *cmd, int16_t current)
     }
 }
 
+static inline void control_core_cmd_set_disable(MotorCmd *cmd)
+{
+    if (cmd != NULL)
+    {
+        control_core_cmd_clear(cmd);
+        cmd->active = 1u;
+        cmd->mode = (uint8_t)MotorModeDisable;
+    }
+}
+
+static inline void control_core_cmd_set_damping(MotorCmd *cmd, fp32 kd, fp32 tau)
+{
+    if (cmd != NULL)
+    {
+        control_core_cmd_clear(cmd);
+        cmd->active = 1u;
+        cmd->mode = (uint8_t)MotorModeDamping;
+        cmd->dq = 0.0f;
+        cmd->kd = kd;
+        cmd->tau = tau;
+    }
+}
+
 static inline void control_core_cmd_set_speed(MotorCmd *cmd, fp32 velocity, fp32 kd, fp32 torque)
 {
     if (cmd != NULL)

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2026 闄堣僵 <2811158416@qq.com>
+ * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
  * SPDX-License-Identifier: Apache-2.0
  *
  * First published in this repository: 2026-04-06
@@ -29,6 +29,13 @@ static const rt_profiler_desc_t s_rt_profiler_desc[RT_PROFILER_COUNT] = {
      (uint8_t)RT_PROFILER_FLAG_FAST_PATH,
      "prof.chassis_control_loop",
      ROBOT_PROFILE_CHASSIS_CONTROL_BUDGET_US},
+    {RT_PROFILER_WHEELLEG_MIT_CONTROL_LOOP,
+     (uint8_t)ROBOT_TASK_MODULE_WHEELLEG_MIT,
+     (uint8_t)ROBOT_TASK_MODULE_NONE,
+     (uint8_t)RT_PROFILER_KIND_LOOP,
+     (uint8_t)RT_PROFILER_FLAG_FAST_PATH,
+     "prof.wheelleg_mit_control_loop",
+     ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_BUDGET_US},
     {RT_PROFILER_CAN_COMMAND_TX_LOOP,
      (uint8_t)ROBOT_TASK_MODULE_CAN_COMMAND_TX,
      (uint8_t)ROBOT_TASK_MODULE_NONE,
@@ -90,6 +97,7 @@ static uint8_t rt_profiler_id_valid(rt_profiler_id_e id)
 static rt_profiler_stats_t s_rt_profiler[RT_PROFILER_COUNT] = {
     {0u, 0u, 0u, 0u, ROBOT_PROFILE_GIMBAL_CONTROL_BUDGET_US, 0u},
     {0u, 0u, 0u, 0u, ROBOT_PROFILE_CHASSIS_CONTROL_BUDGET_US, 0u},
+    {0u, 0u, 0u, 0u, ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_BUDGET_US, 0u},
     {0u, 0u, 0u, 0u, ROBOT_PROFILE_CAN_COMMAND_TX_BUDGET_US, 0u},
     {0u, 0u, 0u, 0u, ROBOT_PROFILE_CAN_FEEDBACK_RX_PROFILE_BUDGET_US, 0u},
     {0u, 0u, 0u, 0u, ROBOT_PROFILE_SDLOG_WRITE_BUDGET_US, 0u},
@@ -129,6 +137,8 @@ uint32_t rt_profiler_period_ms(rt_profiler_id_e id)
         return (uint32_t)robot_profile_gimbal_control_period_ms();
     case RT_PROFILER_CHASSIS_CONTROL_LOOP:
         return (uint32_t)robot_profile_chassis_control_period_ms();
+    case RT_PROFILER_WHEELLEG_MIT_CONTROL_LOOP:
+        return (uint32_t)g_config.wheelleg_mit.control_period_ms;
     case RT_PROFILER_CAN_COMMAND_TX_LOOP:
         return (uint32_t)robot_profile_can_command_tx_period_ms();
     case RT_PROFILER_WATCH_TASK_BEAT:
