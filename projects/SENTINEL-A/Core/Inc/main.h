@@ -67,8 +67,6 @@ void Error_Handler(void);
 #define IMU_INT_EXTI_IRQn EXTI9_5_IRQn
 #define Heat_PWM_Pin GPIO_PIN_5
 #define Heat_PWM_GPIO_Port GPIOB
-#define LASER_Pin GPIO_PIN_13
-#define LASER_GPIO_Port GPIOG
 #define LED8_Pin GPIO_PIN_8
 #define LED8_GPIO_Port GPIOG
 #define LED7_Pin GPIO_PIN_7

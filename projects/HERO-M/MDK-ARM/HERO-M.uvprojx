@@ -640,11 +640,6 @@
               <FilePath>..\\..\\..\\shared\\hal\\bsp_adc.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_laser.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_laser.c</FilePath>
-            </File>
-            <File>
               <FileName>bsp_shoot_trig.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\hal\\bsp_shoot_trig.c</FilePath>

@@ -58,9 +58,6 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOE, IST8310_RST_Pin|LED_R_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LASER_GPIO_Port, LASER_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOG, LED8_Pin|LED7_Pin|LED6_Pin|LED5_Pin
                           |LED4_Pin|LED3_Pin|LED2_Pin|LED1_Pin, GPIO_PIN_SET);
 
@@ -86,10 +83,10 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(IMU_INT_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LASER_Pin LED8_Pin LED7_Pin LED6_Pin
+  /*Configure GPIO pins : LED8_Pin LED7_Pin LED6_Pin
                            LED5_Pin LED4_Pin LED3_Pin LED2_Pin
                            LED1_Pin */
-  GPIO_InitStruct.Pin = LASER_Pin|LED8_Pin|LED7_Pin|LED6_Pin
+  GPIO_InitStruct.Pin = LED8_Pin|LED7_Pin|LED6_Pin
                           |LED5_Pin|LED4_Pin|LED3_Pin|LED2_Pin
                           |LED1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;

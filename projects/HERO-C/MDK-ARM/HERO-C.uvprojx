@@ -455,11 +455,6 @@
               <FilePath>..\\..\\..\\shared\\hal\\bsp_i2c.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_laser.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_laser.c</FilePath>
-            </File>
-            <File>
               <FileName>bsp_led.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\hal\\bsp_led.c</FilePath>

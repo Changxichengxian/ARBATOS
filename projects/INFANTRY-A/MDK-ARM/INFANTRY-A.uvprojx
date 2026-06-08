@@ -1163,11 +1163,6 @@
               <FilePath>../../../shared/hal/bsp_imu_pwm.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_laser.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../../../shared/hal/bsp_laser.c</FilePath>
-            </File>
-            <File>
               <FileName>mpu6500.c</FileName>
               <FileType>1</FileType>
               <FilePath>../../../boards/DJI_A_F427/devices/mpu6500.c</FilePath>

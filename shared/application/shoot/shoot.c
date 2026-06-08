@@ -20,7 +20,6 @@
 #include <math.h>
 #include "cmsis_os.h"
 
-#include "bsp_laser.h"
 #include "bsp_shoot_trig.h"
 #include "user_lib.h"
 #include "referee.h"
@@ -37,8 +36,6 @@
 #include "pid.h"
 #include "host_link_task.h"
 
-#define shoot_laser_on()    laser_on()      //激光开启宏定义
-#define shoot_laser_off()   laser_off()     //激光关闭宏定义
 // 微动开关 GPIO 是板相关差异，通过 BSP 读取。
 
 /**
@@ -404,14 +401,12 @@ int16_t shoot_control_loop(void)
         {
             entertain_entered = 1u;
             shoot_control.shoot_mode = SHOOT_STOP;
-            shoot_laser_off();
             shoot_clear_trigger_output();
             shoot_clear_fric_output();
         }
         else
         {
             shoot_control.shoot_mode = SHOOT_STOP;
-            shoot_laser_off();
         }
         shoot_write_state();
         return 0;
@@ -477,14 +472,12 @@ int16_t shoot_control_loop(void)
 
     if(shoot_control.shoot_mode == SHOOT_STOP)
     {
-        shoot_laser_off();
         // STOP overwrites LowCmd with zero current. Do not run the speed PID toward 0 RPM.
         shoot_clear_trigger_output();
         shoot_clear_fric_output();
     }
     else
     {
-        shoot_laser_on(); //激光开启
         PID_calc(&shoot_control.trigger_motor_pid, shoot_control.speed, shoot_control.speed_set);
         shoot_control.given_current = (int16_t)(shoot_control.trigger_motor_pid.out);
         if(shoot_control.shoot_mode < SHOOT_READY_BULLET)
@@ -504,7 +497,6 @@ int16_t shoot_control_loop(void)
 
     if(!allow_fric)
     {
-        shoot_laser_off();
         shoot_clear_fric_output();
     }
 
