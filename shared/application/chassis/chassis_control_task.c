@@ -88,6 +88,7 @@ static const int16_t chassis_zero_current_cmd[CHASSIS_MOTOR_COUNT] = {0};
 
 typedef struct
 {
+    manual_input_state_t manual_input_copy;
     const manual_input_state_t *manual_input;
     uint8_t gimbal_state_valid;
     uint8_t gimbal_online;
@@ -254,7 +255,10 @@ static void chassis_snapshot_capture(chassis_runtime_snapshot_t *snapshot, chass
     }
 
     memset(snapshot, 0, sizeof(*snapshot));
-    snapshot->manual_input = (control != NULL) ? control->chassis_RC : get_remote_control_point();
+    if (manual_input_get_current_copy(&snapshot->manual_input_copy) != 0u)
+    {
+        snapshot->manual_input = &snapshot->manual_input_copy;
+    }
     {
         gimbal_state_t gimbal_state;
         if (gimbal_state_read(&gimbal_state) != 0u && gimbal_state.valid != 0u)

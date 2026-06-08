@@ -11,6 +11,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
+#include "main.h"
 
 #include <string.h>
 
@@ -48,16 +49,29 @@ static manual_input_src_state_t manual_src[MANUAL_INPUT_SRC_MAX + 1u];
 static uint8_t manual_active_src = MANUAL_INPUT_SRC_AUTO;
 static TickType_t manual_input_refresh_tick = 0u;
 static uint8_t manual_input_refresh_dirty = 1u;
+static uint32_t manual_input_dirty_seq = 1u;
+static uint32_t manual_input_refresh_seq = 0u;
 static uint32_t g_remote_control_sbus_frame_cnt = 0u;
 static uint32_t g_remote_control_set_source_cnt = 0u;
 static TimerHandle_t manual_input_refresh_timer = NULL;
 static StaticTimer_t manual_input_refresh_timer_buffer;
 
+typedef struct
+{
+    uint8_t from_isr;
+    UBaseType_t saved_mask;
+} manual_input_critical_state_t;
+
 static void manual_input_reset_rc(manual_input_state_t *rc);
 static void manual_input_sanitize_switch(manual_input_state_t *rc);
 static void manual_input_apply_board_key(manual_input_state_t *rc);
-static uint8_t manual_input_src_is_active(uint8_t src, TickType_t now_tick, TickType_t timeout_tick);
-static uint8_t manual_input_pick_latest(TickType_t now_tick, TickType_t timeout_tick);
+static uint8_t manual_input_src_is_active(const manual_input_src_state_t *src_state,
+                                          uint8_t src,
+                                          TickType_t now_tick,
+                                          TickType_t timeout_tick);
+static uint8_t manual_input_pick_latest(const manual_input_src_state_t *src_state,
+                                        TickType_t now_tick,
+                                        TickType_t timeout_tick);
 static void manual_input_commit_output(const manual_input_state_t *out, uint8_t active_src);
 static void manual_input_mark_dirty(void);
 static void manual_input_refresh_if_needed(uint8_t force);
@@ -65,6 +79,35 @@ static void manual_input_refresh_timer_callback(TimerHandle_t timer);
 static void manual_input_update_output(void);
 static void remote_control_log_source_switch(uint8_t prev_src, uint8_t next_src);
 static void remote_control_log_sbus_raw_frame(const uint8_t frame[RC_FRAME_LENGTH]);
+
+static manual_input_critical_state_t manual_input_enter_critical(void)
+{
+    manual_input_critical_state_t state;
+
+    state.from_isr = (__get_IPSR() != 0U) ? 1u : 0u;
+    state.saved_mask = 0u;
+    if (state.from_isr != 0u)
+    {
+        state.saved_mask = taskENTER_CRITICAL_FROM_ISR();
+    }
+    else
+    {
+        taskENTER_CRITICAL();
+    }
+    return state;
+}
+
+static void manual_input_exit_critical(manual_input_critical_state_t state)
+{
+    if (state.from_isr != 0u)
+    {
+        taskEXIT_CRITICAL_FROM_ISR(state.saved_mask);
+    }
+    else
+    {
+        taskEXIT_CRITICAL();
+    }
+}
 
 /**
   * @brief          remote control init
@@ -86,6 +129,8 @@ void manual_input_init(void)
     manual_active_src = MANUAL_INPUT_SRC_AUTO;
     manual_input_refresh_tick = 0u;
     manual_input_refresh_dirty = 1u;
+    manual_input_dirty_seq = 1u;
+    manual_input_refresh_seq = 0u;
     g_remote_control_sbus_frame_cnt = 0u;
     g_remote_control_set_source_cnt = 0u;
     if (refresh_period_tick == 0u)
@@ -121,6 +166,21 @@ const manual_input_state_t *manual_input_get_current_rc(void)
     return &rc_ctrl;
 }
 
+uint8_t manual_input_get_current_copy(manual_input_state_t *out)
+{
+    if (out == NULL)
+    {
+        return 0u;
+    }
+
+    manual_input_refresh_if_needed(0u);
+
+    manual_input_critical_state_t critical = manual_input_enter_critical();
+    *out = rc_ctrl;
+    manual_input_exit_critical(critical);
+    return 1u;
+}
+
 const manual_input_state_t *get_remote_control_point(void)
 {
     return manual_input_get_current_rc();
@@ -133,6 +193,8 @@ void remote_control_set_rc(const manual_input_state_t *rc)
 
 void manual_input_update_source(uint8_t source, const manual_input_state_t *rc)
 {
+    const TickType_t now_tick = xTaskGetTickCount();
+
     if (rc == NULL)
     {
         return;
@@ -142,12 +204,14 @@ void manual_input_update_source(uint8_t source, const manual_input_state_t *rc)
         return;
     }
 
+    manual_input_critical_state_t critical = manual_input_enter_critical();
     manual_src[source].rc = *rc;
-    manual_src[source].last_update_tick = xTaskGetTickCount();
+    manual_src[source].last_update_tick = now_tick;
     manual_src[source].valid = 1u;
     g_remote_control_set_source_cnt++;
-
-    manual_input_mark_dirty();
+    manual_input_refresh_dirty = 1u;
+    manual_input_dirty_seq++;
+    manual_input_exit_critical(critical);
     manual_input_refresh_if_needed(1u);
     detect_hook(DBUS_TOE);
 }
@@ -167,7 +231,9 @@ void manual_input_on_sbus_frame(const uint8_t frame[RC_FRAME_LENGTH])
     manual_input_state_t rc = {0};
     sbus_to_rc(frame, &rc);
     remote_control_log_sbus_raw_frame(frame);
+    manual_input_critical_state_t critical = manual_input_enter_critical();
     g_remote_control_sbus_frame_cnt++;
+    manual_input_exit_critical(critical);
     manual_input_update_source(MANUAL_INPUT_SRC_DBUS, &rc);
 }
 
@@ -236,8 +302,14 @@ void remote_control_log_raw_source(uint8_t source,
 
 uint8_t manual_input_get_active_source(void)
 {
+    uint8_t active_src;
+
     manual_input_refresh_if_needed(0u);
-    return manual_active_src;
+
+    manual_input_critical_state_t critical = manual_input_enter_critical();
+    active_src = manual_active_src;
+    manual_input_exit_critical(critical);
+    return active_src;
 }
 
 uint8_t remote_control_get_active_source(void)
@@ -258,7 +330,12 @@ void remote_control_refresh(void)
 
 uint32_t manual_input_get_sbus_frame_count(void)
 {
-    return g_remote_control_sbus_frame_cnt;
+    uint32_t count;
+
+    manual_input_critical_state_t critical = manual_input_enter_critical();
+    count = g_remote_control_sbus_frame_cnt;
+    manual_input_exit_critical(critical);
+    return count;
 }
 
 uint32_t remote_control_get_sbus_frame_count(void)
@@ -268,7 +345,12 @@ uint32_t remote_control_get_sbus_frame_count(void)
 
 uint32_t manual_input_get_set_source_count(void)
 {
-    return g_remote_control_set_source_cnt;
+    uint32_t count;
+
+    manual_input_critical_state_t critical = manual_input_enter_critical();
+    count = g_remote_control_set_source_cnt;
+    manual_input_exit_critical(critical);
+    return count;
 }
 
 uint32_t remote_control_get_set_source_count(void)
@@ -325,13 +407,16 @@ static void manual_input_apply_board_key(manual_input_state_t *rc)
     }
 }
 
-static uint8_t manual_input_src_is_active(uint8_t src, TickType_t now_tick, TickType_t timeout_tick)
+static uint8_t manual_input_src_is_active(const manual_input_src_state_t *src_state,
+                                          uint8_t src,
+                                          TickType_t now_tick,
+                                          TickType_t timeout_tick)
 {
-    if (src == 0u || src > (uint8_t)MANUAL_INPUT_SRC_MAX)
+    if (src_state == NULL || src == 0u || src > (uint8_t)MANUAL_INPUT_SRC_MAX)
     {
         return 0u;
     }
-    if (manual_src[src].valid == 0u)
+    if (src_state[src].valid == 0u)
     {
         return 0u;
     }
@@ -339,23 +424,25 @@ static uint8_t manual_input_src_is_active(uint8_t src, TickType_t now_tick, Tick
     {
         return 1u;
     }
-    const TickType_t age = (TickType_t)(now_tick - manual_src[src].last_update_tick);
+    const TickType_t age = (TickType_t)(now_tick - src_state[src].last_update_tick);
     return (age <= timeout_tick) ? 1u : 0u;
 }
 
-static uint8_t manual_input_pick_latest(TickType_t now_tick, TickType_t timeout_tick)
+static uint8_t manual_input_pick_latest(const manual_input_src_state_t *src_state,
+                                        TickType_t now_tick,
+                                        TickType_t timeout_tick)
 {
     uint8_t best = 0u;
     TickType_t best_age = (TickType_t)0xFFFFFFFFu;
 
     for (uint8_t src = (uint8_t)MANUAL_INPUT_SRC_DBUS; src <= (uint8_t)MANUAL_INPUT_SRC_MAX; src++)
     {
-        if (!manual_input_src_is_active(src, now_tick, timeout_tick))
+        if (!manual_input_src_is_active(src_state, src, now_tick, timeout_tick))
         {
             continue;
         }
 
-        const TickType_t age = (TickType_t)(now_tick - manual_src[src].last_update_tick);
+        const TickType_t age = (TickType_t)(now_tick - src_state[src].last_update_tick);
         if (age < best_age)
         {
             best_age = age;
@@ -368,16 +455,20 @@ static uint8_t manual_input_pick_latest(TickType_t now_tick, TickType_t timeout_
 
 static void manual_input_commit_output(const manual_input_state_t *out, uint8_t active_src)
 {
-    const uint8_t prev_src = manual_active_src;
+    uint8_t prev_src;
 
     if (out == NULL)
     {
         return;
     }
 
+    manual_input_critical_state_t critical = manual_input_enter_critical();
+    prev_src = manual_active_src;
     rc_ctrl = *out;
     manual_active_src = active_src;
-    control_input_update_from_manual_input(&rc_ctrl);
+    manual_input_exit_critical(critical);
+
+    control_input_update_from_manual_input(out);
 
     if (prev_src != active_src)
     {
@@ -387,7 +478,10 @@ static void manual_input_commit_output(const manual_input_state_t *out, uint8_t 
 
 static void manual_input_mark_dirty(void)
 {
+    manual_input_critical_state_t critical = manual_input_enter_critical();
     manual_input_refresh_dirty = 1u;
+    manual_input_dirty_seq++;
+    manual_input_exit_critical(critical);
 }
 
 static void manual_input_refresh_if_needed(uint8_t force)
@@ -396,22 +490,39 @@ static void manual_input_refresh_if_needed(uint8_t force)
     const TickType_t now_tick = xTaskGetTickCount();
     const uint8_t needs_periodic_refresh =
         (cfg->source_timeout_ms != 0u || cfg->board_key_key_mask != 0u) ? 1u : 0u;
+    uint8_t dirty;
+    TickType_t refresh_tick;
+    uint32_t dirty_seq;
+    uint32_t refresh_seq;
 
-    if (force == 0u && manual_input_refresh_dirty == 0u)
+    manual_input_critical_state_t critical = manual_input_enter_critical();
+    dirty = manual_input_refresh_dirty;
+    refresh_tick = manual_input_refresh_tick;
+    dirty_seq = manual_input_dirty_seq;
+    refresh_seq = manual_input_refresh_seq;
+    manual_input_exit_critical(critical);
+
+    if (force == 0u && dirty == 0u && dirty_seq == refresh_seq)
     {
         if (needs_periodic_refresh == 0u)
         {
             return;
         }
-        if (manual_input_refresh_tick == now_tick)
+        if (refresh_tick == now_tick)
         {
             return;
         }
     }
 
     manual_input_update_output();
+    critical = manual_input_enter_critical();
     manual_input_refresh_tick = now_tick;
-    manual_input_refresh_dirty = 0u;
+    manual_input_refresh_seq = dirty_seq;
+    if (manual_input_dirty_seq == dirty_seq)
+    {
+        manual_input_refresh_dirty = 0u;
+    }
+    manual_input_exit_critical(critical);
 }
 
 static void manual_input_refresh_timer_callback(TimerHandle_t timer)
@@ -425,7 +536,13 @@ static void manual_input_update_output(void)
     const manual_input_config_t *cfg = &g_config.manual_input;
     const TickType_t now_tick = xTaskGetTickCount();
     const TickType_t timeout_tick = (cfg->source_timeout_ms == 0u) ? 0u : pdMS_TO_TICKS(cfg->source_timeout_ms);
-    const uint8_t latest = manual_input_pick_latest(now_tick, timeout_tick);
+    manual_input_src_state_t src_snapshot[MANUAL_INPUT_SRC_MAX + 1u];
+
+    manual_input_critical_state_t critical = manual_input_enter_critical();
+    memcpy(src_snapshot, manual_src, sizeof(src_snapshot));
+    manual_input_exit_critical(critical);
+
+    const uint8_t latest = manual_input_pick_latest(src_snapshot, now_tick, timeout_tick);
 
     if (cfg->mix_mode == MANUAL_INPUT_MIX_MERGE)
     {
@@ -442,36 +559,36 @@ static void manual_input_update_output(void)
         manual_input_reset_rc(&out);
 
         // Switches/mouse follow "latest"; keys are merged.
-        out.rc.s[0] = manual_src[latest].rc.rc.s[0];
-        out.rc.s[1] = manual_src[latest].rc.rc.s[1];
+        out.rc.s[0] = src_snapshot[latest].rc.rc.s[0];
+        out.rc.s[1] = src_snapshot[latest].rc.rc.s[1];
         manual_input_sanitize_switch(&out);
 
         for (uint8_t src = (uint8_t)MANUAL_INPUT_SRC_DBUS; src <= (uint8_t)MANUAL_INPUT_SRC_MAX; src++)
         {
-            if (!manual_input_src_is_active(src, now_tick, timeout_tick))
+            if (!manual_input_src_is_active(src_snapshot, src, now_tick, timeout_tick))
             {
                 continue;
             }
 
             for (uint8_t ch = 0u; ch < 5u; ch++)
             {
-                const int16_t v = manual_src[src].rc.rc.ch[ch];
+                const int16_t v = src_snapshot[src].rc.rc.ch[ch];
                 if (RC_abs(v) > RC_abs(out.rc.ch[ch]))
                 {
                     out.rc.ch[ch] = v;
                 }
             }
 
-            const int16_t mx = manual_src[src].rc.mouse.x;
-            const int16_t my = manual_src[src].rc.mouse.y;
-            const int16_t mz = manual_src[src].rc.mouse.z;
+            const int16_t mx = src_snapshot[src].rc.mouse.x;
+            const int16_t my = src_snapshot[src].rc.mouse.y;
+            const int16_t mz = src_snapshot[src].rc.mouse.z;
             if (RC_abs(mx) > RC_abs(out.mouse.x)) out.mouse.x = mx;
             if (RC_abs(my) > RC_abs(out.mouse.y)) out.mouse.y = my;
             if (RC_abs(mz) > RC_abs(out.mouse.z)) out.mouse.z = mz;
 
-            out.key.v |= manual_src[src].rc.key.v;
-            out.mouse.press_l |= manual_src[src].rc.mouse.press_l;
-            out.mouse.press_r |= manual_src[src].rc.mouse.press_r;
+            out.key.v |= src_snapshot[src].rc.key.v;
+            out.mouse.press_l |= src_snapshot[src].rc.mouse.press_l;
+            out.mouse.press_r |= src_snapshot[src].rc.mouse.press_r;
         }
 
         manual_input_apply_board_key(&out);
@@ -484,7 +601,7 @@ static void manual_input_update_output(void)
     {
         selected = latest;
     }
-    else if (!manual_input_src_is_active(selected, now_tick, timeout_tick))
+    else if (!manual_input_src_is_active(src_snapshot, selected, now_tick, timeout_tick))
     {
         selected = latest;
     }
@@ -498,7 +615,7 @@ static void manual_input_update_output(void)
         return;
     }
 
-    manual_input_state_t out = manual_src[selected].rc;
+    manual_input_state_t out = src_snapshot[selected].rc;
     manual_input_sanitize_switch(&out);
     manual_input_apply_board_key(&out);
     manual_input_commit_output(&out, selected);
@@ -506,13 +623,19 @@ static void manual_input_update_output(void)
 
 uint8_t RC_data_is_error(void)
 {
+    manual_input_state_t rc_snapshot;
+
     // Pure check (no side effects): do not modify rc_ctrl here.
-    if (RC_abs(rc_ctrl.rc.ch[0]) > RC_CHANNAL_ERROR_VALUE) return 1;
-    if (RC_abs(rc_ctrl.rc.ch[1]) > RC_CHANNAL_ERROR_VALUE) return 1;
-    if (RC_abs(rc_ctrl.rc.ch[2]) > RC_CHANNAL_ERROR_VALUE) return 1;
-    if (RC_abs(rc_ctrl.rc.ch[3]) > RC_CHANNAL_ERROR_VALUE) return 1;
-    if (rc_ctrl.rc.s[0] == 0) return 1;
-    if (rc_ctrl.rc.s[1] == 0) return 1;
+    manual_input_critical_state_t critical = manual_input_enter_critical();
+    rc_snapshot = rc_ctrl;
+    manual_input_exit_critical(critical);
+
+    if (RC_abs(rc_snapshot.rc.ch[0]) > RC_CHANNAL_ERROR_VALUE) return 1;
+    if (RC_abs(rc_snapshot.rc.ch[1]) > RC_CHANNAL_ERROR_VALUE) return 1;
+    if (RC_abs(rc_snapshot.rc.ch[2]) > RC_CHANNAL_ERROR_VALUE) return 1;
+    if (RC_abs(rc_snapshot.rc.ch[3]) > RC_CHANNAL_ERROR_VALUE) return 1;
+    if (rc_snapshot.rc.s[0] == 0) return 1;
+    if (rc_snapshot.rc.s[1] == 0) return 1;
     return 0;
 }
 
@@ -539,16 +662,22 @@ static int16_t RC_abs(int16_t value)
 
 static void remote_control_log_source_switch(uint8_t prev_src, uint8_t next_src)
 {
+    uint32_t set_source_cnt;
+
     if (sdlog_is_active() == 0u)
     {
         return;
     }
 
+    manual_input_critical_state_t critical = manual_input_enter_critical();
+    set_source_cnt = g_remote_control_set_source_cnt;
+    manual_input_exit_critical(critical);
+
     sdlog_event_t evt = {0};
     evt.event_id = SDLOG_EVT_MANUAL_SOURCE_SWITCH;
     evt.arg0_u16 = next_src;
     evt.arg1_u32 = prev_src;
-    evt.arg2_u32 = g_remote_control_set_source_cnt;
+    evt.arg2_u32 = set_source_cnt;
     sdlog_write(SDLOG_TAG_EVENT, &evt, (uint16_t)sizeof(evt));
 }
 

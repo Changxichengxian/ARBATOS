@@ -244,6 +244,7 @@ __weak uint32_t bsp_adc_get_start_fail_count(void)
     return 0u;
 }
 
+static manual_input_state_t rc_snapshot;
 static const manual_input_state_t *rc_src;
 static const fp32 *ins_quat_src;
 static const fp32 *ins_angle_src;
@@ -673,7 +674,14 @@ void watch_init(void)
 {
     memset(&g_watch, 0, sizeof(g_watch));
 
-    rc_src = get_remote_control_point();
+    if (manual_input_get_current_copy(&rc_snapshot) != 0u)
+    {
+        rc_src = &rc_snapshot;
+    }
+    else
+    {
+        rc_src = NULL;
+    }
     ins_quat_src = get_INS_quat_point();
     ins_angle_src = get_INS_angle_point();
     ins_gyro_src = get_gyro_data_point();
@@ -839,6 +847,15 @@ static void watch_diag_push_stage(watch_boot_stage_e stage)
 
 static void watch_copy_rc(void)
 {
+    if (manual_input_get_current_copy(&rc_snapshot) != 0u)
+    {
+        rc_src = &rc_snapshot;
+    }
+    else
+    {
+        rc_src = NULL;
+    }
+
     if (rc_src == NULL)
     {
         memset(&g_watch.rc, 0, sizeof(g_watch.rc));

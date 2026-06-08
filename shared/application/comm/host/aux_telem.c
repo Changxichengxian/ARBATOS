@@ -39,6 +39,7 @@
 
 typedef struct
 {
+    manual_input_state_t rc_copy;
     const manual_input_state_t *rc;
     const fp32 *quat;
     const fp32 *angle;
@@ -385,7 +386,10 @@ void aux_telem_try_send_frame(void)
     }
 
     aux_telem_ctx_t ctx = {0};
-    ctx.rc = get_remote_control_point();
+    if (manual_input_get_current_copy(&ctx.rc_copy) != 0u)
+    {
+        ctx.rc = &ctx.rc_copy;
+    }
     ctx.quat = ins_quat;
     ctx.angle = ins_angle;
     ctx.gyro = ins_gyro;
@@ -855,10 +859,10 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
     case AUX_TELEM_SIG_CHASSIS_ROLL:
         return ctx->chassis ? ctx->chassis->chassis_roll : 0.0f;
     case AUX_TELEM_SIG_CHASSIS_SWING_KEY:
-        if (ctx->chassis && ctx->chassis->chassis_RC)
+        if (ctx->rc)
         {
-            const uint16_t sw = (uint16_t)ctx->chassis->chassis_RC->rc.s[CHASSIS_MODE_CHANNEL];
-            const uint16_t key = ctx->chassis->chassis_RC->key.v;
+            const uint16_t sw = (uint16_t)ctx->rc->rc.s[CHASSIS_MODE_CHANNEL];
+            const uint16_t key = ctx->rc->key.v;
             const bool_t swing = ((key & SWING_KEY) != 0u) ||
                                  ((key & CHASSIS_GYRO_SPIN_VAR_KEY) != 0u) ||
                                  switch_is_down(sw);

@@ -26,6 +26,7 @@ typedef struct
  */
 void control_input_update_from_manual_input(const manual_input_state_t *rc);
 const control_input_state_t *control_input_get_state(void);
+uint8_t control_input_get_copy(control_input_state_t *out);
 int16_t control_input_axis(input_axis_e axis);
 uint8_t control_input_switch(input_switch_e sw);
 uint8_t control_input_switch_pos_to_raw(uint8_t pos);
@@ -34,6 +35,7 @@ uint8_t control_input_switch_is_pos(uint16_t raw, uint8_t pos);
 // Legacy compatibility names.
 void input_update_from_rc(const manual_input_state_t *rc);
 const control_input_state_t *input_get(void);
+uint8_t input_get_copy(control_input_state_t *out);
 int16_t input_axis(input_axis_e axis);
 uint8_t input_switch(input_switch_e sw);
 uint8_t input_switch_pos_to_raw(uint8_t pos);

@@ -185,6 +185,7 @@ typedef char manual_input_key_offset_check[(offsetof(manual_input_state_t, key) 
 extern void manual_input_init(void);
 extern void manual_input_on_sbus_frame(const uint8_t frame[RC_FRAME_LENGTH]);
 extern const manual_input_state_t *manual_input_get_current_rc(void);
+extern uint8_t manual_input_get_current_copy(manual_input_state_t *out);
 extern void manual_input_update_source(uint8_t source, const manual_input_state_t *rc);
 extern uint8_t manual_input_get_active_source(void);
 extern void manual_input_refresh(void);

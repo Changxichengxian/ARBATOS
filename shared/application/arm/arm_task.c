@@ -66,15 +66,14 @@ static void arm_write_status(uint16_t key_mask)
 
 void arm_task(void const *argument)
 {
-    const manual_input_state_t *rc = NULL;
-
     (void)argument;
-    rc = get_remote_control_point();
     arm_motion_init();
 
     for (;;)
     {
-        const uint16_t key_mask = (rc != NULL) ? rc->key.v : 0u;
+        manual_input_state_t rc_snapshot;
+        const uint16_t key_mask =
+            (manual_input_get_current_copy(&rc_snapshot) != 0u) ? rc_snapshot.key.v : 0u;
 
         watch_task_beat(WATCH_TASK_ARM);
         arm_motion_step_manual(key_mask);

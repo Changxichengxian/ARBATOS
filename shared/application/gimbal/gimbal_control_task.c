@@ -75,6 +75,7 @@ __weak int16_t shoot_control_loop(void)
 
 typedef struct
 {
+    manual_input_state_t manual_input_copy;
     const manual_input_state_t *manual_input;
     const fp32 *gyro;
     const fp32 *ins_angle;
@@ -551,7 +552,10 @@ static void gimbal_snapshot_capture(gimbal_runtime_snapshot_t *snapshot, gimbal_
     }
 
     memset(snapshot, 0, sizeof(*snapshot));
-    snapshot->manual_input = (control != NULL) ? control->gimbal_rc_ctrl : get_remote_control_point();
+    if (manual_input_get_current_copy(&snapshot->manual_input_copy) != 0u)
+    {
+        snapshot->manual_input = &snapshot->manual_input_copy;
+    }
     snapshot->gyro = (control != NULL) ? control->gimbal_INT_gyro_point : get_gyro_data_point();
     snapshot->ins_angle = (control != NULL) ? control->gimbal_INS_angle_point : get_INS_angle_point();
     snapshot->yaw_measure = (control != NULL) ? control->gimbal_yaw_motor.gimbal_motor_measure : get_yaw_gimbal_motor_measure_point();
