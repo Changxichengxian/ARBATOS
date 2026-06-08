@@ -494,12 +494,8 @@ static HAL_StatusTypeDef bsp_can_tx_with_retry(CAN_HandleTypeDef *hcan, CAN_TxHe
 {
     uint32_t mailbox = 0u;
     HAL_StatusTypeDef ret = HAL_CAN_AddTxMessage(hcan, header, (uint8_t *)data, &mailbox);
-    if (ret == HAL_BUSY)
+    if (ret == HAL_BUSY && HAL_CAN_GetTxMailboxesFreeLevel(hcan) > 0u)
     {
-        if (HAL_CAN_GetTxMailboxesFreeLevel(hcan) == 0u)
-        {
-            HAL_CAN_AbortTxRequest(hcan, CAN_TX_MAILBOX0 | CAN_TX_MAILBOX1 | CAN_TX_MAILBOX2);
-        }
         ret = HAL_CAN_AddTxMessage(hcan, header, (uint8_t *)data, &mailbox);
     }
     return ret;
