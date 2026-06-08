@@ -671,6 +671,8 @@ static void shoot_feedback_update(void)
     static bool_t speed_filter_inited = 0;
     const uint16_t tick_ms = shoot_tick_ms();
     const uint8_t trigger_online = (toe_is_error(TRIGGER_MOTOR_TOE) == 0u) ? 1u : 0u;
+    manual_input_state_t rc_snapshot = {0};
+    const uint8_t rc_valid = manual_input_get_current_copy(&rc_snapshot);
 
     //拨弹轮电机速度滤波一下（二阶低通）
     if (!speed_filter_inited)
@@ -741,12 +743,12 @@ static void shoot_feedback_update(void)
     //榧犳爣鎸夐敭
     shoot_control.last_press_l = shoot_control.press_l;
     shoot_control.last_press_r = shoot_control.press_r;
-    shoot_control.press_l = shoot_control.shoot_rc->mouse.press_l;
+    shoot_control.press_l = (rc_valid != 0u) ? rc_snapshot.mouse.press_l : 0u;
     if (image_remote_aux_fire_requested())
     {
         shoot_control.press_l = 1u;
     }
-    shoot_control.press_r = shoot_control.shoot_rc->mouse.press_r;
+    shoot_control.press_r = (rc_valid != 0u) ? rc_snapshot.mouse.press_r : 0u;
     //长按计时
     if (shoot_control.press_l)
     {
