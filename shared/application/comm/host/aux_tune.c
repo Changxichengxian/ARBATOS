@@ -8,6 +8,7 @@
 
 #include "aux_tune.h"
 
+#include <stdio.h>
 #include <string.h>
 #include "FreeRTOS.h"
 #include "task.h"
@@ -23,6 +24,7 @@
 #include "host_tune_bridge.h"
 #include "image_remote_link.h"
 #include "manual_input.h"
+#include "robot_safety.h"
 #include "robot_task_profile.h"
 #include "types.h"
 
@@ -31,11 +33,34 @@ static volatile uint16_t aux_rx_len = 0;
 static char aux_cmd_line[AUX_TUNE_RX_LINE_MAX];
 static volatile bool_t aux_cmd_ready = 0;
 static volatile uint32_t aux_cmd_seq = 0;
+static volatile bool_t aux_param_dump_active = 0;
+static uint16_t aux_param_dump_index = 0u;
+
+#define AUX_TUNE_TX_LINE_MAX 192u
+#define AUX_PARAM_STAGE_MAX 16u
+static char aux_tx_line[AUX_TUNE_TX_LINE_MAX];
+
+typedef struct
+{
+    uint16_t id;
+    fp32 value;
+} aux_param_stage_entry_t;
+
+static bool_t aux_param_stage_active = 0;
+static uint8_t aux_param_stage_count = 0u;
+static aux_param_stage_entry_t aux_param_stage[AUX_PARAM_STAGE_MAX];
 
 static bool_t aux_tune_handle_line(const char *line);
 static bool_t aux_tune_parse_fp32(const char *s, fp32 *out);
 static bool_t aux_tune_parse_u16(const char *s, uint16_t *out);
 static bool_t aux_tune_parse_u32(const char *s, uint32_t *out);
+static bool_t aux_tune_try_send_param_dump(void);
+static bool_t aux_tune_send_param_line(uint16_t index);
+static bool_t aux_tune_send_param_last_result(void);
+static bool_t aux_tune_send_param_count(void);
+static bool_t aux_tune_send_text_line(const char *line);
+static bool_t aux_tune_commit_param_stage(void);
+static void aux_tune_format_fp32(char *out, uint16_t out_size, fp32 value);
 
 uint32_t aux_tune_get_cmd_seq(void)
 {
@@ -53,6 +78,10 @@ void aux_tune_rx_start(void)
     aux_rx_len = 0;
     aux_cmd_ready = 0;
     aux_cmd_seq = 0;
+    aux_param_stage_active = 0;
+    aux_param_stage_count = 0u;
+    aux_param_dump_active = 0;
+    aux_param_dump_index = 0u;
     aux_telem_reset();
     aux_autotune_reset_timing();
 
@@ -64,6 +93,11 @@ void aux_tune_rx_start(void)
 
 void aux_tune_try_send_telem(void)
 {
+    if (aux_tune_try_send_param_dump())
+    {
+        return;
+    }
+
     if (aux_autotune_try_send_frame())
     {
         return;
@@ -133,7 +167,7 @@ static bool_t aux_tune_handle_line(const char *line)
 
         if (aux_tune_parse_u16(key_s, &id))
         {
-            if (aux_param_set_config_param(id, v))
+            if (aux_param_set_config_param_ex(id, v) == AUX_PARAM_RESULT_OK)
             {
                 aux_cmd_seq++;
                 return 1;
@@ -142,7 +176,7 @@ static bool_t aux_tune_handle_line(const char *line)
         }
 
 #if AUX_TUNE_ENABLE_PARAM_NAME_LOOKUP
-        if (aux_param_set_config_param_by_name(key_s, v))
+        if (aux_param_set_config_param_by_name_ex(key_s, v) == AUX_PARAM_RESULT_OK)
         {
             aux_cmd_seq++;
             return 1;
@@ -184,8 +218,151 @@ static bool_t aux_tune_handle_line(const char *line)
         return 0;
     }
 
+    if (strcmp(argv[0], "param") == 0 || strcmp(argv[0], "p") == 0)
+    {
+        if (argc < 2)
+        {
+            return 0;
+        }
+
+        if (strcmp(argv[1], "begin") == 0)
+        {
+            aux_param_stage_active = 1;
+            aux_param_stage_count = 0u;
+            aux_cmd_seq++;
+            return 1;
+        }
+
+        if (strcmp(argv[1], "abort") == 0 || strcmp(argv[1], "cancel") == 0)
+        {
+            aux_param_stage_active = 0;
+            aux_param_stage_count = 0u;
+            aux_cmd_seq++;
+            return 1;
+        }
+
+        if (strcmp(argv[1], "stage") == 0)
+        {
+            uint16_t id = 0u;
+            fp32 value = 0.0f;
+
+            if (argc < 4 ||
+                aux_param_stage_active == 0 ||
+                aux_param_stage_count >= AUX_PARAM_STAGE_MAX ||
+                !aux_tune_parse_u16(argv[2], &id) ||
+                !aux_tune_parse_fp32(argv[3], &value))
+            {
+                return 0;
+            }
+            if (aux_param_validate_config_param(id, value) != AUX_PARAM_RESULT_OK)
+            {
+                return 0;
+            }
+            aux_param_stage[aux_param_stage_count].id = id;
+            aux_param_stage[aux_param_stage_count].value = value;
+            aux_param_stage_count++;
+            aux_cmd_seq++;
+            return 1;
+        }
+
+        if (strcmp(argv[1], "commit") == 0)
+        {
+            if (!aux_tune_commit_param_stage())
+            {
+                return 0;
+            }
+            aux_cmd_seq++;
+            return 1;
+        }
+
+        if (strcmp(argv[1], "count") == 0)
+        {
+            if (!aux_tune_send_param_count())
+            {
+                return 0;
+            }
+            aux_cmd_seq++;
+            return 1;
+        }
+
+        if (strcmp(argv[1], "last") == 0)
+        {
+            if (!aux_tune_send_param_last_result())
+            {
+                return 0;
+            }
+            aux_cmd_seq++;
+            return 1;
+        }
+
+        if (strcmp(argv[1], "dump") == 0 || strcmp(argv[1], "list") == 0)
+        {
+            aux_param_dump_active = 1;
+            aux_param_dump_index = 0u;
+            aux_cmd_seq++;
+            return 1;
+        }
+
+        if (strcmp(argv[1], "get") == 0 || strcmp(argv[1], "info") == 0)
+        {
+            uint16_t id = 0u;
+            aux_param_info_t info;
+            uint16_t index = 0u;
+            const uint16_t count = aux_param_get_count();
+
+            if (argc < 3 || !aux_tune_parse_u16(argv[2], &id))
+            {
+                return 0;
+            }
+            if (!aux_param_get_info(id, &info))
+            {
+                return 0;
+            }
+            for (uint16_t i = 0u; i < count; i++)
+            {
+                aux_param_info_t each;
+                if (aux_param_get_info_by_index(i, &each) && each.id == id)
+                {
+                    index = i;
+                    break;
+                }
+            }
+            if (!aux_tune_send_param_line(index))
+            {
+                return 0;
+            }
+            aux_cmd_seq++;
+            return 1;
+        }
+
+        if (strcmp(argv[1], "set") == 0)
+        {
+            uint16_t id = 0u;
+            fp32 value = 0.0f;
+
+            if (argc < 4 ||
+                !aux_tune_parse_u16(argv[2], &id) ||
+                !aux_tune_parse_fp32(argv[3], &value))
+            {
+                return 0;
+            }
+            if (aux_param_set_config_param_ex(id, value) != AUX_PARAM_RESULT_OK)
+            {
+                return 0;
+            }
+            aux_cmd_seq++;
+            return 1;
+        }
+
+        return 0;
+    }
+
     if (strcmp(argv[0], "clear") == 0)
     {
+        if (robot_safety_output_locked() == 0u)
+        {
+            return 0;
+        }
         if (!robot_profile_need_single_gimbal_control_task())
         {
             return 0;
@@ -316,6 +493,10 @@ static bool_t aux_tune_handle_line(const char *line)
 
     if (strcmp(argv[0], "cf") == 0)
     {
+        if (robot_safety_output_locked() == 0u)
+        {
+            return 0;
+        }
         if (!robot_profile_need_classic_chassis_control_task())
         {
             return 0;
@@ -372,6 +553,10 @@ static bool_t aux_tune_handle_line(const char *line)
 
     if (strcmp(argv[0], "cm") == 0)
     {
+        if (robot_safety_output_locked() == 0u)
+        {
+            return 0;
+        }
         if (!robot_profile_need_classic_chassis_control_task())
         {
             return 0;
@@ -426,6 +611,10 @@ static bool_t aux_tune_handle_line(const char *line)
     const bool_t is_yaw_angle = (strcmp(argv[0], "ya") == 0);
     if (is_pitch_speed || is_pitch_angle || is_yaw_speed || is_yaw_angle)
     {
+        if (robot_safety_output_locked() == 0u)
+        {
+            return 0;
+        }
         const bool_t single_gimbal_on = (bool_t)robot_profile_need_single_gimbal_control_task();
         const bool_t dual_gimbal_on = (bool_t)robot_profile_need_dual_gimbal_control_task();
         if (!single_gimbal_on && !(dual_gimbal_on && (is_yaw_speed || is_yaw_angle)))
@@ -523,6 +712,247 @@ static bool_t aux_tune_handle_line(const char *line)
 
     return 0;
 }
+
+static bool_t aux_tune_commit_param_stage(void)
+{
+    if (aux_param_stage_active == 0 || aux_param_stage_count == 0u)
+    {
+        return 0;
+    }
+
+    for (uint8_t i = 0u; i < aux_param_stage_count; i++)
+    {
+        if (aux_param_validate_config_param(aux_param_stage[i].id,
+                                            aux_param_stage[i].value) != AUX_PARAM_RESULT_OK)
+        {
+            return 0;
+        }
+    }
+
+    for (uint8_t i = 0u; i < aux_param_stage_count; i++)
+    {
+        if (aux_param_set_config_param_ex(aux_param_stage[i].id,
+                                          aux_param_stage[i].value) != AUX_PARAM_RESULT_OK)
+        {
+            return 0;
+        }
+    }
+
+    aux_param_stage_active = 0;
+    aux_param_stage_count = 0u;
+    return 1;
+}
+
+static bool_t aux_tune_send_text_line(const char *line)
+{
+    uint16_t len;
+
+    if (line == NULL)
+    {
+        return 0;
+    }
+    if (!aux_port_is_tune_mode(bsp_aux_link_get_baudrate()))
+    {
+        return 0;
+    }
+    if (!bsp_aux_link_tx_ready())
+    {
+        return 0;
+    }
+
+    len = (uint16_t)strlen(line);
+    if (len == 0u)
+    {
+        return 0;
+    }
+    if (len > (uint16_t)(AUX_TUNE_TX_LINE_MAX - 1u))
+    {
+        len = (uint16_t)(AUX_TUNE_TX_LINE_MAX - 1u);
+    }
+
+    return (bool_t)((bsp_aux_link_tx_dma((const uint8_t *)line, len) == 0) ? 1u : 0u);
+}
+
+static void aux_tune_format_fp32(char *out, uint16_t out_size, fp32 value)
+{
+    uint8_t negative = 0u;
+    int32_t whole;
+    fp32 frac_f;
+    uint32_t frac;
+
+    if (out == NULL || out_size == 0u)
+    {
+        return;
+    }
+
+    if (value != value)
+    {
+        (void)snprintf(out, out_size, "nan");
+        return;
+    }
+
+    if (value < 0.0f)
+    {
+        negative = 1u;
+        value = -value;
+    }
+
+    whole = (int32_t)value;
+    frac_f = value - (fp32)whole;
+    frac = (uint32_t)(frac_f * 1000000.0f + 0.5f);
+    if (frac >= 1000000u)
+    {
+        whole++;
+        frac -= 1000000u;
+    }
+
+    if (negative != 0u)
+    {
+        (void)snprintf(out, out_size, "-%ld.%06lu", (long)whole, (unsigned long)frac);
+    }
+    else
+    {
+        (void)snprintf(out, out_size, "%ld.%06lu", (long)whole, (unsigned long)frac);
+    }
+}
+
+static bool_t aux_tune_send_param_count(void)
+{
+    const int n = snprintf(aux_tx_line,
+                           sizeof(aux_tx_line),
+                           "param_count=%u\r\n",
+                           (unsigned int)aux_param_get_count());
+
+    if (n <= 0)
+    {
+        return 0;
+    }
+    return aux_tune_send_text_line(aux_tx_line);
+}
+
+static bool_t aux_tune_send_param_last_result(void)
+{
+    char value_s[28];
+    const aux_param_result_e result = aux_param_get_last_result();
+
+    aux_tune_format_fp32(value_s, (uint16_t)sizeof(value_s), aux_param_get_last_value());
+
+    const int n = snprintf(aux_tx_line,
+                           sizeof(aux_tx_line),
+                           "param_last id=%u value=%s result=%s\r\n",
+                           (unsigned int)aux_param_get_last_id(),
+                           value_s,
+                           aux_param_result_name(result));
+
+    if (n <= 0)
+    {
+        return 0;
+    }
+    return aux_tune_send_text_line(aux_tx_line);
+}
+
+static bool_t aux_tune_send_param_line(uint16_t index)
+{
+    aux_param_info_t info;
+    fp32 value = 0.0f;
+    char value_s[28];
+    char min_s[28];
+    char max_s[28];
+    int n;
+
+    if (!aux_param_get_info_by_index(index, &info))
+    {
+        return 0;
+    }
+    if (!aux_param_get_config_param(info.id, &value))
+    {
+        return 0;
+    }
+
+    aux_tune_format_fp32(value_s, (uint16_t)sizeof(value_s), value);
+    if (info.has_range != 0u)
+    {
+        aux_tune_format_fp32(min_s, (uint16_t)sizeof(min_s), info.min_value);
+        aux_tune_format_fp32(max_s, (uint16_t)sizeof(max_s), info.max_value);
+    }
+    else
+    {
+        (void)snprintf(min_s, sizeof(min_s), "*");
+        (void)snprintf(max_s, sizeof(max_s), "*");
+    }
+
+    n = snprintf(aux_tx_line,
+                 sizeof(aux_tx_line),
+                 "param id=%u value=%s range=%s..%s unit=%s safe=%u active=%u name=%s\r\n",
+                 (unsigned int)info.id,
+                 value_s,
+                 min_s,
+                 max_s,
+                 (info.unit != NULL) ? info.unit : "",
+                 (unsigned int)info.safe_only,
+                 (unsigned int)info.active,
+                 info.name);
+
+    if (n <= 0)
+    {
+        return 0;
+    }
+    aux_tx_line[sizeof(aux_tx_line) - 1u] = '\0';
+    return aux_tune_send_text_line(aux_tx_line);
+}
+
+static bool_t aux_tune_try_send_param_dump(void)
+{
+    const uint16_t count = aux_param_get_count();
+    int n;
+
+    if (!aux_param_dump_active)
+    {
+        return 0;
+    }
+    if (!aux_port_is_tune_mode(bsp_aux_link_get_baudrate()))
+    {
+        aux_param_dump_active = 0;
+        return 0;
+    }
+    if (!bsp_aux_link_tx_ready())
+    {
+        return 1;
+    }
+
+    if (aux_param_dump_index == 0u)
+    {
+        n = snprintf(aux_tx_line,
+                     sizeof(aux_tx_line),
+                     "param_dump begin count=%u\r\n",
+                     (unsigned int)count);
+        if (n <= 0 || !aux_tune_send_text_line(aux_tx_line))
+        {
+            return 1;
+        }
+        aux_param_dump_index = 1u;
+        return 1;
+    }
+
+    if ((uint16_t)(aux_param_dump_index - 1u) < count)
+    {
+        const uint16_t index = (uint16_t)(aux_param_dump_index - 1u);
+        if (aux_tune_send_param_line(index))
+        {
+            aux_param_dump_index++;
+        }
+        return 1;
+    }
+
+    n = snprintf(aux_tx_line, sizeof(aux_tx_line), "param_dump end\r\n");
+    if (n > 0 && aux_tune_send_text_line(aux_tx_line))
+    {
+        aux_param_dump_active = 0;
+        aux_param_dump_index = 0u;
+    }
+    return 1;
+}
+
 static bool_t aux_tune_parse_fp32(const char *s, fp32 *out)
 {
     if (s == NULL || out == NULL)

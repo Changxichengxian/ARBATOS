@@ -1214,45 +1214,6 @@ static void chassis_set_contorl(chassis_move_t *chassis_move_control)
 }
 
 /**
-  * @brief          four wheels speed is calculated by three param (mecanum / X-drive).
-  * @param[in]      vx_set: vertial speed
-  * @param[in]      vy_set: horizontal speed
-  * @param[in]      wz_set: rotation speed
-  * @param[out]     wheel_speed: four mecanum wheels speed
-  * @retval         none
-  */
-static void chassis_vector_to_mecanum_wheel_speed(const fp32 vx_set,
-                                                  const fp32 vy_set,
-                                                  const fp32 wz_set,
-                                                  const chassis_runtime_snapshot_t *snapshot,
-                                                  fp32 wheel_speed[4])
-{
-    // Wheel order: 0=LF(0x201), 1=RF(0x202), 2=LR(0x203), 3=RR(0x204)
-    // Robot frame: vx forward +, vy left +, wz CCW +
-    const fp32 motor_distance_to_center = (snapshot != NULL) ? snapshot->motor_distance_to_center : MOTOR_DISTANCE_TO_CENTER;
-    const uint8_t wheel_type = (snapshot != NULL) ? snapshot->wheel_type : g_config.chassis.wheel_type;
-    const fp32 yaw_term = motor_distance_to_center * wz_set;
-
-    if (wheel_type == (uint8_t)CHASSIS_WHEEL_TYPE_XDRIVE)
-    {
-        // X-drive (45° omni): rotate uses all wheels same direction.
-        wheel_speed[0] = vx_set + vy_set + yaw_term;  // LF
-        wheel_speed[1] = -vx_set + vy_set + yaw_term; // RF
-        wheel_speed[2] = -vx_set - vy_set + yaw_term; // LR
-        wheel_speed[3] = vx_set - vy_set + yaw_term;  // RR
-    }
-    else
-    {
-        // Mecanum: rotate uses left/right opposite direction.
-        wheel_speed[0] = vx_set - vy_set - yaw_term; // LF
-        wheel_speed[1] = vx_set + vy_set + yaw_term; // RF
-        wheel_speed[2] = vx_set + vy_set - yaw_term; // LR
-        wheel_speed[3] = vx_set - vy_set + yaw_term; // RR
-    }
-
-    // motor_dir is applied in feedback and current output paths
-}
-/**
   * @brief          control loop, according to control set-point, calculate motor current,
   *                 motor current will be sentto motor
   * @param[out]     chassis_move_control_loop: "chassis_move" valiable point

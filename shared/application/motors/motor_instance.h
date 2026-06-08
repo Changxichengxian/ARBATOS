@@ -14,6 +14,7 @@
 #include "LowCmd.h"
 #include "CAN_receive.h"
 #include "config.h"
+#include "motor_model_db.h"
 
 struct control_controller;
 

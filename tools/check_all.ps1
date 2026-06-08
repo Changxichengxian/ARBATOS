@@ -443,6 +443,127 @@ function Test-RobotconfigCoverage {
     }
 }
 
+function Expand-ConfigParamRange {
+    param([string]$RangeText)
+
+    $ids = New-Object System.Collections.Generic.List[int]
+    if ([string]::IsNullOrWhiteSpace($RangeText)) {
+        return $ids
+    }
+
+    foreach ($part in $RangeText.Split(",")) {
+        $trimmed = $part.Trim()
+        if ($trimmed -eq "") {
+            continue
+        }
+
+        $range = [regex]::Match($trimmed, '^(\d+)\s*-\s*(\d+)$')
+        if ($range.Success) {
+            $start = [int]$range.Groups[1].Value
+            $end = [int]$range.Groups[2].Value
+            if ($start -gt $end) {
+                $tmp = $start
+                $start = $end
+                $end = $tmp
+            }
+            for ($id = $start; $id -le $end; $id++) {
+                $ids.Add($id)
+            }
+            continue
+        }
+
+        $single = [regex]::Match($trimmed, '^(\d+)$')
+        if ($single.Success) {
+            $ids.Add([int]$single.Groups[1].Value)
+            continue
+        }
+
+        Add-CheckError "Bad config param range item '$trimmed'."
+    }
+
+    return $ids
+}
+
+function Test-ConfigParamGovernance {
+    Write-Host "[check] config param governance"
+
+    $paramPath = Join-Path $script:RepoRoot "shared\application\robot\config_param_list.inc"
+    if (-not (Test-Path -LiteralPath $paramPath -PathType Leaf)) {
+        Add-CheckError "Missing config parameter list: $(Format-RepoPath $paramPath)"
+        return
+    }
+
+    $content = Get-Content -LiteralPath $paramPath -Raw -Encoding UTF8
+    $pattern = '(?m)^\s*CONFIG_PARAM_(F32_RANGE|F32|U16|U8|I8_RANGE|BOOL|U8_MAX|U8_DEFAULT)\(\s*(\d+)u?\s*,\s*"([^"]+)"\s*,\s*([A-Z0-9_]+)\s*,\s*(g_config\.[^,\)]+)'
+    $matches = [regex]::Matches($content, $pattern)
+    if ($matches.Count -eq 0) {
+        Add-CheckError "$(Format-RepoPath $paramPath): no CONFIG_PARAM entries found."
+        return
+    }
+
+    $ids = @{}
+    $names = @{}
+    $paramIds = [System.Collections.Generic.HashSet[int]]::new()
+    $paramNames = @{}
+
+    foreach ($match in $matches) {
+        $id = [int]$match.Groups[2].Value
+        $name = $match.Groups[3].Value
+        $field = $match.Groups[5].Value.Trim()
+
+        [void]$paramIds.Add($id)
+        $paramNames[$id] = $name
+
+        if (-not $ids.ContainsKey($id)) {
+            $ids[$id] = New-Object System.Collections.Generic.List[string]
+        }
+        $ids[$id].Add($name)
+
+        if (-not $names.ContainsKey($name)) {
+            $names[$name] = New-Object System.Collections.Generic.List[int]
+        }
+        $names[$name].Add($id)
+
+        if ($field -notmatch '^g_config\.') {
+            Add-CheckError "$(Format-RepoPath $paramPath): param $id '$name' does not write into g_config."
+        }
+    }
+
+    foreach ($entry in $ids.GetEnumerator()) {
+        if ($entry.Value.Count -gt 1) {
+            Add-CheckError "$(Format-RepoPath $paramPath): duplicate config param id $($entry.Key): $($entry.Value -join ', ')."
+        }
+    }
+
+    foreach ($entry in $names.GetEnumerator()) {
+        if ($entry.Value.Count -gt 1) {
+            Add-CheckError "$(Format-RepoPath $paramPath): duplicate config param name '$($entry.Key)': $($entry.Value -join ', ')."
+        }
+    }
+
+    $robotConfigFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "Robotconfig") -Filter "config.c" -Recurse | Sort-Object FullName)
+    foreach ($file in $robotConfigFiles) {
+        $configContent = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
+        if ($configContent -match 'g_config_active_blocks') {
+            Add-CheckError "$(Format-RepoPath $file.FullName): config_get_block_table must return the full block table; use config_block_is_active for enable state."
+        }
+
+        $covered = [System.Collections.Generic.HashSet[int]]::new()
+        $blockMatches = [regex]::Matches($configContent, '\{CONFIG_BLOCK_[^,]+,\s*"[^"]+"\s*,\s*"([^"]*)"')
+        foreach ($blockMatch in $blockMatches) {
+            foreach ($id in (Expand-ConfigParamRange $blockMatch.Groups[1].Value)) {
+                [void]$covered.Add($id)
+            }
+        }
+
+        foreach ($id in $paramIds) {
+            if (-not $covered.Contains($id)) {
+                Add-CheckError "$(Format-RepoPath $file.FullName): config param $id '$($paramNames[$id])' is not covered by any block param_range."
+            }
+        }
+    }
+}
+
 function Test-TaskModuleNames {
     param([object[]]$Projects)
 
@@ -1136,6 +1257,7 @@ foreach ($project in $projects) {
 }
 
 Test-RobotconfigCoverage $projects
+Test-ConfigParamGovernance
 Test-TaskModuleNames $projects
 Test-ProfileIdentity $projects
 Test-ProfileProductRules $projects

@@ -153,18 +153,6 @@ static void wheelleg_core_point_from_local(const wheelleg_foot_point_t *src, whe
     dst->length_m = src->length_m;
 }
 
-static void wheelleg_local_point_from_core(const wheelleg_core_foot_point_t *src, wheelleg_foot_point_t *dst)
-{
-    if (src == NULL || dst == NULL)
-    {
-        return;
-    }
-
-    dst->x_m = src->x_m;
-    dst->y_m = src->y_m;
-    dst->length_m = src->length_m;
-}
-
 typedef struct
 {
     wheelleg_actuator_map_t actuator[WHEELLEG_SIDE_COUNT];
@@ -993,26 +981,6 @@ static uint16_t wheelleg_update_feedback(uint32_t now_ms)
     return faults;
 }
 
-static uint8_t wheelleg_forward_point(fp32 front_pos,
-                                      fp32 back_pos,
-                                      wheelleg_foot_point_t *out)
-{
-    const wheelleg_core_geometry_t geo = wheelleg_core_geometry_from_config();
-    wheelleg_core_foot_point_t core_out;
-
-    if (out == NULL)
-    {
-        return 0u;
-    }
-    if (wheelleg_core_forward_point(&geo, front_pos, back_pos, &core_out) == 0u)
-    {
-        return 0u;
-    }
-
-    wheelleg_local_point_from_core(&core_out, out);
-    return 1u;
-}
-
 static uint8_t wheelleg_calc_kinematics(wheelleg_leg_calc_t *leg,
                                         fp32 front_pos,
                                         fp32 back_pos,
@@ -1029,24 +997,6 @@ static uint8_t wheelleg_calc_kinematics(wheelleg_leg_calc_t *leg,
 static uint8_t wheelleg_calc_vmc(wheelleg_leg_calc_t *leg)
 {
     return wheelleg_core_calc_vmc(leg);
-}
-
-static void wheelleg_fill_torque_cmd(MotorCmd *cmd, fp32 torque)
-{
-    control_core_cmd_set_state_torque(cmd, 0.0f, 0.0f, 0.0f, 0.0f, torque);
-}
-
-static void wheelleg_send_torque(MotorId id, fp32 torque)
-{
-    MotorCmd cmd;
-
-    if ((uint32_t)id >= (uint32_t)MotorCount)
-    {
-        return;
-    }
-
-    wheelleg_fill_torque_cmd(&cmd, torque);
-    (void)motor_instance_cmd_set_ids(&id, &cmd, 1u);
 }
 
 static uint8_t wheelleg_send_state_cmd(MotorId id,

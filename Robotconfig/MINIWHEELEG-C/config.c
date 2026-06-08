@@ -117,26 +117,15 @@ static const config_block_desc_t g_config_blocks[] = {
     {CONFIG_BLOCK_COMMON_SDLOG, "common.sdlog", "249", &g_config.sdlog, sizeof(g_config.sdlog), config_block_active_always},
 };
 
-static config_block_desc_t g_config_active_blocks[CONFIG_BLOCK_COUNT];
 
 // 返回调参块表，同时可选返回块数量。
 const config_block_desc_t *config_get_block_table(uint32_t *count)
 {
-    uint32_t active_count = 0u;
-    for (uint32_t i = 0u; i < (uint32_t)(sizeof(g_config_blocks) / sizeof(g_config_blocks[0])); i++)
-    {
-        const config_block_desc_t *block = &g_config_blocks[i];
-        if (block->is_active == NULL || block->is_active())
-        {
-            g_config_active_blocks[active_count++] = *block;
-        }
-    }
-
     if (count != NULL)
     {
-        *count = active_count;
+        *count = (uint32_t)(sizeof(g_config_blocks) / sizeof(g_config_blocks[0]));
     }
-    return g_config_active_blocks;
+    return g_config_blocks;
 }
 
 // 按块 ID 查找调参块描述；找不到返回 NULL。
@@ -144,11 +133,9 @@ const config_block_desc_t *config_find_block(config_block_id_e id)
 {
     for (uint32_t i = 0u; i < (uint32_t)(sizeof(g_config_blocks) / sizeof(g_config_blocks[0])); i++)
     {
-        const config_block_desc_t *block = &g_config_blocks[i];
-        if (block->id == id &&
-            (block->is_active == NULL || block->is_active()))
+        if (g_config_blocks[i].id == id)
         {
-            return block;
+            return &g_config_blocks[i];
         }
     }
     return NULL;

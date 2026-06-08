@@ -1,5 +1,7 @@
 ﻿// Central parameter list for aux-port tuning.
 // Keep numeric id, readable name, storage field and apply action together.
+// Use CONFIG_PARAM_F32_RANGE for output-sensitive float params when a safe
+// engineering range is known.
 
 // gimbal pids
 CONFIG_PARAM_F32(1, "gimbal.yaw_speed_pid.kp", CONFIG_PARAM_SCOPE_GIMBAL_SINGLE, g_config.gimbal.yaw_speed_pid.kp, CONFIG_PARAM_APPLY_GIMBAL_YAW_SPEED_PID)
@@ -250,11 +252,11 @@ CONFIG_PARAM_U8_DEFAULT(637, "wheelleg_mit.control_stage", CONFIG_PARAM_SCOPE_LO
 CONFIG_PARAM_F32(638, "wheelleg_mit.lqr_wheel_torque_scale", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.lqr_wheel_torque_scale, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_F32(639, "wheelleg_mit.lqr_hip_torque_scale", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.lqr_hip_torque_scale, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_U8_DEFAULT(640, "wheelleg_mit.pitch_trim_enable", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.pitch_trim_enable, (uint8_t)1u, (uint8_t)0u, CONFIG_PARAM_APPLY_NONE)
-CONFIG_PARAM_F32(641, "wheelleg_mit.pitch_trim_gain", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.pitch_trim_gain, CONFIG_PARAM_APPLY_NONE)
-CONFIG_PARAM_F32(642, "wheelleg_mit.pitch_trim_max_rad", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.pitch_trim_max_rad, CONFIG_PARAM_APPLY_NONE)
-CONFIG_PARAM_F32(643, "wheelleg_mit.pitch_trim_rate_radps", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.pitch_trim_rate_radps, CONFIG_PARAM_APPLY_NONE)
-CONFIG_PARAM_F32(644, "wheelleg_mit.pitch_trim_v_deadband_mps", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.pitch_trim_v_deadband_mps, CONFIG_PARAM_APPLY_NONE)
-CONFIG_PARAM_F32(645, "wheelleg_mit.pitch_trim_lpf", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.pitch_trim_lpf, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_F32_RANGE(641, "wheelleg_mit.pitch_trim_gain", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.pitch_trim_gain, -1.0f, 1.0f, "gain", CONFIG_PARAM_APPLY_NONE, CONFIG_PARAM_POLICY_SAFE_ONLY)
+CONFIG_PARAM_F32_RANGE(642, "wheelleg_mit.pitch_trim_max_rad", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.pitch_trim_max_rad, 0.0f, 0.35f, "rad", CONFIG_PARAM_APPLY_NONE, CONFIG_PARAM_POLICY_SAFE_ONLY)
+CONFIG_PARAM_F32_RANGE(643, "wheelleg_mit.pitch_trim_rate_radps", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.pitch_trim_rate_radps, 0.0f, 0.20f, "radps", CONFIG_PARAM_APPLY_NONE, CONFIG_PARAM_POLICY_SAFE_ONLY)
+CONFIG_PARAM_F32_RANGE(644, "wheelleg_mit.pitch_trim_v_deadband_mps", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.pitch_trim_v_deadband_mps, 0.0f, 0.20f, "mps", CONFIG_PARAM_APPLY_NONE, CONFIG_PARAM_POLICY_SAFE_ONLY)
+CONFIG_PARAM_F32_RANGE(645, "wheelleg_mit.pitch_trim_lpf", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.pitch_trim_lpf, 0.001f, 1.0f, "ratio", CONFIG_PARAM_APPLY_NONE, CONFIG_PARAM_POLICY_SAFE_ONLY)
 
 // manual input
 CONFIG_PARAM_U8_DEFAULT(300, "manual_input.active_source", CONFIG_PARAM_SCOPE_COMMON, g_config.manual_input.active_source, (uint8_t)MANUAL_INPUT_SRC_MAX, (uint8_t)MANUAL_INPUT_SRC_AUTO, CONFIG_PARAM_APPLY_REMOTE_REFRESH)

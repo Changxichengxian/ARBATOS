@@ -387,7 +387,7 @@ static inline uint8_t robot_profile_find_module_by_name(const char *name, robot_
         {
             if (out != NULL)
             {
-                *out = modules[i].module;
+                *out = (robot_task_module_e)modules[i].module;
             }
             return 1u;
         }
