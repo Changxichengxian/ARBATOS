@@ -1424,8 +1424,9 @@ static void watch_copy_wheelleg_mit_motor(watch_wheelleg_mit_motor_t *out,
                                           int8_t dir,
                                           uint8_t use_rel_position)
 {
-    MotorCmd cmd;
-    MotorState fb;
+    MotorCmd cmd = {0};
+    MotorState fb = {0};
+    MotorApplied applied = {0};
     MotorId id;
 
     if (out == NULL)
@@ -1443,11 +1444,34 @@ static void watch_copy_wheelleg_mit_motor(watch_wheelleg_mit_motor_t *out,
     {
         out->cmd_active = cmd.active;
         out->cmd_mode = cmd.mode;
+        out->cmd_writer = cmd.writer;
+        out->cmd_timeout_ms = cmd.timeoutMs;
+        out->cmd_seq = cmd.seq;
+        out->cmd_tick_ms = cmd.tick;
         out->cmd_position_deg = watch_rad_to_deg(cmd.q);
         out->cmd_velocity_deg_s = watch_rad_to_deg(cmd.dq);
         out->cmd_kp = cmd.kp;
         out->cmd_kd = cmd.kd;
         out->cmd_torque_nm = cmd.tau;
+    }
+
+    if (LowStateGetApplied(id, &applied) != 0u)
+    {
+        out->applied_active = applied.active;
+        out->applied_mode = applied.mode;
+        out->applied_drive_state = applied.driveState;
+        out->applied_flags = applied.flags;
+        out->applied_bus = applied.bus;
+        out->applied_transport = applied.transport;
+        out->applied_protocol = applied.protocol;
+        out->applied_tx_id = applied.txId;
+        out->applied_tick_ms = applied.tick;
+        out->applied_current = applied.current;
+        out->applied_position_deg = watch_rad_to_deg(applied.q);
+        out->applied_velocity_deg_s = watch_rad_to_deg(applied.dq);
+        out->applied_kp = applied.kp;
+        out->applied_kd = applied.kd;
+        out->applied_torque_nm = applied.tau;
     }
 
     if (LowStateGetMotor(id, &fb) != 0u)
@@ -1519,6 +1543,7 @@ static void watch_copy_wheelleg_mit(void)
     const uint8_t run_variant = (uint8_t)robot_mode_variant();
     wheelleg_status_t status;
     wheelleg_state_t state;
+    LowCmdDiag lowcmd_diag = {0};
     uint8_t status_valid;
     uint8_t state_valid;
 
@@ -1530,10 +1555,19 @@ static void watch_copy_wheelleg_mit(void)
 
     status_valid = wheelleg_status_read(&status);
     state_valid = wheelleg_state_read(&state);
+    (void)LowCmdGetDiag(&lowcmd_diag);
 
     g_watch.wheelleg_mit.status_valid = status_valid;
     g_watch.wheelleg_mit.state_valid = state_valid;
     g_watch.wheelleg_mit.profile_on = profile_on;
+    g_watch.wheelleg_mit.lowcmd_seq = lowcmd_diag.seq;
+    g_watch.wheelleg_mit.lowcmd_rejected_count = lowcmd_diag.rejected_count;
+    g_watch.wheelleg_mit.lowcmd_emergency_stop_count = lowcmd_diag.emergency_stop_count;
+    g_watch.wheelleg_mit.lowcmd_last_reject_tick_ms = lowcmd_diag.last_reject_tick;
+    g_watch.wheelleg_mit.lowcmd_last_reject_writer = lowcmd_diag.last_reject_writer;
+    g_watch.wheelleg_mit.lowcmd_last_reject_owner = lowcmd_diag.last_reject_owner;
+    g_watch.wheelleg_mit.lowcmd_emergency_writer = lowcmd_diag.emergency_writer;
+    g_watch.wheelleg_mit.lowcmd_emergency_active = lowcmd_diag.emergency_active;
     g_watch.wheelleg_mit.input_chassis_switch = chassis_sw;
     g_watch.wheelleg_mit.enable_switch_pos = g_config.wheelleg_mit.enable_switch_pos;
     g_watch.wheelleg_mit.manual_on = watch_wheelleg_manual_enabled_by_switch(chassis_sw);

@@ -422,7 +422,7 @@ static inline void wheelleg_core_observer_update(wheelleg_core_observer_t *obser
     }
 
     lpf = wheelleg_core_clamp(lpf, 0.01f, 1.0f);
-    wr = -right_wheel_velocity_radps + right_leg->d_alpha - gyro_y;
+    wr = right_wheel_velocity_radps + right_leg->d_alpha - gyro_y;
     wl = left_wheel_velocity_radps + left_leg->d_alpha - gyro_y;
     vr = wr * wheel_radius_m +
          right_leg->length * right_leg->d_theta * cosf(right_leg->theta) +

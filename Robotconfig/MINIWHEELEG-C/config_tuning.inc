@@ -86,6 +86,12 @@
             .control_stage = 0u, // [637] 0 bench, 1 position+LQR, 2 VMC height, 3 VMC assist
             .lqr_wheel_torque_scale = 0.18f, // [638]
             .lqr_hip_torque_scale = 0.18f, // [639]
+            .pitch_trim_enable = 1u, // [640] 空闲时按速度漂移慢慢修正 pitch 平衡目标
+            .pitch_trim_gain = 0.08f, // [641] 正负可改，用来翻自动修正方向
+            .pitch_trim_max_rad = 0.18f, // [642]
+            .pitch_trim_rate_radps = 0.015f, // [643]
+            .pitch_trim_v_deadband_mps = 0.015f, // [644]
+            .pitch_trim_lpf = 0.03f, // [645]
             .right_front_actuator = (uint8_t)Motor15,
             .right_back_actuator = (uint8_t)Motor16,
             .right_wheel_actuator = (uint8_t)Motor12,

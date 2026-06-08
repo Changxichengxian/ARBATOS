@@ -968,6 +968,12 @@ typedef struct
     uint8_t control_stage; // [637] 0 bench, 1 position+LQR, 2 VMC height, 3 VMC assist
     fp32 lqr_wheel_torque_scale; // [638]
     fp32 lqr_hip_torque_scale; // [639]
+    uint8_t pitch_trim_enable; // [640]
+    fp32 pitch_trim_gain; // [641]
+    fp32 pitch_trim_max_rad; // [642]
+    fp32 pitch_trim_rate_radps; // [643]
+    fp32 pitch_trim_v_deadband_mps; // [644]
+    fp32 pitch_trim_lpf; // [645]
 
     uint8_t right_front_actuator; // MotorId
     uint8_t right_back_actuator;  // MotorId
