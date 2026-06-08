@@ -32,6 +32,7 @@
 #include "rt_profiler.h"
 #include "robot_task_profile.h"
 #include "robot_mode.h"
+#include "robot_safety.h"
 
 #include <string.h>
 
@@ -1059,7 +1060,7 @@ static void can_tx_process_instance(const motor_route_t *route,
     can_tx_update_applied(route, (have_cmd != 0u) ? &cmd : NULL, applied_current, flags);
 }
 
-static void can_tx_exec_instances(uint8_t online)
+static void can_tx_exec_instances(uint8_t online, uint8_t output_locked)
 {
     sdlog_actuator_current_t log = {0};
     const uint8_t count = motor_route_count();
@@ -1081,7 +1082,7 @@ static void can_tx_exec_instances(uint8_t online)
             continue;
         }
 
-        allowed = can_tx_route_allowed(route, online);
+        allowed = (output_locked != 0u) ? 0u : can_tx_route_allowed(route, online);
         can_tx_process_instance(route, allowed, &log);
     }
 
@@ -1208,8 +1209,9 @@ void can_command_tx_task(void const *pvParameters)
         watch_task_beat(WATCH_TASK_CAN_COMMAND_TX);
         const uint16_t period_ms = robot_profile_can_command_tx_period_ms();
         const bool_t dbus_offline = toe_is_error(DBUS_TOE);
+        const uint8_t output_locked = robot_safety_output_locked();
 
-        can_tx_exec_instances(dbus_offline ? 0u : 1u);
+        can_tx_exec_instances(dbus_offline ? 0u : 1u, output_locked);
         can_tx_emit_rm_frames();
 
         rt_profiler_end(RT_PROFILER_CAN_COMMAND_TX_LOOP, loop_start_us);

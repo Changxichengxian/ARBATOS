@@ -10,6 +10,7 @@
 #include "bsp_usart.h"
 #include "motor_config.h"
 #include "motor_instance.h"
+#include "robot_safety.h"
 
 #include <string.h>
 
@@ -425,6 +426,11 @@ static uint8_t n6014b_build_cmd_from_actuator(const motor_node_param_t *node,
     if (limits == NULL)
     {
         return 0u;
+    }
+
+    if (robot_safety_output_locked() != 0u)
+    {
+        return 1u;
     }
 
     (void)memset(&src, 0, sizeof(src));

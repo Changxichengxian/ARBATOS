@@ -11,6 +11,7 @@
 #include "cmsis_os.h"
 #include "bsp_servo_pwm.h"
 #include "manual_input.h"
+#include "robot_safety.h"
 
 #define SERVO_MIN_PWM   500
 #define SERVO_MAX_PWM   2500
@@ -24,7 +25,6 @@
 
 #define SERVO_MINUS_PWM_KEY KEY_PRESSED_OFFSET_SHIFT
 
-const manual_input_state_t *servo_rc;
 const static uint16_t servo_key[4] = {SERVO1_ADD_PWM_KEY, SERVO2_ADD_PWM_KEY, SERVO3_ADD_PWM_KEY, SERVO4_ADD_PWM_KEY};
 uint16_t servo_pwm[4] = {SERVO_MIN_PWM, SERVO_MIN_PWM, SERVO_MIN_PWM, SERVO_MIN_PWM};
 /**
@@ -39,18 +39,27 @@ uint16_t servo_pwm[4] = {SERVO_MIN_PWM, SERVO_MIN_PWM, SERVO_MIN_PWM, SERVO_MIN_
   */
 void servo_control_task(void const * argument)
 {
-    servo_rc = get_remote_control_point();
+    (void)argument;
 
     while(1)
     {
+        manual_input_state_t servo_rc = {0};
+        const uint8_t output_locked = robot_safety_output_locked();
+
+        (void)manual_input_get_current_copy(&servo_rc);
         for(uint8_t i = 0; i < 4; i++)
         {
+            if(output_locked != 0u)
+            {
+                servo_pwm_set(0u, i);
+                continue;
+            }
 
-            if( (servo_rc->key.v & SERVO_MINUS_PWM_KEY) && (servo_rc->key.v & servo_key[i]))
+            if( (servo_rc.key.v & SERVO_MINUS_PWM_KEY) && (servo_rc.key.v & servo_key[i]))
             {
                 servo_pwm[i] -= PWM_DETAL_VALUE;
             }
-            else if(servo_rc->key.v & servo_key[i])
+            else if(servo_rc.key.v & servo_key[i])
             {
                 servo_pwm[i] += PWM_DETAL_VALUE;
             }

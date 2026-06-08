@@ -25,6 +25,7 @@
 #include "motor_instance.h"
 #include "motor_config.h"
 #include "arm_motor_table.h"
+#include "robot_safety.h"
 
 #include "arm_motion.h"
 #include "arm_core.h"
@@ -659,6 +660,16 @@ static void arm_step_j0_unitree(const arm_motor_entry_t *entry)
 
     if (unitree_motor_configure(&driver_cfg) == 0u)
     {
+        arm_sync_j0_unitree_state();
+        return;
+    }
+
+    if (robot_safety_output_locked() != 0u)
+    {
+        unitree_motor_cmd_t zero_cmd = {0};
+        g_arm_j0_unitree_cmd_output_speed_rad_s = 0.0f;
+        g_arm_j0_unitree_cmd_output_kd = 0.0f;
+        (void)unitree_motor_send_cmd(&driver_cfg, &zero_cmd);
         arm_sync_j0_unitree_state();
         return;
     }

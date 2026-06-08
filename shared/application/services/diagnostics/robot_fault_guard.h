@@ -10,6 +10,7 @@
 
 #include "LowCmd.h"
 #include "main.h"
+#include "robot_lifecycle.h"
 #include "watch.h"
 
 typedef enum
@@ -33,6 +34,7 @@ static inline void robot_fault_enter_safe_state_ex(uint32_t reason,
     watch_diag_set_error_args(arg0, arg1);
     watch_diag_mark_error_handler(HAL_GetTick(), __get_IPSR());
     watch_diag_mark_fatal(reason, task_handle, task_name);
+    robot_lifecycle_enter_fault(ROBOT_LIFECYCLE_REASON_FATAL_FAULT);
     (void)LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_FAULT);
 }
 
