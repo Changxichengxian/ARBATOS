@@ -25,14 +25,24 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "config.h"
+#include "robot_task_build_config.h"
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
 #include "chassis_control_task.h"
+#endif
 #include "control_manager.h"
 #include "robot_fault_guard.h"
 #include "robot_control_registry.h"
+#if ROBOT_TASK_BUILD_ANY_GIMBAL
 #include "gimbal_control_task.h"
+#endif
+#if ROBOT_TASK_BUILD_IMU
 #include "INS_task.h"
+#endif
 #include "app_task_bootstrap.h"
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
 #include "wheelleg_mit_task.h"
+#endif
 
 /* USER CODE END Includes */
 
@@ -61,15 +71,23 @@ StaticTask_t KeyTaskControlBlock;
 osThreadId_t LcdTaskHandle;
 StackType_t LcdTaskBuffer[256];
 StaticTask_t LcdTaskControlBlock;
+#if ROBOT_TASK_BUILD_IMU
 osThreadId_t ImuTaskHandle;
 StackType_t ImuTaskBuffer[1024];
 StaticTask_t ImuTaskControlBlock;
+#endif
 osThreadId_t FunTestHandle;
 StackType_t FunTestBuffer[128];
 StaticTask_t FunTestControlBlock;
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
 osThreadId_t chassisControlTaskHandle;
+#endif
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
 osThreadId_t wheellegMitTaskHandle;
+#endif
+#if ROBOT_TASK_BUILD_ANY_GIMBAL
 osThreadId_t gimbalControlTaskHandle;
+#endif
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -108,54 +126,90 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 APP_THREAD_ATTR(defaultTask, osPriorityNormal, 128);
 APP_STATIC_THREAD_ATTR(KeyTask, osPriorityRealtime, KeyTaskBuffer, KeyTaskControlBlock);
 APP_STATIC_THREAD_ATTR(LcdTask, osPriorityNormal, LcdTaskBuffer, LcdTaskControlBlock);
+#if ROBOT_TASK_BUILD_IMU
 APP_STATIC_THREAD_ATTR(ImuTask, osPriorityHigh, ImuTaskBuffer, ImuTaskControlBlock);
+#endif
 APP_STATIC_THREAD_ATTR(FunTest, osPriorityBelowNormal, FunTestBuffer, FunTestControlBlock);
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
 APP_THREAD_ATTR(chassisControlTask, osPriorityAboveNormal, 512);
+#endif
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
 APP_THREAD_ATTR(wheellegMitTask, osPriorityAboveNormal, 768);
+#endif
+#if ROBOT_TASK_BUILD_ANY_GIMBAL
 APP_THREAD_ATTR(gimbalControlTask, osPriorityHigh, 1024);
+#endif
 
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
 static osThreadId_t app_create_chassis_control_task(void)
 {
   return APP_THREAD_CREATE(chassisControlTask, chassis_control_task);
 }
+#endif
 
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
 static osThreadId_t app_create_wheelleg_mit_task(void)
 {
   return APP_THREAD_CREATE(wheellegMitTask, wheelleg_mit_task);
 }
+#endif
 
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL
 static osThreadId_t app_create_single_gimbal_task(void)
 {
   return APP_THREAD_CREATE(gimbalControlTask, gimbal_control_task);
 }
+#endif
 
+#if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
 static osThreadId_t app_create_dual_yaw_gimbal_task(void)
 {
   return APP_THREAD_CREATE(gimbalControlTask, dual_yaw_gimbal_control_task);
 }
+#endif
 
+#if ROBOT_TASK_BUILD_IMU
 static osThreadId_t app_create_imu_task(void)
 {
   return APP_THREAD_CREATE(ImuTask, imu_fusion_task);
 }
+#endif
 
 static void app_clear_module_task_handles(void)
 {
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
   chassisControlTaskHandle = NULL;
+#endif
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
   wheellegMitTaskHandle = NULL;
+#endif
+#if ROBOT_TASK_BUILD_ANY_GIMBAL
   gimbalControlTaskHandle = NULL;
+#endif
+#if ROBOT_TASK_BUILD_IMU
   ImuTaskHandle = NULL;
+#endif
 }
 
 static void app_create_module_tasks(void)
 {
   static const app_task_module_desc_t module_tasks[] =
   {
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
     {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, &chassisControlTaskHandle, app_create_chassis_control_task},
+#endif
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
     {ROBOT_TASK_MODULE_WHEELLEG_MIT, &wheellegMitTaskHandle, app_create_wheelleg_mit_task},
+#endif
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL
     {ROBOT_TASK_MODULE_SINGLE_GIMBAL, &gimbalControlTaskHandle, app_create_single_gimbal_task},
+#endif
+#if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
     {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL, &gimbalControlTaskHandle, app_create_dual_yaw_gimbal_task},
+#endif
+#if ROBOT_TASK_BUILD_IMU
     {ROBOT_TASK_MODULE_IMU, &ImuTaskHandle, app_create_imu_task},
+#endif
   };
 
   app_clear_module_task_handles();

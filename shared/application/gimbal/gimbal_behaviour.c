@@ -14,7 +14,10 @@
  * - 被调用方：gimbal_control_task 先决定行为，再进入角度/速度/电流控制。
  */
 
+#include "config.h"
+#include "robot_task_build_config.h"
 
+#if ROBOT_TASK_BUILD_ANY_GIMBAL
 
 #include "gimbal_behaviour.h"
 #include "arm_math.h"
@@ -827,3 +830,5 @@ static void gimbal_motionless_control(fp32 *yaw, fp32 *pitch, gimbal_control_t *
     *yaw = 0.0f;
     *pitch = 0.0f;
 }
+
+#endif

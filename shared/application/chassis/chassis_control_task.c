@@ -14,6 +14,11 @@
  * - 输出：电流命令写入 LowCmd，由 CAN 发送任务统一发出。
  */
 
+#include "config.h"
+#include "robot_task_build_config.h"
+
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
+
 #include "chassis_control_task.h"
 #include "chassis_behaviour.h"
 #include "chassis_core.h"
@@ -1295,3 +1300,5 @@ static void chassis_control_loop(chassis_move_t *chassis_move_control_loop,
         chassis_move_control_loop->motor_chassis[i].give_current = (int16_t)(chassis_move_control_loop->motor_speed_pid[i].out * (fp32)motor_dir);
     }
 }
+
+#endif

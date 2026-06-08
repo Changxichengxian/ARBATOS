@@ -367,7 +367,7 @@ typedef struct
     uint8_t live_imu_online;
     uint8_t live_sdlog_active;
     uint8_t live_lqr_debug_valid;
-    uint8_t reserved0;
+    uint8_t live_operation_mode;
     uint16_t live_fault_flags;
     uint16_t reserved1;
 

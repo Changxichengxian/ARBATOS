@@ -1864,6 +1864,7 @@ static void watch_copy_diag(void)
 
     sdlog_get_stats(&sd_stats);
     g_watch.diag.live_sdlog_active = sd_stats.active;
+    g_watch.diag.live_operation_mode = (uint8_t)robot_mode_current();
     g_watch.diag.live_imu_online =
         (uint8_t)((toe_is_error(BOARD_GYRO_TOE) == 0u && toe_is_error(BOARD_ACCEL_TOE) == 0u) ? 1u : 0u);
     g_watch.diag.pitch_deg = g_watch.imu.angle_deg[INS_PITCH_ADDRESS_OFFSET];

@@ -19,7 +19,13 @@
 #include "sdcard.h"
 
 #define BUZZER_PCM_FILE_TASK_STACK_WORDS 512u
+#ifndef BUZZER_PCM_FILE_READ_CHUNK
+#if defined(STM32F407xx)
+#define BUZZER_PCM_FILE_READ_CHUNK 2048u
+#else
 #define BUZZER_PCM_FILE_READ_CHUNK 4096u
+#endif
+#endif
 #define BUZZER_PCM_FILE_PATH_MAX 256u
 #define BUZZER_PCM_FILE_NOTIFY_PLAY (1u << 0)
 #define BUZZER_PCM_FILE_NOTIFY_STOP (1u << 1)

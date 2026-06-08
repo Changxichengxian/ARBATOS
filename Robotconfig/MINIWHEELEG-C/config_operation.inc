@@ -1,7 +1,7 @@
 // Included by config.c inside g_config's initializer; do not compile directly.
     .profile =
         {
-            .task_module_count = 15u,
+            .task_module_count = 14u,
             .task_modules =
                 {
                     ROBOT_TASK_MODULE_STARTUP_SERVICE,
@@ -17,13 +17,18 @@
                     ROBOT_TASK_MODULE_HOST_LINK,
                     ROBOT_TASK_MODULE_ELRS_LINK,
                     ROBOT_TASK_MODULE_BATTERY_MONITOR,
-                    ROBOT_TASK_MODULE_SERVO,
                     ROBOT_TASK_MODULE_SDLOG,
                 },
         },
 
     .operation =
         {
+            // mode options:
+            //   ROBOT_RUN_MODE_FULL         - normal full run
+            //   ROBOT_RUN_MODE_SINGLE_TASK  - only .target_task is released
+            //   ROBOT_RUN_MODE_SINGLE_MOTOR - only .target_motor output is released
+            //   ROBOT_RUN_MODE_CALIBRATION  - calibration flow
+            //   ROBOT_RUN_MODE_ENTERTAIN    - entertainment/demo
             .mode = ROBOT_RUN_MODE_ENTERTAIN,
             .target_task = ROBOT_TASK_MODULE_NONE,
             .target_motor = (uint8_t)MotorCount,

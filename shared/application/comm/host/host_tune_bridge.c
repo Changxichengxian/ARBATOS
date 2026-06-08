@@ -10,6 +10,9 @@
 
 #include <string.h>
 #include "arm_math.h"
+#include "gimbal_behaviour.h"
+
+__weak volatile gimbal_behaviour_e gimbal_behaviour_watch = GIMBAL_ZERO_FORCE;
 
 __weak void shoot_tune_apply_fric_speed_pid(void)
 {

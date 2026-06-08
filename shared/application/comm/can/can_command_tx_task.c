@@ -22,6 +22,7 @@
 
 #include "CAN_receive.h"
 #include "LowCmd.h"
+#include "bsp_time.h"
 #include "can_mit_motor_driver.h"
 #include "config.h"
 #include "watch.h"
@@ -49,6 +50,7 @@ __weak uint8_t can_tx_process_extra_item(uint8_t bus,
                                          int16_t current);
 
 static MotorCmd s_can_tx_cmd_cache[MotorCount];
+static MotorId s_can_tx_cmd_cache_ids[MotorCount];
 static uint8_t s_can_tx_cmd_cache_valid[MotorCount];
 static uint8_t s_can_tx_cmd_expired[MotorCount];
 
@@ -59,6 +61,7 @@ static int16_t s_can_tx_can2_1ff[4];
 static uint32_t s_can_tx_mit_budget_tick_ms;
 static uint8_t s_can_tx_mit_budget_used;
 static uint8_t s_can_tx_rm_group_configured[2][2];
+static uint8_t s_can_tx_route_start_index;
 
 static inline bool_t can_tx_allow_chassis(void)
 {
@@ -103,17 +106,25 @@ static inline uint8_t can_tx_actuator_id_valid(MotorId id)
 
 static uint32_t can_tx_now_ms(void)
 {
-    return (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+    return bsp_time_get_tick_ms();
 }
 
 static uint8_t can_tx_cmd_expired(const MotorCmd *cmd, uint32_t now_ms)
 {
+    uint32_t age_ms;
+
     if (cmd == NULL || cmd->active == 0u || cmd->timeoutMs == 0u || cmd->tick == 0u)
     {
         return 0u;
     }
 
-    return ((uint32_t)(now_ms - cmd->tick) > (uint32_t)cmd->timeoutMs) ? 1u : 0u;
+    if ((int32_t)(now_ms - cmd->tick) < 0)
+    {
+        return 0u;
+    }
+
+    age_ms = (uint32_t)(now_ms - cmd->tick);
+    return (age_ms > (uint32_t)cmd->timeoutMs) ? 1u : 0u;
 }
 
 static MotorDriveState can_tx_drive_state_from_feedback(MotorId id)
@@ -169,21 +180,33 @@ static void can_tx_clear_cmd_cache(void)
     (void)memset(s_can_tx_cmd_expired, 0, sizeof(s_can_tx_cmd_expired));
 }
 
-static void can_tx_cache_lowcmd(void)
+static void can_tx_prepare_cmd_cache_ids(void)
 {
-    LowCmd lowcmd;
+    static uint8_t ready = 0u;
 
-    can_tx_clear_cmd_cache();
-    if (LowCmdGet(&lowcmd) == 0u)
+    if (ready != 0u)
     {
         return;
     }
 
     for (uint8_t i = 0u; i < (uint8_t)MotorCount; i++)
     {
-        s_can_tx_cmd_cache[i] = lowcmd.motorCmd[i];
-        s_can_tx_cmd_cache_valid[i] = 1u;
+        s_can_tx_cmd_cache_ids[i] = (MotorId)i;
     }
+    ready = 1u;
+}
+
+static void can_tx_cache_lowcmd(void)
+{
+    can_tx_clear_cmd_cache();
+    can_tx_prepare_cmd_cache_ids();
+
+    if (LowCmdGetMotorMany(s_can_tx_cmd_cache_ids, s_can_tx_cmd_cache, (uint8_t)MotorCount) == 0u)
+    {
+        return;
+    }
+
+    (void)memset(s_can_tx_cmd_cache_valid, 1, sizeof(s_can_tx_cmd_cache_valid));
 }
 
 static void can_tx_force_disabled_cmd(MotorId id)
@@ -369,8 +392,12 @@ static void can_tx_mit_sync_mode_state(MotorId actuator_id,
         *enabled = 1u;
         *disabled_confirmed = 0u;
     }
-    else if (feedback.state == CAN_TX_MIT_STATE_DISABLED ||
-             feedback.state >= CAN_TX_MIT_STATE_FAULT_MIN)
+    else if (feedback.state >= CAN_TX_MIT_STATE_FAULT_MIN)
+    {
+        *enabled = 0u;
+        *disabled_confirmed = 1u;
+    }
+    else if (feedback.state == CAN_TX_MIT_STATE_DISABLED)
     {
         *enabled = 0u;
         *disabled_confirmed = 1u;
@@ -542,7 +569,8 @@ static inline void can_tx_build_mit_cmd_from_actuator(const motor_node_param_t *
 static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
                                                   MotorId actuator_id,
                                                   const motor_node_param_t *node,
-                                                  int16_t current)
+                                                  int16_t current,
+                                                  uint8_t *flags)
 {
     static uint8_t mit_enabled[MotorCount];
     static uint8_t mit_disabled_confirmed[MotorCount];
@@ -603,14 +631,24 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
             mit_last_cmd_tick[actuator_id] = 0u;
 
             if (mit_disabled_confirmed[actuator_id] == 0u &&
-                can_tx_mit_period_due(now, mit_last_disable_tick[actuator_id], cmd_period_ms) != 0u &&
-                can_tx_mit_take_frame_budget(now) != 0u)
+                can_tx_mit_period_due(now, mit_last_disable_tick[actuator_id], cmd_period_ms) != 0u)
             {
-                const int ret = can_mit_motor_send_disable(bus, std_id);
-                if (ret == 0)
+                if (can_tx_mit_take_frame_budget(now) != 0u)
                 {
-                    mit_last_disable_tick[actuator_id] = now;
-                    mit_enabled[actuator_id] = 0u;
+                    const int ret = can_mit_motor_send_disable(bus, std_id);
+                    if (ret == 0)
+                    {
+                        mit_last_disable_tick[actuator_id] = now;
+                        mit_enabled[actuator_id] = 0u;
+                    }
+                    else if (flags != NULL)
+                    {
+                        *flags |= (uint8_t)MotorAppliedFlagSkipped;
+                    }
+                }
+                else if (flags != NULL)
+                {
+                    *flags |= (uint8_t)MotorAppliedFlagSkipped;
                 }
             }
             return 1u;
@@ -621,13 +659,23 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
 
         if (mit_enabled[actuator_id] == 0u)
         {
-            if (can_tx_mit_period_due(now, mit_last_enable_tick[actuator_id], cmd_period_ms) != 0u &&
-                can_tx_mit_take_frame_budget(now) != 0u)
+            if (can_tx_mit_period_due(now, mit_last_enable_tick[actuator_id], cmd_period_ms) != 0u)
             {
-                const int ret = can_mit_motor_send_enable(bus, std_id);
-                if (ret == 0)
+                if (can_tx_mit_take_frame_budget(now) != 0u)
                 {
-                    mit_last_enable_tick[actuator_id] = now;
+                    const int ret = can_mit_motor_send_enable(bus, std_id);
+                    if (ret == 0)
+                    {
+                        mit_last_enable_tick[actuator_id] = now;
+                    }
+                    else if (flags != NULL)
+                    {
+                        *flags |= (uint8_t)MotorAppliedFlagSkipped;
+                    }
+                }
+                else if (flags != NULL)
+                {
+                    *flags |= (uint8_t)MotorAppliedFlagSkipped;
                 }
             }
             return 1u;
@@ -641,6 +689,10 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
 
         if (can_tx_mit_take_frame_budget(now) == 0u)
         {
+            if (flags != NULL)
+            {
+                *flags |= (uint8_t)MotorAppliedFlagSkipped;
+            }
             return 1u;
         }
 
@@ -650,6 +702,10 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
             if (ret == 0)
             {
                 mit_last_cmd_tick[actuator_id] = now;
+            }
+            else if (flags != NULL)
+            {
+                *flags |= (uint8_t)MotorAppliedFlagSkipped;
             }
         }
         return 1u;
@@ -661,7 +717,10 @@ static inline uint8_t can_tx_process_can_mit_item(uint8_t bus,
     }
 
     can_tx_build_mit_cmd_from_actuator(node, &cmd, current, limits, &mit_cmd);
-    can_mit_motor_send_cmd(bus, std_id, limits, &mit_cmd);
+    if (can_mit_motor_send_cmd(bus, std_id, limits, &mit_cmd) != 0 && flags != NULL)
+    {
+        *flags |= (uint8_t)MotorAppliedFlagSkipped;
+    }
     return 1u;
 }
 
@@ -831,13 +890,18 @@ static inline void can_tx_process_rs485_axis(MotorId actuator_id,
 static inline void can_tx_process_mit_or_extra_axis(uint8_t fallback_bus,
                                                     MotorId actuator_id,
                                                     const motor_node_param_t *node,
-                                                    int16_t current)
+                                                    int16_t current,
+                                                    uint8_t *flags)
 {
     const uint8_t node_bus = can_tx_node_bus(fallback_bus, node);
 
-    if (can_tx_process_can_mit_item(node_bus, actuator_id, node, current) == 0u &&
+    if (can_tx_process_can_mit_item(node_bus, actuator_id, node, current, flags) == 0u &&
         can_tx_process_extra_item(node_bus, actuator_id, node, current) == 0u)
     {
+        if (flags != NULL)
+        {
+            *flags |= (uint8_t)MotorAppliedFlagSkipped;
+        }
         watch_task_error(WATCH_TASK_CAN_COMMAND_TX);
     }
 }
@@ -880,7 +944,7 @@ static inline int16_t can_tx_process_axis(uint8_t fallback_bus,
     }
     else if (is_rm_group == 0u)
     {
-        can_tx_process_mit_or_extra_axis(fallback_bus, actuator_id, node, current);
+        can_tx_process_mit_or_extra_axis(fallback_bus, actuator_id, node, current, flags);
         return current;
     }
     else
@@ -1064,13 +1128,21 @@ static void can_tx_exec_instances(uint8_t online, uint8_t output_locked)
 {
     sdlog_actuator_current_t log = {0};
     const uint8_t count = motor_route_count();
+    uint8_t start_index = 0u;
 
     can_tx_clear_rm_frames();
     can_tx_cache_lowcmd();
 
+    if (count != 0u)
+    {
+        start_index = (uint8_t)(s_can_tx_route_start_index % count);
+        s_can_tx_route_start_index = (uint8_t)((start_index + 1u) % count);
+    }
+
     for (uint8_t i = 0u; i < count; i++)
     {
-        const motor_route_t *route = motor_route_get(i);
+        const uint8_t route_index = (uint8_t)((start_index + i) % count);
+        const motor_route_t *route = motor_route_get(route_index);
         uint8_t allowed;
 
         if (route == NULL || route->enabled == 0u)

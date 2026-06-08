@@ -46,7 +46,7 @@
 #if defined(STM32H723xx) || defined(STM32H7xx) || defined(STM32H7)
 #define SDLOG_BUF_SIZE (64u * 1024u)
 #elif defined(STM32F407xx)
-#define SDLOG_BUF_SIZE (32u * 1024u)
+#define SDLOG_BUF_SIZE (16u * 1024u)
 #else
 #define SDLOG_BUF_SIZE (16u * 1024u)
 #endif

@@ -55,6 +55,8 @@ TAG_NAMES: dict[int, str] = {
     0x004F: "WHEELLEG_MIT_CONFIG",
     0x0050: "WHEELLEG_MIT_STATUS",
     0x0051: "BUILD_INFO",
+    0x0052: "RUNTIME_DEVICE",
+    0x0053: "WHEELLEG_MIT_MOTOR_DIAG",
 }
 
 RT_PROFILER_NAMES: dict[int, str] = {
@@ -131,6 +133,15 @@ WHEELLEG_MODE_NAMES: dict[int, str] = {
     8: "FAULT",
     9: "BENCH",
     10: "LEG_POSITION",
+}
+
+WHEELLEG_MIT_MOTOR_ROLE_NAMES: dict[int, str] = {
+    0: "LF",
+    1: "LB",
+    2: "LW",
+    3: "RF",
+    4: "RB",
+    5: "RW",
 }
 
 
@@ -735,6 +746,122 @@ def _extract_wheelleg_mit_status(name: str, payload: bytes) -> list[tuple[str, s
     )
 
     return [(name, name, fields)]
+
+
+def _extract_runtime_device(name: str, payload: bytes) -> list[tuple[str, str, dict[str, Any]]] | None:
+    if len(payload) != 8:
+        return None
+
+    version, kind, group, group_index, enabled, bus, source_id = struct.unpack("<6BH", payload)
+    return [
+        (
+            name,
+            name,
+            {
+                "version": version,
+                "kind": kind,
+                "group": group,
+                "group_index": group_index,
+                "enabled": enabled,
+                "bus": bus,
+                "source_id": source_id,
+            },
+        )
+    ]
+
+
+def _extract_wheelleg_mit_motor_diag(name: str, payload: bytes) -> list[tuple[str, str, dict[str, Any]]] | None:
+    if len(payload) not in (496, 528, 552):
+        return None
+
+    version, count, _reserved16 = struct.unpack_from("<BBH", payload, 0)
+    off = 4
+    can_fields: dict[str, Any] = {}
+    if len(payload) >= 528:
+        (
+            can1_rx_count,
+            can1_rx_drop,
+            can1_tx_count,
+            can1_tx_fail,
+            can2_rx_count,
+            can2_rx_drop,
+            can2_tx_count,
+            can2_tx_fail,
+        ) = struct.unpack_from("<8I", payload, off)
+        off += 32
+        can_fields = {
+            "version": version,
+            "can1_rx_count": can1_rx_count,
+            "can1_rx_drop": can1_rx_drop,
+            "can1_tx_count": can1_tx_count,
+            "can1_tx_fail": can1_tx_fail,
+            "can2_rx_count": can2_rx_count,
+            "can2_rx_drop": can2_rx_drop,
+            "can2_tx_count": can2_tx_count,
+            "can2_tx_fail": can2_tx_fail,
+        }
+
+    has_tx_id_count = len(payload) >= 552
+    entry_fmt = "<18B4H6I9f" if has_tx_id_count else "<18B4H5I9f"
+    entry_size = struct.calcsize(entry_fmt)
+    rows: list[tuple[str, str, dict[str, Any]]] = []
+    if can_fields:
+        rows.append((f"{name}.CAN", f"{name}.CAN", can_fields))
+    field_names = [
+        "role",
+        "actuator_id",
+        "fresh",
+        "fb_online",
+        "cmd_active",
+        "cmd_mode",
+        "applied_active",
+        "applied_mode",
+        "applied_drive_state",
+        "applied_flags",
+        "fb_bus",
+        "fb_rx_dlc",
+        "fb_rx_data0",
+        "fb_rx_data0_low4",
+        "fb_rx_data0_high4",
+        "fb_motor_id",
+        "fb_state",
+        "reserved8",
+        "fb_rx_id",
+        "applied_tx_id",
+        "cmd_writer",
+        "cmd_timeout_ms",
+        "fb_rx_count",
+        *([] if not has_tx_id_count else ["tx_id_count"]),
+        "fb_last_rx_tick_ms",
+        "cmd_seq",
+        "cmd_tick_ms",
+        "applied_tick_ms",
+        "cmd_position_rad",
+        "cmd_velocity_radps",
+        "cmd_kp",
+        "cmd_kd",
+        "cmd_torque_nm",
+        "applied_torque_nm",
+        "fb_position_rad",
+        "fb_velocity_radps",
+        "fb_torque_nm",
+    ]
+
+    available = min(int(count), 6)
+    for i in range(available):
+        entry_off = off + i * entry_size
+        values = struct.unpack_from(entry_fmt, payload, entry_off)
+        fields = {"version": version, "count": count}
+        fields.update(can_fields)
+        fields.update({k: v for k, v in zip(field_names, values) if k != "reserved8"})
+        role = int(fields.get("role", i))
+        role_name = WHEELLEG_MIT_MOTOR_ROLE_NAMES.get(role, f"ROLE_{role}")
+        fields["role_name"] = role_name
+        fields["fb_rx_data0_hex"] = f"0x{int(fields['fb_rx_data0']):02X}"
+        series_key = f"{name}.{role_name}"
+        rows.append((series_key, series_key, fields))
+
+    return rows
 
 
 def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, Any]]] | None:
@@ -1373,6 +1500,9 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
             )
         ]
 
+    if tag == 0x0052:  # RUNTIME_DEVICE
+        return _extract_runtime_device(name, payload)
+
     if tag == 0x0041:  # SYS_STATS
         v = _unpack_exact("<BBHIIIIIiIIIIIIIIHH", payload)
         if v is None:
@@ -1459,6 +1589,9 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
 
     if tag == 0x0050:  # WHEELLEG_MIT_STATUS
         return _extract_wheelleg_mit_status(name, payload)
+
+    if tag == 0x0053:  # WHEELLEG_MIT_MOTOR_DIAG
+        return _extract_wheelleg_mit_motor_diag(name, payload)
 
     if tag == 0x0042:  # EVENT
         v = _unpack_exact("<HHII", payload)

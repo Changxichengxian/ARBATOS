@@ -14,6 +14,11 @@
  * - 对外入口：boot_load() 启动加载，tick_pre/control/tick_post 接入云台循环。
  */
 
+#include "config.h"
+#include "robot_task_build_config.h"
+
+#if ROBOT_TASK_BUILD_ANY_GIMBAL
+
 #include "pitch_cali.h"
 
 #include <math.h>
@@ -1450,3 +1455,5 @@ void pitch_cali_tick_post(const gimbal_control_t *gimbal, gimbal_behaviour_e beh
         break;
     }
 }
+
+#endif

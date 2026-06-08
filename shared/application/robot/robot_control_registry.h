@@ -7,6 +7,7 @@
 #define ROBOT_CONTROL_REGISTRY_H
 
 #include "control_manager.h"
+#include "robot_task_build_config.h"
 #include "robot_task_profile.h"
 
 static inline void robot_control_register_if_enabled(const control_controller_t *controller,
@@ -26,23 +27,30 @@ static inline void robot_control_register_profile_defaults(void)
      * Default registration declares resources for diagnostics/arbitration only.
      * It does not make controllers active during boot.
      */
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
     static const char *const chassis_outputs[] = {
         "motor.chassis0",
         "motor.chassis1",
         "motor.chassis2",
         "motor.chassis3",
     };
+#endif
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL
     static const char *const single_gimbal_outputs[] = {
         "motor.yaw",
         "motor.pitch",
         "motor.trigger",
     };
+#endif
+#if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
     static const char *const dual_yaw_gimbal_outputs[] = {
         "motor.yaw",
         "motor.yaw_upper",
         "motor.pitch",
         "motor.trigger",
     };
+#endif
+#if ROBOT_TASK_BUILD_SHOOT_RM
     static const char *const shoot_outputs[] = {
         "motor.trigger",
         "motor.friction0",
@@ -50,6 +58,8 @@ static inline void robot_control_register_profile_defaults(void)
         "motor.friction2",
         "motor.friction3",
     };
+#endif
+#if ROBOT_TASK_BUILD_ARM
     static const char *const arm_outputs[] = {
         "motor.arm0",
         "motor.arm1",
@@ -58,7 +68,19 @@ static inline void robot_control_register_profile_defaults(void)
         "motor.arm4",
         "motor.arm5",
     };
+#endif
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
+    static const char *const wheelleg_mit_outputs[] = {
+        "motor.left_front",
+        "motor.left_back",
+        "motor.right_front",
+        "motor.right_back",
+        "motor.left_wheel",
+        "motor.right_wheel",
+    };
+#endif
 
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
     static const control_controller_t classic_chassis = {
         .id = CONTROL_CONTROLLER_CLASSIC_CHASSIS,
         .domain = CONTROL_DOMAIN_CHASSIS,
@@ -70,6 +92,8 @@ static inline void robot_control_register_profile_defaults(void)
             .outputs = chassis_outputs,
         },
     };
+#endif
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL
     static const control_controller_t single_gimbal = {
         .id = CONTROL_CONTROLLER_SINGLE_GIMBAL,
         .domain = CONTROL_DOMAIN_GIMBAL,
@@ -81,6 +105,8 @@ static inline void robot_control_register_profile_defaults(void)
             .outputs = single_gimbal_outputs,
         },
     };
+#endif
+#if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
     static const control_controller_t dual_yaw_gimbal = {
         .id = CONTROL_CONTROLLER_DUAL_YAW_GIMBAL,
         .domain = CONTROL_DOMAIN_GIMBAL,
@@ -92,6 +118,8 @@ static inline void robot_control_register_profile_defaults(void)
             .outputs = dual_yaw_gimbal_outputs,
         },
     };
+#endif
+#if ROBOT_TASK_BUILD_SHOOT_RM
     static const control_controller_t shoot = {
         .id = CONTROL_CONTROLLER_SHOOT,
         .domain = CONTROL_DOMAIN_SHOOT,
@@ -103,6 +131,8 @@ static inline void robot_control_register_profile_defaults(void)
             .outputs = shoot_outputs,
         },
     };
+#endif
+#if ROBOT_TASK_BUILD_ARM
     static const control_controller_t arm = {
         .id = CONTROL_CONTROLLER_ARM_MOTION,
         .domain = CONTROL_DOMAIN_ARM,
@@ -114,6 +144,8 @@ static inline void robot_control_register_profile_defaults(void)
             .outputs = arm_outputs,
         },
     };
+#endif
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
     static const control_controller_t wheelleg_mit = {
         .id = CONTROL_CONTROLLER_WHEELLEG_MIT_BALANCE,
         .domain = CONTROL_DOMAIN_WHEELLEG,
@@ -125,20 +157,33 @@ static inline void robot_control_register_profile_defaults(void)
         .meta = {
             .period_ms = 1u,
             .output_count = 6u,
-            .outputs = arm_outputs,
+            .outputs = wheelleg_mit_outputs,
         },
     };
+#endif
 
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
     robot_control_register_if_enabled(&classic_chassis, ROBOT_TASK_MODULE_CLASSIC_CHASSIS);
+#endif
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL
     robot_control_register_if_enabled(&single_gimbal, ROBOT_TASK_MODULE_SINGLE_GIMBAL);
+#endif
+#if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
     robot_control_register_if_enabled(&dual_yaw_gimbal, ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL);
+#endif
+#if ROBOT_TASK_BUILD_SHOOT_RM
     if (robot_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
         robot_profile_module_enabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
     {
         (void)control_manager_register(&shoot);
     }
+#endif
+#if ROBOT_TASK_BUILD_ARM
     robot_control_register_if_enabled(&arm, ROBOT_TASK_MODULE_ARM);
+#endif
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
     robot_control_register_if_enabled(&wheelleg_mit, ROBOT_TASK_MODULE_WHEELLEG_MIT);
+#endif
 }
 
 #endif

@@ -6,6 +6,10 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+#include "config.h"
+#include "robot_task_build_config.h"
+
+#if ROBOT_TASK_BUILD_SERVO
 
 #include "servo_control_task.h"
 #include "cmsis_os.h"
@@ -80,3 +84,5 @@ void servo_control_task(void const * argument)
         osDelay(10);
     }
 }
+
+#endif

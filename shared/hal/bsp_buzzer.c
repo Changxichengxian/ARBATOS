@@ -77,13 +77,21 @@ void buzzer_pcm_set_stream_gain_q8(uint16_t gain_q8)
 
 #if BSP_BUZZER_HAS_PCM
 #if BSP_BUZZER_PCM_USE_DMA
+#ifndef BUZZER_PCM_DMA_BUF_LEN
 #define BUZZER_PCM_DMA_BUF_LEN 1024u
+#endif
 #endif
 #define BUZZER_PCM_CARRIER_HZ_MIN_DEFAULT 48000u
 #define BUZZER_PCM_GAIN_Q8_DEFAULT 256u
 #define BUZZER_PCM_GAIN_Q8_MAX 4096u
 
+#ifndef BUZZER_PCM_STREAM_RING_SIZE
+#if defined(STM32F407xx)
+#define BUZZER_PCM_STREAM_RING_SIZE (8u * 1024u)
+#else
 #define BUZZER_PCM_STREAM_RING_SIZE (16u * 1024u)
+#endif
+#endif
 #define BUZZER_PCM_STREAM_RING_MASK (BUZZER_PCM_STREAM_RING_SIZE - 1u)
 typedef char _check_buzzer_pcm_ring_pow2[(BUZZER_PCM_STREAM_RING_SIZE & BUZZER_PCM_STREAM_RING_MASK) == 0u ? 1 : -1];
 

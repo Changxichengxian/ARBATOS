@@ -14,6 +14,11 @@
  * - 入口：gimbal_control_task() 按任务周期运行，最后把电流写入 LowCmd。
  */
 
+#include "config.h"
+#include "robot_task_build_config.h"
+
+#if ROBOT_TASK_BUILD_ANY_GIMBAL
+
 #include "gimbal_control_task.h"
 #include "gimbal_core.h"
 
@@ -1800,3 +1805,5 @@ void gimbal_tune_clear_pitch_pid(void)
     PID_clear(&gimbal_control.gimbal_pitch_motor.gimbal_motor_gyro_pid);
     taskEXIT_CRITICAL();
 }
+
+#endif

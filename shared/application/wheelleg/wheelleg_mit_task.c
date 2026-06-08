@@ -3,6 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "config.h"
+#include "robot_task_build_config.h"
+
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
+
 #include "wheelleg_mit_task.h"
 #include "wheelleg_core.h"
 
@@ -11,7 +16,9 @@
 #include "task.h"
 
 #include "INS_task.h"
+#include "CAN_receive.h"
 #include "LowCmd.h"
+#include "bsp_can.h"
 #include "config.h"
 #include "control_input.h"
 #include "detect_task.h"
@@ -254,6 +261,9 @@ typedef struct
 static wheelleg_mit_ctrl_t s_wheelleg;
 static uint8_t s_wheelleg_sdlog_config_logged = 0u;
 static uint32_t s_wheelleg_sdlog_last_status_ms = 0u;
+
+static uint8_t wheelleg_feedback_fresh(const MotorState *fb, uint32_t now_ms);
+static void wheelleg_sdlog_write_motor_diag(uint32_t now_ms);
 
 static fp32 wheelleg_axis_to_fp32(int16_t axis, fp32 max_abs, uint16_t deadband);
 static fp32 wheelleg_lqr_x_error(fp32 target_v, fp32 target_yaw_rate);
@@ -893,6 +903,7 @@ static void wheelleg_sdlog_write_status(uint16_t faults,
     log.overrun_count = s_wheelleg.overrun_count;
 
     sdlog_write(SDLOG_TAG_WHEELLEG_MIT_STATUS, &log, (uint16_t)sizeof(log));
+    wheelleg_sdlog_write_motor_diag(now_ms);
 }
 
 static MotorId wheelleg_actuator_from_u8(uint8_t id)
@@ -911,6 +922,102 @@ static uint8_t wheelleg_feedback_fresh(const MotorState *fb, uint32_t now_ms)
         return 0u;
     }
     return ((uint32_t)(now_ms - fb->lastRxTick) <= WHEELLEG_FEEDBACK_TIMEOUT_MS) ? 1u : 0u;
+}
+
+static void wheelleg_sdlog_fill_motor_diag(sdlog_wheelleg_mit_motor_diag_entry_t *entry,
+                                           uint8_t role,
+                                           MotorId id,
+                                           const MotorState *fb,
+                                           uint32_t now_ms)
+{
+    MotorCmd cmd;
+    MotorApplied applied;
+
+    if (entry == NULL)
+    {
+        return;
+    }
+
+    (void)memset(entry, 0, sizeof(*entry));
+    entry->role = role;
+    entry->actuator_id = (uint8_t)id;
+    if ((uint32_t)id >= (uint32_t)MotorCount)
+    {
+        return;
+    }
+
+    if (fb != NULL)
+    {
+        entry->fresh = wheelleg_feedback_fresh(fb, now_ms);
+        entry->fb_online = fb->online;
+        entry->fb_bus = fb->bus;
+        entry->fb_rx_dlc = fb->rxDlc;
+        entry->fb_rx_data0 = fb->rxData0;
+        entry->fb_rx_data0_low4 = (uint8_t)(fb->rxData0 & 0x0Fu);
+        entry->fb_rx_data0_high4 = (uint8_t)(fb->rxData0 >> 4);
+        entry->fb_motor_id = fb->motorId;
+        entry->fb_state = fb->state;
+        entry->fb_rx_id = fb->rxId;
+        entry->fb_rx_count = fb->rxCount;
+        entry->fb_last_rx_tick_ms = fb->lastRxTick;
+        entry->fb_position_rad = fb->q;
+        entry->fb_velocity_radps = fb->dq;
+        entry->fb_torque_nm = fb->tauEst;
+    }
+
+    if (LowCmdGetMotor(id, &cmd) != 0u)
+    {
+        entry->cmd_active = cmd.active;
+        entry->cmd_mode = cmd.mode;
+        entry->cmd_writer = cmd.writer;
+        entry->cmd_timeout_ms = cmd.timeoutMs;
+        entry->cmd_seq = cmd.seq;
+        entry->cmd_tick_ms = cmd.tick;
+        entry->cmd_position_rad = cmd.q;
+        entry->cmd_velocity_radps = cmd.dq;
+        entry->cmd_kp = cmd.kp;
+        entry->cmd_kd = cmd.kd;
+        entry->cmd_torque_nm = cmd.tau;
+    }
+
+    if (LowStateGetApplied(id, &applied) != 0u)
+    {
+        entry->applied_active = applied.active;
+        entry->applied_mode = applied.mode;
+        entry->applied_drive_state = applied.driveState;
+        entry->applied_flags = applied.flags;
+        entry->applied_tx_id = applied.txId;
+        entry->applied_tick_ms = applied.tick;
+        entry->applied_torque_nm = applied.tau;
+        entry->tx_id_count = bsp_can_get_tx_std_id_count(applied.bus, applied.txId);
+    }
+}
+
+static void wheelleg_sdlog_write_motor_diag(uint32_t now_ms)
+{
+    sdlog_wheelleg_mit_motor_diag_t log;
+    const wheelleg_mit_config_t *cfg = &g_config.wheelleg_mit;
+
+    (void)memset(&log, 0, sizeof(log));
+    log.version = SDLOG_WHEELLEG_MIT_MOTOR_DIAG_VERSION;
+    log.count = SDLOG_WHEELLEG_MIT_MOTOR_DIAG_COUNT;
+    log.can1_rx_count = CAN_get_can1_rx_count();
+    log.can1_rx_drop = CAN_get_can1_rx_drop_count();
+    log.can1_tx_count = CAN_get_can1_tx_count();
+    log.can1_tx_fail = CAN_get_can1_tx_fail_count();
+    log.can2_rx_count = CAN_get_can2_rx_count();
+    log.can2_rx_drop = CAN_get_can2_rx_drop_count();
+    log.can2_tx_count = CAN_get_can2_tx_count();
+    log.can2_tx_fail = CAN_get_can2_tx_fail_count();
+
+    wheelleg_sdlog_fill_motor_diag(&log.motor[0], 0u, (MotorId)cfg->left_front_actuator, &s_wheelleg.front_fb[WHEELLEG_SIDE_LEFT], now_ms);
+    wheelleg_sdlog_fill_motor_diag(&log.motor[1], 1u, (MotorId)cfg->left_back_actuator, &s_wheelleg.back_fb[WHEELLEG_SIDE_LEFT], now_ms);
+    wheelleg_sdlog_fill_motor_diag(&log.motor[2], 2u, (MotorId)cfg->left_wheel_actuator, &s_wheelleg.wheel_fb[WHEELLEG_SIDE_LEFT], now_ms);
+    wheelleg_sdlog_fill_motor_diag(&log.motor[3], 3u, (MotorId)cfg->right_front_actuator, &s_wheelleg.front_fb[WHEELLEG_SIDE_RIGHT], now_ms);
+    wheelleg_sdlog_fill_motor_diag(&log.motor[4], 4u, (MotorId)cfg->right_back_actuator, &s_wheelleg.back_fb[WHEELLEG_SIDE_RIGHT], now_ms);
+    wheelleg_sdlog_fill_motor_diag(&log.motor[5], 5u, (MotorId)cfg->right_wheel_actuator, &s_wheelleg.wheel_fb[WHEELLEG_SIDE_RIGHT], now_ms);
+
+    sdlog_write(SDLOG_TAG_WHEELLEG_MIT_MOTOR_DIAG, &log, (uint16_t)sizeof(log));
 }
 
 static uint8_t wheelleg_read_feedback(MotorId id, MotorState *out, uint32_t now_ms)
@@ -3233,3 +3340,5 @@ void wheelleg_mit_task(void const *pvParameters)
                                    1u);
     }
 }
+
+#endif

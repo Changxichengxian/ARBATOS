@@ -14,6 +14,10 @@
  * - 输出：拨弹电流作为返回值，摩擦轮电流写入 LowCmd。
  */
 
+#include "config.h"
+#include "robot_task_build_config.h"
+
+#if ROBOT_TASK_BUILD_SHOOT_RM
 
 #include "shoot.h"
 
@@ -845,3 +849,5 @@ static void shoot_bullet_control(void)
         shoot_control.move_flag = 0;
     }
 }
+
+#endif

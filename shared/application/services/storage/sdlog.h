@@ -126,6 +126,7 @@ typedef enum
     SDLOG_TAG_WHEELLEG_MIT_STATUS = 0x0050u,
     SDLOG_TAG_BUILD_INFO = 0x0051u,
     SDLOG_TAG_RUNTIME_DEVICE = 0x0052u,
+    SDLOG_TAG_WHEELLEG_MIT_MOTOR_DIAG = 0x0053u,
 } sdlog_tag_e;
 
 typedef enum
@@ -519,6 +520,8 @@ typedef struct __attribute__((packed))
 
 #define SDLOG_WHEELLEG_MIT_CONFIG_VERSION 1u
 #define SDLOG_WHEELLEG_MIT_STATUS_VERSION 1u
+#define SDLOG_WHEELLEG_MIT_MOTOR_DIAG_VERSION 3u
+#define SDLOG_WHEELLEG_MIT_MOTOR_DIAG_COUNT 6u
 
 typedef struct __attribute__((packed))
 {
@@ -632,6 +635,66 @@ typedef struct __attribute__((packed))
 
 typedef char _check_sdlog_wheelleg_mit_config_size[(sizeof(sdlog_wheelleg_mit_config_t) == 392) ? 1 : -1];
 typedef char _check_sdlog_wheelleg_mit_status_size[(sizeof(sdlog_wheelleg_mit_status_t) == 200) ? 1 : -1];
+
+typedef struct __attribute__((packed))
+{
+    uint8_t role; // 0:LF, 1:LB, 2:LW, 3:RF, 4:RB, 5:RW
+    uint8_t actuator_id;
+    uint8_t fresh;
+    uint8_t fb_online;
+    uint8_t cmd_active;
+    uint8_t cmd_mode;
+    uint8_t applied_active;
+    uint8_t applied_mode;
+    uint8_t applied_drive_state;
+    uint8_t applied_flags;
+    uint8_t fb_bus;
+    uint8_t fb_rx_dlc;
+    uint8_t fb_rx_data0;
+    uint8_t fb_rx_data0_low4;
+    uint8_t fb_rx_data0_high4;
+    uint8_t fb_motor_id;
+    uint8_t fb_state;
+    uint8_t reserved8;
+    uint16_t fb_rx_id;
+    uint16_t applied_tx_id;
+    uint16_t cmd_writer;
+    uint16_t cmd_timeout_ms;
+    uint32_t fb_rx_count;
+    uint32_t tx_id_count;
+    uint32_t fb_last_rx_tick_ms;
+    uint32_t cmd_seq;
+    uint32_t cmd_tick_ms;
+    uint32_t applied_tick_ms;
+    float cmd_position_rad;
+    float cmd_velocity_radps;
+    float cmd_kp;
+    float cmd_kd;
+    float cmd_torque_nm;
+    float applied_torque_nm;
+    float fb_position_rad;
+    float fb_velocity_radps;
+    float fb_torque_nm;
+} sdlog_wheelleg_mit_motor_diag_entry_t;
+
+typedef struct __attribute__((packed))
+{
+    uint8_t version;
+    uint8_t count;
+    uint16_t reserved16;
+    uint32_t can1_rx_count;
+    uint32_t can1_rx_drop;
+    uint32_t can1_tx_count;
+    uint32_t can1_tx_fail;
+    uint32_t can2_rx_count;
+    uint32_t can2_rx_drop;
+    uint32_t can2_tx_count;
+    uint32_t can2_tx_fail;
+    sdlog_wheelleg_mit_motor_diag_entry_t motor[SDLOG_WHEELLEG_MIT_MOTOR_DIAG_COUNT];
+} sdlog_wheelleg_mit_motor_diag_t;
+
+typedef char _check_sdlog_wheelleg_mit_motor_diag_entry_size[(sizeof(sdlog_wheelleg_mit_motor_diag_entry_t) == 86) ? 1 : -1];
+typedef char _check_sdlog_wheelleg_mit_motor_diag_size[(sizeof(sdlog_wheelleg_mit_motor_diag_t) == 552) ? 1 : -1];
 
 typedef enum
 {

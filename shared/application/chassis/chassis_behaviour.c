@@ -14,7 +14,10 @@
  * - 被调用方：chassis_control_task 先问这里要目标，再做运动学和 PID。
  */
 
+#include "config.h"
+#include "robot_task_build_config.h"
 
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
 
 #include "chassis_behaviour.h"
 #include "cmsis_os.h"
@@ -956,3 +959,5 @@ static void chassis_open_set_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, c
     *wz_set = -chassis_move_rc_to_vector->fast.axis_wz * chassis_move_rc_to_vector->fast.open_rc_scale;
     return;
 }
+
+#endif
