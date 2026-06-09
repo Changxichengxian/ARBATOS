@@ -1,0 +1,406 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * File Name          : freertos.c
+  * Description        : Code for freertos applications
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2024 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+
+/* Includes ------------------------------------------------------------------*/
+#include "FreeRTOS.h"
+#include "task.h"
+#include "main.h"
+#include "cmsis_os2.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include "config.h"
+#include "robot_task_build_config.h"
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
+#include "chassis_control_task.h"
+#endif
+#include "control_manager.h"
+#include "robot_fault_guard.h"
+#include "robot_control_registry.h"
+#if ROBOT_TASK_BUILD_ANY_GIMBAL
+#include "gimbal_control_task.h"
+#endif
+#if ROBOT_TASK_BUILD_IMU
+#include "INS_task.h"
+#endif
+#include "app_task_bootstrap.h"
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
+#include "wheelleg_mit_task.h"
+#endif
+
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+/* USER CODE BEGIN Variables */
+
+/* USER CODE END Variables */
+osThreadId_t defaultTaskHandle;
+osThreadId_t KeyTaskHandle;
+StackType_t KeyTaskBuffer[128];
+StaticTask_t KeyTaskControlBlock;
+osThreadId_t LcdTaskHandle;
+StackType_t LcdTaskBuffer[256];
+StaticTask_t LcdTaskControlBlock;
+#if ROBOT_TASK_BUILD_IMU
+osThreadId_t ImuTaskHandle;
+StackType_t ImuTaskBuffer[1024];
+StaticTask_t ImuTaskControlBlock;
+#endif
+osThreadId_t FunTestHandle;
+StackType_t FunTestBuffer[128];
+StaticTask_t FunTestControlBlock;
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
+osThreadId_t chassisControlTaskHandle;
+#endif
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
+osThreadId_t wheellegMitTaskHandle;
+#endif
+#if ROBOT_TASK_BUILD_ANY_GIMBAL
+osThreadId_t gimbalControlTaskHandle;
+#endif
+
+/* Private function prototypes -----------------------------------------------*/
+/* USER CODE BEGIN FunctionPrototypes */
+
+/* USER CODE END FunctionPrototypes */
+
+void StartDefaultTask(void *argument);
+void KeyTask_Entry(void *argument);
+void LcdTask_Entry(void *argument);
+void ImuTask_Entry(void *argument);
+void FunTest_Entry(void *argument);
+
+extern void MX_USB_DEVICE_Init(void);
+void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+#define APP_THREAD_ATTR(thread_id, prio, stack_words) \
+  static const osThreadAttr_t thread_id##_attr = { \
+    .name = #thread_id, \
+    .priority = (prio), \
+    .stack_size = (stack_words) * sizeof(StackType_t), \
+  }
+
+#define APP_STATIC_THREAD_ATTR(thread_id, prio, stack_buffer, control_block) \
+  static const osThreadAttr_t thread_id##_attr = { \
+    .name = #thread_id, \
+    .priority = (prio), \
+    .stack_mem = (stack_buffer), \
+    .stack_size = sizeof(stack_buffer), \
+    .cb_mem = &(control_block), \
+    .cb_size = sizeof(control_block), \
+  }
+
+#define APP_THREAD_CREATE(thread_id, entry) \
+  osThreadNew((osThreadFunc_t)(entry), NULL, &thread_id##_attr)
+
+APP_THREAD_ATTR(defaultTask, osPriorityNormal, 128);
+APP_STATIC_THREAD_ATTR(KeyTask, osPriorityRealtime, KeyTaskBuffer, KeyTaskControlBlock);
+APP_STATIC_THREAD_ATTR(LcdTask, osPriorityNormal, LcdTaskBuffer, LcdTaskControlBlock);
+#if ROBOT_TASK_BUILD_IMU
+APP_STATIC_THREAD_ATTR(ImuTask, osPriorityHigh, ImuTaskBuffer, ImuTaskControlBlock);
+#endif
+APP_STATIC_THREAD_ATTR(FunTest, osPriorityBelowNormal, FunTestBuffer, FunTestControlBlock);
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
+APP_THREAD_ATTR(chassisControlTask, osPriorityAboveNormal, 512);
+#endif
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
+APP_THREAD_ATTR(wheellegMitTask, osPriorityAboveNormal, 768);
+#endif
+#if ROBOT_TASK_BUILD_ANY_GIMBAL
+APP_THREAD_ATTR(gimbalControlTask, osPriorityHigh, 1024);
+#endif
+
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
+static osThreadId_t app_create_chassis_control_task(void)
+{
+  return APP_THREAD_CREATE(chassisControlTask, chassis_control_task);
+}
+#endif
+
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
+static osThreadId_t app_create_wheelleg_mit_task(void)
+{
+  return APP_THREAD_CREATE(wheellegMitTask, wheelleg_mit_task);
+}
+#endif
+
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL
+static osThreadId_t app_create_single_gimbal_task(void)
+{
+  return APP_THREAD_CREATE(gimbalControlTask, gimbal_control_task);
+}
+#endif
+
+#if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
+static osThreadId_t app_create_dual_yaw_gimbal_task(void)
+{
+  return APP_THREAD_CREATE(gimbalControlTask, dual_yaw_gimbal_control_task);
+}
+#endif
+
+#if ROBOT_TASK_BUILD_IMU
+static osThreadId_t app_create_imu_task(void)
+{
+  return APP_THREAD_CREATE(ImuTask, imu_fusion_task);
+}
+#endif
+
+static void app_clear_module_task_handles(void)
+{
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
+  chassisControlTaskHandle = NULL;
+#endif
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
+  wheellegMitTaskHandle = NULL;
+#endif
+#if ROBOT_TASK_BUILD_ANY_GIMBAL
+  gimbalControlTaskHandle = NULL;
+#endif
+#if ROBOT_TASK_BUILD_IMU
+  ImuTaskHandle = NULL;
+#endif
+}
+
+static void app_create_module_tasks(void)
+{
+  static const app_task_module_desc_t module_tasks[] =
+  {
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
+    {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, &chassisControlTaskHandle, app_create_chassis_control_task},
+#endif
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
+    {ROBOT_TASK_MODULE_WHEELLEG_MIT, &wheellegMitTaskHandle, app_create_wheelleg_mit_task},
+#endif
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL
+    {ROBOT_TASK_MODULE_SINGLE_GIMBAL, &gimbalControlTaskHandle, app_create_single_gimbal_task},
+#endif
+#if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
+    {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL, &gimbalControlTaskHandle, app_create_dual_yaw_gimbal_task},
+#endif
+#if ROBOT_TASK_BUILD_IMU
+    {ROBOT_TASK_MODULE_IMU, &ImuTaskHandle, app_create_imu_task},
+#endif
+  };
+
+  app_clear_module_task_handles();
+
+  app_create_enabled_module_tasks(module_tasks, (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])));
+}
+
+/* GetIdleTaskMemory prototype (linked to static allocation support) */
+void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize );
+
+/* GetTimerTaskMemory prototype (linked to static allocation support) */
+void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, StackType_t **ppxTimerTaskStackBuffer, uint32_t *pulTimerTaskStackSize );
+
+/* USER CODE BEGIN GET_IDLE_TASK_MEMORY */
+static StaticTask_t xIdleTaskTCBBuffer;
+static StackType_t xIdleStack[configMINIMAL_STACK_SIZE];
+
+void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize )
+{
+  *ppxIdleTaskTCBBuffer = &xIdleTaskTCBBuffer;
+  *ppxIdleTaskStackBuffer = &xIdleStack[0];
+  *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+  /* place for user code */
+}
+/* USER CODE END GET_IDLE_TASK_MEMORY */
+
+/* USER CODE BEGIN GET_TIMER_TASK_MEMORY */
+static StaticTask_t xTimerTaskTCBBuffer;
+static StackType_t xTimerStack[configTIMER_TASK_STACK_DEPTH];
+
+void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, StackType_t **ppxTimerTaskStackBuffer, uint32_t *pulTimerTaskStackSize )
+{
+  *ppxTimerTaskTCBBuffer = &xTimerTaskTCBBuffer;
+  *ppxTimerTaskStackBuffer = &xTimerStack[0];
+  *pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
+  /* place for user code */
+}
+/* USER CODE END GET_TIMER_TASK_MEMORY */
+
+/**
+  * @brief  FreeRTOS initialization
+  * @param  None
+  * @retval None
+  */
+void MX_FREERTOS_Init(void) {
+  /* USER CODE BEGIN Init */
+  control_manager_init();
+  robot_control_register_profile_defaults();
+
+  /* USER CODE END Init */
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  defaultTaskHandle = APP_THREAD_CREATE(defaultTask, StartDefaultTask);
+  KeyTaskHandle = APP_THREAD_CREATE(KeyTask, KeyTask_Entry);
+  LcdTaskHandle = APP_THREAD_CREATE(LcdTask, LcdTask_Entry);
+  FunTestHandle = APP_THREAD_CREATE(FunTest, FunTest_Entry);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  app_create_module_tasks();
+  /* USER CODE END RTOS_THREADS */
+
+}
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
+{
+  (void)argument;
+  /* init code for USB_DEVICE */
+  MX_USB_DEVICE_Init();
+  /* USER CODE BEGIN StartDefaultTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartDefaultTask */
+}
+
+/* USER CODE BEGIN Header_KeyTask_Entry */
+/**
+* @brief Function implementing the KeyTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_KeyTask_Entry */
+__weak void KeyTask_Entry(void *argument)
+{
+  (void)argument;
+  /* USER CODE BEGIN KeyTask_Entry */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END KeyTask_Entry */
+}
+
+/* USER CODE BEGIN Header_LcdTask_Entry */
+/**
+* @brief Function implementing the LcdTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_LcdTask_Entry */
+__weak void LcdTask_Entry(void *argument)
+{
+  (void)argument;
+  /* USER CODE BEGIN LcdTask_Entry */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END LcdTask_Entry */
+}
+
+/* USER CODE BEGIN Header_ImuTask_Entry */
+/**
+* @brief Function implementing the ImuTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_ImuTask_Entry */
+__weak void ImuTask_Entry(void *argument)
+{
+  (void)argument;
+  /* USER CODE BEGIN ImuTask_Entry */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END ImuTask_Entry */
+}
+
+/* USER CODE BEGIN Header_FunTest_Entry */
+/**
+* @brief Function implementing the FunTest thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_FunTest_Entry */
+__weak void FunTest_Entry(void *argument)
+{
+  (void)argument;
+  /* USER CODE BEGIN FunTest_Entry */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END FunTest_Entry */
+}
+
+/* Private application code --------------------------------------------------*/
+/* USER CODE BEGIN Application */
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
+                                  0u, 0u, (uint32_t)xTask, pcTaskName);
+  robot_fault_halt_forever();
+}
+
+void vApplicationMallocFailedHook(void)
+{
+  TaskHandle_t current_task = xTaskGetCurrentTaskHandle();
+  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
+                                  0u, 0u, (uint32_t)current_task, pcTaskGetTaskName(NULL));
+  robot_fault_halt_forever();
+}
+
+/* USER CODE END Application */

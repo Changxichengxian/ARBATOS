@@ -11,6 +11,7 @@
 #include "motor_config.h"
 #include "motor_instance.h"
 #include "robot_safety.h"
+#include "unitree_motor_driver.h"
 
 #include <string.h>
 
@@ -1100,6 +1101,11 @@ uint8_t can_tx_process_extra_item(uint8_t bus,
                                   const motor_node_param_t *node,
                                   int16_t current)
 {
+    if (unitree_motor_node_supported(node) != 0u)
+    {
+        return (unitree_motor_send_actuator(bus, actuator_id, node, current) == 0) ? 1u : 0u;
+    }
+
     if (n6014b_node_supported(node) == 0u)
     {
         return 0u;

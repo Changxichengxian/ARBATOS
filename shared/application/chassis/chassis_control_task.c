@@ -91,6 +91,10 @@ static const int16_t chassis_zero_current_cmd[CHASSIS_MOTOR_COUNT] = {0};
 #define CHASSIS_WZ_KF_R_IMU (0.200f)
 #define CHASSIS_SDLOG_BASE_STREAM_MAX_SAMPLES 16u
 
+#ifndef CHASSIS_USE_IMU_YAW_FEEDBACK
+#define CHASSIS_USE_IMU_YAW_FEEDBACK 1u
+#endif
+
 typedef struct
 {
     manual_input_state_t manual_input_copy;
@@ -702,7 +706,15 @@ void chassis_control_task(void const *pvParameters)
 
             chassis_write_state(&chassis_move);
             rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
-            vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
+            {
+                const TickType_t delay_start = xTaskGetTickCount();
+                vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
+                if (xTaskGetTickCount() == delay_start)
+                {
+                    vTaskDelay(1u);
+                    last_wake = xTaskGetTickCount();
+                }
+            }
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
             chassis_high_water = uxTaskGetStackHighWaterMark(NULL);
@@ -764,7 +776,15 @@ void chassis_control_task(void const *pvParameters)
         //os delay
         //系统延时
         rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
-        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
+        {
+            const TickType_t delay_start = xTaskGetTickCount();
+            vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
+            if (xTaskGetTickCount() == delay_start)
+            {
+                vTaskDelay(1u);
+                last_wake = xTaskGetTickCount();
+            }
+        }
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
         chassis_high_water = uxTaskGetStackHighWaterMark(NULL);
@@ -998,7 +1018,8 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update, const c
         gimbal_online = chassis_move_update->gimbal_online;
     }
     const fp32 *ins_angle = (snapshot != NULL) ? snapshot->ins_angle : chassis_move_update->chassis_INS_angle;
-    if (chassis_only_mode == 0u &&
+    if (CHASSIS_USE_IMU_YAW_FEEDBACK != 0u &&
+        chassis_only_mode == 0u &&
         gimbal_online != 0u &&
         gyro != NULL &&
         yaw_motor != NULL)

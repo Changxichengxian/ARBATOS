@@ -1287,6 +1287,14 @@ void can_command_tx_task(void const *pvParameters)
         can_tx_emit_rm_frames();
 
         rt_profiler_end(RT_PROFILER_CAN_COMMAND_TX_LOOP, loop_start_us);
-        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(period_ms));
+        {
+            const TickType_t delay_start = xTaskGetTickCount();
+            vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(period_ms));
+            if (xTaskGetTickCount() == delay_start)
+            {
+                vTaskDelay(1u);
+                last_wake = xTaskGetTickCount();
+            }
+        }
     }
 }

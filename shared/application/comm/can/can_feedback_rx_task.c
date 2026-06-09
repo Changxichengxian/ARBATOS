@@ -50,7 +50,7 @@ void can_feedback_rx_task(void const *pvParameters)
         rt_profiler_end(RT_PROFILER_CAN_FEEDBACK_RX_WAKE, wake_start_us);
         if (bsp_can_rx_pending() != 0u)
         {
-            taskYIELD();
+            vTaskDelay(1u);
         }
     }
 }

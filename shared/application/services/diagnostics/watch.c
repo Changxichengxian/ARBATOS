@@ -31,6 +31,7 @@
 #include "mem_mang.h"
 #include "manual_input.h"
 #include "bsp_can.h"
+#include "bsp_rc.h"
 #include "motor_instance.h"
 #include "sdcard.h"
 #include "sdlog.h"
@@ -253,6 +254,7 @@ static const fp32 *ins_accel_src;
 
 static void watch_copy_rc(void);
 static void watch_copy_newrc(void);
+static void watch_copy_comm(void);
 static void watch_copy_runtime(void);
 static void watch_copy_imu(void);
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
@@ -309,7 +311,9 @@ static uint8_t watch_block_active_arm(void);
 static const watch_block_desc_t g_watch_blocks[] = {
     {WATCH_BLOCK_RC, "input.rc", &g_watch.rc, sizeof(g_watch.rc), watch_block_active_always},
     {WATCH_BLOCK_NEWRC, "input.newrc", &g_watch.newrc, sizeof(g_watch.newrc), watch_block_active_always},
+#if WATCH_ENABLE_RUNTIME_COPY
     {WATCH_BLOCK_RUNTIME, "runtime.instances", &g_watch.runtime, sizeof(g_watch.runtime), watch_block_active_always},
+#endif
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
     {WATCH_BLOCK_LOCOMOTION_CLASSIC, "locomotion.classic", &g_watch.chassis, sizeof(g_watch.chassis), watch_block_active_locomotion_classic},
 #endif
@@ -335,6 +339,7 @@ static const watch_block_desc_t g_watch_blocks[] = {
     {WATCH_BLOCK_DIAG, "common.diag", &g_watch.diag, sizeof(g_watch.diag), watch_block_active_always},
     {WATCH_BLOCK_RTOS, "common.rtos", &g_watch.rtos, sizeof(g_watch.rtos), watch_block_active_always},
     {WATCH_BLOCK_FAULT, "common.fault", &g_watch.fault, sizeof(g_watch.fault), watch_block_active_always},
+    {WATCH_BLOCK_COMM, "common.comm", &g_watch.comm, sizeof(g_watch.comm), watch_block_active_always},
 };
 
 static watch_block_desc_t g_watch_active_blocks[WATCH_BLOCK_COUNT];
@@ -342,6 +347,12 @@ static watch_block_desc_t g_watch_active_blocks[WATCH_BLOCK_COUNT];
 static uint8_t watch_block_active_always(void)
 {
     return 1u;
+}
+
+static void watch_update_set_stage(watch_update_stage_e stage)
+{
+    g_watch.rtos.watch_update_stage = (uint8_t)stage;
+    g_watch.rtos.watch_update_stage_tick_ms = HAL_GetTick();
 }
 
 static fp32 watch_rad_to_deg(fp32 rad)
@@ -525,10 +536,13 @@ void watch_diag_mark_fatal(uint32_t reason, uint32_t task_handle, const char *ta
 {
     g_watch.rtos.fatal_reason = reason;
     g_watch.rtos.fatal_task_handle = task_handle;
+    g_watch.rtos.current_task_handle = task_handle;
     memset(g_watch.rtos.fatal_task_name, 0, sizeof(g_watch.rtos.fatal_task_name));
+    memset(g_watch.rtos.current_task_name, 0, sizeof(g_watch.rtos.current_task_name));
     if (task_name != NULL)
     {
         (void)strncpy(g_watch.rtos.fatal_task_name, task_name, sizeof(g_watch.rtos.fatal_task_name) - 1u);
+        (void)strncpy(g_watch.rtos.current_task_name, task_name, sizeof(g_watch.rtos.current_task_name) - 1u);
     }
 }
 
@@ -692,27 +706,44 @@ void watch_init(void)
 
 void watch_update(void)
 {
+    g_watch.rtos.watch_update_enter_count++;
+    watch_update_set_stage(WATCH_UPDATE_STAGE_RC);
     watch_copy_rc();
+    watch_update_set_stage(WATCH_UPDATE_STAGE_NEWRC);
     watch_copy_newrc();
+    watch_update_set_stage(WATCH_UPDATE_STAGE_COMM);
+    watch_copy_comm();
+#if WATCH_ENABLE_RUNTIME_COPY
+    watch_update_set_stage(WATCH_UPDATE_STAGE_RUNTIME);
     watch_copy_runtime();
+#endif
+    watch_update_set_stage(WATCH_UPDATE_STAGE_IMU);
     watch_copy_imu();
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
+    watch_update_set_stage(WATCH_UPDATE_STAGE_CHASSIS);
     watch_copy_chassis();
 #endif
 #if WATCH_ENABLE_GIMBAL_SINGLE
+    watch_update_set_stage(WATCH_UPDATE_STAGE_GIMBAL);
     watch_copy_gimbal();
 #endif
 #if WATCH_ENABLE_SHOOT_RM
+    watch_update_set_stage(WATCH_UPDATE_STAGE_SHOOT);
     watch_copy_shoot();
 #endif
 #if WATCH_ENABLE_ARM_J0_UNITREE
+    watch_update_set_stage(WATCH_UPDATE_STAGE_ARM);
     watch_copy_arm_j0_unitree();
 #endif
 #if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
+    watch_update_set_stage(WATCH_UPDATE_STAGE_WHEELLEG);
     watch_copy_wheelleg_mit();
 #endif
+    watch_update_set_stage(WATCH_UPDATE_STAGE_DIAG);
     watch_copy_diag();
+    watch_update_set_stage(WATCH_UPDATE_STAGE_RTOS);
     watch_copy_rtos();
+    watch_update_set_stage(WATCH_UPDATE_STAGE_DONE);
 }
 
 const watch_block_desc_t *watch_get_block_table(uint32_t *count)
@@ -929,6 +960,67 @@ static void watch_copy_newrc(void)
     g_watch.newrc.key_v = state.key_v;
     g_watch.newrc.key_b = state.key_b;
     g_watch.newrc.last_rx_tick_ms = state.last_rx_tick_ms;
+}
+
+static void watch_copy_comm(void)
+{
+    bsp_rc_diag_t rc_diag;
+
+    memset(&rc_diag, 0, sizeof(rc_diag));
+    bsp_rc_get_diag(&rc_diag);
+
+    g_watch.comm.rc_uart_rx_event_count = rc_diag.rx_event_cnt;
+    g_watch.comm.rc_uart_bad_size_count = rc_diag.rx_bad_size_cnt;
+    g_watch.comm.rc_uart_error_count = rc_diag.uart_error_cnt;
+    g_watch.comm.rc_uart_last_error = rc_diag.uart_last_error;
+    g_watch.comm.rc_uart_restart_count = rc_diag.restart_cnt;
+    g_watch.comm.rc_uart_drop_count = rc_diag.drop_cnt;
+    g_watch.comm.rc_sbus_frame_count = manual_input_get_sbus_frame_count();
+    g_watch.comm.rc_set_source_count = manual_input_get_set_source_count();
+    g_watch.comm.rc_uart_last_size = rc_diag.rx_last_size;
+    g_watch.comm.rc_uart_last_event = rc_diag.rx_last_event;
+
+    g_watch.comm.can_rx_count[0] = CAN_get_can1_rx_count();
+    g_watch.comm.can_rx_count[1] = CAN_get_can2_rx_count();
+    g_watch.comm.can_rx_count[2] = CAN_get_can3_rx_count();
+    g_watch.comm.can_rx_drop_count[0] = CAN_get_can1_rx_drop_count();
+    g_watch.comm.can_rx_drop_count[1] = CAN_get_can2_rx_drop_count();
+    g_watch.comm.can_rx_drop_count[2] = CAN_get_can3_rx_drop_count();
+    g_watch.comm.can_tx_count[0] = CAN_get_can1_tx_count();
+    g_watch.comm.can_tx_count[1] = CAN_get_can2_tx_count();
+    g_watch.comm.can_tx_count[2] = CAN_get_can3_tx_count();
+    g_watch.comm.can_tx_fail_count[0] = CAN_get_can1_tx_fail_count();
+    g_watch.comm.can_tx_fail_count[1] = CAN_get_can2_tx_fail_count();
+    g_watch.comm.can_tx_fail_count[2] = CAN_get_can3_tx_fail_count();
+
+    g_watch.comm.can_last_rx_id[0] = CAN_get_can1_last_rx_id();
+    g_watch.comm.can_last_rx_id[1] = CAN_get_can2_last_rx_id();
+    g_watch.comm.can_last_rx_id[2] = CAN_get_can3_last_rx_id();
+    g_watch.comm.can_last_tx_id[0] = CAN_get_can1_last_tx_id();
+    g_watch.comm.can_last_tx_id[1] = CAN_get_can2_last_tx_id();
+    g_watch.comm.can_last_tx_id[2] = CAN_get_can3_last_tx_id();
+    g_watch.comm.can_last_rx_dlc[0] = CAN_get_can1_last_rx_dlc();
+    g_watch.comm.can_last_rx_dlc[1] = CAN_get_can2_last_rx_dlc();
+    g_watch.comm.can_last_rx_dlc[2] = CAN_get_can3_last_rx_dlc();
+    g_watch.comm.can_last_tx_dlc[0] = CAN_get_can1_last_tx_dlc();
+    g_watch.comm.can_last_tx_dlc[1] = CAN_get_can2_last_tx_dlc();
+    g_watch.comm.can_last_tx_dlc[2] = CAN_get_can3_last_tx_dlc();
+
+    g_watch.comm.can_protocol_lec[0] = CAN_get_can1_protocol_lec();
+    g_watch.comm.can_protocol_lec[1] = CAN_get_can2_protocol_lec();
+    g_watch.comm.can_protocol_lec[2] = CAN_get_can3_protocol_lec();
+    g_watch.comm.can_protocol_dlec[0] = CAN_get_can1_protocol_dlec();
+    g_watch.comm.can_protocol_dlec[1] = CAN_get_can2_protocol_dlec();
+    g_watch.comm.can_protocol_dlec[2] = CAN_get_can3_protocol_dlec();
+    g_watch.comm.can_bus_off[0] = CAN_get_can1_bus_off();
+    g_watch.comm.can_bus_off[1] = CAN_get_can2_bus_off();
+    g_watch.comm.can_bus_off[2] = CAN_get_can3_bus_off();
+    g_watch.comm.can_tx_error_count[0] = CAN_get_can1_tx_error_count();
+    g_watch.comm.can_tx_error_count[1] = CAN_get_can2_tx_error_count();
+    g_watch.comm.can_tx_error_count[2] = CAN_get_can3_tx_error_count();
+    g_watch.comm.can_rx_error_count[0] = CAN_get_can1_rx_error_count();
+    g_watch.comm.can_rx_error_count[1] = CAN_get_can2_rx_error_count();
+    g_watch.comm.can_rx_error_count[2] = CAN_get_can3_rx_error_count();
 }
 
 static void watch_copy_runtime(void)
@@ -1992,6 +2084,7 @@ static void watch_copy_rtos(void)
         (void)strncpy(g_watch.rtos.current_task_name, current_name, sizeof(g_watch.rtos.current_task_name) - 1u);
     }
 #if INCLUDE_uxTaskGetStackHighWaterMark
+    g_watch.rtos.stack_default = uxTaskGetStackHighWaterMark(NULL);
 #if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
     g_watch.rtos.stack_gimbal = gimbal_high_water;
 #endif
@@ -2001,6 +2094,7 @@ static void watch_copy_rtos(void)
     g_watch.rtos.stack_detect = detect_task_stack;
     g_watch.rtos.stack_calibrate = calibrate_task_stack;
 #else
+    g_watch.rtos.stack_default = 0u;
 #if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
     g_watch.rtos.stack_gimbal = 0u;
 #endif

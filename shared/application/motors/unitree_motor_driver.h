@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include "LowCmd.h"
+#include "robot_config_types.h"
 #include "types.h"
 
 #define UNITREE_MOTOR_RS485_PORT0 0u
@@ -52,5 +54,7 @@ void unitree_motor_driver_init(void);
 void unitree_motor_refresh(const unitree_motor_config_t *cfg);
 uint8_t unitree_motor_configure(const unitree_motor_config_t *cfg);
 int unitree_motor_send_cmd(const unitree_motor_config_t *cfg, const unitree_motor_cmd_t *cmd);
+uint8_t unitree_motor_node_supported(const motor_node_param_t *node);
+int unitree_motor_send_actuator(uint8_t port, MotorId actuator_id, const motor_node_param_t *node, int16_t current);
 void unitree_motor_stop(void);
 const unitree_motor_state_t *unitree_motor_get_state(void);

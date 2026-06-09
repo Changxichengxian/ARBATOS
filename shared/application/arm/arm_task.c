@@ -13,6 +13,7 @@
 #include "manual_input.h"
 #include "watch.h"
 #include "bsp_time.h"
+#include "robot_task_build_config.h"
 
 #include "arm_motion.h"
 
@@ -94,5 +95,13 @@ const arm_j0_unitree_state_t *arm_j0_unitree_get_state(void)
 
 uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8])
 {
+#if ROBOT_TASK_BUILD_ARM
     return arm_motion_process_can_feedback(bus, std_id, dlc, data);
+#else
+    (void)bus;
+    (void)std_id;
+    (void)dlc;
+    (void)data;
+    return 0u;
+#endif
 }

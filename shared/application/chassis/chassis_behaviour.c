@@ -42,6 +42,10 @@
 #define MOTOR_ECD_TO_RAD (g_config.gimbal.motor_ecd_to_rad)
 #endif
 
+#ifndef CHASSIS_STOP_ON_GIMBAL_STATE
+#define CHASSIS_STOP_ON_GIMBAL_STATE 1u
+#endif
+
 #ifndef YAW_TURN
 #define YAW_TURN (g_config.gimbal.yaw_turn)
 #endif
@@ -231,11 +235,15 @@ static bool_t chassis_gimbal_turnaround_get_frame_yaw_relative(fp32 *out_yaw_rel
 
 static bool_t chassis_gimbal_cmd_to_chassis_stop(void)
 {
+#if CHASSIS_STOP_ON_GIMBAL_STATE
     gimbal_state_t state;
     return (chassis_read_gimbal_state(&state) != 0 &&
             (state.chassis_stop != 0u || state.controllable == 0u))
                ? 1
                : 0;
+#else
+    return 0;
+#endif
 }
 
 static uint16_t chassis_get_effective_switch(uint16_t raw_sw,

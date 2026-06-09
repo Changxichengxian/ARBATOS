@@ -35,6 +35,9 @@
 #ifndef WATCH_ENABLE_ARM_J0_UNITREE
 #define WATCH_ENABLE_ARM_J0_UNITREE 1
 #endif
+#ifndef WATCH_ENABLE_RUNTIME_COPY
+#define WATCH_ENABLE_RUNTIME_COPY 1
+#endif
 #ifndef WATCH_RUNTIME_MAX_MOTORS
 #define WATCH_RUNTIME_MAX_MOTORS MotorCount
 #endif
@@ -463,6 +466,7 @@ typedef struct
 {
     uint32_t heap_free;
     uint32_t heap_ever_free;
+    uint32_t watch_update_enter_count;
     uint32_t watch_update_count;
     uint32_t watch_update_tick_ms;
     uint32_t scheduler_state;
@@ -471,14 +475,16 @@ typedef struct
     char current_task_name[16];
 
     uint8_t imu_task_stage;
-    uint8_t reserved0;
-    uint16_t reserved1;
+    uint8_t watch_update_stage;
+    uint16_t reserved0;
     uint32_t imu_task_enter_count;
     uint32_t imu_task_stage_tick_ms;
+    uint32_t watch_update_stage_tick_ms;
     watch_task_diag_t task;
     watch_irq_diag_t irq;
 
     // FreeRTOS uxTaskGetStackHighWaterMark() results (unit: words).
+    uint32_t stack_default;
 #if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
     uint32_t stack_gimbal;
 #endif
@@ -535,6 +541,34 @@ typedef struct
 
 typedef struct
 {
+    uint32_t rc_uart_rx_event_count;
+    uint32_t rc_uart_bad_size_count;
+    uint32_t rc_uart_error_count;
+    uint32_t rc_uart_last_error;
+    uint32_t rc_uart_restart_count;
+    uint32_t rc_uart_drop_count;
+    uint32_t rc_sbus_frame_count;
+    uint32_t rc_set_source_count;
+    uint16_t rc_uart_last_size;
+    uint16_t rc_uart_last_event;
+
+    uint32_t can_rx_count[3];
+    uint32_t can_rx_drop_count[3];
+    uint32_t can_tx_count[3];
+    uint32_t can_tx_fail_count[3];
+    uint16_t can_last_rx_id[3];
+    uint16_t can_last_tx_id[3];
+    uint8_t can_last_rx_dlc[3];
+    uint8_t can_last_tx_dlc[3];
+    uint8_t can_protocol_lec[3];
+    uint8_t can_protocol_dlec[3];
+    uint8_t can_bus_off[3];
+    uint8_t can_tx_error_count[3];
+    uint8_t can_rx_error_count[3];
+} watch_comm_t;
+
+typedef struct
+{
     uint8_t reserved0;
 } watch_dual_gimbal_t;
 
@@ -542,6 +576,24 @@ typedef struct
 {
     uint8_t reserved0;
 } watch_wheelleg_servo_t;
+
+typedef enum
+{
+    WATCH_UPDATE_STAGE_NONE = 0u,
+    WATCH_UPDATE_STAGE_RC = 1u,
+    WATCH_UPDATE_STAGE_NEWRC = 2u,
+    WATCH_UPDATE_STAGE_COMM = 3u,
+    WATCH_UPDATE_STAGE_RUNTIME = 4u,
+    WATCH_UPDATE_STAGE_IMU = 5u,
+    WATCH_UPDATE_STAGE_CHASSIS = 6u,
+    WATCH_UPDATE_STAGE_GIMBAL = 7u,
+    WATCH_UPDATE_STAGE_SHOOT = 8u,
+    WATCH_UPDATE_STAGE_ARM = 9u,
+    WATCH_UPDATE_STAGE_WHEELLEG = 10u,
+    WATCH_UPDATE_STAGE_DIAG = 11u,
+    WATCH_UPDATE_STAGE_RTOS = 12u,
+    WATCH_UPDATE_STAGE_DONE = 13u,
+} watch_update_stage_e;
 
 typedef struct
 {
@@ -806,6 +858,7 @@ typedef enum
     WATCH_BLOCK_DIAG,
     WATCH_BLOCK_RTOS,
     WATCH_BLOCK_FAULT,
+    WATCH_BLOCK_COMM,
     WATCH_BLOCK_COUNT
 } watch_block_id_e;
 
@@ -850,6 +903,7 @@ typedef struct
     watch_diag_t diag;
     watch_rtos_t rtos;
     watch_fault_t fault;
+    watch_comm_t comm;
 } watch_t;
 
 extern watch_t g_watch;

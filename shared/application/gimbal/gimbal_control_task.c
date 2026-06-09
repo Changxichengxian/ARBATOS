@@ -736,7 +736,15 @@ void gimbal_control_task(void const *pvParameters)
 #endif
 
         rt_profiler_end(RT_PROFILER_GIMBAL_CONTROL_LOOP, loop_start_us);
-        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
+        {
+            const TickType_t delay_start = xTaskGetTickCount();
+            vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
+            if (xTaskGetTickCount() == delay_start)
+            {
+                vTaskDelay(1u);
+                last_wake = xTaskGetTickCount();
+            }
+        }
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
         gimbal_high_water = uxTaskGetStackHighWaterMark(NULL);
@@ -823,7 +831,15 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
         }
 
         rt_profiler_end(RT_PROFILER_GIMBAL_CONTROL_LOOP, loop_start_us);
-        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
+        {
+            const TickType_t delay_start = xTaskGetTickCount();
+            vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
+            if (xTaskGetTickCount() == delay_start)
+            {
+                vTaskDelay(1u);
+                last_wake = xTaskGetTickCount();
+            }
+        }
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
         gimbal_high_water = uxTaskGetStackHighWaterMark(NULL);
