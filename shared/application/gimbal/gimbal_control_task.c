@@ -95,12 +95,13 @@ typedef struct
     uint32_t period_us;
     uint8_t yaw_turn;
     uint8_t pitch_turn;
+    uint8_t yaw_control_is_upper;
 } gimbal_runtime_snapshot_t;
 
-//motor enconde value format, range[0-8191]
+//motor enconde value format, range[0, ECD_RANGE - 1]
 #define ecd_format(ecd)         \
     {                           \
-        if ((ecd) > ECD_RANGE)  \
+        if ((ecd) >= ECD_RANGE) \
             (ecd) -= ECD_RANGE; \
         else if ((ecd) < 0)     \
             (ecd) += ECD_RANGE; \
@@ -201,6 +202,9 @@ static void gimbal_mode_change_control_transit(gimbal_control_t *mode_change);
   * @retval         angle, unit rad
   */
 static fp32 motor_ecd_to_angle_change(uint16_t ecd, uint16_t offset_ecd);
+static void gimbal_feedback_from_encoder(gimbal_motor_t *motor,
+                                         const motor_measure_t *measure,
+                                         uint8_t turn);
 /**
   * @brief          set gimbal control set-point, control set-point is set by "gimbal_behaviour_control_set".
   * @param[out]     gimbal_set_control: "gimbal_control" valiable point
@@ -210,6 +214,7 @@ static void gimbal_set_control(gimbal_control_t *set_control);
 
 static void gimbal_angle_limit(gimbal_motor_t *gimbal_motor, fp32 add);
 static fp32 gimbal_yaw_chassis_spin_ff_current(const gimbal_motor_t *yaw_motor);
+static fp32 gimbal_yaw_kick_current(const gimbal_motor_t *yaw_motor);
 static void gimbal_write_state(void);
 
 /**
@@ -386,6 +391,7 @@ static void gimbal_write_state(void)
         (robot_profile_need_dual_gimbal_control_task() != 0u && motor_cfg_node_id(&g_config.motor.yaw_upper) != 0u) ? 1u : 0u;
     const uint8_t pitch_required = (motor_cfg_node_id(&g_config.motor.pitch) != 0u) ? 1u : 0u;
     const uint8_t manual_offline = toe_is_error(DBUS_TOE) ? 1u : 0u;
+    const uint8_t imu_required = (GIMBAL_USE_ENCODER_FEEDBACK == 0u) ? 1u : 0u;
     const uint8_t imu_offline = toe_is_error(RM_IMU_TOE) ? 1u : 0u;
     const uint8_t yaw_offline = (yaw_required != 0u && toe_is_error(YAW_GIMBAL_MOTOR_TOE)) ? 1u : 0u;
     const uint8_t pitch_offline = (pitch_required != 0u && toe_is_error(PITCH_GIMBAL_MOTOR_TOE)) ? 1u : 0u;
@@ -396,7 +402,7 @@ static void gimbal_write_state(void)
     state.chassis_stop = (uint8_t)gimbal_cmd_to_chassis_stop();
     state.shoot_stop = (uint8_t)gimbal_cmd_to_shoot_stop();
     state.manual_online = (manual_offline == 0u) ? 1u : 0u;
-    state.imu_online = (imu_offline == 0u) ? 1u : 0u;
+    state.imu_online = (imu_required == 0u || imu_offline == 0u) ? 1u : 0u;
     state.yaw_required = yaw_required;
     state.yaw_online = (yaw_required != 0u && yaw_offline == 0u) ? 1u : 0u;
     state.yaw_upper_required = yaw_upper_required;
@@ -425,7 +431,10 @@ static void gimbal_write_state(void)
     if (imu_offline != 0u)
     {
         state.offline_mask |= GIMBAL_STATE_OFFLINE_IMU;
-        state.required_offline_mask |= GIMBAL_STATE_OFFLINE_IMU;
+        if (imu_required != 0u)
+        {
+            state.required_offline_mask |= GIMBAL_STATE_OFFLINE_IMU;
+        }
     }
     state.online = (state.required_offline_mask == 0u) ? 1u : 0u;
     state.controllable = (state.online != 0u && state.manual_online != 0u && state.chassis_stop == 0u) ? 1u : 0u;
@@ -549,6 +558,32 @@ static int16_t gimbal_apply_output_turn(int16_t current, uint8_t turn)
     return (turn != 0u) ? (int16_t)-current : current;
 }
 
+static uint8_t gimbal_dual_yaw_use_upper_control(void)
+{
+    return (uint8_t)(robot_profile_need_dual_gimbal_control_task() != 0u &&
+                     motor_cfg_node_id(&g_config.motor.yaw) == 0u &&
+                     motor_cfg_node_id(&g_config.motor.yaw_upper) != 0u);
+}
+
+static const motor_measure_t *gimbal_yaw_control_measure_point(void)
+{
+    return (gimbal_dual_yaw_use_upper_control() != 0u) ? get_yaw_upper_gimbal_motor_measure_point() :
+                                                         get_yaw_gimbal_motor_measure_point();
+}
+
+static const motor_node_param_t *gimbal_yaw_control_motor_cfg(void)
+{
+    return (gimbal_dual_yaw_use_upper_control() != 0u) ? &g_config.motor.yaw_upper : &g_config.motor.yaw;
+}
+
+static uint8_t gimbal_yaw_soft_limit_enabled(void)
+{
+    return (uint8_t)(((YAW_SOFT_LIMIT_MAX != 0.0f) || (YAW_SOFT_LIMIT_MIN != 0.0f)) &&
+                     (YAW_SOFT_LIMIT_MAX != YAW_SOFT_LIMIT_MIN) &&
+                     (fabsf(YAW_SOFT_LIMIT_MAX) < 100.0f) &&
+                     (fabsf(YAW_SOFT_LIMIT_MIN) < 100.0f));
+}
+
 static void gimbal_snapshot_capture(gimbal_runtime_snapshot_t *snapshot, gimbal_control_t *control)
 {
     if (snapshot == NULL)
@@ -563,9 +598,10 @@ static void gimbal_snapshot_capture(gimbal_runtime_snapshot_t *snapshot, gimbal_
     }
     snapshot->gyro = (control != NULL) ? control->gimbal_INT_gyro_point : get_gyro_data_point();
     snapshot->ins_angle = (control != NULL) ? control->gimbal_INS_angle_point : get_INS_angle_point();
-    snapshot->yaw_measure = (control != NULL) ? control->gimbal_yaw_motor.gimbal_motor_measure : get_yaw_gimbal_motor_measure_point();
+    snapshot->yaw_control_is_upper = gimbal_dual_yaw_use_upper_control();
+    snapshot->yaw_measure = (control != NULL) ? control->gimbal_yaw_motor.gimbal_motor_measure : gimbal_yaw_control_measure_point();
     snapshot->pitch_measure = (control != NULL) ? control->gimbal_pitch_motor.gimbal_motor_measure : get_pitch_gimbal_motor_measure_point();
-    snapshot->yaw_motor_cfg = &g_config.motor.yaw;
+    snapshot->yaw_motor_cfg = gimbal_yaw_control_motor_cfg();
     snapshot->pitch_motor_cfg = &g_config.motor.pitch;
     snapshot->trigger_motor_cfg = &g_config.motor.trigger;
     snapshot->run_variant = robot_mode_variant();
@@ -789,11 +825,19 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
         gimbal_apply_operation_mode(&snapshot, &yaw_can_set_current, &pitch_can_set_current);
 
         int16_t yaw_upper_can_set_current = gimbal_apply_output_turn(yaw_can_set_current, (uint8_t)DUAL_YAW_UPPER_TURN);
+        int16_t yaw_log_current_output;
 
-        yaw_can_set_current = motor_cfg_limit_current_node(snapshot.yaw_motor_cfg, yaw_can_set_current);
+        if (snapshot.yaw_control_is_upper != 0u)
+        {
+            yaw_upper_can_set_current = yaw_can_set_current;
+            yaw_can_set_current = 0;
+        }
+
+        yaw_can_set_current = motor_cfg_limit_current_node(&g_config.motor.yaw, yaw_can_set_current);
         yaw_upper_can_set_current = motor_cfg_limit_current_node(&g_config.motor.yaw_upper, yaw_upper_can_set_current);
         pitch_can_set_current = motor_cfg_limit_current_node(snapshot.pitch_motor_cfg, pitch_can_set_current);
         shoot_can_set_current = motor_cfg_limit_current_node(snapshot.trigger_motor_cfg, shoot_can_set_current);
+        yaw_log_current_output = (snapshot.yaw_control_is_upper != 0u) ? yaw_upper_can_set_current : yaw_can_set_current;
 
         gimbal_watch_yaw_current = yaw_can_set_current;
         gimbal_watch_yaw_upper_current = yaw_upper_can_set_current;
@@ -824,7 +868,7 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
             sample.pitch_gyro = gimbal_control.gimbal_pitch_motor.motor_gyro;
             sample.yaw_current_request = yaw_current_request;
             sample.pitch_current_request = pitch_current_request;
-            sample.yaw_current_output = gimbal_sdlog_clamp_current(yaw_can_set_current);
+            sample.yaw_current_output = gimbal_sdlog_clamp_current(yaw_log_current_output);
             sample.pitch_current_output = gimbal_sdlog_clamp_current(pitch_can_set_current);
 
             gimbal_sdlog_append_base_sample(&sample, bsp_time_get_tick_ms(), snapshot.period_us);
@@ -1089,7 +1133,7 @@ static void gimbal_init(gimbal_control_t *init)
                                               dual_yaw_gimbal_output_current_bindings,
                                               DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT);
     //电机数据指针获取
-    init->gimbal_yaw_motor.gimbal_motor_measure = get_yaw_gimbal_motor_measure_point();
+    init->gimbal_yaw_motor.gimbal_motor_measure = gimbal_yaw_control_measure_point();
     init->gimbal_pitch_motor.gimbal_motor_measure = get_pitch_gimbal_motor_measure_point();
     init->gimbal_INT_gyro_point = get_gyro_data_point();
     init->gimbal_INS_angle_point = get_INS_angle_point();
@@ -1120,6 +1164,7 @@ static void gimbal_init(gimbal_control_t *init)
     //清除所有PID
     gimbal_total_pid_clear(init);
     init->gimbal_yaw_motor.offset_ecd = g_config.gimbal.yaw_middle_ecd;
+    init->gimbal_pitch_motor.offset_ecd = GIMBAL_PITCH_MIDDLE_ECD;
 
     {
         gimbal_runtime_snapshot_t snapshot;
@@ -1132,14 +1177,28 @@ static void gimbal_init(gimbal_control_t *init)
 
     init->gimbal_pitch_motor.angle_set = init->gimbal_pitch_motor.angle;
     init->gimbal_pitch_motor.motor_gyro_set = init->gimbal_pitch_motor.motor_gyro;
-    if ((init->gimbal_yaw_motor.max_angle <= init->gimbal_yaw_motor.min_angle) ||
-
-        ((init->gimbal_yaw_motor.max_angle == 0.0f) && (init->gimbal_yaw_motor.min_angle == 0.0f)) ||
-        (fabsf(init->gimbal_yaw_motor.max_angle) > 100.0f) ||
-        (fabsf(init->gimbal_yaw_motor.min_angle) > 100.0f))
     {
-        init->gimbal_yaw_motor.max_angle = PI;
-        init->gimbal_yaw_motor.min_angle = -PI;
+        fp32 cfg_max = YAW_SOFT_LIMIT_MAX;
+        fp32 cfg_min = YAW_SOFT_LIMIT_MIN;
+        if (cfg_max < cfg_min)
+        {
+            const fp32 t = cfg_max;
+            cfg_max = cfg_min;
+            cfg_min = t;
+        }
+        if ((cfg_max > cfg_min) && (fabsf(cfg_max) < 100.0f) && (fabsf(cfg_min) < 100.0f))
+        {
+            init->gimbal_yaw_motor.max_angle = cfg_max;
+            init->gimbal_yaw_motor.min_angle = cfg_min;
+        }
+        else if ((init->gimbal_yaw_motor.max_angle <= init->gimbal_yaw_motor.min_angle) ||
+                 ((init->gimbal_yaw_motor.max_angle == 0.0f) && (init->gimbal_yaw_motor.min_angle == 0.0f)) ||
+                 (fabsf(init->gimbal_yaw_motor.max_angle) > 100.0f) ||
+                 (fabsf(init->gimbal_yaw_motor.min_angle) > 100.0f))
+        {
+            init->gimbal_yaw_motor.max_angle = PI;
+            init->gimbal_yaw_motor.min_angle = -PI;
+        }
     }
 
     {
@@ -1203,6 +1262,22 @@ static void gimbal_feedback_update(gimbal_control_t *feedback_update, const gimb
         return;
     }
 
+#if GIMBAL_USE_ENCODER_FEEDBACK
+    {
+        const motor_measure_t *pitch_measure = (snapshot != NULL) ?
+                                                   snapshot->pitch_measure :
+                                                   feedback_update->gimbal_pitch_motor.gimbal_motor_measure;
+        const motor_measure_t *yaw_measure = (snapshot != NULL) ?
+                                                 snapshot->yaw_measure :
+                                                 feedback_update->gimbal_yaw_motor.gimbal_motor_measure;
+        const uint8_t pitch_turn = (snapshot != NULL) ? snapshot->pitch_turn : (PITCH_TURN ? 1u : 0u);
+        const uint8_t yaw_turn = (snapshot != NULL) ? snapshot->yaw_turn : (YAW_TURN ? 1u : 0u);
+
+        gimbal_feedback_from_encoder(&feedback_update->gimbal_pitch_motor, pitch_measure, pitch_turn);
+        gimbal_feedback_from_encoder(&feedback_update->gimbal_yaw_motor, yaw_measure, yaw_turn);
+        return;
+    }
+#else
     {
         fp32 pitch_angle_raw = 0.0f;
         fp32 pitch_speed_raw = 0.0f;
@@ -1244,6 +1319,7 @@ static void gimbal_feedback_update(gimbal_control_t *feedback_update, const gimb
         feedback_update->gimbal_yaw_motor.angle = (yaw_turn != 0u) ? -yaw_angle_raw : yaw_angle_raw;
         feedback_update->gimbal_yaw_motor.motor_gyro = (yaw_turn != 0u) ? -yaw_speed_raw : yaw_speed_raw;
     }
+#endif
 }
 
 /**
@@ -1265,6 +1341,32 @@ static fp32 motor_ecd_to_angle_change(uint16_t ecd, uint16_t offset_ecd)
     }
 
     return relative_ecd * MOTOR_ECD_TO_RAD;
+}
+
+static void gimbal_feedback_from_encoder(gimbal_motor_t *motor,
+                                         const motor_measure_t *measure,
+                                         uint8_t turn)
+{
+    fp32 angle;
+    fp32 speed;
+
+    if (motor == NULL || measure == NULL)
+    {
+        return;
+    }
+
+    angle = motor_ecd_to_angle_change(measure->ecd, motor->offset_ecd);
+    speed = (fp32)measure->speed_rpm * 0.104719755f;
+
+    if (turn != 0u)
+    {
+        angle = -angle;
+        speed = -speed;
+    }
+
+    motor->angle = angle;
+    motor->motor_gyro = speed;
+    motor->motor_speed = speed;
 }
 
 /**
@@ -1364,27 +1466,44 @@ static void gimbal_set_control(gimbal_control_t *set_control)
 
 static void gimbal_angle_limit(gimbal_motor_t *gimbal_motor, fp32 add)
 {
+    fp32 angle_set;
+
     if (gimbal_motor == NULL)
     {
         return;
     }
-    gimbal_motor->angle_set += add;
+    angle_set = gimbal_motor->angle_set + add;
 
-    // Yaw uses IMU Euler angle in (-PI, PI). To support continuous rotation, always wrap the setpoint
-    // instead of clamping at +/- PI.
+    // Yaw is clamped when a soft limit is configured; otherwise keep the shared wrap-around behavior.
     if (gimbal_motor == &gimbal_control.gimbal_yaw_motor)
     {
-        gimbal_motor->angle_set = rad_format(gimbal_motor->angle_set);
+        if (gimbal_yaw_soft_limit_enabled() != 0u)
+        {
+            if (angle_set > gimbal_motor->max_angle)
+            {
+                angle_set = gimbal_motor->max_angle;
+            }
+            else if (angle_set < gimbal_motor->min_angle)
+            {
+                angle_set = gimbal_motor->min_angle;
+            }
+            gimbal_motor->angle_set = angle_set;
+        }
+        else
+        {
+            gimbal_motor->angle_set = rad_format(angle_set);
+        }
         return;
     }
-    if (gimbal_motor->angle_set > gimbal_motor->max_angle)
+    if (angle_set > gimbal_motor->max_angle)
     {
-        gimbal_motor->angle_set = gimbal_motor->max_angle;
+        angle_set = gimbal_motor->max_angle;
     }
-    else if (gimbal_motor->angle_set < gimbal_motor->min_angle)
+    else if (angle_set < gimbal_motor->min_angle)
     {
-        gimbal_motor->angle_set = gimbal_motor->min_angle;
+        angle_set = gimbal_motor->min_angle;
     }
+    gimbal_motor->angle_set = angle_set;
 }
 
 static fp32 gimbal_yaw_chassis_spin_ff_current(const gimbal_motor_t *yaw_motor)
@@ -1456,6 +1575,25 @@ static fp32 gimbal_yaw_chassis_spin_ff_current(const gimbal_motor_t *yaw_motor)
                           GIMBAL_YAW_CHASSIS_SPIN_EXIT_FF_MAX_CURRENT);
 }
 
+static fp32 gimbal_yaw_kick_current(const gimbal_motor_t *yaw_motor)
+{
+    const fp32 kick = fabsf(YAW_KICK_CURRENT);
+
+    if (yaw_motor == NULL || kick <= 0.0f)
+    {
+        return 0.0f;
+    }
+    if (yaw_motor->motor_gyro_set > 0.0f)
+    {
+        return kick;
+    }
+    if (yaw_motor->motor_gyro_set < 0.0f)
+    {
+        return -kick;
+    }
+    return 0.0f;
+}
+
 static void gimbal_control_loop(gimbal_control_t *control_loop)
 {
     if (control_loop == NULL)
@@ -1500,6 +1638,7 @@ static void gimbal_motor_angle_control(gimbal_motor_t *gimbal_motor)
     fp32 kick_up;
     fp32 kick_down;
     fp32 ff_hold;
+    fp32 ff_table_hold;
     fp32 ff_kick_up;
     fp32 ff_kick_down;
     fp32 kick_scale;
@@ -1529,6 +1668,17 @@ static void gimbal_motor_angle_control(gimbal_motor_t *gimbal_motor)
     {
         const fp32 yaw_current_limit = fabsf(gimbal_motor->gimbal_motor_gyro_pid.max_out);
         gimbal_motor->current_set += gimbal_yaw_chassis_spin_ff_current(gimbal_motor);
+        gimbal_motor->current_set += gimbal_yaw_kick_current(gimbal_motor);
+        if (gimbal_yaw_soft_limit_enabled() != 0u)
+        {
+            if ((gimbal_motor->angle >= gimbal_motor->max_angle && gimbal_motor->motor_gyro_set > 0.0f) ||
+                (gimbal_motor->angle <= gimbal_motor->min_angle && gimbal_motor->motor_gyro_set < 0.0f))
+            {
+                gimbal_motor->current_set = 0.0f;
+                gimbal_motor->gimbal_motor_angle_pid.Iout = 0.0f;
+                gimbal_motor->gimbal_motor_gyro_pid.Iout = 0.0f;
+            }
+        }
         if (yaw_current_limit > 0.0f)
         {
             gimbal_motor->current_set = fp32_constrain(gimbal_motor->current_set,
@@ -1544,19 +1694,21 @@ static void gimbal_motor_angle_control(gimbal_motor_t *gimbal_motor)
         pitch_err = gimbal_motor->angle_set - gimbal_motor->angle;
         kick_up = fabsf(PITCH_KICK_UP_CURRENT);
         kick_down = fabsf(PITCH_KICK_DOWN_CURRENT);
-        ff_hold = 0.0f;
+        ff_hold = GIMBAL_PITCH_HOLD_CURRENT;
+        ff_table_hold = 0.0f;
         ff_kick_up = 0.0f;
         ff_kick_down = 0.0f;
         kick_scale = 0.0f;
         current_limit = fabsf(PITCH_CURRENT_LIMIT);
         memset(&limit_info, 0, sizeof(limit_info));
 
-        if (pitch_cali_get_comp(gimbal_motor->angle, &ff_hold, &ff_kick_up, &ff_kick_down))
+        if (pitch_cali_get_comp(gimbal_motor->angle, &ff_table_hold, &ff_kick_up, &ff_kick_down))
         {
-            gimbal_motor->current_set += ff_hold;
+            ff_hold = ff_table_hold;
             kick_up = fabsf(ff_kick_up);
             kick_down = fabsf(ff_kick_down);
         }
+        gimbal_motor->current_set += ff_hold;
 
         kick_scale = gimbal_pitch_kick_scale(pitch_err);
         kick_up *= kick_scale;

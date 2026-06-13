@@ -53,6 +53,9 @@ CONFIG_PARAM_U8(58, "gimbal.cali_end_step", CONFIG_PARAM_SCOPE_GIMBAL_SINGLE, g_
 CONFIG_PARAM_F32(59, "gimbal.motionless_rc_deadline", CONFIG_PARAM_SCOPE_GIMBAL_SINGLE, g_config.gimbal.motionless_rc_deadline, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_U16(60, "gimbal.motionless_time_max_ms", CONFIG_PARAM_SCOPE_GIMBAL_SINGLE, g_config.gimbal.motionless_time_max_ms, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_F32(61, "gimbal.turn_speed", CONFIG_PARAM_SCOPE_GIMBAL_SINGLE, g_config.gimbal.turn_speed, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_F32(62, "gimbal.yaw_soft_limit_max", CONFIG_PARAM_SCOPE_GIMBAL_SINGLE, g_config.gimbal.yaw_soft_limit_max, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_F32(63, "gimbal.yaw_soft_limit_min", CONFIG_PARAM_SCOPE_GIMBAL_SINGLE, g_config.gimbal.yaw_soft_limit_min, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_F32(64, "gimbal.yaw_kick_current", CONFIG_PARAM_SCOPE_GIMBAL_SINGLE, g_config.gimbal.yaw_kick_current, CONFIG_PARAM_APPLY_NONE)
 
 // classic chassis
 CONFIG_PARAM_F32(66, "chassis.motor_speed_pid.kp", CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC, g_config.chassis.motor_speed_pid.kp, CONFIG_PARAM_APPLY_CHASSIS_MOTOR_SPEED_PID)

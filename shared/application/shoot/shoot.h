@@ -41,7 +41,7 @@
 
 // motor encoder helpers
 #define HALF_ECD_RANGE               4096
-#define ECD_RANGE                    8191
+#define ECD_RANGE                    8192
 #define MOTOR_RPM_TO_SPEED           (g_config.shoot.motor_rpm_to_speed)
 #define MOTOR_ECD_TO_ANGLE           (g_config.shoot.motor_ecd_to_angle)
 #define FULL_COUNT                   (g_config.shoot.full_count)

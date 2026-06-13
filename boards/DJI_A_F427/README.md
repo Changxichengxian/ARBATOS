@@ -16,7 +16,6 @@
 ## 当前使用者
 
 - `INFANTRY-A`：`open_INFANTRY-A.cmd` 或 `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx`
-- `SENTINEL-A`：`open_SENTINEL-A.cmd` 或 `projects/SENTINEL-A/MDK-ARM/SENTINEL-A.uvprojx`
 - `CARRIER-A`：`open_CARRIER-A.cmd` 或 `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx`
 
 ## 边界

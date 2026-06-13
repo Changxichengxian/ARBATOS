@@ -46,7 +46,6 @@ static uint8_t buzzer_is_idle(void);
 static void entertainment_music_tick(void);
 static uint8_t entertainment_manual_connected(void);
 static uint8_t entertainment_switch_is_ready(uint16_t raw_sw);
-static uint8_t entertainment_switch_is_fire(uint16_t raw_sw);
 static uint8_t entertainment_music_name_is_u8(const char *name);
 static int entertainment_find_music_by_index(int32_t *index_io,
                                              char *out,
@@ -74,11 +73,6 @@ static uint8_t entertainment_switch_is_stop(uint16_t raw_sw)
 static uint8_t entertainment_switch_is_ready(uint16_t raw_sw)
 {
     return input_switch_is_pos(raw_sw, g_config.manual_input.semantics.shoot_ready_pos);
-}
-
-static uint8_t entertainment_switch_is_fire(uint16_t raw_sw)
-{
-    return input_switch_is_pos(raw_sw, g_config.manual_input.semantics.shoot_fire_pos);
 }
 
 static input_switch_e entertainment_get_image_switch_input(void)

@@ -54,7 +54,8 @@ static uint8_t config_profile_module_enabled(robot_task_module_e module)
 
 static uint8_t config_block_active_gimbal_single(void)
 {
-    return config_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL);
+    return (uint8_t)(config_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
+                     config_profile_module_enabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u);
 }
 
 static uint8_t config_block_active_gimbal_dual(void)
@@ -103,7 +104,7 @@ static uint8_t config_block_active_arm(void)
 // AUX 调参表：只有列在这里的块能被运行时改，g_config.motor 这种装配信息不放进来。
 static const config_block_desc_t g_config_blocks[] = {
     {CONFIG_BLOCK_PROFILE, "profile", "", &g_config.profile, sizeof(g_config.profile), config_block_active_always},
-    {CONFIG_BLOCK_GIMBAL_SINGLE, "gimbal.single", "001-022,026-061,350-368", &g_config.gimbal, sizeof(g_config.gimbal), config_block_active_gimbal_single},
+    {CONFIG_BLOCK_GIMBAL_SINGLE, "gimbal.single", "001-022,026-064,350-368", &g_config.gimbal, sizeof(g_config.gimbal), config_block_active_gimbal_single},
     {CONFIG_BLOCK_GIMBAL_DUAL, "gimbal.dual", "400-499", &g_config.dual_gimbal, sizeof(g_config.dual_gimbal), config_block_active_gimbal_dual},
     {CONFIG_BLOCK_LOCOMOTION_CLASSIC, "locomotion.classic", "066-075,081,086-092,098-106,245-248", &g_config.chassis, sizeof(g_config.chassis), config_block_active_locomotion_classic},
     {CONFIG_BLOCK_LOCOMOTION_WHEELLEG_SERVO, "locomotion.wheelleg_servo", "500-599", &g_config.wheelleg_servo, sizeof(g_config.wheelleg_servo), config_block_active_wheelleg_servo},

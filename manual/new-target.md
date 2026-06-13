@@ -9,10 +9,10 @@
 | 新目标条件 | 优先复制 |
 |---|---|
 | DJI C 板 | `HERO-C` 或 `MINIWHEELEG-C` |
-| DJI A 板 | `INFANTRY-A`、`SENTINEL-A`、`CARRIER-A` |
-| DM MC02 H7 | `HERO-M` 或 `MINIWHEELEG-M` |
+| DJI A 板 | `INFANTRY-A` 或 `CARRIER-A` |
+| DM MC02 H7 | `HERO-M`、`SENTINEL-M` 或 `MINIWHEELEG-M` |
 | 经典底盘 + 单云台 | `HERO-C` / `INFANTRY-A` |
-| 双 yaw 云台 | `SENTINEL-A` |
+| 双 yaw 云台 | `SENTINEL-M` |
 | MIT 轮腿实验 | `MINIWHEELEG-M` / `MINIWHEELEG-C` |
 
 复制时通常要复制两块：

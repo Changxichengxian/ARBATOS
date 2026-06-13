@@ -25,8 +25,8 @@
 先不要从零开始。找一台最接近的新车：
 
 - 用 DJI C 板：优先看 `HERO-C` 或 `MINIWHEELEG-C`。
-- 用 DJI A 板：优先看 `INFANTRY-A`、`SENTINEL-A`、`CARRIER-A`。
-- 用 DM MC02 H7：优先看 `HERO-M` 或 `MINIWHEELEG-M`。
+- 用 DJI A 板：优先看 `INFANTRY-A` 或 `CARRIER-A`。
+- 用 DM MC02 H7：优先看 `HERO-M`、`SENTINEL-M` 或 `MINIWHEELEG-M`。
 
 然后复制对应的 `Robotconfig/<TARGET>/` 和 `projects/<TARGET>/`，再改名字和工程包含路径。
 

@@ -2,13 +2,13 @@
     // 云台配置
     .gimbal =
         {
-            .yaw_speed_pid = {2000.0f, 0.0f, 0.0f, 20000.0f, 5000.0f},   // [001]kp [002]ki [003]kd [004]max_out [005]max_iout | YAW 速度环：输出上限 20000（电压模式）
+            .yaw_speed_pid = {500.0f, 1.0f, 0.0f, 7000.0f, 1000.0f},   // [001]kp [002]ki [003]kd [004]max_out [005]max_iout | 小 yaw 轻，速度环先按轻云台压低防震荡
             // PITCH 速度环：
             // - 控制周期为 1ms，PID_calc 内部未乘 dt，因此 Ki 属于“每次迭代”的积分系数；过大极易导致抖动/风up
             // - 默认以 P 为主（接近 YAW 的量级），I 默认先关；若需要重力补偿再通过 AUX 口逐步加一点 Ki
-            .pitch_speed_pid = {1800.0f, 0.0f, 0.0f, 10000.0f, 1000.0f},   // [006]kp [007]ki [008]kd [009]max_out [010]max_iout
-            .yaw_encode_angle_pid = {30.0f, 0.0f, 0.0f, 40.0f, 5.0f},      // [011]kp [012]ki [013]kd [014]max_out [015]max_iout | YAW 角度环（编码器）：用于编码器模式；kp 增大提高位置刚性
-            .pitch_encode_angle_pid = {4.5f, 0.0f, 0.0f, 15.0f, 0.0f},   // [016]kp [017]ki [018]kd [019]max_out [020]max_iout | PITCH 角度环（编码器）：同上
+            .pitch_speed_pid = {2000.0f, 5.0f, 0.0f, 14000.0f, 1000.0f},   // [006]kp [007]ki [008]kd [009]max_out [010]max_iout
+            .yaw_encode_angle_pid = {9.0f, 0.0f, 0.0f, 25.0f, 3.0f},      // [011]kp [012]ki [013]kd [014]max_out [015]max_iout | 小 yaw 角度环，先保守止振再往上加
+            .pitch_encode_angle_pid = {6.0f, 0.0f, 0.0f, 20.0f, 0.0f},   // [016]kp [017]ki [018]kd [019]max_out [020]max_iout | PITCH 角度环（编码器）：同上
 
             .task_init_time_ms = 201,   // 任务启动延时
             .control_period_ms = 1,     // [022] 控制周期 1ms
@@ -17,9 +17,9 @@
             .channel_pitch = 1,         // 云台 pitch 逻辑轴，保留给兼容代码
             .channel_mode = 0,          // 云台模式逻辑拨杆，保留给兼容代码
 
-            .yaw_rc_sen = 0.000005f,    // [026] 遥控 yaw 灵敏度（ch0 正=右转）
-            .pitch_rc_sen = 0.00001f,  // [027] 遥控 pitch 灵敏度（ch1 正=抬头）
-            .yaw_mouse_sen = 0.00005f,  // [028] 鼠标 yaw 灵敏度
+            .yaw_rc_sen = -0.000003f,    // [026] 遥控 yaw 灵敏度（ch0 正=右转）
+            .pitch_rc_sen = 0.000005f,  // [027] 遥控 pitch 灵敏度（ch1 正=抬头）
+            .yaw_mouse_sen = 0.000023f,  // [028] 鼠标 yaw 灵敏度
             .pitch_mouse_sen = 0.00015f,// [029] 鼠标 pitch 灵敏度
             .yaw_encode_sen = 0.01f,    // [030] 编码器 yaw 灵敏度
             .pitch_encode_sen = 0.01f,  // [031] 编码器 pitch 灵敏度
@@ -33,15 +33,18 @@
             .init_pitch_set = 0.0f,     // 初始 pitch 设定：机械零点，偏移会导致上电姿态不同
             .init_yaw_set = 0.0f,       // 初始 yaw 设定：同上
 
-            .yaw_middle_ecd = 1677,     // yaw 云台在车身中位时的编码器值（常用调参项）
+            .yaw_middle_ecd = 6150,     // yaw 云台在车身中位时的编码器值（常用调参项）
+            .yaw_soft_limit_max = 1.342f, // [062] 小 yaw 正向软限位：右 8000，留约 100 计数余量
+            .yaw_soft_limit_min = -1.572f,// [063] 小 yaw 负向软限位：左 4000，留约 100 计数余量
+            .yaw_kick_current = 500.0f, // [064] 小 yaw 起步电流：按目标速度方向给正负，不是重力保持
             .pitch_kick_up_current = 1000.0f,   // [041] pitch 抬头起步电流（静摩擦/重力补偿，持续叠加到 PID 输出上）
             .pitch_kick_down_current = 100.0f, // [042] pitch 低头起步电流（静摩擦/重力补偿，持续叠加到 PID 输出上）
             // pitch 软限位（以 VOFA ch0= gimbal_pitch_motor.angle 为准）：
-            // - 符号：正值为抬头，负值为低头（注意：IMU angle_deg[] 为 INS 原始坐标，可能符号相反）
-            // - 机械范围：约 +0.8 ~ -0.49 rad；
-            .pitch_soft_limit_up = 0.75f,      // [043] 抬头方向软限位（rad，正）
-            .pitch_soft_limit_down = -0.45f, // [044] 低头方向软限位（rad，负）
-            .pitch_current_limit = 4000.0f,         // [045] pitch 输出电流限幅
+            // - 本车实测：上 3400、中 3600、下 4400；当前 pitch_turn=1，控制角度为上方正、下方负
+            // - 机械范围：约 +0.153 ~ -0.614 rad；下面配置已留余量
+            .pitch_soft_limit_up = 0.115f,      // [043] 抬头方向软限位：上 3400，留约 50 计数余量
+            .pitch_soft_limit_down = -0.575f, // [044] 低头方向软限位：下 4400，留约 50 计数余量
+            .pitch_current_limit = 14000.0f,         // [045] pitch 输出电流限幅：6000 重力保持外再留 PID 修正余量
 
             // pitch 补偿校准（重力维持/静摩擦起动）：数据存 SD，正常模式可作为前馈使用
             .pitch_cali =
@@ -68,7 +71,7 @@
                 },
 
             .half_ecd_range = 4096,     // 编码器半范围：用于跳变判断
-            .full_ecd_range = 8191,     // 编码器全范围：满圈计数
+            .full_ecd_range = 8192,     // 编码器全范围：满圈计数
             .motor_ecd_to_rad = 0.000766990394f, // [048] 编码器计数->弧度：增大等于调大角度读数
 
             .cali_redundant_angle = 0.1f, // [049] 校准冗余角：留 0.1rad 保护
@@ -255,7 +258,7 @@
             .up_add_time_ms = 100,              // [133] 斜率时间：摩擦轮爬升时间，越小起转越快但电流大
 
             .half_ecd_range = 4096,            // 拨盘编码器半范围
-            .full_ecd_range = 8191,            // 拨盘编码器全范围
+            .full_ecd_range = 8192,            // 拨盘编码器全范围
             .motor_rpm_to_speed = 0.00290888208665721596153948461415f, // 拨盘电机 RPM 到角速度的换算
             .motor_ecd_to_angle = 0.000021305288720633905968306772076277f, // 编码器计数到角度的换算
             .full_count = 18,                  // 拨盘一圈对应的计数

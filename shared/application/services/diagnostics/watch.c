@@ -254,8 +254,12 @@ static const fp32 *ins_accel_src;
 
 static void watch_copy_rc(void);
 static void watch_copy_newrc(void);
+#if WATCH_ENABLE_COMM_COPY
 static void watch_copy_comm(void);
+#endif
+#if WATCH_ENABLE_RUNTIME_COPY
 static void watch_copy_runtime(void);
+#endif
 static void watch_copy_imu(void);
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
 static void watch_copy_chassis(void);
@@ -275,6 +279,7 @@ static void watch_copy_wheelleg_mit(void);
 static void watch_copy_diag(void);
 static void watch_copy_rtos(void);
 static void watch_diag_push_stage(watch_boot_stage_e stage);
+#if WATCH_ENABLE_RUNTIME_COPY
 static void watch_runtime_add_entry(const char *name,
                                     runtime_instance_kind_e kind,
                                     runtime_instance_state_e state,
@@ -282,9 +287,10 @@ static void watch_runtime_add_entry(const char *name,
                                     uint16_t source_index,
                                     uint16_t parent_index);
 static runtime_instance_state_e watch_runtime_device_state(const robot_config_device_t *device);
+static const watch_task_module_create_slot_t *watch_task_module_create_find(uint8_t module);
+#endif
 static watch_task_diag_entry_t *watch_task_diag_get(watch_task_id_e task_id);
 static watch_irq_diag_entry_t *watch_irq_diag_get(watch_irq_id_e irq_id);
-static const watch_task_module_create_slot_t *watch_task_module_create_find(uint8_t module);
 static uint8_t watch_block_active_always(void);
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
 static uint8_t watch_block_active_locomotion_classic(void);
@@ -339,7 +345,9 @@ static const watch_block_desc_t g_watch_blocks[] = {
     {WATCH_BLOCK_DIAG, "common.diag", &g_watch.diag, sizeof(g_watch.diag), watch_block_active_always},
     {WATCH_BLOCK_RTOS, "common.rtos", &g_watch.rtos, sizeof(g_watch.rtos), watch_block_active_always},
     {WATCH_BLOCK_FAULT, "common.fault", &g_watch.fault, sizeof(g_watch.fault), watch_block_active_always},
+#if WATCH_ENABLE_COMM_COPY
     {WATCH_BLOCK_COMM, "common.comm", &g_watch.comm, sizeof(g_watch.comm), watch_block_active_always},
+#endif
 };
 
 static watch_block_desc_t g_watch_active_blocks[WATCH_BLOCK_COUNT];
@@ -355,15 +363,30 @@ static void watch_update_set_stage(watch_update_stage_e stage)
     g_watch.rtos.watch_update_stage_tick_ms = HAL_GetTick();
 }
 
+#if WATCH_ENABLE_ARM_J0_UNITREE || WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT || WATCH_ENABLE_GIMBAL_SINGLE
 static fp32 watch_rad_to_deg(fp32 rad)
 {
     return rad * 57.29577951308232f;
 }
+#endif
 
+#if WATCH_ENABLE_GIMBAL_SINGLE
+static fp32 watch_ecd_to_deg(uint16_t ecd)
+{
+    const fp32 full_range = (g_config.gimbal.full_ecd_range != 0u) ?
+                                (fp32)g_config.gimbal.full_ecd_range :
+                                8192.0f;
+
+    return (fp32)ecd * 360.0f / full_range;
+}
+#endif
+
+#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
 static fp32 watch_abs_fp32(fp32 value)
 {
     return (value >= 0.0f) ? value : -value;
 }
+#endif
 
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
 static uint8_t watch_block_active_locomotion_classic(void)
@@ -389,7 +412,14 @@ static uint8_t watch_block_active_wheelleg_mit(void)
 #if WATCH_ENABLE_GIMBAL_SINGLE
 static uint8_t watch_block_active_gimbal_single(void)
 {
-    return robot_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL);
+    uint8_t active = robot_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL);
+#if WATCH_ENABLE_GIMBAL_DUAL
+    if (active == 0u)
+    {
+        active = robot_profile_module_enabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL);
+    }
+#endif
+    return active;
 }
 #endif
 
@@ -711,8 +741,10 @@ void watch_update(void)
     watch_copy_rc();
     watch_update_set_stage(WATCH_UPDATE_STAGE_NEWRC);
     watch_copy_newrc();
+#if WATCH_ENABLE_COMM_COPY
     watch_update_set_stage(WATCH_UPDATE_STAGE_COMM);
     watch_copy_comm();
+#endif
 #if WATCH_ENABLE_RUNTIME_COPY
     watch_update_set_stage(WATCH_UPDATE_STAGE_RUNTIME);
     watch_copy_runtime();
@@ -793,6 +825,7 @@ uint8_t watch_block_is_active(watch_block_id_e id)
     return block->is_active();
 }
 
+#if WATCH_ENABLE_RUNTIME_COPY
 static void watch_runtime_add_entry(const char *name,
                                     runtime_instance_kind_e kind,
                                     runtime_instance_state_e state,
@@ -854,6 +887,7 @@ static runtime_instance_state_e watch_runtime_device_state(const robot_config_de
         return RUNTIME_INSTANCE_STATE_ENABLED;
     }
 }
+#endif
 
 static void watch_diag_push_stage(watch_boot_stage_e stage)
 {
@@ -962,6 +996,7 @@ static void watch_copy_newrc(void)
     g_watch.newrc.last_rx_tick_ms = state.last_rx_tick_ms;
 }
 
+#if WATCH_ENABLE_COMM_COPY
 static void watch_copy_comm(void)
 {
     bsp_rc_diag_t rc_diag;
@@ -1022,7 +1057,9 @@ static void watch_copy_comm(void)
     g_watch.comm.can_rx_error_count[1] = CAN_get_can2_rx_error_count();
     g_watch.comm.can_rx_error_count[2] = CAN_get_can3_rx_error_count();
 }
+#endif
 
+#if WATCH_ENABLE_RUNTIME_COPY
 static void watch_copy_runtime(void)
 {
     uint8_t motor_count;
@@ -1248,6 +1285,7 @@ static void watch_copy_runtime(void)
                                 RUNTIME_INSTANCE_INDEX_NONE);
     }
 }
+#endif
 
 static void watch_copy_imu(void)
 {
@@ -1330,8 +1368,6 @@ static void watch_copy_chassis(void)
 #if WATCH_ENABLE_GIMBAL_SINGLE
 static void watch_copy_gimbal(void)
 {
-    const fp32 rad2deg = 57.29577951308232f;
-
     if (!watch_block_active_gimbal_single())
     {
         memset(&g_watch.gimbal, 0, sizeof(g_watch.gimbal));
@@ -1351,14 +1387,15 @@ static void watch_copy_gimbal(void)
     if (yaw->valid != 0u)
     {
         g_watch.gimbal.yaw_mode = (watch_gimbal_motor_mode_e)yaw->motor_mode;
-        g_watch.gimbal.yaw_angle_deg = yaw->angle * rad2deg;
-        g_watch.gimbal.yaw_set_deg = yaw->angle_set * rad2deg;
-        g_watch.gimbal.yaw_gyro_dps = yaw->motor_gyro * rad2deg;
+        g_watch.gimbal.yaw_angle_deg = watch_rad_to_deg(yaw->angle);
+        g_watch.gimbal.yaw_set_deg = watch_rad_to_deg(yaw->angle_set);
+        g_watch.gimbal.yaw_gyro_dps = watch_rad_to_deg(yaw->motor_gyro);
         g_watch.gimbal.yaw_current = yaw->given_current;
 
         g_watch.gimbal.yaw_rpm = (yaw->measure.valid != 0u) ? yaw->measure.speed_rpm : 0;
         g_watch.gimbal.yaw_current_fb = (yaw->measure.valid != 0u) ? yaw->measure.given_current : 0;
         g_watch.gimbal.yaw_ecd = (yaw->measure.valid != 0u) ? yaw->measure.ecd : 0;
+        g_watch.gimbal.yaw_ecd_deg = (yaw->measure.valid != 0u) ? watch_ecd_to_deg(yaw->measure.ecd) : 0.0f;
         g_watch.gimbal.yaw_temp = (yaw->measure.valid != 0u) ? yaw->measure.temperature : 0;
     }
     else
@@ -1371,20 +1408,22 @@ static void watch_copy_gimbal(void)
         g_watch.gimbal.yaw_rpm = 0;
         g_watch.gimbal.yaw_current_fb = 0;
         g_watch.gimbal.yaw_ecd = 0;
+        g_watch.gimbal.yaw_ecd_deg = 0.0f;
         g_watch.gimbal.yaw_temp = 0;
     }
 
     if (pitch->valid != 0u)
     {
         g_watch.gimbal.pitch_mode = (watch_gimbal_motor_mode_e)pitch->motor_mode;
-        g_watch.gimbal.pitch_angle_deg = pitch->angle * rad2deg;
-        g_watch.gimbal.pitch_set_deg = pitch->angle_set * rad2deg;
-        g_watch.gimbal.pitch_gyro_dps = pitch->motor_gyro * rad2deg;
+        g_watch.gimbal.pitch_angle_deg = watch_rad_to_deg(pitch->angle);
+        g_watch.gimbal.pitch_set_deg = watch_rad_to_deg(pitch->angle_set);
+        g_watch.gimbal.pitch_gyro_dps = watch_rad_to_deg(pitch->motor_gyro);
         g_watch.gimbal.pitch_current = pitch->given_current;
 
         g_watch.gimbal.pitch_rpm = (pitch->measure.valid != 0u) ? pitch->measure.speed_rpm : 0;
         g_watch.gimbal.pitch_current_fb = (pitch->measure.valid != 0u) ? pitch->measure.given_current : 0;
         g_watch.gimbal.pitch_ecd = (pitch->measure.valid != 0u) ? pitch->measure.ecd : 0;
+        g_watch.gimbal.pitch_ecd_deg = (pitch->measure.valid != 0u) ? watch_ecd_to_deg(pitch->measure.ecd) : 0.0f;
         g_watch.gimbal.pitch_temp = (pitch->measure.valid != 0u) ? pitch->measure.temperature : 0;
     }
     else
@@ -1397,6 +1436,7 @@ static void watch_copy_gimbal(void)
         g_watch.gimbal.pitch_rpm = 0;
         g_watch.gimbal.pitch_current_fb = 0;
         g_watch.gimbal.pitch_ecd = 0;
+        g_watch.gimbal.pitch_ecd_deg = 0.0f;
         g_watch.gimbal.pitch_temp = 0;
     }
 }
@@ -1933,8 +1973,10 @@ static void watch_wheelleg_run_capture_copy(void)
 
 static void watch_copy_diag(void)
 {
-    sdlog_stats_t sd_stats = {0};
     memset(&g_watch.diag, 0, sizeof(g_watch.diag));
+
+#if WATCH_ENABLE_DIAG_COPY
+    sdlog_stats_t sd_stats = {0};
 
     g_watch.diag.offline_need_geometry = 1u;
     g_watch.diag.offline_need_mass_inertia = 1u;
@@ -2049,19 +2091,20 @@ static void watch_copy_diag(void)
         watch_wheelleg_run_capture_copy();
     }
 #endif
+#endif
 }
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
 // Optional stack watermark globals (defined in some targets). Provide weak defaults
 // so the shared watch can link even if a target doesn't export them.
 #if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
-__weak uint32_t gimbal_high_water;
+__weak uint32_t gimbal_high_water = 0u;
 #endif
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
-__weak uint32_t chassis_high_water;
+__weak uint32_t chassis_high_water = 0u;
 #endif
-__weak uint32_t detect_task_stack;
-__weak uint32_t calibrate_task_stack;
+__weak uint32_t detect_task_stack = 0u;
+__weak uint32_t calibrate_task_stack = 0u;
 #endif
 
 static void watch_copy_rtos(void)

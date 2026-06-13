@@ -671,7 +671,7 @@ function Test-ProfileProductRules {
         "INFANTRY-A" = "ROBOT_PROFILE_KIND_INFANTRY"
         "MINIWHEELEG-C" = "ROBOT_PROFILE_KIND_WHEELLEG"
         "MINIWHEELEG-M" = "ROBOT_PROFILE_KIND_WHEELLEG"
-        "SENTINEL-A" = "ROBOT_PROFILE_KIND_SENTRY"
+        "SENTINEL-M" = "ROBOT_PROFILE_KIND_SENTRY"
     }
 
     foreach ($project in $Projects) {

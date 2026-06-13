@@ -38,6 +38,12 @@
 #ifndef WATCH_ENABLE_RUNTIME_COPY
 #define WATCH_ENABLE_RUNTIME_COPY 1
 #endif
+#ifndef WATCH_ENABLE_COMM_COPY
+#define WATCH_ENABLE_COMM_COPY 1
+#endif
+#ifndef WATCH_ENABLE_DIAG_COPY
+#define WATCH_ENABLE_DIAG_COPY 1
+#endif
 #ifndef WATCH_RUNTIME_MAX_MOTORS
 #define WATCH_RUNTIME_MAX_MOTORS MotorCount
 #endif
@@ -300,6 +306,7 @@ typedef struct
     int16_t yaw_rpm;
     int16_t yaw_current_fb;
     uint16_t yaw_ecd;
+    fp32 yaw_ecd_deg;
     uint8_t yaw_temp;
     fp32 pitch_angle_deg;
     fp32 pitch_set_deg;
@@ -308,6 +315,7 @@ typedef struct
     int16_t pitch_rpm;
     int16_t pitch_current_fb;
     uint16_t pitch_ecd;
+    fp32 pitch_ecd_deg;
     uint8_t pitch_temp;
 } watch_gimbal_t;
 
@@ -877,7 +885,9 @@ typedef struct
 {
     watch_rc_t rc;
     watch_newrc_t newrc;
+#if WATCH_ENABLE_RUNTIME_COPY
     watch_runtime_t runtime;
+#endif
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
     watch_chassis_t chassis;
 #endif
@@ -903,7 +913,9 @@ typedef struct
     watch_diag_t diag;
     watch_rtos_t rtos;
     watch_fault_t fault;
+#if WATCH_ENABLE_COMM_COPY
     watch_comm_t comm;
+#endif
 } watch_t;
 
 extern watch_t g_watch;

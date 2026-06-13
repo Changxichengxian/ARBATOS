@@ -9,7 +9,7 @@
 | `HERO-C` | 英雄机器人 | `config.c`、`config_*.inc`、`config.h`、`detect_task.c`、`pitch_cali_builtin.c` |
 | `HERO-M` | 英雄机器人临时接 MC02 H7 板 | `config.c`、`config_*.inc`、`config.h`、`detect_task.c`、`pitch_cali_builtin.c` |
 | `INFANTRY-A` | 步兵机器人 | `config.c`、`config_*.inc`、`config.h`、`detect_task.c`、`usb_task_stub.c` |
-| `SENTINEL-A` | 哨兵机器人 | `config.c`、`config_*.inc`、`config.h`、`detect_task.c`、`usb_task_stub.c` |
+| `SENTINEL-M` | 哨兵机器人接 MC02 H7 板 | `config.c`、`config_*.inc`、`config.h`、`detect_task.c`、`mc02_compat.c` |
 | `CARRIER-A` | 工程机器人 | `config.c`、`config_*.inc`、`config.h`、`detect_task.c`、`usb_task_stub.c` |
 | `MINIWHEELEG-M` | H7 接板和机械臂实验 | `config.c`、`config_*.inc`、`config.h`、`detect_task.c`、`arm_motor_table.c` |
 | `MINIWHEELEG-C` | 小轮腿临时接 DJI C 板 | `config.c`、`config_*.inc`、`config.h`、`detect_task.c`、`arm_motor_table.c` |

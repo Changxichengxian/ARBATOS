@@ -70,7 +70,7 @@ static const int16_t chassis_zero_current_cmd[CHASSIS_MOTOR_COUNT] = {0};
 #endif
 
 #ifndef ECD_RANGE
-#define ECD_RANGE 8191
+#define ECD_RANGE 8192
 #endif
 
 #ifndef MOTOR_ECD_TO_RAD

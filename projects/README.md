@@ -19,7 +19,7 @@ Keil 工程仍是当前可直接编译和下载的完整入口；脚本入口会
 | `HERO-C` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | `Robotconfig/HERO-C` | `boards/DJI_C_F407` |
 | `HERO-M` | `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` | `Robotconfig/HERO-M` | `boards/DM_MC02_H7` |
 | `INFANTRY-A` | `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx` | `Robotconfig/INFANTRY-A` | `boards/DJI_A_F427` |
-| `SENTINEL-A` | `projects/SENTINEL-A/MDK-ARM/SENTINEL-A.uvprojx` | `Robotconfig/SENTINEL-A` | `boards/DJI_A_F427` |
+| `SENTINEL-M` | `projects/SENTINEL-M/MDK-ARM/SENTINEL-M.uvprojx` | `Robotconfig/SENTINEL-M` | `boards/DM_MC02_H7` |
 | `CARRIER-A` | `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx` | `Robotconfig/CARRIER-A` | `boards/DJI_A_F427` |
 | `MINIWHEELEG-M` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | `Robotconfig/MINIWHEELEG-M` | `boards/DM_MC02_H7` |
 | `MINIWHEELEG-C` | `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx` | `Robotconfig/MINIWHEELEG-C` | `boards/DJI_C_F407` |

@@ -23,9 +23,9 @@
             //   ROBOT_RUN_MODE_SINGLE_MOTOR - only .target_motor output is released
             //   ROBOT_RUN_MODE_CALIBRATION  - calibration flow
             //   ROBOT_RUN_MODE_ENTERTAIN    - entertainment/demo
-            .mode = ROBOT_RUN_MODE_FULL,
-            .target_task = ROBOT_TASK_MODULE_NONE,
+            .mode = ROBOT_RUN_MODE_SINGLE_TASK,
+            .target_task = ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL,
             .target_motor = (uint8_t)MotorCount,
-            .variant = ROBOT_RUN_VARIANT_CHASSIS_ONLY,
+            .variant = ROBOT_RUN_VARIANT_GIMBAL_DUAL,
             .cali_target = ROBOT_CALI_TARGET_NONE,
         },

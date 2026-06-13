@@ -90,6 +90,9 @@ typedef struct
     fp32 init_yaw_set;            // 初始化 YAW 目标
 
     uint16_t yaw_middle_ecd;      // yaw 云台在车身中位时的编码器值（常用调参项，影响底盘跟随与相对角计算）
+    fp32 yaw_soft_limit_max;      // yaw 正向软限位，rad；max/min 都为 0 时保留校准或默认范围
+    fp32 yaw_soft_limit_min;      // yaw 负向软限位，rad；max/min 都为 0 时保留校准或默认范围
+    fp32 yaw_kick_current;        // yaw 起步电流（静摩擦补偿，按目标速度方向给正负）
     fp32 pitch_kick_up_current;   // pitch 上抬起步电流（静摩擦补偿，摇杆有输入时生效）
     fp32 pitch_kick_down_current; // pitch 下压起步电流（静摩擦补偿，摇杆有输入时生效）
     // pitch 软限位（rad，符号以 gimbal_pitch_motor.angle / AUX-VOFA ch0 为准）：

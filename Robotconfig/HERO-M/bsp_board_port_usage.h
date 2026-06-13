@@ -18,23 +18,27 @@
  * code. The macros under "active assignment" are the real binding.
  *
  * Board facts:
- * - USART3 DBUS: TX PC10, RX PC11. Hardware-inverted receiver port with RX DMA.
- *   In practice this is the dedicated DJI receiver port.
- * - USART1 AUX: TX PA9, RX PB7. General serial port with RX/TX DMA.
- * - USART6 REFEREE: TX PG14, RX PG9. General serial port with RX/TX DMA.
- * - KEY: PG0, active low. Current BSP path uses EXTI0 / PG0.
- * - BUTTON_TRIG: PI7.
+ * - UART5 DBUS: TX PC12, RX PD2. Receiver-facing serial port.
+ * - USART10: TX PE3, RX PE2. General serial port.
+ * - USART1 AUX: TX PA9, RX PA10. General serial port.
+ * - UART7 REFEREE: TX PE8, RX PE7. Common referee or spare serial port.
+ * - USART2 RS485_0: TX PD5, RX PD6, DE PD4. On-board RS485 transceiver.
+ * - USART3 RS485_1: TX PD8, RX PD9, DE PB14. On-board RS485 transceiver.
+ * - KEY: PA15, active low.
  *
  * Active assignment:
- * - RC receiver: USART3 DBUS
+ * - RC receiver: UART5 DBUS
  * - AUX / tuning / ELRS / video link: USART1 AUX
- * - Referee: USART6 REFEREE
+ * - Referee: UART7 REFEREE
+ * - RS485 port 0: USART2 RS485_0
+ * - RS485 port 1: USART3 RS485_1
  */
 
-#define BSP_BOARD_RC_UART_HANDLE        huart3
-#define BSP_BOARD_RC_UART_IRQn          USART3_IRQn
-#define BSP_BOARD_RC_DMA_HANDLE         hdma_usart3_rx
-#define BSP_BOARD_AUX_UART_HANDLE       huart1
-#define BSP_BOARD_REFEREE_UART_HANDLE   huart6
+#define BSP_BOARD_RC_UART_HANDLE            huart5
+#define BSP_BOARD_RC_UART_IRQn              UART5_IRQn
+#define BSP_BOARD_AUX_UART_HANDLE           huart1
+#define BSP_BOARD_REFEREE_UART_HANDLE       huart7
+#define BSP_BOARD_RS485_PORT0_UART_HANDLE   huart2
+#define BSP_BOARD_RS485_PORT1_UART_HANDLE   huart3
 
 #endif

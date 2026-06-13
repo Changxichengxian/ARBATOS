@@ -35,7 +35,7 @@
 #endif
 
 #ifndef ECD_RANGE
-#define ECD_RANGE 8191
+#define ECD_RANGE 8192
 #endif
 
 #ifndef MOTOR_ECD_TO_RAD

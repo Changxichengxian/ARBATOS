@@ -220,6 +220,14 @@ class MotorNode:
 
 
 @dataclass
+class OperationConfig:
+    mode: str = "ROBOT_RUN_MODE_FULL"
+    target_task: str = "ROBOT_TASK_MODULE_NONE"
+    target_motor: int = 255
+    variant: str = "ROBOT_RUN_VARIANT_NORMAL"
+
+
+@dataclass
 class ProjectConfig:
     project: str
     config_dir: Path
@@ -229,6 +237,7 @@ class ProjectConfig:
     periods_ms: dict[str, int]
     wheel_actuator_ids: set[int] = field(default_factory=set)
     project_defines: dict[str, str] = field(default_factory=dict)
+    operation: OperationConfig = field(default_factory=OperationConfig)
 
     def macro_text(self, name: str, fallback: str = "") -> str:
         return self.macros.get(name, fallback)
@@ -455,6 +464,16 @@ def extract_named_enum(init: str, field_name: str, allowed: set[str]) -> str | N
     return token if token in allowed else None
 
 
+def extract_named_symbol(init: str, field_name: str, fallback: str) -> str:
+    value = extract_named_value(init, field_name)
+    if not value:
+        return fallback
+    for token in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", value):
+        if token not in {"uint8_t", "uint16_t", "uint32_t", "int8_t", "int16_t", "int32_t"}:
+            return token
+    return fallback
+
+
 def parse_model_expr(expr: str | None) -> str | None:
     if not expr:
         return None
@@ -571,6 +590,16 @@ def parse_modules(config_c: str) -> list[str]:
     return list(dict.fromkeys(re.findall(r"ROBOT_TASK_MODULE_[A-Z0-9_]+", task_body)))
 
 
+def parse_operation(config_c: str, macros: dict[str, str]) -> OperationConfig:
+    body = extract_initializer(config_c, "operation") or ""
+    return OperationConfig(
+        mode=extract_named_symbol(body, "mode", "ROBOT_RUN_MODE_FULL"),
+        target_task=extract_named_symbol(body, "target_task", "ROBOT_TASK_MODULE_NONE"),
+        target_motor=parse_int_expr(extract_named_value(body, "target_motor"), macros, 255),
+        variant=extract_named_symbol(body, "variant", "ROBOT_RUN_VARIANT_NORMAL"),
+    )
+
+
 def parse_periods(config_c: str, macros: dict[str, str]) -> dict[str, int]:
     defaults = {
         "gimbal": parse_int_expr(macros.get("ROBOT_PROFILE_GIMBAL_CONTROL_DEFAULT_PERIOD_MS"), macros, 1),
@@ -629,7 +658,56 @@ def load_project(project: str) -> ProjectConfig:
         periods_ms=parse_periods(config_c, macros),
         wheel_actuator_ids=parse_wheel_actuators(config_c, macros),
         project_defines=project_defines,
+        operation=parse_operation(config_c, macros),
     )
+
+
+def project_module_enabled(project: ProjectConfig, module: str) -> bool:
+    return module in set(project.modules)
+
+
+def project_has_gimbal_task(project: ProjectConfig) -> bool:
+    return (
+        project_module_enabled(project, "ROBOT_TASK_MODULE_SINGLE_GIMBAL")
+        or project_module_enabled(project, "ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL")
+    )
+
+
+def project_has_arm_route_owner(project: ProjectConfig) -> bool:
+    return (
+        project_module_enabled(project, "ROBOT_TASK_MODULE_ARM")
+        or project_module_enabled(project, "ROBOT_TASK_MODULE_WHEELLEG_MIT")
+    )
+
+
+def project_shoot_runtime_enabled(project: ProjectConfig) -> bool:
+    return project.macro_int("ROBOT_TASK_BUILD_SHOOT_RM", 1) != 0 and project_has_gimbal_task(project)
+
+
+def motor_route_role_active(project: ProjectConfig, motor: MotorNode) -> bool:
+    if motor.role == "arm":
+        return project_has_arm_route_owner(project)
+    return True
+
+
+def motor_feedback_active(project: ProjectConfig, motor: MotorNode) -> bool:
+    if motor.role == "arm":
+        return project_has_arm_route_owner(project)
+    return True
+
+
+def motor_control_task_active(project: ProjectConfig, motor: MotorNode) -> bool:
+    if motor.role == "chassis":
+        return project_module_enabled(project, "ROBOT_TASK_MODULE_CLASSIC_CHASSIS")
+    if motor.role in ("yaw", "pitch"):
+        return project_has_gimbal_task(project)
+    if motor.role == "yaw_upper":
+        return project_module_enabled(project, "ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL")
+    if motor.role in ("trigger", "friction"):
+        return project_shoot_runtime_enabled(project)
+    if motor.role == "arm":
+        return project_has_arm_route_owner(project)
+    return False
 
 
 def rm_group_id(std_id: int) -> int | None:
@@ -648,8 +726,13 @@ def motor_feedback_hz(motor: MotorNode, default_feedback_hz: float) -> float:
     return default_feedback_hz
 
 
-def simulate_mit_tx(project: ProjectConfig, duration_ms: int, wake_period_ms: int) -> dict[str, Any]:
-    mit_motors = [motor for motor in project.motors if motor.is_mit_can]
+def simulate_mit_tx(
+    project: ProjectConfig,
+    motors: list[MotorNode],
+    duration_ms: int,
+    wake_period_ms: int,
+) -> dict[str, Any]:
+    mit_motors = [motor for motor in motors if motor.is_mit_can]
     if not mit_motors:
         return {
             "fps_by_bus": {},
@@ -790,7 +873,7 @@ def build_cpu_report(
             project.periods_ms["wheelleg_mit"],
             "sim default until profiler budget is added",
         )
-    if any(motor.enabled for motor in project.motors if motor.role in ("friction", "trigger")):
+    if project_shoot_runtime_enabled(project):
         add_cpu_item(
             budget_items,
             "shoot_control",
@@ -865,17 +948,19 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
     can_bus_count = project.macro_int("ROBOT_BOARD_CAN_BUS_COUNT", 2)
     bus_ids = list(range(1, max(1, can_bus_count) + 1))
 
-    enabled_can_motors = [motor for motor in project.motors if motor.is_can]
+    rx_can_motors = [motor for motor in project.motors if motor.is_can and motor_feedback_active(project, motor)]
+    rm_tx_motors = [motor for motor in project.motors if motor.is_rm_group]
+    active_tx_route_motors = [
+        motor for motor in project.motors if motor.is_can and motor_route_role_active(project, motor)
+    ]
     rx_fps_by_bus: dict[int, float] = {bus: 0.0 for bus in bus_ids}
-    for motor in enabled_can_motors:
+    for motor in rx_can_motors:
         rx_fps_by_bus[motor.bus] = rx_fps_by_bus.get(motor.bus, 0.0) + motor_feedback_hz(
             motor, args.motor_feedback_hz
         )
 
     rm_tx_groups: dict[int, set[int]] = {bus: set() for bus in bus_ids}
-    for motor in enabled_can_motors:
-        if not motor.is_rm_group:
-            continue
+    for motor in rm_tx_motors:
         group_id = rm_group_id(motor.std_id)
         if group_id is not None:
             rm_tx_groups.setdefault(motor.bus, set()).add(group_id)
@@ -886,7 +971,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
     for bus, groups in rm_tx_groups.items():
         tx_fps_by_bus[bus] = tx_fps_by_bus.get(bus, 0.0) + len(groups) * rm_loop_fps
 
-    mit_tx = simulate_mit_tx(project, duration_ms, can_tx_period_ms)
+    mit_tx = simulate_mit_tx(project, active_tx_route_motors, duration_ms, can_tx_period_ms)
     for bus_text, fps in mit_tx["fps_by_bus"].items():
         bus = int(bus_text)
         tx_fps_by_bus[bus] = tx_fps_by_bus.get(bus, 0.0) + float(fps)
@@ -948,7 +1033,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
             risk_level = "warn"
         risk_notes.append("Configured task budget envelope is above 100%; this is an upper bound, not measured CPU.")
 
-    enabled_motors = [
+    simulated_motors = [
         {
             "name": motor.name,
             "actuator": MOTOR_NAME_BY_ID.get(motor.actuator_id, str(motor.actuator_id)),
@@ -959,16 +1044,25 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
             "feedback_id": hex(motor.feedback_std_id) if motor.feedback_std_id else "0x0",
             "protocol": motor.resolved_protocol,
             "transport": motor.resolved_transport,
+            "feedback_active": motor_feedback_active(project, motor),
+            "tx_route_active": motor_route_role_active(project, motor),
+            "control_task_active": motor_control_task_active(project, motor),
         }
         for motor in project.motors
-        if motor.enabled
+        if motor.is_can
+        and (
+            motor_feedback_active(project, motor)
+            or motor_route_role_active(project, motor)
+            or motor.is_rm_group
+        )
     ]
 
     assumptions = [
         "CAN bus bitrate is modeled as 1 Mbps classical CAN.",
         f"CAN frame cost uses {args.can_bits_per_frame} bits/frame including arbitration and overhead.",
-        f"All enabled CAN motor feedback is modeled at {args.motor_feedback_hz:g} Hz.",
-        "MIT TX simulation is steady-state command pressure after motors are enabled.",
+        f"Profile-active CAN motor feedback is modeled at {args.motor_feedback_hz:g} Hz.",
+        "MIT TX simulation only includes profile-active routes and assumes steady-state command pressure.",
+        "RM group TX pressure counts configured groups because firmware emits zero-current frames for configured RM groups.",
         "CPU traffic estimate uses CLI frame costs; task budget envelope uses profiler budgets and sim defaults.",
     ]
 
@@ -985,6 +1079,12 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
             "can_tx_period_ms_source": "cli override" if args.can_tx_period_ms is not None else "code",
             "motor_feedback_hz": args.motor_feedback_hz,
             "duration_ms": duration_ms,
+            "operation": {
+                "mode": project.operation.mode,
+                "target_task": project.operation.target_task,
+                "target_motor": project.operation.target_motor,
+                "variant": project.operation.variant,
+            },
             "project_define_overrides": {
                 key: value
                 for key, value in sorted(project.project_defines.items())
@@ -993,7 +1093,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         },
         "modules": project.modules,
         "periods_ms": project.periods_ms,
-        "motors": enabled_motors,
+        "motors": simulated_motors,
         "can": {
             "bits_per_frame": args.can_bits_per_frame,
             "buses": can_buses,
@@ -1025,15 +1125,34 @@ def print_report(report: dict[str, Any]) -> None:
     )
     print(f"CAN TX period: {project['can_tx_period_ms']} ms ({project['can_tx_period_ms_source']})")
     print(f"motor feedback: {format_fps(project['motor_feedback_hz'])} Hz")
+    operation = project.get("operation", {})
+    if operation:
+        print(
+            "operation: "
+            f"{operation.get('mode', 'unknown')} "
+            f"target_task={operation.get('target_task', 'unknown')} "
+            f"target_motor={operation.get('target_motor', 'unknown')} "
+            f"variant={operation.get('variant', 'unknown')}"
+        )
     if project["project_define_overrides"]:
         print(f"project define overrides: {project['project_define_overrides']}")
     print()
 
-    print("enabled motors:")
+    print("simulated motor traffic:")
     for motor in report["motors"]:
+        status = ",".join(
+            name
+            for name, active in (
+                ("rx", motor.get("feedback_active", False)),
+                ("tx", motor.get("tx_route_active", False)),
+                ("ctrl", motor.get("control_task_active", False)),
+            )
+            if active
+        )
         print(
             f"  CAN{motor['bus']} {motor['name']:<16} {motor['model']:<30} "
-            f"cmd_id={motor['std_id']:<6} fb_id={motor['feedback_id']:<6} {motor['protocol']}"
+            f"cmd_id={motor['std_id']:<6} fb_id={motor['feedback_id']:<6} "
+            f"{motor['protocol']} [{status or 'configured'}]"
         )
     if not report["motors"]:
         print("  none")

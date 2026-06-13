@@ -3,7 +3,7 @@
 `robot_sim.py` reads the current `Robotconfig/<PROJECT>` files, Keil project
 defines, and shared profile defaults. It estimates:
 
-- enabled motor count and CAN bus placement;
+- simulated motor traffic and CAN bus placement;
 - 1000 Hz motor feedback pressure;
 - RM group command frame pressure;
 - DM/MIT command frame pressure and per-ms scheduler throttling;
@@ -32,6 +32,9 @@ Useful options:
 The tool is a pressure simulator, not a physics simulator. It is meant to catch
 configuration-level overload before flashing firmware. The CPU number should be
 read as an estimate until paired with real `rt_profiler` data from logs.
+The simulator follows the firmware profile filters for ARM/MIT routes and shoot
+runtime budgets, while still counting configured RM groups because the firmware
+can emit zero-current group frames for configured RM motors.
 
 ## MuJoCo physics entry
 
