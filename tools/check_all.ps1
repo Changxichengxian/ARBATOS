@@ -326,8 +326,8 @@ function Test-UvProject {
     if ($taskText -notmatch 'app_create_enabled_module_tasks') {
         Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): task creation must use shared app_create_enabled_module_tasks()."
     }
-    if ($taskText -notmatch 'robot_control_register_profile_defaults') {
-        Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): FreeRTOS init must register default controllers with robot_control_register_profile_defaults()."
+    if ($taskText -notmatch 'robot_control_bootstrap_profile_defaults') {
+        Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): FreeRTOS init must bootstrap default controllers with robot_control_bootstrap_profile_defaults()."
     }
     if ($taskText -match 'typedef\s+struct[\s\S]*?app_task_module_desc_t') {
         Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): task source must use app_task_bootstrap.h instead of redefining app_task_module_desc_t locally."
@@ -837,8 +837,13 @@ function Test-BuildManifestTools {
     Write-Host "[check] build manifest tools"
 
     $manifestTool = Join-Path $script:RepoRoot "tools\build\project_manifest.py"
+    $gccTool = Join-Path $script:RepoRoot "tools\build\gcc_project.py"
     if (-not (Test-Path -LiteralPath $manifestTool -PathType Leaf)) {
         Add-CheckError "Missing build manifest tool: $(Format-RepoPath $manifestTool)"
+        return
+    }
+    if (-not (Test-Path -LiteralPath $gccTool -PathType Leaf)) {
+        Add-CheckError "Missing GCC build generator: $(Format-RepoPath $gccTool)"
         return
     }
 
@@ -869,6 +874,25 @@ function Test-BuildManifestTools {
     }
     catch {
         Add-CheckError "tools\build\project_manifest.py returned invalid JSON: $($_.Exception.Message)"
+    }
+
+    $gccOutput = & $python.Source $gccTool --all --check-only --json 2>&1
+    $gccJsonText = ($gccOutput -join "`n")
+    if ($LASTEXITCODE -ne 0) {
+        Add-CheckError "tools\build\gcc_project.py --all --check-only failed: $gccJsonText"
+        return
+    }
+
+    try {
+        $gccReport = $gccJsonText | ConvertFrom-Json
+        foreach ($result in $gccReport.results) {
+            if ($result.blockers.Count -ne 0) {
+                Add-CheckError "GCC generator blocked for $($result.project): $($result.blockers -join '; ')"
+            }
+        }
+    }
+    catch {
+        Add-CheckError "tools\build\gcc_project.py returned invalid JSON: $($_.Exception.Message)"
     }
 }
 
@@ -1015,9 +1039,15 @@ function Test-ControlRegistryBoundaries {
     }
 
     $content = Get-Content -LiteralPath $fullPath -Raw
-    foreach ($forbidden in @("control_manager_request_switch", "control_manager_update_all", "control_manager_update_due_all")) {
+    foreach ($required in @("robot_control_bootstrap_profile_defaults", "robot_control_start_profile_defaults")) {
+        if ($content -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${repoPath}: control registry must expose '$required'."
+        }
+    }
+
+    foreach ($forbidden in @("control_manager_request_switch_by_name", "control_manager_update_due_all")) {
         if ($content -match [regex]::Escape($forbidden)) {
-            Add-CheckError "${repoPath}: default controller registry must not mark controllers active during boot via '$forbidden'."
+            Add-CheckError "${repoPath}: default controller bootstrap must not use low-rate name lookup or due scheduling via '$forbidden'."
         }
     }
 }

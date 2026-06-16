@@ -27,6 +27,7 @@
 #include "robot_task_profile.h"
 #include "robot_mode.h"
 #include "rt_profiler.h"
+#include "control_manager.h"
 #include "sdlog.h"
 #include "watch.h"
 #include "wheelleg_msg.h"
@@ -605,6 +606,21 @@ static fp32 wheelleg_period_s(void)
 static uint32_t wheelleg_tick_ms(void)
 {
     return (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+}
+
+static uint8_t wheelleg_control_manager_allows(uint32_t tick_ms, fp32 dt)
+{
+    control_context_t context = {0};
+
+    context.tick_ms = tick_ms;
+    context.dt_s = dt;
+
+    if (control_manager_update_domain(CONTROL_DOMAIN_WHEELLEG, &context) != CONTROL_RESULT_OK)
+    {
+        return 0u;
+    }
+
+    return (control_manager_active_id(CONTROL_DOMAIN_WHEELLEG) == CONTROL_CONTROLLER_WHEELLEG_MIT_BALANCE) ? 1u : 0u;
 }
 
 static void wheelleg_pid_apply(wheelleg_pid_t *pid, const pid_param_t *cfg)
@@ -3319,6 +3335,13 @@ void wheelleg_mit_task(void const *pvParameters)
         wheelleg_task_frame_t frame;
 
         wheelleg_task_frame_init(&frame);
+        if (wheelleg_control_manager_allows(frame.now_ms, frame.dt) == 0u)
+        {
+            wheelleg_handle_disabled_frame(&frame);
+            wheelleg_task_finish_frame(&frame, frame.faults, profiler_start_us, &last_wake, 0u);
+            continue;
+        }
+
         if (frame.enabled == 0u)
         {
             wheelleg_handle_disabled_frame(&frame);

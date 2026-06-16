@@ -313,6 +313,14 @@ static void shoot_clear_fric_output(void)
     shoot_control.fric_speed_set = SHOOT_FRIC_SPEED_OFF_RPM;
 }
 
+void shoot_stop_outputs(void)
+{
+    shoot_control.shoot_mode = SHOOT_STOP;
+    shoot_clear_trigger_output();
+    shoot_clear_fric_output();
+    shoot_write_state();
+}
+
 static bool_t shoot_fric_speed_ready(void)
 {
     const fp32 speed_set = shoot_control.fric_speed_ramp.max_value;

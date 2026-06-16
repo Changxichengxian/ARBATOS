@@ -22,6 +22,12 @@ PROJECTS_ROOT = REPO_ROOT / "projects"
 
 SOURCE_EXTS = {".c", ".cc", ".cpp", ".cxx", ".s", ".asm"}
 LIB_EXTS = {".a", ".lib"}
+GCC_GENERATOR = REPO_ROOT / "tools" / "build" / "gcc_project.py"
+GCC_SUPPORT_ROOT = REPO_ROOT / "tools" / "build" / "gcc_support"
+GCC_SUPPORTED_ARMCC_LIBS = {
+    "ahrs.lib": "GCC AHRS source",
+    "arm_cortexm4lf_math.lib": "GCC math fallback",
+}
 
 
 def unique(items: Iterable[str], *, casefold: bool = False) -> list[str]:
@@ -249,36 +255,62 @@ def analyze_gcc_status(
     scatter_files: list[dict[str, Any]],
 ) -> dict[str, Any]:
     blockers: list[str] = []
+    notes: list[str] = []
+    has_gcc_generator = GCC_GENERATOR.exists()
 
     if any("V5." in value or "ARM Compiler 5" in value for value in compiler_ids):
-        blockers.append("Keil project records ARM Compiler 5; GCC needs a separate flag set.")
+        if has_gcc_generator:
+            notes.append("Keil project records ARM Compiler 5; GCC uses generated separate flags.")
+        else:
+            blockers.append("Keil project records ARM Compiler 5; GCC needs a separate flag set.")
 
     if "__CC_ARM" in defines:
-        blockers.append("Project defines __CC_ARM; compiler-specific code still selects ARMCC paths.")
+        if has_gcc_generator:
+            notes.append("GCC generator filters the __CC_ARM define from generated builds.")
+        else:
+            blockers.append("Project defines __CC_ARM; compiler-specific code still selects ARMCC paths.")
 
     libraries = [entry for entry in files if entry["kind"] == "library"]
-    if libraries:
-        names = ", ".join(entry["path"] for entry in libraries[:3])
-        extra = "" if len(libraries) <= 3 else f", +{len(libraries) - 3} more"
+    unsupported_libraries = []
+    for entry in libraries:
+        name = Path(entry["path"]).name.lower()
+        replacement = GCC_SUPPORTED_ARMCC_LIBS.get(name)
+        if replacement is None:
+            unsupported_libraries.append(entry)
+        else:
+            notes.append(f"{entry['path']} is replaced by {replacement} in generated GCC builds.")
+    if unsupported_libraries:
+        names = ", ".join(entry["path"] for entry in unsupported_libraries[:3])
+        extra = "" if len(unsupported_libraries) <= 3 else f", +{len(unsupported_libraries) - 3} more"
         blockers.append(f"ARMCC .lib libraries are linked ({names}{extra}); GCC needs source or .a replacements.")
 
     for entry in files:
         if entry["kind"] != "asm" or "repo_path" not in entry:
             continue
         if looks_like_armasm(REPO_ROOT / entry["repo_path"]):
-            blockers.append("Startup assembly uses ARMASM syntax; GCC needs GNU-compatible startup .S files.")
+            if has_gcc_generator:
+                notes.append("ARMASM startup is translated to a generated GNU startup .S file.")
+            else:
+                blockers.append("Startup assembly uses ARMASM syntax; GCC needs GNU-compatible startup .S files.")
             break
 
     if scatter_files and not list(project_dir.glob("*.ld")):
-        blockers.append("Keil .sct scatter file is present; GCC needs a linker .ld script.")
+        if has_gcc_generator:
+            notes.append("Keil .sct scatter file is translated to a generated GNU linker script.")
+        else:
+            blockers.append("Keil .sct scatter file is present; GCC needs a linker .ld script.")
 
     paths = [entry["path"] for entry in files] + [entry["path"] for entry in includes]
     if any("/portable/RVDS/" in path for path in paths):
-        blockers.append("FreeRTOS portable/RVDS is used; GCC needs portable/GCC/... in the project.")
+        if (GCC_SUPPORT_ROOT / "freertos" / "portable" / "GCC" / "ARM_CM4F").exists():
+            notes.append("FreeRTOS RVDS portable is replaced by the GCC portable layer.")
+        else:
+            blockers.append("FreeRTOS portable/RVDS is used; GCC needs portable/GCC/... in the project.")
 
     return {
         "ready": len(unique(blockers)) == 0,
         "blockers": unique(blockers),
+        "notes": unique(notes),
     }
 
 
@@ -391,6 +423,8 @@ def print_human(report: dict[str, Any]) -> None:
 
         if item["gcc"]["ready"]:
             print("  gcc: ready")
+            for note in item["gcc"].get("notes", []):
+                print(f"    - {note}")
         else:
             print(f"  gcc: blocked by {len(item['gcc']['blockers'])} item(s)")
             for blocker in item["gcc"]["blockers"]:

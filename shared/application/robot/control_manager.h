@@ -23,10 +23,12 @@ extern "C" {
  * Current role:
  * - register controllers and the resources they claim;
  * - expose runtime status for diagnostics;
- * - arbitrate explicit low-rate switch/stop requests.
+ * - arbitrate explicit low-rate switch/stop requests;
+ * - provide the shared scheduling gate that task modules call before output.
  *
- * Real-time control loops are still owned by their task modules. A controller is
- * only executed when a task deliberately calls control_manager_update_*().
+ * During the migration, existing real-time loops still live in their task
+ * modules. They must enter through control_manager_update_*() so controller
+ * activation, stop requests, and resource ownership stay in one place.
  */
 
 typedef enum

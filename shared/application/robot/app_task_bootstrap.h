@@ -51,6 +51,23 @@ static inline const app_task_module_desc_t *app_task_find_module_desc(const app_
     return NULL;
 }
 
+static inline void app_task_module_clear_handles(const app_task_module_desc_t *module_tasks,
+                                                 uint32_t module_task_count)
+{
+    if (module_tasks == NULL)
+    {
+        return;
+    }
+
+    for (uint32_t task_index = 0u; task_index < module_task_count; task_index++)
+    {
+        if (module_tasks[task_index].handle != NULL)
+        {
+            *module_tasks[task_index].handle = NULL;
+        }
+    }
+}
+
 static inline uint8_t app_create_enabled_module_tasks(const app_task_module_desc_t *module_tasks,
                                                       uint32_t module_task_count)
 {
@@ -62,6 +79,8 @@ static inline uint8_t app_create_enabled_module_tasks(const app_task_module_desc
     {
         return 1u;
     }
+
+    app_task_module_clear_handles(module_tasks, module_task_count);
 
     for (uint8_t profile_index = 0u; profile_index < robot_profile_module_count(); profile_index++)
     {

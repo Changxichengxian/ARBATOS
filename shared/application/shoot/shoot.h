@@ -125,6 +125,7 @@ typedef struct
 
 // shoot runs together with gimbal because they share CAN IDs
 extern void shoot_init(void);
+extern void shoot_stop_outputs(void);
 extern int16_t shoot_control_loop(void);
 extern const shoot_control_t *get_shoot_control_point(void);
 extern void shoot_tune_apply_fric_speed_pid(void);

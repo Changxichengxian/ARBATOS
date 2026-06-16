@@ -14,12 +14,16 @@
 #include "watch.h"
 #include "bsp_time.h"
 #include "robot_task_build_config.h"
+#include "control_manager.h"
 
 #include "arm_motion.h"
 
 #include <string.h>
 
+#define ARM_TASK_PERIOD_MS 5u
+
 static void arm_write_status(uint16_t key_mask);
+static uint8_t arm_control_manager_allows(void);
 
 static uint32_t s_arm_status_seq = 0u;
 
@@ -65,6 +69,21 @@ static void arm_write_status(uint16_t key_mask)
     (void)arm_status_write(&status);
 }
 
+static uint8_t arm_control_manager_allows(void)
+{
+    control_context_t context = {0};
+
+    context.tick_ms = bsp_time_get_tick_ms();
+    context.dt_s = (float)ARM_TASK_PERIOD_MS * 0.001f;
+
+    if (control_manager_update_domain(CONTROL_DOMAIN_ARM, &context) != CONTROL_RESULT_OK)
+    {
+        return 0u;
+    }
+
+    return (control_manager_active_id(CONTROL_DOMAIN_ARM) == CONTROL_CONTROLLER_ARM_MOTION) ? 1u : 0u;
+}
+
 void arm_task(void const *argument)
 {
     (void)argument;
@@ -77,9 +96,17 @@ void arm_task(void const *argument)
             (manual_input_get_current_copy(&rc_snapshot) != 0u) ? rc_snapshot.key.v : 0u;
 
         watch_task_beat(WATCH_TASK_ARM);
+        if (arm_control_manager_allows() == 0u)
+        {
+            arm_motion_step_manual(0u);
+            arm_write_status(0u);
+            osDelay(ARM_TASK_PERIOD_MS);
+            continue;
+        }
+
         arm_motion_step_manual(key_mask);
         arm_write_status(key_mask);
-        osDelay(5u);
+        osDelay(ARM_TASK_PERIOD_MS);
     }
 }
 

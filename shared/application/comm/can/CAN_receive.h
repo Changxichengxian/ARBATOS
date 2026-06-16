@@ -93,6 +93,7 @@ uint8_t CAN_get_can3_error_logging_count(void);
 
 extern void CAN_cmd_chassis_reset_ID(void);
 
+extern void CAN_rx_prepare_motor_measure_points(void);
 extern const motor_measure_t *get_yaw_gimbal_motor_measure_point(void);
 extern const motor_measure_t *get_yaw_upper_gimbal_motor_measure_point(void);
 extern const motor_measure_t *get_pitch_gimbal_motor_measure_point(void);

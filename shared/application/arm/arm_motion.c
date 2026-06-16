@@ -20,7 +20,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "CAN_receive.h"
 #include "LowCmd.h"
 #include "motor_instance.h"
 #include "motor_config.h"
@@ -222,6 +221,61 @@ static const can_mit_motor_limits_t *arm_mit_limits(const arm_motor_entry_t *ent
     return motor_cfg_mit_limits(node);
 }
 
+static const char *arm_motor_instance_name(uint8_t index)
+{
+    switch (index)
+    {
+    case 0u:
+        return "motor.arm0";
+    case 1u:
+        return "motor.arm1";
+    case 2u:
+        return "motor.arm2";
+    case 3u:
+        return "motor.arm3";
+    case 4u:
+        return "motor.arm4";
+    case 5u:
+        return "motor.arm5";
+    default:
+        return NULL;
+    }
+}
+
+static MotorId s_arm_actuator_ids[ARM_MOTOR_COUNT];
+static uint8_t s_arm_actuator_ids_ready = 0u;
+
+static void arm_prepare_actuator_ids(void)
+{
+    for (uint8_t i = 0u; i < ARM_MOTOR_COUNT; i++)
+    {
+        const char *name = arm_motor_instance_name(i);
+        const MotorId resolved = motor_instance_actuator_id_by_name(name);
+        s_arm_actuator_ids[i] = (resolved != MotorCount) ? resolved :
+            MotorIdRange(Motor12, i, (uint8_t)ARM_MOTOR_COUNT);
+    }
+    s_arm_actuator_ids_ready = 1u;
+}
+
+static MotorId arm_actuator_id(uint8_t index)
+{
+    if (index >= ARM_MOTOR_COUNT)
+    {
+        return MotorCount;
+    }
+    if (s_arm_actuator_ids_ready == 0u)
+    {
+        return MotorIdRange(Motor12, index, (uint8_t)ARM_MOTOR_COUNT);
+    }
+
+    return s_arm_actuator_ids[index];
+}
+
+static MotorId arm_j0_actuator_id(void)
+{
+    return arm_actuator_id(ARM_J0_INDEX);
+}
+
 static uint8_t arm_mit_drive_state(uint8_t online, uint8_t state)
 {
     if (online == 0u)
@@ -265,7 +319,7 @@ static void arm_copy_mit_feedback(uint8_t index)
     dst->velocity = src->velocity;
     dst->torque = src->torque;
 
-    actuator_id = MotorIdRange(Motor12, index, MOTOR_ARM_JOINT_COUNT);
+    actuator_id = arm_actuator_id(index);
     if ((uint32_t)actuator_id < (uint32_t)MotorCount)
     {
         (void)memset(&fb, 0, sizeof(fb));
@@ -293,9 +347,7 @@ static void arm_clear_mit_LowCmds(void)
     {
         if (g_arm_motor_table[i].driver == ARM_MOTOR_DRIVER_CAN_MIT)
         {
-            (void)motor_instance_cmd_set_speed_id(MotorIdRange(Motor12,
-                                                                         (uint8_t)i,
-                                                                         MOTOR_ARM_JOINT_COUNT),
+            (void)motor_instance_cmd_set_speed_id(arm_actuator_id((uint8_t)i),
                                                   0.0f,
                                                   0.0f,
                                                   0.0f);
@@ -448,7 +500,7 @@ static uint8_t arm_build_j0_mit_cmd_from_actuator(mit_motor_cmd_t *out,
         *output_kd = 0.0f;
     }
 
-    if (LowCmdGetMotor(Motor12, &src) == 0u || src.active == 0u)
+    if (LowCmdGetMotor(arm_j0_actuator_id(), &src) == 0u || src.active == 0u)
     {
         return 0u;
     }
@@ -546,7 +598,7 @@ static void arm_update_j0_LowState_from_unitree(void)
     fb.dq = g_arm_j0_unitree_state.joint_speed_rad_s;
     fb.tauEst = g_arm_j0_unitree_state.torque_nm;
     fb.temperature = (uint8_t)g_arm_j0_unitree_state.motor_temp;
-    LowStateUpdateMotor(Motor12, &fb);
+    LowStateUpdateMotor(arm_j0_actuator_id(), &fb);
 }
 
 static void arm_sync_j0_unitree_state(void)
@@ -599,7 +651,7 @@ static void arm_apply_j0_core_output(const arm_core_output_t *core_output)
 
     if (cmd == NULL || cmd->active == 0u)
     {
-        (void)motor_instance_cmd_set_speed_id(Motor12, 0.0f, 0.0f, 0.0f);
+        (void)motor_instance_cmd_set_speed_id(arm_j0_actuator_id(), 0.0f, 0.0f, 0.0f);
         return;
     }
 
@@ -607,21 +659,21 @@ static void arm_apply_j0_core_output(const arm_core_output_t *core_output)
     {
         if (cmd->mode == (uint8_t)MotorModeSpeed)
         {
-            (void)motor_instance_cmd_set_speed_id(Motor12, cmd->dq, cmd->kd, cmd->tau);
+            (void)motor_instance_cmd_set_speed_id(arm_j0_actuator_id(), cmd->dq, cmd->kd, cmd->tau);
         }
         else
         {
-            (void)motor_instance_cmd_set_speed_id(Motor12, 0.0f, 0.0f, 0.0f);
+            (void)motor_instance_cmd_set_speed_id(arm_j0_actuator_id(), 0.0f, 0.0f, 0.0f);
         }
     }
     else if (cmd->mode == (uint8_t)MotorModeCurrent)
     {
         const int16_t current = motor_cfg_limit_current_node(arm_entry_node(entry), cmd->current);
-        (void)motor_instance_cmd_set_current_id(Motor12, current);
+        (void)motor_instance_cmd_set_current_id(arm_j0_actuator_id(), current);
     }
     else
     {
-        (void)motor_instance_cmd_set_current_id(Motor12, 0);
+        (void)motor_instance_cmd_set_current_id(arm_j0_actuator_id(), 0);
     }
 }
 
@@ -713,7 +765,7 @@ static void arm_refresh_j0_feedback(void)
     }
 
     {
-        const motor_measure_t *measure = get_yaw_gimbal_motor_measure_point();
+        const motor_measure_t *measure = motor_instance_measure_const(arm_j0_actuator_id());
 
         if (measure == NULL)
         {
@@ -743,7 +795,7 @@ static void arm_step_j0(const arm_core_output_t *core_output)
     arm_step_j0_unitree(entry);
     if (arm_j0_unitree_enabled(entry) != 0u)
     {
-        (void)motor_instance_cmd_set_current_id(Motor12, 0);
+        (void)motor_instance_cmd_set_current_id(arm_j0_actuator_id(), 0);
     }
 }
 
@@ -799,9 +851,7 @@ static void arm_step_mit(const arm_core_output_t *core_output)
     {
         const arm_motor_entry_t *entry = &g_arm_motor_table[i];
         const can_mit_motor_limits_t *limits;
-        const MotorId actuator_id = MotorIdRange(Motor12,
-                                                                 (uint8_t)i,
-                                                                 MOTOR_ARM_JOINT_COUNT);
+        const MotorId actuator_id = arm_actuator_id((uint8_t)i);
 
         if (entry->driver != ARM_MOTOR_DRIVER_CAN_MIT)
         {
@@ -835,6 +885,7 @@ static void arm_step_mit(const arm_core_output_t *core_output)
 
 void arm_motion_init(void)
 {
+    arm_prepare_actuator_ids();
     (void)memset(g_arm_feedback, 0, sizeof(g_arm_feedback));
     (void)memset(g_arm_mit_feedback, 0, sizeof(g_arm_mit_feedback));
     (void)memset(&g_arm_j0_unitree_state, 0, sizeof(g_arm_j0_unitree_state));
@@ -842,7 +893,7 @@ void arm_motion_init(void)
     g_arm_j0_unitree_last_step_tick_ms = 0u;
     g_arm_j0_unitree_cmd_output_speed_rad_s = 0.0f;
     g_arm_j0_unitree_cmd_output_kd = 0.0f;
-    (void)motor_instance_cmd_set_current_id(Motor12, 0);
+    (void)motor_instance_cmd_set_current_id(arm_j0_actuator_id(), 0);
     arm_clear_mit_LowCmds();
     unitree_motor_driver_init();
     arm_sync_j0_unitree_state();

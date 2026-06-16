@@ -48,6 +48,7 @@
 #include "bsp_time.h"
 #include "rt_profiler.h"
 #include "robot_task_profile.h"
+#include "control_manager.h"
 
 #include <string.h>
 
@@ -76,6 +77,10 @@ __weak void shoot_init(void)
 __weak int16_t shoot_control_loop(void)
 {
     return 0;
+}
+
+__weak void shoot_stop_outputs(void)
+{
 }
 
 typedef struct
@@ -686,6 +691,94 @@ static void gimbal_apply_operation_mode(const gimbal_runtime_snapshot_t *snapsho
     }
 }
 
+static bool_t gimbal_control_manager_allows(uint16_t expected_controller_id,
+                                            const gimbal_runtime_snapshot_t *snapshot)
+{
+    control_context_t context = {0};
+    const uint16_t period_ms =
+        (snapshot != NULL && snapshot->period_ms != 0u) ? snapshot->period_ms : robot_profile_gimbal_control_period_ms();
+
+    context.tick_ms = bsp_time_get_tick_ms();
+    context.dt_s = (fp32)period_ms * 0.001f;
+
+    if (control_manager_update_domain(CONTROL_DOMAIN_GIMBAL, &context) != CONTROL_RESULT_OK)
+    {
+        return 0;
+    }
+
+    return (control_manager_active_id(CONTROL_DOMAIN_GIMBAL) == expected_controller_id) ? 1 : 0;
+}
+
+static bool_t shoot_control_manager_allows(const gimbal_runtime_snapshot_t *snapshot)
+{
+    control_context_t context = {0};
+    const uint16_t period_ms =
+        (snapshot != NULL && snapshot->period_ms != 0u) ? snapshot->period_ms : robot_profile_gimbal_control_period_ms();
+
+    context.tick_ms = bsp_time_get_tick_ms();
+    context.dt_s = (fp32)period_ms * 0.001f;
+
+    if (control_manager_update_domain(CONTROL_DOMAIN_SHOOT, &context) != CONTROL_RESULT_OK)
+    {
+        return 0;
+    }
+
+    return (control_manager_active_id(CONTROL_DOMAIN_SHOOT) == CONTROL_CONTROLLER_SHOOT) ? 1 : 0;
+}
+
+static int16_t gimbal_run_shoot_control(const gimbal_runtime_snapshot_t *snapshot)
+{
+    if (!shoot_control_manager_allows(snapshot))
+    {
+        shoot_stop_outputs();
+        return 0;
+    }
+
+    return shoot_control_loop();
+}
+
+static void gimbal_stop_outputs(const motor_instance_current_binding_t *bindings, uint8_t count)
+{
+    int16_t zero_current[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT] = {0};
+
+    gimbal_total_pid_clear(&gimbal_control);
+    gimbal_control.gimbal_yaw_motor.current_set = 0;
+    gimbal_control.gimbal_yaw_motor.given_current = 0;
+    gimbal_control.gimbal_pitch_motor.current_set = 0;
+    gimbal_control.gimbal_pitch_motor.given_current = 0;
+    shoot_can_set_current = 0;
+    yaw_can_set_current = 0;
+    pitch_can_set_current = 0;
+    gimbal_watch_yaw_current = 0;
+    gimbal_watch_yaw_upper_current = 0;
+    gimbal_watch_pitch_current = 0;
+
+    if (count > DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT)
+    {
+        count = DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT;
+    }
+    (void)motor_instance_cmd_set_current_bindings_best_effort(bindings, zero_current, count);
+    shoot_stop_outputs();
+    gimbal_write_state();
+}
+
+static void gimbal_control_delay(TickType_t *last_wake, uint16_t period_ms)
+{
+    const TickType_t delay_start = xTaskGetTickCount();
+
+    if (last_wake == NULL)
+    {
+        return;
+    }
+
+    vTaskDelayUntil(last_wake, pdMS_TO_TICKS(period_ms));
+    if (xTaskGetTickCount() == delay_start)
+    {
+        vTaskDelay(1u);
+        *last_wake = xTaskGetTickCount();
+    }
+}
+
 /**
   * @brief          gimbal task, osDelay GIMBAL_CONTROL_TIME (1ms)
   * @param[in]      pvParameters: null
@@ -712,6 +805,18 @@ void gimbal_control_task(void const *pvParameters)
         watch_task_beat(WATCH_TASK_GIMBAL_CONTROL);
         gimbal_snapshot_capture(&snapshot, &gimbal_control);
         gimbal_loop_counter++;
+        if (!gimbal_control_manager_allows(CONTROL_CONTROLLER_SINGLE_GIMBAL, &snapshot))
+        {
+            gimbal_stop_outputs(gimbal_output_current_bindings, GIMBAL_OUTPUT_MOTOR_COUNT);
+            rt_profiler_end(RT_PROFILER_GIMBAL_CONTROL_LOOP, loop_start_us);
+            gimbal_control_delay(&last_wake, snapshot.period_ms);
+
+#if INCLUDE_uxTaskGetStackHighWaterMark
+            gimbal_high_water = uxTaskGetStackHighWaterMark(NULL);
+#endif
+            continue;
+        }
+
         gimbal_set_mode(&gimbal_control);                    //设置云台控制模式
         pitch_cali_tick_pre(&gimbal_control, gimbal_behaviour_watch, snapshot.pitch_cali_mode);
         gimbal_mode_change_control_transit(&gimbal_control); //控制模式切换 控制数据过渡
@@ -720,7 +825,7 @@ void gimbal_control_task(void const *pvParameters)
         gimbal_control_loop(&gimbal_control);
         pitch_cali_tick_post(&gimbal_control, gimbal_behaviour_watch, snapshot.pitch_cali_mode);
         gimbal_write_state();
-        shoot_can_set_current = shoot_control_loop();        // 拨盘电流
+        shoot_can_set_current = gimbal_run_shoot_control(&snapshot); // 拨盘电流
         yaw_can_set_current = gimbal_apply_output_turn(gimbal_control.gimbal_yaw_motor.given_current, snapshot.yaw_turn);
         pitch_can_set_current = gimbal_apply_output_turn(gimbal_control.gimbal_pitch_motor.given_current, snapshot.pitch_turn);
 
@@ -772,15 +877,7 @@ void gimbal_control_task(void const *pvParameters)
 #endif
 
         rt_profiler_end(RT_PROFILER_GIMBAL_CONTROL_LOOP, loop_start_us);
-        {
-            const TickType_t delay_start = xTaskGetTickCount();
-            vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
-            if (xTaskGetTickCount() == delay_start)
-            {
-                vTaskDelay(1u);
-                last_wake = xTaskGetTickCount();
-            }
-        }
+        gimbal_control_delay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
         gimbal_high_water = uxTaskGetStackHighWaterMark(NULL);
@@ -807,6 +904,17 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
         watch_task_beat(WATCH_TASK_GIMBAL_CONTROL);
         gimbal_snapshot_capture(&snapshot, &gimbal_control);
         gimbal_loop_counter++;
+        if (!gimbal_control_manager_allows(CONTROL_CONTROLLER_DUAL_YAW_GIMBAL, &snapshot))
+        {
+            gimbal_stop_outputs(dual_yaw_gimbal_output_current_bindings, DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT);
+            rt_profiler_end(RT_PROFILER_GIMBAL_CONTROL_LOOP, loop_start_us);
+            gimbal_control_delay(&last_wake, snapshot.period_ms);
+
+#if INCLUDE_uxTaskGetStackHighWaterMark
+            gimbal_high_water = uxTaskGetStackHighWaterMark(NULL);
+#endif
+            continue;
+        }
 
         gimbal_set_mode(&gimbal_control);
         gimbal_mode_change_control_transit(&gimbal_control);
@@ -815,7 +923,7 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
         gimbal_control_loop(&gimbal_control);
         gimbal_write_state();
 
-        shoot_can_set_current = shoot_control_loop();
+        shoot_can_set_current = gimbal_run_shoot_control(&snapshot);
         yaw_can_set_current = gimbal_apply_output_turn(gimbal_control.gimbal_yaw_motor.given_current, snapshot.yaw_turn);
         pitch_can_set_current = gimbal_apply_output_turn(gimbal_control.gimbal_pitch_motor.given_current, snapshot.pitch_turn);
 
@@ -875,15 +983,7 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
         }
 
         rt_profiler_end(RT_PROFILER_GIMBAL_CONTROL_LOOP, loop_start_us);
-        {
-            const TickType_t delay_start = xTaskGetTickCount();
-            vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
-            if (xTaskGetTickCount() == delay_start)
-            {
-                vTaskDelay(1u);
-                last_wake = xTaskGetTickCount();
-            }
-        }
+        gimbal_control_delay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
         gimbal_high_water = uxTaskGetStackHighWaterMark(NULL);

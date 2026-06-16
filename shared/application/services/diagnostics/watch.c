@@ -61,6 +61,47 @@ typedef struct
 
 static watch_task_module_create_slot_t s_task_module_create[WATCH_RUNTIME_MAX_TASK_MODULES];
 
+static const char *const s_watch_friction_motor_names[4u] = {
+    "motor.friction0",
+    "motor.friction1",
+    "motor.friction2",
+    "motor.friction3",
+};
+static MotorId s_watch_friction_motor_ids[4u] = {MotorCount, MotorCount, MotorCount, MotorCount};
+static uint8_t s_watch_friction_motor_ids_ready = 0u;
+
+static void watch_prepare_motor_ids(void)
+{
+    if (s_watch_friction_motor_ids_ready != 0u)
+    {
+        return;
+    }
+
+    (void)motor_instance_resolve_actuator_ids(s_watch_friction_motor_names,
+                                              4u,
+                                              s_watch_friction_motor_ids,
+                                              4u);
+    for (uint8_t i = 0u; i < 4u; i++)
+    {
+        if (s_watch_friction_motor_ids[i] == MotorCount)
+        {
+            s_watch_friction_motor_ids[i] = MotorIdRange(Motor8, i, 4u);
+        }
+    }
+    s_watch_friction_motor_ids_ready = 1u;
+}
+
+static MotorId watch_friction_motor_id(uint8_t index)
+{
+    index = (uint8_t)(index & 0x03u);
+    if (s_watch_friction_motor_ids_ready == 0u)
+    {
+        return MotorIdRange(Motor8, index, 4u);
+    }
+
+    return s_watch_friction_motor_ids[index];
+}
+
 #if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
 typedef struct
 {
@@ -717,6 +758,7 @@ void watch_irq_hit(watch_irq_id_e irq_id)
 void watch_init(void)
 {
     memset(&g_watch, 0, sizeof(g_watch));
+    watch_prepare_motor_ids();
 
     if (manual_input_get_current_copy(&rc_snapshot) != 0u)
     {
@@ -1459,7 +1501,7 @@ static void watch_copy_shoot(void)
     for (uint8_t i = 0; i < 4; i++)
     {
         g_watch.shoot.fric_current_cmd[i] =
-            LowCmdGetCurrent(MotorIdRange(Motor8, i, 4u));
+            LowCmdGetCurrent(watch_friction_motor_id(i));
     }
 
     g_watch.shoot.trigger_angle_deg = shoot.angle * rad2deg;

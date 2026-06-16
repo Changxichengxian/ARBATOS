@@ -6,7 +6,9 @@
 #ifndef ROBOT_CONTROL_REGISTRY_H
 #define ROBOT_CONTROL_REGISTRY_H
 
+#include "CAN_receive.h"
 #include "control_manager.h"
+#include "motor_instance.h"
 #include "robot_task_build_config.h"
 #include "robot_task_profile.h"
 
@@ -24,8 +26,8 @@ static inline void robot_control_register_if_enabled(const control_controller_t 
 static inline void robot_control_register_profile_defaults(void)
 {
     /*
-     * Default registration declares resources for diagnostics/arbitration only.
-     * It does not make controllers active during boot.
+     * Registration only declares resources for diagnostics/arbitration.
+     * Boot activation is handled by robot_control_start_profile_defaults().
      */
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
     static const char *const chassis_outputs[] = {
@@ -39,7 +41,6 @@ static inline void robot_control_register_profile_defaults(void)
     static const char *const single_gimbal_outputs[] = {
         "motor.yaw",
         "motor.pitch",
-        "motor.trigger",
     };
 #endif
 #if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
@@ -47,7 +48,6 @@ static inline void robot_control_register_profile_defaults(void)
         "motor.yaw",
         "motor.yaw_upper",
         "motor.pitch",
-        "motor.trigger",
     };
 #endif
 #if ROBOT_TASK_BUILD_SHOOT_RM
@@ -101,7 +101,7 @@ static inline void robot_control_register_profile_defaults(void)
         .name = "controller.single_gimbal",
         .meta = {
             .period_ms = ROBOT_PROFILE_GIMBAL_CONTROL_DEFAULT_PERIOD_MS,
-            .output_count = 3u,
+            .output_count = 2u,
             .outputs = single_gimbal_outputs,
         },
     };
@@ -114,7 +114,7 @@ static inline void robot_control_register_profile_defaults(void)
         .name = "controller.dual_yaw_gimbal",
         .meta = {
             .period_ms = ROBOT_PROFILE_GIMBAL_CONTROL_DEFAULT_PERIOD_MS,
-            .output_count = 4u,
+            .output_count = 3u,
             .outputs = dual_yaw_gimbal_outputs,
         },
     };
@@ -184,6 +184,59 @@ static inline void robot_control_register_profile_defaults(void)
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
     robot_control_register_if_enabled(&wheelleg_mit, ROBOT_TASK_MODULE_WHEELLEG_MIT);
 #endif
+}
+
+static inline void robot_control_start_profile_defaults(void)
+{
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
+    if (robot_profile_module_enabled(ROBOT_TASK_MODULE_CLASSIC_CHASSIS) != 0u)
+    {
+        (void)control_manager_request_switch(CONTROL_CONTROLLER_CLASSIC_CHASSIS, CONTROL_REASON_PROFILE);
+    }
+#endif
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL
+    if (robot_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u)
+    {
+        (void)control_manager_request_switch(CONTROL_CONTROLLER_SINGLE_GIMBAL, CONTROL_REASON_PROFILE);
+    }
+#endif
+#if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
+    if (robot_profile_module_enabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
+    {
+        (void)control_manager_request_switch(CONTROL_CONTROLLER_DUAL_YAW_GIMBAL, CONTROL_REASON_PROFILE);
+    }
+#endif
+#if ROBOT_TASK_BUILD_SHOOT_RM
+    if (robot_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
+        robot_profile_module_enabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
+    {
+        (void)control_manager_request_switch(CONTROL_CONTROLLER_SHOOT, CONTROL_REASON_PROFILE);
+    }
+#endif
+#if ROBOT_TASK_BUILD_ARM
+    if (robot_profile_module_enabled(ROBOT_TASK_MODULE_ARM) != 0u)
+    {
+        (void)control_manager_request_switch(CONTROL_CONTROLLER_ARM_MOTION, CONTROL_REASON_PROFILE);
+    }
+#endif
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
+    if (robot_profile_module_enabled(ROBOT_TASK_MODULE_WHEELLEG_MIT) != 0u)
+    {
+        (void)control_manager_request_switch(CONTROL_CONTROLLER_WHEELLEG_MIT_BALANCE, CONTROL_REASON_PROFILE);
+    }
+#endif
+}
+
+static inline void robot_control_bootstrap_profile_defaults(void)
+{
+    control_context_t context = {0};
+
+    motor_instance_refresh();
+    CAN_rx_prepare_motor_measure_points();
+    control_manager_init();
+    robot_control_register_profile_defaults();
+    robot_control_start_profile_defaults();
+    (void)control_manager_update_all(&context);
 }
 
 #endif

@@ -175,22 +175,6 @@ static osThreadId_t app_create_imu_task(void)
 }
 #endif
 
-static void app_clear_module_task_handles(void)
-{
-#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-  chassisControlTaskHandle = NULL;
-#endif
-#if ROBOT_TASK_BUILD_WHEELLEG_MIT
-  wheellegMitTaskHandle = NULL;
-#endif
-#if ROBOT_TASK_BUILD_ANY_GIMBAL
-  gimbalControlTaskHandle = NULL;
-#endif
-#if ROBOT_TASK_BUILD_IMU
-  ImuTaskHandle = NULL;
-#endif
-}
-
 static void app_create_module_tasks(void)
 {
   static const app_task_module_desc_t module_tasks[] =
@@ -211,8 +195,6 @@ static void app_create_module_tasks(void)
     {ROBOT_TASK_MODULE_IMU, &ImuTaskHandle, app_create_imu_task},
 #endif
   };
-
-  app_clear_module_task_handles();
 
   app_create_enabled_module_tasks(module_tasks, (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])));
 }
@@ -256,8 +238,7 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-  control_manager_init();
-  robot_control_register_profile_defaults();
+  robot_control_bootstrap_profile_defaults();
 
   /* USER CODE END Init */
 

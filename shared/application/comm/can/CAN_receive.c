@@ -32,7 +32,136 @@
 
 static volatile uint8_t last_can1ff_status = 0u;
 
+typedef struct
+{
+    const char *name;
+    MotorId fallback_id;
+    MotorId resolved_id;
+    uint8_t ready;
+} can_rx_motor_id_cache_t;
+
+static can_rx_motor_id_cache_t can_rx_yaw_id = {"motor.yaw", Motor4, MotorCount, 0u};
+static can_rx_motor_id_cache_t can_rx_yaw_upper_id = {"motor.yaw_upper", Motor5, MotorCount, 0u};
+static can_rx_motor_id_cache_t can_rx_pitch_id = {"motor.pitch", Motor6, MotorCount, 0u};
+static can_rx_motor_id_cache_t can_rx_trigger_id = {"motor.trigger", Motor7, MotorCount, 0u};
+
+static const char *const can_rx_chassis_motor_names[4u] = {
+    "motor.chassis0",
+    "motor.chassis1",
+    "motor.chassis2",
+    "motor.chassis3",
+};
+static MotorId can_rx_chassis_ids[4u] = {MotorCount, MotorCount, MotorCount, MotorCount};
+static uint8_t can_rx_chassis_ids_ready = 0u;
+
+static const char *const can_rx_friction_motor_names[4u] = {
+    "motor.friction0",
+    "motor.friction1",
+    "motor.friction2",
+    "motor.friction3",
+};
+static MotorId can_rx_friction_ids[4u] = {MotorCount, MotorCount, MotorCount, MotorCount};
+static uint8_t can_rx_friction_ids_ready = 0u;
+
 __weak uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8]);
+
+static void can_rx_prepare_motor_id_cache(can_rx_motor_id_cache_t *cache)
+{
+    MotorId resolved;
+
+    if (cache == NULL)
+    {
+        return;
+    }
+    if (cache->ready != 0u)
+    {
+        return;
+    }
+
+    resolved = motor_instance_actuator_id_by_name(cache->name);
+    cache->resolved_id = (resolved != MotorCount) ? resolved : cache->fallback_id;
+    cache->ready = 1u;
+}
+
+static void can_rx_prepare_indexed_motor_ids(const char *const *names,
+                                             MotorId *ids,
+                                             uint8_t *ready,
+                                             uint8_t count,
+                                             MotorId fallback_first)
+{
+    uint8_t resolved_count;
+
+    if (names == NULL || ids == NULL || ready == NULL || count == 0u)
+    {
+        return;
+    }
+    if (*ready != 0u)
+    {
+        return;
+    }
+
+    resolved_count = motor_instance_resolve_actuator_ids(names, count, ids, count);
+    (void)resolved_count;
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (ids[i] == MotorCount)
+        {
+            ids[i] = MotorIdRange(fallback_first, i, count);
+        }
+    }
+    *ready = 1u;
+}
+
+static MotorId can_rx_cached_motor_id(const can_rx_motor_id_cache_t *cache)
+{
+    if (cache == NULL)
+    {
+        return MotorCount;
+    }
+    if (cache->ready == 0u)
+    {
+        return cache->fallback_id;
+    }
+
+    return cache->resolved_id;
+}
+
+static MotorId can_rx_cached_indexed_motor_id(const MotorId *ids,
+                                              const uint8_t *ready,
+                                              uint8_t count,
+                                              MotorId fallback_first,
+                                              uint8_t index)
+{
+    if (ids == NULL || ready == NULL || count == 0u)
+    {
+        return MotorCount;
+    }
+    index = (uint8_t)(index % count);
+    if (*ready == 0u)
+    {
+        return MotorIdRange(fallback_first, index, count);
+    }
+
+    return ids[index];
+}
+
+void CAN_rx_prepare_motor_measure_points(void)
+{
+    can_rx_prepare_motor_id_cache(&can_rx_yaw_id);
+    can_rx_prepare_motor_id_cache(&can_rx_yaw_upper_id);
+    can_rx_prepare_motor_id_cache(&can_rx_pitch_id);
+    can_rx_prepare_motor_id_cache(&can_rx_trigger_id);
+    can_rx_prepare_indexed_motor_ids(can_rx_chassis_motor_names,
+                                     can_rx_chassis_ids,
+                                     &can_rx_chassis_ids_ready,
+                                     4u,
+                                     Motor0);
+    can_rx_prepare_indexed_motor_ids(can_rx_friction_motor_names,
+                                     can_rx_friction_ids,
+                                     &can_rx_friction_ids_ready,
+                                     4u,
+                                     Motor8);
+}
 // 大疆反馈帧里 16 位整数是高字节在前，这里统一做一次读取。
 static int16_t can_rx_read_s16_be(const uint8_t *ptr)
 {
@@ -413,32 +542,40 @@ void CAN_cmd_chassis_reset_ID(void)
 
 const motor_measure_t *get_yaw_gimbal_motor_measure_point(void)
 {
-    return motor_instance_measure_const(Motor4);
+    return motor_instance_measure_const(can_rx_cached_motor_id(&can_rx_yaw_id));
 }
 
 const motor_measure_t *get_yaw_upper_gimbal_motor_measure_point(void)
 {
-    return motor_instance_measure_const(Motor5);
+    return motor_instance_measure_const(can_rx_cached_motor_id(&can_rx_yaw_upper_id));
 }
 
 const motor_measure_t *get_pitch_gimbal_motor_measure_point(void)
 {
-    return motor_instance_measure_const(Motor6);
+    return motor_instance_measure_const(can_rx_cached_motor_id(&can_rx_pitch_id));
 }
 
 const motor_measure_t *get_trigger_motor_measure_point(void)
 {
-    return motor_instance_measure_const(Motor7);
+    return motor_instance_measure_const(can_rx_cached_motor_id(&can_rx_trigger_id));
 }
 
 const motor_measure_t *get_chassis_motor_measure_point(uint8_t i)
 {
-    return motor_instance_measure_const(MotorIdRange(Motor0, (uint8_t)(i & 0x03u), 4u));
+    return motor_instance_measure_const(can_rx_cached_indexed_motor_id(can_rx_chassis_ids,
+                                                                       &can_rx_chassis_ids_ready,
+                                                                       4u,
+                                                                       Motor0,
+                                                                       (uint8_t)(i & 0x03u)));
 }
 
 const motor_measure_t *get_friction_motor_measure_point(uint8_t i)
 {
-    return motor_instance_measure_const(MotorIdRange(Motor8, (uint8_t)(i & 0x03u), 4u));
+    return motor_instance_measure_const(can_rx_cached_indexed_motor_id(can_rx_friction_ids,
+                                                                       &can_rx_friction_ids_ready,
+                                                                       4u,
+                                                                       Motor8,
+                                                                       (uint8_t)(i & 0x03u)));
 }
 
 uint8_t CAN_get_last_1ff_status(void)

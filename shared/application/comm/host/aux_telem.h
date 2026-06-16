@@ -11,6 +11,7 @@
 
 #include "types.h"
 
+void aux_telem_prepare_motor_ids(void);
 void aux_telem_set_ins_sources(const fp32 *quat, const fp32 *angle, const fp32 *gyro, const fp32 *accel);
 void aux_telem_reset(void);
 void aux_telem_try_send_frame(void);

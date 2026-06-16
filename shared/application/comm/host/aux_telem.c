@@ -31,6 +31,7 @@
 #include "manual_input.h"
 #include "mem_mang.h"
 #include "motor_config.h"
+#include "motor_instance.h"
 #include "robot_task_profile.h"
 #include "shoot_state.h"
 #include "user_lib.h"
@@ -53,6 +54,85 @@ typedef struct
     const motor_measure_t *trigger_meas;
     const motor_measure_t *fric_meas[SHOOT_STATE_FRIC_MOTOR_COUNT];
 } aux_telem_ctx_t;
+
+typedef struct
+{
+    const char *name;
+    MotorId fallback_id;
+    MotorId resolved_id;
+    uint8_t ready;
+} aux_telem_motor_id_cache_t;
+
+static aux_telem_motor_id_cache_t s_aux_telem_chassis_ids[4u] = {
+    {"motor.chassis0", Motor0, MotorCount, 0u},
+    {"motor.chassis1", Motor1, MotorCount, 0u},
+    {"motor.chassis2", Motor2, MotorCount, 0u},
+    {"motor.chassis3", Motor3, MotorCount, 0u},
+};
+static aux_telem_motor_id_cache_t s_aux_telem_friction_ids[4u] = {
+    {"motor.friction0", Motor8, MotorCount, 0u},
+    {"motor.friction1", Motor9, MotorCount, 0u},
+    {"motor.friction2", Motor10, MotorCount, 0u},
+    {"motor.friction3", Motor11, MotorCount, 0u},
+};
+static aux_telem_motor_id_cache_t s_aux_telem_yaw_id = {"motor.yaw", Motor4, MotorCount, 0u};
+static aux_telem_motor_id_cache_t s_aux_telem_pitch_id = {"motor.pitch", Motor6, MotorCount, 0u};
+static aux_telem_motor_id_cache_t s_aux_telem_trigger_id = {"motor.trigger", Motor7, MotorCount, 0u};
+
+static void aux_telem_prepare_motor_id_cache(aux_telem_motor_id_cache_t *cache)
+{
+    MotorId resolved;
+
+    if (cache == NULL)
+    {
+        return;
+    }
+    if (cache->ready != 0u)
+    {
+        return;
+    }
+
+    resolved = motor_instance_actuator_id_by_name(cache->name);
+    cache->resolved_id = (resolved != MotorCount) ? resolved : cache->fallback_id;
+    cache->ready = 1u;
+}
+
+static MotorId aux_telem_cached_motor_id(const aux_telem_motor_id_cache_t *cache)
+{
+    if (cache == NULL)
+    {
+        return MotorCount;
+    }
+    if (cache->ready == 0u)
+    {
+        return cache->fallback_id;
+    }
+
+    return cache->resolved_id;
+}
+
+static MotorId aux_telem_cached_motor_id_at(const aux_telem_motor_id_cache_t *cache,
+                                            uint8_t count,
+                                            uint8_t index)
+{
+    if (cache == NULL || count == 0u)
+    {
+        return MotorCount;
+    }
+    return aux_telem_cached_motor_id(&cache[(uint8_t)(index % count)]);
+}
+
+void aux_telem_prepare_motor_ids(void)
+{
+    for (uint8_t i = 0u; i < 4u; i++)
+    {
+        aux_telem_prepare_motor_id_cache(&s_aux_telem_chassis_ids[i]);
+        aux_telem_prepare_motor_id_cache(&s_aux_telem_friction_ids[i]);
+    }
+    aux_telem_prepare_motor_id_cache(&s_aux_telem_yaw_id);
+    aux_telem_prepare_motor_id_cache(&s_aux_telem_pitch_id);
+    aux_telem_prepare_motor_id_cache(&s_aux_telem_trigger_id);
+}
 
 static const aux_telem_sig_e aux_telem_default_list[] =
 {
@@ -298,6 +378,7 @@ __weak fp32 electricity_percentage = 0.0f;
 
 void aux_telem_set_ins_sources(const fp32 *quat, const fp32 *angle, const fp32 *gyro, const fp32 *accel)
 {
+    aux_telem_prepare_motor_ids();
     ins_quat = quat;
     ins_angle = angle;
     ins_gyro = gyro;
@@ -306,6 +387,7 @@ void aux_telem_set_ins_sources(const fp32 *quat, const fp32 *angle, const fp32 *
 
 void aux_telem_reset(void)
 {
+    aux_telem_prepare_motor_ids();
     aux_telem_tick = 0u;
 }
 
@@ -689,7 +771,7 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
             case 1: return (fp32)(mm ? mm->given_current : 0);
             case 2: return (fp32)(mm ? mm->temperate : 0);
             case 3:
-                return (fp32)LowCmdGetCurrent(MotorIdRange(Motor8, motor, 4u));
+                return (fp32)LowCmdGetCurrent(aux_telem_cached_motor_id_at(s_aux_telem_friction_ids, 4u, motor));
             default: return 0.0f;
             }
         }
@@ -904,19 +986,19 @@ static fp32 aux_telem_get_value(const aux_telem_ctx_t *ctx, aux_telem_sig_e sig)
         return ctx->trigger_meas ? (fp32)ctx->trigger_meas->given_current : 0.0f;
 
     case AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS0_CURRENT:
-        return (fp32)LowCmdGetCurrent(Motor0);
+        return (fp32)LowCmdGetCurrent(aux_telem_cached_motor_id_at(s_aux_telem_chassis_ids, 4u, 0u));
     case AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS1_CURRENT:
-        return (fp32)LowCmdGetCurrent(Motor1);
+        return (fp32)LowCmdGetCurrent(aux_telem_cached_motor_id_at(s_aux_telem_chassis_ids, 4u, 1u));
     case AUX_TELEM_SIG_DIAG_ACTUATOR_PITCH_CURRENT:
-        return (fp32)LowCmdGetCurrent(Motor6);
+        return (fp32)LowCmdGetCurrent(aux_telem_cached_motor_id(&s_aux_telem_pitch_id));
     case AUX_TELEM_SIG_DIAG_ACTUATOR_TRIGGER_CURRENT:
-        return (fp32)LowCmdGetCurrent(Motor7);
+        return (fp32)LowCmdGetCurrent(aux_telem_cached_motor_id(&s_aux_telem_trigger_id));
     case AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS3_CURRENT:
-        return (fp32)LowCmdGetCurrent(Motor3);
+        return (fp32)LowCmdGetCurrent(aux_telem_cached_motor_id_at(s_aux_telem_chassis_ids, 4u, 3u));
     case AUX_TELEM_SIG_DIAG_ACTUATOR_YAW_CURRENT:
-        return (fp32)LowCmdGetCurrent(Motor4);
+        return (fp32)LowCmdGetCurrent(aux_telem_cached_motor_id(&s_aux_telem_yaw_id));
     case AUX_TELEM_SIG_DIAG_ACTUATOR_CHASSIS2_CURRENT:
-        return (fp32)LowCmdGetCurrent(Motor2);
+        return (fp32)LowCmdGetCurrent(aux_telem_cached_motor_id_at(s_aux_telem_chassis_ids, 4u, 2u));
     case AUX_TELEM_SIG_DIAG_RM_GROUP_1FF_STATUS:
         return (fp32)CAN_get_last_1ff_status();
     case AUX_TELEM_SIG_DIAG_CAN_BUS1_ERR:

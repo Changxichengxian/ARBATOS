@@ -46,6 +46,7 @@
 #include "rt_profiler.h"
 #include "robot_task_profile.h"
 #include "robot_mode.h"
+#include "control_manager.h"
 
 #include <string.h>
 
@@ -478,6 +479,61 @@ static void chassis_sdlog_flush_base_stream(void)
     s_chassis_sdlog_base_stream.sample_count = 0u;
 }
 
+static bool_t chassis_control_manager_allows(const chassis_runtime_snapshot_t *snapshot)
+{
+    control_context_t context = {0};
+
+    context.tick_ms = bsp_time_get_tick_ms();
+    context.dt_s = (snapshot != NULL) ? snapshot->period_s : (fp32)robot_profile_chassis_control_period_s();
+
+    if (control_manager_update_domain(CONTROL_DOMAIN_CHASSIS, &context) != CONTROL_RESULT_OK)
+    {
+        return 0;
+    }
+
+    return (control_manager_active_id(CONTROL_DOMAIN_CHASSIS) == CONTROL_CONTROLLER_CLASSIC_CHASSIS) ? 1 : 0;
+}
+
+static void chassis_control_stop_outputs(chassis_move_t *control)
+{
+    if (control == NULL)
+    {
+        return;
+    }
+
+    chassis_sdlog_flush_base_stream();
+    for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
+    {
+        PID_clear(&control->motor_speed_pid[i]);
+        control->motor_chassis[i].speed_set = 0.0f;
+        control->motor_chassis[i].give_current = 0;
+    }
+    control->vx_set = 0.0f;
+    control->vy_set = 0.0f;
+    control->wz_set = 0.0f;
+
+    (void)motor_instance_cmd_set_current_bindings_best_effort(chassis_motor_current_bindings,
+                                                              chassis_zero_current_cmd,
+                                                              CHASSIS_MOTOR_COUNT);
+}
+
+static void chassis_control_delay(TickType_t *last_wake, uint16_t period_ms)
+{
+    const TickType_t delay_start = xTaskGetTickCount();
+
+    if (last_wake == NULL)
+    {
+        return;
+    }
+
+    vTaskDelayUntil(last_wake, pdMS_TO_TICKS(period_ms));
+    if (xTaskGetTickCount() == delay_start)
+    {
+        vTaskDelay(1u);
+        *last_wake = xTaskGetTickCount();
+    }
+}
+
 static void chassis_sdlog_append_base_sample(const sdlog_chassis_base_sample_t *sample,
                                              uint32_t now_ms,
                                              uint32_t period_us)
@@ -689,32 +745,23 @@ void chassis_control_task(void const *pvParameters)
         // test mode: only none/chassis_only allow normal chassis control
         if (!operation_mode_allow_chassis(&snapshot))
         {
-            chassis_sdlog_flush_base_stream();
-            for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
-            {
-                PID_clear(&chassis_move.motor_speed_pid[i]);
-                chassis_move.motor_chassis[i].speed_set = 0.0f;
-                chassis_move.motor_chassis[i].give_current = 0;
-            }
-            chassis_move.vx_set = 0.0f;
-            chassis_move.vy_set = 0.0f;
-            chassis_move.wz_set = 0.0f;
-
-            (void)motor_instance_cmd_set_current_bindings_best_effort(chassis_motor_current_bindings,
-                                                                      chassis_zero_current_cmd,
-                                                                      CHASSIS_MOTOR_COUNT);
-
+            chassis_control_stop_outputs(&chassis_move);
             chassis_write_state(&chassis_move);
             rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
-            {
-                const TickType_t delay_start = xTaskGetTickCount();
-                vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
-                if (xTaskGetTickCount() == delay_start)
-                {
-                    vTaskDelay(1u);
-                    last_wake = xTaskGetTickCount();
-                }
-            }
+            chassis_control_delay(&last_wake, snapshot.period_ms);
+
+#if INCLUDE_uxTaskGetStackHighWaterMark
+            chassis_high_water = uxTaskGetStackHighWaterMark(NULL);
+#endif
+            continue;
+        }
+
+        if (!chassis_control_manager_allows(&snapshot))
+        {
+            chassis_control_stop_outputs(&chassis_move);
+            chassis_write_state(&chassis_move);
+            rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
+            chassis_control_delay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
             chassis_high_water = uxTaskGetStackHighWaterMark(NULL);
@@ -776,15 +823,7 @@ void chassis_control_task(void const *pvParameters)
         //os delay
         //系统延时
         rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
-        {
-            const TickType_t delay_start = xTaskGetTickCount();
-            vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(snapshot.period_ms));
-            if (xTaskGetTickCount() == delay_start)
-            {
-                vTaskDelay(1u);
-                last_wake = xTaskGetTickCount();
-            }
-        }
+        chassis_control_delay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
         chassis_high_water = uxTaskGetStackHighWaterMark(NULL);
