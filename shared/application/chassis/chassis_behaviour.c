@@ -27,8 +27,10 @@
 #include "bsp_time.h"
 #include "control_input.h"
 #include "detect_task.h"
+#include "external_motion_intent.h"
 
 #include <math.h>
+#include <string.h>
 
 #ifndef HALF_ECD_RANGE
 #define HALF_ECD_RANGE 4096
@@ -126,6 +128,21 @@ static bool_t chassis_gimbal_cmd_to_chassis_stop(void);
 static void chassis_gyro_spin_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, chassis_move_t *chassis_move_rc_to_vector);
 static void chassis_gyro_spin_var_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, chassis_move_t *chassis_move_rc_to_vector);
 static void chassis_swing_control(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, chassis_move_t *chassis_move_rc_to_vector);
+static void chassis_algorithm_move_reset_slew(void);
+static bool_t chassis_algorithm_move_get_active(external_motion_intent_t *out);
+static fp32 chassis_algorithm_limit_step(fp32 current, fp32 target, fp32 max_delta);
+static fp32 chassis_algorithm_default_accel(fp32 positive_limit, fp32 negative_limit, fp32 fallback);
+static void chassis_algorithm_apply_slew(const external_motion_intent_t *cmd,
+                                         const chassis_move_t *chassis_move_rc_to_vector,
+                                         fp32 *vx_set,
+                                         fp32 *vy_set,
+                                         fp32 *wz_set,
+                                         fp32 start_vx,
+                                         fp32 start_vy,
+                                         fp32 start_wz,
+                                         uint8_t slew_wz);
+static void chassis_algorithm_move_override(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set,
+                                            chassis_move_t *chassis_move_rc_to_vector);
 
 /**
   * @brief          when chassis behaviour mode is CHASSIS_ENGINEER_FOLLOW_CHASSIS_YAW, chassis control mode is speed control mode.
@@ -197,6 +214,19 @@ static void chassis_open_set_control(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, c
 //highlight, the variable chassis behaviour mode
 //留意，这个底盘行为模式变量
 chassis_behaviour_e chassis_behaviour_mode = CHASSIS_ZERO_FORCE;
+
+typedef struct
+{
+    uint8_t active;
+    uint8_t mode;
+    uint8_t frame;
+    uint32_t last_ms;
+    fp32 vx;
+    fp32 vy;
+    fp32 wz;
+} chassis_algorithm_move_slew_t;
+
+static chassis_algorithm_move_slew_t chassis_algorithm_move_slew = {0};
 
 static bool_t chassis_read_gimbal_state(gimbal_state_t *state)
 {
@@ -291,6 +321,360 @@ static uint16_t chassis_get_effective_switch(uint16_t raw_sw,
     return effective_sw;
 }
 
+static bool_t chassis_algorithm_move_get_active(external_motion_intent_t *out)
+{
+    external_motion_intent_t cmd;
+
+    if (external_motion_intent_read_latest(&cmd, NULL) == false)
+    {
+        return 0;
+    }
+    if (cmd.mode == (uint8_t)EXTERNAL_MOTION_MODE_IDLE ||
+        cmd.mode > (uint8_t)EXTERNAL_MOTION_MODE_STOP)
+    {
+        chassis_algorithm_move_reset_slew();
+        return 0;
+    }
+    if (cmd.frame > (uint8_t)EXTERNAL_MOTION_FRAME_FIELD)
+    {
+        chassis_algorithm_move_reset_slew();
+        return 0;
+    }
+
+    if (out != NULL)
+    {
+        *out = cmd;
+    }
+    return 1;
+}
+
+static void chassis_algorithm_move_reset_slew(void)
+{
+    memset(&chassis_algorithm_move_slew, 0, sizeof(chassis_algorithm_move_slew));
+}
+
+static fp32 chassis_algorithm_yaw_frame(const chassis_move_t *chassis_move_rc_to_vector)
+{
+    if (chassis_move_rc_to_vector == NULL)
+    {
+        return 0.0f;
+    }
+
+    fp32 yaw_frame = chassis_get_gimbal_yaw_relative_angle(&chassis_move_rc_to_vector->chassis_yaw_motor);
+    (void)chassis_gimbal_turnaround_get_frame_yaw_relative(&yaw_frame);
+    return yaw_frame;
+}
+
+static void chassis_algorithm_field_to_chassis(const chassis_move_t *chassis_move_rc_to_vector,
+                                               fp32 vx,
+                                               fp32 vy,
+                                               fp32 *vx_out,
+                                               fp32 *vy_out)
+{
+    if (vx_out == NULL || vy_out == NULL)
+    {
+        return;
+    }
+
+    const fp32 yaw = (chassis_move_rc_to_vector != NULL) ? chassis_move_rc_to_vector->chassis_yaw : 0.0f;
+    const fp32 sin_yaw = arm_sin_f32(yaw);
+    const fp32 cos_yaw = arm_cos_f32(yaw);
+
+    *vx_out = cos_yaw * vx + sin_yaw * vy;
+    *vy_out = -sin_yaw * vx + cos_yaw * vy;
+}
+
+static void chassis_algorithm_chassis_to_gimbal(const chassis_move_t *chassis_move_rc_to_vector,
+                                                fp32 vx,
+                                                fp32 vy,
+                                                fp32 *vx_out,
+                                                fp32 *vy_out)
+{
+    if (vx_out == NULL || vy_out == NULL)
+    {
+        return;
+    }
+
+    const fp32 yaw = chassis_algorithm_yaw_frame(chassis_move_rc_to_vector);
+    const fp32 sin_yaw = arm_sin_f32(yaw);
+    const fp32 cos_yaw = arm_cos_f32(yaw);
+
+    *vx_out = cos_yaw * vx + sin_yaw * vy;
+    *vy_out = -sin_yaw * vx + cos_yaw * vy;
+}
+
+static void chassis_algorithm_gimbal_to_chassis(const chassis_move_t *chassis_move_rc_to_vector,
+                                                fp32 vx,
+                                                fp32 vy,
+                                                fp32 *vx_out,
+                                                fp32 *vy_out)
+{
+    if (vx_out == NULL || vy_out == NULL)
+    {
+        return;
+    }
+
+    const fp32 yaw = chassis_algorithm_yaw_frame(chassis_move_rc_to_vector);
+    const fp32 sin_yaw = arm_sin_f32(yaw);
+    const fp32 cos_yaw = arm_cos_f32(yaw);
+
+    *vx_out = cos_yaw * vx - sin_yaw * vy;
+    *vy_out = sin_yaw * vx + cos_yaw * vy;
+}
+
+static void chassis_algorithm_resolve_vxy(const external_motion_intent_t *cmd,
+                                          const chassis_move_t *chassis_move_rc_to_vector,
+                                          uint8_t desired_frame,
+                                          fp32 *vx_out,
+                                          fp32 *vy_out)
+{
+    if (vx_out == NULL || vy_out == NULL)
+    {
+        return;
+    }
+
+    fp32 vx = 0.0f;
+    fp32 vy = 0.0f;
+    if (cmd != NULL && (cmd->flags & EXTERNAL_MOTION_FLAG_VXY_VALID) != 0u)
+    {
+        vx = cmd->vx_mps;
+        vy = cmd->vy_mps;
+    }
+
+    if (cmd == NULL || cmd->frame == desired_frame)
+    {
+        *vx_out = vx;
+        *vy_out = vy;
+        return;
+    }
+
+    if (cmd->frame == (uint8_t)EXTERNAL_MOTION_FRAME_FIELD)
+    {
+        fp32 vx_chassis = 0.0f;
+        fp32 vy_chassis = 0.0f;
+        chassis_algorithm_field_to_chassis(chassis_move_rc_to_vector, vx, vy, &vx_chassis, &vy_chassis);
+        if (desired_frame == (uint8_t)EXTERNAL_MOTION_FRAME_CHASSIS)
+        {
+            *vx_out = vx_chassis;
+            *vy_out = vy_chassis;
+            return;
+        }
+        if (desired_frame == (uint8_t)EXTERNAL_MOTION_FRAME_GIMBAL)
+        {
+            chassis_algorithm_chassis_to_gimbal(chassis_move_rc_to_vector, vx_chassis, vy_chassis, vx_out, vy_out);
+            return;
+        }
+    }
+
+    if (cmd->frame == (uint8_t)EXTERNAL_MOTION_FRAME_GIMBAL &&
+        desired_frame == (uint8_t)EXTERNAL_MOTION_FRAME_CHASSIS)
+    {
+        chassis_algorithm_gimbal_to_chassis(chassis_move_rc_to_vector, vx, vy, vx_out, vy_out);
+        return;
+    }
+
+    if (cmd->frame == (uint8_t)EXTERNAL_MOTION_FRAME_CHASSIS &&
+        desired_frame == (uint8_t)EXTERNAL_MOTION_FRAME_GIMBAL)
+    {
+        chassis_algorithm_chassis_to_gimbal(chassis_move_rc_to_vector, vx, vy, vx_out, vy_out);
+        return;
+    }
+
+    *vx_out = 0.0f;
+    *vy_out = 0.0f;
+}
+
+static fp32 chassis_algorithm_limit_step(fp32 current, fp32 target, fp32 max_delta)
+{
+    const fp32 delta = target - current;
+    const fp32 limit = (max_delta > 0.0f) ? max_delta : 0.0f;
+
+    if (delta > limit)
+    {
+        return current + limit;
+    }
+    if (delta < -limit)
+    {
+        return current - limit;
+    }
+    return target;
+}
+
+static fp32 chassis_algorithm_default_accel(fp32 positive_limit, fp32 negative_limit, fp32 fallback)
+{
+    fp32 max_abs = fabsf(positive_limit);
+    const fp32 neg_abs = fabsf(negative_limit);
+
+    if (max_abs < neg_abs)
+    {
+        max_abs = neg_abs;
+    }
+    if (max_abs <= 0.0f)
+    {
+        max_abs = fallback;
+    }
+    return max_abs * 4.0f;
+}
+
+static void chassis_algorithm_apply_slew(const external_motion_intent_t *cmd,
+                                         const chassis_move_t *chassis_move_rc_to_vector,
+                                         fp32 *vx_set,
+                                         fp32 *vy_set,
+                                         fp32 *wz_set,
+                                         fp32 start_vx,
+                                         fp32 start_vy,
+                                         fp32 start_wz,
+                                         uint8_t slew_wz)
+{
+    if (cmd == NULL || chassis_move_rc_to_vector == NULL ||
+        vx_set == NULL || vy_set == NULL || wz_set == NULL)
+    {
+        return;
+    }
+
+    const uint32_t now_ms = bsp_time_get_tick_ms();
+    if (chassis_algorithm_move_slew.active == 0u ||
+        chassis_algorithm_move_slew.mode != cmd->mode ||
+        chassis_algorithm_move_slew.frame != cmd->frame ||
+        now_ms < chassis_algorithm_move_slew.last_ms ||
+        (now_ms - chassis_algorithm_move_slew.last_ms) > 300u)
+    {
+        chassis_algorithm_move_slew.active = 1u;
+        chassis_algorithm_move_slew.mode = cmd->mode;
+        chassis_algorithm_move_slew.frame = cmd->frame;
+        chassis_algorithm_move_slew.last_ms = now_ms;
+        chassis_algorithm_move_slew.vx = start_vx;
+        chassis_algorithm_move_slew.vy = start_vy;
+        chassis_algorithm_move_slew.wz = start_wz;
+    }
+
+    uint32_t dt_ms = now_ms - chassis_algorithm_move_slew.last_ms;
+    if (dt_ms == 0u)
+    {
+        dt_ms = CHASSIS_CONTROL_TIME_MS;
+    }
+    const fp32 dt = (fp32)dt_ms * 0.001f;
+    const uint8_t accel_valid = ((cmd->flags & EXTERNAL_MOTION_FLAG_ACCEL_VALID) != 0u) ? 1u : 0u;
+    const chassis_control_snapshot_t *fast = &chassis_move_rc_to_vector->fast;
+
+    fp32 ax_limit = chassis_algorithm_default_accel(chassis_move_rc_to_vector->vx_max_speed,
+                                                   chassis_move_rc_to_vector->vx_min_speed,
+                                                   1.0f);
+    fp32 ay_limit = chassis_algorithm_default_accel(chassis_move_rc_to_vector->vy_max_speed,
+                                                   chassis_move_rc_to_vector->vy_min_speed,
+                                                   1.0f);
+    fp32 wz_limit = fabsf(fast->swing_move_angle) * 4.0f;
+    if (wz_limit <= 0.0f)
+    {
+        wz_limit = 8.0f;
+    }
+
+    if (accel_valid != 0u)
+    {
+        if (fabsf(cmd->ax_mps2) > 0.0f)
+        {
+            ax_limit = fabsf(cmd->ax_mps2);
+        }
+        if (fabsf(cmd->ay_mps2) > 0.0f)
+        {
+            ay_limit = fabsf(cmd->ay_mps2);
+        }
+        if (fabsf(cmd->wz_acc_radps2) > 0.0f)
+        {
+            wz_limit = fabsf(cmd->wz_acc_radps2);
+        }
+    }
+
+    chassis_algorithm_move_slew.vx = chassis_algorithm_limit_step(chassis_algorithm_move_slew.vx, *vx_set, ax_limit * dt);
+    chassis_algorithm_move_slew.vy = chassis_algorithm_limit_step(chassis_algorithm_move_slew.vy, *vy_set, ay_limit * dt);
+    if (slew_wz != 0u)
+    {
+        chassis_algorithm_move_slew.wz = chassis_algorithm_limit_step(chassis_algorithm_move_slew.wz, *wz_set, wz_limit * dt);
+    }
+    else
+    {
+        chassis_algorithm_move_slew.wz = *wz_set;
+    }
+    chassis_algorithm_move_slew.last_ms = now_ms;
+
+    *vx_set = chassis_algorithm_move_slew.vx;
+    *vy_set = chassis_algorithm_move_slew.vy;
+    *wz_set = chassis_algorithm_move_slew.wz;
+}
+
+static void chassis_algorithm_move_override(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set,
+                                            chassis_move_t *chassis_move_rc_to_vector)
+{
+    external_motion_intent_t cmd;
+
+    if (vx_set == NULL || vy_set == NULL || angle_set == NULL || chassis_move_rc_to_vector == NULL)
+    {
+        return;
+    }
+    if (chassis_behaviour_mode == CHASSIS_ZERO_FORCE || chassis_behaviour_mode == CHASSIS_NO_MOVE)
+    {
+        chassis_algorithm_move_reset_slew();
+        return;
+    }
+    if (chassis_algorithm_move_get_active(&cmd) == 0)
+    {
+        chassis_algorithm_move_reset_slew();
+        return;
+    }
+
+    const fp32 start_vx = *vx_set;
+    const fp32 start_vy = *vy_set;
+    const fp32 start_wz = *angle_set;
+
+    if (cmd.mode == (uint8_t)EXTERNAL_MOTION_MODE_STOP)
+    {
+        chassis_algorithm_move_reset_slew();
+        *vx_set = 0.0f;
+        *vy_set = 0.0f;
+        *angle_set = 0.0f;
+        return;
+    }
+
+    if (cmd.mode == (uint8_t)EXTERNAL_MOTION_MODE_FOLLOW_GIMBAL)
+    {
+        chassis_algorithm_resolve_vxy(&cmd,
+                                      chassis_move_rc_to_vector,
+                                      (uint8_t)EXTERNAL_MOTION_FRAME_GIMBAL,
+                                      vx_set,
+                                      vy_set);
+        *angle_set = ((cmd.flags & EXTERNAL_MOTION_FLAG_YAW_OFFSET_VALID) != 0u) ? cmd.yaw_offset_rad : 0.0f;
+        chassis_algorithm_apply_slew(&cmd, chassis_move_rc_to_vector, vx_set, vy_set, angle_set,
+                                     start_vx, start_vy, start_wz, 0u);
+        return;
+    }
+
+    if (cmd.mode == (uint8_t)EXTERNAL_MOTION_MODE_NO_FOLLOW ||
+        cmd.mode == (uint8_t)EXTERNAL_MOTION_MODE_GYRO_SPIN)
+    {
+        chassis_algorithm_resolve_vxy(&cmd,
+                                      chassis_move_rc_to_vector,
+                                      (uint8_t)EXTERNAL_MOTION_FRAME_CHASSIS,
+                                      vx_set,
+                                      vy_set);
+
+        if ((cmd.flags & EXTERNAL_MOTION_FLAG_WZ_VALID) != 0u)
+        {
+            *angle_set = cmd.wz_radps;
+        }
+        else if (cmd.mode == (uint8_t)EXTERNAL_MOTION_MODE_GYRO_SPIN)
+        {
+            const chassis_control_snapshot_t *fast = &chassis_move_rc_to_vector->fast;
+            *angle_set = fast->swing_move_angle;
+        }
+        else
+        {
+            *angle_set = 0.0f;
+        }
+        chassis_algorithm_apply_slew(&cmd, chassis_move_rc_to_vector, vx_set, vy_set, angle_set,
+                                     start_vx, start_vy, start_wz, 1u);
+    }
+}
+
 
 /**
   * @brief          logical judgement to assign "chassis_behaviour_mode" variable to which mode
@@ -375,6 +759,29 @@ void chassis_behaviour_mode_set(chassis_move_t *chassis_move_mode)
     if (chassis_gimbal_cmd_to_chassis_stop())
     {
         chassis_behaviour_mode = CHASSIS_NO_MOVE;
+    }
+    else
+    {
+        external_motion_intent_t move_cmd;
+        if (chassis_algorithm_move_get_active(&move_cmd) != 0)
+        {
+            if (move_cmd.mode == (uint8_t)EXTERNAL_MOTION_MODE_FOLLOW_GIMBAL)
+            {
+                chassis_behaviour_mode = CHASSIS_INFANTRY_FOLLOW_GIMBAL_YAW;
+            }
+            else if (move_cmd.mode == (uint8_t)EXTERNAL_MOTION_MODE_NO_FOLLOW)
+            {
+                chassis_behaviour_mode = CHASSIS_NO_FOLLOW_YAW;
+            }
+            else if (move_cmd.mode == (uint8_t)EXTERNAL_MOTION_MODE_GYRO_SPIN)
+            {
+                chassis_behaviour_mode = CHASSIS_GYRO_SPIN;
+            }
+            else if (move_cmd.mode == (uint8_t)EXTERNAL_MOTION_MODE_STOP)
+            {
+                chassis_behaviour_mode = CHASSIS_NO_MOVE;
+            }
+        }
     }
 
 
@@ -485,6 +892,8 @@ void chassis_behaviour_control_set(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, 
     {
         chassis_open_set_control(vx_set, vy_set, angle_set, chassis_move_rc_to_vector);
     }
+
+    chassis_algorithm_move_override(vx_set, vy_set, angle_set, chassis_move_rc_to_vector);
 }
 
 /**

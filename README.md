@@ -252,6 +252,7 @@ Useful entry points:
 | Host link | `shared/application/comm/host/host_link_task.c` |
 | Vision link | `shared/application/comm/vision/vision_link.c` |
 | Referee link | `shared/application/comm/referee/referee_rx_task.c` |
+| External motion intent | `shared/application/robot/external_motion_intent.c` |
 | Actuator commands | `shared/application/robot/LowCmd.c` |
 | Device configuration view | `shared/application/robot/robot_device_config.h` |
 | Runtime state store | `shared/application/robot/state_store.c`, `robot_state.h` |
@@ -472,6 +473,8 @@ For detailed workflows, start with `QUICK_START.md` and `manual/README.md`.
 - `manual/sdlog.md`: SD logging and replay.
 - `manual/runtime-architecture.md`: direction for device and controller instance
   based runtime evolution.
+- `ALGORITHM_ACCESS_PROTOCOL.md`: compact algorithm link protocol and external
+  chassis-motion command path.
 - `projects/README.md`: project layer details.
 - `Robotconfig/README.md`: robot configuration layer details.
 - `boards/README.md`: board support layer details.

@@ -913,6 +913,11 @@
               <FilePath>../../../shared/application/robot/state_store.c</FilePath>
             </File>
             <File>
+              <FileName>external_motion_intent.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../../../shared/application/robot/external_motion_intent.c</FilePath>
+            </File>
+            <File>
               <FileName>control_manager.c</FileName>
               <FileType>1</FileType>
               <FilePath>../../../shared/application/robot/control_manager.c</FilePath>
