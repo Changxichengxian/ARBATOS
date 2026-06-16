@@ -319,6 +319,9 @@ This route reads the Keil `.uvprojx`, writes generated CMake files under
 `build/gcc/<TARGET>/`, translates the startup and linker files, swaps in GCC
 FreeRTOS ports and compatibility sources, then builds `.elf`, `.hex`, and `.bin`
 outputs. The generated build directory is ignored by Git.
+Before generation or build, the route refreshes
+`shared/generated/build_info_autogen.h`, matching the Keil `BeforeMake` path so
+GCC-built firmware records the same SD log build identity.
 The generated GCC/CMake route is kept warning-clean; new compiler warnings
 should be fixed in source instead of filtered from the build output.
 
@@ -382,8 +385,8 @@ Main diagnostics surfaces:
 - `detect_task.c`: target-specific online detection and status aggregation.
 - `sdlog.c` and `sdlog_task.c`: TF/SD binary logging through an in-memory ring
   buffer and a low-priority file flush task.
-- `BUILD_INFO`: target, board, Git commit, dirty flag, build time, config CRC, and
-  schema information written into logs.
+- `BUILD_INFO`: target, board, 16-character Git commit prefix, dirty flag, build
+  time, config CRC, and schema information written into logs.
 - `host_link_task.c`: AUX telemetry and temporary parameter tuning.
 
 High-rate tasks may call `sdlog_write()`, but that still copies payload data and
@@ -392,7 +395,8 @@ with frequency, payload size, and worst-case loop cost checked through real
 `rt_profiler` data.
 
 See `manual/sdlog.md` for log usage, decompression, baseline retention, and tag
-rules.
+rules. See `manual/evaluation-boundaries.md` for SD release discipline and the
+CAN hardware boundary used when evaluating the repository.
 
 ## Quick Start
 
@@ -473,6 +477,10 @@ For detailed workflows, start with `QUICK_START.md` and `manual/README.md`.
 - `manual/bringup-checklist.md`: real-robot bring-up checklist.
 - `manual/pid-tuning.md`: PID tuning flow.
 - `manual/sdlog.md`: SD logging and replay.
+- `manual/evaluation-boundaries.md`: SD release discipline and CAN scoring
+  boundary.
+- `manual/coding-style.md`: project coding style, Chinese comment rules, and
+  legacy-style handling.
 - `manual/runtime-architecture.md`: direction for device and controller instance
   based runtime evolution.
 - `ALGORITHM_ACCESS_PROTOCOL.md`: compact algorithm link protocol and external

@@ -100,6 +100,13 @@ function Invoke-GccGenerator {
     }
 }
 
+function Update-BuildInfo {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "tools\gen_build_info.ps1")
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+
 switch ($Action) {
     "check" {
         & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "tools\check_all.ps1")
@@ -127,11 +134,13 @@ switch ($Action) {
     }
 
     "gcc" {
+        Update-BuildInfo
         Invoke-GccGenerator
         exit 0
     }
 
     "gcc-build" {
+        Update-BuildInfo
         Invoke-GccGenerator
         $cmake = Require-Tool "cmake"
         $ninja = Require-Tool "ninja"

@@ -14,6 +14,8 @@
 | 第一次上车、上电、联调前检查 | [上车检查清单](bringup-checklist.md) |
 | 调云台、底盘、射击 PID | [PID 调试流程](pid-tuning.md) |
 | 看 SD 日志、留基线日志、改日志 tag | [SD 日志和复盘](sdlog.md) |
+| 说明 SD 发布纪律、CAN 硬件边界和评分口径 | [评分边界](evaluation-boundaries.md) |
+| 写代码、补注释、处理旧风格 | [代码风格](coding-style.md) |
 | 了解后续通用机器人运行层方向 | [运行层演进方向](runtime-architecture.md) |
 
 ## 文档分层

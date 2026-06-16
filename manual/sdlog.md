@@ -43,7 +43,11 @@ Keil 工程的 `BeforeMake` 会运行：
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\gen_build_info.ps1
 ```
 
-它生成 `shared/generated/build_info_autogen.h`，这个文件被 `.gitignore` 忽略，不会把每次编译时间提交进 Git。
+GCC/CMake 路线也会在 `tools/build.ps1 -Action gcc` 和 `tools/build.ps1 -Action gcc-build` 开始时运行同一个脚本。
+
+它生成 `shared/generated/build_info_autogen.h`，这个文件被 `.gitignore` 忽略，不会把每次编译时间提交进 Git。日志里的 `git_sha` 保留 16 位 Git 编号，`build_dirty` 标记这次固件是不是来自带改动的工作区，配合 `config_crc32` 可以把“哪版代码、哪份配置、哪次构建”对上。
+
+因此，只要 SD 日志能解析出 `BUILD_INFO`，这次固件就有基本发布追溯。`build_dirty = 1` 需要在复盘里说明，但它不是“仓库缺少发布纪律”的扣分点。
 
 ## 查看日志
 
