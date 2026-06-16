@@ -52,13 +52,13 @@ static int entertainment_find_music_by_index(int32_t *index_io,
                                              uint32_t out_size,
                                              uint32_t *count_out);
 
-const error_t *error_list_test_local;
+const detect_error_t *error_list_test_local;
 static uint8_t beep_times_pending = 0;
 static uint16_t beep_on_ticks_left = 0;
 static uint16_t beep_gap_ticks_left = 0;
-static uint8_t lost_confirm_step_ticks[ERROR_LIST_LENGHT];
-static uint8_t lost_confirm_count[ERROR_LIST_LENGHT];
-static uint8_t lost_beeped[ERROR_LIST_LENGHT];
+static uint8_t lost_confirm_step_ticks[DETECT_ERROR_COUNT];
+static uint8_t lost_confirm_count[DETECT_ERROR_COUNT];
+static uint8_t lost_beeped[DETECT_ERROR_COUNT];
 
 static uint16_t entertainment_switch_raw_from_pos(uint8_t pos)
 {
@@ -516,9 +516,9 @@ static uint8_t buzzer_is_idle(void)
 static uint8_t lost_beep_confirm_due(void)
 {
     uint8_t due = 0u;
-    const uint8_t toe_limit = ((uint8_t)REFEREE_TOE < (uint8_t)ERROR_LIST_LENGHT) ?
+    const uint8_t toe_limit = ((uint8_t)REFEREE_TOE < (uint8_t)DETECT_ERROR_COUNT) ?
         (uint8_t)REFEREE_TOE :
-        (uint8_t)ERROR_LIST_LENGHT;
+        (uint8_t)DETECT_ERROR_COUNT;
 
     if (error_list_test_local == NULL)
     {

@@ -2,7 +2,7 @@
 #define USER_LIB_H
 #include "types.h"
 
-typedef __packed struct
+typedef struct
 {
     fp32 input;        //输入数据
     fp32 out;          //输出数据
@@ -11,7 +11,7 @@ typedef __packed struct
     fp32 frame_period; //时间间隔
 } ramp_function_source_t;
 
-typedef __packed struct
+typedef struct
 {
     fp32 input;        //输入数据
     fp32 out;          //滤波输出的数据
@@ -19,14 +19,14 @@ typedef __packed struct
     fp32 frame_period; //滤波的时间间隔 单位 s
 } first_order_filter_type_t;
 
-typedef __packed struct
+typedef struct
 {
     fp32 num[3];   // 二阶 IIR 滤波系数：out = out*num[0] + out_last*num[1] + input*num[2]
     fp32 out;      // 滤波输出
     fp32 out_last; // 上一次输出
 } second_order_filter_type_t;
 
-typedef __packed struct
+typedef struct
 {
     fp32 quat[4];        // Mahony 四元数 [w, x, y, z]
     fp32 integral_fb[3]; // 积分反馈

@@ -12,9 +12,9 @@
 #include "types.h"
 #include "config.h"
 
-#define SPI_DMA_GYRO_LENGHT       8
-#define SPI_DMA_ACCEL_LENGHT      9
-#define SPI_DMA_ACCEL_TEMP_LENGHT 4
+#define SPI_DMA_GYRO_LENGTH       8
+#define SPI_DMA_ACCEL_LENGTH      9
+#define SPI_DMA_ACCEL_TEMP_LENGTH 4
 
 
 #define IMU_DR_SHFITS        0

@@ -154,15 +154,15 @@ extern SPI_HandleTypeDef hspi1;
 
 static TaskHandle_t INS_task_local_handler;
 
-uint8_t gyro_dma_rx_buf[SPI_DMA_GYRO_LENGHT];
-uint8_t gyro_dma_tx_buf[SPI_DMA_GYRO_LENGHT] = {0x82,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+uint8_t gyro_dma_rx_buf[SPI_DMA_GYRO_LENGTH];
+uint8_t gyro_dma_tx_buf[SPI_DMA_GYRO_LENGTH] = {0x82,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
-uint8_t accel_dma_rx_buf[SPI_DMA_ACCEL_LENGHT];
-uint8_t accel_dma_tx_buf[SPI_DMA_ACCEL_LENGHT] = {0x92,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+uint8_t accel_dma_rx_buf[SPI_DMA_ACCEL_LENGTH];
+uint8_t accel_dma_tx_buf[SPI_DMA_ACCEL_LENGTH] = {0x92,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
 
-uint8_t accel_temp_dma_rx_buf[SPI_DMA_ACCEL_TEMP_LENGHT];
-uint8_t accel_temp_dma_tx_buf[SPI_DMA_ACCEL_TEMP_LENGHT] = {0xA2,0xFF,0xFF,0xFF};
+uint8_t accel_temp_dma_rx_buf[SPI_DMA_ACCEL_TEMP_LENGTH];
+uint8_t accel_temp_dma_tx_buf[SPI_DMA_ACCEL_TEMP_LENGTH] = {0xA2,0xFF,0xFF,0xFF};
 
 
 
@@ -563,7 +563,7 @@ void INS_task(void const *pvParameters)
     }
 
 
-    SPI1_DMA_init((uint32_t)gyro_dma_tx_buf, (uint32_t)gyro_dma_rx_buf, SPI_DMA_GYRO_LENGHT);
+    SPI1_DMA_init((uint32_t)gyro_dma_tx_buf, (uint32_t)gyro_dma_rx_buf, SPI_DMA_GYRO_LENGTH);
 
     imu_start_dma_flag = 1;
     
@@ -999,7 +999,7 @@ static void imu_cmd_spi_dma(void)
         gyro_update_flag |= (1 << IMU_SPI_SHFITS);
 
         HAL_GPIO_WritePin(CS1_GYRO_GPIO_Port, CS1_GYRO_Pin, GPIO_PIN_RESET);
-        SPI1_DMA_enable((uint32_t)gyro_dma_tx_buf, (uint32_t)gyro_dma_rx_buf, SPI_DMA_GYRO_LENGHT);
+        SPI1_DMA_enable((uint32_t)gyro_dma_tx_buf, (uint32_t)gyro_dma_rx_buf, SPI_DMA_GYRO_LENGTH);
         taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
         return;
     }
@@ -1011,7 +1011,7 @@ static void imu_cmd_spi_dma(void)
         accel_update_flag |= (1 << IMU_SPI_SHFITS);
 
         HAL_GPIO_WritePin(CS1_ACCEL_GPIO_Port, CS1_ACCEL_Pin, GPIO_PIN_RESET);
-        SPI1_DMA_enable((uint32_t)accel_dma_tx_buf, (uint32_t)accel_dma_rx_buf, SPI_DMA_ACCEL_LENGHT);
+        SPI1_DMA_enable((uint32_t)accel_dma_tx_buf, (uint32_t)accel_dma_rx_buf, SPI_DMA_ACCEL_LENGTH);
         taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
         return;
     }
@@ -1026,7 +1026,7 @@ static void imu_cmd_spi_dma(void)
         accel_temp_update_flag |= (1 << IMU_SPI_SHFITS);
 
         HAL_GPIO_WritePin(CS1_ACCEL_GPIO_Port, CS1_ACCEL_Pin, GPIO_PIN_RESET);
-        SPI1_DMA_enable((uint32_t)accel_temp_dma_tx_buf, (uint32_t)accel_temp_dma_rx_buf, SPI_DMA_ACCEL_TEMP_LENGHT);
+        SPI1_DMA_enable((uint32_t)accel_temp_dma_tx_buf, (uint32_t)accel_temp_dma_rx_buf, SPI_DMA_ACCEL_TEMP_LENGTH);
         taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
         return;
     }

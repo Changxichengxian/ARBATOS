@@ -71,7 +71,7 @@ typedef enum
 typedef enum
 {
     WATCH_GIMBAL_MOTOR_RAW = 0,
-    WATCH_GIMBAL_MOTOR_ENCONDE,
+    WATCH_GIMBAL_MOTOR_ENCODER,
 } watch_gimbal_motor_mode_e;
 
 typedef enum

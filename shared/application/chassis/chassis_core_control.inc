@@ -6,9 +6,9 @@
  */
 
 /**
-  * @brief          "chassis_move" valiable initialization, include pid initialization, remote control data point initialization, 3508 chassis motors
+  * @brief          "chassis_move" variable initialization, include pid initialization, remote control data point initialization, 3508 chassis motors
   *                 data point initialization, gimbal motor data point initialization, and gyro sensor angle point initialization.
-  * @param[out]     chassis_move_init: "chassis_move" valiable point
+  * @param[out]     chassis_move_init: "chassis_move" variable point
   * @retval         none
   */
 static void chassis_init(chassis_move_t *chassis_move_init)
@@ -77,7 +77,7 @@ static void chassis_init(chassis_move_t *chassis_move_init)
 
 /**
   * @brief          set chassis control mode, mainly call 'chassis_behaviour_mode_set' function
-  * @param[out]     chassis_move_mode: "chassis_move" valiable point
+  * @param[out]     chassis_move_mode: "chassis_move" variable point
   * @retval         none
   */
 static void chassis_set_mode(chassis_move_t *chassis_move_mode)
@@ -91,8 +91,8 @@ static void chassis_set_mode(chassis_move_t *chassis_move_mode)
 }
 
 /**
-  * @brief          when chassis mode change, some param should be changed, suan as chassis yaw_set should be now chassis yaw
-  * @param[out]     chassis_move_transit: "chassis_move" valiable point
+  * @brief          when chassis mode change, some param should be changed, such as chassis yaw_set should be now chassis yaw
+  * @param[out]     chassis_move_transit: "chassis_move" variable point
   * @retval         none
   */
 /**
@@ -151,7 +151,7 @@ static void chassis_mode_change_control_transit(chassis_move_t *chassis_move_tra
 }
 
 /**
-  * @param[out]     chassis_move_update: "chassis_move" valiable point
+  * @param[out]     chassis_move_update: "chassis_move" variable point
   * @retval         none
   */
 static void chassis_feedback_update(chassis_move_t *chassis_move_update, const chassis_runtime_snapshot_t *snapshot)
@@ -294,7 +294,7 @@ static fp32 chassis_follow_yaw_pd_calc(pid_type_def *pid, fp32 yaw_error, fp32 c
   *
   * @param[out]     vx_set: vertical speed set-point
   * @param[out]     vy_set: horizontal speed set-point
-  * @param[out]     chassis_move_rc_to_vector: "chassis_move" valiable point
+  * @param[out]     chassis_move_rc_to_vector: "chassis_move" variable point
   * @retval         none
   */
 /**
@@ -366,10 +366,10 @@ void chassis_rc_to_control_vector(fp32 *vx_set, fp32 *vy_set, chassis_move_t *ch
 }
 /**
   * @brief          set chassis control set-point, three movement control value is set by "chassis_behaviour_control_set".
-  * @param[out]     chassis_move_update: "chassis_move" valiable point
+  * @param[out]     chassis_move_update: "chassis_move" variable point
   * @retval         none
   */
-static void chassis_set_contorl(chassis_move_t *chassis_move_control)
+static void chassis_set_control(chassis_move_t *chassis_move_control)
 {
 
     if (chassis_move_control == NULL)
@@ -454,8 +454,8 @@ static void chassis_set_contorl(chassis_move_t *chassis_move_control)
 
 /**
   * @brief          control loop, according to control set-point, calculate motor current,
-  *                 motor current will be sentto motor
-  * @param[out]     chassis_move_control_loop: "chassis_move" valiable point
+  *                 motor current will be sent to motor
+  * @param[out]     chassis_move_control_loop: "chassis_move" variable point
   * @retval         none
   */
 /**

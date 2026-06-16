@@ -319,6 +319,8 @@ This route reads the Keil `.uvprojx`, writes generated CMake files under
 `build/gcc/<TARGET>/`, translates the startup and linker files, swaps in GCC
 FreeRTOS ports and compatibility sources, then builds `.elf`, `.hex`, and `.bin`
 outputs. The generated build directory is ignored by Git.
+The generated GCC/CMake route is kept warning-clean; new compiler warnings
+should be fixed in source instead of filtered from the build output.
 
 Run repository checks from PowerShell:
 

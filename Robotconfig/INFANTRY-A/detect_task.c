@@ -26,8 +26,8 @@
 
 #define WATCH_UPDATE_PERIOD_MS 250u
 
-static error_t g_error_list[ERROR_LIST_LENGHT];
-static uint32_t g_last_tick_ms[ERROR_LIST_LENGHT];
+static detect_error_t g_error_list[DETECT_ERROR_COUNT];
+static uint32_t g_last_tick_ms[DETECT_ERROR_COUNT];
 static uint8_t g_detect_inited = 0u;
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
@@ -44,7 +44,7 @@ static void detect_init_once(void)
 
     detect_common_init_from_config(g_error_list,
                                    g_last_tick_ms,
-                                   (uint8_t)ERROR_LIST_LENGHT,
+                                   (uint8_t)DETECT_ERROR_COUNT,
                                    &g_config.detect,
                                    HAL_GetTick());
 }
@@ -58,31 +58,31 @@ void detect_hook(uint8_t toe)
 {
     detect_init_once();
 
-    if (toe >= (uint8_t)ERROR_LIST_LENGHT)
+    if (toe >= (uint8_t)DETECT_ERROR_COUNT)
     {
         return;
     }
 
-    detect_common_hook(g_error_list, g_last_tick_ms, (uint8_t)ERROR_LIST_LENGHT, toe, HAL_GetTick());
+    detect_common_hook(g_error_list, g_last_tick_ms, (uint8_t)DETECT_ERROR_COUNT, toe, HAL_GetTick());
 }
 
 bool_t toe_is_error(uint8_t err)
 {
     detect_init_once();
 
-    if (err >= (uint8_t)ERROR_LIST_LENGHT)
+    if (err >= (uint8_t)DETECT_ERROR_COUNT)
     {
         return 1u;
     }
 
     return detect_common_is_error(g_error_list,
                                   g_last_tick_ms,
-                                  (uint8_t)ERROR_LIST_LENGHT,
+                                  (uint8_t)DETECT_ERROR_COUNT,
                                   err,
                                   HAL_GetTick());
 }
 
-const error_t *get_error_list_point(void)
+const detect_error_t *get_error_list_point(void)
 {
     detect_init_once();
     return g_error_list;
@@ -105,7 +105,7 @@ void detect_task(void const *pvParameters)
     {
         watch_task_beat(WATCH_TASK_DETECT);
         const uint32_t now_ms = HAL_GetTick();
-        detect_common_refresh_all(g_error_list, g_last_tick_ms, (uint8_t)ERROR_LIST_LENGHT, now_ms);
+        detect_common_refresh_all(g_error_list, g_last_tick_ms, (uint8_t)DETECT_ERROR_COUNT, now_ms);
 
         // Log configuration snapshot once after boot (when SD log is active).
         if (!config_logged && sdlog_is_active())

@@ -411,7 +411,7 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    sdlog_detect_item_t items[14]; // detect_task.h: ERROR_LIST_LENGHT
+    sdlog_detect_item_t items[14]; // detect_task.h: DETECT_ERROR_COUNT
 } sdlog_detect_status_t;
 
 typedef struct __attribute__((packed))

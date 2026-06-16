@@ -1138,7 +1138,7 @@ void pitch_cali_tick_pre(gimbal_control_t *gimbal, gimbal_behaviour_e behaviour,
     }
     else
     {
-        gimbal->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCONDE;
+        gimbal->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCODER;
     }
 
     s_ctx.last_active = pitch_cali_mode;

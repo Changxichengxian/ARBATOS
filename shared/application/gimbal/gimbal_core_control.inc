@@ -6,9 +6,9 @@
  */
 
 /**
-  * @brief          "gimbal_control" valiable initialization, include pid initialization, remote control data point initialization, gimbal motors
+  * @brief          "gimbal_control" variable initialization, include pid initialization, remote control data point initialization, gimbal motors
   *                 data point initialization, and gyro sensor angle point initialization.
-  * @param[out]     init: "gimbal_control" valiable point
+  * @param[out]     init: "gimbal_control" variable point
   * @retval         none
   */
 static void gimbal_init(gimbal_control_t *init)
@@ -126,7 +126,7 @@ static void gimbal_init(gimbal_control_t *init)
 
 /**
   * @brief          set gimbal control mode, mainly call 'gimbal_behaviour_mode_set' function
-  * @param[out]     gimbal_set_mode: "gimbal_control" valiable point
+  * @param[out]     gimbal_set_mode: "gimbal_control" variable point
   * @retval         none
   */
 static void gimbal_set_mode(gimbal_control_t *set_mode)
@@ -138,8 +138,8 @@ static void gimbal_set_mode(gimbal_control_t *set_mode)
     gimbal_behaviour_mode_set(set_mode);
 }
 /**
-  * @brief          gimbal some measure data updata, such as motor enconde, euler angle, gyro
-  * @param[out]     gimbal_feedback_update: "gimbal_control" valiable point
+  * @brief          gimbal some measure data update, such as motor encoder, euler angle, gyro
+  * @param[out]     gimbal_feedback_update: "gimbal_control" variable point
   * @retval         none
   */
 /**
@@ -235,6 +235,7 @@ static fp32 motor_ecd_to_angle_change(uint16_t ecd, uint16_t offset_ecd)
     return relative_ecd * MOTOR_ECD_TO_RAD;
 }
 
+#if GIMBAL_USE_ENCODER_FEEDBACK
 static void gimbal_feedback_from_encoder(gimbal_motor_t *motor,
                                          const motor_measure_t *measure,
                                          uint8_t turn)
@@ -260,10 +261,11 @@ static void gimbal_feedback_from_encoder(gimbal_motor_t *motor,
     motor->motor_gyro = speed;
     motor->motor_speed = speed;
 }
+#endif
 
 /**
-  * @brief          when gimbal mode change, some param should be changed, suan as  yaw_set should be new yaw
-  * @param[out]     gimbal_mode_change: "gimbal_control" valiable point
+  * @brief          when gimbal mode change, some param should be changed, such as  yaw_set should be new yaw
+  * @param[out]     gimbal_mode_change: "gimbal_control" variable point
   * @retval         none
   */
 /**
@@ -282,7 +284,7 @@ static void gimbal_mode_change_control_transit(gimbal_control_t *gimbal_mode_cha
     {
         gimbal_mode_change->gimbal_yaw_motor.raw_cmd_current = gimbal_mode_change->gimbal_yaw_motor.current_set = gimbal_mode_change->gimbal_yaw_motor.given_current;
     }
-    else if (gimbal_mode_change->gimbal_yaw_motor.last_gimbal_motor_mode != GIMBAL_MOTOR_ENCONDE && gimbal_mode_change->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE)
+    else if (gimbal_mode_change->gimbal_yaw_motor.last_gimbal_motor_mode != GIMBAL_MOTOR_ENCODER && gimbal_mode_change->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCODER)
     {
         gimbal_mode_change->gimbal_yaw_motor.angle_set = gimbal_mode_change->gimbal_yaw_motor.angle;
     }
@@ -293,7 +295,7 @@ static void gimbal_mode_change_control_transit(gimbal_control_t *gimbal_mode_cha
     {
         gimbal_mode_change->gimbal_pitch_motor.raw_cmd_current = gimbal_mode_change->gimbal_pitch_motor.current_set = gimbal_mode_change->gimbal_pitch_motor.given_current;
     }
-    else if (gimbal_mode_change->gimbal_pitch_motor.last_gimbal_motor_mode != GIMBAL_MOTOR_ENCONDE && gimbal_mode_change->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE)
+    else if (gimbal_mode_change->gimbal_pitch_motor.last_gimbal_motor_mode != GIMBAL_MOTOR_ENCODER && gimbal_mode_change->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCODER)
     {
         gimbal_mode_change->gimbal_pitch_motor.angle_set = gimbal_mode_change->gimbal_pitch_motor.angle;
     }
@@ -302,7 +304,7 @@ static void gimbal_mode_change_control_transit(gimbal_control_t *gimbal_mode_cha
 }
 /**
   * @brief          set gimbal control set-point, control set-point is set by "gimbal_behaviour_control_set".
-  * @param[out]     gimbal_set_control: "gimbal_control" valiable point
+  * @param[out]     gimbal_set_control: "gimbal_control" variable point
   * @retval         none
   */
 static void gimbal_set_control(gimbal_control_t *set_control)
@@ -324,8 +326,8 @@ static void gimbal_set_control(gimbal_control_t *set_control)
     image_auto_aim_on = set_control->fast.image_auto_aim_requested;
     if (vision_take_latest(&vision_cmd) && (vision_cmd.mode == 1U || vision_cmd.mode == 2U) &&
         (image_manual_active == 0u || image_auto_aim_on != 0u) &&
-        set_control->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE &&
-        set_control->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE &&
+        set_control->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCODER &&
+        set_control->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCODER &&
         gimbal_behaviour_watch == GIMBAL_ANGLE &&
         !gimbal_turnaround_is_active())
     {
@@ -341,7 +343,7 @@ static void gimbal_set_control(gimbal_control_t *set_control)
     {
         set_control->gimbal_yaw_motor.raw_cmd_current = add_yaw_angle;
     }
-    else if (set_control->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE)
+    else if (set_control->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCODER)
     {
         gimbal_angle_limit(&set_control->gimbal_yaw_motor, add_yaw_angle);
     }
@@ -350,7 +352,7 @@ static void gimbal_set_control(gimbal_control_t *set_control)
     {
         set_control->gimbal_pitch_motor.raw_cmd_current = add_pitch_angle;
     }
-    else if (set_control->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE)
+    else if (set_control->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCODER)
     {
         gimbal_angle_limit(&set_control->gimbal_pitch_motor, add_pitch_angle);
     }
@@ -497,7 +499,7 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
     {
         gimbal_motor_raw_angle_control(&control_loop->gimbal_yaw_motor);
     }
-    else if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE)
+    else if (control_loop->gimbal_yaw_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCODER)
     {
         gimbal_motor_angle_control(&control_loop->gimbal_yaw_motor);
     }
@@ -506,19 +508,19 @@ static void gimbal_control_loop(gimbal_control_t *control_loop)
     {
         gimbal_motor_raw_angle_control(&control_loop->gimbal_pitch_motor);
     }
-    else if (control_loop->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCONDE)
+    else if (control_loop->gimbal_pitch_motor.gimbal_motor_mode == GIMBAL_MOTOR_ENCODER)
     {
         gimbal_motor_angle_control(&control_loop->gimbal_pitch_motor);
     }
 }
 
 /**
-  * @brief          gimbal control mode :GIMBAL_MOTOR_ENCONDE, use the encode angle to control.
+  * @brief          gimbal control mode :GIMBAL_MOTOR_ENCODER, use the encoder angle to control.
   * @param[out]     gimbal_motor: yaw motor or pitch motor
   * @retval         none
   */
 /**
-  * @brief          云台控制模式:GIMBAL_MOTOR_ENCONDE，使用编码角进行控制
+  * @brief          云台控制模式:GIMBAL_MOTOR_ENCODER，使用编码角进行控制
   * @param[out]     gimbal_motor:yaw电机或者pitch电机
   * @retval         none
   */

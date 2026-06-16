@@ -6,9 +6,9 @@
  */
 
 /**
-  * @brief          "gimbal_control" valiable initialization, include pid initialization, remote control data point initialization, gimbal motors
+  * @brief          "gimbal_control" variable initialization, include pid initialization, remote control data point initialization, gimbal motors
   *                 data point initialization, and gyro sensor angle point initialization.
-  * @param[out]     gimbal_init: "gimbal_control" valiable point
+  * @param[out]     gimbal_init: "gimbal_control" variable point
   * @retval         none
   */
 void gimbal_tune_get_yaw_speed_pid(pid_param_t *out)

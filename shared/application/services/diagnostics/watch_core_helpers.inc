@@ -370,7 +370,9 @@ void watch_irq_hit(watch_irq_id_e irq_id)
 void watch_init(void)
 {
     memset(&g_watch, 0, sizeof(g_watch));
+#if WATCH_ENABLE_SHOOT_RM
     watch_prepare_motor_ids();
+#endif
 
     if (manual_input_get_current_copy(&rc_snapshot) != 0u)
     {

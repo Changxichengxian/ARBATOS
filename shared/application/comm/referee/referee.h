@@ -12,6 +12,7 @@
 #include "main.h"
 
 #include "referee_protocol.h"
+#include "types.h"
 
 #define REFEREE_INTERACTIVE_DATA_MAX_LEN 112u
 #define REFEREE_UI_GRAPHIC_RAW_LEN       15u
@@ -119,7 +120,7 @@ typedef enum
     PROGRESS_CALCULATING    = 5,
 } game_progress_t;
 
-typedef __packed struct //0x0001
+typedef ARBATOS_PACKED_STRUCT //0x0001
 {
     uint8_t game_type : 4;
     uint8_t game_progress : 4;
@@ -127,12 +128,12 @@ typedef __packed struct //0x0001
     uint64_t sync_timestamp;
 } ext_game_state_t;
 
-typedef __packed struct //0x0002
+typedef ARBATOS_PACKED_STRUCT //0x0002
 {
     uint8_t winner;
 } ext_game_result_t;
 
-typedef __packed struct //0x0003
+typedef ARBATOS_PACKED_STRUCT //0x0003
 {
     uint16_t ally_1_robot_HP;
     uint16_t ally_2_robot_HP;
@@ -144,25 +145,25 @@ typedef __packed struct //0x0003
     uint16_t ally_base_HP;
 } ext_game_robot_HP_t;
 
-typedef __packed struct //0x0101
+typedef ARBATOS_PACKED_STRUCT //0x0101
 {
     uint32_t event_data;
 } ext_event_data_t;
 
-typedef __packed struct //0x0104
+typedef ARBATOS_PACKED_STRUCT //0x0104
 {
     uint8_t level;
     uint8_t offending_robot_id;
     uint8_t count;
 } ext_referee_warning_t;
 
-typedef __packed struct //0x0105
+typedef ARBATOS_PACKED_STRUCT //0x0105
 {
     uint8_t dart_remaining_time;
     uint16_t dart_info;
 } ext_dart_info_t;
 
-typedef __packed struct //0x0201
+typedef ARBATOS_PACKED_STRUCT //0x0201
 {
     uint8_t robot_id;
     uint8_t robot_level;
@@ -178,7 +179,7 @@ typedef __packed struct //0x0201
 
 typedef ext_robot_status_t ext_game_robot_state_t;
 
-typedef __packed struct //0x0202
+typedef ARBATOS_PACKED_STRUCT //0x0202
 {
     uint16_t reserved0;
     uint16_t reserved1;
@@ -188,7 +189,7 @@ typedef __packed struct //0x0202
     uint16_t shooter_42mm_barrel_heat;
 } ext_power_heat_data_t;
 
-typedef __packed struct //0x0203
+typedef ARBATOS_PACKED_STRUCT //0x0203
 {
     float x;
     float y;
@@ -197,7 +198,7 @@ typedef __packed struct //0x0203
 
 typedef ext_robot_pos_t ext_game_robot_pos_t;
 
-typedef __packed struct //0x0204
+typedef ARBATOS_PACKED_STRUCT //0x0204
 {
     uint8_t recovery_buff;
     uint16_t cooling_buff;
@@ -209,13 +210,13 @@ typedef __packed struct //0x0204
 
 typedef ext_buff_data_t ext_buff_musk_t;
 
-typedef __packed struct //0x0206
+typedef ARBATOS_PACKED_STRUCT //0x0206
 {
     uint8_t armor_id : 4;
     uint8_t hp_deduction_reason : 4;
 } ext_robot_hurt_t;
 
-typedef __packed struct //0x0207
+typedef ARBATOS_PACKED_STRUCT //0x0207
 {
     uint8_t bullet_type;
     uint8_t shooter_number;
@@ -223,7 +224,7 @@ typedef __packed struct //0x0207
     float initial_speed;
 } ext_shoot_data_t;
 
-typedef __packed struct //0x0208
+typedef ARBATOS_PACKED_STRUCT //0x0208
 {
     uint16_t projectile_allowance_17mm;
     uint16_t projectile_allowance_42mm;
@@ -233,13 +234,13 @@ typedef __packed struct //0x0208
 
 typedef ext_projectile_allowance_t ext_bullet_remaining_t;
 
-typedef __packed struct //0x0209
+typedef ARBATOS_PACKED_STRUCT //0x0209
 {
     uint32_t rfid_status;
     uint8_t rfid_status_2;
 } ext_rfid_status_t;
 
-typedef __packed struct //0x020A
+typedef ARBATOS_PACKED_STRUCT //0x020A
 {
     uint8_t dart_launch_opening_status;
     uint8_t reserved;
@@ -247,7 +248,7 @@ typedef __packed struct //0x020A
     uint16_t latest_launch_cmd_time;
 } ext_dart_client_cmd_t;
 
-typedef __packed struct //0x020B
+typedef ARBATOS_PACKED_STRUCT //0x020B
 {
     float hero_x;
     float hero_y;
@@ -261,23 +262,23 @@ typedef __packed struct //0x020B
     float reserved1;
 } ext_ground_robot_position_t;
 
-typedef __packed struct //0x020C
+typedef ARBATOS_PACKED_STRUCT //0x020C
 {
     uint16_t mark_progress;
 } ext_radar_mark_data_t;
 
-typedef __packed struct //0x020D
+typedef ARBATOS_PACKED_STRUCT //0x020D
 {
     uint32_t sentry_info;
     uint16_t sentry_info_2;
 } ext_sentry_info_t;
 
-typedef __packed struct //0x020E
+typedef ARBATOS_PACKED_STRUCT //0x020E
 {
     uint8_t radar_info;
 } ext_radar_info_t;
 
-typedef __packed struct //0x0301
+typedef ARBATOS_PACKED_STRUCT //0x0301
 {
     uint16_t data_cmd_id;
     uint16_t sender_id;

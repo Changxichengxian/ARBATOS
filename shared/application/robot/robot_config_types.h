@@ -267,7 +267,7 @@ typedef struct
 
 typedef struct
 {
-    detect_item_t items[14];    // 顺序与 detect_task.h 的 errorList 对齐
+    detect_item_t items[14];    // 顺序与 detect_task.h 的 detect_error_index_e 对齐
     uint16_t enable_mask;       // bit=1 开启检测，默认全开（OLED 默认关闭）
     uint16_t task_init_time_ms; // 任务启动延时
     uint16_t control_period_ms; // 检测轮询周期

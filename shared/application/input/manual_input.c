@@ -22,8 +22,8 @@
 #include "detect_task.h"
 #include "sdlog.h"
 
-#ifndef RC_CHANNAL_ERROR_VALUE
-#define RC_CHANNAL_ERROR_VALUE ((int16_t)(RC_CH_VALUE_ABS_MAX + 64u))
+#ifndef RC_CHANNEL_ERROR_VALUE
+#define RC_CHANNEL_ERROR_VALUE ((int16_t)(RC_CH_VALUE_ABS_MAX + 64u))
 #endif
 static int16_t RC_abs(int16_t value);
 /**
@@ -630,10 +630,10 @@ uint8_t RC_data_is_error(void)
     rc_snapshot = rc_ctrl;
     manual_input_exit_critical(critical);
 
-    if (RC_abs(rc_snapshot.rc.ch[0]) > RC_CHANNAL_ERROR_VALUE) return 1;
-    if (RC_abs(rc_snapshot.rc.ch[1]) > RC_CHANNAL_ERROR_VALUE) return 1;
-    if (RC_abs(rc_snapshot.rc.ch[2]) > RC_CHANNAL_ERROR_VALUE) return 1;
-    if (RC_abs(rc_snapshot.rc.ch[3]) > RC_CHANNAL_ERROR_VALUE) return 1;
+    if (RC_abs(rc_snapshot.rc.ch[0]) > RC_CHANNEL_ERROR_VALUE) return 1;
+    if (RC_abs(rc_snapshot.rc.ch[1]) > RC_CHANNEL_ERROR_VALUE) return 1;
+    if (RC_abs(rc_snapshot.rc.ch[2]) > RC_CHANNEL_ERROR_VALUE) return 1;
+    if (RC_abs(rc_snapshot.rc.ch[3]) > RC_CHANNEL_ERROR_VALUE) return 1;
     if (rc_snapshot.rc.s[0] == 0) return 1;
     if (rc_snapshot.rc.s[1] == 0) return 1;
     return 0;

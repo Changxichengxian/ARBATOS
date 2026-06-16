@@ -20,6 +20,16 @@ typedef unsigned char bool_t;
 typedef float fp32;
 typedef double fp64;
 
+#ifndef ARBATOS_PACKED_STRUCT
+#if defined(__GNUC__) || defined(__clang__)
+#define ARBATOS_PACKED_STRUCT struct __attribute__((packed))
+#elif defined(__CC_ARM) || defined(__ICCARM__)
+#define ARBATOS_PACKED_STRUCT __packed struct
+#else
+#define ARBATOS_PACKED_STRUCT struct
+#endif
+#endif
+
 #ifndef NULL
 #define NULL ((void *)0)
 #endif

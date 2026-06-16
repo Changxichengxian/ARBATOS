@@ -17,7 +17,7 @@
 #define DETECT_CONTROL_TIME 10
 
 //错误码以及对应设备顺序
-enum errorList
+typedef enum
 {
     DBUS_TOE = 0,
     CHASSIS_MOTOR1_TOE,
@@ -33,10 +33,10 @@ enum errorList
     REFEREE_TOE,
     RM_IMU_TOE,
     OLED_TOE,
-    ERROR_LIST_LENGHT,
-};
+    DETECT_ERROR_COUNT,
+} detect_error_index_e;
 
-typedef __packed struct
+typedef struct
 {
     uint32_t new_time;
     uint32_t last_time;
@@ -54,7 +54,7 @@ typedef __packed struct
     bool_t (*data_is_error_fun)(void);
     void (*solve_lost_fun)(void);
     void (*solve_data_error_fun)(void);
-} error_t;
+} detect_error_t;
 
 
 /**
@@ -73,7 +73,7 @@ extern void health_monitor_task(void const *pvParameters);
 /**
   * @brief          get toe error status
   * @param[in]      toe: table of equipment
-  * @retval         true (eror) or false (no error)
+  * @retval         true (error) or false (no error)
   */
 /**
   * @brief          获取设备对应的错误状态
@@ -104,6 +104,6 @@ extern void detect_hook(uint8_t toe);
   * @param[in]      none
   * @retval         error_list的指针
   */
-extern const error_t *get_error_list_point(void);
+extern const detect_error_t *get_error_list_point(void);
 
 #endif

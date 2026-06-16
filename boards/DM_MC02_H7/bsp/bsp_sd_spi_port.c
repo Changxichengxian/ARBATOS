@@ -207,7 +207,9 @@ int sd_spi_port_receive(uint8_t *buf, uint16_t len, uint32_t timeout_ms)
 
     while (offset < len)
     {
-        const uint16_t chunk = (uint16_t)(((len - offset) > SD_SPI_PORT_CHUNK_SIZE) ? SD_SPI_PORT_CHUNK_SIZE : (len - offset));
+        const uint16_t remaining = (uint16_t)(len - offset);
+        const uint16_t max_chunk = (uint16_t)SD_SPI_PORT_CHUNK_SIZE;
+        const uint16_t chunk = (remaining > max_chunk) ? max_chunk : remaining;
         if (HAL_SPI_TransmitReceive(&hspi3_sd, sd_spi_port_dummy_tx, &buf[offset], chunk, timeout_ms) != HAL_OK)
         {
             return -2;

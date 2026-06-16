@@ -24,7 +24,7 @@
 #define DETECT_COMMON_RUNTIME_POLL_MS 100u
 #endif
 
-static inline void detect_common_init_from_config(error_t *list,
+static inline void detect_common_init_from_config(detect_error_t *list,
                                                   uint32_t *last_tick_ms,
                                                   uint8_t count,
                                                   const detect_config_t *cfg,
@@ -61,7 +61,7 @@ static inline void detect_common_init_from_config(error_t *list,
     }
 }
 
-static inline void detect_common_hook(error_t *list,
+static inline void detect_common_hook(detect_error_t *list,
                                       uint32_t *last_tick_ms,
                                       uint8_t count,
                                       uint8_t toe,
@@ -100,13 +100,13 @@ static inline void detect_common_hook(error_t *list,
     }
 }
 
-static inline bool_t detect_common_is_error(error_t *list,
+static inline bool_t detect_common_is_error(detect_error_t *list,
                                             const uint32_t *last_tick_ms,
                                             uint8_t count,
                                             uint8_t toe,
                                             uint32_t now_ms)
 {
-    error_t *e;
+    detect_error_t *e;
     uint32_t last;
 
     if (list == NULL || last_tick_ms == NULL || toe >= count)
@@ -150,7 +150,7 @@ static inline bool_t detect_common_is_error(error_t *list,
     return (bool_t)e->error_exist;
 }
 
-static inline void detect_common_refresh_all(error_t *list,
+static inline void detect_common_refresh_all(detect_error_t *list,
                                              const uint32_t *last_tick_ms,
                                              uint8_t count,
                                              uint32_t now_ms)

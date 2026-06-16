@@ -103,7 +103,7 @@ typedef struct
     uint8_t yaw_control_is_upper;
 } gimbal_runtime_snapshot_t;
 
-//motor enconde value format, range[0, ECD_RANGE - 1]
+//motor encoder value format, range[0, ECD_RANGE - 1]
 #define ecd_format(ecd)         \
     {                           \
         if ((ecd) >= ECD_RANGE) \
@@ -162,22 +162,22 @@ uint32_t gimbal_high_water;
 #endif
 
 /**
-  * @brief          "gimbal_control" valiable initialization, include pid initialization, remote control data point initialization, gimbal motors
+  * @brief          "gimbal_control" variable initialization, include pid initialization, remote control data point initialization, gimbal motors
   *                 data point initialization, and gyro sensor angle point initialization.
-  * @param[out]     init: "gimbal_control" valiable point
+  * @param[out]     init: "gimbal_control" variable point
   * @retval         none
   */
 static void gimbal_init(gimbal_control_t *init);
 
 /**
   * @brief          set gimbal control mode, mainly call 'gimbal_behaviour_mode_set' function
-  * @param[out]     gimbal_set_mode: "gimbal_control" valiable point
+  * @param[out]     gimbal_set_mode: "gimbal_control" variable point
   * @retval         none
   */
 static void gimbal_set_mode(gimbal_control_t *set_mode);
 /**
-  * @brief          gimbal some measure data updata, such as motor enconde, euler angle, gyro
-  * @param[out]     gimbal_feedback_update: "gimbal_control" valiable point
+  * @brief          gimbal some measure data update, such as motor encoder, euler angle, gyro
+  * @param[out]     gimbal_feedback_update: "gimbal_control" variable point
   * @retval         none
   */
 /**
@@ -189,8 +189,8 @@ static void gimbal_snapshot_capture(gimbal_runtime_snapshot_t *snapshot, gimbal_
 static void gimbal_feedback_update(gimbal_control_t *feedback_update, const gimbal_runtime_snapshot_t *snapshot);
 
 /**
-  * @brief          when gimbal mode change, some param should be changed, suan as  yaw_set should be new yaw
-  * @param[out]     mode_change: "gimbal_control" valiable point
+  * @brief          when gimbal mode change, some param should be changed, such as  yaw_set should be new yaw
+  * @param[out]     mode_change: "gimbal_control" variable point
   * @retval         none
   */
 /**
@@ -207,12 +207,14 @@ static void gimbal_mode_change_control_transit(gimbal_control_t *mode_change);
   * @retval         angle, unit rad
   */
 static fp32 motor_ecd_to_angle_change(uint16_t ecd, uint16_t offset_ecd);
+#if GIMBAL_USE_ENCODER_FEEDBACK
 static void gimbal_feedback_from_encoder(gimbal_motor_t *motor,
                                          const motor_measure_t *measure,
                                          uint8_t turn);
+#endif
 /**
   * @brief          set gimbal control set-point, control set-point is set by "gimbal_behaviour_control_set".
-  * @param[out]     gimbal_set_control: "gimbal_control" valiable point
+  * @param[out]     gimbal_set_control: "gimbal_control" variable point
   * @retval         none
   */
 static void gimbal_set_control(gimbal_control_t *set_control);
@@ -223,12 +225,12 @@ static fp32 gimbal_yaw_kick_current(const gimbal_motor_t *yaw_motor);
 static void gimbal_write_state(void);
 
 /**
-  * @brief          gimbal control mode :GIMBAL_MOTOR_ENCONDE, use the encode angle to control.
+  * @brief          gimbal control mode :GIMBAL_MOTOR_ENCODER, use the encoder angle to control.
   * @param[out]     gimbal_motor: yaw motor or pitch motor
   * @retval         none
   */
 /**
-  * @brief          云台控制模式:GIMBAL_MOTOR_ENCONDE，使用编码角进行控制
+  * @brief          云台控制模式:GIMBAL_MOTOR_ENCODER，使用编码角进行控制
   * @param[out]     gimbal_motor:yaw电机或者pitch电机
   * @retval         none
   */
@@ -244,7 +246,7 @@ static int16_t gimbal_apply_output_turn(int16_t current, uint8_t turn);
   * @retval         none
   */
 /**
-  * @brief          limit angle set in GIMBAL_MOTOR_ENCONDE mode, avoid exceeding the max angle
+  * @brief          limit angle set in GIMBAL_MOTOR_ENCODER mode, avoid exceeding the max angle
   * @param[out]     gimbal_motor: yaw motor or pitch motor
   * @retval         none
   */
@@ -267,13 +269,13 @@ static int16_t gimbal_apply_output_turn(int16_t current, uint8_t turn);
 
 /**
   * @brief          gimbal PID clear, clear pid.out, iout.
-  * @param[out]     pid_clear: "gimbal_control" valiable point
+  * @param[out]     pid_clear: "gimbal_control" variable point
   * @retval         none
   */
 /**
   * @brief          gimbal angle pid calc, because angle is in range(-pi,pi),can't use PID in pid.c
   * @param[out]     pid: pid data pointer stucture
-  * @param[in]      get: angle feeback
+  * @param[in]      get: angle feedback
   * @param[in]      set: angle set-point
   * @param[in]      error_delta: rotation speed
   * @retval         pid out

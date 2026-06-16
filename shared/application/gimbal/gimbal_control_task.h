@@ -30,14 +30,14 @@
 #define YAW_SPEED_PID_MAX_OUT         (g_config.gimbal.yaw_speed_pid.max_out)
 #define YAW_SPEED_PID_MAX_IOUT        (g_config.gimbal.yaw_speed_pid.max_iout)
 
-// pitch encode angle close-loop PID params, max out and max iout
+// pitch encoder angle close-loop PID params, max out and max iout
 #define PITCH_ENCODE_ANGLE_PID_KP     (g_config.gimbal.pitch_encode_angle_pid.kp)
 #define PITCH_ENCODE_ANGLE_PID_KI     (g_config.gimbal.pitch_encode_angle_pid.ki)
 #define PITCH_ENCODE_ANGLE_PID_KD     (g_config.gimbal.pitch_encode_angle_pid.kd)
 #define PITCH_ENCODE_ANGLE_PID_MAX_OUT (g_config.gimbal.pitch_encode_angle_pid.max_out)
 #define PITCH_ENCODE_ANGLE_PID_MAX_IOUT (g_config.gimbal.pitch_encode_angle_pid.max_iout)
 
-// yaw encode angle close-loop PID params, max out and max iout
+// yaw encoder angle close-loop PID params, max out and max iout
 #define YAW_ENCODE_ANGLE_PID_KP       (g_config.gimbal.yaw_encode_angle_pid.kp)
 #define YAW_ENCODE_ANGLE_PID_KI       (g_config.gimbal.yaw_encode_angle_pid.ki)
 #define YAW_ENCODE_ANGLE_PID_KD       (g_config.gimbal.yaw_encode_angle_pid.kd)
@@ -134,7 +134,7 @@
 typedef enum
 {
     GIMBAL_MOTOR_RAW = 0,
-    GIMBAL_MOTOR_ENCONDE,
+    GIMBAL_MOTOR_ENCODER,
 } gimbal_motor_mode_e;
 
 typedef struct

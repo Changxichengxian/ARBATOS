@@ -297,8 +297,8 @@ void gimbal_behaviour_mode_set(gimbal_control_t *gimbal_mode_set)
     }
     else if (gimbal_behaviour == GIMBAL_INIT)
     {
-        gimbal_mode_set->gimbal_yaw_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCONDE;
-        gimbal_mode_set->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCONDE;
+        gimbal_mode_set->gimbal_yaw_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCODER;
+        gimbal_mode_set->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCODER;
     }
     else if (gimbal_behaviour == GIMBAL_CALI)
     {
@@ -307,19 +307,19 @@ void gimbal_behaviour_mode_set(gimbal_control_t *gimbal_mode_set)
     }
     else if (gimbal_behaviour == GIMBAL_ANGLE)
     {
-        gimbal_mode_set->gimbal_yaw_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCONDE;
-        gimbal_mode_set->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCONDE;
+        gimbal_mode_set->gimbal_yaw_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCODER;
+        gimbal_mode_set->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCODER;
     }
     else if (gimbal_behaviour == GIMBAL_MOTIONLESS)
     {
-        gimbal_mode_set->gimbal_yaw_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCONDE;
-        gimbal_mode_set->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCONDE;
+        gimbal_mode_set->gimbal_yaw_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCODER;
+        gimbal_mode_set->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCODER;
     }
     else if (gimbal_behaviour == GIMBAL_PITCH_CALI)
     {
         // NOTE: pitch motor may be temporarily switched to RAW by the calibration state machine.
-        gimbal_mode_set->gimbal_yaw_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCONDE;
-        gimbal_mode_set->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCONDE;
+        gimbal_mode_set->gimbal_yaw_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCODER;
+        gimbal_mode_set->gimbal_pitch_motor.gimbal_motor_mode = GIMBAL_MOTOR_ENCODER;
     }
 
     // 更新调试镜像，便于在 watch 中查看行为状态
@@ -327,7 +327,7 @@ void gimbal_behaviour_mode_set(gimbal_control_t *gimbal_mode_set)
 }
 
 /**
-  * @brief          the function is called by gimbal_set_contorl function in gimbal_control_task.c
+  * @brief          the function is called by gimbal_set_control function in gimbal_control_task.c
   *                 accoring to the gimbal_behaviour variable, call the corresponding function
   * @param[out]     add_yaw:yaw axis increment angle, unit rad
   * @param[out]     add_pitch:pitch axis increment angle,unit rad

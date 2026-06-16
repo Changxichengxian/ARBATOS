@@ -143,23 +143,23 @@ static bool_t chassis_wz_kf_inited = 0;
 
 
 /**
-  * @brief          "chassis_move" valiable initialization, include pid initialization, remote control data point initialization, 3508 chassis motors
+  * @brief          "chassis_move" variable initialization, include pid initialization, remote control data point initialization, 3508 chassis motors
   *                 data point initialization, gimbal motor data point initialization, and gyro sensor angle point initialization.
-  * @param[out]     chassis_move_init: "chassis_move" valiable point
+  * @param[out]     chassis_move_init: "chassis_move" variable point
   * @retval         none
   */
 static void chassis_init(chassis_move_t *chassis_move_init);
 
 /**
   * @brief          set chassis control mode, mainly call 'chassis_behaviour_mode_set' function
-  * @param[out]     chassis_move_mode: "chassis_move" valiable point
+  * @param[out]     chassis_move_mode: "chassis_move" variable point
   * @retval         none
   */
 static void chassis_set_mode(chassis_move_t *chassis_move_mode);
 
 /**
-  * @brief          when chassis mode change, some param should be changed, suan as chassis yaw_set should be now chassis yaw
-  * @param[out]     chassis_move_transit: "chassis_move" valiable point
+  * @brief          when chassis mode change, some param should be changed, such as chassis yaw_set should be now chassis yaw
+  * @param[out]     chassis_move_transit: "chassis_move" variable point
   * @retval         none
   */
 /**
@@ -169,14 +169,14 @@ static void chassis_set_mode(chassis_move_t *chassis_move_mode);
   */
 static void chassis_mode_change_control_transit(chassis_move_t *chassis_move_transit);
 /**
-  * @param[out]     chassis_move_update: "chassis_move" valiable point
+  * @param[out]     chassis_move_update: "chassis_move" variable point
   * @retval         none
   */
 static void chassis_feedback_update(chassis_move_t *chassis_move_update, const chassis_runtime_snapshot_t *snapshot);
 /**
   * @brief          set chassis control set-point, three movement control value is set by "chassis_behaviour_control_set".
   *
-  * @param[out]     chassis_move_update: "chassis_move" valiable point
+  * @param[out]     chassis_move_update: "chassis_move" variable point
   * @retval         none
   */
 /**
@@ -184,11 +184,11 @@ static void chassis_feedback_update(chassis_move_t *chassis_move_update, const c
   * @param[out]     chassis_move_update:"chassis_move"变量指针.
   * @retval         none
   */
-static void chassis_set_contorl(chassis_move_t *chassis_move_control);
+static void chassis_set_control(chassis_move_t *chassis_move_control);
 /**
   * @brief          control loop, according to control set-point, calculate motor current,
-  *                 motor current will be sentto motor
-  * @param[out]     chassis_move_control_loop: "chassis_move" valiable point
+  *                 motor current will be sent to motor
+  * @param[out]     chassis_move_control_loop: "chassis_move" variable point
   * @retval         none
   */
 /**
@@ -290,7 +290,7 @@ void chassis_control_task(void const *pvParameters)
         }
 
         //set chassis control set-point
-        chassis_set_contorl(&chassis_move);
+        chassis_set_control(&chassis_move);
         //chassis control pid calculate
         int16_t chassis_pre_power_cmd[CHASSIS_MOTOR_COUNT] = {0};
         chassis_control_loop(&chassis_move, &snapshot, chassis_pre_power_cmd);

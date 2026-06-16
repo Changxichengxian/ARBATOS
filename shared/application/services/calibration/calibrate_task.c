@@ -23,8 +23,8 @@
 #include "robot_task_profile.h"
 
 
-//include head,gimbal,gyro,accel,mag. gyro,accel and mag have the same data struct. total 5(CALI_LIST_LENGHT) devices, need data lenght + 5 * 4 bytes(name[3]+cali)
-#define FLASH_WRITE_BUF_LENGHT  (sizeof(head_cali_t) + sizeof(gimbal_cali_t) + sizeof(imu_cali_t) * 3  + CALI_LIST_LENGHT * 4)
+//include head,gimbal,gyro,accel,mag. gyro,accel and mag have the same data struct. total 5(CALI_LIST_LENGTH) devices, need data length + 5 * 4 bytes(name[3]+cali)
+#define FLASH_WRITE_BUF_LENGTH  (sizeof(head_cali_t) + sizeof(gimbal_cali_t) + sizeof(imu_cali_t) * 3  + CALI_LIST_LENGTH * 4)
 
 
 
@@ -169,25 +169,30 @@ static imu_cali_t      gyro_cali;       //gyro cali data
 static imu_cali_t      mag_cali;        //mag cali data
 
 
-static uint8_t flash_write_buf[FLASH_WRITE_BUF_LENGHT];
+static uint8_t flash_write_buf[FLASH_WRITE_BUF_LENGTH];
 
-cali_sensor_t cali_sensor[CALI_LIST_LENGHT];
+cali_sensor_t cali_sensor[CALI_LIST_LENGTH];
 
-static const uint8_t cali_name[CALI_LIST_LENGHT][3] = {"HD", "GM", "GYR", "ACC", "MAG"};
+static const uint8_t cali_name[CALI_LIST_LENGTH][3] = {
+        {'H', 'D', 0u},
+        {'G', 'M', 0u},
+        {'G', 'Y', 'R'},
+        {'A', 'C', 'C'},
+        {'M', 'A', 'G'}};
 
 //cali data address
-static uint32_t *cali_sensor_buf[CALI_LIST_LENGHT] = {
+static uint32_t *cali_sensor_buf[CALI_LIST_LENGTH] = {
         (uint32_t *)&head_cali, (uint32_t *)&gimbal_cali,
         (uint32_t *)&gyro_cali, (uint32_t *)&accel_cali,
         (uint32_t *)&mag_cali};
 
 
-static uint8_t cali_sensor_size[CALI_LIST_LENGHT] =
+static uint8_t cali_sensor_size[CALI_LIST_LENGTH] =
     {
         sizeof(head_cali_t) / 4, sizeof(gimbal_cali_t) / 4,
         sizeof(imu_cali_t) / 4, sizeof(imu_cali_t) / 4, sizeof(imu_cali_t) / 4};
 
-void *cali_hook_fun[CALI_LIST_LENGHT] = {cali_head_hook, cali_gimbal_hook, cali_gyro_hook, NULL, NULL};
+void *cali_hook_fun[CALI_LIST_LENGTH] = {cali_head_hook, cali_gimbal_hook, cali_gyro_hook, NULL, NULL};
 
 static uint32_t calibrate_systemTick;
 static uint8_t manual_cali_buzzer_enable = 0u;
@@ -218,7 +223,7 @@ void calibrate_task(void const *pvParameters)
     {
         RC_cmd_to_calibrate();
 
-        for (i = 0; i < CALI_LIST_LENGHT; i++)
+        for (i = 0; i < CALI_LIST_LENGTH; i++)
         {
             if (cali_sensor[i].cali_cmd)
             {
@@ -444,7 +449,7 @@ void cali_param_init(void)
 {
     uint8_t i = 0;
 
-    for (i = 0; i < CALI_LIST_LENGHT; i++)
+    for (i = 0; i < CALI_LIST_LENGTH; i++)
     {
         cali_sensor[i].flash_len = cali_sensor_size[i];
         cali_sensor[i].flash_buf = cali_sensor_buf[i];
@@ -459,7 +464,7 @@ void cali_param_init(void)
 
     cali_data_read();
 
-    for (i = 0; i < CALI_LIST_LENGHT; i++)
+    for (i = 0; i < CALI_LIST_LENGTH; i++)
     {
         if (cali_sensor[i].cali_done == CALIED_FLAG)
         {
@@ -487,7 +492,7 @@ static void cali_data_read(void)
     uint8_t flash_read_buf[CALI_SENSOR_HEAD_LEGHT * 4];
     uint8_t i = 0;
     uint16_t offset = 0;
-    for (i = 0; i < CALI_LIST_LENGHT; i++)
+    for (i = 0; i < CALI_LIST_LENGTH; i++)
     {
 
         //read the data in flash,
@@ -529,7 +534,7 @@ static void cali_data_write(void)
     uint16_t offset = 0;
 
 
-    for (i = 0; i < CALI_LIST_LENGHT; i++)
+    for (i = 0; i < CALI_LIST_LENGTH; i++)
     {
         //copy the data of device calibration data
         memcpy((void *)(flash_write_buf + offset), (void *)cali_sensor[i].flash_buf, cali_sensor[i].flash_len * 4);
@@ -543,7 +548,7 @@ static void cali_data_write(void)
     //erase the page
     cali_flash_erase(FLASH_USER_ADDR,1);
     //write data
-    cali_flash_write(FLASH_USER_ADDR, (uint32_t *)flash_write_buf, (FLASH_WRITE_BUF_LENGHT + 3) / 4);
+    cali_flash_write(FLASH_USER_ADDR, (uint32_t *)flash_write_buf, (FLASH_WRITE_BUF_LENGTH + 3) / 4);
 }
 
 bool_t calibrate_gyro_offset_save(const fp32 offset[3])

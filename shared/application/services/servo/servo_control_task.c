@@ -20,7 +20,7 @@
 #define SERVO_MIN_PWM   500
 #define SERVO_MAX_PWM   2500
 
-#define PWM_DETAL_VALUE 10
+#define PWM_DELTA_VALUE 10
 
 #define SERVO1_ADD_PWM_KEY  KEY_PRESSED_OFFSET_Z
 #define SERVO2_ADD_PWM_KEY  KEY_PRESSED_OFFSET_X
@@ -29,7 +29,7 @@
 
 #define SERVO_MINUS_PWM_KEY KEY_PRESSED_OFFSET_SHIFT
 
-const static uint16_t servo_key[4] = {SERVO1_ADD_PWM_KEY, SERVO2_ADD_PWM_KEY, SERVO3_ADD_PWM_KEY, SERVO4_ADD_PWM_KEY};
+static const uint16_t servo_key[4] = {SERVO1_ADD_PWM_KEY, SERVO2_ADD_PWM_KEY, SERVO3_ADD_PWM_KEY, SERVO4_ADD_PWM_KEY};
 uint16_t servo_pwm[4] = {SERVO_MIN_PWM, SERVO_MIN_PWM, SERVO_MIN_PWM, SERVO_MIN_PWM};
 /**
   * @brief          servo control task
@@ -61,11 +61,11 @@ void servo_control_task(void const * argument)
 
             if( (servo_rc.key.v & SERVO_MINUS_PWM_KEY) && (servo_rc.key.v & servo_key[i]))
             {
-                servo_pwm[i] -= PWM_DETAL_VALUE;
+                servo_pwm[i] -= PWM_DELTA_VALUE;
             }
             else if(servo_rc.key.v & servo_key[i])
             {
-                servo_pwm[i] += PWM_DETAL_VALUE;
+                servo_pwm[i] += PWM_DELTA_VALUE;
             }
 
             //limit the pwm

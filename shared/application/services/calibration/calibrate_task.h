@@ -85,22 +85,22 @@ typedef enum
     CALI_ACC = 3,
     CALI_MAG = 4,
     //add more...
-    CALI_LIST_LENGHT,
+    CALI_LIST_LENGTH,
 } cali_id_e;
 
 
-typedef __packed struct
+typedef struct
 {
     uint8_t name[3];                                    //device name
     uint8_t cali_done;                                  //0x55 means has been calibrated
-    uint8_t flash_len : 7;                              //buf lenght
+    uint8_t flash_len : 7;                              //buf length
     uint8_t cali_cmd : 1;                               //1 means to run cali hook function,
     uint32_t *flash_buf;                                //link to device calibration data
     bool_t (*cali_hook)(uint32_t *point, bool_t cmd);   //cali function
 } cali_sensor_t;
 
 //header device
-typedef __packed struct
+typedef ARBATOS_PACKED_STRUCT
 {
     uint8_t self_id;            // the "SELF_ID"
     uint16_t firmware_version;  // set to the "FIRMWARE_VERSION"

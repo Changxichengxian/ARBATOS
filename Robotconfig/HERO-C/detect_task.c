@@ -57,8 +57,8 @@ static void detect_init(uint32_t time);
 
 
 
-error_t error_list[ERROR_LIST_LENGHT + 1];
-static uint32_t g_last_tick_ms[ERROR_LIST_LENGHT];
+detect_error_t error_list[DETECT_ERROR_COUNT + 1];
+static uint32_t g_last_tick_ms[DETECT_ERROR_COUNT];
 static const detect_config_t *const detect_cfg = &g_config.detect;
 
 
@@ -74,12 +74,12 @@ static void sdlog_pack_detect_summary(sdlog_detect_summary_t *out, uint8_t displ
     }
 
     memset(out, 0, sizeof(*out));
-    out->display_toe = (display_toe < ERROR_LIST_LENGHT) ? display_toe : 0xFFu;
+    out->display_toe = (display_toe < DETECT_ERROR_COUNT) ? display_toe : 0xFFu;
 
-    const uint8_t n = (uint8_t)ERROR_LIST_LENGHT;
+    const uint8_t n = (uint8_t)DETECT_ERROR_COUNT;
     for (uint8_t i = 0u; i < n; i++)
     {
-        const error_t *e = &error_list[i];
+        const detect_error_t *e = &error_list[i];
         const uint16_t bit = (uint16_t)(1u << i);
 
         if (e->enable != 0u)
@@ -189,8 +189,8 @@ void detect_task(void const *pvParameters)
     (void)cpu_usage_get_permille();
 
     static sdlog_detect_summary_t detect_log;
-    static uint8_t toe_last_lost[ERROR_LIST_LENGHT] = {0};
-    static uint8_t toe_last_data_err[ERROR_LIST_LENGHT] = {0};
+    static uint8_t toe_last_lost[DETECT_ERROR_COUNT] = {0};
+    static uint8_t toe_last_data_err[DETECT_ERROR_COUNT] = {0};
     static uint8_t config_buf[sizeof(sdlog_config_header_t) + sizeof(g_config)];
 
     uint8_t sd_mounted_last = (uint8_t)sdcard_is_mounted();
@@ -217,26 +217,26 @@ void detect_task(void const *pvParameters)
         static uint8_t error_num_display = 0;
         system_time = xTaskGetTickCount();
 
-        error_num_display = ERROR_LIST_LENGHT;
-        error_list[ERROR_LIST_LENGHT].is_lost = 0;
-        error_list[ERROR_LIST_LENGHT].error_exist = 0;
+        error_num_display = DETECT_ERROR_COUNT;
+        error_list[DETECT_ERROR_COUNT].is_lost = 0;
+        error_list[DETECT_ERROR_COUNT].error_exist = 0;
 
         detect_common_refresh_all(error_list,
                                   g_last_tick_ms,
-                                  (uint8_t)ERROR_LIST_LENGHT,
+                                  (uint8_t)DETECT_ERROR_COUNT,
                                   system_time);
 
-        for (uint8_t i = 0u; i < (uint8_t)ERROR_LIST_LENGHT; i++)
+        for (uint8_t i = 0u; i < (uint8_t)DETECT_ERROR_COUNT; i++)
         {
             if (error_list[i].enable == 0u || error_list[i].error_exist == 0u)
             {
                 continue;
             }
 
-            error_list[ERROR_LIST_LENGHT].error_exist = 1u;
+            error_list[DETECT_ERROR_COUNT].error_exist = 1u;
             if (error_list[i].is_lost != 0u)
             {
-                error_list[ERROR_LIST_LENGHT].is_lost = 1u;
+                error_list[DETECT_ERROR_COUNT].is_lost = 1u;
             }
             if (error_list[i].priority > error_list[error_num_display].priority)
             {
@@ -408,7 +408,7 @@ void detect_task(void const *pvParameters)
 /**
   * @brief          get toe error status
   * @param[in]      toe: table of equipment
-  * @retval         true (eror) or false (no error)
+  * @retval         true (error) or false (no error)
   */
 /**
   * @brief          获取设备对应的错误状态
@@ -419,7 +419,7 @@ bool_t toe_is_error(uint8_t toe)
 {
     return detect_common_is_error(error_list,
                                   g_last_tick_ms,
-                                  (uint8_t)ERROR_LIST_LENGHT,
+                                  (uint8_t)DETECT_ERROR_COUNT,
                                   toe,
                                   xTaskGetTickCount());
 }
@@ -436,7 +436,7 @@ bool_t toe_is_error(uint8_t toe)
   */
 void detect_hook(uint8_t toe)
 {
-    detect_common_hook(error_list, g_last_tick_ms, (uint8_t)ERROR_LIST_LENGHT, toe, xTaskGetTickCount());
+    detect_common_hook(error_list, g_last_tick_ms, (uint8_t)DETECT_ERROR_COUNT, toe, xTaskGetTickCount());
 }
 
 /**
@@ -449,7 +449,7 @@ void detect_hook(uint8_t toe)
   * @param[in]      none
   * @retval         error_list的指针
   */
-const error_t *get_error_list_point(void)
+const detect_error_t *get_error_list_point(void)
 {
     return error_list;
 }
@@ -457,7 +457,7 @@ const error_t *get_error_list_point(void)
 static void detect_init(uint32_t time)
 {
     //设置离线时间，上线稳定工作时间，优先级 offlineTime onlinetime priority
-    for (uint8_t i = 0; i < ERROR_LIST_LENGHT; i++)
+    for (uint8_t i = 0; i < DETECT_ERROR_COUNT; i++)
     {
         error_list[i].set_offline_time = detect_cfg->items[i].offline_time_ms;
         error_list[i].set_online_time = detect_cfg->items[i].online_time_ms;

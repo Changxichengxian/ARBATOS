@@ -1205,7 +1205,10 @@ static DWORD get_fat (		/* 0xFFFFFFFF:Disk error, 1:Internal error, 2..0x7FFFFFF
 					break;
 				}
 			}
-			/* go to default */
+			/* fall through */
+#if defined(__GNUC__)
+			__attribute__((fallthrough));
+#endif
 #endif
 		default:
 			val = 1;	/* Internal error */
@@ -6553,4 +6556,3 @@ FRESULT f_setcp (
 	return FR_OK;
 }
 #endif	/* FF_CODE_PAGE == 0 */
-

@@ -61,6 +61,7 @@ typedef struct
 
 static watch_task_module_create_slot_t s_task_module_create[WATCH_RUNTIME_MAX_TASK_MODULES];
 
+#if WATCH_ENABLE_SHOOT_RM
 static const char *const s_watch_friction_motor_names[4u] = {
     "motor.friction0",
     "motor.friction1",
@@ -101,6 +102,7 @@ static MotorId watch_friction_motor_id(uint8_t index)
 
     return s_watch_friction_motor_ids[index];
 }
+#endif
 
 #if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
 typedef struct

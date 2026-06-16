@@ -399,14 +399,15 @@ void BMI088_read_gyro_who_am_i(void)
 {
     uint8_t buf;
     BMI088_gyro_read_single_reg(BMI088_GYRO_CHIP_ID, buf);
+    (void)buf;
 }
 
 
 void BMI088_read_accel_who_am_i(void)
 {
-    volatile uint8_t buf;
+    uint8_t buf;
     BMI088_accel_read_single_reg(BMI088_ACC_CHIP_ID, buf);
-    buf = 0;
+    (void)buf;
 
 }
 

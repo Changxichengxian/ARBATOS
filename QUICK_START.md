@@ -101,6 +101,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gc
 
 生成的构建文件在 `build/gcc/<TARGET>/`，不用提交。改了 KEIL 工程里的文件列表、宏、头文件路径、启动文件或 scatter 文件后，重新跑 `gcc-build` 就会刷新。
 
+GCC/CMake 路线按 warning-clean（没有编译警告）维护。看到新的编译警告，优先改源码，不要只忽略构建输出。
+
 ## 第一次上电怎么调
 
 ### 1. 先无动力确认程序在跑
