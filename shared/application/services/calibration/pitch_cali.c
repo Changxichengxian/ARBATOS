@@ -27,7 +27,7 @@
 
 #include "bsp_time.h"
 #include "bsp_buzzer.h"
-#include "sdlog.h"
+#include "SdLog.h"
 #include "user_lib.h"
 
 #include "fatfs/ff.h"
@@ -310,7 +310,7 @@ static void pitch_cali_log_runtime(const gimbal_control_t *gimbal,
     {
         return;
     }
-    if (sdlog_is_active() == 0)
+    if (SdLogIsActive() == 0)
     {
         return;
     }
@@ -349,7 +349,7 @@ static void pitch_cali_log_runtime(const gimbal_control_t *gimbal,
     s_ctx.log.raw_current_cmd = s_ctx.raw_current_cmd;
     s_ctx.log.delta = s_ctx.delta;
 
-    sdlog_write(SDLOG_TAG_PITCH_CALI, &s_ctx.log, (uint16_t)sizeof(s_ctx.log));
+    SdLogWrite(SDLOG_TAG_PITCH_CALI, &s_ctx.log, (uint16_t)sizeof(s_ctx.log));
     s_ctx.last_log_ms = now;
 }
 

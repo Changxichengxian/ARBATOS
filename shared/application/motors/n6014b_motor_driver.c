@@ -9,7 +9,7 @@
 
 #include "bsp_usart.h"
 #include "motor_config.h"
-#include "motor_instance.h"
+#include "MotorInst.h"
 #include "robot_safety.h"
 #include "unitree_motor_driver.h"
 
@@ -943,7 +943,7 @@ static void n6014b_refresh_feedback(MotorId id, const motor_node_param_t *node)
     fb.temperature = (uint8_t)state.motor_temp;
     LowStateUpdateMotor(id, &fb);
 
-    measure = motor_instance_measure(id);
+    measure = MotorInstMeasure(id);
     if (measure != NULL)
     {
         measure->last_ecd = (int16_t)measure->ecd;
@@ -1096,7 +1096,7 @@ const n6014b_motor_state_t *n6014b_motor_get_state(MotorId actuator_id)
     return (slot != NULL) ? &slot->state : 0;
 }
 
-uint8_t can_tx_process_extra_item(uint8_t bus,
+uint8_t CanTxProcessExtraItem(uint8_t bus,
                                   MotorId actuator_id,
                                   const motor_node_param_t *node,
                                   int16_t current)

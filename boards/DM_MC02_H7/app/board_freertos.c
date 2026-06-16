@@ -13,10 +13,10 @@
 #include "INS_task.h"
 #endif
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-#include "can_feedback_rx_task.h"
+#include "CanRxTask.h"
 #endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-#include "can_command_tx_task.h"
+#include "CanTxTask.h"
 #endif
 #if ROBOT_TASK_BUILD_ARM
 #include "arm_task.h"
@@ -40,10 +40,10 @@
 #include "referee_rx_task.h"
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
-#include "sdlog_task.h"
+#include "SdLogTask.h"
 #endif
 #include "app_task_bootstrap.h"
-#include "control_manager.h"
+#include "ControlMgr.h"
 #include "robot_control_registry.h"
 #include "watch.h"
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
@@ -146,9 +146,9 @@ static osThreadId_t app_create_health_monitor_task(void)
 #endif
 
 #if ROBOT_TASK_BUILD_SDLOG
-static osThreadId_t app_create_sdlog_task(void)
+static osThreadId_t app_create_SdLogTask(void)
 {
-    return APP_THREAD_CREATE(sdlogTask, sdlog_task);
+    return APP_THREAD_CREATE(sdlogTask, SdLogTask);
 }
 #endif
 
@@ -160,16 +160,16 @@ static osThreadId_t app_create_battery_monitor_task(void)
 #endif
 
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-static osThreadId_t app_create_can_command_tx_task(void)
+static osThreadId_t app_create_CanTxTask(void)
 {
-    return APP_THREAD_CREATE(canCommandTxTask, can_command_tx_task);
+    return APP_THREAD_CREATE(canCommandTxTask, CanTxTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-static osThreadId_t app_create_can_feedback_rx_task(void)
+static osThreadId_t app_create_CanRxTask(void)
 {
-    return APP_THREAD_CREATE(canFeedbackRxTask, can_feedback_rx_task);
+    return APP_THREAD_CREATE(canFeedbackRxTask, CanRxTask);
 }
 #endif
 
@@ -225,16 +225,16 @@ static void app_create_module_tasks(void)
         {ROBOT_TASK_MODULE_HEALTH_MONITOR, &detectTaskHandle, app_create_health_monitor_task},
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
-        {ROBOT_TASK_MODULE_SDLOG, &sdlogTaskHandle, app_create_sdlog_task},
+        {ROBOT_TASK_MODULE_SDLOG, &sdlogTaskHandle, app_create_SdLogTask},
 #endif
 #if ROBOT_TASK_BUILD_BATTERY_MONITOR
         {ROBOT_TASK_MODULE_BATTERY_MONITOR, &batteryMonitorTaskHandle, app_create_battery_monitor_task},
 #endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-        {ROBOT_TASK_MODULE_CAN_COMMAND_TX, &canCommandTxTaskHandle, app_create_can_command_tx_task},
+        {ROBOT_TASK_MODULE_CAN_COMMAND_TX, &canCommandTxTaskHandle, app_create_CanTxTask},
 #endif
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-        {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, &canFeedbackRxTaskHandle, app_create_can_feedback_rx_task},
+        {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, &canFeedbackRxTaskHandle, app_create_CanRxTask},
 #endif
 #if ROBOT_TASK_BUILD_ARM
         {ROBOT_TASK_MODULE_ARM, &armTaskHandle, app_create_arm_task},

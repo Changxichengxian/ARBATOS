@@ -2,7 +2,7 @@
  * SPDX-FileCopyrightText: 2026 ?? <2811158416@qq.com>
  * SPDX-License-Identifier: Apache-2.0
  *
- * Private implementation chunk included by can_command_tx_task.c.
+ * Private implementation chunk included by CanTxTask.c.
  */
 
 static inline bool_t can_tx_allow_chassis(void)
@@ -223,13 +223,13 @@ static void can_tx_mark_rm_group_configured(uint8_t bus, uint16_t can_id)
 
 static void can_tx_cache_rm_groups(void)
 {
-    const uint8_t count = motor_route_count();
+    const uint8_t count = MotorRouteCount();
 
     (void)memset(s_can_tx_rm_group_configured, 0, sizeof(s_can_tx_rm_group_configured));
 
     for (uint8_t i = 0u; i < count; i++)
     {
-        const motor_route_t *route = motor_route_get(i);
+        const MotorRoute *route = MotorRouteGet(i);
         const uint16_t can_id = (route != NULL) ? route->canId : 0u;
 
         if (route == NULL ||

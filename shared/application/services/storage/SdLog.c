@@ -11,10 +11,10 @@
  * - 前段：RAM 环形缓存、文件序号索引、CRC 和变长整数工具。
  * - 中段：小型 LZ4 块压缩、数据块写入。
  * - 后段：打开下一个日志文件、start/stop/write/isr_write/poll 运行接口。
- * - 设计重点：写入接口不阻塞，sdlog_poll() 在低优先级任务里慢慢刷出。
+ * - 设计重点：写入接口不阻塞，SdLogPoll() 在低优先级任务里慢慢刷出。
  */
 
-#include "sdlog.h"
+#include "SdLog.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -22,10 +22,10 @@
 #include "cmsis_os.h"
 #include "bsp_time.h"
 #include "sdcard.h"
-#include "rt_profiler.h"
+#include "RtProf.h"
 #include "config.h"
-#include "control_manager.h"
-#include "motor_instance.h"
+#include "ControlMgr.h"
+#include "MotorInst.h"
 #include "robot_device_config.h"
 #include "robot_task_profile.h"
 
@@ -122,7 +122,7 @@ __attribute__((section(".ccmram"))) static uint8_t sdlog_buf[SDLOG_BUF_SIZE];
 static volatile uint32_t sdlog_head = 0u;
 static volatile uint32_t sdlog_tail = 0u;
 
-uint8_t sdlog_high_rate_divider(void)
+uint8_t SdLogHighRateDiv(void)
 {
     const uint8_t div = g_config.sdlog.high_rate_div;
     if (div >= 4u)
@@ -215,7 +215,7 @@ static uint32_t sdlog_read_u32_le_unaligned(const uint8_t *p)
 }
 #endif
 
-static uint8_t sdlog_write_var_u32(uint8_t *dst, uint32_t v)
+static uint8_t SdLogWrite_var_u32(uint8_t *dst, uint32_t v)
 {
     uint8_t n = 0u;
     while (v >= 0x80u)
@@ -276,7 +276,7 @@ static void sdlog_copy_cstr(char *dst, uint32_t dst_len, const char *src)
 
 static void sdlog_fill_build_info(sdlog_build_info_t *out)
 {
-    uint8_t rt_profiler_count = 0u;
+    uint8_t rtProfCount = 0u;
 
     if (out == NULL)
     {
@@ -290,16 +290,16 @@ static void sdlog_fill_build_info(sdlog_build_info_t *out)
     out->config_size = (uint32_t)sizeof(g_config);
     out->config_crc32 = sdlog_crc32_ieee((const uint8_t *)&g_config, (uint32_t)sizeof(g_config));
     out->task_module_count = g_config.profile.task_module_count;
-    out->high_rate_div = sdlog_high_rate_divider();
+    out->high_rate_div = SdLogHighRateDiv();
     out->compression_enabled = (uint8_t)(SDLOG_ENABLE_COMPRESSION ? 1u : 0u);
     out->build_dirty = (uint8_t)(ARBATOS_BUILD_DIRTY ? 1u : 0u);
     out->runtime_device_count = robot_config_device_count();
-    out->motor_instance_count = motor_instance_count();
-    out->controller_count = control_manager_registered_count();
+    out->motorInstCount = MotorInstCount();
+    out->controller_count = ControlMgrCount();
     out->profile_kind = (uint8_t)robot_profile_kind();
     out->board_kind = (uint8_t)robot_board_kind();
-    (void)rt_profiler_descriptors(&rt_profiler_count);
-    out->rt_profiler_count = rt_profiler_count;
+    (void)RtProfDescs(&rtProfCount);
+    out->rtProfCount = rtProfCount;
     out->board_can_bus_count = robot_board_can_bus_count();
     out->board_cpu_hz = robot_board_cpu_hz();
     {
@@ -344,9 +344,9 @@ static int sdlog_append_record_bytes(uint8_t *dst,
 
     uint8_t hdr[16];
     uint32_t hdr_len = 0u;
-    hdr_len += (uint32_t)sdlog_write_var_u32(&hdr[hdr_len], dt_ms);
-    hdr_len += (uint32_t)sdlog_write_var_u32(&hdr[hdr_len], (uint32_t)tag);
-    hdr_len += (uint32_t)sdlog_write_var_u32(&hdr[hdr_len], (uint32_t)len);
+    hdr_len += (uint32_t)SdLogWrite_var_u32(&hdr[hdr_len], dt_ms);
+    hdr_len += (uint32_t)SdLogWrite_var_u32(&hdr[hdr_len], (uint32_t)tag);
+    hdr_len += (uint32_t)SdLogWrite_var_u32(&hdr[hdr_len], (uint32_t)len);
 
     if ((*inout_len + hdr_len + (uint32_t)len) > dst_cap)
     {
@@ -599,7 +599,7 @@ static int sdlog_lz4_compress_block(const uint8_t *src, uint32_t src_len, uint8_
 }
 #endif
 
-static int sdlog_write_block(const uint8_t *raw, uint32_t raw_len)
+static int SdLogWrite_block(const uint8_t *raw, uint32_t raw_len)
 {
     if (raw == NULL || raw_len == 0u)
     {
@@ -611,10 +611,10 @@ static int sdlog_write_block(const uint8_t *raw, uint32_t raw_len)
     uint32_t data_len = raw_len;
     int compressed = 0;
 #if SDLOG_ENABLE_COMPRESSION
-    const uint64_t compress_start_us = rt_profiler_begin();
+    const uint64_t compress_start_us = RtProfBegin();
     const int compress_result =
         sdlog_lz4_compress_block(raw, raw_len, sdlog_flush_out, (uint32_t)sizeof(sdlog_flush_out), &data_len);
-    rt_profiler_end(RT_PROFILER_SDLOG_COMPRESS, compress_start_us);
+    RtProfEnd(RtProfSdLogCompress, compress_start_us);
     if (compress_result == 0 && data_len < raw_len)
     {
         compressed = 1;
@@ -634,11 +634,11 @@ static int sdlog_write_block(const uint8_t *raw, uint32_t raw_len)
     bh.reserved = crc32;
 
     UINT bw = 0u;
-    const uint64_t block_write_start_us = rt_profiler_begin();
+    const uint64_t block_write_start_us = RtProfBegin();
     FRESULT r = f_write(&sdlog_fp, &bh, (UINT)sizeof(bh), &bw);
     if (r != FR_OK || bw != (UINT)sizeof(bh))
     {
-        rt_profiler_end(RT_PROFILER_SDLOG_BLOCK_WRITE, block_write_start_us);
+        RtProfEnd(RtProfSdLogBlockWrite, block_write_start_us);
         sdlog_last_error = (r == FR_OK) ? -1 : (int32_t)r;
         sdlog_close_on_error();
         return -1;
@@ -654,12 +654,12 @@ static int sdlog_write_block(const uint8_t *raw, uint32_t raw_len)
     r = f_write(&sdlog_fp, data, (UINT)data_len, &bw);
     if (r != FR_OK || bw != (UINT)data_len)
     {
-        rt_profiler_end(RT_PROFILER_SDLOG_BLOCK_WRITE, block_write_start_us);
+        RtProfEnd(RtProfSdLogBlockWrite, block_write_start_us);
         sdlog_last_error = (r == FR_OK) ? -1 : (int32_t)r;
         sdlog_close_on_error();
         return -1;
     }
-    rt_profiler_end(RT_PROFILER_SDLOG_BLOCK_WRITE, block_write_start_us);
+    RtProfEnd(RtProfSdLogBlockWrite, block_write_start_us);
     sdlog_bytes_flushed += (uint32_t)bw;
     return 0;
 }
@@ -675,9 +675,9 @@ static uint8_t sdlog_ascii_lower(uint8_t c)
 
 static FRESULT sdlog_sync_profiled(void)
 {
-    const uint64_t sync_start_us = rt_profiler_begin();
+    const uint64_t sync_start_us = RtProfBegin();
     const FRESULT r = f_sync(&sdlog_fp);
-    rt_profiler_end(RT_PROFILER_SDLOG_SYNC, sync_start_us);
+    RtProfEnd(RtProfSdLogSync, sync_start_us);
     return r;
 }
 
@@ -833,7 +833,7 @@ static int sdlog_open_next_file(void)
                 return -3;
             }
 
-            // Emit a startup META record so the file is >16B even before the first sdlog_poll().
+            // Emit a startup META record so the file is >16B even before the first SdLogPoll().
             // This helps distinguish "no flush task running" vs "no log records produced".
             typedef struct __attribute__((packed))
             {
@@ -900,10 +900,10 @@ static int sdlog_open_next_file(void)
                 runtime_device.source_id = device.source_id;
                 if (device.kind == (uint8_t)ROBOT_CONFIG_DEVICE_KIND_MOTOR)
                 {
-                    const motor_instance_t *inst = motor_instance_find_by_actuator((MotorId)device.source_id);
+                    const MotorInst *inst = MotorInstFindByMotor((MotorId)device.source_id);
 
-                    runtime_device.enabled = motor_instance_enabled(inst);
-                    runtime_device.bus = motor_instance_bus(inst);
+                    runtime_device.enabled = MotorInstEnabled(inst);
+                    runtime_device.bus = MotorInstBus(inst);
                 }
 
                 append_status = sdlog_append_record_bytes(raw,
@@ -933,7 +933,7 @@ static int sdlog_open_next_file(void)
                 return -4;
             }
 
-            if (sdlog_write_block(raw, raw_len) != 0)
+            if (SdLogWrite_block(raw, raw_len) != 0)
             {
                 sdlog_remember_error(SDLOG_RESTART_REASON_STARTUP_BLOCK, sdlog_last_error);
                 (void)f_close(&sdlog_fp);
@@ -981,17 +981,17 @@ static int sdlog_open_next_file(void)
     return -2;
 }
 
-int sdlog_is_active(void)
+int SdLogIsActive(void)
 {
     return (sdlog_active != 0u) ? 1 : 0;
 }
 
-uint32_t sdlog_get_dropped(void)
+uint32_t SdLogDropped(void)
 {
     return sdlog_dropped;
 }
 
-int sdlog_start(void)
+int SdLogStart(void)
 {
     if (sdlog_active)
     {
@@ -1000,7 +1000,7 @@ int sdlog_start(void)
     return sdlog_open_next_file();
 }
 
-void sdlog_stop(void)
+void SdLogStop(void)
 {
     if (!sdlog_active)
     {
@@ -1021,14 +1021,14 @@ void sdlog_stop(void)
     (void)f_close(&sdlog_fp);
 }
 
-void sdlog_write(uint16_t tag, const void *payload, uint16_t len)
+void SdLogWrite(uint16_t tag, const void *payload, uint16_t len)
 {
     if (!sdlog_active || payload == NULL || len == 0u)
     {
         return;
     }
 
-    const uint64_t write_start_us = rt_profiler_begin();
+    const uint64_t write_start_us = RtProfBegin();
     uint8_t hdr[16];
     uint32_t hdr_len = 0u;
     uint32_t total = 0u;
@@ -1041,15 +1041,15 @@ void sdlog_write(uint16_t tag, const void *payload, uint16_t len)
     const uint32_t last_tick = sdlog_last_tick_ms;
     const uint32_t dt = now_ms - last_tick;
 
-    hdr_len += (uint32_t)sdlog_write_var_u32(&hdr[hdr_len], dt);
-    hdr_len += (uint32_t)sdlog_write_var_u32(&hdr[hdr_len], (uint32_t)tag);
-    hdr_len += (uint32_t)sdlog_write_var_u32(&hdr[hdr_len], (uint32_t)len);
+    hdr_len += (uint32_t)SdLogWrite_var_u32(&hdr[hdr_len], dt);
+    hdr_len += (uint32_t)SdLogWrite_var_u32(&hdr[hdr_len], (uint32_t)tag);
+    hdr_len += (uint32_t)SdLogWrite_var_u32(&hdr[hdr_len], (uint32_t)len);
     total = hdr_len + (uint32_t)len;
 
     if (total >= SDLOG_BUF_SIZE)
     {
         taskEXIT_CRITICAL();
-        rt_profiler_end(RT_PROFILER_SDLOG_WRITE, write_start_us);
+        RtProfEnd(RtProfSdLogWrite, write_start_us);
         return;
     }
 
@@ -1057,7 +1057,7 @@ void sdlog_write(uint16_t tag, const void *payload, uint16_t len)
     {
         sdlog_dropped++;
         taskEXIT_CRITICAL();
-        rt_profiler_end(RT_PROFILER_SDLOG_WRITE, write_start_us);
+        RtProfEnd(RtProfSdLogWrite, write_start_us);
         return;
     }
 
@@ -1065,10 +1065,10 @@ void sdlog_write(uint16_t tag, const void *payload, uint16_t len)
     sdlog_ring_write_bytes_locked(hdr, hdr_len);
     sdlog_ring_write_bytes_locked((const uint8_t *)payload, (uint32_t)len);
     taskEXIT_CRITICAL();
-    rt_profiler_end(RT_PROFILER_SDLOG_WRITE, write_start_us);
+    RtProfEnd(RtProfSdLogWrite, write_start_us);
 }
 
-void sdlog_write_isr(uint16_t tag, const void *payload, uint16_t len)
+void SdLogWriteIsr(uint16_t tag, const void *payload, uint16_t len)
 {
     if (!sdlog_active || payload == NULL || len == 0u)
     {
@@ -1088,9 +1088,9 @@ void sdlog_write_isr(uint16_t tag, const void *payload, uint16_t len)
     const uint32_t last_tick = sdlog_last_tick_ms;
     const uint32_t dt = now_ms - last_tick;
 
-    hdr_len += (uint32_t)sdlog_write_var_u32(&hdr[hdr_len], dt);
-    hdr_len += (uint32_t)sdlog_write_var_u32(&hdr[hdr_len], (uint32_t)tag);
-    hdr_len += (uint32_t)sdlog_write_var_u32(&hdr[hdr_len], (uint32_t)len);
+    hdr_len += (uint32_t)SdLogWrite_var_u32(&hdr[hdr_len], dt);
+    hdr_len += (uint32_t)SdLogWrite_var_u32(&hdr[hdr_len], (uint32_t)tag);
+    hdr_len += (uint32_t)SdLogWrite_var_u32(&hdr[hdr_len], (uint32_t)len);
     total = hdr_len + (uint32_t)len;
 
     if (total >= SDLOG_BUF_SIZE)
@@ -1133,7 +1133,7 @@ static void sdlog_close_on_error(void)
     sdcard_unmount();
 }
 
-void sdlog_poll(void)
+void SdLogPoll(void)
 {
     if (!sdlog_active)
     {
@@ -1178,7 +1178,7 @@ void sdlog_poll(void)
             memcpy(&sdlog_flush_in[first], &sdlog_buf[0], second);
         }
 
-        if (sdlog_write_block(sdlog_flush_in, chunk) != 0)
+        if (SdLogWrite_block(sdlog_flush_in, chunk) != 0)
         {
             return;
         }
@@ -1202,7 +1202,7 @@ void sdlog_poll(void)
     }
 }
 
-void sdlog_get_stats(sdlog_stats_t *out)
+void SdLogGetStats(SdLogStats *out)
 {
     if (out == NULL)
     {

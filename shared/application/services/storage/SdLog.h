@@ -6,8 +6,8 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#ifndef SDLOG_H
-#define SDLOG_H
+#ifndef SD_LOG_H
+#define SD_LOG_H
 
 #include <stdint.h>
 
@@ -221,11 +221,11 @@ typedef struct __attribute__((packed))
     uint8_t build_dirty;
     uint32_t task_module_mask;
     uint8_t runtime_device_count;
-    uint8_t motor_instance_count;
+    uint8_t motorInstCount;
     uint8_t controller_count;
     uint8_t profile_kind;
     uint8_t board_kind;
-    uint8_t rt_profiler_count;
+    uint8_t rtProfCount;
     uint8_t board_can_bus_count;
     uint32_t board_cpu_hz;
 
@@ -467,7 +467,7 @@ typedef struct __attribute__((packed))
     uint32_t bytes_flushed;
     uint32_t last_sync_ms;
     int32_t last_error;
-} sdlog_stats_t;
+} SdLogStats;
 
 typedef struct __attribute__((packed))
 {
@@ -509,14 +509,14 @@ typedef struct __attribute__((packed))
     uint32_t avg_us;
     uint32_t budget_us;
     uint32_t overrun_count;
-} sdlog_rt_profiler_entry_t;
+} SdLogRtProfEntry;
 
 typedef struct __attribute__((packed))
 {
     uint8_t count;
     uint8_t reserved8[3];
-    sdlog_rt_profiler_entry_t entry[SDLOG_RT_PROFILER_MAX];
-} sdlog_rt_profiler_t;
+    SdLogRtProfEntry entry[SDLOG_RT_PROFILER_MAX];
+} SdLogRtProf;
 
 #define SDLOG_WHEELLEG_MIT_CONFIG_VERSION 1u
 #define SDLOG_WHEELLEG_MIT_STATUS_VERSION 1u
@@ -895,29 +895,29 @@ typedef char _check_sdlog_imu_base_stream_header_size[(sizeof(sdlog_imu_base_str
 
 // ===== Runtime API =====
 
-int sdlog_is_active(void);
-uint32_t sdlog_get_dropped(void);
+int SdLogIsActive(void);
+uint32_t SdLogDropped(void);
 
 // Start (open new log file) if the TF/SD card is mounted.
 // Returns 0 on success, non-zero on failure.
-int sdlog_start(void);
+int SdLogStart(void);
 
 // Stop logging and close the current log file (safe to call even if inactive).
-void sdlog_stop(void);
+void SdLogStop(void);
 
 // Append one record into the RAM ring buffer (non-blocking, drops if full).
-void sdlog_write(uint16_t tag, const void *payload, uint16_t len);
+void SdLogWrite(uint16_t tag, const void *payload, uint16_t len);
 
-// Same as sdlog_write(), but callable from ISR context.
-void sdlog_write_isr(uint16_t tag, const void *payload, uint16_t len);
+// Same as SdLogWrite(), but callable from ISR context.
+void SdLogWriteIsr(uint16_t tag, const void *payload, uint16_t len);
 
 // Read-only stats snapshot (thread-safe, lightweight).
-void sdlog_get_stats(sdlog_stats_t *out);
+void SdLogGetStats(SdLogStats *out);
 
 // Runtime divider for high-rate streams. Returns 1, 2, or 4.
-uint8_t sdlog_high_rate_divider(void);
+uint8_t SdLogHighRateDiv(void);
 
 // Flush pending buffered records to the TF/SD card (call from a low-priority task).
-void sdlog_poll(void);
+void SdLogPoll(void);
 
 #endif

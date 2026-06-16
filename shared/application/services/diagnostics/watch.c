@@ -22,7 +22,7 @@
 #include "battery_monitor_task.h"
 #include "bsp_adc.h"
 #include "chassis_state.h"
-#include "control_manager.h"
+#include "ControlMgr.h"
 #include "control_input.h"
 #include "gimbal_state.h"
 #include "INS_task.h"
@@ -32,15 +32,15 @@
 #include "manual_input.h"
 #include "bsp_can.h"
 #include "bsp_rc.h"
-#include "motor_instance.h"
+#include "MotorInst.h"
 #include "sdcard.h"
-#include "sdlog.h"
+#include "SdLog.h"
 #include "shoot_state.h"
 #include "host_link_task.h"
 #include "robot_device_config.h"
 #include "robot_task_profile.h"
 #include "robot_mode.h"
-#include "rt_profiler.h"
+#include "RtProf.h"
 #include "wheelleg_mit_task.h"
 #include "wheelleg_msg.h"
 
@@ -78,7 +78,7 @@ static void watch_prepare_motor_ids(void)
         return;
     }
 
-    (void)motor_instance_resolve_actuator_ids(s_watch_friction_motor_names,
+    (void)MotorInstResolveIds(s_watch_friction_motor_names,
                                               4u,
                                               s_watch_friction_motor_ids,
                                               4u);

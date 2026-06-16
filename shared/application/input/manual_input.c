@@ -20,7 +20,7 @@
 #include "bsp_key.h"
 
 #include "detect_task.h"
-#include "sdlog.h"
+#include "SdLog.h"
 
 #ifndef RC_CHANNEL_ERROR_VALUE
 #define RC_CHANNEL_ERROR_VALUE ((int16_t)(RC_CH_VALUE_ABS_MAX + 64u))
@@ -250,7 +250,7 @@ void remote_control_log_raw_source(uint8_t source,
                                    const uint8_t sw_raw[2],
                                    const manual_input_state_t *decoded)
 {
-    if (sdlog_is_active() == 0u || ch_raw == NULL || channel_count == 0u)
+    if (SdLogIsActive() == 0u || ch_raw == NULL || channel_count == 0u)
     {
         return;
     }
@@ -297,7 +297,7 @@ void remote_control_log_raw_source(uint8_t source,
         }
     }
 
-    sdlog_write(SDLOG_TAG_MANUAL_INPUT_RAW, &pkt, (uint16_t)sizeof(pkt));
+    SdLogWrite(SDLOG_TAG_MANUAL_INPUT_RAW, &pkt, (uint16_t)sizeof(pkt));
 }
 
 uint8_t manual_input_get_active_source(void)
@@ -664,7 +664,7 @@ static void remote_control_log_source_switch(uint8_t prev_src, uint8_t next_src)
 {
     uint32_t set_source_cnt;
 
-    if (sdlog_is_active() == 0u)
+    if (SdLogIsActive() == 0u)
     {
         return;
     }
@@ -678,7 +678,7 @@ static void remote_control_log_source_switch(uint8_t prev_src, uint8_t next_src)
     evt.arg0_u16 = next_src;
     evt.arg1_u32 = prev_src;
     evt.arg2_u32 = set_source_cnt;
-    sdlog_write(SDLOG_TAG_EVENT, &evt, (uint16_t)sizeof(evt));
+    SdLogWrite(SDLOG_TAG_EVENT, &evt, (uint16_t)sizeof(evt));
 }
 
 static void remote_control_log_sbus_raw_frame(const uint8_t frame[RC_FRAME_LENGTH])

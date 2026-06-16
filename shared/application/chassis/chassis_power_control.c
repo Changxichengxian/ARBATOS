@@ -14,7 +14,7 @@
 #include <math.h>
 #include "detect_task.h"
 #include "config.h"
-#include "sdlog.h"
+#include "SdLog.h"
 #include "chassis_power_limiter.h"
 #include "robot_task_profile.h"
 

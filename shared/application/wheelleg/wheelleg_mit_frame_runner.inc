@@ -117,7 +117,7 @@ static void wheelleg_task_finish_frame(const wheelleg_task_frame_t *frame,
     {
         s_wheelleg.overrun_count++;
     }
-    rt_profiler_end(RT_PROFILER_WHEELLEG_MIT_CONTROL_LOOP, profiler_start_us);
+    RtProfEnd(RtProfWheellegMitLoop, profiler_start_us);
     vTaskDelayUntil(last_wake, pdMS_TO_TICKS(frame->period_ms));
 }
 

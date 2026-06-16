@@ -20,7 +20,7 @@
 #include "CRC8_CRC16.h"
 #include "referee_protocol.h"
 #include "bsp_usart.h"
-#include "sdlog.h"
+#include "SdLog.h"
 
 #define REFEREE_UI_DEMO_LAYER            7u
 #define REFEREE_UI_DEMO_INIT_GAP_MS      120u
@@ -742,19 +742,19 @@ void referee_data_solve(uint8_t *frame)
         case GAME_STATE_CMD_ID:
         {
             referee_copy_payload(&game_state, (uint16_t)sizeof(ext_game_state_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_GAME_STATE, &game_state, (uint16_t)sizeof(game_state));
+            SdLogWrite(SDLOG_TAG_REF_GAME_STATE, &game_state, (uint16_t)sizeof(game_state));
         }
         break;
         case GAME_RESULT_CMD_ID:
         {
             referee_copy_payload(&game_result, (uint16_t)sizeof(ext_game_result_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_GAME_RESULT, &game_result, (uint16_t)sizeof(game_result));
+            SdLogWrite(SDLOG_TAG_REF_GAME_RESULT, &game_result, (uint16_t)sizeof(game_result));
         }
         break;
         case GAME_ROBOT_HP_CMD_ID:
         {
             referee_copy_payload(&game_robot_HP_t, (uint16_t)sizeof(ext_game_robot_HP_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_GAME_ROBOT_HP, &game_robot_HP_t, (uint16_t)sizeof(game_robot_HP_t));
+            SdLogWrite(SDLOG_TAG_REF_GAME_ROBOT_HP, &game_robot_HP_t, (uint16_t)sizeof(game_robot_HP_t));
         }
         break;
 
@@ -762,73 +762,73 @@ void referee_data_solve(uint8_t *frame)
         case EVENT_DATA_CMD_ID:
         {
             referee_copy_payload(&field_event, (uint16_t)sizeof(ext_event_data_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_EVENT, &field_event, (uint16_t)sizeof(field_event));
+            SdLogWrite(SDLOG_TAG_REF_EVENT, &field_event, (uint16_t)sizeof(field_event));
         }
         break;
         case REFEREE_WARNING_CMD_ID:
         {
             referee_copy_payload(&referee_warning_t, (uint16_t)sizeof(ext_referee_warning_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_WARNING, &referee_warning_t, (uint16_t)sizeof(referee_warning_t));
+            SdLogWrite(SDLOG_TAG_REF_WARNING, &referee_warning_t, (uint16_t)sizeof(referee_warning_t));
         }
         break;
         case DART_INFO_CMD_ID:
         {
             referee_copy_payload(&dart_info_t, (uint16_t)sizeof(ext_dart_info_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_SUPPLY_ACTION, &dart_info_t, (uint16_t)sizeof(dart_info_t));
+            SdLogWrite(SDLOG_TAG_REF_SUPPLY_ACTION, &dart_info_t, (uint16_t)sizeof(dart_info_t));
         }
         break;
         case ROBOT_STATUS_CMD_ID:
         {
             referee_copy_payload(&robot_state, (uint16_t)sizeof(ext_robot_status_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_ROBOT_STATE, &robot_state, (uint16_t)sizeof(robot_state));
+            SdLogWrite(SDLOG_TAG_REF_ROBOT_STATE, &robot_state, (uint16_t)sizeof(robot_state));
         }
         break;
         case POWER_HEAT_DATA_CMD_ID:
         {
             referee_copy_payload(&power_heat_data_t, (uint16_t)sizeof(ext_power_heat_data_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_POWER_HEAT, &power_heat_data_t, (uint16_t)sizeof(power_heat_data_t));
+            SdLogWrite(SDLOG_TAG_REF_POWER_HEAT, &power_heat_data_t, (uint16_t)sizeof(power_heat_data_t));
         }
         break;
         case ROBOT_POS_CMD_ID:
         {
             referee_copy_payload(&game_robot_pos_t, (uint16_t)sizeof(ext_robot_pos_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_ROBOT_POS, &game_robot_pos_t, (uint16_t)sizeof(game_robot_pos_t));
+            SdLogWrite(SDLOG_TAG_REF_ROBOT_POS, &game_robot_pos_t, (uint16_t)sizeof(game_robot_pos_t));
         }
         break;
         case BUFF_DATA_CMD_ID:
         {
             referee_copy_payload(&buff_musk_t, (uint16_t)sizeof(ext_buff_data_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_BUFF, &buff_musk_t, (uint16_t)sizeof(buff_musk_t));
+            SdLogWrite(SDLOG_TAG_REF_BUFF, &buff_musk_t, (uint16_t)sizeof(buff_musk_t));
         }
         break;
         case RFID_STATUS_CMD_ID:
         {
             referee_copy_payload(&rfid_status_t, (uint16_t)sizeof(ext_rfid_status_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_RFID_STATUS, &rfid_status_t, (uint16_t)sizeof(rfid_status_t));
+            SdLogWrite(SDLOG_TAG_REF_RFID_STATUS, &rfid_status_t, (uint16_t)sizeof(rfid_status_t));
         }
         break;
         case ROBOT_HURT_CMD_ID:
         {
             referee_copy_payload(&robot_hurt_t, (uint16_t)sizeof(ext_robot_hurt_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_ROBOT_HURT, &robot_hurt_t, (uint16_t)sizeof(robot_hurt_t));
+            SdLogWrite(SDLOG_TAG_REF_ROBOT_HURT, &robot_hurt_t, (uint16_t)sizeof(robot_hurt_t));
         }
         break;
         case SHOOT_DATA_CMD_ID:
         {
             referee_copy_payload(&shoot_data_t, (uint16_t)sizeof(ext_shoot_data_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_SHOOT_DATA, &shoot_data_t, (uint16_t)sizeof(shoot_data_t));
+            SdLogWrite(SDLOG_TAG_REF_SHOOT_DATA, &shoot_data_t, (uint16_t)sizeof(shoot_data_t));
         }
         break;
         case PROJECTILE_ALLOWANCE_CMD_ID:
         {
             referee_copy_payload(&bullet_remaining_t, (uint16_t)sizeof(ext_projectile_allowance_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_BULLET_REMAINING, &bullet_remaining_t, (uint16_t)sizeof(bullet_remaining_t));
+            SdLogWrite(SDLOG_TAG_REF_BULLET_REMAINING, &bullet_remaining_t, (uint16_t)sizeof(bullet_remaining_t));
         }
         break;
         case DART_CLIENT_CMD_ID:
         {
             referee_copy_payload(&dart_client_cmd_t, (uint16_t)sizeof(ext_dart_client_cmd_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_AERIAL_ENERGY, &dart_client_cmd_t, (uint16_t)sizeof(dart_client_cmd_t));
+            SdLogWrite(SDLOG_TAG_REF_AERIAL_ENERGY, &dart_client_cmd_t, (uint16_t)sizeof(dart_client_cmd_t));
         }
         break;
         case GROUND_ROBOT_POSITION_CMD_ID:
@@ -837,7 +837,7 @@ void referee_data_solve(uint8_t *frame)
                                  (uint16_t)sizeof(ext_ground_robot_position_t),
                                  frame + index,
                                  payload_len);
-            sdlog_write(SDLOG_TAG_REF_GROUND_ROBOT_POSITION,
+            SdLogWrite(SDLOG_TAG_REF_GROUND_ROBOT_POSITION,
                         &ground_robot_position_t,
                         (uint16_t)sizeof(ground_robot_position_t));
         }
@@ -845,25 +845,25 @@ void referee_data_solve(uint8_t *frame)
         case RADAR_MARK_DATA_CMD_ID:
         {
             referee_copy_payload(&radar_mark_data_t, (uint16_t)sizeof(ext_radar_mark_data_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_RADAR_MARK, &radar_mark_data_t, (uint16_t)sizeof(radar_mark_data_t));
+            SdLogWrite(SDLOG_TAG_REF_RADAR_MARK, &radar_mark_data_t, (uint16_t)sizeof(radar_mark_data_t));
         }
         break;
         case SENTRY_INFO_CMD_ID:
         {
             referee_copy_payload(&sentry_info_t, (uint16_t)sizeof(ext_sentry_info_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_SENTRY_INFO, &sentry_info_t, (uint16_t)sizeof(sentry_info_t));
+            SdLogWrite(SDLOG_TAG_REF_SENTRY_INFO, &sentry_info_t, (uint16_t)sizeof(sentry_info_t));
         }
         break;
         case RADAR_INFO_CMD_ID:
         {
             referee_copy_payload(&radar_info_t, (uint16_t)sizeof(ext_radar_info_t), frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_RADAR_INFO, &radar_info_t, (uint16_t)sizeof(radar_info_t));
+            SdLogWrite(SDLOG_TAG_REF_RADAR_INFO, &radar_info_t, (uint16_t)sizeof(radar_info_t));
         }
         break;
         case ROBOT_INTERACTIVE_DATA_CMD_ID:
         {
             referee_parse_student_interactive(frame + index, payload_len);
-            sdlog_write(SDLOG_TAG_REF_ROBOT_INTERACTIVE, frame + index, payload_len);
+            SdLogWrite(SDLOG_TAG_REF_ROBOT_INTERACTIVE, frame + index, payload_len);
         }
         break;
         default:

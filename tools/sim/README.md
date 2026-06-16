@@ -31,7 +31,7 @@ Useful options:
 
 The tool is a pressure simulator, not a physics simulator. It is meant to catch
 configuration-level overload before flashing firmware. The CPU number should be
-read as an estimate until paired with real `rt_profiler` data from logs.
+read as an estimate until paired with real `RtProf` data from logs.
 The simulator follows the firmware profile filters for ARM/MIT routes and shoot
 runtime budgets, while still counting configured RM groups because the firmware
 can emit zero-current group frames for configured RM motors.

@@ -19,13 +19,13 @@ static void wheelleg_sdlog_copy_pid(sdlog_pid_param_t *out, const pid_param_t *p
     out->max_iout = pid->max_iout;
 }
 
-static void wheelleg_sdlog_write_config_once(void)
+static void wheelleg_SdLogWrite_config_once(void)
 {
     sdlog_wheelleg_mit_config_t log;
     const wheelleg_mit_config_t *cfg = &g_config.wheelleg_mit;
     uint8_t i;
 
-    if (!sdlog_is_active())
+    if (!SdLogIsActive())
     {
         s_wheelleg_sdlog_config_logged = 0u;
         return;
@@ -98,11 +98,11 @@ static void wheelleg_sdlog_write_config_once(void)
         log.effective_lqr_poly[i][3] = row[3];
     }
 
-    sdlog_write(SDLOG_TAG_WHEELLEG_MIT_CONFIG, &log, (uint16_t)sizeof(log));
+    SdLogWrite(SDLOG_TAG_WHEELLEG_MIT_CONFIG, &log, (uint16_t)sizeof(log));
     s_wheelleg_sdlog_config_logged = 1u;
 }
 
-static void wheelleg_sdlog_write_status(uint16_t faults,
+static void wheelleg_SdLogWrite_status(uint16_t faults,
                                         wheelleg_mode_e mode,
                                         fp32 pitch,
                                         fp32 roll,
@@ -119,18 +119,18 @@ static void wheelleg_sdlog_write_status(uint16_t faults,
 {
     sdlog_wheelleg_mit_status_t log;
     const uint32_t log_period_ms = (uint32_t)WHEELLEG_SDLOG_BASE_PERIOD_MS *
-                                   (uint32_t)sdlog_high_rate_divider();
+                                   (uint32_t)SdLogHighRateDiv();
     const fp32 lqr_x_err = wheelleg_lqr_x_error(target_v, target_yaw_rate);
     uint8_t side;
 
-    if (!sdlog_is_active())
+    if (!SdLogIsActive())
     {
         s_wheelleg_sdlog_config_logged = 0u;
         s_wheelleg_sdlog_last_status_ms = 0u;
         return;
     }
 
-    wheelleg_sdlog_write_config_once();
+    wheelleg_SdLogWrite_config_once();
 
     if (s_wheelleg_sdlog_last_status_ms != 0u &&
         (uint32_t)(now_ms - s_wheelleg_sdlog_last_status_ms) < log_period_ms)
@@ -207,8 +207,8 @@ static void wheelleg_sdlog_write_status(uint16_t faults,
     log.lqr_output[3] = s_wheelleg.leg[WHEELLEG_SIDE_LEFT].tp;
     log.overrun_count = s_wheelleg.overrun_count;
 
-    sdlog_write(SDLOG_TAG_WHEELLEG_MIT_STATUS, &log, (uint16_t)sizeof(log));
-    wheelleg_sdlog_write_motor_diag(now_ms);
+    SdLogWrite(SDLOG_TAG_WHEELLEG_MIT_STATUS, &log, (uint16_t)sizeof(log));
+    wheelleg_SdLogWrite_motor_diag(now_ms);
 }
 
 static MotorId wheelleg_actuator_from_u8(uint8_t id)
@@ -298,7 +298,7 @@ static void wheelleg_sdlog_fill_motor_diag(sdlog_wheelleg_mit_motor_diag_entry_t
     }
 }
 
-static void wheelleg_sdlog_write_motor_diag(uint32_t now_ms)
+static void wheelleg_SdLogWrite_motor_diag(uint32_t now_ms)
 {
     sdlog_wheelleg_mit_motor_diag_t log;
     const wheelleg_mit_config_t *cfg = &g_config.wheelleg_mit;
@@ -322,5 +322,5 @@ static void wheelleg_sdlog_write_motor_diag(uint32_t now_ms)
     wheelleg_sdlog_fill_motor_diag(&log.motor[4], 4u, (MotorId)cfg->right_back_actuator, &s_wheelleg.back_fb[WHEELLEG_SIDE_RIGHT], now_ms);
     wheelleg_sdlog_fill_motor_diag(&log.motor[5], 5u, (MotorId)cfg->right_wheel_actuator, &s_wheelleg.wheel_fb[WHEELLEG_SIDE_RIGHT], now_ms);
 
-    sdlog_write(SDLOG_TAG_WHEELLEG_MIT_MOTOR_DIAG, &log, (uint16_t)sizeof(log));
+    SdLogWrite(SDLOG_TAG_WHEELLEG_MIT_MOTOR_DIAG, &log, (uint16_t)sizeof(log));
 }

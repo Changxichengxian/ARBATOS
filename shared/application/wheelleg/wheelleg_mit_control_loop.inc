@@ -167,7 +167,7 @@ static void wheelleg_publish(uint16_t faults,
     (void)wheelleg_status_write(&status);
     (void)wheelleg_debug_write(&debug);
 
-    wheelleg_sdlog_write_status(faults,
+    wheelleg_SdLogWrite_status(faults,
                                 mode,
                                 pitch,
                                 roll,

@@ -58,8 +58,8 @@ static runtime_instance_state_e watch_runtime_device_state(const robot_config_de
     {
     case ROBOT_CONFIG_DEVICE_KIND_MOTOR:
     {
-        const motor_instance_t *inst = motor_instance_find_by_actuator((MotorId)device->source_id);
-        return (inst != NULL && motor_instance_enabled(inst) != 0u) ?
+        const MotorInst *inst = MotorInstFindByMotor((MotorId)device->source_id);
+        return (inst != NULL && MotorInstEnabled(inst) != 0u) ?
                    RUNTIME_INSTANCE_STATE_ENABLED :
                    RUNTIME_INSTANCE_STATE_DISABLED;
     }
@@ -249,24 +249,24 @@ static void watch_copy_runtime(void)
     uint8_t task_module_count;
     uint8_t task_module_visible_count;
     uint8_t device_count;
-    rt_profiler_summary_t profiler_summary;
+    RtProfSummary profiler_summary;
     LowCmdDiag lowcmd_diag = {0};
 
     memset(&g_watch.runtime, 0, sizeof(g_watch.runtime));
-    rt_profiler_get_summary(&profiler_summary);
+    RtProfGetSummary(&profiler_summary);
     (void)LowCmdGetDiag(&lowcmd_diag);
     g_watch.runtime.profile_kind = (uint8_t)robot_profile_kind();
     g_watch.runtime.board_kind = (uint8_t)robot_board_kind();
     g_watch.runtime.board_can_bus_count = robot_board_can_bus_count();
     g_watch.runtime.board_has_fpu = robot_board_has_fpu();
     g_watch.runtime.board_cpu_hz = robot_board_cpu_hz();
-    g_watch.runtime.rt_profiler_count = profiler_summary.total_count;
-    g_watch.runtime.rt_profiler_active_count = profiler_summary.active_count;
-    g_watch.runtime.rt_profiler_over_budget_count = profiler_summary.over_budget_count;
-    g_watch.runtime.rt_profiler_total_overrun_count = profiler_summary.total_overrun_count;
-    g_watch.runtime.rt_profiler_max_last_us = profiler_summary.max_last_us;
-    g_watch.runtime.rt_profiler_max_budget_us = profiler_summary.max_budget_us;
-    g_watch.runtime.rt_profiler_max_over_budget_us = profiler_summary.max_over_budget_us;
+    g_watch.runtime.rtProfCount = profiler_summary.total_count;
+    g_watch.runtime.RtProfActive_count = profiler_summary.active_count;
+    g_watch.runtime.RtProfOverBudget_count = profiler_summary.over_budget_count;
+    g_watch.runtime.rtProfTotalOverrun = profiler_summary.total_overrun_count;
+    g_watch.runtime.rtProfMaxLastUs = profiler_summary.max_last_us;
+    g_watch.runtime.rtProfMaxBudgetUs = profiler_summary.max_budget_us;
+    g_watch.runtime.rtProfMaxOverBudgetUs = profiler_summary.max_over_budget_us;
     g_watch.runtime.lowcmd_seq = lowcmd_diag.seq;
     g_watch.runtime.lowcmd_rejected_count = lowcmd_diag.rejected_count;
     g_watch.runtime.lowcmd_emergency_stop_count = lowcmd_diag.emergency_stop_count;
@@ -335,7 +335,7 @@ static void watch_copy_runtime(void)
                                 RUNTIME_INSTANCE_INDEX_NONE);
     }
 
-    motor_count = motor_route_count();
+    motor_count = MotorRouteCount();
     motor_visible_count = motor_count;
     if (motor_visible_count > (uint8_t)(sizeof(g_watch.runtime.motor) / sizeof(g_watch.runtime.motor[0])))
     {
@@ -346,7 +346,7 @@ static void watch_copy_runtime(void)
     g_watch.runtime.motor_visible_count = motor_visible_count;
     for (uint8_t i = 0u; i < motor_visible_count; i++)
     {
-        const motor_route_t *route = motor_route_get(i);
+        const MotorRoute *route = MotorRouteGet(i);
         watch_runtime_motor_t *dst = &g_watch.runtime.motor[i];
         MotorState fb;
         MotorApplied applied;
@@ -387,7 +387,7 @@ static void watch_copy_runtime(void)
         }
     }
 
-    controller_count = control_manager_registered_count();
+    controller_count = ControlMgrCount();
     controller_visible_count = controller_count;
     if (controller_visible_count > (uint8_t)(sizeof(g_watch.runtime.controller) / sizeof(g_watch.runtime.controller[0])))
     {
@@ -396,10 +396,10 @@ static void watch_copy_runtime(void)
 
     g_watch.runtime.controller_count = controller_count;
     g_watch.runtime.controller_visible_count = controller_visible_count;
-    g_watch.runtime.active_claim_mask = control_manager_active_claim_mask();
+    g_watch.runtime.active_claim_mask = ControlMgrActiveClaimMask();
     for (uint8_t i = 0u; i < controller_visible_count; i++)
     {
-        const control_controller_t *controller = control_manager_get_registered(i);
+        const ControlController *controller = ControlMgrGet(i);
         watch_runtime_controller_t *dst = &g_watch.runtime.controller[i];
 
         if (controller == NULL)
@@ -412,7 +412,7 @@ static void watch_copy_runtime(void)
         dst->period_ms = controller->meta.period_ms;
         dst->phase_ms = controller->meta.phase_ms;
         dst->domain = (uint8_t)controller->domain;
-        dst->active = control_manager_is_active(controller->id);
+        dst->active = ControlMgrIsActive(controller->id);
         dst->priority = controller->meta.priority;
         dst->input_count = controller->meta.input_count;
         dst->output_count = controller->meta.output_count;
@@ -426,13 +426,13 @@ static void watch_copy_runtime(void)
                                 (uint16_t)controller->domain);
     }
 
-    g_watch.runtime.domain_count = (uint8_t)CONTROL_DOMAIN__COUNT;
-    for (uint8_t i = 0u; i < (uint8_t)CONTROL_DOMAIN__COUNT; i++)
+    g_watch.runtime.domain_count = (uint8_t)ControlDomainCount;
+    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
     {
-        control_domain_status_t status = {0};
+        ControlStatus status = {0};
         watch_runtime_domain_t *dst = &g_watch.runtime.domain[i];
 
-        if (control_manager_get_domain_status((control_domain_e)i, &status) != CONTROL_RESULT_OK)
+        if (ControlMgrGetStatus((ControlDomain)i, &status) != ControlResultOk)
         {
             continue;
         }
@@ -453,9 +453,9 @@ static void watch_copy_runtime(void)
         {
             g_watch.runtime.active_controller_count++;
         }
-        watch_runtime_add_entry(control_domain_name(status.domain),
+        watch_runtime_add_entry(ControlDomainName(status.domain),
                                 RUNTIME_INSTANCE_KIND_GROUP,
-                                (status.state == CONTROL_STATE_FAULT) ?
+                                (status.state == ControlStateFault) ?
                                     RUNTIME_INSTANCE_STATE_FAULT :
                                     ((dst->active != 0u) ?
                                          RUNTIME_INSTANCE_STATE_ACTIVE :

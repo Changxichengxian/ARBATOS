@@ -6,15 +6,15 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#include "sdlog_task.h"
+#include "SdLogTask.h"
 
 #include "cmsis_os.h"
 
 #include "config.h"
 #include "bsp_time.h"
 #include "sdcard.h"
-#include "sdlog.h"
-#include "rt_profiler.h"
+#include "SdLog.h"
+#include "RtProf.h"
 #include "robot_task_profile.h"
 #include "robot_mode.h"
 
@@ -46,16 +46,16 @@ static void sdlog_grow_mount_retry(uint32_t *retry_ms)
     }
 }
 
-static uint8_t sdlog_rt_profiler_id_active(rt_profiler_id_e id)
+static uint8_t SdLogRtProfActive(RtProfId id)
 {
-    return rt_profiler_active(id);
+    return RtProfActive(id);
 }
 
-static void sdlog_write_rt_profiler_sample(void)
+static void SdLogWriteRtProfSample(void)
 {
-    sdlog_rt_profiler_t sample = {0};
+    SdLogRtProf sample = {0};
     uint8_t profiler_count = 0u;
-    (void)rt_profiler_descriptors(&profiler_count);
+    (void)RtProfDescs(&profiler_count);
 
     for (uint8_t i = 0u; i < profiler_count; i++)
     {
@@ -63,13 +63,13 @@ static void sdlog_write_rt_profiler_sample(void)
         {
             break;
         }
-        if (!sdlog_rt_profiler_id_active((rt_profiler_id_e)i))
+        if (!SdLogRtProfActive((RtProfId)i))
         {
             continue;
         }
 
-        rt_profiler_stats_t stats = {0};
-        rt_profiler_get((rt_profiler_id_e)i, &stats);
+        RtProfStats stats = {0};
+        RtProfGet((RtProfId)i, &stats);
 
         sample.entry[sample.count].id = (uint8_t)i;
         sample.entry[sample.count].count = stats.count;
@@ -81,7 +81,7 @@ static void sdlog_write_rt_profiler_sample(void)
         sample.count++;
     }
 
-    sdlog_write(SDLOG_TAG_RT_PROFILER, &sample, (uint16_t)sizeof(sample));
+    SdLogWrite(SDLOG_TAG_RT_PROFILER, &sample, (uint16_t)sizeof(sample));
 }
 
 static void sdlog_wait_boot_delay_ms(uint32_t delay_ms)
@@ -94,7 +94,7 @@ static void sdlog_wait_boot_delay_ms(uint32_t delay_ms)
     osDelay(delay_ms - now_ms);
 }
 
-void sdlog_task(void const *argument)
+void SdLogTask(void const *argument)
 {
     (void)argument;
 
@@ -117,7 +117,7 @@ void sdlog_task(void const *argument)
     if (robot_mode_is_entertain() == 0u)
     {
         sdlog_wait_boot_delay_ms(SDLOG_TASK_BOOT_DELAY_MS);
-        if (sdlog_start() != 0)
+        if (SdLogStart() != 0)
         {
             next_start_ms = bsp_time_get_tick_ms() + SDLOG_TASK_REOPEN_RETRY_MS;
         }
@@ -127,7 +127,7 @@ void sdlog_task(void const *argument)
     {
         if (robot_mode_is_entertain() != 0u)
         {
-            sdlog_stop();
+            SdLogStop();
             osDelay(SDLOG_TASK_IDLE_DELAY_MS);
             continue;
         }
@@ -146,7 +146,7 @@ void sdlog_task(void const *argument)
         }
 
         // If the log file was closed due to an error, try to reopen it.
-        if (!sdlog_is_active() && sdcard_is_mounted())
+        if (!SdLogIsActive() && sdcard_is_mounted())
         {
             const uint32_t now_ms = bsp_time_get_tick_ms();
             if (!sdlog_time_reached(now_ms, next_start_ms))
@@ -156,33 +156,33 @@ void sdlog_task(void const *argument)
             }
 
             sdlog_wait_boot_delay_ms(SDLOG_TASK_BOOT_DELAY_MS);
-            if (sdlog_start() != 0)
+            if (SdLogStart() != 0)
             {
                 next_start_ms = bsp_time_get_tick_ms() + SDLOG_TASK_REOPEN_RETRY_MS;
             }
         }
 
-        if (!sdlog_is_active())
+        if (!SdLogIsActive())
         {
             osDelay(SDLOG_TASK_IDLE_DELAY_MS);
             continue;
         }
 
-        static uint32_t last_rt_profiler_log_ms = 0u;
+        static uint32_t lastRtProfLogMs = 0u;
         const uint32_t now_ms = bsp_time_get_tick_ms();
-        if ((uint32_t)(now_ms - last_rt_profiler_log_ms) >= SDLOG_TASK_RT_PROFILER_PERIOD_MS)
+        if ((uint32_t)(now_ms - lastRtProfLogMs) >= SDLOG_TASK_RT_PROFILER_PERIOD_MS)
         {
-            last_rt_profiler_log_ms = now_ms;
-            sdlog_write_rt_profiler_sample();
+            lastRtProfLogMs = now_ms;
+            SdLogWriteRtProfSample();
         }
 
         uint32_t backlog_polls = 0u;
         while (1)
         {
-            sdlog_stats_t stats = {0};
+            SdLogStats stats = {0};
 
-            sdlog_poll();
-            sdlog_get_stats(&stats);
+            SdLogPoll();
+            SdLogGetStats(&stats);
 
             if (stats.active == 0u || stats.ring_used == 0u)
             {

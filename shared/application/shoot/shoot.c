@@ -30,7 +30,7 @@
 
 #include "CAN_receive.h"
 #include "LowCmd.h"
-#include "motor_instance.h"
+#include "MotorInst.h"
 #include "motor_config.h"
 #include "gimbal_state.h"
 #include "shoot_state.h"
@@ -77,7 +77,7 @@ static const char *const shoot_friction_motor_names[FRIC_MOTOR_NUM] = {
     "motor.friction2",
     "motor.friction3",
 };
-static motor_instance_current_binding_t shoot_friction_current_bindings[FRIC_MOTOR_NUM];
+static MotorCurrentBind shoot_friction_current_bindings[FRIC_MOTOR_NUM];
 static const int16_t shoot_fric_zero_current_cmd[FRIC_MOTOR_NUM] = {0};
 
 /**
@@ -305,7 +305,7 @@ static void shoot_clear_fric_output(void)
         shoot_control.fric_current_set[i] = 0;
     }
 
-    (void)motor_instance_cmd_set_current_bindings_best_effort(shoot_friction_current_bindings,
+    (void)MotorInstSetCurrentBindsBestEffort(shoot_friction_current_bindings,
                                                               shoot_fric_zero_current_cmd,
                                                               FRIC_MOTOR_NUM);
 
@@ -363,7 +363,7 @@ void shoot_init(void)
 
     const fp32 Trigger_speed_pid[3] = {TRIGGER_ANGLE_PID_KP, TRIGGER_ANGLE_PID_KI, TRIGGER_ANGLE_PID_KD};
     const fp32 Fric_speed_pid[3] = {g_config.shoot.fric_speed_pid.kp, g_config.shoot.fric_speed_pid.ki, g_config.shoot.fric_speed_pid.kd};
-    (void)motor_instance_bind_current_outputs(shoot_friction_motor_names,
+    (void)MotorInstBindCurrent(shoot_friction_motor_names,
                                               FRIC_MOTOR_NUM,
                                               shoot_friction_current_bindings,
                                               FRIC_MOTOR_NUM);
@@ -542,7 +542,7 @@ int16_t shoot_control_loop(void)
             fric_current_cmd[i] = current;
         }
 
-        (void)motor_instance_cmd_set_current_bindings_best_effort(shoot_friction_current_bindings,
+        (void)MotorInstSetCurrentBindsBestEffort(shoot_friction_current_bindings,
                                                                   fric_current_cmd,
                                                                   FRIC_MOTOR_NUM);
     }

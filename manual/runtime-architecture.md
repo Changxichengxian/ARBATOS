@@ -16,9 +16,9 @@
 
 - `g_config.profile.task_modules` 是任务创建的入口。`app_task_bootstrap.h` 会按配置表创建启用任务。
 - `g_config.devices` 已经进入配置层，`robot_device_config.h` 负责统一解析设备条目。
-- `motor_instance_refresh()` 已经从设备表生成电机实例，控制任务可以按稳定实例名绑定输出。
+- `MotorInstRefresh()` 已经从设备表生成电机实例，控制任务可以按稳定实例名绑定输出。
 - `LowCmd` 是控制任务到执行器发送任务之间的统一命令缓存。底盘、云台、射击等高频任务已经使用预绑定输出，循环里按绑定写电流。
-- `control_manager` 已经提供控制域、控制器注册、资源声明、切换、停止和故障状态。默认控制器由 `robot_control_registry.h` 按 profile 注册。
+- `ControlMgr` 已经提供控制域、控制器注册、资源声明、切换、停止和故障状态。默认控制器由 `robot_control_registry.h` 按 profile 注册。
 - `watch.runtime` 已经能按任务、设备、电机、控制器、控制域收集运行实例。SD 日志启动记录也会写设备条目。
 - 底盘、云台、CAN 发送、轮腿和 watch 等大任务入口已经拆成“主 `.c` + 私有 `.inc` 实现块”。原 `.c` 仍是唯一编译单元，私有块用于把日志、快照、调参、协议打包和控制辅助分开阅读。
 - 安全保护已经存在，但当前主要分布在各任务和控制环里，例如安全档、运行编排、离线检测、限幅、轮腿 fault。后续仍在往控制器或调度策略收束。
@@ -34,15 +34,15 @@ LowCmdSetCurrent(Motor4, yaw_current);
 新代码可以逐步改成按实例查询：
 
 ```c
-const motor_instance_t *m = motor_instance_find_by_name("motor.yaw");
-MotorId id = motor_instance_actuator_id(m);
+const MotorInst *m = MotorInstFindByName("motor.yaw");
+MotorId id = MotorInstId(m);
 ```
 
 如果只是发命令或读反馈，也可以直接按实例名走薄包装：
 
 ```c
-motor_instance_cmd_set_current("motor.yaw", yaw_current);
-motor_instance_feedback_get_copy("motor.yaw", &feedback);
+MotorInstSetCurrent("motor.yaw", yaw_current);
+MotorInstGetFeedback("motor.yaw", &feedback);
 ```
 
 如果一个控制器要同时管多个执行器，可以先把名字解析成 `MotorId`，后面循环里直接按 id 批量发命令：
@@ -58,7 +58,7 @@ static MotorId yaw_ids[3];
 
 void bind_outputs(void)
 {
-    if (motor_instance_resolve_actuator_ids(yaw_outputs, 3, yaw_ids, 3) != 3)
+    if (MotorInstResolveIds(yaw_outputs, 3, yaw_ids, 3) != 3)
     {
         return;
     }
@@ -68,7 +68,7 @@ void run_outputs(void)
 {
     int16_t current[3] = {yaw0_current, yaw1_current, yaw2_current};
 
-    (void)motor_instance_cmd_set_current_ids(yaw_ids, current, 3);
+    (void)MotorInstSetCurrentIds(yaw_ids, current, 3);
 }
 ```
 
@@ -96,10 +96,10 @@ void run_outputs(void)
 ### 阶段 1：执行器实例化
 
 - 保留 `MotorId`。
-- 给 `motor_instance_t` 补稳定实例名。
+- 给 `MotorInst` 补稳定实例名。
 - 提供按名字查找、取 actuator id、发命令、取电机配置、取反馈的接口。
 - 提供一组名字解析、一组电流命令、一组反馈读取的接口，减少多电机控制器里的重复代码。
-- 新代码优先从 `motor_instance_find_by_name()` 或后续配置绑定表拿执行器。
+- 新代码优先从 `MotorInstFindByName()` 或后续配置绑定表拿执行器。
 
 ### 阶段 2：设备表进入配置
 
@@ -138,7 +138,7 @@ for (uint8_t i = 0; i < robot_config_device_count(); i++)
 }
 ```
 
-电机仍然有 `robot_config_motor_device_t` 这种更具体的读取方式，`motor_instance_refresh()` 已经改成从这层读取。后面扩展传感器、链路或非电机执行器时，优先扩展设备表和 `robot_device_config.h`，电机实例和控制器不用跟着大改。
+电机仍然有 `robot_config_motor_device_t` 这种更具体的读取方式，`MotorInstRefresh()` 已经改成从这层读取。后面扩展传感器、链路或非电机执行器时，优先扩展设备表和 `robot_device_config.h`，电机实例和控制器不用跟着大改。
 
 控制器也可以直接按自己的输入/输出名字解析设备：
 
@@ -162,9 +162,9 @@ static const char *const triple_yaw_outputs[] = {
     "motor.yaw2",
 };
 
-static const control_controller_t triple_yaw_controller = {
-    .id = CONTROL_CONTROLLER_CUSTOM_BASE,
-    .domain = CONTROL_DOMAIN_GIMBAL,
+static const ControlController triple_yaw_controller = {
+    .id = ControlIdCustomBase,
+    .domain = ControlDomainGimbal,
     .name = "controller.triple_yaw",
     .meta = {
         .period_ms = 1,
@@ -181,22 +181,22 @@ static const control_controller_t triple_yaw_controller = {
 ```c
 static MotorId triple_yaw_ids[3];
 
-static control_result_e triple_yaw_enter(const control_controller_t *controller,
-                                         control_context_t *context)
+static ControlResult triple_yaw_enter(const ControlController *controller,
+                                         ControlCtx *context)
 {
     (void)context;
 
-    if (motor_instance_resolve_controller_outputs(controller, triple_yaw_ids, 3) !=
+    if (MotorInstResolveControllerOutputs(controller, triple_yaw_ids, 3) !=
         controller->meta.output_count)
     {
-        return CONTROL_RESULT_BAD_ARGUMENT;
+        return ControlResultBadArgument;
     }
 
-    return CONTROL_RESULT_OK;
+    return ControlResultOk;
 }
 
-static control_result_e triple_yaw_update(const control_controller_t *controller,
-                                          control_context_t *context)
+static ControlResult triple_yaw_update(const ControlController *controller,
+                                          ControlCtx *context)
 {
     int16_t current[3];
 
@@ -207,22 +207,22 @@ static control_result_e triple_yaw_update(const control_controller_t *controller
     current[1] = yaw1_current;
     current[2] = yaw2_current;
 
-    return motor_instance_cmd_set_current_ids(triple_yaw_ids, current, 3) ?
-           CONTROL_RESULT_OK :
-           CONTROL_RESULT_BAD_ARGUMENT;
+    return MotorInstSetCurrentIds(triple_yaw_ids, current, 3) ?
+           ControlResultOk :
+           ControlResultBadArgument;
 }
 ```
 
 切换控制器也可以按名字走：
 
 ```c
-(void)control_manager_request_switch_by_name("controller.triple_yaw",
-                                             CONTROL_REASON_MODE_SWITCH);
+(void)ControlMgrSwitchByName("controller.triple_yaw",
+                                             ControlReasonModeSwitch);
 ```
 
 控制器代码只关心它拿到的输入和输出，不关心这台机器人是不是 RoboMaster。
 
-这一步当前已经有 `control_manager`、控制器元信息、注册表、按名字切换、按周期更新和运行时观察。旧的底盘、云台、射击任务仍然保留自己的主循环和状态机，新控制器优先声明输入、输出、周期和资源占用。
+这一步当前已经有 `ControlMgr`、控制器元信息、注册表、按名字切换、按周期更新和运行时观察。旧的底盘、云台、射击任务仍然保留自己的主循环和状态机，新控制器优先声明输入、输出、周期和资源占用。
 
 ### 阶段 4：调度和观察统一
 

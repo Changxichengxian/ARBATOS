@@ -210,8 +210,8 @@ CONFIG_PARAM_F32(245, "chassis.swing_amp_rad", CONFIG_PARAM_SCOPE_LOCOMOTION_CLA
 CONFIG_PARAM_U16(246, "chassis.swing_half_period_ms", CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC, g_config.chassis.swing_half_period_ms, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_U16(247, "chassis.swing_center_hold_min_ms", CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC, g_config.chassis.swing_center_hold_min_ms, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_U16(248, "chassis.swing_center_hold_max_ms", CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC, g_config.chassis.swing_center_hold_max_ms, CONFIG_PARAM_APPLY_NONE)
-// F4: 2 is a good default; weaker chips can use 4; 8 needs extending sdlog_high_rate_divider(); H7 can use 1.
-CONFIG_PARAM_U8_DEFAULT(249, "sdlog.high_rate_div", CONFIG_PARAM_SCOPE_COMMON, g_config.sdlog.high_rate_div, 4u, 2u, CONFIG_PARAM_APPLY_NONE)
+// F4: 2 is a good default; weaker chips can use 4; 8 needs extending SdLogHighRateDiv(); H7 can use 1.
+CONFIG_PARAM_U8_DEFAULT(249, "SdLog.high_rate_div", CONFIG_PARAM_SCOPE_COMMON, g_config.sdlog.high_rate_div, 4u, 2u, CONFIG_PARAM_APPLY_NONE)
 
 // wheel-leg MIT single motor bring-up
 CONFIG_PARAM_U8_DEFAULT(600, "wheelleg_mit.single_test_actuator", CONFIG_PARAM_SCOPE_LOCOMOTION_WHEELLEG_MIT, g_config.wheelleg_mit.single_test_actuator, (uint8_t)(MotorCount - 1u), (uint8_t)Motor13, CONFIG_PARAM_APPLY_NONE)

@@ -34,7 +34,7 @@
 #include "CAN_receive.h"
 #include "LowCmd.h"
 #include "chassis_state.h"
-#include "motor_instance.h"
+#include "MotorInst.h"
 #include "motor_config.h"
 #include "watch.h"
 #include "detect_task.h"
@@ -42,23 +42,23 @@
 #include "bsp_time.h"
 #include "kalman_filter.h"
 #include "chassis_power_control.h"
-#include "sdlog.h"
-#include "rt_profiler.h"
+#include "SdLog.h"
+#include "RtProf.h"
 #include "robot_task_profile.h"
 #include "robot_mode.h"
-#include "control_manager.h"
+#include "ControlMgr.h"
 
 #include <string.h>
 
 #define CHASSIS_MOTOR_COUNT 4U
 
-static const char *const chassis_motor_instance_names[CHASSIS_MOTOR_COUNT] = {
+static const char *const chassis_MotorInstNames[CHASSIS_MOTOR_COUNT] = {
     "motor.chassis0",
     "motor.chassis1",
     "motor.chassis2",
     "motor.chassis3",
 };
-static motor_instance_current_binding_t chassis_motor_current_bindings[CHASSIS_MOTOR_COUNT];
+static MotorCurrentBind chassis_motor_current_bindings[CHASSIS_MOTOR_COUNT];
 static const int16_t chassis_zero_current_cmd[CHASSIS_MOTOR_COUNT] = {0};
 
 // Chassis follow-yaw stop window (reduces dithering when nearly aligned).
@@ -248,7 +248,7 @@ void chassis_control_task(void const *pvParameters)
     last_wake = xTaskGetTickCount();
     while (1)
     {
-        const uint64_t loop_start_us = rt_profiler_begin();
+        const uint64_t loop_start_us = RtProfBegin();
         chassis_runtime_snapshot_t snapshot;
         chassis_snapshot_capture(&snapshot, &chassis_move);
         watch_task_beat(WATCH_TASK_CHASSIS_CONTROL);
@@ -267,7 +267,7 @@ void chassis_control_task(void const *pvParameters)
         {
             chassis_control_stop_outputs(&chassis_move);
             chassis_write_state(&chassis_move);
-            rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
+            RtProfEnd(RtProfChassisLoop, loop_start_us);
             chassis_control_delay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
@@ -276,11 +276,11 @@ void chassis_control_task(void const *pvParameters)
             continue;
         }
 
-        if (!chassis_control_manager_allows(&snapshot))
+        if (!ChassisControlMgrAllows(&snapshot))
         {
             chassis_control_stop_outputs(&chassis_move);
             chassis_write_state(&chassis_move);
-            rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
+            RtProfEnd(RtProfChassisLoop, loop_start_us);
             chassis_control_delay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
@@ -317,7 +317,7 @@ void chassis_control_task(void const *pvParameters)
             }
         }
 
-        (void)motor_instance_cmd_set_current_bindings_best_effort(chassis_motor_current_bindings,
+        (void)MotorInstSetCurrentBindsBestEffort(chassis_motor_current_bindings,
                                                                   chassis_current_cmd,
                                                                   CHASSIS_MOTOR_COUNT);
 
@@ -342,7 +342,7 @@ void chassis_control_task(void const *pvParameters)
         chassis_write_state(&chassis_move);
         //os delay
         //系统延时
-        rt_profiler_end(RT_PROFILER_CHASSIS_CONTROL_LOOP, loop_start_us);
+        RtProfEnd(RtProfChassisLoop, loop_start_us);
         chassis_control_delay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark

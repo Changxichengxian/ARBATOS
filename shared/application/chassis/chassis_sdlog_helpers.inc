@@ -47,23 +47,23 @@ static void chassis_sdlog_flush_base_stream(void)
     memcpy(&payload[sizeof(header)],
            s_chassis_sdlog_base_stream.samples,
            (uint32_t)s_chassis_sdlog_base_stream.sample_count * sizeof(sdlog_chassis_base_sample_t));
-    sdlog_write(SDLOG_TAG_CHASSIS_BASE_STREAM, payload, payload_len);
+    SdLogWrite(SDLOG_TAG_CHASSIS_BASE_STREAM, payload, payload_len);
     s_chassis_sdlog_base_stream.sample_count = 0u;
 }
 
-static bool_t chassis_control_manager_allows(const chassis_runtime_snapshot_t *snapshot)
+static bool_t ChassisControlMgrAllows(const chassis_runtime_snapshot_t *snapshot)
 {
-    control_context_t context = {0};
+    ControlCtx context = {0};
 
     context.tick_ms = bsp_time_get_tick_ms();
     context.dt_s = (snapshot != NULL) ? snapshot->period_s : (fp32)robot_profile_chassis_control_period_s();
 
-    if (control_manager_update_domain(CONTROL_DOMAIN_CHASSIS, &context) != CONTROL_RESULT_OK)
+    if (ControlMgrUpdateDomain(ControlDomainChassis, &context) != ControlResultOk)
     {
         return 0;
     }
 
-    return (control_manager_active_id(CONTROL_DOMAIN_CHASSIS) == CONTROL_CONTROLLER_CLASSIC_CHASSIS) ? 1 : 0;
+    return (ControlMgrActiveId(ControlDomainChassis) == ControlIdClassicChassis) ? 1 : 0;
 }
 
 static void chassis_control_stop_outputs(chassis_move_t *control)
@@ -84,7 +84,7 @@ static void chassis_control_stop_outputs(chassis_move_t *control)
     control->vy_set = 0.0f;
     control->wz_set = 0.0f;
 
-    (void)motor_instance_cmd_set_current_bindings_best_effort(chassis_motor_current_bindings,
+    (void)MotorInstSetCurrentBindsBestEffort(chassis_motor_current_bindings,
                                                               chassis_zero_current_cmd,
                                                               CHASSIS_MOTOR_COUNT);
 }
@@ -120,7 +120,7 @@ static void chassis_sdlog_append_base_sample(const sdlog_chassis_base_sample_t *
         period_us = 1000u;
     }
 
-    const uint8_t div = sdlog_high_rate_divider();
+    const uint8_t div = SdLogHighRateDiv();
     if (div > 1u)
     {
         const uint16_t slot = s_chassis_sdlog_base_stream.sample_div_counter++;

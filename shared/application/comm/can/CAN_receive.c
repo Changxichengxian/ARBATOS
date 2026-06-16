@@ -16,8 +16,8 @@
 #include "can_mit_motor_driver.h"
 #include "detect_task.h"
 #include "motor_config.h"
-#include "motor_instance.h"
-#include "sdlog.h"
+#include "MotorInst.h"
+#include "SdLog.h"
 #include "watch.h"
 
 #include <string.h>
@@ -78,7 +78,7 @@ static void can_rx_prepare_motor_id_cache(can_rx_motor_id_cache_t *cache)
         return;
     }
 
-    resolved = motor_instance_actuator_id_by_name(cache->name);
+    resolved = MotorInstIdByName(cache->name);
     cache->resolved_id = (resolved != MotorCount) ? resolved : cache->fallback_id;
     cache->ready = 1u;
 }
@@ -100,7 +100,7 @@ static void can_rx_prepare_indexed_motor_ids(const char *const *names,
         return;
     }
 
-    resolved_count = motor_instance_resolve_actuator_ids(names, count, ids, count);
+    resolved_count = MotorInstResolveIds(names, count, ids, count);
     (void)resolved_count;
     for (uint8_t i = 0u; i < count; i++)
     {
@@ -482,14 +482,14 @@ __weak uint8_t CAN_rx_process_extra_frame(uint8_t bus, uint16_t std_id, uint8_t 
 // CAN 接收总入口：先按总线和轴装配找到归属，再交给对应协议解析。
 void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8])
 {
-    const motor_instance_t *inst = NULL;
+    const MotorInst *inst = NULL;
 
     if (data == NULL)
     {
         return;
     }
 
-    inst = motor_instance_find_feedback(bus, std_id);
+    inst = MotorInstFindFeedback(bus, std_id);
     if (inst != NULL)
     {
         (void)can_rx_process_node_frame(inst->measure,
@@ -542,27 +542,27 @@ void CAN_cmd_chassis_reset_ID(void)
 
 const motor_measure_t *get_yaw_gimbal_motor_measure_point(void)
 {
-    return motor_instance_measure_const(can_rx_cached_motor_id(&can_rx_yaw_id));
+    return MotorInstMeasureConst(can_rx_cached_motor_id(&can_rx_yaw_id));
 }
 
 const motor_measure_t *get_yaw_upper_gimbal_motor_measure_point(void)
 {
-    return motor_instance_measure_const(can_rx_cached_motor_id(&can_rx_yaw_upper_id));
+    return MotorInstMeasureConst(can_rx_cached_motor_id(&can_rx_yaw_upper_id));
 }
 
 const motor_measure_t *get_pitch_gimbal_motor_measure_point(void)
 {
-    return motor_instance_measure_const(can_rx_cached_motor_id(&can_rx_pitch_id));
+    return MotorInstMeasureConst(can_rx_cached_motor_id(&can_rx_pitch_id));
 }
 
 const motor_measure_t *get_trigger_motor_measure_point(void)
 {
-    return motor_instance_measure_const(can_rx_cached_motor_id(&can_rx_trigger_id));
+    return MotorInstMeasureConst(can_rx_cached_motor_id(&can_rx_trigger_id));
 }
 
 const motor_measure_t *get_chassis_motor_measure_point(uint8_t i)
 {
-    return motor_instance_measure_const(can_rx_cached_indexed_motor_id(can_rx_chassis_ids,
+    return MotorInstMeasureConst(can_rx_cached_indexed_motor_id(can_rx_chassis_ids,
                                                                        &can_rx_chassis_ids_ready,
                                                                        4u,
                                                                        Motor0,
@@ -571,7 +571,7 @@ const motor_measure_t *get_chassis_motor_measure_point(uint8_t i)
 
 const motor_measure_t *get_friction_motor_measure_point(uint8_t i)
 {
-    return motor_instance_measure_const(can_rx_cached_indexed_motor_id(can_rx_friction_ids,
+    return MotorInstMeasureConst(can_rx_cached_indexed_motor_id(can_rx_friction_ids,
                                                                        &can_rx_friction_ids_ready,
                                                                        4u,
                                                                        Motor8,

@@ -31,9 +31,9 @@ static const char *const outputs[] = {
 ```c
 static MotorId output_ids[3];
 
-if (motor_instance_resolve_actuator_ids(outputs, 3, output_ids, 3) != 3)
+if (MotorInstResolveIds(outputs, 3, output_ids, 3) != 3)
 {
-    return CONTROL_RESULT_BAD_ARGUMENT;
+    return ControlResultBadArgument;
 }
 ```
 
@@ -41,18 +41,18 @@ if (motor_instance_resolve_actuator_ids(outputs, 3, output_ids, 3) != 3)
 
 ```c
 int16_t current[3] = {yaw0, yaw1, yaw2};
-(void)motor_instance_cmd_set_current_ids(output_ids, current, 3);
+(void)MotorInstSetCurrentIds(output_ids, current, 3);
 ```
 
 ## 3. 加控制器
 
-新动作、新机构优先写成 `control_controller_t`：
+新动作、新机构优先写成 `ControlController`：
 
 ```c
-static const control_controller_t triple_yaw_controller = {
-    .id = CONTROL_CONTROLLER_CUSTOM_BASE,
-    .domain = CONTROL_DOMAIN_GIMBAL,
-    .claim_mask = CONTROL_RESOURCE_GIMBAL_YAW,
+static const ControlController triple_yaw_controller = {
+    .id = ControlIdCustomBase,
+    .domain = ControlDomainGimbal,
+    .claim_mask = ControlResGimbalYaw,
     .name = "controller.triple_yaw",
     .meta = {
         .period_ms = 1u,
@@ -68,15 +68,15 @@ static const control_controller_t triple_yaw_controller = {
 注册和切换：
 
 ```c
-(void)control_manager_register(&triple_yaw_controller);
-(void)control_manager_request_switch_by_name("controller.triple_yaw",
-                                             CONTROL_REASON_MODE_SWITCH);
+(void)ControlMgrRegister(&triple_yaw_controller);
+(void)ControlMgrSwitchByName("controller.triple_yaw",
+                                             ControlReasonModeSwitch);
 ```
 
 如果多个控制器共用一个调度任务，可以用：
 
 ```c
-(void)control_manager_update_due_all(now_ms, &context);
+(void)ControlMgrUpdateDueAll(now_ms, &context);
 ```
 
 新控制器至少要想清楚三类安全动作：
@@ -125,6 +125,6 @@ git diff --check
 
 - `watch.runtime` 能看到对应实例。
 - SD 日志启动记录里有设备条目。
-- 控制器输出都走 `motor_instance_*` 接口。
+- 控制器输出都走 `MotorInst_*` 接口。
 - 安全档、输入离线、反馈离线或控制器故障时，相关执行器命令能被清零或切到安全输出。
 - 新模块没有继续扩大固定的云台、底盘、发射分支。

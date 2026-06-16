@@ -560,9 +560,9 @@
               <FilePath>..\\..\\..\\shared\\application\\robot\\external_motion_intent.c</FilePath>
             </File>
             <File>
-              <FileName>control_manager.c</FileName>
+              <FileName>ControlMgr.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\robot\\control_manager.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\robot\\ControlMgr.c</FilePath>
             </File>
             <File>
               <FileName>motor_model_db.c</FileName>
@@ -570,14 +570,14 @@
               <FilePath>..\\..\\..\\shared\\application\\motors\\motor_model_db.c</FilePath>
             </File>
             <File>
-              <FileName>motor_instance.c</FileName>
+              <FileName>MotorInst.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\motors\\motor_instance.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\motors\\MotorInst.c</FilePath>
             </File>
             <File>
-              <FileName>can_command_tx_task.c</FileName>
+              <FileName>CanTxTask.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\comm\\can\\can_command_tx_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\comm\\can\\CanTxTask.c</FilePath>
             </File>
             <File>
               <FileName>can_mit_motor_driver.c</FileName>
@@ -590,9 +590,9 @@
               <FilePath>..\\..\\..\\shared\\application\\wheelleg\\wheelleg_mit_task.c</FilePath>
             </File>
             <File>
-              <FileName>can_feedback_rx_task.c</FileName>
+              <FileName>CanRxTask.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\comm\\can\\can_feedback_rx_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\comm\\can\\CanRxTask.c</FilePath>
             </File>
             <File>
               <FileName>chassis_behaviour.c</FileName>
@@ -620,9 +620,9 @@
               <FilePath>..\\..\\..\\shared\\application\\services\\diagnostics\\cpu_usage.c</FilePath>
             </File>
             <File>
-              <FileName>rt_profiler.c</FileName>
+              <FileName>RtProf.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\services\\diagnostics\\rt_profiler.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\services\\diagnostics\\RtProf.c</FilePath>
             </File>
             <File>
               <FileName>gimbal_behaviour.c</FileName>
@@ -770,14 +770,14 @@
               <FilePath>..\\..\\..\\shared\\application\\services\\storage\\sdcard.c</FilePath>
             </File>
             <File>
-              <FileName>sdlog.c</FileName>
+              <FileName>SdLog.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\services\\storage\\sdlog.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\services\\storage\\SdLog.c</FilePath>
             </File>
             <File>
-              <FileName>sdlog_task.c</FileName>
+              <FileName>SdLogTask.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\services\\storage\\sdlog_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\services\\storage\\SdLogTask.c</FilePath>
             </File>
           </Files>
         </Group>

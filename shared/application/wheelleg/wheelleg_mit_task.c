@@ -22,13 +22,13 @@
 #include "config.h"
 #include "control_input.h"
 #include "detect_task.h"
-#include "motor_instance.h"
+#include "MotorInst.h"
 #include "robot_msg.h"
 #include "robot_task_profile.h"
 #include "robot_mode.h"
-#include "rt_profiler.h"
-#include "control_manager.h"
-#include "sdlog.h"
+#include "RtProf.h"
+#include "ControlMgr.h"
+#include "SdLog.h"
 #include "watch.h"
 #include "wheelleg_msg.h"
 
@@ -264,7 +264,7 @@ static uint8_t s_wheelleg_sdlog_config_logged = 0u;
 static uint32_t s_wheelleg_sdlog_last_status_ms = 0u;
 
 static uint8_t wheelleg_feedback_fresh(const MotorState *fb, uint32_t now_ms);
-static void wheelleg_sdlog_write_motor_diag(uint32_t now_ms);
+static void wheelleg_SdLogWrite_motor_diag(uint32_t now_ms);
 
 static fp32 wheelleg_axis_to_fp32(int16_t axis, fp32 max_abs, uint16_t deadband);
 static fp32 wheelleg_lqr_x_error(fp32 target_v, fp32 target_yaw_rate);
@@ -385,11 +385,11 @@ void wheelleg_mit_task(void const *pvParameters)
 
     while (1)
     {
-        const uint64_t profiler_start_us = rt_profiler_begin();
+        const uint64_t profiler_start_us = RtProfBegin();
         wheelleg_task_frame_t frame;
 
         wheelleg_task_frame_init(&frame);
-        if (wheelleg_control_manager_allows(frame.now_ms, frame.dt) == 0u)
+        if (WheellegControlMgrAllows(frame.now_ms, frame.dt) == 0u)
         {
             wheelleg_handle_disabled_frame(&frame);
             wheelleg_task_finish_frame(&frame, frame.faults, profiler_start_us, &last_wake, 0u);

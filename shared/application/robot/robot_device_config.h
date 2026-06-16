@@ -14,7 +14,7 @@
 
 #include "LowCmd.h"
 #include "config.h"
-#include "control_manager.h"
+#include "ControlMgr.h"
 
 #ifndef ROBOT_CONFIG_DEVICE_BINDING_MAX_INPUTS
 #define ROBOT_CONFIG_DEVICE_BINDING_MAX_INPUTS 8u
@@ -528,7 +528,7 @@ static inline uint8_t robot_config_device_resolve_source_ids(const char *const *
     return resolved;
 }
 
-static inline uint8_t robot_config_device_resolve_controller_inputs(const control_controller_t *controller,
+static inline uint8_t robot_config_device_resolve_controller_inputs(const ControlController *controller,
                                                                     robot_config_device_t *out,
                                                                     uint8_t out_cap)
 {
@@ -543,7 +543,7 @@ static inline uint8_t robot_config_device_resolve_controller_inputs(const contro
                                             out_cap);
 }
 
-static inline uint8_t robot_config_device_resolve_controller_outputs(const control_controller_t *controller,
+static inline uint8_t robot_config_device_resolve_controller_outputs(const ControlController *controller,
                                                                      robot_config_device_t *out,
                                                                      uint8_t out_cap)
 {
@@ -558,7 +558,7 @@ static inline uint8_t robot_config_device_resolve_controller_outputs(const contr
                                             out_cap);
 }
 
-static inline uint8_t robot_config_device_bind_controller(const control_controller_t *controller,
+static inline uint8_t robot_config_device_bind_controller(const ControlController *controller,
                                                           robot_config_device_binding_t *binding)
 {
     if (controller == NULL || binding == NULL)

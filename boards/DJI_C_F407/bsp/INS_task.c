@@ -34,7 +34,7 @@
 #include "bsp_key.h"
 #include "AHRS.h"
 #include "gyro_zero_cali.h"
-#include "sdlog.h"
+#include "SdLog.h"
 
 
 #define IMU_temp_PWM(pwm)  imu_pwm_set(pwm)                    //pwm给定
@@ -299,7 +299,7 @@ static void imu_sdlog_flush_base_stream(void)
     memcpy(&payload[sizeof(header)],
            s_imu_sdlog_base_stream.samples,
            (uint32_t)s_imu_sdlog_base_stream.sample_count * sizeof(sdlog_imu_base_sample_t));
-    sdlog_write(SDLOG_TAG_IMU_BASE_STREAM, payload, payload_len);
+    SdLogWrite(SDLOG_TAG_IMU_BASE_STREAM, payload, payload_len);
     s_imu_sdlog_base_stream.sample_count = 0u;
 }
 
@@ -317,7 +317,7 @@ static void imu_sdlog_append_base_sample(const sdlog_imu_base_sample_t *sample,
         period_us = 1000u;
     }
 
-    const uint8_t div = sdlog_high_rate_divider();
+    const uint8_t div = SdLogHighRateDiv();
     if (div > 1u)
     {
         const uint16_t slot = s_imu_sdlog_base_stream.sample_div_counter++;
@@ -676,7 +676,7 @@ void INS_task(void const *pvParameters)
             pidlog.set = imu_temp_pid.set;
             pidlog.fdb = imu_temp_pid.fdb;
             pidlog.out = imu_temp_pid.out;
-            sdlog_write(SDLOG_TAG_PID, &pidlog, (uint16_t)sizeof(pidlog));
+            SdLogWrite(SDLOG_TAG_PID, &pidlog, (uint16_t)sizeof(pidlog));
         }
 
         if ((uint32_t)(now_ms - imu_trust_log_tick_ms) >= 10u)
@@ -698,7 +698,7 @@ void INS_task(void const *pvParameters)
             trust_log.acc_healthy = (uint8_t)acc_debug.acc_healthy;
             trust_log.acc_rejected = (uint8_t)acc_debug.acc_rejected;
             trust_log.fusion_mode = (uint8_t)imu_fusion_mode_active;
-            sdlog_write(SDLOG_TAG_IMU_TRUST, &trust_log, (uint16_t)sizeof(trust_log));
+            SdLogWrite(SDLOG_TAG_IMU_TRUST, &trust_log, (uint16_t)sizeof(trust_log));
         }
 
     }

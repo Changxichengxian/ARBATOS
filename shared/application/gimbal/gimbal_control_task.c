@@ -27,7 +27,7 @@
 #include "arm_math.h"
 #include "CAN_receive.h"
 #include "LowCmd.h"
-#include "motor_instance.h"
+#include "MotorInst.h"
 #include "motor_config.h"
 #include "user_lib.h"
 #include "axis_current_conditioner.h"
@@ -42,13 +42,13 @@
 #include "pid.h"
 #include "host_link_task.h"
 #include "watch.h"
-#include "sdlog.h"
+#include "SdLog.h"
 #include "robot_mode.h"
 #include "pitch_cali.h"
 #include "bsp_time.h"
-#include "rt_profiler.h"
+#include "RtProf.h"
 #include "robot_task_profile.h"
-#include "control_manager.h"
+#include "ControlMgr.h"
 
 #include <string.h>
 
@@ -60,7 +60,7 @@ static const char *const gimbal_output_motor_names[GIMBAL_OUTPUT_MOTOR_COUNT] = 
     "motor.yaw",
     "motor.pitch",
 };
-static motor_instance_current_binding_t gimbal_output_current_bindings[GIMBAL_OUTPUT_MOTOR_COUNT];
+static MotorCurrentBind gimbal_output_current_bindings[GIMBAL_OUTPUT_MOTOR_COUNT];
 
 static const char *const dual_yaw_gimbal_output_motor_names[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT] = {
     "motor.trigger",
@@ -68,7 +68,7 @@ static const char *const dual_yaw_gimbal_output_motor_names[DUAL_YAW_GIMBAL_OUTP
     "motor.yaw_upper",
     "motor.pitch",
 };
-static motor_instance_current_binding_t dual_yaw_gimbal_output_current_bindings[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT];
+static MotorCurrentBind dual_yaw_gimbal_output_current_bindings[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT];
 
 __weak void shoot_init(void)
 {
@@ -350,15 +350,15 @@ void gimbal_control_task(void const *pvParameters)
     last_wake = xTaskGetTickCount();
     while (1)
     {
-        const uint64_t loop_start_us = rt_profiler_begin();
+        const uint64_t loop_start_us = RtProfBegin();
         gimbal_runtime_snapshot_t snapshot;
         watch_task_beat(WATCH_TASK_GIMBAL_CONTROL);
         gimbal_snapshot_capture(&snapshot, &gimbal_control);
         gimbal_loop_counter++;
-        if (!gimbal_control_manager_allows(CONTROL_CONTROLLER_SINGLE_GIMBAL, &snapshot))
+        if (!GimbalControlMgrAllows(ControlIdSingleGimbal, &snapshot))
         {
             gimbal_stop_outputs(gimbal_output_current_bindings, GIMBAL_OUTPUT_MOTOR_COUNT);
-            rt_profiler_end(RT_PROFILER_GIMBAL_CONTROL_LOOP, loop_start_us);
+            RtProfEnd(RtProfGimbalLoop, loop_start_us);
             gimbal_control_delay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
@@ -398,7 +398,7 @@ void gimbal_control_task(void const *pvParameters)
                 pitch_can_set_current,
             };
 
-            (void)motor_instance_cmd_set_current_bindings_best_effort(gimbal_output_current_bindings,
+            (void)MotorInstSetCurrentBindsBestEffort(gimbal_output_current_bindings,
                                                                       gimbal_current_cmd,
                                                                       GIMBAL_OUTPUT_MOTOR_COUNT);
         }
@@ -426,7 +426,7 @@ void gimbal_control_task(void const *pvParameters)
         J_scope_gimbal_test();
 #endif
 
-        rt_profiler_end(RT_PROFILER_GIMBAL_CONTROL_LOOP, loop_start_us);
+        RtProfEnd(RtProfGimbalLoop, loop_start_us);
         gimbal_control_delay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
@@ -448,16 +448,16 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
     last_wake = xTaskGetTickCount();
     while (1)
     {
-        const uint64_t loop_start_us = rt_profiler_begin();
+        const uint64_t loop_start_us = RtProfBegin();
         gimbal_runtime_snapshot_t snapshot;
 
         watch_task_beat(WATCH_TASK_GIMBAL_CONTROL);
         gimbal_snapshot_capture(&snapshot, &gimbal_control);
         gimbal_loop_counter++;
-        if (!gimbal_control_manager_allows(CONTROL_CONTROLLER_DUAL_YAW_GIMBAL, &snapshot))
+        if (!GimbalControlMgrAllows(ControlIdDualYawGimbal, &snapshot))
         {
             gimbal_stop_outputs(dual_yaw_gimbal_output_current_bindings, DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT);
-            rt_profiler_end(RT_PROFILER_GIMBAL_CONTROL_LOOP, loop_start_us);
+            RtProfEnd(RtProfGimbalLoop, loop_start_us);
             gimbal_control_delay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
@@ -508,7 +508,7 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
                 pitch_can_set_current,
             };
 
-            (void)motor_instance_cmd_set_current_bindings_best_effort(dual_yaw_gimbal_output_current_bindings,
+            (void)MotorInstSetCurrentBindsBestEffort(dual_yaw_gimbal_output_current_bindings,
                                                                       gimbal_current_cmd,
                                                                       DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT);
         }
@@ -532,7 +532,7 @@ void dual_yaw_gimbal_control_task(void const *pvParameters)
             gimbal_sdlog_append_base_sample(&sample, bsp_time_get_tick_ms(), snapshot.period_us);
         }
 
-        rt_profiler_end(RT_PROFILER_GIMBAL_CONTROL_LOOP, loop_start_us);
+        RtProfEnd(RtProfGimbalLoop, loop_start_us);
         gimbal_control_delay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark

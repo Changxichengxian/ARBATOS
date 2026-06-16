@@ -16,11 +16,11 @@ static void gimbal_init(gimbal_control_t *init)
 
     const fp32 Pitch_speed_pid[3] = {PITCH_SPEED_PID_KP, PITCH_SPEED_PID_KI, PITCH_SPEED_PID_KD};
     const fp32 Yaw_speed_pid[3] = {YAW_SPEED_PID_KP, YAW_SPEED_PID_KI, YAW_SPEED_PID_KD};
-    (void)motor_instance_bind_current_outputs(gimbal_output_motor_names,
+    (void)MotorInstBindCurrent(gimbal_output_motor_names,
                                               GIMBAL_OUTPUT_MOTOR_COUNT,
                                               gimbal_output_current_bindings,
                                               GIMBAL_OUTPUT_MOTOR_COUNT);
-    (void)motor_instance_bind_current_outputs(dual_yaw_gimbal_output_motor_names,
+    (void)MotorInstBindCurrent(dual_yaw_gimbal_output_motor_names,
                                               DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT,
                                               dual_yaw_gimbal_output_current_bindings,
                                               DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT);

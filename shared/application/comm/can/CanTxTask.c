@@ -11,10 +11,10 @@
  * - 前段：命令限幅、RM/MIT 命令换算、单轴协议处理。
  * - 中段：在线/离线收集各轴电流命令，并记录 CAN 电流日志。
  * - 后段：按轴装配表执行发送，RM 组帧缓存最后统一发出。
- * - 入口：can_command_tx_task() 每周期收集 LowCmd，再按电机配置发到 CAN/RS485。
+ * - 入口：CanTxTask() 每周期收集 LowCmd，再按电机配置发到 CAN/RS485。
  */
 
-#include "can_command_tx_task.h"
+#include "CanTxTask.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -28,9 +28,9 @@
 #include "watch.h"
 #include "detect_task.h"
 #include "motor_config.h"
-#include "motor_instance.h"
-#include "sdlog.h"
-#include "rt_profiler.h"
+#include "MotorInst.h"
+#include "SdLog.h"
+#include "RtProf.h"
 #include "robot_task_profile.h"
 #include "robot_mode.h"
 #include "robot_safety.h"
@@ -44,7 +44,7 @@
 #define CAN_TX_MIT_STATE_ENABLED 1u
 #define CAN_TX_MIT_STATE_FAULT_MIN 8u
 
-__weak uint8_t can_tx_process_extra_item(uint8_t bus,
+__weak uint8_t CanTxProcessExtraItem(uint8_t bus,
                                          MotorId actuator_id,
                                          const motor_node_param_t *node,
                                          int16_t current);
@@ -72,7 +72,7 @@ static uint8_t s_can_tx_route_start_index;
 #include "can_command_tx_emit_helpers.inc"
 
 // 目标工程可在这里接入非大疆、非 MIT 的特殊电机发送逻辑。
-__weak uint8_t can_tx_process_extra_item(uint8_t bus,
+__weak uint8_t CanTxProcessExtraItem(uint8_t bus,
                                          MotorId actuator_id,
                                          const motor_node_param_t *node,
                                          int16_t current)
@@ -137,7 +137,7 @@ __weak uint8_t can_mit_motor_update_feedback(uint16_t std_id,
 }
 
 // CAN 命令发送任务：收集各轴命令，按轴装配表转换协议并统一发出。
-void can_command_tx_task(void const *pvParameters)
+void CanTxTask(void const *pvParameters)
 {
     (void)pvParameters;
 
@@ -146,7 +146,7 @@ void can_command_tx_task(void const *pvParameters)
 
     while (1)
     {
-        const uint64_t loop_start_us = rt_profiler_begin();
+        const uint64_t loop_start_us = RtProfBegin();
         watch_task_beat(WATCH_TASK_CAN_COMMAND_TX);
         const uint16_t period_ms = robot_profile_can_command_tx_period_ms();
         const bool_t dbus_offline = toe_is_error(DBUS_TOE);
@@ -155,7 +155,7 @@ void can_command_tx_task(void const *pvParameters)
         can_tx_exec_instances(dbus_offline ? 0u : 1u, output_locked);
         can_tx_emit_rm_frames();
 
-        rt_profiler_end(RT_PROFILER_CAN_COMMAND_TX_LOOP, loop_start_us);
+        RtProfEnd(RtProfCanTxLoop, loop_start_us);
         {
             const TickType_t delay_start = xTaskGetTickCount();
             vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(period_ms));

@@ -14,7 +14,7 @@
 #include "bsp_buzzer.h"
 #include "user_lib.h"
 #include "config.h"
-#include "sdlog.h"
+#include "SdLog.h"
 
 static const voltage_config_t *const voltage_cfg = &g_config.voltage;
 
@@ -58,7 +58,7 @@ void battery_monitor_task(void const * argument)
         sdlog_battery_t pkt = {0};
         pkt.voltage = battery_voltage;
         pkt.percent = electricity_percentage;
-        sdlog_write(SDLOG_TAG_BATTERY, &pkt, (uint16_t)sizeof(pkt));
+        SdLogWrite(SDLOG_TAG_BATTERY, &pkt, (uint16_t)sizeof(pkt));
 
         battery_low_alarm_update();
 

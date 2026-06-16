@@ -133,9 +133,9 @@ static watch_task_diag_entry_t *watch_task_diag_get(watch_task_id_e task_id)
         return NULL;
 #endif
     case WATCH_TASK_CAN_FEEDBACK_RX:
-        return &g_watch.rtos.task.can_feedback_rx_task;
+        return &g_watch.rtos.task.CanRxTask;
     case WATCH_TASK_CAN_COMMAND_TX:
-        return &g_watch.rtos.task.can_command_tx_task;
+        return &g_watch.rtos.task.CanTxTask;
     case WATCH_TASK_RC_SBUS:
         return &g_watch.rtos.task.rc_sbus_task;
     case WATCH_TASK_HOST_LINK:
@@ -283,7 +283,7 @@ void watch_task_beat(watch_task_id_e task_id)
         return;
     }
 
-    const uint64_t beat_start_us = rt_profiler_begin();
+    const uint64_t beat_start_us = RtProfBegin();
     taskENTER_CRITICAL();
     if (entry->last_tick_ms != 0u)
     {
@@ -296,7 +296,7 @@ void watch_task_beat(watch_task_id_e task_id)
     entry->beat_count++;
     entry->last_tick_ms = now_ms;
     taskEXIT_CRITICAL();
-    rt_profiler_end(RT_PROFILER_WATCH_TASK_BEAT, beat_start_us);
+    RtProfEnd(RtProfWatchBeat, beat_start_us);
 }
 
 void watch_task_wait(watch_task_id_e task_id)

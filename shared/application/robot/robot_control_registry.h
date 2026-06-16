@@ -7,12 +7,12 @@
 #define ROBOT_CONTROL_REGISTRY_H
 
 #include "CAN_receive.h"
-#include "control_manager.h"
-#include "motor_instance.h"
+#include "ControlMgr.h"
+#include "MotorInst.h"
 #include "robot_task_build_config.h"
 #include "robot_task_profile.h"
 
-static inline void robot_control_register_if_enabled(const control_controller_t *controller,
+static inline void robot_control_register_if_enabled(const ControlController *controller,
                                                      robot_task_module_e module)
 {
     if (controller == NULL || robot_profile_module_enabled(module) == 0u)
@@ -20,7 +20,7 @@ static inline void robot_control_register_if_enabled(const control_controller_t 
         return;
     }
 
-    (void)control_manager_register(controller);
+    (void)ControlMgrRegister(controller);
 }
 
 static inline void robot_control_register_profile_defaults(void)
@@ -81,10 +81,10 @@ static inline void robot_control_register_profile_defaults(void)
 #endif
 
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-    static const control_controller_t classic_chassis = {
-        .id = CONTROL_CONTROLLER_CLASSIC_CHASSIS,
-        .domain = CONTROL_DOMAIN_CHASSIS,
-        .claim_mask = CONTROL_RESOURCE_CHASSIS_WHEELS,
+    static const ControlController classic_chassis = {
+        .id = ControlIdClassicChassis,
+        .domain = ControlDomainChassis,
+        .claim_mask = ControlResChassisWheels,
         .name = "controller.classic_chassis",
         .meta = {
             .period_ms = ROBOT_PROFILE_CHASSIS_CONTROL_DEFAULT_PERIOD_MS,
@@ -94,10 +94,10 @@ static inline void robot_control_register_profile_defaults(void)
     };
 #endif
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
-    static const control_controller_t single_gimbal = {
-        .id = CONTROL_CONTROLLER_SINGLE_GIMBAL,
-        .domain = CONTROL_DOMAIN_GIMBAL,
-        .claim_mask = CONTROL_RESOURCE_GIMBAL_YAW | CONTROL_RESOURCE_GIMBAL_PITCH,
+    static const ControlController single_gimbal = {
+        .id = ControlIdSingleGimbal,
+        .domain = ControlDomainGimbal,
+        .claim_mask = ControlResGimbalYaw | ControlResGimbalPitch,
         .name = "controller.single_gimbal",
         .meta = {
             .period_ms = ROBOT_PROFILE_GIMBAL_CONTROL_DEFAULT_PERIOD_MS,
@@ -107,10 +107,10 @@ static inline void robot_control_register_profile_defaults(void)
     };
 #endif
 #if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
-    static const control_controller_t dual_yaw_gimbal = {
-        .id = CONTROL_CONTROLLER_DUAL_YAW_GIMBAL,
-        .domain = CONTROL_DOMAIN_GIMBAL,
-        .claim_mask = CONTROL_RESOURCE_GIMBAL_YAW | CONTROL_RESOURCE_GIMBAL_PITCH,
+    static const ControlController dual_yaw_gimbal = {
+        .id = ControlIdDualYawGimbal,
+        .domain = ControlDomainGimbal,
+        .claim_mask = ControlResGimbalYaw | ControlResGimbalPitch,
         .name = "controller.dual_yaw_gimbal",
         .meta = {
             .period_ms = ROBOT_PROFILE_GIMBAL_CONTROL_DEFAULT_PERIOD_MS,
@@ -120,10 +120,10 @@ static inline void robot_control_register_profile_defaults(void)
     };
 #endif
 #if ROBOT_TASK_BUILD_SHOOT_RM
-    static const control_controller_t shoot = {
-        .id = CONTROL_CONTROLLER_SHOOT,
-        .domain = CONTROL_DOMAIN_SHOOT,
-        .claim_mask = CONTROL_RESOURCE_SHOOT_TRIGGER | CONTROL_RESOURCE_SHOOT_FRICTION,
+    static const ControlController shoot = {
+        .id = ControlIdShoot,
+        .domain = ControlDomainShoot,
+        .claim_mask = ControlResShootTrigger | ControlResShootFriction,
         .name = "controller.shoot_rm",
         .meta = {
             .period_ms = ROBOT_PROFILE_GIMBAL_CONTROL_DEFAULT_PERIOD_MS,
@@ -133,10 +133,10 @@ static inline void robot_control_register_profile_defaults(void)
     };
 #endif
 #if ROBOT_TASK_BUILD_ARM
-    static const control_controller_t arm = {
-        .id = CONTROL_CONTROLLER_ARM_MOTION,
-        .domain = CONTROL_DOMAIN_ARM,
-        .claim_mask = CONTROL_RESOURCE_ARM,
+    static const ControlController arm = {
+        .id = ControlIdArmMotion,
+        .domain = ControlDomainArm,
+        .claim_mask = ControlResArm,
         .name = "controller.arm_motion",
         .meta = {
             .period_ms = 5u,
@@ -146,13 +146,13 @@ static inline void robot_control_register_profile_defaults(void)
     };
 #endif
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
-    static const control_controller_t wheelleg_mit = {
-        .id = CONTROL_CONTROLLER_WHEELLEG_MIT_BALANCE,
-        .domain = CONTROL_DOMAIN_WHEELLEG,
-        .claim_mask = CONTROL_RESOURCE_WHEELLEG_LEFT_LEG |
-                      CONTROL_RESOURCE_WHEELLEG_RIGHT_LEG |
-                      CONTROL_RESOURCE_WHEELLEG_LEFT_WHEEL |
-                      CONTROL_RESOURCE_WHEELLEG_RIGHT_WHEEL,
+    static const ControlController wheelleg_mit = {
+        .id = ControlIdWheellegMitBalance,
+        .domain = ControlDomainWheelleg,
+        .claim_mask = ControlResWheellegLeftLeg |
+                      ControlResWheellegRightLeg |
+                      ControlResWheellegLeftWheel |
+                      ControlResWheellegRightWheel,
         .name = "controller.wheelleg_mit",
         .meta = {
             .period_ms = 1u,
@@ -175,7 +175,7 @@ static inline void robot_control_register_profile_defaults(void)
     if (robot_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
         robot_profile_module_enabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
     {
-        (void)control_manager_register(&shoot);
+        (void)ControlMgrRegister(&shoot);
     }
 #endif
 #if ROBOT_TASK_BUILD_ARM
@@ -191,52 +191,52 @@ static inline void robot_control_start_profile_defaults(void)
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
     if (robot_profile_module_enabled(ROBOT_TASK_MODULE_CLASSIC_CHASSIS) != 0u)
     {
-        (void)control_manager_request_switch(CONTROL_CONTROLLER_CLASSIC_CHASSIS, CONTROL_REASON_PROFILE);
+        (void)ControlMgrSwitch(ControlIdClassicChassis, ControlReasonProfile);
     }
 #endif
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
     if (robot_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u)
     {
-        (void)control_manager_request_switch(CONTROL_CONTROLLER_SINGLE_GIMBAL, CONTROL_REASON_PROFILE);
+        (void)ControlMgrSwitch(ControlIdSingleGimbal, ControlReasonProfile);
     }
 #endif
 #if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
     if (robot_profile_module_enabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
     {
-        (void)control_manager_request_switch(CONTROL_CONTROLLER_DUAL_YAW_GIMBAL, CONTROL_REASON_PROFILE);
+        (void)ControlMgrSwitch(ControlIdDualYawGimbal, ControlReasonProfile);
     }
 #endif
 #if ROBOT_TASK_BUILD_SHOOT_RM
     if (robot_profile_module_enabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
         robot_profile_module_enabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
     {
-        (void)control_manager_request_switch(CONTROL_CONTROLLER_SHOOT, CONTROL_REASON_PROFILE);
+        (void)ControlMgrSwitch(ControlIdShoot, ControlReasonProfile);
     }
 #endif
 #if ROBOT_TASK_BUILD_ARM
     if (robot_profile_module_enabled(ROBOT_TASK_MODULE_ARM) != 0u)
     {
-        (void)control_manager_request_switch(CONTROL_CONTROLLER_ARM_MOTION, CONTROL_REASON_PROFILE);
+        (void)ControlMgrSwitch(ControlIdArmMotion, ControlReasonProfile);
     }
 #endif
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
     if (robot_profile_module_enabled(ROBOT_TASK_MODULE_WHEELLEG_MIT) != 0u)
     {
-        (void)control_manager_request_switch(CONTROL_CONTROLLER_WHEELLEG_MIT_BALANCE, CONTROL_REASON_PROFILE);
+        (void)ControlMgrSwitch(ControlIdWheellegMitBalance, ControlReasonProfile);
     }
 #endif
 }
 
 static inline void robot_control_bootstrap_profile_defaults(void)
 {
-    control_context_t context = {0};
+    ControlCtx context = {0};
 
-    motor_instance_refresh();
+    MotorInstRefresh();
     CAN_rx_prepare_motor_measure_points();
-    control_manager_init();
+    ControlMgrInit();
     robot_control_register_profile_defaults();
     robot_control_start_profile_defaults();
-    (void)control_manager_update_all(&context);
+    (void)ControlMgrUpdateAll(&context);
 }
 
 #endif

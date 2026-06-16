@@ -2,7 +2,7 @@
  * SPDX-FileCopyrightText: 2026 ?? <2811158416@qq.com>
  * SPDX-License-Identifier: Apache-2.0
  *
- * Private implementation chunk included by can_command_tx_task.c.
+ * Private implementation chunk included by CanTxTask.c.
  */
 
 static uint8_t can_tx_mit_is_wheelleg_wheel(MotorId actuator_id)

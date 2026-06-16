@@ -6,7 +6,7 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#include "control_manager.h"
+#include "ControlMgr.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -26,35 +26,35 @@
 
 typedef struct
 {
-    control_controller_t controller[CONTROL_MANAGER_MAX_CONTROLLERS];
+    ControlController controller[CONTROL_MGR_MAX_CONTROLLERS];
     uint8_t count;
 } control_registry_t;
 
 typedef struct
 {
-    const control_controller_t *active;
-    control_state_e state;
-    control_request_e pending_request;
+    const ControlController *active;
+    ControlState state;
+    ControlRequest pending_request;
     uint16_t pending_id;
-    control_transition_reason_e pending_reason;
-    control_transition_reason_e last_reason;
-    control_result_e last_result;
+    ControlReason pending_reason;
+    ControlReason last_reason;
+    ControlResult last_result;
     uint32_t update_count;
     uint32_t transition_count;
     uint32_t reject_count;
 } control_domain_state_t;
 
 static control_registry_t s_registry;
-static control_domain_state_t s_domain[CONTROL_DOMAIN__COUNT];
+static control_domain_state_t s_domain[ControlDomainCount];
 static uint32_t s_active_claim_mask;
 static uint8_t s_inited;
 
-static uint8_t control_domain_valid(control_domain_e domain)
+static uint8_t control_domain_valid(ControlDomain domain)
 {
-    return ((uint32_t)domain < (uint32_t)CONTROL_DOMAIN__COUNT) ? 1u : 0u;
+    return ((uint32_t)domain < (uint32_t)ControlDomainCount) ? 1u : 0u;
 }
 
-static control_context_t *control_context_or_local(control_context_t *context, control_context_t *local)
+static ControlCtx *control_context_or_local(ControlCtx *context, ControlCtx *local)
 {
     if (context != NULL)
     {
@@ -65,7 +65,7 @@ static control_context_t *control_context_or_local(control_context_t *context, c
     return local;
 }
 
-static const control_controller_t *control_find(uint16_t controller_id)
+static const ControlController *control_find(uint16_t controller_id)
 {
     for (uint8_t i = 0u; i < s_registry.count; i++)
     {
@@ -77,7 +77,7 @@ static const control_controller_t *control_find(uint16_t controller_id)
     return NULL;
 }
 
-static const control_controller_t *control_find_by_name(const char *name)
+static const ControlController *control_find_by_name(const char *name)
 {
     if (name == NULL)
     {
@@ -95,25 +95,25 @@ static const control_controller_t *control_find_by_name(const char *name)
     return NULL;
 }
 
-static uint8_t control_reason_uses_stop_callback(control_transition_reason_e reason)
+static uint8_t control_reason_uses_stop_callback(ControlReason reason)
 {
-    return (uint8_t)(reason == CONTROL_REASON_DISABLE ||
-                     reason == CONTROL_REASON_OFFLINE ||
-                     reason == CONTROL_REASON_FAULT ||
-                     reason == CONTROL_REASON_EMERGENCY_STOP);
+    return (uint8_t)(reason == ControlReasonDisable ||
+                     reason == ControlReasonOffline ||
+                     reason == ControlReasonFault ||
+                     reason == ControlReasonEmergencyStop);
 }
 
-static control_result_e control_call_callback(control_controller_callback_t callback,
-                                              const control_controller_t *controller,
-                                              control_context_t *context,
-                                              control_transition_reason_e reason)
+static ControlResult control_call_callback(ControlCallback callback,
+                                              const ControlController *controller,
+                                              ControlCtx *context,
+                                              ControlReason reason)
 {
-    control_result_e result;
-    control_transition_reason_e saved_reason;
+    ControlResult result;
+    ControlReason saved_reason;
 
     if (callback == NULL)
     {
-        return CONTROL_RESULT_OK;
+        return ControlResultOk;
     }
 
     saved_reason = context->reason;
@@ -123,27 +123,27 @@ static control_result_e control_call_callback(control_controller_callback_t call
     return result;
 }
 
-static control_result_e control_stop_active(control_domain_e domain,
-                                            control_transition_reason_e reason,
-                                            control_context_t *context)
+static ControlResult control_stop_active(ControlDomain domain,
+                                            ControlReason reason,
+                                            ControlCtx *context)
 {
     control_domain_state_t *domain_state;
-    const control_controller_t *controller;
-    control_controller_callback_t callback;
-    control_result_e result;
+    const ControlController *controller;
+    ControlCallback callback;
+    ControlResult result;
 
     if (control_domain_valid(domain) == 0u)
     {
-        return CONTROL_RESULT_BAD_ARGUMENT;
+        return ControlResultBadArgument;
     }
 
     domain_state = &s_domain[domain];
     controller = domain_state->active;
     if (controller == NULL)
     {
-        domain_state->state = CONTROL_STATE_STOPPED;
-        domain_state->last_result = CONTROL_RESULT_NOT_ACTIVE;
-        return CONTROL_RESULT_NOT_ACTIVE;
+        domain_state->state = ControlStateStopped;
+        domain_state->last_result = ControlResultNotActive;
+        return ControlResultNotActive;
     }
 
     callback = (control_reason_uses_stop_callback(reason) != 0u) ? controller->stop : controller->exit;
@@ -152,7 +152,7 @@ static control_result_e control_stop_active(control_domain_e domain,
     CONTROL_MANAGER_ENTER_CRITICAL();
     s_active_claim_mask &= ~controller->claim_mask;
     domain_state->active = NULL;
-    domain_state->state = (result == CONTROL_RESULT_OK) ? CONTROL_STATE_STOPPED : CONTROL_STATE_FAULT;
+    domain_state->state = (result == ControlResultOk) ? ControlStateStopped : ControlStateFault;
     domain_state->last_reason = reason;
     domain_state->last_result = result;
     domain_state->transition_count++;
@@ -161,28 +161,28 @@ static control_result_e control_stop_active(control_domain_e domain,
     return result;
 }
 
-static control_result_e control_start_controller(const control_controller_t *next,
-                                                 control_transition_reason_e reason,
-                                                 control_context_t *context)
+static ControlResult control_start_controller(const ControlController *next,
+                                                 ControlReason reason,
+                                                 ControlCtx *context)
 {
     control_domain_state_t *domain_state;
     uint32_t claims_without_domain;
-    control_result_e result;
+    ControlResult result;
 
     if (next == NULL)
     {
-        return CONTROL_RESULT_NOT_FOUND;
+        return ControlResultNotFound;
     }
     if (control_domain_valid(next->domain) == 0u)
     {
-        return CONTROL_RESULT_BAD_ARGUMENT;
+        return ControlResultBadArgument;
     }
 
     domain_state = &s_domain[next->domain];
     if (domain_state->active != NULL && domain_state->active->id == next->id)
     {
-        domain_state->last_result = CONTROL_RESULT_OK;
-        return CONTROL_RESULT_OK;
+        domain_state->last_result = ControlResultOk;
+        return ControlResultOk;
     }
 
     claims_without_domain = s_active_claim_mask;
@@ -193,15 +193,15 @@ static control_result_e control_start_controller(const control_controller_t *nex
 
     if ((claims_without_domain & next->claim_mask) != 0u)
     {
-        domain_state->last_result = CONTROL_RESULT_RESOURCE_BUSY;
+        domain_state->last_result = ControlResultResourceBusy;
         domain_state->reject_count++;
-        return CONTROL_RESULT_RESOURCE_BUSY;
+        return ControlResultResourceBusy;
     }
 
     if (domain_state->active != NULL)
     {
         result = control_stop_active(next->domain, reason, context);
-        if (result != CONTROL_RESULT_OK)
+        if (result != ControlResultOk)
         {
             domain_state->reject_count++;
             return result;
@@ -210,19 +210,19 @@ static control_result_e control_start_controller(const control_controller_t *nex
 
     CONTROL_MANAGER_ENTER_CRITICAL();
     domain_state->active = next;
-    domain_state->state = CONTROL_STATE_RUNNING;
+    domain_state->state = ControlStateRunning;
     domain_state->last_reason = reason;
-    domain_state->last_result = CONTROL_RESULT_OK;
+    domain_state->last_result = ControlResultOk;
     s_active_claim_mask = claims_without_domain | next->claim_mask;
     CONTROL_MANAGER_EXIT_CRITICAL();
 
     result = control_call_callback(next->enter, next, context, reason);
-    if (result != CONTROL_RESULT_OK)
+    if (result != ControlResultOk)
     {
         CONTROL_MANAGER_ENTER_CRITICAL();
         s_active_claim_mask &= ~next->claim_mask;
         domain_state->active = NULL;
-        domain_state->state = CONTROL_STATE_FAULT;
+        domain_state->state = ControlStateFault;
         domain_state->last_result = result;
         domain_state->transition_count++;
         domain_state->reject_count++;
@@ -233,20 +233,20 @@ static control_result_e control_start_controller(const control_controller_t *nex
     CONTROL_MANAGER_ENTER_CRITICAL();
     domain_state->transition_count++;
     CONTROL_MANAGER_EXIT_CRITICAL();
-    return CONTROL_RESULT_OK;
+    return ControlResultOk;
 }
 
-static control_result_e control_apply_pending(control_domain_e domain, control_context_t *context)
+static ControlResult control_apply_pending(ControlDomain domain, ControlCtx *context)
 {
     control_domain_state_t *domain_state;
-    control_request_e request;
+    ControlRequest request;
     uint16_t pending_id;
-    control_transition_reason_e reason;
-    const control_controller_t *next;
+    ControlReason reason;
+    const ControlController *next;
 
     if (control_domain_valid(domain) == 0u)
     {
-        return CONTROL_RESULT_BAD_ARGUMENT;
+        return ControlResultBadArgument;
     }
 
     domain_state = &s_domain[domain];
@@ -255,36 +255,36 @@ static control_result_e control_apply_pending(control_domain_e domain, control_c
     request = domain_state->pending_request;
     pending_id = domain_state->pending_id;
     reason = domain_state->pending_reason;
-    domain_state->pending_request = CONTROL_REQUEST_NONE;
-    domain_state->pending_id = CONTROL_CONTROLLER_NONE;
-    domain_state->pending_reason = CONTROL_REASON_NONE;
+    domain_state->pending_request = ControlRequestNone;
+    domain_state->pending_id = ControlIdNone;
+    domain_state->pending_reason = ControlReasonNone;
     CONTROL_MANAGER_EXIT_CRITICAL();
 
     switch (request)
     {
-    case CONTROL_REQUEST_NONE:
-        return CONTROL_RESULT_OK;
-    case CONTROL_REQUEST_STOP:
+    case ControlRequestNone:
+        return ControlResultOk;
+    case ControlRequestStop:
         return control_stop_active(domain, reason, context);
-    case CONTROL_REQUEST_SWITCH:
+    case ControlRequestSwitch:
         next = control_find(pending_id);
         if (next == NULL)
         {
-            domain_state->last_result = CONTROL_RESULT_NOT_FOUND;
+            domain_state->last_result = ControlResultNotFound;
             domain_state->reject_count++;
-            return CONTROL_RESULT_NOT_FOUND;
+            return ControlResultNotFound;
         }
         if (next->domain != domain)
         {
-            domain_state->last_result = CONTROL_RESULT_DOMAIN_MISMATCH;
+            domain_state->last_result = ControlResultDomainMismatch;
             domain_state->reject_count++;
-            return CONTROL_RESULT_DOMAIN_MISMATCH;
+            return ControlResultDomainMismatch;
         }
         return control_start_controller(next, reason, context);
     default:
-        domain_state->last_result = CONTROL_RESULT_BAD_ARGUMENT;
+        domain_state->last_result = ControlResultBadArgument;
         domain_state->reject_count++;
-        return CONTROL_RESULT_BAD_ARGUMENT;
+        return ControlResultBadArgument;
     }
 }
 
@@ -296,14 +296,14 @@ static void control_reset_state_unlocked(void)
     s_inited = 1u;
 }
 
-void control_manager_reset(void)
+void ControlMgrReset(void)
 {
     CONTROL_MANAGER_ENTER_CRITICAL();
     control_reset_state_unlocked();
     CONTROL_MANAGER_EXIT_CRITICAL();
 }
 
-void control_manager_init(void)
+void ControlMgrInit(void)
 {
     CONTROL_MANAGER_ENTER_CRITICAL();
     if (s_inited == 0u)
@@ -313,48 +313,48 @@ void control_manager_init(void)
     CONTROL_MANAGER_EXIT_CRITICAL();
 }
 
-const char *control_domain_name(control_domain_e domain)
+const char *ControlDomainName(ControlDomain domain)
 {
     switch (domain)
     {
-    case CONTROL_DOMAIN_CHASSIS:
+    case ControlDomainChassis:
         return "domain.chassis";
-    case CONTROL_DOMAIN_GIMBAL:
+    case ControlDomainGimbal:
         return "domain.gimbal";
-    case CONTROL_DOMAIN_SHOOT:
+    case ControlDomainShoot:
         return "domain.shoot";
-    case CONTROL_DOMAIN_ARM:
+    case ControlDomainArm:
         return "domain.arm";
-    case CONTROL_DOMAIN_WHEELLEG:
+    case ControlDomainWheelleg:
         return "domain.wheelleg";
-    case CONTROL_DOMAIN_SYSTEM:
+    case ControlDomainSystem:
         return "domain.system";
     default:
         return NULL;
     }
 }
 
-control_result_e control_manager_register(const control_controller_t *controller)
+ControlResult ControlMgrRegister(const ControlController *controller)
 {
-    control_result_e result = CONTROL_RESULT_OK;
+    ControlResult result = ControlResultOk;
 
-    control_manager_init();
+    ControlMgrInit();
 
     if (controller == NULL ||
-        controller->id == CONTROL_CONTROLLER_NONE ||
+        controller->id == ControlIdNone ||
         control_domain_valid(controller->domain) == 0u)
     {
-        return CONTROL_RESULT_BAD_ARGUMENT;
+        return ControlResultBadArgument;
     }
 
     CONTROL_MANAGER_ENTER_CRITICAL();
     if (control_find(controller->id) != NULL)
     {
-        result = CONTROL_RESULT_DUPLICATE;
+        result = ControlResultDuplicate;
     }
-    else if (s_registry.count >= (uint8_t)CONTROL_MANAGER_MAX_CONTROLLERS)
+    else if (s_registry.count >= (uint8_t)CONTROL_MGR_MAX_CONTROLLERS)
     {
-        result = CONTROL_RESULT_FULL;
+        result = ControlResultFull;
     }
     else
     {
@@ -366,11 +366,11 @@ control_result_e control_manager_register(const control_controller_t *controller
     return result;
 }
 
-uint8_t control_manager_registered_count(void)
+uint8_t ControlMgrCount(void)
 {
     uint8_t count;
 
-    control_manager_init();
+    ControlMgrInit();
 
     CONTROL_MANAGER_ENTER_CRITICAL();
     count = s_registry.count;
@@ -378,11 +378,11 @@ uint8_t control_manager_registered_count(void)
     return count;
 }
 
-const control_controller_t *control_manager_get_registered(uint8_t index)
+const ControlController *ControlMgrGet(uint8_t index)
 {
-    const control_controller_t *controller = NULL;
+    const ControlController *controller = NULL;
 
-    control_manager_init();
+    ControlMgrInit();
 
     CONTROL_MANAGER_ENTER_CRITICAL();
     if (index < s_registry.count)
@@ -394,11 +394,11 @@ const control_controller_t *control_manager_get_registered(uint8_t index)
     return controller;
 }
 
-const control_controller_t *control_manager_find_registered_by_name(const char *name)
+const ControlController *ControlMgrFindByName(const char *name)
 {
-    const control_controller_t *controller = NULL;
+    const ControlController *controller = NULL;
 
-    control_manager_init();
+    ControlMgrInit();
 
     CONTROL_MANAGER_ENTER_CRITICAL();
     controller = control_find_by_name(name);
@@ -407,14 +407,14 @@ const control_controller_t *control_manager_find_registered_by_name(const char *
     return controller;
 }
 
-uint16_t control_manager_find_registered_id_by_name(const char *name)
+uint16_t ControlMgrFindIdByName(const char *name)
 {
-    const control_controller_t *controller = control_manager_find_registered_by_name(name);
+    const ControlController *controller = ControlMgrFindByName(name);
 
-    return (controller != NULL) ? controller->id : CONTROL_CONTROLLER_NONE;
+    return (controller != NULL) ? controller->id : ControlIdNone;
 }
 
-const char *control_controller_input_name(const control_controller_t *controller, uint8_t index)
+const char *ControlInputName(const ControlController *controller, uint8_t index)
 {
     if (controller == NULL ||
         controller->meta.inputs == NULL ||
@@ -426,7 +426,7 @@ const char *control_controller_input_name(const control_controller_t *controller
     return controller->meta.inputs[index];
 }
 
-const char *control_controller_output_name(const control_controller_t *controller, uint8_t index)
+const char *ControlOutputName(const ControlController *controller, uint8_t index)
 {
     if (controller == NULL ||
         controller->meta.outputs == NULL ||
@@ -438,12 +438,12 @@ const char *control_controller_output_name(const control_controller_t *controlle
     return controller->meta.outputs[index];
 }
 
-uint16_t control_controller_period_ms(const control_controller_t *controller)
+uint16_t ControlPeriodMs(const ControlController *controller)
 {
     return (controller != NULL) ? controller->meta.period_ms : 0u;
 }
 
-uint8_t control_controller_due(const control_controller_t *controller, uint32_t tick_ms)
+uint8_t ControlDue(const ControlController *controller, uint32_t tick_ms)
 {
     uint32_t period_ms;
     uint32_t phase_ms;
@@ -463,116 +463,116 @@ uint8_t control_controller_due(const control_controller_t *controller, uint32_t 
     return (((tick_ms + period_ms - phase_ms) % period_ms) == 0u) ? 1u : 0u;
 }
 
-uint8_t control_controller_input_count(const control_controller_t *controller)
+uint8_t ControlInputCount(const ControlController *controller)
 {
     return (controller != NULL) ? controller->meta.input_count : 0u;
 }
 
-uint8_t control_controller_output_count(const control_controller_t *controller)
+uint8_t ControlOutputCount(const ControlController *controller)
 {
     return (controller != NULL) ? controller->meta.output_count : 0u;
 }
 
-control_result_e control_manager_request_switch(uint16_t controller_id, control_transition_reason_e reason)
+ControlResult ControlMgrSwitch(uint16_t controller_id, ControlReason reason)
 {
-    const control_controller_t *controller;
+    const ControlController *controller;
     control_domain_state_t *domain_state;
 
-    control_manager_init();
+    ControlMgrInit();
     controller = control_find(controller_id);
     if (controller == NULL)
     {
-        return CONTROL_RESULT_NOT_FOUND;
+        return ControlResultNotFound;
     }
     if (control_domain_valid(controller->domain) == 0u)
     {
-        return CONTROL_RESULT_BAD_ARGUMENT;
+        return ControlResultBadArgument;
     }
 
     domain_state = &s_domain[controller->domain];
     CONTROL_MANAGER_ENTER_CRITICAL();
     domain_state->pending_id = controller_id;
     domain_state->pending_reason = reason;
-    domain_state->pending_request = CONTROL_REQUEST_SWITCH;
+    domain_state->pending_request = ControlRequestSwitch;
     CONTROL_MANAGER_EXIT_CRITICAL();
 
-    return CONTROL_RESULT_OK;
+    return ControlResultOk;
 }
 
-control_result_e control_manager_request_switch_by_name(const char *name, control_transition_reason_e reason)
+ControlResult ControlMgrSwitchByName(const char *name, ControlReason reason)
 {
-    const uint16_t id = control_manager_find_registered_id_by_name(name);
+    const uint16_t id = ControlMgrFindIdByName(name);
 
-    if (id == CONTROL_CONTROLLER_NONE)
+    if (id == ControlIdNone)
     {
-        return CONTROL_RESULT_NOT_FOUND;
+        return ControlResultNotFound;
     }
 
-    return control_manager_request_switch(id, reason);
+    return ControlMgrSwitch(id, reason);
 }
 
-control_result_e control_manager_request_stop(control_domain_e domain, control_transition_reason_e reason)
+ControlResult ControlMgrStop(ControlDomain domain, ControlReason reason)
 {
     control_domain_state_t *domain_state;
 
-    control_manager_init();
+    ControlMgrInit();
     if (control_domain_valid(domain) == 0u)
     {
-        return CONTROL_RESULT_BAD_ARGUMENT;
+        return ControlResultBadArgument;
     }
 
     domain_state = &s_domain[domain];
     CONTROL_MANAGER_ENTER_CRITICAL();
-    domain_state->pending_id = CONTROL_CONTROLLER_NONE;
+    domain_state->pending_id = ControlIdNone;
     domain_state->pending_reason = reason;
-    domain_state->pending_request = CONTROL_REQUEST_STOP;
+    domain_state->pending_request = ControlRequestStop;
     CONTROL_MANAGER_EXIT_CRITICAL();
 
-    return CONTROL_RESULT_OK;
+    return ControlResultOk;
 }
 
-void control_manager_request_stop_all(control_transition_reason_e reason)
+void ControlMgrStopAll(ControlReason reason)
 {
-    control_manager_init();
-    for (uint8_t i = 0u; i < (uint8_t)CONTROL_DOMAIN__COUNT; i++)
+    ControlMgrInit();
+    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
     {
-        (void)control_manager_request_stop((control_domain_e)i, reason);
+        (void)ControlMgrStop((ControlDomain)i, reason);
     }
 }
 
-void control_manager_clear_pending(control_domain_e domain)
+void ControlMgrClearPending(ControlDomain domain)
 {
     if (control_domain_valid(domain) == 0u)
     {
         return;
     }
 
-    control_manager_init();
+    ControlMgrInit();
     CONTROL_MANAGER_ENTER_CRITICAL();
-    s_domain[domain].pending_request = CONTROL_REQUEST_NONE;
-    s_domain[domain].pending_id = CONTROL_CONTROLLER_NONE;
-    s_domain[domain].pending_reason = CONTROL_REASON_NONE;
+    s_domain[domain].pending_request = ControlRequestNone;
+    s_domain[domain].pending_id = ControlIdNone;
+    s_domain[domain].pending_reason = ControlReasonNone;
     CONTROL_MANAGER_EXIT_CRITICAL();
 }
 
-control_result_e control_manager_update_domain(control_domain_e domain, control_context_t *context)
+ControlResult ControlMgrUpdateDomain(ControlDomain domain, ControlCtx *context)
 {
     control_domain_state_t *domain_state;
-    const control_controller_t *active;
-    control_context_t local_context;
-    control_result_e result;
+    const ControlController *active;
+    ControlCtx local_context;
+    ControlResult result;
 
-    control_manager_init();
+    ControlMgrInit();
     if (control_domain_valid(domain) == 0u)
     {
-        return CONTROL_RESULT_BAD_ARGUMENT;
+        return ControlResultBadArgument;
     }
 
     context = control_context_or_local(context, &local_context);
     domain_state = &s_domain[domain];
 
     result = control_apply_pending(domain, context);
-    if (result != CONTROL_RESULT_OK && result != CONTROL_RESULT_NOT_ACTIVE)
+    if (result != ControlResultOk && result != ControlResultNotActive)
     {
         return result;
     }
@@ -580,33 +580,33 @@ control_result_e control_manager_update_domain(control_domain_e domain, control_
     active = domain_state->active;
     if (active == NULL)
     {
-        return CONTROL_RESULT_NOT_ACTIVE;
+        return ControlResultNotActive;
     }
 
-    result = control_call_callback(active->update, active, context, CONTROL_REASON_NONE);
+    result = control_call_callback(active->update, active, context, ControlReasonNone);
     domain_state->update_count++;
     domain_state->last_result = result;
-    if (result != CONTROL_RESULT_OK)
+    if (result != ControlResultOk)
     {
-        (void)control_stop_active(domain, CONTROL_REASON_FAULT, context);
-        domain_state->state = CONTROL_STATE_FAULT;
+        (void)control_stop_active(domain, ControlReasonFault, context);
+        domain_state->state = ControlStateFault;
         domain_state->last_result = result;
-        return CONTROL_RESULT_CALLBACK_FAILED;
+        return ControlResultCallbackFailed;
     }
 
-    return CONTROL_RESULT_OK;
+    return ControlResultOk;
 }
 
-control_result_e control_manager_update_all(control_context_t *context)
+ControlResult ControlMgrUpdateAll(ControlCtx *context)
 {
-    control_result_e first_error = CONTROL_RESULT_OK;
+    ControlResult first_error = ControlResultOk;
 
-    for (uint8_t i = 0u; i < (uint8_t)CONTROL_DOMAIN__COUNT; i++)
+    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
     {
-        control_result_e result = control_manager_update_domain((control_domain_e)i, context);
-        if (first_error == CONTROL_RESULT_OK &&
-            result != CONTROL_RESULT_OK &&
-            result != CONTROL_RESULT_NOT_ACTIVE)
+        ControlResult result = ControlMgrUpdateDomain((ControlDomain)i, context);
+        if (first_error == ControlResultOk &&
+            result != ControlResultOk &&
+            result != ControlResultNotActive)
         {
             first_error = result;
         }
@@ -615,17 +615,17 @@ control_result_e control_manager_update_all(control_context_t *context)
     return first_error;
 }
 
-control_result_e control_manager_update_domain_due(control_domain_e domain, uint32_t tick_ms, control_context_t *context)
+ControlResult ControlMgrUpdateDomainDue(ControlDomain domain, uint32_t tick_ms, ControlCtx *context)
 {
     control_domain_state_t *domain_state;
-    const control_controller_t *active;
-    control_context_t local_context;
-    control_result_e result;
+    const ControlController *active;
+    ControlCtx local_context;
+    ControlResult result;
 
-    control_manager_init();
+    ControlMgrInit();
     if (control_domain_valid(domain) == 0u)
     {
-        return CONTROL_RESULT_BAD_ARGUMENT;
+        return ControlResultBadArgument;
     }
 
     context = control_context_or_local(context, &local_context);
@@ -633,7 +633,7 @@ control_result_e control_manager_update_domain_due(control_domain_e domain, uint
     domain_state = &s_domain[domain];
 
     result = control_apply_pending(domain, context);
-    if (result != CONTROL_RESULT_OK && result != CONTROL_RESULT_NOT_ACTIVE)
+    if (result != ControlResultOk && result != ControlResultNotActive)
     {
         return result;
     }
@@ -641,38 +641,38 @@ control_result_e control_manager_update_domain_due(control_domain_e domain, uint
     active = domain_state->active;
     if (active == NULL)
     {
-        return CONTROL_RESULT_NOT_ACTIVE;
+        return ControlResultNotActive;
     }
-    if (control_controller_due(active, tick_ms) == 0u)
+    if (ControlDue(active, tick_ms) == 0u)
     {
-        return CONTROL_RESULT_NOT_DUE;
+        return ControlResultNotDue;
     }
 
-    result = control_call_callback(active->update, active, context, CONTROL_REASON_NONE);
+    result = control_call_callback(active->update, active, context, ControlReasonNone);
     domain_state->update_count++;
     domain_state->last_result = result;
-    if (result != CONTROL_RESULT_OK)
+    if (result != ControlResultOk)
     {
-        (void)control_stop_active(domain, CONTROL_REASON_FAULT, context);
-        domain_state->state = CONTROL_STATE_FAULT;
+        (void)control_stop_active(domain, ControlReasonFault, context);
+        domain_state->state = ControlStateFault;
         domain_state->last_result = result;
-        return CONTROL_RESULT_CALLBACK_FAILED;
+        return ControlResultCallbackFailed;
     }
 
-    return CONTROL_RESULT_OK;
+    return ControlResultOk;
 }
 
-control_result_e control_manager_update_due_all(uint32_t tick_ms, control_context_t *context)
+ControlResult ControlMgrUpdateDueAll(uint32_t tick_ms, ControlCtx *context)
 {
-    control_result_e first_error = CONTROL_RESULT_OK;
+    ControlResult first_error = ControlResultOk;
 
-    for (uint8_t i = 0u; i < (uint8_t)CONTROL_DOMAIN__COUNT; i++)
+    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
     {
-        control_result_e result = control_manager_update_domain_due((control_domain_e)i, tick_ms, context);
-        if (first_error == CONTROL_RESULT_OK &&
-            result != CONTROL_RESULT_OK &&
-            result != CONTROL_RESULT_NOT_ACTIVE &&
-            result != CONTROL_RESULT_NOT_DUE)
+        ControlResult result = ControlMgrUpdateDomainDue((ControlDomain)i, tick_ms, context);
+        if (first_error == ControlResultOk &&
+            result != ControlResultOk &&
+            result != ControlResultNotActive &&
+            result != ControlResultNotDue)
         {
             first_error = result;
         }
@@ -681,13 +681,13 @@ control_result_e control_manager_update_due_all(uint32_t tick_ms, control_contex
     return first_error;
 }
 
-uint8_t control_manager_is_active(uint16_t controller_id)
+uint8_t ControlMgrIsActive(uint16_t controller_id)
 {
     uint8_t active = 0u;
 
-    control_manager_init();
+    ControlMgrInit();
     CONTROL_MANAGER_ENTER_CRITICAL();
-    for (uint8_t i = 0u; i < (uint8_t)CONTROL_DOMAIN__COUNT; i++)
+    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
     {
         if (s_domain[i].active != NULL && s_domain[i].active->id == controller_id)
         {
@@ -699,26 +699,26 @@ uint8_t control_manager_is_active(uint16_t controller_id)
     return active;
 }
 
-uint8_t control_manager_is_active_by_name(const char *name)
+uint8_t ControlMgrIsActiveByName(const char *name)
 {
-    const uint16_t id = control_manager_find_registered_id_by_name(name);
+    const uint16_t id = ControlMgrFindIdByName(name);
 
-    if (id == CONTROL_CONTROLLER_NONE)
+    if (id == ControlIdNone)
     {
         return 0u;
     }
 
-    return control_manager_is_active(id);
+    return ControlMgrIsActive(id);
 }
 
-uint16_t control_manager_active_id(control_domain_e domain)
+uint16_t ControlMgrActiveId(ControlDomain domain)
 {
-    uint16_t active_id = CONTROL_CONTROLLER_NONE;
+    uint16_t active_id = ControlIdNone;
 
-    control_manager_init();
+    ControlMgrInit();
     if (control_domain_valid(domain) == 0u)
     {
-        return CONTROL_CONTROLLER_NONE;
+        return ControlIdNone;
     }
 
     CONTROL_MANAGER_ENTER_CRITICAL();
@@ -730,11 +730,11 @@ uint16_t control_manager_active_id(control_domain_e domain)
     return active_id;
 }
 
-const char *control_manager_active_name(control_domain_e domain)
+const char *ControlMgrActiveName(ControlDomain domain)
 {
     const char *name = NULL;
 
-    control_manager_init();
+    ControlMgrInit();
     if (control_domain_valid(domain) == 0u)
     {
         return NULL;
@@ -749,14 +749,14 @@ const char *control_manager_active_name(control_domain_e domain)
     return name;
 }
 
-control_result_e control_manager_get_domain_status(control_domain_e domain, control_domain_status_t *out)
+ControlResult ControlMgrGetStatus(ControlDomain domain, ControlStatus *out)
 {
     const control_domain_state_t *domain_state;
 
-    control_manager_init();
+    ControlMgrInit();
     if (control_domain_valid(domain) == 0u || out == NULL)
     {
-        return CONTROL_RESULT_BAD_ARGUMENT;
+        return ControlResultBadArgument;
     }
 
     CONTROL_MANAGER_ENTER_CRITICAL();
@@ -780,14 +780,14 @@ control_result_e control_manager_get_domain_status(control_domain_e domain, cont
     }
     CONTROL_MANAGER_EXIT_CRITICAL();
 
-    return CONTROL_RESULT_OK;
+    return ControlResultOk;
 }
 
-uint32_t control_manager_active_claim_mask(void)
+uint32_t ControlMgrActiveClaimMask(void)
 {
     uint32_t claim_mask;
 
-    control_manager_init();
+    ControlMgrInit();
 
     CONTROL_MANAGER_ENTER_CRITICAL();
     claim_mask = s_active_claim_mask;

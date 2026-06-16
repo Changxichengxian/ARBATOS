@@ -31,7 +31,7 @@
 #include "manual_input.h"
 #include "mem_mang.h"
 #include "motor_config.h"
-#include "motor_instance.h"
+#include "MotorInst.h"
 #include "robot_task_profile.h"
 #include "shoot_state.h"
 #include "user_lib.h"
@@ -92,7 +92,7 @@ static void aux_telem_prepare_motor_id_cache(aux_telem_motor_id_cache_t *cache)
         return;
     }
 
-    resolved = motor_instance_actuator_id_by_name(cache->name);
+    resolved = MotorInstIdByName(cache->name);
     cache->resolved_id = (resolved != MotorCount) ? resolved : cache->fallback_id;
     cache->ready = 1u;
 }

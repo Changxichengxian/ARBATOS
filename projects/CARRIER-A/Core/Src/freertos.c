@@ -34,13 +34,13 @@
 #include "detect_task.h"
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
-#include "sdlog_task.h"
+#include "SdLogTask.h"
 #endif
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-#include "can_feedback_rx_task.h"
+#include "CanRxTask.h"
 #endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-#include "can_command_tx_task.h"
+#include "CanTxTask.h"
 #endif
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
 #include "chassis_control_task.h"
@@ -52,7 +52,7 @@
 #include "INS_task.h"
 #endif
 #include "app_task_bootstrap.h"
-#include "control_manager.h"
+#include "ControlMgr.h"
 #include "robot_fault_guard.h"
 #include "robot_control_registry.h"
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
@@ -172,23 +172,23 @@ static osThreadId_t app_create_health_monitor_task(void)
 #endif
 
 #if ROBOT_TASK_BUILD_SDLOG
-static osThreadId_t app_create_sdlog_task(void)
+static osThreadId_t app_create_SdLogTask(void)
 {
-  return APP_THREAD_CREATE(sdlogTask, sdlog_task);
+  return APP_THREAD_CREATE(sdlogTask, SdLogTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-static osThreadId_t app_create_can_command_tx_task(void)
+static osThreadId_t app_create_CanTxTask(void)
 {
-  return APP_THREAD_CREATE(canCommandTxTask, can_command_tx_task);
+  return APP_THREAD_CREATE(canCommandTxTask, CanTxTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-static osThreadId_t app_create_can_feedback_rx_task(void)
+static osThreadId_t app_create_CanRxTask(void)
 {
-  return APP_THREAD_CREATE(canFeedbackRxTask, can_feedback_rx_task);
+  return APP_THREAD_CREATE(canFeedbackRxTask, CanRxTask);
 }
 #endif
 
@@ -238,13 +238,13 @@ static void app_create_module_tasks(void)
     {ROBOT_TASK_MODULE_HEALTH_MONITOR, &detectTaskHandle, app_create_health_monitor_task},
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
-    {ROBOT_TASK_MODULE_SDLOG, &sdlogTaskHandle, app_create_sdlog_task},
+    {ROBOT_TASK_MODULE_SDLOG, &sdlogTaskHandle, app_create_SdLogTask},
 #endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-    {ROBOT_TASK_MODULE_CAN_COMMAND_TX, &canCommandTxTaskHandle, app_create_can_command_tx_task},
+    {ROBOT_TASK_MODULE_CAN_COMMAND_TX, &canCommandTxTaskHandle, app_create_CanTxTask},
 #endif
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-    {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, &canFeedbackRxTaskHandle, app_create_can_feedback_rx_task},
+    {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, &canFeedbackRxTaskHandle, app_create_CanRxTask},
 #endif
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
     {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, &chassisControlTaskHandle, app_create_chassis_control_task},

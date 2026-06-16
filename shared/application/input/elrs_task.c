@@ -18,7 +18,7 @@
 #include "config.h"
 #include "watch.h"
 #include "manual_input.h"
-#include "sdlog.h"
+#include "SdLog.h"
 
 extern void Error_Handler(void);
 
@@ -411,7 +411,7 @@ static void elrs_link_decode_rc_channels(const uint8_t *payload, uint8_t payload
     {
         pkt.rc_ctrl[i] = rc_bytes[i];
     }
-    sdlog_write(SDLOG_TAG_RC_CRSF, &pkt, (uint16_t)sizeof(pkt));
+    SdLogWrite(SDLOG_TAG_RC_CRSF, &pkt, (uint16_t)sizeof(pkt));
 
     elrs_link_last_frame_tick_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
     elrs_link_frame_cnt++;

@@ -28,7 +28,7 @@ The current codebase is beyond a basic STM32 port. It includes:
   Unitree protocols.
 - Runtime motor instances, a device table, controller registry, and
   `watch.runtime` observation for moving away from hard-coded robot roles.
-- Diagnostics and logging through `g_watch`, `rt_profiler`, TF/SD binary logs,
+- Diagnostics and logging through `g_watch`, `RtProf`, TF/SD binary logs,
   build identity records, runtime device records, AUX telemetry, and temporary
   AUX parameter tuning.
 - Local checks, Keil project manifest extraction, generated GCC/CMake firmware
@@ -154,7 +154,7 @@ main.c
         |
         +-- MX_FREERTOS_Init()
               |
-              +-- control_manager_init()
+              +-- ControlMgrInit()
               +-- create static tasks
               +-- create enabled modules from g_config.profile.task_modules
 ```
@@ -213,7 +213,7 @@ DBUS/SBUS       ELRS/CRSF       image remote       board keys
                            |
                     LowCmd
                            |
-                  can_command_tx_task
+                  CanTxTask
                            |
                     CAN / RS485 output
 ```
@@ -225,9 +225,9 @@ CAN interrupt
   |
 bsp_can RX ring buffer
   |
-can_feedback_rx_task
+CanRxTask
   |
-CAN_receive / motor_instance
+CAN_receive / MotorInst
   |
 LowState and legacy motor feedback structs
   |
@@ -256,11 +256,11 @@ Useful entry points:
 | Actuator commands | `shared/application/robot/LowCmd.c` |
 | Device configuration view | `shared/application/robot/robot_device_config.h` |
 | Runtime state store | `shared/application/robot/state_store.c`, `robot_state.h` |
-| Controller manager | `shared/application/robot/control_manager.c` |
-| Motor instances | `shared/application/motors/motor_instance.c` |
+| Controller manager | `shared/application/robot/ControlMgr.c` |
+| Motor instances | `shared/application/motors/MotorInst.c` |
 | Motor model database | `shared/application/motors/motor_model_db.c` |
-| CAN feedback | `shared/application/comm/can/can_feedback_rx_task.c`, `CAN_receive.c` |
-| CAN commands | `shared/application/comm/can/can_command_tx_task.c` |
+| CAN feedback | `shared/application/comm/can/CanRxTask.c`, `CAN_receive.c` |
+| CAN commands | `shared/application/comm/can/CanTxTask.c` |
 | Chassis control | `shared/application/chassis/chassis_control_task.c` |
 | Gimbal control | `shared/application/gimbal/gimbal_control_task.c` |
 | Shooter control | `shared/application/shoot/shoot.c` |
@@ -268,8 +268,8 @@ Useful entry points:
 | Wheel-leg control | `shared/application/wheelleg/wheelleg_mit_task.c` |
 | Battery monitor | `shared/application/services/battery/battery_monitor_task.c` |
 | Calibration | `shared/application/services/calibration/` |
-| Diagnostics | `shared/application/services/diagnostics/watch.c`, `rt_profiler.c` |
-| SD logging | `shared/application/services/storage/sdlog.c`, `sdlog_task.c` |
+| Diagnostics | `shared/application/services/diagnostics/watch.c`, `RtProf.c` |
+| SD logging | `shared/application/services/storage/SdLog.c`, `SdLogTask.c` |
 
 ## Configuration Model
 
@@ -381,18 +381,18 @@ Main diagnostics surfaces:
 
 - `g_watch`: watch-window friendly runtime state.
 - `watch.c`: task, device, actuator, controller, and fault summary.
-- `rt_profiler.c`: loop timing, maximum time, and over-budget counters.
+- `RtProf.c`: loop timing, maximum time, and over-budget counters.
 - `detect_task.c`: target-specific online detection and status aggregation.
-- `sdlog.c` and `sdlog_task.c`: TF/SD binary logging through an in-memory ring
+- `SdLog.c` and `SdLogTask.c`: TF/SD binary logging through an in-memory ring
   buffer and a low-priority file flush task.
 - `BUILD_INFO`: target, board, 16-character Git commit prefix, dirty flag, build
   time, config CRC, and schema information written into logs.
 - `host_link_task.c`: AUX telemetry and temporary parameter tuning.
 
-High-rate tasks may call `sdlog_write()`, but that still copies payload data and
+High-rate tasks may call `SdLogWrite()`, but that still copies payload data and
 enters a short critical section. New high-rate logs should be added carefully,
 with frequency, payload size, and worst-case loop cost checked through real
-`rt_profiler` data.
+`RtProf` data.
 
 See `manual/sdlog.md` for log usage, decompression, baseline retention, and tag
 rules. See `manual/evaluation-boundaries.md` for SD release discipline and the
@@ -453,7 +453,7 @@ For detailed workflows, start with `QUICK_START.md` and `manual/README.md`.
 3. Add or extend protocol drivers if the existing RM, DM, MIT-style, or Unitree
    paths do not cover the model.
 4. Wire receive parsing through `CAN_receive.c` and transmit formatting through
-   `can_command_tx_task.c`.
+   `CanTxTask.c`.
 5. Mount the model through `g_config.motor` in the relevant Robotconfig.
 
 ## Adding a Task Module

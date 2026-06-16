@@ -10,7 +10,7 @@ static void watch_copy_diag(void)
     memset(&g_watch.diag, 0, sizeof(g_watch.diag));
 
 #if WATCH_ENABLE_DIAG_COPY
-    sdlog_stats_t sd_stats = {0};
+    SdLogStats sd_stats = {0};
 
     g_watch.diag.offline_need_geometry = 1u;
     g_watch.diag.offline_need_mass_inertia = 1u;
@@ -30,7 +30,7 @@ static void watch_copy_diag(void)
     g_watch.diag.power_need_observer_speed = 1u;
     g_watch.diag.power_need_lqr_response = 1u;
 
-    sdlog_get_stats(&sd_stats);
+    SdLogGetStats(&sd_stats);
     g_watch.diag.live_sdlog_active = sd_stats.active;
     g_watch.diag.live_operation_mode = (uint8_t)robot_mode_current();
     g_watch.diag.live_imu_online =

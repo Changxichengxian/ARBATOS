@@ -15,7 +15,7 @@
 #include "bsp_usart.h"
 #include "main.h"
 #include "motor_config.h"
-#include "motor_instance.h"
+#include "MotorInst.h"
 #include "robot_safety.h"
 
 #include <string.h>
@@ -842,7 +842,7 @@ static void unitree_motor_refresh_feedback(MotorId actuator_id, const motor_node
     fb.temperature = (uint8_t)state->motor_temp;
     LowStateUpdateMotor(actuator_id, &fb);
 
-    measure = motor_instance_measure(actuator_id);
+    measure = MotorInstMeasure(actuator_id);
     if (measure != NULL)
     {
         measure->last_ecd = (int16_t)measure->ecd;

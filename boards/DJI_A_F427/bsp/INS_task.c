@@ -32,7 +32,7 @@
 #include "robot_mode.h"
 #include "control_input.h"
 #include "manual_input.h"
-#include "sdlog.h"
+#include "SdLog.h"
 
 #if defined(IMU_WATCH_ENABLE) && (IMU_WATCH_ENABLE != 0)
 #include "watch.h"
@@ -225,7 +225,7 @@ static void imu_sdlog_flush_base_stream(void)
     memcpy(&payload[sizeof(header)],
            s_imu_sdlog_base_stream.samples,
            (uint32_t)s_imu_sdlog_base_stream.sample_count * sizeof(sdlog_imu_base_sample_t));
-    sdlog_write(SDLOG_TAG_IMU_BASE_STREAM, payload, payload_len);
+    SdLogWrite(SDLOG_TAG_IMU_BASE_STREAM, payload, payload_len);
     s_imu_sdlog_base_stream.sample_count = 0u;
 }
 
@@ -243,7 +243,7 @@ static void imu_sdlog_append_base_sample(const sdlog_imu_base_sample_t *sample,
         period_us = 1000u;
     }
 
-    const uint8_t div = sdlog_high_rate_divider();
+    const uint8_t div = SdLogHighRateDiv();
     if (div > 1u)
     {
         const uint16_t slot = s_imu_sdlog_base_stream.sample_div_counter++;
@@ -635,7 +635,7 @@ void INS_task(void const *pvParameters)
                 pidlog.set = imu_temp_pid.set;
                 pidlog.fdb = imu_temp_pid.fdb;
                 pidlog.out = imu_temp_pid.out;
-                sdlog_write(SDLOG_TAG_PID, &pidlog, (uint16_t)sizeof(pidlog));
+                SdLogWrite(SDLOG_TAG_PID, &pidlog, (uint16_t)sizeof(pidlog));
             }
         }
         else if (raw_timeout)

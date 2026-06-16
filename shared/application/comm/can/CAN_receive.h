@@ -101,7 +101,7 @@ extern const motor_measure_t *get_trigger_motor_measure_point(void);
 extern const motor_measure_t *get_chassis_motor_measure_point(uint8_t i);
 extern const motor_measure_t *get_friction_motor_measure_point(uint8_t i);
 
-// Called by can_feedback_rx_task: update motor measures / detect / logging.
+// Called by CanRxTask: update motor measures / detect / logging.
 void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8]);
 
 #endif

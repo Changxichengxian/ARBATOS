@@ -9,7 +9,7 @@
 #pragma once
 
 #include "LowCmd.h"
-#include "control_manager.h"
+#include "ControlMgr.h"
 #include "config.h"
 #include "runtime_instance.h"
 #include "types.h"
@@ -48,7 +48,7 @@
 #define WATCH_RUNTIME_MAX_MOTORS MotorCount
 #endif
 #ifndef WATCH_RUNTIME_MAX_CONTROLLERS
-#define WATCH_RUNTIME_MAX_CONTROLLERS CONTROL_MANAGER_MAX_CONTROLLERS
+#define WATCH_RUNTIME_MAX_CONTROLLERS CONTROL_MGR_MAX_CONTROLLERS
 #endif
 #ifndef WATCH_RUNTIME_MAX_TASK_MODULES
 #define WATCH_RUNTIME_MAX_TASK_MODULES ROBOT_TASK_MODULE_MAX
@@ -189,8 +189,8 @@ typedef struct
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
     watch_task_diag_entry_t chassis_control_task;
 #endif
-    watch_task_diag_entry_t can_feedback_rx_task;
-    watch_task_diag_entry_t can_command_tx_task;
+    watch_task_diag_entry_t CanRxTask;
+    watch_task_diag_entry_t CanTxTask;
     watch_task_diag_entry_t rc_sbus_task;
     watch_task_diag_entry_t host_link_task;
     watch_task_diag_entry_t elrs_task;
@@ -824,15 +824,15 @@ typedef struct
     uint8_t board_kind;
     uint8_t board_can_bus_count;
     uint8_t board_has_fpu;
-    uint8_t rt_profiler_count;
-    uint8_t rt_profiler_active_count;
-    uint8_t rt_profiler_over_budget_count;
+    uint8_t rtProfCount;
+    uint8_t RtProfActive_count;
+    uint8_t RtProfOverBudget_count;
     uint8_t reserved0;
     uint32_t board_cpu_hz;
-    uint32_t rt_profiler_total_overrun_count;
-    uint32_t rt_profiler_max_last_us;
-    uint32_t rt_profiler_max_budget_us;
-    uint32_t rt_profiler_max_over_budget_us;
+    uint32_t rtProfTotalOverrun;
+    uint32_t rtProfMaxLastUs;
+    uint32_t rtProfMaxBudgetUs;
+    uint32_t rtProfMaxOverBudgetUs;
     uint32_t lowcmd_seq;
     uint32_t lowcmd_rejected_count;
     uint32_t lowcmd_emergency_stop_count;
@@ -847,7 +847,7 @@ typedef struct
     watch_runtime_task_module_t task_module[WATCH_RUNTIME_MAX_TASK_MODULES];
     watch_runtime_motor_t motor[WATCH_RUNTIME_MAX_MOTORS];
     watch_runtime_controller_t controller[WATCH_RUNTIME_MAX_CONTROLLERS];
-    watch_runtime_domain_t domain[CONTROL_DOMAIN__COUNT];
+    watch_runtime_domain_t domain[ControlDomainCount];
 } watch_runtime_t;
 
 typedef enum

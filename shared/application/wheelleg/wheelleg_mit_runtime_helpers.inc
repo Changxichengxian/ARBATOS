@@ -100,7 +100,7 @@ static uint8_t wheelleg_send_core_output(const wheelleg_core_output_t *out)
         return 0u;
     }
 
-    return motor_instance_cmd_set_state_torque_ids(ids, cmds, written);
+    return MotorInstSetStateTorqueIds(ids, cmds, written);
 }
 
 static void wheelleg_send_wheel_torques(const fp32 wheel_torque[WHEELLEG_SIDE_COUNT])

@@ -106,7 +106,7 @@ static uint8_t wheelleg_send_state_cmd(MotorId id,
     }
 
     control_core_cmd_set_state_torque(&cmd, position, velocity, kp, kd, torque);
-    return motor_instance_cmd_set_state_torque_id(id, &cmd);
+    return MotorInstSetStateTorqueId(id, &cmd);
 }
 
 static void wheelleg_clear_state_cmd(MotorId id)
@@ -116,7 +116,7 @@ static void wheelleg_clear_state_cmd(MotorId id)
         return;
     }
 
-    (void)motor_instance_cmd_clear_id(id);
+    (void)MotorInstClearId(id);
 }
 
 static void wheelleg_clear_leg_virtual_outputs(void)

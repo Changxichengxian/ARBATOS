@@ -341,10 +341,10 @@ function Test-UvProject {
     }
     if ($configHeader -match 'robot_device_config_table_t\s+devices\s*;' -and
         $configContent -notmatch '\.devices\s*=') {
-        Add-CheckError "$(Format-RepoPath $configC): cannot find .devices initializer; motor_instance now uses the runtime device table."
+        Add-CheckError "$(Format-RepoPath $configC): cannot find .devices initializer; MotorInst now uses the runtime device table."
     }
     if ($configContent -match '\.devices\s*=\s*\{\s*\.count\s*=\s*0u?\s*[,}]') {
-        Add-CheckError "$(Format-RepoPath $configC): runtime device table count is 0; motor_instance would have no configured devices."
+        Add-CheckError "$(Format-RepoPath $configC): runtime device table count is 0; MotorInst would have no configured devices."
     }
 
     $sourceSet = New-Object System.Collections.Generic.HashSet[string]
@@ -765,8 +765,8 @@ function Test-ProfileProductRules {
 function Test-RtProfilerDescriptors {
     Write-Host "[check] rt profiler descriptors"
 
-    $profilerHeader = Join-Path $script:RepoRoot "shared\application\services\diagnostics\rt_profiler.h"
-    $profilerSource = Join-Path $script:RepoRoot "shared\application\services\diagnostics\rt_profiler.c"
+    $profilerHeader = Join-Path $script:RepoRoot "shared\application\services\diagnostics\RtProf.h"
+    $profilerSource = Join-Path $script:RepoRoot "shared\application\services\diagnostics\RtProf.c"
     if (-not (Test-Path -LiteralPath $profilerHeader -PathType Leaf)) {
         Add-CheckError "Missing rt profiler header: $(Format-RepoPath $profilerHeader)"
         return
@@ -780,14 +780,14 @@ function Test-RtProfilerDescriptors {
     $sourceContent = Get-Content -LiteralPath $profilerSource -Raw
     $profilerIds = @([regex]::Matches($headerContent, '(?m)^\s*(RT_PROFILER_[A-Z0-9_]+)\s*(?:=|,)') |
         ForEach-Object { $_.Groups[1].Value } |
-        Where-Object { $_ -ne "RT_PROFILER_COUNT" } |
+        Where-Object { $_ -ne "RtProfCount" } |
         Select-Object -Unique)
 
     $descMatch = [regex]::Match($sourceContent,
-        's_rt_profiler_desc\s*\[[^\]]+\]\s*=\s*\{(?<body>.*?)\};',
+        'sRtProfDesc\s*\[[^\]]+\]\s*=\s*\{(?<body>.*?)\};',
         [System.Text.RegularExpressions.RegexOptions]::Singleline)
     if (-not $descMatch.Success) {
-        Add-CheckError "$(Format-RepoPath $profilerSource): cannot find s_rt_profiler_desc table."
+        Add-CheckError "$(Format-RepoPath $profilerSource): cannot find sRtProfDesc table."
         return
     }
 
@@ -998,24 +998,24 @@ function Test-HighRateApiBoundaries {
         "shared\application\chassis\chassis_control_task.c",
         "shared\application\gimbal\gimbal_control_task.c",
         "shared\application\shoot\shoot.c",
-        "shared\application\comm\can\can_command_tx_task.c",
+        "shared\application\comm\can\CanTxTask.c",
         "shared\application\wheelleg\wheelleg_mit_task.c"
     )
     $forbiddenPatterns = @(
         [pscustomobject]@{
-            Pattern = 'motor_instance_cmd_set_current_many_best_effort\s*\('
+            Pattern = 'MotorInstSetCurrentManyBestEffort\s*\('
             Message = 'resolve motor current outputs during init, then use current bindings in the fast loop.'
         },
         [pscustomobject]@{
-            Pattern = 'motor_instance_cmd_set_current_many\s*\('
+            Pattern = 'MotorInstSetCurrentMany\s*\('
             Message = 'name-based motor current output is not allowed in high-rate task sources.'
         },
         [pscustomobject]@{
-            Pattern = 'motor_instance_cmd_set_current\s*\('
+            Pattern = 'MotorInstSetCurrent\s*\('
             Message = 'name-based single motor current output is not allowed in high-rate task sources.'
         },
         [pscustomobject]@{
-            Pattern = 'motor_instance_find_by_name\s*\('
+            Pattern = 'MotorInstFindByName\s*\('
             Message = 'name lookup belongs in init/config/diagnostics paths, not high-rate task sources.'
         },
         [pscustomobject]@{
@@ -1023,7 +1023,7 @@ function Test-HighRateApiBoundaries {
             Message = 'device-table name lookup belongs in init/config/diagnostics paths, not high-rate task sources.'
         },
         [pscustomobject]@{
-            Pattern = 'control_manager_[A-Za-z0-9_]*by_name\s*\('
+            Pattern = 'ControlMgr[A-Za-z0-9]*ByName\s*\('
             Message = 'controller name lookup belongs in command or diagnostics paths, not high-rate task sources.'
         },
         [pscustomobject]@{
@@ -1051,7 +1051,7 @@ function Test-HighRateApiBoundaries {
 function Test-CanTxDeviceConfigBoundaries {
     Write-Host "[check] CAN TX device config boundaries"
 
-    $repoPath = "shared\application\comm\can\can_command_tx_task.c"
+    $repoPath = "shared\application\comm\can\CanTxTask.c"
     $fullPath = Join-Path $script:RepoRoot $repoPath
     if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
         Add-CheckError "Missing CAN TX source: $repoPath"
@@ -1082,7 +1082,7 @@ function Test-ControlRegistryBoundaries {
         }
     }
 
-    foreach ($forbidden in @("control_manager_request_switch_by_name", "control_manager_update_due_all")) {
+    foreach ($forbidden in @("ControlMgrSwitchByName", "ControlMgrUpdateDueAll")) {
         if ($content -match [regex]::Escape($forbidden)) {
             Add-CheckError "${repoPath}: default controller bootstrap must not use low-rate name lookup or due scheduling via '$forbidden'."
         }
@@ -1152,7 +1152,7 @@ function Test-ControlCoreBoundaries {
         'cmsis_os\.h',
         'task\.h',
         'CAN_receive\.h',
-        'motor_instance\.h',
+        'MotorInst\.h',
         'INS_task\.h',
         'sdlog\.h',
         'watch\.h',

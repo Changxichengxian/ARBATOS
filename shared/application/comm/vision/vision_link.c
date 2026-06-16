@@ -15,7 +15,7 @@
 
 #include "INS_task.h"
 #include "referee.h"
-#include "sdlog.h"
+#include "SdLog.h"
 #include "CRC8_CRC16.h"
 #include "external_motion_intent.h"
 #include "usbd_cdc_if.h"
@@ -209,7 +209,7 @@ static void vision_link_handle_rx(const VisionToGimbal *pkt)
     const bool pitch_has_cmd = ((pitch_bits & 0x7FFFFFFFu) != 0u);
     if (yaw_has_cmd || pitch_has_cmd)
     {
-        sdlog_write_isr(SDLOG_TAG_VISION_RX, pkt, (uint16_t)sizeof(*pkt));
+        SdLogWriteIsr(SDLOG_TAG_VISION_RX, pkt, (uint16_t)sizeof(*pkt));
     }
 
     vision_link_store_rx_from_isr(pkt);
@@ -238,7 +238,7 @@ static void vision_link_handle_algorithm_aim(const AlgorithmAimCmd *cmd)
     if (pkt.mode == (uint8_t)ALGORITHM_AIM_MODE_CONTROL ||
         pkt.mode == (uint8_t)ALGORITHM_AIM_MODE_CONTROL_FIRE)
     {
-        sdlog_write_isr(SDLOG_TAG_VISION_RX, &pkt, (uint16_t)sizeof(pkt));
+        SdLogWriteIsr(SDLOG_TAG_VISION_RX, &pkt, (uint16_t)sizeof(pkt));
     }
 
     vision_link_store_rx_from_isr(&pkt);

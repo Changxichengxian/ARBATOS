@@ -24,7 +24,7 @@
 - `Robotconfig/HERO-C/`：HERO-C 目标配置和健康监测，包含 `config.c`、`config.h`、`detect_task.c`
 - `boards/DJI_C_F407/bsp/INS_task.c`：C 板 IMU 任务
 - `boards/DJI_C_F407/bsp/`：C 板 BSP 适配
-- `shared/application/`：共用任务和控制逻辑，包含 `host_link_task.c`、`chassis_control_task.c`、`gimbal_control_task.c`、`shoot.c`、`sdlog_task.c` 等
+- `shared/application/`：共用任务和控制逻辑，包含 `host_link_task.c`、`chassis_control_task.c`、`gimbal_control_task.c`、`shoot.c`、`SdLogTask.c` 等
 
 ---
 
@@ -37,7 +37,7 @@ USART3(DBUS) -> manual_input -> behaviour -> chassis_control_task / gimbal_contr
 INS(BMI088/IST) -> INS_task -> 角度/角速度/四元数
 CAN RX -> CAN_receive -> 电机反馈(measure)
 
-chassis_control_task/gimbal_control_task -> LowCmd -> can_command_tx_task -> CAN1(0x200/0x1FF)
+chassis_control_task/gimbal_control_task -> LowCmd -> CanTxTask -> CAN1(0x200/0x1FF)
 
 USART6(裁判) -> referee_rx_task -> referee.c -> 功率/热量等
 
@@ -59,7 +59,7 @@ AUX 口（当前 HERO-C 为 USART1） -> host_link_task(调参/遥测/图传遥�
 
 ### CAN
 
-- **CAN1（指令发送）**：由 `can_command_tx_task` 统一发送
+- **CAN1（指令发送）**：由 `CanTxTask` 统一发送
   - 0x200 → 0x201(M1), 0x202(M2), 0x203(Pitch), 0x204(Trigger)
   - 0x1FF → 0x205(M4), 0x206(Yaw), 0x207(M3), 0x208(预留)
 - **CAN2**：摩擦轮电机总线
@@ -85,7 +85,7 @@ USB 以 CDC ACM（虚拟串口）方式枚举。PC 端需打开串口设备才�
 - 开关 AUX 口实时遥测：`241:1`（开）/ `241:0`（关）
 - AUX 口遥测周期(ms)：`242:0`（0=auto，额外50%回退，适合无线）
 - AUX 口模式判定：波特率为 `420000` 时进入 ELRS/CRSF 接收（不发送遥测）；否则为调参/遥测。
-- TF/SD 遥测日志：默认一直记录（只要 TF 挂载且 `sdlog_task` 正常运行），不需要开关/配置。
+- TF/SD 遥测日志：默认一直记录（只要 TF 挂载且 `SdLogTask` 正常运行），不需要开关/配置。
 
 ### 2) AUX 口实时遥测（JustFloat：N*fp32 + INF 尾）
 
@@ -159,7 +159,7 @@ bitmask（以整数解释），bit=1 表示对应 TOE 离线/错误：
 - 当前格式：v2（块写入；raw 或 LZ4 压缩，lossless；每块带 CRC32(raw) 校验；压缩不划算时会回退为 raw，仅多块头约 20B/块）
 - PC 解压为 v1 记录流：在仓库根目录运行 `python tools/sdlog/sdlog_decompress.py sdlog_0000.bin`（输出 `sdlog_0000.bin.raw.bin`）
 - Web 可视化：在仓库根目录运行 `python tools/sdlog/sdlog_viewer.py sdlog_0000.bin`（浏览器打开地址，可导出 CSV）
-- 记录内容：IMU/PID/云台&底盘 loop/CAN/裁判/视觉等（tag 定义见 `shared/application/services/storage/sdlog.h`）
+- 记录内容：IMU/PID/云台&底盘 loop/CAN/裁判/视觉等（tag 定义见 `shared/application/services/storage/SdLog.h`）
 - 注意：TF/SD 不会记录 AUX 口的 JustFloat 帧（避免重复/占用写入带宽）
 
 ---

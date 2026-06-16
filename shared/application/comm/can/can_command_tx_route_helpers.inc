@@ -2,14 +2,14 @@
  * SPDX-FileCopyrightText: 2026 ?? <2811158416@qq.com>
  * SPDX-License-Identifier: Apache-2.0
  *
- * Private implementation chunk included by can_command_tx_task.c.
+ * Private implementation chunk included by CanTxTask.c.
  */
 
 static void can_tx_log_actuator_current(const sdlog_actuator_current_t *log)
 {
     if (log != NULL && can_tx_log_due() != 0u)
     {
-        sdlog_write(SDLOG_TAG_ACTUATOR_CURRENT, log, (uint16_t)sizeof(*log));
+        SdLogWrite(SDLOG_TAG_ACTUATOR_CURRENT, log, (uint16_t)sizeof(*log));
     }
 }
 
@@ -18,22 +18,22 @@ static uint8_t can_tx_arm_role_active(void)
     return (uint8_t)(robot_profile_need_arm_task() || robot_profile_is_wheelleg_mit());
 }
 
-static uint8_t can_tx_route_role_active(const motor_route_t *route)
+static uint8_t can_tx_route_role_active(const MotorRoute *route)
 {
     if (route == NULL)
     {
         return 0u;
     }
-    if (route->role == MOTOR_INSTANCE_ROLE_ARM && can_tx_arm_role_active() == 0u)
+    if (route->role == MotorRoleArm && can_tx_arm_role_active() == 0u)
     {
         return 0u;
     }
     return 1u;
 }
 
-static uint8_t can_tx_friction_enabled(const motor_route_t *route)
+static uint8_t can_tx_friction_enabled(const MotorRoute *route)
 {
-    if (route == NULL || route->role != MOTOR_INSTANCE_ROLE_FRICTION)
+    if (route == NULL || route->role != MotorRoleFriction)
     {
         return 1u;
     }
@@ -44,7 +44,7 @@ static uint8_t can_tx_friction_enabled(const motor_route_t *route)
     return (g_config.shoot.fric_motor_dir[route->roleIndex] != 0) ? 1u : 0u;
 }
 
-static uint8_t can_tx_route_allowed_online(const motor_route_t *route)
+static uint8_t can_tx_route_allowed_online(const MotorRoute *route)
 {
     if (route == NULL)
     {
@@ -54,7 +54,7 @@ static uint8_t can_tx_route_allowed_online(const motor_route_t *route)
     {
         return 0u;
     }
-    if (route->role == MOTOR_INSTANCE_ROLE_CHASSIS && can_tx_allow_chassis() == 0u)
+    if (route->role == MotorRoleChassis && can_tx_allow_chassis() == 0u)
     {
         return 0u;
     }
@@ -65,7 +65,7 @@ static uint8_t can_tx_route_allowed_online(const motor_route_t *route)
     return 1u;
 }
 
-static uint8_t can_tx_route_allowed_offline(const motor_route_t *route)
+static uint8_t can_tx_route_allowed_offline(const MotorRoute *route)
 {
     if (route == NULL)
     {
@@ -78,23 +78,23 @@ static uint8_t can_tx_route_allowed_offline(const motor_route_t *route)
 
     switch (route->role)
     {
-    case MOTOR_INSTANCE_ROLE_YAW:
-    case MOTOR_INSTANCE_ROLE_ARM:
+    case MotorRoleYaw:
+    case MotorRoleArm:
         return 1u;
-    case MOTOR_INSTANCE_ROLE_FRICTION:
+    case MotorRoleFriction:
         return (uint8_t)((robot_mode_is_entertain() != 0u && can_tx_friction_enabled(route) != 0u) ? 1u : 0u);
     default:
         return 0u;
     }
 }
 
-static uint8_t can_tx_route_allowed(const motor_route_t *route, uint8_t online)
+static uint8_t can_tx_route_allowed(const MotorRoute *route, uint8_t online)
 {
     return (online != 0u) ? can_tx_route_allowed_online(route) : can_tx_route_allowed_offline(route);
 }
 
 static void can_tx_log_motor_cmd(sdlog_actuator_current_t *log,
-                                 const motor_route_t *route,
+                                 const MotorRoute *route,
                                  int16_t current)
 {
     if (log == NULL || route == NULL)
@@ -104,22 +104,22 @@ static void can_tx_log_motor_cmd(sdlog_actuator_current_t *log,
 
     switch (route->role)
     {
-    case MOTOR_INSTANCE_ROLE_CHASSIS:
+    case MotorRoleChassis:
         if (route->roleIndex < 4u)
         {
             log->chassis[route->roleIndex] = current;
         }
         break;
-    case MOTOR_INSTANCE_ROLE_YAW:
+    case MotorRoleYaw:
         log->yaw = current;
         break;
-    case MOTOR_INSTANCE_ROLE_PITCH:
+    case MotorRolePitch:
         log->pitch = current;
         break;
-    case MOTOR_INSTANCE_ROLE_TRIGGER:
+    case MotorRoleTrigger:
         log->trigger = current;
         break;
-    case MOTOR_INSTANCE_ROLE_FRICTION:
+    case MotorRoleFriction:
         if (route->roleIndex < 4u)
         {
             log->friction[route->roleIndex] = current;
@@ -162,7 +162,7 @@ static inline void can_tx_process_rs485_axis(MotorId actuator_id,
 {
     const uint8_t port = (node != NULL) ? node->rs485_port : 0u;
 
-    if (can_tx_process_extra_item(port, actuator_id, node, current) == 0u)
+    if (CanTxProcessExtraItem(port, actuator_id, node, current) == 0u)
     {
         watch_task_error(WATCH_TASK_CAN_COMMAND_TX);
     }
@@ -177,7 +177,7 @@ static inline void can_tx_process_mit_or_extra_axis(uint8_t fallback_bus,
     const uint8_t node_bus = can_tx_node_bus(fallback_bus, node);
 
     if (can_tx_process_can_mit_item(node_bus, actuator_id, node, current, flags) == 0u &&
-        can_tx_process_extra_item(node_bus, actuator_id, node, current) == 0u)
+        CanTxProcessExtraItem(node_bus, actuator_id, node, current) == 0u)
     {
         if (flags != NULL)
         {
@@ -236,7 +236,7 @@ static inline int16_t can_tx_process_axis(uint8_t fallback_bus,
     }
 }
 
-static void can_tx_clamp_applied_mit(const motor_route_t *route, MotorApplied *applied)
+static void can_tx_clamp_applied_mit(const MotorRoute *route, MotorApplied *applied)
 {
     const can_mit_motor_limits_t *limits = (route != NULL) ? route->mitLimits : NULL;
     fp32 old_value;
@@ -282,7 +282,7 @@ static void can_tx_clamp_applied_mit(const motor_route_t *route, MotorApplied *a
     }
 }
 
-static void can_tx_update_applied(const motor_route_t *route,
+static void can_tx_update_applied(const MotorRoute *route,
                                   const MotorCmd *cmd,
                                   int16_t current,
                                   uint8_t flags)
@@ -342,7 +342,7 @@ static void can_tx_update_applied(const motor_route_t *route,
     LowStateUpdateApplied(route->motorId, &applied);
 }
 
-static void can_tx_process_instance(const motor_route_t *route,
+static void can_tx_process_instance(const MotorRoute *route,
                                     uint8_t allowed,
                                     sdlog_actuator_current_t *log)
 {
@@ -408,7 +408,7 @@ static void can_tx_process_instance(const motor_route_t *route,
 static void can_tx_exec_instances(uint8_t online, uint8_t output_locked)
 {
     sdlog_actuator_current_t log = {0};
-    const uint8_t count = motor_route_count();
+    const uint8_t count = MotorRouteCount();
     uint8_t start_index = 0u;
 
     can_tx_clear_rm_frames();
@@ -423,7 +423,7 @@ static void can_tx_exec_instances(uint8_t online, uint8_t output_locked)
     for (uint8_t i = 0u; i < count; i++)
     {
         const uint8_t route_index = (uint8_t)((start_index + i) % count);
-        const motor_route_t *route = motor_route_get(route_index);
+        const MotorRoute *route = MotorRouteGet(route_index);
         uint8_t allowed;
 
         if (route == NULL || route->enabled == 0u)

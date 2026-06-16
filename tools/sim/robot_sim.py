@@ -639,7 +639,7 @@ def load_project(project: str) -> ProjectConfig:
 
     profile_defaults = parse_define_text(strip_c_comments(read_text(REPO_ROOT / "shared/application/robot/robot_task_profile.h")))
     can_tx_source_macros = parse_define_text(
-        strip_c_comments(read_text(REPO_ROOT / "shared/application/comm/can/can_command_tx_task.c"))
+        strip_c_comments(read_text(REPO_ROOT / "shared/application/comm/can/CanTxTask.c"))
     )
     project_defines = parse_uvprojx_defines(project)
     project_macros = parse_define_text(strip_c_comments(read_text(config_h_path)))
@@ -855,7 +855,7 @@ def build_cpu_report(
             "gimbal_control",
             parse_int_expr(macros.get("ROBOT_PROFILE_GIMBAL_CONTROL_BUDGET_US"), macros, 700),
             project.periods_ms["gimbal"],
-            "rt_profiler budget",
+            "RtProf budget",
         )
     if "ROBOT_TASK_MODULE_CLASSIC_CHASSIS" in modules:
         add_cpu_item(
@@ -863,7 +863,7 @@ def build_cpu_report(
             "classic_chassis",
             parse_int_expr(macros.get("ROBOT_PROFILE_CHASSIS_CONTROL_BUDGET_US"), macros, 1200),
             project.periods_ms["chassis"],
-            "rt_profiler budget",
+            "RtProf budget",
         )
     if "ROBOT_TASK_MODULE_WHEELLEG_MIT" in modules:
         add_cpu_item(
@@ -887,7 +887,7 @@ def build_cpu_report(
             "can_command_tx",
             parse_int_expr(macros.get("ROBOT_PROFILE_CAN_COMMAND_TX_BUDGET_US"), macros, 300),
             project.periods_ms["can_tx"],
-            "rt_profiler budget",
+            "RtProf budget",
         )
     if "ROBOT_TASK_MODULE_CAN_FEEDBACK_RX" in modules:
         add_cpu_item(
@@ -895,22 +895,22 @@ def build_cpu_report(
             "can_feedback_rx",
             parse_int_expr(macros.get("ROBOT_PROFILE_CAN_FEEDBACK_RX_PROFILE_BUDGET_US"), macros, 300),
             1.0,
-            "rt_profiler budget",
+            "RtProf budget",
         )
     if "ROBOT_TASK_MODULE_SDLOG" in modules:
         add_cpu_item(
             budget_items,
-            "sdlog_write_fast_path",
+            "SdLogWrite_fast_path",
             parse_int_expr(macros.get("ROBOT_PROFILE_SDLOG_WRITE_BUDGET_US"), macros, 50),
             1.0,
-            "rt_profiler write budget estimate",
+            "RtProf write budget estimate",
         )
     add_cpu_item(
         budget_items,
         "watch_task_beat",
         parse_int_expr(macros.get("ROBOT_PROFILE_WATCH_TASK_BEAT_BUDGET_US"), macros, 10),
         project.periods_ms["watch"],
-        "rt_profiler budget",
+        "RtProf budget",
     )
 
     traffic_items = [

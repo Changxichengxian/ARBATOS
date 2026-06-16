@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 #include "types.h"
-#include "sdlog.h"
+#include "SdLog.h"
 #include "bsp_usart.h"
 
 #define IMAGE_REMOTE_LINK_BAUD 921600u

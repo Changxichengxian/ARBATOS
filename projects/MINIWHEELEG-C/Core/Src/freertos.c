@@ -34,10 +34,10 @@
 #include "calibrate_task.h"
 #endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-#include "can_command_tx_task.h"
+#include "CanTxTask.h"
 #endif
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-#include "can_feedback_rx_task.h"
+#include "CanRxTask.h"
 #endif
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
 #include "chassis_control_task.h"
@@ -76,11 +76,11 @@
 #include "startup_service_task.h"
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
-#include "sdlog_task.h"
+#include "SdLogTask.h"
 #endif
 #include "watch.h"
 #include "app_task_bootstrap.h"
-#include "control_manager.h"
+#include "ControlMgr.h"
 #include "robot_fault_guard.h"
 #include "robot_control_registry.h"
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
@@ -133,7 +133,7 @@ osThreadId_t batteryMonitorTaskHandle;
 osThreadId_t servoControlTaskHandle;
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
-osThreadId_t sdlog_task_handle;
+osThreadId_t SdLogTask_handle;
 #endif
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
 osThreadId_t wheellegMitTaskHandle;
@@ -203,10 +203,10 @@ APP_STATIC_THREAD(chassisControlTask, chassis_control_task, osPriorityAboveNorma
 APP_STATIC_THREAD(wheellegMitTask, wheelleg_mit_task, osPriorityAboveNormal, 768);
 #endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-APP_STATIC_THREAD(canCommandTxTask, can_command_tx_task, osPriorityAboveNormal, 384);
+APP_STATIC_THREAD(canCommandTxTask, CanTxTask, osPriorityAboveNormal, 384);
 #endif
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-APP_STATIC_THREAD(canFeedbackRxTask, can_feedback_rx_task, osPriorityHigh, 256);
+APP_STATIC_THREAD(canFeedbackRxTask, CanRxTask, osPriorityHigh, 256);
 #endif
 #if ROBOT_TASK_BUILD_RC_SBUS
 APP_STATIC_THREAD(RCSBUS, rc_sbus_task, osPriorityAboveNormal, 256);
@@ -241,7 +241,7 @@ APP_STATIC_THREAD(batteryMonitorTask, battery_monitor_task, osPriorityNormal, 12
 APP_STATIC_THREAD(servoControlTask, servo_control_task, osPriorityNormal, 128);
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
-APP_STATIC_THREAD(SDLOG, sdlog_task, osPriorityLow, 512);
+APP_STATIC_THREAD(SDLOG, SdLogTask, osPriorityLow, 512);
 #endif
 
 #define APP_TASK_MATCH_HANDLE(task_, handle_, name_) \
@@ -308,7 +308,7 @@ static const char *app_task_name_from_handle(TaskHandle_t task)
   APP_TASK_MATCH_HANDLE(task, servoControlTaskHandle, "servoControlTask");
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
-  APP_TASK_MATCH_HANDLE(task, sdlog_task_handle, "SDLOG");
+  APP_TASK_MATCH_HANDLE(task, SdLogTask_handle, "SDLOG");
 #endif
 
   if (task == xTaskGetIdleTaskHandle())
@@ -355,16 +355,16 @@ static osThreadId_t app_create_wheelleg_mit_task(void)
 #endif
 
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-static osThreadId_t app_create_can_command_tx_task(void)
+static osThreadId_t app_create_CanTxTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(canCommandTxTask, can_command_tx_task);
+  return APP_STATIC_THREAD_CREATE(canCommandTxTask, CanTxTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-static osThreadId_t app_create_can_feedback_rx_task(void)
+static osThreadId_t app_create_CanRxTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(canFeedbackRxTask, can_feedback_rx_task);
+  return APP_STATIC_THREAD_CREATE(canFeedbackRxTask, CanRxTask);
 }
 #endif
 
@@ -446,9 +446,9 @@ static osThreadId_t app_create_servo_control_task(void)
 #endif
 
 #if ROBOT_TASK_BUILD_SDLOG
-static osThreadId_t app_create_sdlog_task(void)
+static osThreadId_t app_create_SdLogTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(SDLOG, sdlog_task);
+  return APP_STATIC_THREAD_CREATE(SDLOG, SdLogTask);
 }
 #endif
 
@@ -469,10 +469,10 @@ static void app_create_module_tasks(void)
     {ROBOT_TASK_MODULE_WHEELLEG_MIT, &wheellegMitTaskHandle, app_create_wheelleg_mit_task},
 #endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-    {ROBOT_TASK_MODULE_CAN_COMMAND_TX, &canCommandTxTaskHandle, app_create_can_command_tx_task},
+    {ROBOT_TASK_MODULE_CAN_COMMAND_TX, &canCommandTxTaskHandle, app_create_CanTxTask},
 #endif
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-    {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, &canFeedbackRxTaskHandle, app_create_can_feedback_rx_task},
+    {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, &canFeedbackRxTaskHandle, app_create_CanRxTask},
 #endif
 #if ROBOT_TASK_BUILD_RC_SBUS
     {ROBOT_TASK_MODULE_RC_SBUS, &rc_sbus_task_handle, app_create_rc_sbus_task},
@@ -508,7 +508,7 @@ static void app_create_module_tasks(void)
     {ROBOT_TASK_MODULE_SERVO, &servoControlTaskHandle, app_create_servo_control_task},
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
-    {ROBOT_TASK_MODULE_SDLOG, &sdlog_task_handle, app_create_sdlog_task},
+    {ROBOT_TASK_MODULE_SDLOG, &SdLogTask_handle, app_create_SdLogTask},
 #endif
   };
 

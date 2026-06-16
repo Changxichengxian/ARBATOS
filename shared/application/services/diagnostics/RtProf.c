@@ -6,7 +6,7 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#include "rt_profiler.h"
+#include "RtProf.h"
 
 #include <string.h>
 
@@ -14,87 +14,87 @@
 #include "task.h"
 #include "robot_task_profile.h"
 
-static const rt_profiler_desc_t s_rt_profiler_desc[RT_PROFILER_COUNT] = {
-    {RT_PROFILER_GIMBAL_CONTROL_LOOP,
+static const RtProfDesc sRtProfDesc[RtProfCount] = {
+    {RtProfGimbalLoop,
      (uint8_t)ROBOT_TASK_MODULE_SINGLE_GIMBAL,
      (uint8_t)ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL,
-     (uint8_t)RT_PROFILER_KIND_LOOP,
-     (uint8_t)RT_PROFILER_FLAG_FAST_PATH,
+     (uint8_t)RtProfKindLoop,
+     (uint8_t)RT_PROF_FAST_PATH,
      "prof.gimbal_control_loop",
      ROBOT_PROFILE_GIMBAL_CONTROL_BUDGET_US},
-    {RT_PROFILER_CHASSIS_CONTROL_LOOP,
+    {RtProfChassisLoop,
      (uint8_t)ROBOT_TASK_MODULE_CLASSIC_CHASSIS,
      (uint8_t)ROBOT_TASK_MODULE_NONE,
-     (uint8_t)RT_PROFILER_KIND_LOOP,
-     (uint8_t)RT_PROFILER_FLAG_FAST_PATH,
+     (uint8_t)RtProfKindLoop,
+     (uint8_t)RT_PROF_FAST_PATH,
      "prof.chassis_control_loop",
      ROBOT_PROFILE_CHASSIS_CONTROL_BUDGET_US},
-    {RT_PROFILER_WHEELLEG_MIT_CONTROL_LOOP,
+    {RtProfWheellegMitLoop,
      (uint8_t)ROBOT_TASK_MODULE_WHEELLEG_MIT,
      (uint8_t)ROBOT_TASK_MODULE_NONE,
-     (uint8_t)RT_PROFILER_KIND_LOOP,
-     (uint8_t)RT_PROFILER_FLAG_FAST_PATH,
+     (uint8_t)RtProfKindLoop,
+     (uint8_t)RT_PROF_FAST_PATH,
      "prof.wheelleg_mit_control_loop",
      ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_BUDGET_US},
-    {RT_PROFILER_CAN_COMMAND_TX_LOOP,
+    {RtProfCanTxLoop,
      (uint8_t)ROBOT_TASK_MODULE_CAN_COMMAND_TX,
      (uint8_t)ROBOT_TASK_MODULE_NONE,
-     (uint8_t)RT_PROFILER_KIND_LOOP,
-     (uint8_t)RT_PROFILER_FLAG_FAST_PATH,
+     (uint8_t)RtProfKindLoop,
+     (uint8_t)RT_PROF_FAST_PATH,
      "prof.can_command_tx_loop",
      ROBOT_PROFILE_CAN_COMMAND_TX_BUDGET_US},
-    {RT_PROFILER_CAN_FEEDBACK_RX_WAKE,
+    {RtProfCanRxWake,
      (uint8_t)ROBOT_TASK_MODULE_CAN_FEEDBACK_RX,
      (uint8_t)ROBOT_TASK_MODULE_NONE,
-     (uint8_t)RT_PROFILER_KIND_WAKE,
-     (uint8_t)(RT_PROFILER_FLAG_FAST_PATH | RT_PROFILER_FLAG_EVENT_DRIVEN),
+     (uint8_t)RtProfKindWake,
+     (uint8_t)(RT_PROF_FAST_PATH | RT_PROF_EVENT_DRIVEN),
      "prof.can_feedback_rx_wake",
      ROBOT_PROFILE_CAN_FEEDBACK_RX_PROFILE_BUDGET_US},
-    {RT_PROFILER_SDLOG_WRITE,
+    {RtProfSdLogWrite,
      (uint8_t)ROBOT_TASK_MODULE_SDLOG,
      (uint8_t)ROBOT_TASK_MODULE_NONE,
-     (uint8_t)RT_PROFILER_KIND_IO,
+     (uint8_t)RtProfKindIo,
      0u,
-     "prof.sdlog_write",
+     "prof.SdLogWrite",
      ROBOT_PROFILE_SDLOG_WRITE_BUDGET_US},
-    {RT_PROFILER_SDLOG_COMPRESS,
+    {RtProfSdLogCompress,
      (uint8_t)ROBOT_TASK_MODULE_SDLOG,
      (uint8_t)ROBOT_TASK_MODULE_NONE,
-     (uint8_t)RT_PROFILER_KIND_IO,
+     (uint8_t)RtProfKindIo,
      0u,
      "prof.sdlog_compress",
      ROBOT_PROFILE_SDLOG_COMPRESS_BUDGET_US},
-    {RT_PROFILER_SDLOG_BLOCK_WRITE,
+    {RtProfSdLogBlockWrite,
      (uint8_t)ROBOT_TASK_MODULE_SDLOG,
      (uint8_t)ROBOT_TASK_MODULE_NONE,
-     (uint8_t)RT_PROFILER_KIND_IO,
+     (uint8_t)RtProfKindIo,
      0u,
      "prof.sdlog_block_write",
      ROBOT_PROFILE_SDLOG_BLOCK_WRITE_BUDGET_US},
-    {RT_PROFILER_SDLOG_SYNC,
+    {RtProfSdLogSync,
      (uint8_t)ROBOT_TASK_MODULE_SDLOG,
      (uint8_t)ROBOT_TASK_MODULE_NONE,
-     (uint8_t)RT_PROFILER_KIND_IO,
+     (uint8_t)RtProfKindIo,
      0u,
      "prof.sdlog_sync",
      ROBOT_PROFILE_SDLOG_SYNC_BUDGET_US},
-    {RT_PROFILER_WATCH_TASK_BEAT,
+    {RtProfWatchBeat,
      (uint8_t)ROBOT_TASK_MODULE_HEALTH_MONITOR,
      (uint8_t)ROBOT_TASK_MODULE_NONE,
-     (uint8_t)RT_PROFILER_KIND_SERVICE,
+     (uint8_t)RtProfKindService,
      0u,
      "prof.watch_task_beat",
      ROBOT_PROFILE_WATCH_TASK_BEAT_BUDGET_US},
 };
 
-static uint8_t rt_profiler_id_valid(rt_profiler_id_e id)
+static uint8_t RtProfIdValid(RtProfId id)
 {
-    return ((uint32_t)id < (uint32_t)RT_PROFILER_COUNT) ? 1u : 0u;
+    return ((uint32_t)id < (uint32_t)RtProfCount) ? 1u : 0u;
 }
 
 #if RT_PROFILER_ENABLE
 
-static rt_profiler_stats_t s_rt_profiler[RT_PROFILER_COUNT] = {
+static RtProfStats sRtProf[RtProfCount] = {
     {0u, 0u, 0u, 0u, ROBOT_PROFILE_GIMBAL_CONTROL_BUDGET_US, 0u},
     {0u, 0u, 0u, 0u, ROBOT_PROFILE_CHASSIS_CONTROL_BUDGET_US, 0u},
     {0u, 0u, 0u, 0u, ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_BUDGET_US, 0u},
@@ -109,77 +109,77 @@ static rt_profiler_stats_t s_rt_profiler[RT_PROFILER_COUNT] = {
 
 #endif
 
-const rt_profiler_desc_t *rt_profiler_descriptors(uint8_t *count)
+const RtProfDesc *RtProfDescs(uint8_t *count)
 {
     if (count != NULL)
     {
-        *count = (uint8_t)RT_PROFILER_COUNT;
+        *count = (uint8_t)RtProfCount;
     }
 
-    return s_rt_profiler_desc;
+    return sRtProfDesc;
 }
 
-const rt_profiler_desc_t *rt_profiler_descriptor(rt_profiler_id_e id)
+const RtProfDesc *RtProfDescGet(RtProfId id)
 {
-    if (rt_profiler_id_valid(id) == 0u)
+    if (RtProfIdValid(id) == 0u)
     {
         return NULL;
     }
 
-    return &s_rt_profiler_desc[id];
+    return &sRtProfDesc[id];
 }
 
-uint32_t rt_profiler_period_ms(rt_profiler_id_e id)
+uint32_t RtProfPeriodMs(RtProfId id)
 {
     switch (id)
     {
-    case RT_PROFILER_GIMBAL_CONTROL_LOOP:
+    case RtProfGimbalLoop:
         return (uint32_t)robot_profile_gimbal_control_period_ms();
-    case RT_PROFILER_CHASSIS_CONTROL_LOOP:
+    case RtProfChassisLoop:
         return (uint32_t)robot_profile_chassis_control_period_ms();
-    case RT_PROFILER_WHEELLEG_MIT_CONTROL_LOOP:
+    case RtProfWheellegMitLoop:
         return (uint32_t)g_config.wheelleg_mit.control_period_ms;
-    case RT_PROFILER_CAN_COMMAND_TX_LOOP:
+    case RtProfCanTxLoop:
         return (uint32_t)robot_profile_can_command_tx_period_ms();
-    case RT_PROFILER_WATCH_TASK_BEAT:
+    case RtProfWatchBeat:
         return (uint32_t)ROBOT_PROFILE_WATCH_TASK_BEAT_MIN_PERIOD_MS;
     default:
         return 0u;
     }
 }
 
-uint32_t rt_profiler_budget_us(rt_profiler_id_e id)
+uint32_t RtProfBudgetUs(RtProfId id)
 {
 #if RT_PROFILER_ENABLE
     uint32_t budget_us;
 
-    if (rt_profiler_id_valid(id) == 0u)
+    if (RtProfIdValid(id) == 0u)
     {
         return 0u;
     }
 
     taskENTER_CRITICAL();
-    budget_us = s_rt_profiler[id].budget_us;
+    budget_us = sRtProf[id].budget_us;
     taskEXIT_CRITICAL();
     return budget_us;
 #else
-    const rt_profiler_desc_t *desc = rt_profiler_descriptor(id);
+    const RtProfDesc *desc = RtProfDescGet(id);
 
     return (desc == NULL) ? 0u : desc->default_budget_us;
 #endif
 }
 
-uint8_t rt_profiler_over_budget(rt_profiler_id_e id)
+uint8_t RtProfOverBudget(RtProfId id)
 {
-    rt_profiler_stats_t stats;
+    RtProfStats stats;
 
-    rt_profiler_get(id, &stats);
+    RtProfGet(id, &stats);
     return (uint8_t)(stats.budget_us != 0u && stats.last_us > stats.budget_us);
 }
 
-uint8_t rt_profiler_active(rt_profiler_id_e id)
+uint8_t RtProfActive(RtProfId id)
 {
-    const rt_profiler_desc_t *desc = rt_profiler_descriptor(id);
+    const RtProfDesc *desc = RtProfDescGet(id);
 
     if (desc == NULL)
     {
@@ -195,7 +195,7 @@ uint8_t rt_profiler_active(rt_profiler_id_e id)
                      robot_profile_module_id_enabled(desc->module_alt));
 }
 
-void rt_profiler_get_summary(rt_profiler_summary_t *out)
+void RtProfGetSummary(RtProfSummary *out)
 {
     if (out == NULL)
     {
@@ -203,21 +203,21 @@ void rt_profiler_get_summary(rt_profiler_summary_t *out)
     }
 
     memset(out, 0, sizeof(*out));
-    out->total_count = (uint8_t)RT_PROFILER_COUNT;
+    out->total_count = (uint8_t)RtProfCount;
 
-    for (uint8_t i = 0u; i < (uint8_t)RT_PROFILER_COUNT; i++)
+    for (uint8_t i = 0u; i < (uint8_t)RtProfCount; i++)
     {
-        rt_profiler_stats_t stats;
-        const rt_profiler_id_e id = (rt_profiler_id_e)i;
+        RtProfStats stats;
+        const RtProfId id = (RtProfId)i;
         uint32_t over_budget_us = 0u;
 
-        if (rt_profiler_active(id) == 0u)
+        if (RtProfActive(id) == 0u)
         {
             continue;
         }
 
         out->active_count++;
-        rt_profiler_get(id, &stats);
+        RtProfGet(id, &stats);
         out->total_overrun_count += stats.overrun_count;
         if (stats.budget_us != 0u && stats.last_us > stats.budget_us)
         {
@@ -236,16 +236,16 @@ void rt_profiler_get_summary(rt_profiler_summary_t *out)
     }
 }
 
-void rt_profiler_record(rt_profiler_id_e id, uint32_t elapsed_us)
+void RtProfRecord(RtProfId id, uint32_t elapsed_us)
 {
 #if RT_PROFILER_ENABLE
-    if (!rt_profiler_id_valid(id))
+    if (!RtProfIdValid(id))
     {
         return;
     }
 
     taskENTER_CRITICAL();
-    rt_profiler_stats_t *s = &s_rt_profiler[id];
+    RtProfStats *s = &sRtProf[id];
     s->count++;
     s->last_us = elapsed_us;
     if (elapsed_us > s->max_us)
@@ -275,57 +275,57 @@ void rt_profiler_record(rt_profiler_id_e id, uint32_t elapsed_us)
 #endif
 }
 
-void rt_profiler_end(rt_profiler_id_e id, uint64_t start_us)
+void RtProfEnd(RtProfId id, uint64_t start_us)
 {
 #if RT_PROFILER_ENABLE
     const uint64_t now_us = BSP_DWT_GetUs();
     const uint64_t elapsed_us = now_us - start_us;
     const uint32_t elapsed_clamped = (elapsed_us > 0xFFFFFFFFu) ? 0xFFFFFFFFu : (uint32_t)elapsed_us;
-    rt_profiler_record(id, elapsed_clamped);
+    RtProfRecord(id, elapsed_clamped);
 #else
     (void)id;
     (void)start_us;
 #endif
 }
 
-void rt_profiler_reset(rt_profiler_id_e id)
+void RtProfReset(RtProfId id)
 {
 #if RT_PROFILER_ENABLE
-    if (!rt_profiler_id_valid(id))
+    if (!RtProfIdValid(id))
     {
         return;
     }
 
     taskENTER_CRITICAL();
-    const uint32_t budget_us = s_rt_profiler[id].budget_us;
-    memset(&s_rt_profiler[id], 0, sizeof(s_rt_profiler[id]));
-    s_rt_profiler[id].budget_us = budget_us;
+    const uint32_t budget_us = sRtProf[id].budget_us;
+    memset(&sRtProf[id], 0, sizeof(sRtProf[id]));
+    sRtProf[id].budget_us = budget_us;
     taskEXIT_CRITICAL();
 #else
     (void)id;
 #endif
 }
 
-void rt_profiler_reset_all(void)
+void RtProfResetAll(void)
 {
 #if RT_PROFILER_ENABLE
-    for (uint32_t i = 0u; i < (uint32_t)RT_PROFILER_COUNT; i++)
+    for (uint32_t i = 0u; i < (uint32_t)RtProfCount; i++)
     {
-        rt_profiler_reset((rt_profiler_id_e)i);
+        RtProfReset((RtProfId)i);
     }
 #endif
 }
 
-void rt_profiler_set_budget_us(rt_profiler_id_e id, uint32_t budget_us)
+void RtProfSetBudgetUs(RtProfId id, uint32_t budget_us)
 {
 #if RT_PROFILER_ENABLE
-    if (!rt_profiler_id_valid(id))
+    if (!RtProfIdValid(id))
     {
         return;
     }
 
     taskENTER_CRITICAL();
-    s_rt_profiler[id].budget_us = budget_us;
+    sRtProf[id].budget_us = budget_us;
     taskEXIT_CRITICAL();
 #else
     (void)id;
@@ -333,7 +333,7 @@ void rt_profiler_set_budget_us(rt_profiler_id_e id, uint32_t budget_us)
 #endif
 }
 
-void rt_profiler_get(rt_profiler_id_e id, rt_profiler_stats_t *out)
+void RtProfGet(RtProfId id, RtProfStats *out)
 {
     if (out == NULL)
     {
@@ -341,14 +341,14 @@ void rt_profiler_get(rt_profiler_id_e id, rt_profiler_stats_t *out)
     }
 
 #if RT_PROFILER_ENABLE
-    if (!rt_profiler_id_valid(id))
+    if (!RtProfIdValid(id))
     {
         memset(out, 0, sizeof(*out));
         return;
     }
 
     taskENTER_CRITICAL();
-    *out = s_rt_profiler[id];
+    *out = sRtProf[id];
     taskEXIT_CRITICAL();
 #else
     (void)id;

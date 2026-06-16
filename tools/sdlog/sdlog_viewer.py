@@ -1423,11 +1423,11 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
                 build_dirty,
                 task_module_mask,
                 runtime_device_count,
-                motor_instance_count,
+                motorInstCount,
                 controller_count,
                 profile_kind,
                 board_kind,
-                rt_profiler_count,
+                rtProfCount,
                 board_can_bus_count,
                 board_cpu_hz,
                 target,
@@ -1453,7 +1453,7 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
                 build_dirty,
                 task_module_mask,
                 runtime_device_count,
-                motor_instance_count,
+                motorInstCount,
                 controller_count,
                 target,
                 board,
@@ -1463,7 +1463,7 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
             ) = v
             profile_kind = 0
             board_kind = 0
-            rt_profiler_count = 0
+            rtProfCount = 0
             board_can_bus_count = 0
             board_cpu_hz = 0
         return [
@@ -1482,13 +1482,13 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
                     "compression_enabled": compression_enabled,
                     "build_dirty": build_dirty,
                     "runtime_device_count": runtime_device_count,
-                    "motor_instance_count": motor_instance_count,
+                    "motorInstCount": motorInstCount,
                     "controller_count": controller_count,
                     "profile_kind": profile_kind,
                     "profile_kind_name": PROFILE_KIND_NAMES.get(profile_kind, f"kind_{profile_kind}"),
                     "board_kind": board_kind,
                     "board_kind_name": BOARD_KIND_NAMES.get(board_kind, f"kind_{board_kind}"),
-                    "rt_profiler_count": rt_profiler_count,
+                    "rtProfCount": rtProfCount,
                     "board_can_bus_count": board_can_bus_count,
                     "board_cpu_hz": board_cpu_hz,
                     "target": _cstr(target),

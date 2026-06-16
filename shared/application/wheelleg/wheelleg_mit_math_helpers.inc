@@ -253,19 +253,19 @@ static uint32_t wheelleg_tick_ms(void)
     return (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
 }
 
-static uint8_t wheelleg_control_manager_allows(uint32_t tick_ms, fp32 dt)
+static uint8_t WheellegControlMgrAllows(uint32_t tick_ms, fp32 dt)
 {
-    control_context_t context = {0};
+    ControlCtx context = {0};
 
     context.tick_ms = tick_ms;
     context.dt_s = dt;
 
-    if (control_manager_update_domain(CONTROL_DOMAIN_WHEELLEG, &context) != CONTROL_RESULT_OK)
+    if (ControlMgrUpdateDomain(ControlDomainWheelleg, &context) != ControlResultOk)
     {
         return 0u;
     }
 
-    return (control_manager_active_id(CONTROL_DOMAIN_WHEELLEG) == CONTROL_CONTROLLER_WHEELLEG_MIT_BALANCE) ? 1u : 0u;
+    return (ControlMgrActiveId(ControlDomainWheelleg) == ControlIdWheellegMitBalance) ? 1u : 0u;
 }
 
 static void wheelleg_pid_apply(wheelleg_pid_t *pid, const pid_param_t *cfg)

@@ -75,7 +75,7 @@ static volatile uint32_t can3_rx_std_id_count[BSP_CAN_STD_ID_DIAG_COUNT];
 static volatile uint32_t can3_tx_std_id_count[BSP_CAN_STD_ID_DIAG_COUNT];
 #endif
 
-static TaskHandle_t can_feedback_rx_task_handle = NULL;
+static TaskHandle_t CanRxTask_handle = NULL;
 
 static volatile uint32_t can1_last_error = BSP_CAN_ERR_NONE;
 static volatile uint32_t can2_last_error = BSP_CAN_ERR_NONE;
@@ -234,7 +234,7 @@ static void bsp_can_rx_push_common(uint8_t bus, uint16_t std_id, uint8_t dlc, co
 
 static void bsp_can_rx_notify_from_isr(void)
 {
-    if (can_feedback_rx_task_handle == NULL)
+    if (CanRxTask_handle == NULL)
     {
         return;
     }
@@ -244,7 +244,7 @@ static void bsp_can_rx_notify_from_isr(void)
     }
 
     BaseType_t hpw = pdFALSE;
-    vTaskNotifyGiveFromISR(can_feedback_rx_task_handle, &hpw);
+    vTaskNotifyGiveFromISR(CanRxTask_handle, &hpw);
     portYIELD_FROM_ISR(hpw);
 }
 
@@ -613,7 +613,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
 void bsp_can_rx_attach_task(TaskHandle_t task)
 {
-    can_feedback_rx_task_handle = task;
+    CanRxTask_handle = task;
 }
 
 int bsp_can_rx_pop(bsp_can_frame_t *out)

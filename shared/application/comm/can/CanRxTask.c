@@ -6,7 +6,7 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#include "can_feedback_rx_task.h"
+#include "CanRxTask.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -14,10 +14,10 @@
 #include "bsp_can.h"
 #include "CAN_receive.h"
 #include "watch.h"
-#include "rt_profiler.h"
+#include "RtProf.h"
 #include "robot_task_profile.h"
 
-void can_feedback_rx_task(void const *pvParameters)
+void CanRxTask(void const *pvParameters)
 {
     (void)pvParameters;
 
@@ -32,7 +32,7 @@ void can_feedback_rx_task(void const *pvParameters)
             (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         }
         watch_task_beat(WATCH_TASK_CAN_FEEDBACK_RX);
-        const uint64_t wake_start_us = rt_profiler_begin();
+        const uint64_t wake_start_us = RtProfBegin();
         const uint32_t max_frames = robot_profile_can_feedback_rx_max_frames_per_wake();
         const uint32_t budget_us = robot_profile_can_feedback_rx_budget_us();
         uint32_t processed = 0u;
@@ -47,7 +47,7 @@ void can_feedback_rx_task(void const *pvParameters)
                 break;
             }
         }
-        rt_profiler_end(RT_PROFILER_CAN_FEEDBACK_RX_WAKE, wake_start_us);
+        RtProfEnd(RtProfCanRxWake, wake_start_us);
         if (bsp_can_rx_pending() != 0u)
         {
             vTaskDelay(1u);

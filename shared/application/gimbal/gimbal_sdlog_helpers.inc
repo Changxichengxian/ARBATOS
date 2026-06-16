@@ -168,7 +168,7 @@ static void gimbal_sdlog_flush_base_stream(void)
     memcpy(&payload[sizeof(header)],
            s_gimbal_sdlog_base_stream.samples,
            (uint32_t)s_gimbal_sdlog_base_stream.sample_count * sizeof(sdlog_gimbal_base_sample_t));
-    sdlog_write(SDLOG_TAG_GIMBAL_BASE_STREAM, payload, payload_len);
+    SdLogWrite(SDLOG_TAG_GIMBAL_BASE_STREAM, payload, payload_len);
     s_gimbal_sdlog_base_stream.sample_count = 0u;
 }
 
@@ -186,7 +186,7 @@ static void gimbal_sdlog_append_base_sample(const sdlog_gimbal_base_sample_t *sa
         period_us = 1000u;
     }
 
-    const uint8_t div = sdlog_high_rate_divider();
+    const uint8_t div = SdLogHighRateDiv();
     if (div > 1u)
     {
         const uint16_t slot = s_gimbal_sdlog_base_stream.sample_div_counter++;

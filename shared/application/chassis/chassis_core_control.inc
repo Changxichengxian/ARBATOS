@@ -29,7 +29,7 @@ static void chassis_init(chassis_move_t *chassis_move_init)
     uint8_t i;
 
     chassis_move_init->chassis_mode = CHASSIS_VECTOR_RAW;
-    (void)motor_instance_bind_current_outputs(chassis_motor_instance_names,
+    (void)MotorInstBindCurrent(chassis_MotorInstNames,
                                               CHASSIS_MOTOR_COUNT,
                                               chassis_motor_current_bindings,
                                               CHASSIS_MOTOR_COUNT);

@@ -6,9 +6,9 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#include "motor_instance.h"
+#include "MotorInst.h"
 
-#include "control_manager.h"
+#include "ControlMgr.h"
 #include "detect_task.h"
 #include "motor_config.h"
 #include "robot_device_config.h"
@@ -16,30 +16,30 @@
 
 #include <string.h>
 
-#define MOTOR_INSTANCE_FEEDBACK_LOOKUP_CAPACITY (MotorCount * 2u)
+#define MOTOR_INST_FEEDBACK_LOOKUP_CAPACITY (MotorCount * 2u)
 
 typedef struct
 {
     uint8_t used;
     uint8_t bus;
     uint16_t std_id;
-    const motor_instance_t *inst;
-} motor_instance_feedback_lookup_slot_t;
+    const MotorInst *inst;
+} MotorFeedbackSlot;
 
-static motor_measure_t s_motor_measure[MotorCount];
-static motor_instance_t s_motor_instances[MotorCount];
-static motor_instance_t *s_motor_instance_by_actuator[MotorCount];
-static motor_route_t s_motor_routes[MotorCount];
-static motor_route_t *s_motor_route_by_motor[MotorCount];
-static motor_instance_feedback_lookup_slot_t s_motor_feedback_lookup[MOTOR_INSTANCE_FEEDBACK_LOOKUP_CAPACITY];
-static uint8_t s_motor_instance_count = 0u;
-static uint8_t s_motor_route_count = 0u;
-static uint8_t s_motor_instance_ready = 0u;
+static motor_measure_t sMotorMeasure[MotorCount];
+static MotorInst sMotorInst[MotorCount];
+static MotorInst *sMotorById[MotorCount];
+static MotorRoute sMotorRoute[MotorCount];
+static MotorRoute *sRouteByMotor[MotorCount];
+static MotorFeedbackSlot sMotorFbLookup[MOTOR_INST_FEEDBACK_LOOKUP_CAPACITY];
+static uint8_t sMotorInstCount = 0u;
+static uint8_t sMotorRouteCount = 0u;
+static uint8_t sMotorInstReady = 0u;
 
-static uint8_t motor_instance_node_cmd_caps(const motor_node_param_t *node);
+static uint8_t MotorInstNodeCaps(const motor_node_param_t *node);
 
-static void motor_instance_add(MotorId actuator_id,
-                               motor_instance_role_e role,
+static void MotorInstAdd(MotorId actuator_id,
+                               MotorRole role,
                                uint8_t role_index,
                                uint8_t fallback_bus,
                                uint8_t detect_toe,
@@ -48,9 +48,9 @@ static void motor_instance_add(MotorId actuator_id,
                                const motor_node_param_t *node,
                                motor_measure_t *measure)
 {
-    motor_instance_t *inst = NULL;
+    MotorInst *inst = NULL;
 
-    if (s_motor_instance_count >= (uint8_t)MotorCount)
+    if (sMotorInstCount >= (uint8_t)MotorCount)
     {
         return;
     }
@@ -59,7 +59,7 @@ static void motor_instance_add(MotorId actuator_id,
         return;
     }
 
-    inst = &s_motor_instances[s_motor_instance_count++];
+    inst = &sMotorInst[sMotorInstCount++];
     inst->actuator_id = actuator_id;
     inst->role = role;
     inst->role_index = role_index;
@@ -69,37 +69,37 @@ static void motor_instance_add(MotorId actuator_id,
     inst->name = name;
     inst->node = node;
     inst->measure = measure;
-    s_motor_instance_by_actuator[actuator_id] = inst;
+    sMotorById[actuator_id] = inst;
 }
 
-static motor_instance_role_e motor_instance_role_from_config(uint8_t group)
+static MotorRole MotorInstRoleFromConfig(uint8_t group)
 {
     switch ((robot_config_motor_group_e)group)
     {
     case ROBOT_CONFIG_MOTOR_GROUP_CHASSIS:
-        return MOTOR_INSTANCE_ROLE_CHASSIS;
+        return MotorRoleChassis;
     case ROBOT_CONFIG_MOTOR_GROUP_YAW:
-        return MOTOR_INSTANCE_ROLE_YAW;
+        return MotorRoleYaw;
     case ROBOT_CONFIG_MOTOR_GROUP_YAW_UPPER:
-        return MOTOR_INSTANCE_ROLE_YAW_UPPER;
+        return MotorRoleYawUpper;
     case ROBOT_CONFIG_MOTOR_GROUP_PITCH:
-        return MOTOR_INSTANCE_ROLE_PITCH;
+        return MotorRolePitch;
     case ROBOT_CONFIG_MOTOR_GROUP_TRIGGER:
-        return MOTOR_INSTANCE_ROLE_TRIGGER;
+        return MotorRoleTrigger;
     case ROBOT_CONFIG_MOTOR_GROUP_FRICTION:
-        return MOTOR_INSTANCE_ROLE_FRICTION;
+        return MotorRoleFriction;
     case ROBOT_CONFIG_MOTOR_GROUP_ARM:
-        return MOTOR_INSTANCE_ROLE_ARM;
+        return MotorRoleArm;
     default:
-        return MOTOR_INSTANCE_ROLE_CHASSIS;
+        return MotorRoleChassis;
     }
 }
 
-static uint8_t motor_instance_detect_toe_from_config(const robot_config_motor_device_t *device)
+static uint8_t MotorInstDetectToeFromConfig(const robot_config_motor_device_t *device)
 {
     if (device == NULL)
     {
-        return MOTOR_INSTANCE_INVALID_DETECT_TOE;
+        return MOTOR_INST_INVALID_DETECT_TOE;
     }
 
     switch ((robot_config_motor_group_e)device->group)
@@ -113,11 +113,11 @@ static uint8_t motor_instance_detect_toe_from_config(const robot_config_motor_de
     case ROBOT_CONFIG_MOTOR_GROUP_TRIGGER:
         return TRIGGER_MOTOR_TOE;
     default:
-        return MOTOR_INSTANCE_INVALID_DETECT_TOE;
+        return MOTOR_INST_INVALID_DETECT_TOE;
     }
 }
 
-static uint8_t motor_instance_use_detect_from_config(const robot_config_motor_device_t *device)
+static uint8_t MotorInstUseDetectFromConfig(const robot_config_motor_device_t *device)
 {
     if (device == NULL)
     {
@@ -136,53 +136,53 @@ static uint8_t motor_instance_use_detect_from_config(const robot_config_motor_de
     }
 }
 
-static motor_measure_t *motor_instance_measure_from_actuator(MotorId actuator_id)
+static motor_measure_t *MotorInstMeasureFromId(MotorId actuator_id)
 {
     if ((uint32_t)actuator_id >= (uint32_t)MotorCount)
     {
         return NULL;
     }
 
-    return &s_motor_measure[actuator_id];
+    return &sMotorMeasure[actuator_id];
 }
 
-static uint8_t motor_instance_arm_role_enabled(void)
+static uint8_t MotorInstArmRoleEnabled(void)
 {
     return (uint8_t)(robot_profile_need_arm_task() || robot_profile_is_wheelleg_mit());
 }
 
-static uint8_t motor_instance_rx_enabled(const motor_instance_t *inst)
+static uint8_t MotorInstRxEnabled(const MotorInst *inst)
 {
-    if (motor_instance_enabled(inst) == 0u)
+    if (MotorInstEnabled(inst) == 0u)
     {
         return 0u;
     }
-    if (inst->role == MOTOR_INSTANCE_ROLE_ARM && motor_instance_arm_role_enabled() == 0u)
+    if (inst->role == MotorRoleArm && MotorInstArmRoleEnabled() == 0u)
     {
         return 0u;
     }
     return 1u;
 }
 
-static uint8_t motor_instance_feedback_hash(uint8_t bus, uint16_t std_id)
+static uint8_t MotorInstFeedbackHash(uint8_t bus, uint16_t std_id)
 {
     return (uint8_t)(((uint16_t)(std_id ^ ((uint16_t)bus << 5u))) %
-                     (uint16_t)MOTOR_INSTANCE_FEEDBACK_LOOKUP_CAPACITY);
+                     (uint16_t)MOTOR_INST_FEEDBACK_LOOKUP_CAPACITY);
 }
 
-static void motor_instance_feedback_lookup_clear(void)
+static void MotorInstFeedbackClear(void)
 {
-    (void)memset(s_motor_feedback_lookup, 0, sizeof(s_motor_feedback_lookup));
+    (void)memset(sMotorFbLookup, 0, sizeof(sMotorFbLookup));
 }
 
-static void motor_instance_feedback_lookup_insert(const motor_instance_t *inst)
+static void MotorInstFeedbackInsert(const MotorInst *inst)
 {
     uint8_t slot = 0u;
-    const uint8_t bus = (inst != NULL) ? motor_instance_bus(inst) : 0u;
+    const uint8_t bus = (inst != NULL) ? MotorInstBus(inst) : 0u;
     const uint16_t std_id = (inst != NULL) ? motor_cfg_feedback_id(inst->node) : 0u;
 
     if (inst == NULL ||
-        motor_instance_rx_enabled(inst) == 0u ||
+        MotorInstRxEnabled(inst) == 0u ||
         bus == 0u ||
         motor_cfg_transport(inst->node) != MOTOR_TRANSPORT_CAN ||
         motor_cfg_can_id(inst->node) == 0u)
@@ -190,11 +190,11 @@ static void motor_instance_feedback_lookup_insert(const motor_instance_t *inst)
         return;
     }
 
-    slot = motor_instance_feedback_hash(bus, std_id);
-    for (uint8_t i = 0u; i < (uint8_t)MOTOR_INSTANCE_FEEDBACK_LOOKUP_CAPACITY; i++)
+    slot = MotorInstFeedbackHash(bus, std_id);
+    for (uint8_t i = 0u; i < (uint8_t)MOTOR_INST_FEEDBACK_LOOKUP_CAPACITY; i++)
     {
-        motor_instance_feedback_lookup_slot_t *entry =
-            &s_motor_feedback_lookup[(uint8_t)((slot + i) % (uint8_t)MOTOR_INSTANCE_FEEDBACK_LOOKUP_CAPACITY)];
+        MotorFeedbackSlot *entry =
+            &sMotorFbLookup[(uint8_t)((slot + i) % (uint8_t)MOTOR_INST_FEEDBACK_LOOKUP_CAPACITY)];
 
         if (entry->used == 0u)
         {
@@ -211,28 +211,28 @@ static void motor_instance_feedback_lookup_insert(const motor_instance_t *inst)
     }
 }
 
-static void motor_instance_feedback_lookup_rebuild(void)
+static void MotorInstFeedbackRebuild(void)
 {
-    motor_instance_feedback_lookup_clear();
+    MotorInstFeedbackClear();
 
     for (uint8_t pass = 0u; pass < 2u; pass++)
     {
-        for (uint8_t i = 0u; i < s_motor_instance_count; i++)
+        for (uint8_t i = 0u; i < sMotorInstCount; i++)
         {
-            const motor_instance_t *inst = &s_motor_instances[i];
+            const MotorInst *inst = &sMotorInst[i];
 
-            if ((pass == 0u && inst->role != MOTOR_INSTANCE_ROLE_ARM) ||
-                (pass != 0u && inst->role == MOTOR_INSTANCE_ROLE_ARM))
+            if ((pass == 0u && inst->role != MotorRoleArm) ||
+                (pass != 0u && inst->role == MotorRoleArm))
             {
                 continue;
             }
 
-            motor_instance_feedback_lookup_insert(inst);
+            MotorInstFeedbackInsert(inst);
         }
     }
 }
 
-static uint8_t motor_route_node_bus(const motor_instance_t *inst)
+static uint8_t MotorRouteNodeBus(const MotorInst *inst)
 {
     if (inst == NULL || inst->node == NULL)
     {
@@ -245,32 +245,32 @@ static uint8_t motor_route_node_bus(const motor_instance_t *inst)
     return motor_cfg_can_bus(inst->fallback_bus, inst->node);
 }
 
-static void motor_route_add(const motor_instance_t *inst)
+static void MotorRouteAdd(const MotorInst *inst)
 {
-    motor_route_t *route;
+    MotorRoute *route;
 
     if (inst == NULL ||
         inst->node == NULL ||
-        motor_instance_enabled(inst) == 0u ||
-        s_motor_route_count >= (uint8_t)MotorCount ||
+        MotorInstEnabled(inst) == 0u ||
+        sMotorRouteCount >= (uint8_t)MotorCount ||
         (uint32_t)inst->actuator_id >= (uint32_t)MotorCount)
     {
         return;
     }
 
-    route = &s_motor_routes[s_motor_route_count++];
+    route = &sMotorRoute[sMotorRouteCount++];
     (void)memset(route, 0, sizeof(*route));
     route->motorId = inst->actuator_id;
     route->role = inst->role;
     route->roleIndex = inst->role_index;
     route->fallbackBus = inst->fallback_bus;
-    route->bus = motor_route_node_bus(inst);
+    route->bus = MotorRouteNodeBus(inst);
     route->enabled = 1u;
     route->transport = (uint8_t)motor_cfg_transport(inst->node);
     route->protocol = (uint8_t)motor_cfg_protocol(inst->node);
     route->controlMode = (uint8_t)motor_cfg_control_mode(inst->node);
     route->isRmGroup = motor_cfg_is_rm_group_protocol(inst->node);
-    route->cmdCaps = motor_instance_node_cmd_caps(inst->node);
+    route->cmdCaps = MotorInstNodeCaps(inst->node);
     route->model = (uint8_t)inst->node->model;
     route->canId = motor_cfg_can_id(inst->node);
     route->feedbackId = motor_cfg_feedback_id(inst->node);
@@ -278,29 +278,29 @@ static void motor_route_add(const motor_instance_t *inst)
     route->node = inst->node;
     route->measure = inst->measure;
     route->mitLimits = motor_cfg_mit_limits(inst->node);
-    s_motor_route_by_motor[route->motorId] = route;
+    sRouteByMotor[route->motorId] = route;
 }
 
-static void motor_route_rebuild(void)
+static void MotorRouteRebuild(void)
 {
-    s_motor_route_count = 0u;
-    (void)memset(s_motor_routes, 0, sizeof(s_motor_routes));
-    (void)memset(s_motor_route_by_motor, 0, sizeof(s_motor_route_by_motor));
+    sMotorRouteCount = 0u;
+    (void)memset(sMotorRoute, 0, sizeof(sMotorRoute));
+    (void)memset(sRouteByMotor, 0, sizeof(sRouteByMotor));
 
-    for (uint8_t i = 0u; i < s_motor_instance_count; i++)
+    for (uint8_t i = 0u; i < sMotorInstCount; i++)
     {
-        motor_route_add(&s_motor_instances[i]);
+        MotorRouteAdd(&sMotorInst[i]);
     }
 }
 
-static const motor_instance_t *motor_instance_feedback_lookup_get(uint8_t bus, uint16_t std_id)
+static const MotorInst *MotorInstFeedbackGet(uint8_t bus, uint16_t std_id)
 {
-    const uint8_t slot = motor_instance_feedback_hash(bus, std_id);
+    const uint8_t slot = MotorInstFeedbackHash(bus, std_id);
 
-    for (uint8_t i = 0u; i < (uint8_t)MOTOR_INSTANCE_FEEDBACK_LOOKUP_CAPACITY; i++)
+    for (uint8_t i = 0u; i < (uint8_t)MOTOR_INST_FEEDBACK_LOOKUP_CAPACITY; i++)
     {
-        const motor_instance_feedback_lookup_slot_t *entry =
-            &s_motor_feedback_lookup[(uint8_t)((slot + i) % (uint8_t)MOTOR_INSTANCE_FEEDBACK_LOOKUP_CAPACITY)];
+        const MotorFeedbackSlot *entry =
+            &sMotorFbLookup[(uint8_t)((slot + i) % (uint8_t)MOTOR_INST_FEEDBACK_LOOKUP_CAPACITY)];
 
         if (entry->used == 0u)
         {
@@ -315,22 +315,22 @@ static const motor_instance_t *motor_instance_feedback_lookup_get(uint8_t bus, u
     return NULL;
 }
 
-static void motor_instance_ensure(void)
+static void MotorInstEnsure(void)
 {
-    if (s_motor_instance_ready == 0u)
+    if (sMotorInstReady == 0u)
     {
-        motor_instance_refresh();
+        MotorInstRefresh();
     }
 }
 
-void motor_instance_refresh(void)
+void MotorInstRefresh(void)
 {
     const uint8_t device_count = robot_config_motor_device_count();
 
-    s_motor_instance_count = 0u;
-    (void)memset(s_motor_instances, 0, sizeof(s_motor_instances));
-    (void)memset(s_motor_instance_by_actuator, 0, sizeof(s_motor_instance_by_actuator));
-    motor_instance_feedback_lookup_clear();
+    sMotorInstCount = 0u;
+    (void)memset(sMotorInst, 0, sizeof(sMotorInst));
+    (void)memset(sMotorById, 0, sizeof(sMotorById));
+    MotorInstFeedbackClear();
 
     for (uint8_t i = 0u; i < device_count; i++)
     {
@@ -342,55 +342,55 @@ void motor_instance_refresh(void)
             continue;
         }
 
-        measure = motor_instance_measure_from_actuator(device.actuator_id);
+        measure = MotorInstMeasureFromId(device.actuator_id);
         if (measure == NULL)
         {
             continue;
         }
 
-        motor_instance_add(device.actuator_id,
-                           motor_instance_role_from_config(device.group),
+        MotorInstAdd(device.actuator_id,
+                           MotorInstRoleFromConfig(device.group),
                            device.group_index,
                            device.fallback_bus,
-                           motor_instance_detect_toe_from_config(&device),
-                           motor_instance_use_detect_from_config(&device),
+                           MotorInstDetectToeFromConfig(&device),
+                           MotorInstUseDetectFromConfig(&device),
                            device.name,
                            device.node,
                            measure);
     }
 
-    motor_instance_feedback_lookup_rebuild();
-    motor_route_rebuild();
-    s_motor_instance_ready = 1u;
+    MotorInstFeedbackRebuild();
+    MotorRouteRebuild();
+    sMotorInstReady = 1u;
 }
 
-uint8_t motor_instance_count(void)
+uint8_t MotorInstCount(void)
 {
-    motor_instance_ensure();
-    return s_motor_instance_count;
+    MotorInstEnsure();
+    return sMotorInstCount;
 }
 
-const motor_instance_t *motor_instance_get(uint8_t index)
+const MotorInst *MotorInstGet(uint8_t index)
 {
-    motor_instance_ensure();
-    if (index >= s_motor_instance_count)
+    MotorInstEnsure();
+    if (index >= sMotorInstCount)
     {
         return NULL;
     }
-    return &s_motor_instances[index];
+    return &sMotorInst[index];
 }
 
-const motor_instance_t *motor_instance_find_by_actuator(MotorId id)
+const MotorInst *MotorInstFindByMotor(MotorId id)
 {
-    motor_instance_ensure();
+    MotorInstEnsure();
     if ((uint32_t)id >= (uint32_t)MotorCount)
     {
         return NULL;
     }
-    return s_motor_instance_by_actuator[id];
+    return sMotorById[id];
 }
 
-const motor_instance_t *motor_instance_find_by_name(const char *name)
+const MotorInst *MotorInstFindByName(const char *name)
 {
     uint8_t i = 0u;
 
@@ -399,45 +399,45 @@ const motor_instance_t *motor_instance_find_by_name(const char *name)
         return NULL;
     }
 
-    motor_instance_ensure();
-    for (i = 0u; i < s_motor_instance_count; i++)
+    MotorInstEnsure();
+    for (i = 0u; i < sMotorInstCount; i++)
     {
-        if (s_motor_instances[i].name != NULL &&
-            strcmp(s_motor_instances[i].name, name) == 0)
+        if (sMotorInst[i].name != NULL &&
+            strcmp(sMotorInst[i].name, name) == 0)
         {
-            return &s_motor_instances[i];
+            return &sMotorInst[i];
         }
     }
     return NULL;
 }
 
-uint8_t motor_route_count(void)
+uint8_t MotorRouteCount(void)
 {
-    motor_instance_ensure();
-    return s_motor_route_count;
+    MotorInstEnsure();
+    return sMotorRouteCount;
 }
 
-const motor_route_t *motor_route_get(uint8_t index)
+const MotorRoute *MotorRouteGet(uint8_t index)
 {
-    motor_instance_ensure();
-    if (index >= s_motor_route_count)
+    MotorInstEnsure();
+    if (index >= sMotorRouteCount)
     {
         return NULL;
     }
-    return &s_motor_routes[index];
+    return &sMotorRoute[index];
 }
 
-const motor_route_t *motor_route_find_by_motor(MotorId id)
+const MotorRoute *MotorRouteFindByMotor(MotorId id)
 {
-    motor_instance_ensure();
+    MotorInstEnsure();
     if ((uint32_t)id >= (uint32_t)MotorCount)
     {
         return NULL;
     }
-    return s_motor_route_by_motor[id];
+    return sRouteByMotor[id];
 }
 
-uint8_t motor_instance_resolve_actuator_ids(const char *const *names, uint8_t count, MotorId *out, uint8_t out_cap)
+uint8_t MotorInstResolveIds(const char *const *names, uint8_t count, MotorId *out, uint8_t out_cap)
 {
     uint8_t resolved = 0u;
 
@@ -464,9 +464,9 @@ uint8_t motor_instance_resolve_actuator_ids(const char *const *names, uint8_t co
     return resolved;
 }
 
-uint8_t motor_instance_bind_current_outputs(const char *const *names,
+uint8_t MotorInstBindCurrent(const char *const *names,
                                             uint8_t count,
-                                            motor_instance_current_binding_t *out,
+                                            MotorCurrentBind *out,
                                             uint8_t out_cap)
 {
     uint8_t bound = 0u;
@@ -478,12 +478,12 @@ uint8_t motor_instance_bind_current_outputs(const char *const *names,
 
     for (uint8_t i = 0u; i < count; i++)
     {
-        const motor_instance_t *inst = motor_instance_find_by_name(names[i]);
+        const MotorInst *inst = MotorInstFindByName(names[i]);
 
         out[i].actuator_id = MotorCount;
         out[i].enabled = 0u;
 
-        if (inst == NULL || motor_instance_enabled(inst) == 0u)
+        if (inst == NULL || MotorInstEnabled(inst) == 0u)
         {
             continue;
         }
@@ -496,22 +496,22 @@ uint8_t motor_instance_bind_current_outputs(const char *const *names,
     return bound;
 }
 
-const char *motor_instance_name(const motor_instance_t *inst)
+const char *MotorInstName(const MotorInst *inst)
 {
     return (inst != NULL) ? inst->name : NULL;
 }
 
-MotorId motor_instance_actuator_id(const motor_instance_t *inst)
+MotorId MotorInstId(const MotorInst *inst)
 {
     return (inst != NULL) ? inst->actuator_id : MotorCount;
 }
 
-MotorId motor_instance_actuator_id_by_name(const char *name)
+MotorId MotorInstIdByName(const char *name)
 {
-    return motor_instance_actuator_id(motor_instance_find_by_name(name));
+    return MotorInstId(MotorInstFindByName(name));
 }
 
-uint8_t motor_instance_bus(const motor_instance_t *inst)
+uint8_t MotorInstBus(const MotorInst *inst)
 {
     if (inst == NULL || inst->node == NULL)
     {
@@ -520,7 +520,7 @@ uint8_t motor_instance_bus(const motor_instance_t *inst)
     return motor_cfg_can_bus(inst->fallback_bus, inst->node);
 }
 
-uint8_t motor_instance_enabled(const motor_instance_t *inst)
+uint8_t MotorInstEnabled(const MotorInst *inst)
 {
     if (inst == NULL || inst->node == NULL)
     {
@@ -529,11 +529,11 @@ uint8_t motor_instance_enabled(const motor_instance_t *inst)
     return (motor_cfg_node_id(inst->node) != 0u) ? 1u : 0u;
 }
 
-static uint8_t motor_instance_resolve_cmd_target(const char *name, MotorId *out)
+static uint8_t MotorInstResolveCmdTarget(const char *name, MotorId *out)
 {
-    const motor_instance_t *inst = motor_instance_find_by_name(name);
+    const MotorInst *inst = MotorInstFindByName(name);
 
-    if (inst == NULL || out == NULL || motor_instance_enabled(inst) == 0u)
+    if (inst == NULL || out == NULL || MotorInstEnabled(inst) == 0u)
     {
         return 0u;
     }
@@ -542,14 +542,14 @@ static uint8_t motor_instance_resolve_cmd_target(const char *name, MotorId *out)
     return 1u;
 }
 
-static uint8_t motor_instance_id_cmd_enabled(MotorId id)
+static uint8_t MotorInstCmdEnabled(MotorId id)
 {
-    const motor_instance_t *inst = motor_instance_find_by_actuator(id);
+    const MotorInst *inst = MotorInstFindByMotor(id);
 
-    return (uint8_t)(inst != NULL && motor_instance_enabled(inst) != 0u);
+    return (uint8_t)(inst != NULL && MotorInstEnabled(inst) != 0u);
 }
 
-static uint8_t motor_instance_node_cmd_caps(const motor_node_param_t *node)
+static uint8_t MotorInstNodeCaps(const motor_node_param_t *node)
 {
     const motor_model_db_entry_t *entry;
     uint8_t caps = (uint8_t)MotorCmdCapCurrent;
@@ -596,53 +596,53 @@ static uint8_t motor_instance_node_cmd_caps(const motor_node_param_t *node)
     return caps;
 }
 
-uint8_t motor_instance_model_id(MotorId id)
+uint8_t MotorInstModelId(MotorId id)
 {
-    const motor_node_param_t *node = motor_instance_node(id);
+    const motor_node_param_t *node = MotorInstNode(id);
 
     return (node != NULL) ? (uint8_t)node->model : 0xFFu;
 }
 
-uint8_t motor_instance_transport_id(MotorId id)
+uint8_t MotorInstTransportId(MotorId id)
 {
-    const motor_node_param_t *node = motor_instance_node(id);
+    const motor_node_param_t *node = MotorInstNode(id);
 
     return (node != NULL) ? (uint8_t)motor_cfg_transport(node) : 0u;
 }
 
-uint8_t motor_instance_protocol_id(MotorId id)
+uint8_t MotorInstProtocolId(MotorId id)
 {
-    const motor_node_param_t *node = motor_instance_node(id);
+    const motor_node_param_t *node = MotorInstNode(id);
 
     return (node != NULL) ? (uint8_t)motor_cfg_protocol(node) : 0u;
 }
 
-uint8_t motor_instance_control_mode_id(MotorId id)
+uint8_t MotorInstControlModeId(MotorId id)
 {
-    const motor_node_param_t *node = motor_instance_node(id);
+    const motor_node_param_t *node = MotorInstNode(id);
 
     return (node != NULL) ? (uint8_t)motor_cfg_control_mode(node) : 0u;
 }
 
-uint8_t motor_instance_cmd_caps_id(MotorId id)
+uint8_t MotorInstCapsId(MotorId id)
 {
-    const motor_instance_t *inst = motor_instance_find_by_actuator(id);
+    const MotorInst *inst = MotorInstFindByMotor(id);
 
-    if (inst == NULL || motor_instance_enabled(inst) == 0u)
+    if (inst == NULL || MotorInstEnabled(inst) == 0u)
     {
         return 0u;
     }
 
-    return motor_instance_node_cmd_caps(inst->node);
+    return MotorInstNodeCaps(inst->node);
 }
 
-uint8_t motor_instance_cmd_mode_supported_id(MotorId id, MotorMode mode)
+uint8_t MotorInstModeSupportedId(MotorId id, MotorMode mode)
 {
-    const uint8_t caps = motor_instance_cmd_caps_id(id);
+    const uint8_t caps = MotorInstCapsId(id);
 
     if (mode == MotorModeNone)
     {
-        return (motor_instance_find_by_actuator(id) != NULL) ? 1u : 0u;
+        return (MotorInstFindByMotor(id) != NULL) ? 1u : 0u;
     }
     if (MotorModeKnown((uint8_t)mode) == 0u || caps == 0u)
     {
@@ -670,10 +670,10 @@ uint8_t motor_instance_cmd_mode_supported_id(MotorId id, MotorMode mode)
     }
 }
 
-uint8_t motor_instance_cmd_clear_id(MotorId id)
+uint8_t MotorInstClearId(MotorId id)
 {
     if ((uint32_t)id >= (uint32_t)MotorCount ||
-        motor_instance_find_by_actuator(id) == NULL)
+        MotorInstFindByMotor(id) == NULL)
     {
         return 0u;
     }
@@ -682,7 +682,7 @@ uint8_t motor_instance_cmd_clear_id(MotorId id)
     return 1u;
 }
 
-uint8_t motor_instance_cmd_set_ids(const MotorId *ids, const MotorCmd *cmds, uint8_t count)
+uint8_t MotorInstSetIds(const MotorId *ids, const MotorCmd *cmds, uint8_t count)
 {
     if (count > (uint8_t)MotorCount)
     {
@@ -695,8 +695,8 @@ uint8_t motor_instance_cmd_set_ids(const MotorId *ids, const MotorCmd *cmds, uin
 
     for (uint8_t i = 0u; i < count; i++)
     {
-        if (motor_instance_id_cmd_enabled(ids[i]) == 0u ||
-            motor_instance_cmd_mode_supported_id(ids[i], (MotorMode)cmds[i].mode) == 0u)
+        if (MotorInstCmdEnabled(ids[i]) == 0u ||
+            MotorInstModeSupportedId(ids[i], (MotorMode)cmds[i].mode) == 0u)
         {
             return 0u;
         }
@@ -705,7 +705,7 @@ uint8_t motor_instance_cmd_set_ids(const MotorId *ids, const MotorCmd *cmds, uin
     return LowCmdSetMotorMany(ids, cmds, count);
 }
 
-uint8_t motor_instance_cmd_set_ids_best_effort(const MotorId *ids, const MotorCmd *cmds, uint8_t count)
+uint8_t MotorInstSetIdsBestEffort(const MotorId *ids, const MotorCmd *cmds, uint8_t count)
 {
     MotorId writable_ids[MotorCount];
     MotorCmd writable_cmds[MotorCount];
@@ -718,8 +718,8 @@ uint8_t motor_instance_cmd_set_ids_best_effort(const MotorId *ids, const MotorCm
 
     for (uint8_t i = 0u; i < count; i++)
     {
-        if (motor_instance_id_cmd_enabled(ids[i]) == 0u ||
-            motor_instance_cmd_mode_supported_id(ids[i], (MotorMode)cmds[i].mode) == 0u)
+        if (MotorInstCmdEnabled(ids[i]) == 0u ||
+            MotorInstModeSupportedId(ids[i], (MotorMode)cmds[i].mode) == 0u)
         {
             continue;
         }
@@ -737,9 +737,9 @@ uint8_t motor_instance_cmd_set_ids_best_effort(const MotorId *ids, const MotorCm
     return written;
 }
 
-uint8_t motor_instance_cmd_set_current_id(MotorId id, int16_t current)
+uint8_t MotorInstSetCurrentId(MotorId id, int16_t current)
 {
-    if (motor_instance_id_cmd_enabled(id) == 0u)
+    if (MotorInstCmdEnabled(id) == 0u)
     {
         return 0u;
     }
@@ -748,7 +748,7 @@ uint8_t motor_instance_cmd_set_current_id(MotorId id, int16_t current)
     return 1u;
 }
 
-uint8_t motor_instance_cmd_set_state_torque_id(MotorId id, const MotorCmd *cmd)
+uint8_t MotorInstSetStateTorqueId(MotorId id, const MotorCmd *cmd)
 {
     MotorCmd tmp;
 
@@ -760,10 +760,10 @@ uint8_t motor_instance_cmd_set_state_torque_id(MotorId id, const MotorCmd *cmd)
     tmp = *cmd;
     tmp.active = 1u;
     tmp.mode = (uint8_t)MotorModeStateTorque;
-    return motor_instance_cmd_set_ids(&id, &tmp, 1u);
+    return MotorInstSetIds(&id, &tmp, 1u);
 }
 
-uint8_t motor_instance_cmd_set_state_torque_ids(const MotorId *ids, const MotorCmd *cmds, uint8_t count)
+uint8_t MotorInstSetStateTorqueIds(const MotorId *ids, const MotorCmd *cmds, uint8_t count)
 {
     MotorCmd prepared[MotorCount];
 
@@ -783,10 +783,10 @@ uint8_t motor_instance_cmd_set_state_torque_ids(const MotorId *ids, const MotorC
         prepared[i].mode = (uint8_t)MotorModeStateTorque;
     }
 
-    return motor_instance_cmd_set_ids(ids, prepared, count);
+    return MotorInstSetIds(ids, prepared, count);
 }
 
-uint8_t motor_instance_cmd_set_state_torque_ids_best_effort(const MotorId *ids,
+uint8_t MotorInstSetStateTorqueIdsBestEffort(const MotorId *ids,
                                                             const MotorCmd *cmds,
                                                             uint8_t count)
 {
@@ -808,20 +808,20 @@ uint8_t motor_instance_cmd_set_state_torque_ids_best_effort(const MotorId *ids,
         prepared[i].mode = (uint8_t)MotorModeStateTorque;
     }
 
-    return motor_instance_cmd_set_ids_best_effort(ids, prepared, count);
+    return MotorInstSetIdsBestEffort(ids, prepared, count);
 }
 
-uint8_t motor_instance_cmd_set_disable_id(MotorId id)
+uint8_t MotorInstSetDisableId(MotorId id)
 {
     MotorCmd cmd;
 
     (void)memset(&cmd, 0, sizeof(cmd));
     cmd.active = 1u;
     cmd.mode = (uint8_t)MotorModeDisable;
-    return motor_instance_cmd_set_ids(&id, &cmd, 1u);
+    return MotorInstSetIds(&id, &cmd, 1u);
 }
 
-uint8_t motor_instance_cmd_set_damping_id(MotorId id, fp32 kd, fp32 tau)
+uint8_t MotorInstSetDampingId(MotorId id, fp32 kd, fp32 tau)
 {
     MotorCmd cmd;
 
@@ -831,10 +831,10 @@ uint8_t motor_instance_cmd_set_damping_id(MotorId id, fp32 kd, fp32 tau)
     cmd.dq = 0.0f;
     cmd.kd = kd;
     cmd.tau = tau;
-    return motor_instance_cmd_set_ids(&id, &cmd, 1u);
+    return MotorInstSetIds(&id, &cmd, 1u);
 }
 
-uint8_t motor_instance_cmd_set_speed_id(MotorId id, fp32 velocity, fp32 kd, fp32 torque)
+uint8_t MotorInstSetSpeedId(MotorId id, fp32 velocity, fp32 kd, fp32 torque)
 {
     MotorCmd cmd;
 
@@ -844,77 +844,77 @@ uint8_t motor_instance_cmd_set_speed_id(MotorId id, fp32 velocity, fp32 kd, fp32
     cmd.dq = velocity;
     cmd.kd = kd;
     cmd.tau = torque;
-    return motor_instance_cmd_set_ids(&id, &cmd, 1u);
+    return MotorInstSetIds(&id, &cmd, 1u);
 }
 
-uint8_t motor_instance_cmd_clear(const char *name)
+uint8_t MotorInstClear(const char *name)
 {
-    return motor_instance_cmd_clear_id(motor_instance_actuator_id_by_name(name));
+    return MotorInstClearId(MotorInstIdByName(name));
 }
 
-uint8_t motor_instance_cmd_set_disable(const char *name)
+uint8_t MotorInstSetDisable(const char *name)
 {
     MotorId id;
 
-    if (motor_instance_resolve_cmd_target(name, &id) == 0u)
+    if (MotorInstResolveCmdTarget(name, &id) == 0u)
     {
         return 0u;
     }
 
-    return motor_instance_cmd_set_disable_id(id);
+    return MotorInstSetDisableId(id);
 }
 
-uint8_t motor_instance_cmd_set_damping(const char *name, fp32 kd, fp32 tau)
+uint8_t MotorInstSetDamping(const char *name, fp32 kd, fp32 tau)
 {
     MotorId id;
 
-    if (motor_instance_resolve_cmd_target(name, &id) == 0u)
+    if (MotorInstResolveCmdTarget(name, &id) == 0u)
     {
         return 0u;
     }
 
-    return motor_instance_cmd_set_damping_id(id, kd, tau);
+    return MotorInstSetDampingId(id, kd, tau);
 }
 
-uint8_t motor_instance_cmd_set_current(const char *name, int16_t current)
+uint8_t MotorInstSetCurrent(const char *name, int16_t current)
 {
     MotorId id;
 
-    if (motor_instance_resolve_cmd_target(name, &id) == 0u)
+    if (MotorInstResolveCmdTarget(name, &id) == 0u)
     {
         return 0u;
     }
 
-    return motor_instance_cmd_set_current_id(id, current);
+    return MotorInstSetCurrentId(id, current);
 }
 
-uint8_t motor_instance_cmd_set_state_torque(const char *name, const MotorCmd *cmd)
+uint8_t MotorInstSetStateTorque(const char *name, const MotorCmd *cmd)
 {
     MotorId id;
 
-    if (motor_instance_resolve_cmd_target(name, &id) == 0u)
+    if (MotorInstResolveCmdTarget(name, &id) == 0u)
     {
         return 0u;
     }
 
-    return motor_instance_cmd_set_state_torque_id(id, cmd);
+    return MotorInstSetStateTorqueId(id, cmd);
 }
 
-uint8_t motor_instance_cmd_set_speed(const char *name, fp32 velocity, fp32 kd, fp32 torque)
+uint8_t MotorInstSetSpeed(const char *name, fp32 velocity, fp32 kd, fp32 torque)
 {
     MotorId id;
 
-    if (motor_instance_resolve_cmd_target(name, &id) == 0u)
+    if (MotorInstResolveCmdTarget(name, &id) == 0u)
     {
         return 0u;
     }
 
-    return motor_instance_cmd_set_speed_id(id, velocity, kd, torque);
+    return MotorInstSetSpeedId(id, velocity, kd, torque);
 }
 
-uint8_t motor_instance_cmd_get_copy(const char *name, MotorCmd *out)
+uint8_t MotorInstGetCmd(const char *name, MotorCmd *out)
 {
-    const MotorId id = motor_instance_actuator_id_by_name(name);
+    const MotorId id = MotorInstIdByName(name);
 
     if (id == MotorCount || out == NULL)
     {
@@ -924,9 +924,9 @@ uint8_t motor_instance_cmd_get_copy(const char *name, MotorCmd *out)
     return LowCmdGetMotor(id, out);
 }
 
-uint8_t motor_instance_feedback_get_copy(const char *name, MotorState *out)
+uint8_t MotorInstGetFeedback(const char *name, MotorState *out)
 {
-    const MotorId id = motor_instance_actuator_id_by_name(name);
+    const MotorId id = MotorInstIdByName(name);
 
     if (id == MotorCount || out == NULL)
     {
@@ -936,7 +936,7 @@ uint8_t motor_instance_feedback_get_copy(const char *name, MotorState *out)
     return LowStateGetMotor(id, out);
 }
 
-uint8_t motor_instance_cmd_set_current_ids(const MotorId *ids, const int16_t *currents, uint8_t count)
+uint8_t MotorInstSetCurrentIds(const MotorId *ids, const int16_t *currents, uint8_t count)
 {
     if (ids == NULL || currents == NULL)
     {
@@ -945,7 +945,7 @@ uint8_t motor_instance_cmd_set_current_ids(const MotorId *ids, const int16_t *cu
 
     for (uint8_t i = 0u; i < count; i++)
     {
-        if (motor_instance_id_cmd_enabled(ids[i]) == 0u)
+        if (MotorInstCmdEnabled(ids[i]) == 0u)
         {
             return 0u;
         }
@@ -954,7 +954,7 @@ uint8_t motor_instance_cmd_set_current_ids(const MotorId *ids, const int16_t *cu
     return LowCmdSetCurrentMany(ids, currents, count);
 }
 
-uint8_t motor_instance_cmd_set_current_many(const char *const *names, const int16_t *currents, uint8_t count)
+uint8_t MotorInstSetCurrentMany(const char *const *names, const int16_t *currents, uint8_t count)
 {
     MotorId ids[MotorCount];
 
@@ -962,15 +962,15 @@ uint8_t motor_instance_cmd_set_current_many(const char *const *names, const int1
     {
         return 0u;
     }
-    if (motor_instance_resolve_actuator_ids(names, count, ids, (uint8_t)MotorCount) != count)
+    if (MotorInstResolveIds(names, count, ids, (uint8_t)MotorCount) != count)
     {
         return 0u;
     }
 
-    return motor_instance_cmd_set_current_ids(ids, currents, count);
+    return MotorInstSetCurrentIds(ids, currents, count);
 }
 
-uint8_t motor_instance_cmd_set_current_ids_best_effort(const MotorId *ids, const int16_t *currents, uint8_t count)
+uint8_t MotorInstSetCurrentIdsBestEffort(const MotorId *ids, const int16_t *currents, uint8_t count)
 {
     MotorId writable_ids[MotorCount];
     int16_t writable_currents[MotorCount];
@@ -983,7 +983,7 @@ uint8_t motor_instance_cmd_set_current_ids_best_effort(const MotorId *ids, const
 
     for (uint8_t i = 0u; i < count; i++)
     {
-        if (motor_instance_id_cmd_enabled(ids[i]) == 0u)
+        if (MotorInstCmdEnabled(ids[i]) == 0u)
         {
             continue;
         }
@@ -1001,7 +1001,7 @@ uint8_t motor_instance_cmd_set_current_ids_best_effort(const MotorId *ids, const
     return written;
 }
 
-uint8_t motor_instance_cmd_set_current_many_best_effort(const char *const *names, const int16_t *currents, uint8_t count)
+uint8_t MotorInstSetCurrentManyBestEffort(const char *const *names, const int16_t *currents, uint8_t count)
 {
     MotorId writable_ids[MotorCount];
     int16_t writable_currents[MotorCount];
@@ -1016,7 +1016,7 @@ uint8_t motor_instance_cmd_set_current_many_best_effort(const char *const *names
     {
         MotorId id;
 
-        if (motor_instance_resolve_cmd_target(names[i], &id) == 0u)
+        if (MotorInstResolveCmdTarget(names[i], &id) == 0u)
         {
             continue;
         }
@@ -1034,7 +1034,7 @@ uint8_t motor_instance_cmd_set_current_many_best_effort(const char *const *names
     return written;
 }
 
-uint8_t motor_instance_cmd_set_current_bindings_best_effort(const motor_instance_current_binding_t *bindings,
+uint8_t MotorInstSetCurrentBindsBestEffort(const MotorCurrentBind *bindings,
                                                             const int16_t *currents,
                                                             uint8_t count)
 {
@@ -1068,7 +1068,7 @@ uint8_t motor_instance_cmd_set_current_bindings_best_effort(const motor_instance
     return written;
 }
 
-uint8_t motor_instance_feedback_get_copy_ids(const MotorId *ids, MotorState *out, uint8_t count)
+uint8_t MotorInstGetFeedbackIds(const MotorId *ids, MotorState *out, uint8_t count)
 {
     if (ids == NULL || out == NULL)
     {
@@ -1086,7 +1086,7 @@ uint8_t motor_instance_feedback_get_copy_ids(const MotorId *ids, MotorState *out
     return LowStateGetMotorMany(ids, out, count);
 }
 
-uint8_t motor_instance_feedback_get_copy_many(const char *const *names, MotorState *out, uint8_t count)
+uint8_t MotorInstGetFeedbackMany(const char *const *names, MotorState *out, uint8_t count)
 {
     MotorId ids[MotorCount];
 
@@ -1094,15 +1094,15 @@ uint8_t motor_instance_feedback_get_copy_many(const char *const *names, MotorSta
     {
         return 0u;
     }
-    if (motor_instance_resolve_actuator_ids(names, count, ids, (uint8_t)MotorCount) != count)
+    if (MotorInstResolveIds(names, count, ids, (uint8_t)MotorCount) != count)
     {
         return 0u;
     }
 
-    return motor_instance_feedback_get_copy_ids(ids, out, count);
+    return MotorInstGetFeedbackIds(ids, out, count);
 }
 
-uint8_t motor_instance_resolve_controller_outputs(const struct control_controller *controller,
+uint8_t MotorInstResolveControllerOutputs(const struct control_controller *controller,
                                                   MotorId *out,
                                                   uint8_t out_cap)
 {
@@ -1111,31 +1111,31 @@ uint8_t motor_instance_resolve_controller_outputs(const struct control_controlle
         return 0u;
     }
 
-    return motor_instance_resolve_actuator_ids(controller->meta.outputs,
+    return MotorInstResolveIds(controller->meta.outputs,
                                               controller->meta.output_count,
                                               out,
                                               out_cap);
 }
 
-const motor_instance_t *motor_instance_find_feedback(uint8_t bus, uint16_t std_id)
+const MotorInst *MotorInstFindFeedback(uint8_t bus, uint16_t std_id)
 {
-    motor_instance_ensure();
-    return motor_instance_feedback_lookup_get(bus, std_id);
+    MotorInstEnsure();
+    return MotorInstFeedbackGet(bus, std_id);
 }
 
-const motor_node_param_t *motor_instance_node(MotorId id)
+const motor_node_param_t *MotorInstNode(MotorId id)
 {
-    const motor_instance_t *inst = motor_instance_find_by_actuator(id);
+    const MotorInst *inst = MotorInstFindByMotor(id);
     return (inst != NULL) ? inst->node : NULL;
 }
 
-motor_measure_t *motor_instance_measure(MotorId id)
+motor_measure_t *MotorInstMeasure(MotorId id)
 {
-    const motor_instance_t *inst = motor_instance_find_by_actuator(id);
+    const MotorInst *inst = MotorInstFindByMotor(id);
     return (inst != NULL) ? inst->measure : NULL;
 }
 
-const motor_measure_t *motor_instance_measure_const(MotorId id)
+const motor_measure_t *MotorInstMeasureConst(MotorId id)
 {
-    return motor_instance_measure(id);
+    return MotorInstMeasure(id);
 }

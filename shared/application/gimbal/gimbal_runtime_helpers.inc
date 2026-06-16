@@ -154,44 +154,44 @@ static void gimbal_apply_operation_mode(const gimbal_runtime_snapshot_t *snapsho
     }
 }
 
-static bool_t gimbal_control_manager_allows(uint16_t expected_controller_id,
+static bool_t GimbalControlMgrAllows(uint16_t expected_controller_id,
                                             const gimbal_runtime_snapshot_t *snapshot)
 {
-    control_context_t context = {0};
+    ControlCtx context = {0};
     const uint16_t period_ms =
         (snapshot != NULL && snapshot->period_ms != 0u) ? snapshot->period_ms : robot_profile_gimbal_control_period_ms();
 
     context.tick_ms = bsp_time_get_tick_ms();
     context.dt_s = (fp32)period_ms * 0.001f;
 
-    if (control_manager_update_domain(CONTROL_DOMAIN_GIMBAL, &context) != CONTROL_RESULT_OK)
+    if (ControlMgrUpdateDomain(ControlDomainGimbal, &context) != ControlResultOk)
     {
         return 0;
     }
 
-    return (control_manager_active_id(CONTROL_DOMAIN_GIMBAL) == expected_controller_id) ? 1 : 0;
+    return (ControlMgrActiveId(ControlDomainGimbal) == expected_controller_id) ? 1 : 0;
 }
 
-static bool_t shoot_control_manager_allows(const gimbal_runtime_snapshot_t *snapshot)
+static bool_t ShootControlMgrAllows(const gimbal_runtime_snapshot_t *snapshot)
 {
-    control_context_t context = {0};
+    ControlCtx context = {0};
     const uint16_t period_ms =
         (snapshot != NULL && snapshot->period_ms != 0u) ? snapshot->period_ms : robot_profile_gimbal_control_period_ms();
 
     context.tick_ms = bsp_time_get_tick_ms();
     context.dt_s = (fp32)period_ms * 0.001f;
 
-    if (control_manager_update_domain(CONTROL_DOMAIN_SHOOT, &context) != CONTROL_RESULT_OK)
+    if (ControlMgrUpdateDomain(ControlDomainShoot, &context) != ControlResultOk)
     {
         return 0;
     }
 
-    return (control_manager_active_id(CONTROL_DOMAIN_SHOOT) == CONTROL_CONTROLLER_SHOOT) ? 1 : 0;
+    return (ControlMgrActiveId(ControlDomainShoot) == ControlIdShoot) ? 1 : 0;
 }
 
 static int16_t gimbal_run_shoot_control(const gimbal_runtime_snapshot_t *snapshot)
 {
-    if (!shoot_control_manager_allows(snapshot))
+    if (!ShootControlMgrAllows(snapshot))
     {
         shoot_stop_outputs();
         return 0;
@@ -200,7 +200,7 @@ static int16_t gimbal_run_shoot_control(const gimbal_runtime_snapshot_t *snapsho
     return shoot_control_loop();
 }
 
-static void gimbal_stop_outputs(const motor_instance_current_binding_t *bindings, uint8_t count)
+static void gimbal_stop_outputs(const MotorCurrentBind *bindings, uint8_t count)
 {
     int16_t zero_current[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT] = {0};
 
@@ -220,7 +220,7 @@ static void gimbal_stop_outputs(const motor_instance_current_binding_t *bindings
     {
         count = DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT;
     }
-    (void)motor_instance_cmd_set_current_bindings_best_effort(bindings, zero_current, count);
+    (void)MotorInstSetCurrentBindsBestEffort(bindings, zero_current, count);
     shoot_stop_outputs();
     gimbal_write_state();
 }

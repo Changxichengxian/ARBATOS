@@ -30,7 +30,7 @@
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
 #include "chassis_control_task.h"
 #endif
-#include "control_manager.h"
+#include "ControlMgr.h"
 #include "robot_fault_guard.h"
 #include "robot_control_registry.h"
 #if ROBOT_TASK_BUILD_ANY_GIMBAL

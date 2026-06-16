@@ -15,7 +15,7 @@
 #include "cmsis_os2.h"
 #include "main.h"
 
-#include "sdlog.h"
+#include "SdLog.h"
 #include "task.h"
 
 #include <string.h>
@@ -97,7 +97,7 @@ void detect_task(void const *pvParameters)
         detect_common_refresh_all(g_error_list, g_last_tick_ms, (uint8_t)DETECT_ERROR_COUNT, now_ms);
 
         // Log configuration snapshot once after boot (when SD log is active).
-        if (!config_logged && sdlog_is_active())
+        if (!config_logged && SdLogIsActive())
         {
             const uint16_t cfg_size = (uint16_t)sizeof(config_buf);
             taskENTER_CRITICAL();
@@ -108,7 +108,7 @@ void detect_task(void const *pvParameters)
             cfg_hdr->flags = 0u;
             memcpy(config_buf + sizeof(*cfg_hdr), &g_config, sizeof(g_config));
             taskEXIT_CRITICAL();
-            sdlog_write(SDLOG_TAG_CONFIG, config_buf, cfg_size);
+            SdLogWrite(SDLOG_TAG_CONFIG, config_buf, cfg_size);
             config_logged = 1u;
         }
 

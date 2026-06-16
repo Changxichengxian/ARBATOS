@@ -14,7 +14,7 @@
 #include "config.h"
 #include "watch.h"
 #include "manual_input.h"
-#include "sdlog.h"
+#include "SdLog.h"
 #include "sdcard.h"
 #include "bsp_buzzer.h"
 #include "gimbal_behaviour.h"
@@ -162,7 +162,7 @@ static void sdlog_emit_event(uint16_t event_id, uint16_t arg0_u16, uint32_t arg1
     evt.arg0_u16 = arg0_u16;
     evt.arg1_u32 = arg1_u32;
     evt.arg2_u32 = arg2_u32;
-    sdlog_write(SDLOG_TAG_EVENT, &evt, (uint16_t)sizeof(evt));
+    SdLogWrite(SDLOG_TAG_EVENT, &evt, (uint16_t)sizeof(evt));
 }
 
 /**
@@ -275,10 +275,10 @@ void detect_task(void const *pvParameters)
 
             sdlog_control_summary_t control_log = {0};
             sdlog_pack_control_summary(&control_log);
-            sdlog_write(SDLOG_TAG_CONTROL_SUMMARY, &control_log, (uint16_t)sizeof(control_log));
+            SdLogWrite(SDLOG_TAG_CONTROL_SUMMARY, &control_log, (uint16_t)sizeof(control_log));
 
             sdlog_pack_detect_summary(&detect_log, error_num_display);
-            sdlog_write(SDLOG_TAG_DETECT_STATUS, &detect_log, (uint16_t)sizeof(detect_log));
+            SdLogWrite(SDLOG_TAG_DETECT_STATUS, &detect_log, (uint16_t)sizeof(detect_log));
         }
 
         // Periodic "application -> BSP" config sync (do not rely on SD log state).
@@ -330,7 +330,7 @@ void detect_task(void const *pvParameters)
         }
 
         // Log configuration snapshot once after boot (when SD log is active).
-        if (!config_logged && sdlog_is_active())
+        if (!config_logged && SdLogIsActive())
         {
             const uint16_t cfg_size = (uint16_t)sizeof(config_buf);
             taskENTER_CRITICAL();
@@ -341,7 +341,7 @@ void detect_task(void const *pvParameters)
             cfg_hdr->flags = 0u;
             memcpy(config_buf + sizeof(*cfg_hdr), &g_config, sizeof(g_config));
             taskEXIT_CRITICAL();
-            sdlog_write(SDLOG_TAG_CONFIG, config_buf, cfg_size);
+            SdLogWrite(SDLOG_TAG_CONFIG, config_buf, cfg_size);
             config_logged = 1u;
         }
 
@@ -357,8 +357,8 @@ void detect_task(void const *pvParameters)
                 sdlog_emit_event(SDLOG_EVT_SD_CARD_MOUNT, sd_mounted_now, system_time, 0u);
             }
 
-            sdlog_stats_t s = {0};
-            sdlog_get_stats(&s);
+            SdLogStats s = {0};
+            SdLogGetStats(&s);
             sdlog_image_link_stats_t image_stats = {0};
             image_remote_link_get_stats(&image_stats);
 
@@ -386,8 +386,8 @@ void detect_task(void const *pvParameters)
             sys.chassis_loop_cnt = chassis_loop_counter;
             sys.cpu_load_permille = cpu_usage_get_permille();
 
-            sdlog_write(SDLOG_TAG_SYS_STATS, &sys, (uint16_t)sizeof(sys));
-            sdlog_write(SDLOG_TAG_IMAGE_LINK_STATS, &image_stats, (uint16_t)sizeof(image_stats));
+            SdLogWrite(SDLOG_TAG_SYS_STATS, &sys, (uint16_t)sizeof(sys));
+            SdLogWrite(SDLOG_TAG_IMAGE_LINK_STATS, &image_stats, (uint16_t)sizeof(image_stats));
 
             if (s.dropped != sdlog_dropped_last)
             {

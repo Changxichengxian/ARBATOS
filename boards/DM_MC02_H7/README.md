@@ -26,10 +26,10 @@
 - `rc_sbus_task`
 - `referee_rx_task`
 - `health_monitor_task`
-- `sdlog_task`
+- `SdLogTask`
 - `battery_monitor_task`
-- `can_command_tx_task`
-- `can_feedback_rx_task`
+- `CanTxTask`
+- `CanRxTask`
 - `imu_fusion_task`
 
 按机器人 profile 条件创建：
