@@ -9,10 +9,11 @@
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project HERO-C
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project HERO-C
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action probe
 ```
 
-Keil 工程仍是当前可直接编译和下载的完整入口；脚本入口会从 `.uvprojx` 解析工程清单，给后续 GCC / CMake 迁移用。
+Keil 工程仍是可直接编译和下载的完整入口，也是工程清单来源。GCC/CMake 路线会从 `.uvprojx` 生成 `build/gcc/<TARGET>/`，不单独维护第二套手写工程列表。
 
 | Project | Keil 工程 | 使用的 Robotconfig | 使用的 board |
 |---|---|---|---|
@@ -30,6 +31,7 @@ Keil 工程仍是当前可直接编译和下载的完整入口；脚本入口会
 
 - 统一脚本入口：`../tools/build.ps1`。
 - 工程清单解析：`../tools/build/project_manifest.py`。
+- GCC/CMake 生成：`../tools/build/gcc_project.py`，输出到 `../build/gcc/<TARGET>/`。
 - Keil 工程文件：`MDK-ARM/*.uvprojx`。
 - Keil 编译前命令，例如生成构建身份信息的 `tools/gen_build_info.ps1`。
 - CubeMX 生成的启动、外设初始化和中断入口：`Core/`。
@@ -63,5 +65,11 @@ Keil 工程仍是当前可直接编译和下载的完整入口；脚本入口会
 3. Source Group 里确认只包含一个目标的 `Robotconfig/<TARGET>` 文件，不要把多个目标的 `config.c` 同时编进去。
 4. 如果换了板卡，确认 `Core/`、`Drivers/`、`Middlewares/` 和板级 `INS_task.c` 对应同一块芯片。
 5. 第一次编译通过后，再去调 `Robotconfig/` 参数。
+6. 如果新目标也要支持 GCC/CMake，运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project <TARGET> -FailOnGccBlockers
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project <TARGET>
+```
 
 根目录的 `QUICK_START.md` 写的是入门路径；完整新车接入流程见 `../manual/new-target.md`。这里主要负责工程入口本身。

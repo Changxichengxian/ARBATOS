@@ -6,7 +6,7 @@
 
 ## 先记住四个目录
 
-- `projects/<TARGET>/`：能打开、编译、下载的 Keil 工程。
+- `projects/<TARGET>/`：能打开、编译、下载的 Keil 工程，也是 GCC/CMake 生成路线的工程清单来源。
 - `Robotconfig/<TARGET>/`：这台车的配置，主要是 PID、电机 ID、输入映射和任务模块。
 - `boards/<BOARD>/`：这块控制板的外设适配，主要是 CAN、UART、SPI、IMU、按键、蜂鸣器。
 - `shared/`：多台车共用的控制逻辑、通信、输入、电机、诊断、日志。
@@ -72,6 +72,34 @@
 
 不要为了让灯变绿就关检测。检测项乱关，后面调车会很难判断到底是代码没跑、线没接，还是设备掉线。
 检测项要和 `task_modules` 对上：开了底盘模块就关心底盘电机，开了云台模块就关心云台电机和 IMU，开了日志或主机链路就能看到对应服务状态。
+
+## 编译路线怎么选
+
+常用路线有两条：
+
+- 用 KEIL：直接打开 `projects/<TARGET>/MDK-ARM/<TARGET>.uvprojx`，适合本地调试、下载和继续用 uVision。
+- 用 GCC/CMake：从同一个 `.uvprojx` 生成命令行构建文件，适合没有 KEIL 的人做编译验证，或者接 VS Code、CLion 这类工具。
+
+先检查本机工具：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action probe
+```
+
+跑仓库检查：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check
+```
+
+用 GCC/CMake 编一个目标或全部目标：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project HERO-C
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project all
+```
+
+生成的构建文件在 `build/gcc/<TARGET>/`，不用提交。改了 KEIL 工程里的文件列表、宏、头文件路径、启动文件或 scatter 文件后，重新跑 `gcc-build` 就会刷新。
 
 ## 第一次上电怎么调
 

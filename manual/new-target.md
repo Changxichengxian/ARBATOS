@@ -22,6 +22,8 @@
 
 然后改 Keil 工程名、输出名、include path、source group 里的 Robotconfig 路径。
 
+GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 `.uvprojx` 生成 `build/gcc/<TARGET>/`，所以先把 Keil 工程里的文件列表、宏、头文件路径、启动文件和 scatter 文件改对。
+
 ## 2. 填目标身份
 
 在 `Robotconfig/<TARGET>/config.h` 顶部写清楚：
@@ -136,6 +138,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\gen_build
 
 这个脚本会生成 `shared/generated/build_info_autogen.h`，让 SD 日志里带 Git 提交、编译时间和 dirty 状态。
 
+如果这个目标也要支持 GCC/CMake，不要手写第二套 CMake 文件。确认 `.uvprojx` 后用生成脚本检查：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project <TARGET> -FailOnGccBlockers
+```
+
 ## 8. 第一次检查
 
 在仓库根目录先跑：
@@ -144,9 +152,15 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\gen_build
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\check_all.ps1
 ```
 
-这个脚本不会替代 Keil 编译，但能先抓出工程引用、缺文件、profile 和任务创建不匹配、Python 工具语法这类低级问题。
+这个脚本不会替代 Keil 编译，也不会默认跑完整 GCC 编译，但能先抓出工程引用、缺文件、profile 和任务创建不匹配、Python 工具语法这类低级问题。
 
 然后再用 Keil 做一次 Rebuild，确认固件能从干净状态编出来。
+
+如果要确认 GCC/CMake 路线也可用，再跑：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project <TARGET>
+```
 
 ## 最小验收
 
@@ -154,6 +168,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\check_all.ps1
 
 - `tools/check_all.ps1` 通过。
 - Keil Rebuild 通过。
+- 如果目标承诺支持 GCC/CMake，`tools/build.ps1 -Action gcc-build -Project <TARGET>` 通过。
 - SD 日志 `BUILD_INFO` 能显示正确 target、board、Git、编译时间。
 - `g_watch` 能看到任务状态和主要设备状态。
 - 遥控输入、CAN 反馈、IMU 姿态都能观察。

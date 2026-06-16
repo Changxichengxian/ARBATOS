@@ -31,17 +31,21 @@ The current codebase is beyond a basic STM32 port. It includes:
 - Diagnostics and logging through `g_watch`, `rt_profiler`, TF/SD binary logs,
   build identity records, runtime device records, AUX telemetry, and temporary
   AUX parameter tuning.
-- Local checks, Keil project manifest extraction, SD log tools, a PID autotune
-  tool, and a configuration pressure simulator.
+- Local checks, Keil project manifest extraction, generated GCC/CMake firmware
+  builds, SD log tools, a PID autotune tool, and a configuration pressure
+  simulator.
 
 Important limits are also documented here:
 
 - Keil MDK-ARM projects are still the build source of truth.
-- GCC and CMake are not ready yet. The manifest tool lists the current blockers:
-  ARM Compiler 5 settings, ARMASM startup files, RVDS FreeRTOS ports, Keil scatter
-  files, and ARMCC libraries on some F4 targets.
-- Some high-rate control paths still read `g_config` directly. Snapshot-based
-  reads are the preferred direction for future work.
+- GCC/CMake builds are generated from the Keil project manifests and are
+  currently buildable for all seven targets with `arm-none-eabi-gcc`, CMake, and
+  Ninja. Generated files live under `build/gcc/` and are not maintained by hand.
+- Command-line Keil builds still depend on the local UV4 path and installed
+  device packs. The repository check does not run a real Keil Rebuild.
+- High-rate control paths should read configuration through cached or snapshot
+  views instead of repeatedly walking `g_config`; local checks guard the main
+  high-rate boundaries.
 - Dual-yaw gimbal and MIT wheel-leg control paths are wired. Subsystem-level
   protection already exists, while real-robot validation and a more unified
   safety policy are still active work.
@@ -71,7 +75,7 @@ licenses.
 ```text
 ARBATOS/
 |-- boards/        # Board support packages and board-specific ports
-|-- projects/      # Buildable Keil firmware projects
+|-- projects/      # Buildable firmware projects; Keil is the source manifest
 |-- Robotconfig/   # Robot target parameters and target-specific glue
 |-- shared/        # Reusable runtime, control, communication, HAL, and components
 |-- manual/        # Bring-up, tuning, logging, and integration manuals
@@ -95,7 +99,9 @@ ARBATOS uses a four-layer firmware layout.
 
 ```text
 projects/<TARGET>/
-  Keil project, CubeMX Core files, middleware, startup, and build entry point
+  Keil project, CubeMX Core files, middleware, startup, and build entry point.
+  The generated GCC/CMake route reads these Keil project files instead of
+  keeping a second hand-written project list.
 
 Robotconfig/<TARGET>/
   Robot profile, task module list, device table, motor mounting, PID, input,
@@ -290,15 +296,28 @@ runtime tuning field; changing motor wiring or model usually requires editing
 
 Install:
 
-- Keil MDK-ARM v5.
-- The required STM32F4 and STM32H7 device packs.
+- Keil MDK-ARM v5 and the required STM32F4 / STM32H7 device packs for the Keil
+  route.
 - Python 3 for repository tools.
+- `arm-none-eabi-gcc`, CMake, and Ninja for the GCC/CMake route.
 
 Open and build a target from Keil, for example:
 
 ```text
 projects/HERO-C/MDK-ARM/HERO-C.uvprojx
 ```
+
+Build the same target through the generated GCC/CMake route:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project HERO-C
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project all
+```
+
+This route reads the Keil `.uvprojx`, writes generated CMake files under
+`build/gcc/<TARGET>/`, translates the startup and linker files, swaps in GCC
+FreeRTOS ports and compatibility sources, then builds `.elf`, `.hex`, and `.bin`
+outputs. The generated build directory is ignored by Git.
 
 Run repository checks from PowerShell:
 
@@ -311,6 +330,7 @@ Inspect the Keil project manifest:
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project HERO-C
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project all -Json
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project all -FailOnGccBlockers
 ```
 
 Probe local command-line tool availability:
@@ -322,15 +342,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action pr
 The check script validates project references, Robotconfig coverage, task module
 mapping, profile identity macros, profiler descriptors, Python tool syntax,
 simulation smoke tests, build manifest extraction, stale text patterns, and
-high-rate API boundaries. It does not run a real Keil build yet.
+high-rate API boundaries. It does not run a real Keil Rebuild or a full
+GCC/CMake compile; use `-Action gcc-build` when compiler verification is needed.
 
 ## Tools
 
 | Tool | Purpose |
 |---|---|
-| `tools/build.ps1` | top-level check, manifest, and tool-probe entry point |
+| `tools/build.ps1` | top-level check, manifest, tool-probe, GCC generation, and GCC build entry point |
 | `tools/check_all.ps1` | local and CI validation script |
-| `tools/build/project_manifest.py` | extracts Keil project metadata and GCC blockers |
+| `tools/build/project_manifest.py` | extracts Keil project metadata and GCC readiness notes |
+| `tools/build/gcc_project.py` | generates CMake/GCC build files from Keil project metadata |
 | `tools/gen_build_info.ps1` | generates `shared/generated/build_info_autogen.h` for firmware logs |
 | `tools/sim/robot_sim.py` | estimates CAN and CPU pressure from current configuration |
 | `tools/sdlog/sdlog_viewer.py` | opens the SD log web viewer and exports records |
@@ -402,7 +424,9 @@ For detailed workflows, start with `QUICK_START.md` and `manual/README.md`.
 7. Configure input mapping, safe switches, detection items, telemetry, and logs.
 8. Add target stubs or target-specific files only when shared code cannot cover
    the target.
-9. Run `tools/build.ps1 -Action check`, then build in Keil.
+9. Run `tools/build.ps1 -Action check`, then build in Keil. If the target should
+   support the command-line route too, also run
+   `tools/build.ps1 -Action gcc-build -Project <TARGET>`.
 
 ## Adding a Board
 

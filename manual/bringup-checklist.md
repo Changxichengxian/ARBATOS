@@ -5,7 +5,7 @@
 ## 0. 上车前准备
 
 - [ ] 确认当前代码分支、commit、是否 dirty。
-- [ ] Keil Rebuild 通过，且 `tools/check_all.ps1` 通过。
+- [ ] Keil Rebuild 通过，且 `tools/check_all.ps1` 通过；如果这次走 GCC/CMake，也确认 `tools/build.ps1 -Action gcc-build -Project <TARGET>` 通过。
 - [ ] SD 卡可写，插卡后能生成新日志。
 - [ ] 遥控器安全档位置确认。
 - [ ] 摩擦轮、拨盘、底盘、云台能单独断电或物理卸载。

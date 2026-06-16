@@ -1,6 +1,6 @@
 # tools
 
-`tools/` 放本地辅助脚本。它不替代 Keil，也不替代实车调试，主要用来在改共享代码后先做一轮低成本检查。
+`tools/` 放本地辅助脚本。它不替代 Keil，也不替代实车调试，主要用来在改共享代码后先做一轮低成本检查；现在也提供 GCC/CMake 命令行构建入口。
 
 ## 构建信息
 
@@ -30,7 +30,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\check_all.ps1
 - `tools/**/*.py` 是否有 Python 语法错误。
 - 文档里是否还残留几类已经确认过时的路径或 MIT 轮腿描述。
 
-现在它还不会真的调用 Keil 编译。等本地命令行编译路径确认后，可以把代表工程编译接到这个脚本后面。
+它不会真的调用 Keil Rebuild，也不会默认跑完整 GCC 编译。要做真实编译验证，走下面的 `tools/build.ps1 -Action gcc-build`。
 
 GitHub 上的 `.github/workflows/check-all.yml` 也会跑同一个脚本。也就是说，PR 或推送到主分支时，至少会自动检查工程引用、profile 和文档旧路径这些低级断裂。
 
@@ -39,6 +39,28 @@ GitHub 上的 `.github/workflows/check-all.yml` 也会跑同一个脚本。也�
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\check_all.ps1 -AllText
 ```
+
+## 构建入口
+
+统一入口是：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project HERO-C
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action probe
+```
+
+KEIL 路线仍然直接打开 `projects/<TARGET>/MDK-ARM/<TARGET>.uvprojx`。这条路线用于本地调试、下载和继续使用 uVision 工程。
+
+GCC/CMake 路线从同一个 `.uvprojx` 生成，不单独手写一套工程清单：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc -Project HERO-C
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project HERO-C
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project all
+```
+
+生成内容放在 `build/gcc/<TARGET>/`，包括 CMake 工程、GNU 启动文件和链接脚本。这个目录被 Git 忽略，源码、头文件路径、宏、启动文件和 scatter 文件变化后重新生成即可，不要手改生成出来的 CMake 文件。
 
 ## SD 日志工具
 
