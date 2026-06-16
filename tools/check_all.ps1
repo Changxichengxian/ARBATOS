@@ -29,6 +29,43 @@ function Format-RepoPath {
     return $fullPath
 }
 
+function Get-SourceContentWithPrivateIncludes {
+    param(
+        [string]$Path,
+        [System.Collections.Generic.HashSet[string]]$Seen = $null
+    )
+
+    if ($null -eq $Seen) {
+        $Seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    }
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    if ($Seen.Contains($fullPath)) {
+        Add-CheckError "$(Format-RepoPath $fullPath): recursive private source include."
+        return ""
+    }
+
+    [void]$Seen.Add($fullPath)
+    $content = Get-Content -LiteralPath $fullPath -Raw -Encoding UTF8
+    $baseDir = Split-Path -Parent $fullPath
+    $includePattern = '(?m)^\s*#\s*include\s+"([A-Za-z0-9_./-]+\.inc)"\s*$'
+
+    $expanded = [regex]::Replace($content, $includePattern, {
+            param($match)
+
+            $includePath = [System.IO.Path]::GetFullPath((Join-Path $baseDir $match.Groups[1].Value))
+            if (-not (Test-Path -LiteralPath $includePath -PathType Leaf)) {
+                Add-CheckError "$(Format-RepoPath $fullPath): missing private source include $($match.Groups[1].Value)."
+                return ""
+            }
+
+            return Get-SourceContentWithPrivateIncludes -Path $includePath -Seen $Seen
+        })
+
+    [void]$Seen.Remove($fullPath)
+    return $expanded
+}
+
 function Get-RobotConfigContent {
     param(
         [string]$Path,
@@ -1002,7 +1039,7 @@ function Test-HighRateApiBoundaries {
             continue
         }
 
-        $content = Get-Content -LiteralPath $fullPath -Raw
+        $content = Get-SourceContentWithPrivateIncludes -Path $fullPath
         foreach ($forbidden in $forbiddenPatterns) {
             if ($content -match $forbidden.Pattern) {
                 Add-CheckError "${repoPath}: $($forbidden.Message)"
@@ -1021,7 +1058,7 @@ function Test-CanTxDeviceConfigBoundaries {
         return
     }
 
-    $content = Get-Content -LiteralPath $fullPath -Raw
+    $content = Get-SourceContentWithPrivateIncludes -Path $fullPath
     $rmUsesResolvedBus = $content -match 'static\s+inline\s+void\s+can_tx_process_rm_axis[\s\S]*?const\s+uint8_t\s+node_bus\s*=\s*can_tx_node_bus\s*\(\s*fallback_bus\s*,\s*node\s*\)\s*;[\s\S]*?can_tx_store_rm_current\s*\(\s*node_bus\s*,'
     if (-not $rmUsesResolvedBus) {
         Add-CheckError "${repoPath}: RM group send path must use the resolved node CAN bus, not the fixed fallback bus."
@@ -1177,7 +1214,7 @@ function Test-ControlCoreBoundaries {
             continue
         }
 
-        $content = Get-Content -LiteralPath $fullPath -Raw
+        $content = Get-SourceContentWithPrivateIncludes -Path $fullPath
         if ($content -notmatch [regex]::Escape($adapter.Include)) {
             Add-CheckError "$($adapter.Source): must include $($adapter.Include)."
         }
