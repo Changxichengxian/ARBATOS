@@ -14,11 +14,11 @@
 
 当前代码已经不只是“先在电机侧补一层实例名”，运行层的几块基础已经接上：
 
-- `g_config.profile.task_modules` 是任务创建的入口。`app_task_bootstrap.h` 会按配置表创建启用任务。
-- `g_config.devices` 已经进入配置层，`robot_device_config.h` 负责统一解析设备条目。
+- `g_config.profile.task_modules` 是任务创建的入口。`AppTaskBootstrap.h` 会按配置表创建启用任务。
+- `g_config.devices` 已经进入配置层，`RobotDeviceConfig.h` 负责统一解析设备条目。
 - `MotorInstRefresh()` 已经从设备表生成电机实例，控制任务可以按稳定实例名绑定输出。
 - `LowCmd` 是控制任务到执行器发送任务之间的统一命令缓存。底盘、云台、射击等高频任务已经使用预绑定输出，循环里按绑定写电流。
-- `ControlMgr` 已经提供控制域、控制器注册、资源声明、切换、停止和故障状态。默认控制器由 `robot_control_registry.h` 按 profile 注册。
+- `ControlMgr` 已经提供控制域、控制器注册、资源声明、切换、停止和故障状态。默认控制器由 `RobotControlRegistry.h` 按 profile 注册。
 - `watch.runtime` 已经能按任务、设备、电机、控制器、控制域收集运行实例。SD 日志启动记录也会写设备条目。
 - 底盘、云台、CAN 发送、轮腿和 watch 等大任务入口已经拆成“主 `.c` + 私有 `.inc` 实现块”。原 `.c` 仍是唯一编译单元，私有块用于把日志、快照、调参、协议打包和控制辅助分开阅读。
 - 安全保护已经存在，但当前主要分布在各任务和控制环里，例如安全档、运行编排、离线检测、限幅、轮腿 fault。后续仍在往控制器或调度策略收束。
@@ -124,28 +124,28 @@ g_config.devices.motor[i] = {
 
 旧字段可以先由设备表生成，或者继续作为兼容层存在一段时间。
 
-当前已经补了 `g_config.devices` 设备表，并由 `robot_device_config.h` 统一读取。旧的 `g_config.motor.*` 字段还保留给具体电机参数；设备表负责说明“有哪些设备实例”，旧字段负责说明“这个电机怎么配置”。
+当前已经补了 `g_config.devices` 设备表，并由 `RobotDeviceConfig.h` 统一读取。旧的 `g_config.motor.*` 字段还保留给具体电机参数；设备表负责说明“有哪些设备实例”，旧字段负责说明“这个电机怎么配置”。
 
 ```c
-robot_config_device_t device;
+RobotConfigDevice device;
 
-for (uint8_t i = 0; i < robot_config_device_count(); i++)
+for (uint8_t i = 0; i < RobotConfigDeviceCount(); i++)
 {
-    if (robot_config_device_get(i, &device))
+    if (RobotConfigDeviceGet(i, &device))
     {
         /* device.name / device.kind / device.config */
     }
 }
 ```
 
-电机仍然有 `robot_config_motor_device_t` 这种更具体的读取方式，`MotorInstRefresh()` 已经改成从这层读取。后面扩展传感器、链路或非电机执行器时，优先扩展设备表和 `robot_device_config.h`，电机实例和控制器不用跟着大改。
+电机仍然有 `RobotConfigMotorDevice` 这种更具体的读取方式，`MotorInstRefresh()` 已经改成从这层读取。后面扩展传感器、链路或非电机执行器时，优先扩展设备表和 `RobotDeviceConfig.h`，电机实例和控制器不用跟着大改。
 
 控制器也可以直接按自己的输入/输出名字解析设备：
 
 ```c
-robot_config_device_binding_t devices;
+RobotConfigDeviceBinding devices;
 
-if (robot_config_device_bind_controller(controller, &devices))
+if (RobotConfigDeviceBindController(controller, &devices))
 {
     /* devices.inputs[i] / devices.outputs[i] */
 }
@@ -236,10 +236,10 @@ static ControlResult triple_yaw_update(const ControlController *controller,
 
 - 当前目标启用的任务模块名字。
 - 电机实例数量、启用数量、名字、角色、bus 和 actuator id。
-- 配置设备数量，统一条目表里的设备项来自 `robot_config_device_get()`。
+- 配置设备数量，统一条目表里的设备项来自 `RobotConfigDeviceGet()`。
 - 控制器实例数量、名字、周期、输入输出数量和激活状态。
 - 每个控制域当前激活的控制器、待处理请求和统计计数。
-- 一张统一条目表：任务、设备、控制器、控制分组都用 `runtime_instance_ref_t` 表示，上位机可以先按名字和状态遍历。
+- 一张统一条目表：任务、设备、控制器、控制分组都用 `RuntimeInstanceRef` 表示，上位机可以先按名字和状态遍历。
 
 这一步的价值是后续新增机器人时，观察和诊断可以先看“有哪些实例在跑”，不需要为每种机器人重新写一套观察字段。
 

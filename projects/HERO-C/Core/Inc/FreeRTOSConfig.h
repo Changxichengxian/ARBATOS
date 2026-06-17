@@ -159,11 +159,11 @@ standard names. */
 /* USER CODE BEGIN Defines */
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
 
-/* Enable CPU load measurement via vApplicationTickHook() (see cpu_usage.c). */
+/* Enable CPU load measurement via vApplicationTickHook() (see CpuUsage.c). */
 #undef configUSE_TICK_HOOK
 #define configUSE_TICK_HOOK 1
 
-/* Needed by cpu_usage.c to identify the idle task. */
+/* Needed by CpuUsage.c to identify the idle task. */
 #undef INCLUDE_xTaskGetIdleTaskHandle
 #define INCLUDE_xTaskGetIdleTaskHandle 1
 /* USER CODE END Defines */

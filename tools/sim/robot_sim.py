@@ -257,7 +257,7 @@ def read_text_with_local_config_includes(path: Path, stack: tuple[Path, ...] = (
         raise ValueError(f"recursive config include: {chain}")
 
     text = read_text(path)
-    include_re = re.compile(r'(?m)^\s*#\s*include\s+"(config_[A-Za-z0-9_]+\.inc)"\s*$')
+    include_re = re.compile(r'(?m)^\s*#\s*include\s+"(Config[A-Za-z0-9_]+\.inc)"\s*$')
 
     def expand(match: re.Match[str]) -> str:
         include_path = path.parent / match.group(1)
@@ -606,7 +606,7 @@ def parse_periods(config_c: str, macros: dict[str, str]) -> dict[str, int]:
         "chassis": parse_int_expr(macros.get("ROBOT_PROFILE_CHASSIS_CONTROL_DEFAULT_PERIOD_MS"), macros, 2),
         "can_tx": parse_int_expr(macros.get("ROBOT_PROFILE_CAN_COMMAND_TX_PERIOD_MS"), macros, 1),
         "watch": parse_int_expr(macros.get("ROBOT_PROFILE_WATCH_TASK_BEAT_MIN_PERIOD_MS"), macros, 10),
-        "wheelleg_mit": 3,
+        "WheelLegMit": 3,
         "shoot": 1,
     }
     periods: dict[str, int] = {}
@@ -621,7 +621,7 @@ def parse_periods(config_c: str, macros: dict[str, str]) -> dict[str, int]:
 
 
 def parse_wheel_actuators(config_c: str, macros: dict[str, str]) -> set[int]:
-    body = extract_initializer(config_c, "wheelleg_mit") or ""
+    body = extract_initializer(config_c, "WheelLegMit") or ""
     ids: set[int] = set()
     for field_name in ("left_wheel_actuator", "right_wheel_actuator"):
         raw = extract_named_value(body, field_name)
@@ -637,7 +637,7 @@ def load_project(project: str) -> ProjectConfig:
     if not config_h_path.exists() or not config_c_path.exists():
         raise FileNotFoundError(f"missing Robotconfig/{project}/config.[ch]")
 
-    profile_defaults = parse_define_text(strip_c_comments(read_text(REPO_ROOT / "shared/application/robot/robot_task_profile.h")))
+    profile_defaults = parse_define_text(strip_c_comments(read_text(REPO_ROOT / "shared/application/robot/RobotTaskProfile.h")))
     can_tx_source_macros = parse_define_text(
         strip_c_comments(read_text(REPO_ROOT / "shared/application/comm/can/CanTxTask.c"))
     )
@@ -868,9 +868,9 @@ def build_cpu_report(
     if "ROBOT_TASK_MODULE_WHEELLEG_MIT" in modules:
         add_cpu_item(
             budget_items,
-            "wheelleg_mit",
+            "WheelLegMit",
             DEFAULT_WHEELLEG_MIT_BUDGET_US,
-            project.periods_ms["wheelleg_mit"],
+            project.periods_ms["WheelLegMit"],
             "sim default until profiler budget is added",
         )
     if project_shoot_runtime_enabled(project):

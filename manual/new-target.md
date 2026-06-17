@@ -37,7 +37,7 @@ GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 
 
 ## 3. 配 profile 和任务模块
 
-先改 `Robotconfig/<TARGET>/config_operation.inc` 里的 `.profile`。
+先改 `Robotconfig/<TARGET>/ConfigOperation.inc` 里的 `.profile`。
 
 现在 profile 只做一件事：列出这台车要启用哪些任务模块。任务创建、调参块是否显示、观测块是否显示，都按这张表走。例子：
 
@@ -69,7 +69,7 @@ GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 
 
 ## 4. 配电机装配
 
-看 `Robotconfig/<TARGET>/config_hardware.inc` 里的 `.motor`。新车第一次上电前至少确认：
+看 `Robotconfig/<TARGET>/ConfigHardware.inc` 里的 `.motor`。新车第一次上电前至少确认：
 
 - 每个轴的 `model` 是否正确。RM 电流电机、达妙 MIT、宇树电机不要混填。
 - `can_id`、`can_bus`、`feedback_id` 是否和实物一致；RS485 电机还要确认串口、波特率和超时。
@@ -100,9 +100,9 @@ GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 
 - 安全档时底盘、云台、射击输出都能停。
 - 输入源切换不会突然跳到另一个非零命令。
 
-## 6. 配 detect_task
+## 6. 配 DetectTask
 
-`Robotconfig/<TARGET>/detect_task.c` 是这台车的在线检测表。不要为了让灯变绿就关检测。
+`Robotconfig/<TARGET>/DetectTask.c` 是这台车的在线检测表。不要为了让灯变绿就关检测。
 
 优先加这些检测：
 

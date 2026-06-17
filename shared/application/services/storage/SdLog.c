@@ -20,14 +20,14 @@
 #include <string.h>
 
 #include "cmsis_os.h"
-#include "bsp_time.h"
-#include "sdcard.h"
+#include "BspTime.h"
+#include "SdCard.h"
 #include "RtProf.h"
 #include "config.h"
 #include "ControlMgr.h"
 #include "MotorInst.h"
-#include "robot_device_config.h"
-#include "robot_task_profile.h"
+#include "RobotDeviceConfig.h"
+#include "RobotTaskProfile.h"
 
 #if defined(__CC_ARM)
 #include "../../../generated/build_info_autogen.h"
@@ -287,21 +287,21 @@ static void sdlog_fill_build_info(sdlog_build_info_t *out)
     out->version = SDLOG_BUILD_INFO_VERSION;
     out->header_size = (uint16_t)sizeof(*out);
     out->schema_version = SDLOG_SCHEMA_VERSION;
-    out->config_size = (uint32_t)sizeof(g_config);
-    out->config_crc32 = sdlog_crc32_ieee((const uint8_t *)&g_config, (uint32_t)sizeof(g_config));
+    out->ConfigSize = (uint32_t)sizeof(g_config);
+    out->ConfigCrc32 = sdlog_crc32_ieee((const uint8_t *)&g_config, (uint32_t)sizeof(g_config));
     out->task_module_count = g_config.profile.task_module_count;
     out->high_rate_div = SdLogHighRateDiv();
     out->compression_enabled = (uint8_t)(SDLOG_ENABLE_COMPRESSION ? 1u : 0u);
     out->build_dirty = (uint8_t)(ARBATOS_BUILD_DIRTY ? 1u : 0u);
-    out->runtime_device_count = robot_config_device_count();
+    out->runtime_device_count = RobotConfigDeviceCount();
     out->motorInstCount = MotorInstCount();
     out->controller_count = ControlMgrCount();
-    out->profile_kind = (uint8_t)robot_profile_kind();
-    out->board_kind = (uint8_t)robot_board_kind();
+    out->profile_kind = (uint8_t)RobotProfileGetKind();
+    out->BoardKind = (uint8_t)RobotBoardGetKind();
     (void)RtProfDescs(&rtProfCount);
     out->rtProfCount = rtProfCount;
-    out->board_can_bus_count = robot_board_can_bus_count();
-    out->board_cpu_hz = robot_board_cpu_hz();
+    out->BoardCanBusCount = RobotBoardCanBusCount();
+    out->BoardCpuHz = RobotBoardCpuHz();
     {
         const uint8_t count = g_config.profile.task_module_count;
         const uint8_t limit = (count > ROBOT_TASK_MODULE_MAX) ? ROBOT_TASK_MODULE_MAX : count;
@@ -315,8 +315,8 @@ static void sdlog_fill_build_info(sdlog_build_info_t *out)
         }
     }
 
-    sdlog_copy_cstr(out->target, (uint32_t)sizeof(out->target), robot_profile_name());
-    sdlog_copy_cstr(out->board, (uint32_t)sizeof(out->board), robot_board_name());
+    sdlog_copy_cstr(out->target, (uint32_t)sizeof(out->target), RobotProfileName());
+    sdlog_copy_cstr(out->board, (uint32_t)sizeof(out->board), RobotBoardName());
     sdlog_copy_cstr(out->git_sha, (uint32_t)sizeof(out->git_sha), ARBATOS_GIT_SHA);
     sdlog_copy_cstr(out->build_date, (uint32_t)sizeof(out->build_date), ARBATOS_BUILD_DATE);
     sdlog_copy_cstr(out->build_time, (uint32_t)sizeof(out->build_time), ARBATOS_BUILD_TIME);
@@ -784,7 +784,7 @@ static int sdlog_find_next_log_index(uint32_t *out_next)
 static int sdlog_open_next_file(void)
 {
     // 函数地图：优先读序号索引；索引坏了再扫目录；创建新文件后先写头和启动 META。
-    if (!sdcard_is_mounted())
+    if (!SdcardIsMounted())
     {
         return -1;
     }
@@ -820,7 +820,7 @@ static int sdlog_open_next_file(void)
             sdlog_file_header_t hdr = {0};
             hdr.magic = SDLOG_FILE_MAGIC;
             hdr.header_size = (uint16_t)sizeof(sdlog_file_header_t);
-            hdr.boot_tick_ms = bsp_time_get_tick_ms();
+            hdr.boot_tick_ms = BspTimeGetTickMs();
 
             UINT bw = 0u;
             const FRESULT wr0 = f_write(&sdlog_fp, &hdr, (UINT)sizeof(hdr), &bw);
@@ -829,7 +829,7 @@ static int sdlog_open_next_file(void)
                 sdlog_last_error = (wr0 == FR_OK) ? -1 : (int32_t)wr0;
                 sdlog_remember_error(SDLOG_RESTART_REASON_STARTUP_HEADER, sdlog_last_error);
                 (void)f_close(&sdlog_fp);
-                sdcard_unmount();
+                SdcardUnmount();
                 return -3;
             }
 
@@ -882,12 +882,12 @@ static int sdlog_open_next_file(void)
                                                           (uint16_t)sizeof(build_info));
             }
 
-            for (uint8_t i = 0u; append_status == 0 && i < robot_config_device_count(); i++)
+            for (uint8_t i = 0u; append_status == 0 && i < RobotConfigDeviceCount(); i++)
             {
-                robot_config_device_t device;
+                RobotConfigDevice device;
                 sdlog_runtime_device_t runtime_device;
 
-                if (robot_config_device_get(i, &device) == 0u)
+                if (RobotConfigDeviceGet(i, &device) == 0u)
                 {
                     continue;
                 }
@@ -937,7 +937,7 @@ static int sdlog_open_next_file(void)
             {
                 sdlog_remember_error(SDLOG_RESTART_REASON_STARTUP_BLOCK, sdlog_last_error);
                 (void)f_close(&sdlog_fp);
-                sdcard_unmount();
+                SdcardUnmount();
                 return -4;
             }
 
@@ -947,11 +947,11 @@ static int sdlog_open_next_file(void)
                 sdlog_last_error = (int32_t)sync_r;
                 sdlog_remember_error(SDLOG_RESTART_REASON_STARTUP_SYNC, sdlog_last_error);
                 (void)f_close(&sdlog_fp);
-                sdcard_unmount();
+                SdcardUnmount();
                 return -6;
             }
 
-            sdlog_last_sync_ms = bsp_time_get_tick_ms();
+            sdlog_last_sync_ms = BspTimeGetTickMs();
             sdlog_bytes_flushed = 0u;
             sdlog_last_error = 0;
             sdlog_prev_error_reason = 0u;
@@ -973,7 +973,7 @@ static int sdlog_open_next_file(void)
         {
             sdlog_last_error = (int32_t)r;
             sdlog_remember_error(SDLOG_RESTART_REASON_OPEN_FAIL, sdlog_last_error);
-            sdcard_unmount();
+            SdcardUnmount();
             return (int)r;
         }
     }
@@ -1037,7 +1037,7 @@ void SdLogWrite(uint16_t tag, const void *payload, uint16_t len)
     const uint32_t head = sdlog_head;
     const uint32_t tail = sdlog_tail;
 
-    const uint32_t now_ms = bsp_time_get_tick_ms();
+    const uint32_t now_ms = BspTimeGetTickMs();
     const uint32_t last_tick = sdlog_last_tick_ms;
     const uint32_t dt = now_ms - last_tick;
 
@@ -1084,7 +1084,7 @@ void SdLogWriteIsr(uint16_t tag, const void *payload, uint16_t len)
     const uint32_t head = sdlog_head;
     const uint32_t tail = sdlog_tail;
 
-    const uint32_t now_ms = bsp_time_get_tick_ms();
+    const uint32_t now_ms = BspTimeGetTickMs();
     const uint32_t last_tick = sdlog_last_tick_ms;
     const uint32_t dt = now_ms - last_tick;
 
@@ -1130,7 +1130,7 @@ static void sdlog_close_on_error(void)
 
     (void)sdlog_sync_profiled();
     (void)f_close(&sdlog_fp);
-    sdcard_unmount();
+    SdcardUnmount();
 }
 
 void SdLogPoll(void)
@@ -1188,7 +1188,7 @@ void SdLogPoll(void)
         taskEXIT_CRITICAL();
     }
 
-    const uint32_t now_ms = bsp_time_get_tick_ms();
+    const uint32_t now_ms = BspTimeGetTickMs();
     if ((uint32_t)(now_ms - sdlog_last_sync_ms) >= SDLOG_SYNC_PERIOD_MS)
     {
         const FRESULT r = sdlog_sync_profiled();

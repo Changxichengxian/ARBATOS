@@ -26,22 +26,22 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "config.h"
-#include "robot_task_build_config.h"
+#include "RobotTaskBuildConfig.h"
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-#include "chassis_control_task.h"
+#include "ChassisControlTask.h"
 #endif
 #include "ControlMgr.h"
-#include "robot_fault_guard.h"
-#include "robot_control_registry.h"
+#include "RobotFaultGuard.h"
+#include "RobotControlRegistry.h"
 #if ROBOT_TASK_BUILD_ANY_GIMBAL
-#include "gimbal_control_task.h"
+#include "GimbalControlTask.h"
 #endif
 #if ROBOT_TASK_BUILD_IMU
-#include "INS_task.h"
+#include "InsTask.h"
 #endif
-#include "app_task_bootstrap.h"
+#include "AppTaskBootstrap.h"
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
-#include "wheelleg_mit_task.h"
+#include "WheelLegMitTask.h"
 #endif
 
 /* USER CODE END Includes */
@@ -141,62 +141,62 @@ APP_THREAD_ATTR(gimbalControlTask, osPriorityHigh, 1024);
 #endif
 
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-static osThreadId_t app_create_chassis_control_task(void)
+static osThreadId_t AppCreateChassisControlTask(void)
 {
-  return APP_THREAD_CREATE(chassisControlTask, chassis_control_task);
+  return APP_THREAD_CREATE(chassisControlTask, ChassisControlTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
-static osThreadId_t app_create_wheelleg_mit_task(void)
+static osThreadId_t AppCreateWheelLegMitTask(void)
 {
-  return APP_THREAD_CREATE(wheellegMitTask, wheelleg_mit_task);
+  return APP_THREAD_CREATE(wheellegMitTask, WheelLegMitTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
-static osThreadId_t app_create_single_gimbal_task(void)
+static osThreadId_t AppCreateSingleGimbalTask(void)
 {
-  return APP_THREAD_CREATE(gimbalControlTask, gimbal_control_task);
+  return APP_THREAD_CREATE(gimbalControlTask, GimbalControlTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
-static osThreadId_t app_create_dual_yaw_gimbal_task(void)
+static osThreadId_t AppCreateDualYawGimbalTask(void)
 {
-  return APP_THREAD_CREATE(gimbalControlTask, dual_yaw_gimbal_control_task);
+  return APP_THREAD_CREATE(gimbalControlTask, DualYawGimbalControlTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_IMU
-static osThreadId_t app_create_imu_task(void)
+static osThreadId_t AppCreateImuTask(void)
 {
-  return APP_THREAD_CREATE(ImuTask, imu_fusion_task);
+  return APP_THREAD_CREATE(ImuTask, ImuFusionTask);
 }
 #endif
 
-static void app_create_module_tasks(void)
+static void AppCreateModuleTasks(void)
 {
-  static const app_task_module_desc_t module_tasks[] =
+  static const AppTaskModuleDesc module_tasks[] =
   {
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-    {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, &chassisControlTaskHandle, app_create_chassis_control_task},
+    {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, &chassisControlTaskHandle, AppCreateChassisControlTask},
 #endif
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
-    {ROBOT_TASK_MODULE_WHEELLEG_MIT, &wheellegMitTaskHandle, app_create_wheelleg_mit_task},
+    {ROBOT_TASK_MODULE_WHEELLEG_MIT, &wheellegMitTaskHandle, AppCreateWheelLegMitTask},
 #endif
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
-    {ROBOT_TASK_MODULE_SINGLE_GIMBAL, &gimbalControlTaskHandle, app_create_single_gimbal_task},
+    {ROBOT_TASK_MODULE_SINGLE_GIMBAL, &gimbalControlTaskHandle, AppCreateSingleGimbalTask},
 #endif
 #if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
-    {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL, &gimbalControlTaskHandle, app_create_dual_yaw_gimbal_task},
+    {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL, &gimbalControlTaskHandle, AppCreateDualYawGimbalTask},
 #endif
 #if ROBOT_TASK_BUILD_IMU
-    {ROBOT_TASK_MODULE_IMU, &ImuTaskHandle, app_create_imu_task},
+    {ROBOT_TASK_MODULE_IMU, &ImuTaskHandle, AppCreateImuTask},
 #endif
   };
 
-  app_create_enabled_module_tasks(module_tasks, (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])));
+  AppCreateEnabledModuleTasks(module_tasks, (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])));
 }
 
 /* GetIdleTaskMemory prototype (linked to static allocation support) */
@@ -238,7 +238,7 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-  robot_control_bootstrap_profile_defaults();
+  RobotControlBootstrapProfileDefaults();
 
   /* USER CODE END Init */
 
@@ -265,7 +265,7 @@ void MX_FREERTOS_Init(void) {
   FunTestHandle = APP_THREAD_CREATE(FunTest, FunTest_Entry);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  app_create_module_tasks();
+  AppCreateModuleTasks();
   /* USER CODE END RTOS_THREADS */
 
 }
@@ -371,17 +371,17 @@ __weak void FunTest_Entry(void *argument)
 /* USER CODE BEGIN Application */
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
-  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
+  RobotFaultEnterSafeStateEx((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
                                   0u, 0u, (uint32_t)xTask, pcTaskName);
-  robot_fault_halt_forever();
+  RobotFaultHaltForever();
 }
 
 void vApplicationMallocFailedHook(void)
 {
   TaskHandle_t current_task = xTaskGetCurrentTaskHandle();
-  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
+  RobotFaultEnterSafeStateEx((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
                                   0u, 0u, (uint32_t)current_task, pcTaskGetTaskName(NULL));
-  robot_fault_halt_forever();
+  RobotFaultHaltForever();
 }
 
 /* USER CODE END Application */

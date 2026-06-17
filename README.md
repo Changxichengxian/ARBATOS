@@ -149,7 +149,7 @@ main.c
   |
   +-- HAL and CubeMX peripheral initialization
   +-- board and shared module initialization
-  +-- manual_input_init()
+  +-- ManualInputInit()
   +-- osKernelStart()
         |
         +-- MX_FREERTOS_Init()
@@ -161,14 +161,17 @@ main.c
 
 F4 targets mainly create tasks in `projects/<TARGET>/Core/Src/freertos.c`.
 The DM MC02 H7 board also has board-level entry points in
-`boards/DM_MC02_H7/app/board_main.c` and
-`boards/DM_MC02_H7/app/board_freertos.c`.
+`boards/DM_MC02_H7/app/BoardMain.c` and
+`boards/DM_MC02_H7/app/BoardFreertos.c`.
 
 Known task module IDs are defined in
-`shared/application/robot/robot_config_schema.h`, and their names and helper
-functions live in `shared/application/robot/robot_task_profile.h`.
+`shared/application/robot/RobotConfigSchema.h`, and their names and helper
+functions live in `shared/application/robot/RobotTaskProfile.h`.
 
 Current modules include:
+
+The `task.*` strings are profile/config identifiers. They are kept stable as
+data keys even when the C files and functions use readable PascalCase names.
 
 | Module name | Purpose |
 |---|---|
@@ -178,7 +181,7 @@ Current modules include:
 | `task.classic_chassis` | classic wheeled chassis control |
 | `task.wheelleg_mit` | MIT-style wheel-leg experiment control |
 | `task.single_gimbal` | single-yaw gimbal control |
-| `task.dual_yaw_gimbal` | dual-yaw gimbal control |
+| `task.DualYawGimbal` | dual-yaw gimbal control |
 | `task.arm` | arm control task |
 | `task.can_feedback_rx` | drains CAN RX queues and updates motor feedback |
 | `task.can_command_tx` | sends unified actuator commands to CAN/RS485 protocols |
@@ -201,13 +204,13 @@ DBUS/SBUS       ELRS/CRSF       image remote       board keys
    |               |                 |                 |
    +---------------+-----------------+-----------------+
                            |
-                    manual_input
+                    ManualInput
                            |
-                    control_input
+                    ControlInput
                            |
         +------------------+------------------+
         |                  |                  |
- chassis_control_task  gimbal_control_task  shoot / arm / wheel-leg
+ ChassisControlTask  GimbalControlTask  Shoot / Arm / WheelLeg
         |                  |                  |
         +------------------+------------------+
                            |
@@ -223,11 +226,11 @@ Feedback is handled separately:
 ```text
 CAN interrupt
   |
-bsp_can RX ring buffer
+BspCan RX ring buffer
   |
 CanRxTask
   |
-CAN_receive / MotorInst
+CanReceive / MotorInst
   |
 LowState and legacy motor feedback structs
   |
@@ -245,30 +248,30 @@ Useful entry points:
 
 | Area | Main files |
 |---|---|
-| Manual input | `shared/application/input/manual_input.c` |
-| Logical input mapping | `shared/application/input/control_input.c` |
-| Image remote input | `shared/application/input/image_remote_link.c` |
-| ELRS/CRSF input | `shared/application/input/elrs_task.c` |
-| Host link | `shared/application/comm/host/host_link_task.c` |
-| Vision link | `shared/application/comm/vision/vision_link.c` |
-| Referee link | `shared/application/comm/referee/referee_rx_task.c` |
-| External motion intent | `shared/application/robot/external_motion_intent.c` |
+| Manual input | `shared/application/input/ManualInput.c` |
+| Logical input mapping | `shared/application/input/ControlInput.c` |
+| Image remote input | `shared/application/input/ImageRemoteLink.c` |
+| ELRS/CRSF input | `shared/application/input/ElrsTask.c` |
+| Host link | `shared/application/comm/host/HostLinkTask.c` |
+| Vision link | `shared/application/comm/vision/VisionLink.c` |
+| Referee link | `shared/application/comm/referee/RefereeRxTask.c` |
+| External motion intent | `shared/application/robot/ExternalMotionIntent.c` |
 | Actuator commands | `shared/application/robot/LowCmd.c` |
-| Device configuration view | `shared/application/robot/robot_device_config.h` |
-| Runtime state store | `shared/application/robot/state_store.c`, `robot_state.h` |
+| Device configuration view | `shared/application/robot/RobotDeviceConfig.h` |
+| Runtime state store | `shared/application/robot/StateStore.c`, `RobotState.h` |
 | Controller manager | `shared/application/robot/ControlMgr.c` |
 | Motor instances | `shared/application/motors/MotorInst.c` |
-| Motor model database | `shared/application/motors/motor_model_db.c` |
-| CAN feedback | `shared/application/comm/can/CanRxTask.c`, `CAN_receive.c` |
+| Motor model database | `shared/application/motors/MotorModelDb.c` |
+| CAN feedback | `shared/application/comm/can/CanRxTask.c`, `CanReceive.c` |
 | CAN commands | `shared/application/comm/can/CanTxTask.c` |
-| Chassis control | `shared/application/chassis/chassis_control_task.c` |
-| Gimbal control | `shared/application/gimbal/gimbal_control_task.c` |
-| Shooter control | `shared/application/shoot/shoot.c` |
-| Arm motion | `shared/application/arm/arm_motion.c` |
-| Wheel-leg control | `shared/application/wheelleg/wheelleg_mit_task.c` |
-| Battery monitor | `shared/application/services/battery/battery_monitor_task.c` |
+| Chassis control | `shared/application/chassis/ChassisControlTask.c` |
+| Gimbal control | `shared/application/gimbal/GimbalControlTask.c` |
+| Shooter control | `shared/application/shoot/Shoot.c` |
+| Arm motion | `shared/application/arm/ArmMotion.c` |
+| Wheel-leg control | `shared/application/wheelleg/WheelLegMitTask.c` |
+| Battery monitor | `shared/application/services/battery/BatteryMonitorTask.c` |
 | Calibration | `shared/application/services/calibration/` |
-| Diagnostics | `shared/application/services/diagnostics/watch.c`, `RtProf.c` |
+| Diagnostics | `shared/application/services/diagnostics/Watch.c`, `RtProf.c` |
 | SD logging | `shared/application/services/storage/SdLog.c`, `SdLogTask.c` |
 
 ## Configuration Model
@@ -283,7 +286,7 @@ The main runtime object is `g_config`. It contains:
 - `gimbal`, `dual_gimbal`, `chassis`, `wheelleg_mit`, `shoot`, `arm_j0_unitree`:
   subsystem parameters.
 - `manual_input` and `input`: input source policy and logical channel mapping.
-- `aux_telem`: AUX telemetry signal selection.
+- `AuxTelem`: AUX telemetry signal selection.
 - `detect`: online detection rules.
 - `imu`, `voltage`, `power`, `buzzer`, `led`, `sdlog`, and `test`: common
   services and debug configuration.
@@ -380,14 +383,14 @@ The simulator is a configuration pressure check, not a physics simulator.
 Main diagnostics surfaces:
 
 - `g_watch`: watch-window friendly runtime state.
-- `watch.c`: task, device, actuator, controller, and fault summary.
+- `Watch.c`: task, device, actuator, controller, and fault summary.
 - `RtProf.c`: loop timing, maximum time, and over-budget counters.
-- `detect_task.c`: target-specific online detection and status aggregation.
+- `DetectTask.c`: target-specific online detection and status aggregation.
 - `SdLog.c` and `SdLogTask.c`: TF/SD binary logging through an in-memory ring
   buffer and a low-priority file flush task.
 - `BUILD_INFO`: target, board, 16-character Git commit prefix, dirty flag, build
   time, config CRC, and schema information written into logs.
-- `host_link_task.c`: AUX telemetry and temporary parameter tuning.
+- `HostLinkTask.c`: AUX telemetry and temporary parameter tuning.
 
 High-rate tasks may call `SdLogWrite()`, but that still copies payload data and
 enters a short critical section. New high-rate logs should be added carefully,
@@ -449,19 +452,19 @@ For detailed workflows, start with `QUICK_START.md` and `manual/README.md`.
 
 1. Add the model enum in the target-compatible `config.h`.
 2. Add the model entry, protocol capability, feedback format, limits, reduction
-   ratio, and control range in `shared/application/motors/motor_model_db.c`.
+   ratio, and control range in `shared/application/motors/MotorModelDb.c`.
 3. Add or extend protocol drivers if the existing RM, DM, MIT-style, or Unitree
    paths do not cover the model.
-4. Wire receive parsing through `CAN_receive.c` and transmit formatting through
+4. Wire receive parsing through `CanReceive.c` and transmit formatting through
    `CanTxTask.c`.
 5. Mount the model through `g_config.motor` in the relevant Robotconfig.
 
 ## Adding a Task Module
 
 1. Add a `ROBOT_TASK_MODULE_*` value in
-   `shared/application/robot/robot_config_schema.h`.
-2. Add the module name in `robot_profile_known_modules()` in
-   `shared/application/robot/robot_task_profile.h`.
+   `shared/application/robot/RobotConfigSchema.h`.
+2. Add the module name in `RobotProfileKnownModules()` in
+   `shared/application/robot/RobotTaskProfile.h`.
 3. Add the module to the relevant target's `g_config.profile.task_modules`.
 4. Add the task source file and task creation entry in the target project or
    board-level FreeRTOS file.

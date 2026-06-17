@@ -1,0 +1,927 @@
+/*
+ * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * First published in this repository: 2026-04-06
+ * Use of this file is governed by the LICENSE file in the repository root.
+ */
+
+#include "UnitreeMotorDriver.h"
+
+#include "FreeRTOS.h"
+#include "task.h"
+
+#include "LowCmd.h"
+#include "BspUsart.h"
+#include "main.h"
+#include "MotorConfig.h"
+#include "MotorInst.h"
+#include "RobotSafety.h"
+
+#include <string.h>
+
+typedef enum
+{
+    UNITREE_MOTOR_MODE_BRAKE = 0u,
+    UNITREE_MOTOR_MODE_FOC = 1u,
+    UNITREE_MOTOR_MODE_CALIBRATE = 2u,
+} UnitreeMotorMode;
+
+#pragma pack(push, 1)
+typedef struct
+{
+    uint8_t start[2];
+    uint8_t motor_id;
+    uint8_t head_res;
+} UnitreeMotorHead;
+
+typedef struct
+{
+    uint8_t mode;
+    uint8_t modify_bit;
+    uint8_t read_bit;
+    uint8_t mid_res;
+    uint32_t modify;
+    int16_t torque_q8;
+    int16_t speed_q7;
+    int32_t position_q14;
+    int16_t kp_q11;
+    int16_t kd_q9;
+    uint8_t low_hz_cmd_index;
+    uint8_t low_hz_cmd_byte;
+    uint32_t end_res;
+} UnitreeMotorMasterCmd;
+
+typedef struct
+{
+    UnitreeMotorHead head;
+    UnitreeMotorMasterCmd cmd;
+    uint32_t crc32;
+} UnitreeMotorTxFrame;
+
+typedef struct
+{
+    uint8_t mode;
+    uint8_t read_bit;
+    int8_t temp;
+    uint8_t motor_error;
+    uint8_t read;
+    int16_t torque_q8;
+    int16_t speed_q7;
+    float rotor_speed_low;
+    int16_t joint_speed_q7;
+    float joint_speed_low;
+    int16_t rotor_acc;
+    int16_t joint_acc;
+    int32_t rotor_pos_q14;
+    int32_t joint_pos_q14;
+    int16_t gyro[3];
+    int16_t accel[3];
+    int16_t force_gyro[3];
+    int16_t force_acc[3];
+    int16_t force_mag[3];
+    uint8_t force_temp;
+    int16_t force16;
+    int8_t force8;
+    uint8_t force_error;
+    int8_t reserved[1];
+} UnitreeMotorServoCmd;
+
+typedef struct
+{
+    UnitreeMotorHead head;
+    UnitreeMotorServoCmd data;
+    uint32_t crc32;
+} UnitreeMotorRxFrame;
+#pragma pack(pop)
+
+#define UNITREE_MOTOR_PI_F                3.1415926f
+#define UNITREE_MOTOR_TWO_PI_F            (2.0f * UNITREE_MOTOR_PI_F)
+#define UNITREE_MOTOR_TORQUE_SCALE        256.0f
+#define UNITREE_MOTOR_SPEED_SCALE         128.0f
+#define UNITREE_MOTOR_POSITION_SCALE      (16384.0f / UNITREE_MOTOR_TWO_PI_F)
+#define UNITREE_MOTOR_KP_SCALE            2048.0f
+#define UNITREE_MOTOR_KD_SCALE            512.0f
+#define UNITREE_MOTOR_TX_WORD_COUNT       7u
+#define UNITREE_MOTOR_RX_WORD_COUNT       18u
+#define UNITREE_MOTOR_RX_FRAME_SIZE       ((uint16_t)sizeof(UnitreeMotorRxFrame))
+#define UNITREE_MOTOR_RADPS_TO_RPM        9.5492965855f
+
+static UnitreeMotorState g_unitree_motor_state;
+static UnitreeMotorConfig g_unitree_motor_cfg;
+static uint8_t g_unitree_motor_rx_buf[UNITREE_MOTOR_RX_FRAME_SIZE];
+static volatile uint16_t g_unitree_motor_rx_pos = 0u;
+static volatile uint8_t g_unitree_motor_rs485_ready = 0u;
+static uint8_t g_unitree_motor_active_port = 0xFFu;
+static uint32_t g_unitree_motor_active_baudrate = 0u;
+
+static uint32_t UnitreeMotorCrc32Words(const uint8_t *data, uint32_t word_count);
+static int16_t UnitreeMotorFloatToQ(fp32 value, fp32 scale);
+static int32_t UnitreeMotorPosToQ14(fp32 value);
+static fp32 UnitreeMotorQ14ToPos(int32_t value);
+static fp32 UnitreeMotorFeedbackSpeed(int16_t speed_q7, float speed_low);
+static void UnitreeMotorBuildTxFrame(UnitreeMotorTxFrame *frame,
+                                         uint8_t motor_id,
+                                         UnitreeMotorMode mode,
+                                         const UnitreeMotorCmd *cmd);
+static void UnitreeMotorProcessRxFrame(const uint8_t *frame_bytes);
+static void UnitreeMotorIngestRxByte(uint8_t b);
+static void UnitreeMotorUsart2RxByte(uint8_t b);
+static void UnitreeMotorUsart3RxByte(uint8_t b);
+static uint8_t UnitreeMotorUsart2Error(void);
+static uint8_t UnitreeMotorUsart3Error(void);
+static uint8_t UnitreeMotorSetupRs485(const UnitreeMotorConfig *cfg);
+static int UnitreeMotorSendFrame(const UnitreeMotorConfig *cfg, const UnitreeMotorTxFrame *frame);
+static fp32 UnitreeMotorClampFp32(fp32 value, fp32 min_value, fp32 max_value);
+static fp32 UnitreeMotorCurrentToTorque(const motor_node_param_t *node,
+                                            int16_t current,
+                                            const MotorModelMitLimits *limits);
+static int16_t UnitreeMotorTorqueToCurrentLike(const MotorModelMitLimits *limits, fp32 torque);
+static uint16_t UnitreeMotorPositionToEcd(fp32 position);
+static void UnitreeMotorBuildConfigFromNode(UnitreeMotorConfig *out,
+                                                 uint8_t port,
+                                                 const motor_node_param_t *node);
+static uint8_t UnitreeMotorCmdModeUsesPosition(MotorMode mode);
+static uint8_t UnitreeMotorCmdModeUsesVelocity(MotorMode mode);
+static uint8_t UnitreeMotorBuildCmdFromActuator(const motor_node_param_t *node,
+                                                     MotorId actuator_id,
+                                                     int16_t current,
+                                                     UnitreeMotorCmd *out,
+                                                     MotorMode *applied_mode);
+static void UnitreeMotorRefreshFeedback(MotorId actuator_id, const motor_node_param_t *node);
+static void UnitreeMotorUpdateApplied(MotorId actuator_id,
+                                         uint8_t port,
+                                         const motor_node_param_t *node,
+                                         const UnitreeMotorCmd *cmd,
+                                         MotorMode mode,
+                                         int16_t current,
+                                         int ret);
+
+static uint32_t UnitreeMotorCrc32Words(const uint8_t *data, uint32_t word_count)
+{
+    uint32_t crc32 = 0xFFFFFFFFu;
+    const uint32_t polynomial = 0x04C11DB7u;
+
+    if (data == NULL)
+    {
+        return 0u;
+    }
+
+    for (uint32_t i = 0u; i < word_count; i++)
+    {
+        uint32_t xbit = 1u << 31;
+        uint32_t word =
+            ((uint32_t)data[i * 4u + 0u]) |
+            ((uint32_t)data[i * 4u + 1u] << 8) |
+            ((uint32_t)data[i * 4u + 2u] << 16) |
+            ((uint32_t)data[i * 4u + 3u] << 24);
+
+        for (uint32_t bit = 0u; bit < 32u; bit++)
+        {
+            if ((crc32 & 0x80000000u) != 0u)
+            {
+                crc32 <<= 1;
+                crc32 ^= polynomial;
+            }
+            else
+            {
+                crc32 <<= 1;
+            }
+
+            if ((word & xbit) != 0u)
+            {
+                crc32 ^= polynomial;
+            }
+
+            xbit >>= 1;
+        }
+    }
+
+    return crc32;
+}
+
+static int16_t UnitreeMotorFloatToQ(fp32 value, fp32 scale)
+{
+    fp32 scaled = value * scale;
+
+    if (scaled > 32767.0f)
+    {
+        scaled = 32767.0f;
+    }
+    else if (scaled < -32768.0f)
+    {
+        scaled = -32768.0f;
+    }
+
+    return (int16_t)((scaled >= 0.0f) ? (scaled + 0.5f) : (scaled - 0.5f));
+}
+
+static int32_t UnitreeMotorPosToQ14(fp32 value)
+{
+    fp32 scaled = value * UNITREE_MOTOR_POSITION_SCALE;
+
+    if (scaled > 2147483647.0f)
+    {
+        scaled = 2147483647.0f;
+    }
+    else if (scaled < -2147483648.0f)
+    {
+        scaled = -2147483648.0f;
+    }
+
+    return (int32_t)((scaled >= 0.0f) ? (scaled + 0.5f) : (scaled - 0.5f));
+}
+
+static fp32 UnitreeMotorQ14ToPos(int32_t value)
+{
+    return ((fp32)value) / UNITREE_MOTOR_POSITION_SCALE;
+}
+
+static fp32 UnitreeMotorFeedbackSpeed(int16_t speed_q7, float speed_low)
+{
+    if ((speed_low > 0.0001f) || (speed_low < -0.0001f))
+    {
+        return (fp32)speed_low;
+    }
+
+    return ((fp32)speed_q7) / UNITREE_MOTOR_SPEED_SCALE;
+}
+
+static fp32 UnitreeMotorClampFp32(fp32 value, fp32 min_value, fp32 max_value)
+{
+    if (value < min_value)
+    {
+        return min_value;
+    }
+    if (value > max_value)
+    {
+        return max_value;
+    }
+    return value;
+}
+
+static fp32 UnitreeMotorCurrentToTorque(const motor_node_param_t *node,
+                                            int16_t current,
+                                            const MotorModelMitLimits *limits)
+{
+    const MotorModelDbEntry *entry;
+    int16_t range_abs = 32767;
+    fp32 torque;
+
+    if (node == NULL || limits == NULL || limits->torque_max <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    entry = MotorCfgModelDb(node->model);
+    if (entry != NULL && entry->cmd_current_range_abs > 0)
+    {
+        range_abs = entry->cmd_current_range_abs;
+    }
+
+    torque = ((fp32)current) * limits->torque_max / (fp32)range_abs;
+    return UnitreeMotorClampFp32(torque, -limits->torque_max, limits->torque_max);
+}
+
+static int16_t UnitreeMotorTorqueToCurrentLike(const MotorModelMitLimits *limits, fp32 torque)
+{
+    fp32 scaled;
+
+    if (limits == NULL || limits->torque_max <= 0.0f)
+    {
+        return 0;
+    }
+
+    scaled = torque * 32767.0f / limits->torque_max;
+    if (scaled > 32767.0f)
+    {
+        scaled = 32767.0f;
+    }
+    else if (scaled < -32768.0f)
+    {
+        scaled = -32768.0f;
+    }
+
+    return (int16_t)scaled;
+}
+
+static uint16_t UnitreeMotorPositionToEcd(fp32 position)
+{
+    while (position < 0.0f)
+    {
+        position += UNITREE_MOTOR_TWO_PI_F;
+    }
+    while (position >= UNITREE_MOTOR_TWO_PI_F)
+    {
+        position -= UNITREE_MOTOR_TWO_PI_F;
+    }
+    return (uint16_t)(position * 8192.0f / UNITREE_MOTOR_TWO_PI_F);
+}
+
+static void UnitreeMotorBuildConfigFromNode(UnitreeMotorConfig *out,
+                                                 uint8_t port,
+                                                 const motor_node_param_t *node)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    (void)memset(out, 0, sizeof(*out));
+    if (node == NULL)
+    {
+        return;
+    }
+
+    out->enable = UnitreeMotorNodeSupported(node);
+    out->rs485_port = (node->rs485_port <= UNITREE_MOTOR_RS485_PORT1) ? node->rs485_port : port;
+    out->motor_id = MotorCfgNodeId(node);
+    out->baudrate = (node->baudrate != 0u) ? node->baudrate : 4000000u;
+    out->rx_timeout_ms = (node->rx_timeout_ms != 0u) ? node->rx_timeout_ms : 50u;
+}
+
+static uint8_t UnitreeMotorCmdModeUsesPosition(MotorMode mode)
+{
+    return (uint8_t)(mode == MotorModeStateTorque ||
+                     mode == MotorModePosVel ||
+                     mode == MotorModeForcePos);
+}
+
+static uint8_t UnitreeMotorCmdModeUsesVelocity(MotorMode mode)
+{
+    return (uint8_t)(mode == MotorModeSpeed);
+}
+
+static uint8_t UnitreeMotorBuildCmdFromActuator(const motor_node_param_t *node,
+                                                     MotorId actuator_id,
+                                                     int16_t current,
+                                                     UnitreeMotorCmd *out,
+                                                     MotorMode *applied_mode)
+{
+    const MotorModelMitLimits *limits = MotorCfgMitLimits(node);
+    MotorCmd src;
+    uint8_t have_cmd;
+    uint8_t active_cmd;
+    MotorMode mode = MotorModeCurrent;
+
+    if (out == NULL || applied_mode == NULL)
+    {
+        return 0u;
+    }
+
+    (void)memset(out, 0, sizeof(*out));
+    *applied_mode = MotorModeDisable;
+
+    if (limits == NULL)
+    {
+        return 0u;
+    }
+
+    if (RobotSafetyOutputLocked() != 0u)
+    {
+        return 1u;
+    }
+
+    (void)memset(&src, 0, sizeof(src));
+    have_cmd = LowCmdGetMotor(actuator_id, &src);
+    active_cmd = (uint8_t)(have_cmd != 0u &&
+                           src.active != 0u &&
+                           src.mode != (uint8_t)MotorModeNone);
+
+    if (active_cmd == 0u && current == 0)
+    {
+        return 1u;
+    }
+
+    if (active_cmd != 0u)
+    {
+        mode = (MotorMode)src.mode;
+    }
+
+    if (mode == MotorModeDisable)
+    {
+        return 1u;
+    }
+
+    if (active_cmd != 0u && UnitreeMotorCmdModeUsesPosition(mode) != 0u)
+    {
+        out->position_rad = src.q;
+        out->speed_rad_s = src.dq;
+        out->kp = src.kp;
+        out->kd = src.kd;
+        out->torque_nm = src.tau;
+    }
+    else if (active_cmd != 0u && UnitreeMotorCmdModeUsesVelocity(mode) != 0u)
+    {
+        out->speed_rad_s = src.dq;
+        out->kd = src.kd;
+        out->torque_nm = src.tau;
+    }
+    else
+    {
+        out->torque_nm = UnitreeMotorCurrentToTorque(node, current, limits);
+    }
+
+    out->position_rad = UnitreeMotorClampFp32(out->position_rad, -limits->position_max, limits->position_max);
+    out->speed_rad_s = UnitreeMotorClampFp32(out->speed_rad_s, -limits->velocity_max, limits->velocity_max);
+    out->kp = UnitreeMotorClampFp32(out->kp, 0.0f, limits->kp_max);
+    out->kd = UnitreeMotorClampFp32(out->kd, 0.0f, limits->kd_max);
+    out->torque_nm = UnitreeMotorClampFp32(out->torque_nm, -limits->torque_max, limits->torque_max);
+    *applied_mode = mode;
+    return 1u;
+}
+
+static void UnitreeMotorBuildTxFrame(UnitreeMotorTxFrame *frame,
+                                       uint8_t motor_id,
+                                       UnitreeMotorMode mode,
+                                       const UnitreeMotorCmd *cmd)
+{
+    UnitreeMotorCmd safe_cmd = {0};
+
+    if (frame == NULL)
+    {
+        return;
+    }
+
+    if (cmd != NULL)
+    {
+        safe_cmd = *cmd;
+    }
+
+    (void)memset(frame, 0, sizeof(*frame));
+    frame->head.start[0] = 0xFEu;
+    frame->head.start[1] = 0xEEu;
+    frame->head.motor_id = motor_id;
+    frame->cmd.mode = (uint8_t)mode;
+    frame->cmd.modify_bit = 0xFFu;
+    frame->cmd.read_bit = 0u;
+    frame->cmd.mid_res = 0u;
+    frame->cmd.modify = 0u;
+    frame->cmd.torque_q8 = UnitreeMotorFloatToQ(safe_cmd.torque_nm, UNITREE_MOTOR_TORQUE_SCALE);
+    frame->cmd.speed_q7 = UnitreeMotorFloatToQ(safe_cmd.speed_rad_s, UNITREE_MOTOR_SPEED_SCALE);
+    frame->cmd.position_q14 = UnitreeMotorPosToQ14(safe_cmd.position_rad);
+    frame->cmd.kp_q11 = UnitreeMotorFloatToQ(safe_cmd.kp, UNITREE_MOTOR_KP_SCALE);
+    frame->cmd.kd_q9 = UnitreeMotorFloatToQ(safe_cmd.kd, UNITREE_MOTOR_KD_SCALE);
+    frame->cmd.low_hz_cmd_index = 0u;
+    frame->cmd.low_hz_cmd_byte = 0u;
+    frame->cmd.end_res = 0u;
+    frame->crc32 = UnitreeMotorCrc32Words((const uint8_t *)frame, UNITREE_MOTOR_TX_WORD_COUNT);
+}
+
+static void UnitreeMotorProcessRxFrame(const uint8_t *frame_bytes)
+{
+    UnitreeMotorRxFrame frame;
+    uint32_t crc32;
+    const UnitreeMotorConfig *cfg = &g_unitree_motor_cfg;
+
+    if (frame_bytes == NULL)
+    {
+        return;
+    }
+
+    (void)memcpy(&frame, frame_bytes, sizeof(frame));
+
+    if (frame.head.start[0] != 0xFEu || frame.head.start[1] != 0xEEu)
+    {
+        g_unitree_motor_state.rx_parse_error_count++;
+        return;
+    }
+
+    crc32 = UnitreeMotorCrc32Words(frame_bytes, UNITREE_MOTOR_RX_WORD_COUNT);
+    if (crc32 != frame.crc32)
+    {
+        g_unitree_motor_state.rx_crc_fail_count++;
+        return;
+    }
+
+    if (cfg->enable == 0u || (cfg->motor_id != 0xBBu && frame.head.motor_id != cfg->motor_id))
+    {
+        g_unitree_motor_state.rx_parse_error_count++;
+        return;
+    }
+
+    {
+        UBaseType_t saved = taskENTER_CRITICAL_FROM_ISR();
+        g_unitree_motor_state.motor_id = frame.head.motor_id;
+        g_unitree_motor_state.online = 1u;
+        g_unitree_motor_state.last_mode = frame.data.mode;
+        g_unitree_motor_state.motor_error = frame.data.motor_error;
+        g_unitree_motor_state.motor_temp = frame.data.temp;
+        g_unitree_motor_state.rx_frame_count++;
+        g_unitree_motor_state.last_rx_tick_ms = HAL_GetTick();
+        g_unitree_motor_state.torque_nm = ((fp32)frame.data.torque_q8) / UNITREE_MOTOR_TORQUE_SCALE;
+        g_unitree_motor_state.joint_speed_rad_s = UnitreeMotorFeedbackSpeed(frame.data.joint_speed_q7, frame.data.joint_speed_low);
+        g_unitree_motor_state.joint_position_rad = UnitreeMotorQ14ToPos(frame.data.joint_pos_q14);
+        taskEXIT_CRITICAL_FROM_ISR(saved);
+    }
+}
+
+static void UnitreeMotorIngestRxByte(uint8_t b)
+{
+    uint16_t pos = g_unitree_motor_rx_pos;
+
+    if (pos == 0u)
+    {
+        if (b == 0xFEu)
+        {
+            g_unitree_motor_rx_buf[0] = b;
+            g_unitree_motor_rx_pos = 1u;
+        }
+        return;
+    }
+
+    if (pos == 1u)
+    {
+        if (b == 0xEEu)
+        {
+            g_unitree_motor_rx_buf[1] = b;
+            g_unitree_motor_rx_pos = 2u;
+        }
+        else
+        {
+            if (b == 0xFEu)
+            {
+                g_unitree_motor_rx_buf[0] = b;
+                g_unitree_motor_rx_pos = 1u;
+            }
+            else
+            {
+                g_unitree_motor_rx_pos = 0u;
+            }
+        }
+        return;
+    }
+
+    if (pos >= UNITREE_MOTOR_RX_FRAME_SIZE)
+    {
+        g_unitree_motor_rx_pos = 0u;
+        return;
+    }
+
+    g_unitree_motor_rx_buf[pos] = b;
+    pos++;
+
+    if (pos >= UNITREE_MOTOR_RX_FRAME_SIZE)
+    {
+        g_unitree_motor_rx_pos = 0u;
+        UnitreeMotorProcessRxFrame(g_unitree_motor_rx_buf);
+        return;
+    }
+
+    g_unitree_motor_rx_pos = pos;
+}
+
+static void UnitreeMotorUsart2RxByte(uint8_t b)
+{
+    if (g_unitree_motor_active_port != UNITREE_MOTOR_RS485_PORT0)
+    {
+        return;
+    }
+
+    UnitreeMotorIngestRxByte(b);
+}
+
+static void UnitreeMotorUsart3RxByte(uint8_t b)
+{
+    if (g_unitree_motor_active_port != UNITREE_MOTOR_RS485_PORT1)
+    {
+        return;
+    }
+
+    UnitreeMotorIngestRxByte(b);
+}
+
+static uint8_t UnitreeMotorUsart2Error(void)
+{
+    if (g_unitree_motor_active_port == UNITREE_MOTOR_RS485_PORT0)
+    {
+        g_unitree_motor_state.rx_parse_error_count++;
+    }
+
+    return 0u;
+}
+
+static uint8_t UnitreeMotorUsart3Error(void)
+{
+    if (g_unitree_motor_active_port == UNITREE_MOTOR_RS485_PORT1)
+    {
+        g_unitree_motor_state.rx_parse_error_count++;
+    }
+
+    return 0u;
+}
+
+void UnitreeMotorStop(void)
+{
+    if (g_unitree_motor_active_port == UNITREE_MOTOR_RS485_PORT0)
+    {
+        BspUsart2RxItStop();
+    }
+    else if (g_unitree_motor_active_port == UNITREE_MOTOR_RS485_PORT1)
+    {
+        BspUsart3RxItStop();
+    }
+
+    g_unitree_motor_active_port = 0xFFu;
+    g_unitree_motor_active_baudrate = 0u;
+    g_unitree_motor_rs485_ready = 0u;
+    g_unitree_motor_rx_pos = 0u;
+}
+
+static uint8_t UnitreeMotorSetupRs485(const UnitreeMotorConfig *cfg)
+{
+    int ret = 1;
+
+    if (cfg == NULL || cfg->enable == 0u)
+    {
+        UnitreeMotorStop();
+        return 0u;
+    }
+
+    if (cfg->rs485_port > UNITREE_MOTOR_RS485_PORT1)
+    {
+        UnitreeMotorStop();
+        return 0u;
+    }
+
+    if (g_unitree_motor_rs485_ready != 0u &&
+        g_unitree_motor_active_port == cfg->rs485_port &&
+        g_unitree_motor_active_baudrate == cfg->baudrate)
+    {
+        return 1u;
+    }
+
+    BspUsart2SetRxByteCb(UnitreeMotorUsart2RxByte);
+    BspUsart2SetErrorCb(UnitreeMotorUsart2Error);
+    BspUsart3SetRxByteCb(UnitreeMotorUsart3RxByte);
+    BspUsart3SetErrorCb(UnitreeMotorUsart3Error);
+
+    if (g_unitree_motor_active_port == UNITREE_MOTOR_RS485_PORT0 && cfg->rs485_port != UNITREE_MOTOR_RS485_PORT0)
+    {
+        BspUsart2RxItStop();
+    }
+    else if (g_unitree_motor_active_port == UNITREE_MOTOR_RS485_PORT1 && cfg->rs485_port != UNITREE_MOTOR_RS485_PORT1)
+    {
+        BspUsart3RxItStop();
+    }
+
+    g_unitree_motor_rx_pos = 0u;
+
+    if (cfg->rs485_port == UNITREE_MOTOR_RS485_PORT0)
+    {
+        ret = BspUsart2SetBaudrate(cfg->baudrate);
+        if (ret == 0)
+        {
+            ret = BspUsart2RxItStart();
+        }
+    }
+    else
+    {
+        ret = BspUsart3SetBaudrate(cfg->baudrate);
+        if (ret == 0)
+        {
+            ret = BspUsart3RxItStart();
+        }
+    }
+
+    if (ret != 0)
+    {
+        g_unitree_motor_rs485_ready = 0u;
+        g_unitree_motor_state.last_tx_status = (uint8_t)ret;
+        return 0u;
+    }
+
+    g_unitree_motor_active_port = cfg->rs485_port;
+    g_unitree_motor_active_baudrate = cfg->baudrate;
+    g_unitree_motor_rs485_ready = 1u;
+    return 1u;
+}
+
+static int UnitreeMotorSendFrame(const UnitreeMotorConfig *cfg, const UnitreeMotorTxFrame *frame)
+{
+    int ret = 1;
+
+    if (cfg == NULL || frame == NULL || cfg->enable == 0u)
+    {
+        return 1;
+    }
+
+    if (cfg->rs485_port == UNITREE_MOTOR_RS485_PORT0)
+    {
+        ret = BspUsart2Tx((const uint8_t *)frame, (uint16_t)sizeof(*frame), 5u);
+    }
+    else if (cfg->rs485_port == UNITREE_MOTOR_RS485_PORT1)
+    {
+        ret = BspUsart3Tx((const uint8_t *)frame, (uint16_t)sizeof(*frame), 5u);
+    }
+
+    g_unitree_motor_state.tx_count++;
+    g_unitree_motor_state.last_tx_status = (uint8_t)ret;
+    if (ret != 0)
+    {
+        g_unitree_motor_state.tx_fail_count++;
+    }
+
+    return ret;
+}
+
+void UnitreeMotorDriverInit(void)
+{
+    UnitreeMotorStop();
+    (void)memset(&g_unitree_motor_cfg, 0, sizeof(g_unitree_motor_cfg));
+    (void)memset(&g_unitree_motor_state, 0, sizeof(g_unitree_motor_state));
+}
+
+void UnitreeMotorRefresh(const UnitreeMotorConfig *cfg)
+{
+    const uint32_t now_ms = HAL_GetTick();
+
+    if (cfg == NULL || cfg->enable == 0u)
+    {
+        UnitreeMotorStop();
+        g_unitree_motor_state.enabled = 0u;
+        g_unitree_motor_state.online = 0u;
+        g_unitree_motor_state.cmd_speed_rad_s = 0.0f;
+        g_unitree_motor_state.cmd_kd = 0.0f;
+        return;
+    }
+
+    g_unitree_motor_state.enabled = cfg->enable;
+    g_unitree_motor_state.rs485_port = cfg->rs485_port;
+    g_unitree_motor_state.motor_id = cfg->motor_id;
+
+    if ((g_unitree_motor_state.last_rx_tick_ms == 0u) ||
+        ((now_ms - g_unitree_motor_state.last_rx_tick_ms) > cfg->rx_timeout_ms))
+    {
+        g_unitree_motor_state.online = 0u;
+    }
+}
+
+uint8_t UnitreeMotorConfigure(const UnitreeMotorConfig *cfg)
+{
+    if (cfg == NULL)
+    {
+        UnitreeMotorStop();
+        return 0u;
+    }
+
+    g_unitree_motor_cfg = *cfg;
+    UnitreeMotorRefresh(cfg);
+    return UnitreeMotorSetupRs485(cfg);
+}
+
+int UnitreeMotorSendCmd(const UnitreeMotorConfig *cfg, const UnitreeMotorCmd *cmd)
+{
+    UnitreeMotorCmd safe_cmd = {0};
+    UnitreeMotorTxFrame frame;
+
+    if (cfg == NULL || cfg->enable == 0u)
+    {
+        return 1;
+    }
+
+    if (cmd != NULL)
+    {
+        safe_cmd = *cmd;
+    }
+
+    if (UnitreeMotorConfigure(cfg) == 0u)
+    {
+        return 1;
+    }
+
+    g_unitree_motor_state.cmd_speed_rad_s = safe_cmd.speed_rad_s;
+    g_unitree_motor_state.cmd_kd = safe_cmd.kd;
+
+    UnitreeMotorBuildTxFrame(&frame, cfg->motor_id, UNITREE_MOTOR_MODE_FOC, &safe_cmd);
+    return UnitreeMotorSendFrame(cfg, &frame);
+}
+
+uint8_t UnitreeMotorNodeSupported(const motor_node_param_t *node)
+{
+    if (node == NULL)
+    {
+        return 0u;
+    }
+    if (MotorCfgTransport(node) != MOTOR_TRANSPORT_RS485)
+    {
+        return 0u;
+    }
+    return (MotorCfgProtocol(node) == MOTOR_PROTOCOL_UNITREE_RS485) ? 1u : 0u;
+}
+
+static void UnitreeMotorRefreshFeedback(MotorId actuator_id, const motor_node_param_t *node)
+{
+    const MotorModelMitLimits *limits = MotorCfgMitLimits(node);
+    const UnitreeMotorState *state = UnitreeMotorGetState();
+    motor_measure_t *measure;
+    MotorState fb;
+
+    if ((uint32_t)actuator_id >= (uint32_t)MotorCount || state == NULL)
+    {
+        return;
+    }
+
+    (void)memset(&fb, 0, sizeof(fb));
+    fb.online = state->online;
+    fb.bus = state->rs485_port;
+    fb.rxDlc = UNITREE_MOTOR_RX_FRAME_SIZE;
+    fb.transport = (uint8_t)MotorTransportRS485;
+    fb.motorId = state->motor_id;
+    fb.state = state->last_mode;
+    fb.driveState = (state->online != 0u) ? (uint8_t)MotorDriveStateEnabled : (uint8_t)MotorDriveStateOffline;
+    fb.rxId = state->motor_id;
+    fb.rxCount = state->rx_frame_count;
+    fb.lastRxTick = state->last_rx_tick_ms;
+    fb.q = state->joint_position_rad;
+    fb.dq = state->joint_speed_rad_s;
+    fb.tauEst = state->torque_nm;
+    fb.ecd = UnitreeMotorPositionToEcd(state->joint_position_rad);
+    fb.speedRpm = UnitreeMotorFloatToQ(state->joint_speed_rad_s * UNITREE_MOTOR_RADPS_TO_RPM, 1.0f);
+    fb.current = UnitreeMotorTorqueToCurrentLike(limits, state->torque_nm);
+    fb.temperature = (uint8_t)state->motor_temp;
+    LowStateUpdateMotor(actuator_id, &fb);
+
+    measure = MotorInstMeasure(actuator_id);
+    if (measure != NULL)
+    {
+        measure->last_ecd = (int16_t)measure->ecd;
+        measure->ecd = fb.ecd;
+        measure->speed_rpm = fb.speedRpm;
+        measure->given_current = fb.current;
+        measure->temperate = fb.temperature;
+    }
+}
+
+static void UnitreeMotorUpdateApplied(MotorId actuator_id,
+                                         uint8_t port,
+                                         const motor_node_param_t *node,
+                                         const UnitreeMotorCmd *cmd,
+                                         MotorMode mode,
+                                         int16_t current,
+                                         int ret)
+{
+    MotorApplied applied;
+
+    if ((uint32_t)actuator_id >= (uint32_t)MotorCount)
+    {
+        return;
+    }
+
+    (void)memset(&applied, 0, sizeof(applied));
+    applied.active = 1u;
+    applied.mode = (uint8_t)mode;
+    applied.driveState = (mode == MotorModeDisable) ? (uint8_t)MotorDriveStateDisabled : (uint8_t)MotorDriveStateEnabled;
+    applied.bus = port;
+    applied.transport = (uint8_t)MotorTransportRS485;
+    applied.protocol = (uint8_t)MotorCfgProtocol(node);
+    applied.txId = MotorCfgNodeId(node);
+    applied.tick = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+    applied.current = current;
+    if (cmd != NULL)
+    {
+        applied.q = cmd->position_rad;
+        applied.dq = cmd->speed_rad_s;
+        applied.kp = cmd->kp;
+        applied.kd = cmd->kd;
+        applied.tau = cmd->torque_nm;
+    }
+    if (ret != 0)
+    {
+        applied.flags |= (uint8_t)MotorAppliedFlagSkipped;
+    }
+
+    LowStateUpdateApplied(actuator_id, &applied);
+}
+
+int UnitreeMotorSendActuator(uint8_t port, MotorId actuator_id, const motor_node_param_t *node, int16_t current)
+{
+    UnitreeMotorConfig cfg;
+    UnitreeMotorCmd cmd;
+    MotorMode applied_mode;
+    int ret;
+
+    if (UnitreeMotorNodeSupported(node) == 0u)
+    {
+        return 1;
+    }
+
+    UnitreeMotorBuildConfigFromNode(&cfg, port, node);
+    UnitreeMotorRefresh(&cfg);
+
+    if (UnitreeMotorBuildCmdFromActuator(node, actuator_id, current, &cmd, &applied_mode) == 0u)
+    {
+        UnitreeMotorRefreshFeedback(actuator_id, node);
+        return 1;
+    }
+
+    ret = UnitreeMotorSendCmd(&cfg, &cmd);
+    UnitreeMotorUpdateApplied(actuator_id, cfg.rs485_port, node, &cmd, applied_mode, current, ret);
+    UnitreeMotorRefreshFeedback(actuator_id, node);
+    return ret;
+}
+
+const UnitreeMotorState *UnitreeMotorGetState(void)
+{
+    return &g_unitree_motor_state;
+}

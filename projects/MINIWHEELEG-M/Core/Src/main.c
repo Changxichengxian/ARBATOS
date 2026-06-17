@@ -52,7 +52,7 @@
 
 #include "w25q64.h"
 
-#include "robot_fault_guard.h"
+#include "RobotFaultGuard.h"
 
 #include <stdio.h>
 
@@ -543,7 +543,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
 
   /* User can add his own implementation to report the HAL error return state */
-  robot_fault_record_and_halt((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
+  RobotFaultRecordAndHalt((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
 
   /* USER CODE END Error_Handler_Debug */
 }

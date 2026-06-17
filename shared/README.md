@@ -25,8 +25,8 @@ shared/
 
 ## 常用服务入口
 
-- `application/services/calibration/`：校准服务。`gyro_zero_cali.h` 放陀螺仪零偏采样状态机，板级 INS 只负责传入旋转函数、保存函数和安全条件；`calibrate_task.c` 负责传统设备校准和 Flash 保存；`pitch_cali.c` 负责 pitch 补偿校准。
-- `application/services/diagnostics/`：运行观察和故障状态。优先看 `watch.c`、`RtProf.c`。
+- `application/services/calibration/`：校准服务。`GyroZeroCali.h` 放陀螺仪零偏采样状态机，板级 INS 只负责传入旋转函数、保存函数和安全条件；`CalibrateTask.c` 负责传统设备校准和 Flash 保存；`PitchCali.c` 负责 pitch 补偿校准。
+- `application/services/diagnostics/`：运行观察和故障状态。优先看 `Watch.c`、`RtProf.c`。
 - `application/services/storage/`：TF/SD 日志。高频任务写日志前要先考虑频率和数据量；使用和留样规则见 `../manual/sdlog.md`。
 - `application/services/startup/`：启动期服务、状态灯和提示输出。
 

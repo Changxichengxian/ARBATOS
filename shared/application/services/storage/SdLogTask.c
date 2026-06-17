@@ -11,12 +11,12 @@
 #include "cmsis_os.h"
 
 #include "config.h"
-#include "bsp_time.h"
-#include "sdcard.h"
+#include "BspTime.h"
+#include "SdCard.h"
 #include "SdLog.h"
 #include "RtProf.h"
-#include "robot_task_profile.h"
-#include "robot_mode.h"
+#include "RobotTaskProfile.h"
+#include "RobotMode.h"
 
 #define SDLOG_TASK_IDLE_DELAY_MS 10u
 #define SDLOG_TASK_BACKLOG_YIELD_POLLS 8u
@@ -86,7 +86,7 @@ static void SdLogWriteRtProfSample(void)
 
 static void sdlog_wait_boot_delay_ms(uint32_t delay_ms)
 {
-    const uint32_t now_ms = bsp_time_get_tick_ms();
+    const uint32_t now_ms = BspTimeGetTickMs();
     if (now_ms >= delay_ms)
     {
         return;
@@ -98,12 +98,12 @@ void SdLogTask(void const *argument)
 {
     (void)argument;
 
-    // Wait for TF/SD ready (mount may be done by startup_service_task).
+    // Wait for TF/SD ready (mount may be done by StartupServiceTask).
     uint32_t retry_ms = SDLOG_TASK_MOUNT_RETRY_START_MS;
     uint32_t next_start_ms = 0u;
-    while (!sdcard_is_mounted())
+    while (!SdcardIsMounted())
     {
-        const int m = sdcard_mount();
+        const int m = SdcardMount();
         if (m == 0)
         {
             break;
@@ -119,7 +119,7 @@ void SdLogTask(void const *argument)
         sdlog_wait_boot_delay_ms(SDLOG_TASK_BOOT_DELAY_MS);
         if (SdLogStart() != 0)
         {
-            next_start_ms = bsp_time_get_tick_ms() + SDLOG_TASK_REOPEN_RETRY_MS;
+            next_start_ms = BspTimeGetTickMs() + SDLOG_TASK_REOPEN_RETRY_MS;
         }
     }
 
@@ -132,9 +132,9 @@ void SdLogTask(void const *argument)
             continue;
         }
 
-        if (!sdcard_is_mounted())
+        if (!SdcardIsMounted())
         {
-            const int m = sdcard_mount();
+            const int m = SdcardMount();
             if (m != 0)
             {
                 osDelay(retry_ms);
@@ -142,13 +142,13 @@ void SdLogTask(void const *argument)
                 continue;
             }
             retry_ms = SDLOG_TASK_MOUNT_RETRY_START_MS;
-            next_start_ms = bsp_time_get_tick_ms() + SDLOG_TASK_REMOUNT_SETTLE_MS;
+            next_start_ms = BspTimeGetTickMs() + SDLOG_TASK_REMOUNT_SETTLE_MS;
         }
 
         // If the log file was closed due to an error, try to reopen it.
-        if (!SdLogIsActive() && sdcard_is_mounted())
+        if (!SdLogIsActive() && SdcardIsMounted())
         {
-            const uint32_t now_ms = bsp_time_get_tick_ms();
+            const uint32_t now_ms = BspTimeGetTickMs();
             if (!sdlog_time_reached(now_ms, next_start_ms))
             {
                 osDelay(SDLOG_TASK_IDLE_DELAY_MS);
@@ -158,7 +158,7 @@ void SdLogTask(void const *argument)
             sdlog_wait_boot_delay_ms(SDLOG_TASK_BOOT_DELAY_MS);
             if (SdLogStart() != 0)
             {
-                next_start_ms = bsp_time_get_tick_ms() + SDLOG_TASK_REOPEN_RETRY_MS;
+                next_start_ms = BspTimeGetTickMs() + SDLOG_TASK_REOPEN_RETRY_MS;
             }
         }
 
@@ -169,7 +169,7 @@ void SdLogTask(void const *argument)
         }
 
         static uint32_t lastRtProfLogMs = 0u;
-        const uint32_t now_ms = bsp_time_get_tick_ms();
+        const uint32_t now_ms = BspTimeGetTickMs();
         if ((uint32_t)(now_ms - lastRtProfLogMs) >= SDLOG_TASK_RT_PROFILER_PERIOD_MS)
         {
             lastRtProfLogMs = now_ms;

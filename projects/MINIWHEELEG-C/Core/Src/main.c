@@ -33,23 +33,23 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "bsp_can.h"
-#include "bsp_delay.h"
-#include "bsp_buzzer.h"
-#include "bsp_usart.h"
+#include "BspCan.h"
+#include "BspDelay.h"
+#include "BspBuzzer.h"
+#include "BspUsart.h"
 #include "config.h"
-#include "manual_input.h"
+#include "ManualInput.h"
 
-#include "calibrate_task.h"
-#include "chassis_control_task.h"
-#include "detect_task.h"
-#include "gimbal_control_task.h"
-#include "INS_task.h"
-#include "status_led_task.h"
-#include "referee_rx_task.h"
-#include "host_link_task.h"
-#include "battery_monitor_task.h"
-#include "robot_fault_guard.h"
+#include "CalibrateTask.h"
+#include "ChassisControlTask.h"
+#include "DetectTask.h"
+#include "GimbalControlTask.h"
+#include "InsTask.h"
+#include "StatusLedTask.h"
+#include "RefereeRxTask.h"
+#include "HostLinkTask.h"
+#include "BatteryMonitorTask.h"
+#include "RobotFaultGuard.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -142,10 +142,10 @@ int main(void)
     delay_init();
     cali_param_init();
     // Apply runtime config for BSP modules (BSP must not depend on g_config).
-    buzzer_set_enable(g_config.buzzer.enable);
-    buzzer_pcm_set_carrier_min_hz(g_config.buzzer.pcm.carrier_min_hz);
-    buzzer_pcm_set_stream_gain_q8(g_config.buzzer.pcm.gain_q8);
-    manual_input_init();
+    BuzzerSetEnable(g_config.buzzer.enable);
+    BuzzerPcmSetCarrierMinHz(g_config.buzzer.pcm.carrier_min_hz);
+    BuzzerPcmSetStreamGainQ8(g_config.buzzer.pcm.gain_q8);
+    ManualInputInit();
     usart1_tx_dma_init();
   /* USER CODE END 2 */
 
@@ -248,7 +248,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  robot_fault_record_and_halt((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
+  RobotFaultRecordAndHalt((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
 
   /* USER CODE END Error_Handler_Debug */
 }

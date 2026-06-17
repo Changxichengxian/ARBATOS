@@ -31,10 +31,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "config.h"
-#include "bsp_buzzer.h"
-#include "bsp_can.h"
-#include "manual_input.h"
-#include "robot_fault_guard.h"
+#include "BspBuzzer.h"
+#include "BspCan.h"
+#include "ManualInput.h"
+#include "RobotFaultGuard.h"
 
 /* USER CODE END Includes */
 
@@ -114,8 +114,8 @@ int main(void)
   MX_TIM12_Init();
   /* USER CODE BEGIN 2 */
   can_filter_init();
-  buzzer_set_enable(g_config.buzzer.enable);
-  manual_input_init();
+  BuzzerSetEnable(g_config.buzzer.enable);
+  ManualInputInit();
 
   /* USER CODE END 2 */
 
@@ -218,7 +218,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  robot_fault_record_and_halt((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
+  RobotFaultRecordAndHalt((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT

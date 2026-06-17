@@ -395,14 +395,14 @@
           <GroupName>Application/User/Core</GroupName>
           <Files>
             <File>
-              <FileName>board_main.c</FileName>
+              <FileName>BoardMain.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\boards\DM_MC02_H7\app\board_main.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\app\BoardMain.c</FilePath>
             </File>
             <File>
-              <FileName>board_freertos.c</FileName>
+              <FileName>BoardFreertos.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\boards\DM_MC02_H7\app\board_freertos.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\app\BoardFreertos.c</FilePath>
             </File>
             <File>
               <FileName>gpio.c</FileName>
@@ -460,9 +460,9 @@
           <GroupName>Target/SENTINEL-M</GroupName>
           <Files>
             <File>
-              <FileName>can_mit_motor_driver.c</FileName>
+              <FileName>CanMitMotorDriver.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\motors\\can_mit_motor_driver.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\motors\\CanMitMotorDriver.c</FilePath>
             </File>
             <File>
               <FileName>config.c</FileName>
@@ -470,29 +470,29 @@
               <FilePath>..\\..\\..\\Robotconfig\\SENTINEL-M\\config.c</FilePath>
             </File>
             <File>
-              <FileName>mc02_compat.c</FileName>
+              <FileName>Mc02Compat.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\Robotconfig\\SENTINEL-M\\mc02_compat.c</FilePath>
+              <FilePath>..\\..\\..\\Robotconfig\\SENTINEL-M\\Mc02Compat.c</FilePath>
             </File>
             <File>
-              <FileName>manual_input.c</FileName>
+              <FileName>ManualInput.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\input\\manual_input.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\input\\ManualInput.c</FilePath>
             </File>
             <File>
-              <FileName>rc_sbus_task.c</FileName>
+              <FileName>RcSbusTask.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\input\\rc_sbus_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\input\\RcSbusTask.c</FilePath>
             </File>
             <File>
-              <FileName>detect_task.c</FileName>
+              <FileName>DetectTask.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\Robotconfig\\SENTINEL-M\\detect_task.c</FilePath>
+              <FilePath>..\\..\\..\\Robotconfig\\SENTINEL-M\\DetectTask.c</FilePath>
             </File>
             <File>
-              <FileName>control_input.c</FileName>
+              <FileName>ControlInput.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\input\\control_input.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\input\\ControlInput.c</FilePath>
             </File>
             <File>
               <FileName>LowCmd.c</FileName>
@@ -500,19 +500,19 @@
               <FilePath>..\\..\\..\\shared\\application\\robot\\LowCmd.c</FilePath>
             </File>
             <File>
-              <FileName>robot_lifecycle.c</FileName>
+              <FileName>RobotLifecycle.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\robot\\robot_lifecycle.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\robot\\RobotLifecycle.c</FilePath>
             </File>
             <File>
-              <FileName>state_store.c</FileName>
+              <FileName>StateStore.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\robot\\state_store.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\robot\\StateStore.c</FilePath>
             </File>
             <File>
-              <FileName>external_motion_intent.c</FileName>
+              <FileName>ExternalMotionIntent.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\robot\\external_motion_intent.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\robot\\ExternalMotionIntent.c</FilePath>
             </File>
             <File>
               <FileName>ControlMgr.c</FileName>
@@ -520,9 +520,9 @@
               <FilePath>..\\..\\..\\shared\\application\\robot\\ControlMgr.c</FilePath>
             </File>
             <File>
-              <FileName>CAN_receive.c</FileName>
+              <FileName>CanReceive.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\comm\\can\\CAN_receive.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\comm\\can\\CanReceive.c</FilePath>
             </File>
             <File>
               <FileName>CanRxTask.c</FileName>
@@ -540,129 +540,129 @@
               <FilePath>..\\..\\..\\shared\\application\\services\\diagnostics\\RtProf.c</FilePath>
             </File>
             <File>
-              <FileName>arm_task.c</FileName>
+              <FileName>ArmTask.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\arm\\arm_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\arm\\ArmTask.c</FilePath>
             </File>
             <File>
-              <FileName>arm_motion.c</FileName>
+              <FileName>ArmMotion.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\arm\\arm_motion.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\arm\\ArmMotion.c</FilePath>
             </File>
             <File>
-              <FileName>wheelleg_mit_task.c</FileName>
+              <FileName>WheelLegMitTask.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\wheelleg\\wheelleg_mit_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\wheelleg\\WheelLegMitTask.c</FilePath>
             </File>
             <File>
-              <FileName>battery_monitor_task.c</FileName>
+              <FileName>BatteryMonitorTask.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\services\\battery\\battery_monitor_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\services\\battery\\BatteryMonitorTask.c</FilePath>
             </File>
             <File>
-              <FileName>unitree_motor_driver.c</FileName>
+              <FileName>UnitreeMotorDriver.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\motors\\unitree_motor_driver.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\motors\\UnitreeMotorDriver.c</FilePath>
             </File>
             <File>
-              <FileName>n6014b_motor_driver.c</FileName>
+              <FileName>N6014bMotorDriver.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\motors\\n6014b_motor_driver.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\motors\\N6014bMotorDriver.c</FilePath>
             </File>
             <File>
-              <FileName>arm_motor_table.c</FileName>
+              <FileName>ArmMotorTable.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\Robotconfig\\SENTINEL-M\\arm_motor_table.c</FilePath>
+              <FilePath>..\\..\\..\\Robotconfig\\SENTINEL-M\\ArmMotorTable.c</FilePath>
             </File>
             <File>
-              <FileName>chassis_behaviour.c</FileName>
+              <FileName>ChassisBehaviour.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\chassis\\chassis_behaviour.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\chassis\\ChassisBehaviour.c</FilePath>
             </File>
             <File>
-              <FileName>chassis_power_control.c</FileName>
+              <FileName>ChassisPowerControl.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\chassis\\chassis_power_control.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\chassis\\ChassisPowerControl.c</FilePath>
             </File>
             <File>
-              <FileName>chassis_control_task.c</FileName>
+              <FileName>ChassisControlTask.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\chassis\\chassis_control_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\chassis\\ChassisControlTask.c</FilePath>
             </File>
             <File>
-              <FileName>gimbal_behaviour.c</FileName>
+              <FileName>GimbalBehaviour.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\gimbal\\gimbal_behaviour.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\gimbal\\GimbalBehaviour.c</FilePath>
             </File>
             <File>
-              <FileName>gimbal_control_task.c</FileName>
+              <FileName>GimbalControlTask.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\gimbal\\gimbal_control_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\gimbal\\GimbalControlTask.c</FilePath>
             </File>
             <File>
-              <FileName>buzzer_file_player.c</FileName>
+              <FileName>BuzzerFilePlayer.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\services\\buzzer\\buzzer_file_player.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\services\\buzzer\\BuzzerFilePlayer.c</FilePath>
             </File>
             <File>
-              <FileName>shoot.c</FileName>
+              <FileName>Shoot.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\shoot\\shoot.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\shoot\\Shoot.c</FilePath>
             </File>
             <File>
-              <FileName>pitch_cali.c</FileName>
+              <FileName>PitchCali.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\services\\calibration\\pitch_cali.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\services\\calibration\\PitchCali.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_can.c</FileName>
+              <FileName>BspCan.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_can.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\hal\\BspCan.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_rc.c</FileName>
+              <FileName>BspRc.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_rc.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\hal\\BspRc.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_key.c</FileName>
+              <FileName>BspKey.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_key.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\hal\\BspKey.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_buzzer.c</FileName>
+              <FileName>BspBuzzer.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_buzzer.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\hal\\BspBuzzer.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_adc.c</FileName>
+              <FileName>BspAdc.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_adc.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\hal\\BspAdc.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_shoot_trig.c</FileName>
+              <FileName>BspShootTrig.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_shoot_trig.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\hal\\BspShootTrig.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_time.c</FileName>
+              <FileName>BspTime.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_time.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\hal\\BspTime.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_dwt.c</FileName>
+              <FileName>BspDwt.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_dwt.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\hal\\BspDwt.c</FilePath>
             </File>
             <File>
-              <FileName>sdcard.c</FileName>
+              <FileName>SdCard.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\services\\storage\\sdcard.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\services\\storage\\SdCard.c</FilePath>
             </File>
             <File>
-              <FileName>sd_spi.c</FileName>
+              <FileName>SdSpi.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\components\\devices\\sd_spi.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\devices\\SdSpi.c</FilePath>
             </File>
             <File>
               <FileName>SdLog.c</FileName>
@@ -695,34 +695,34 @@
               <FilePath>..\\..\\..\\shared\\components\\support\\fatfs\\ffunicode.c</FilePath>
             </File>
             <File>
-              <FileName>host_link_task_stub.c</FileName>
+              <FileName>HostLinkTaskStub.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\comm\\host\\host_link_task_stub.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\comm\\host\\HostLinkTaskStub.c</FilePath>
             </File>
             <File>
-              <FileName>watch.c</FileName>
+              <FileName>Watch.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\services\\diagnostics\\watch.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\services\\diagnostics\\Watch.c</FilePath>
             </File>
             <File>
-              <FileName>referee.c</FileName>
+              <FileName>Referee.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\comm\\referee\\referee.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\comm\\referee\\Referee.c</FilePath>
             </File>
             <File>
-              <FileName>referee_rx_task.c</FileName>
+              <FileName>RefereeRxTask.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\comm\\referee\\referee_rx_task.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\comm\\referee\\RefereeRxTask.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_imu_pwm.c</FileName>
+              <FileName>BspImuPwm.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_imu_pwm.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\hal\\BspImuPwm.c</FilePath>
             </File>
             <File>
-              <FileName>pid.c</FileName>
+              <FileName>Pid.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\components\\controller\\pid.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\controller\\Pid.c</FilePath>
             </File>
             <File>
               <FileName>CRC8_CRC16.c</FileName>
@@ -735,64 +735,64 @@
               <FilePath>..\\..\\..\\shared\\components\\support\\fifo.c</FilePath>
             </File>
             <File>
-              <FileName>INS_task.c</FileName>
+              <FileName>InsTask.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\boards\DM_MC02_H7\app\INS_task.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\app\InsTask.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_uart_dispatch.c</FileName>
+              <FileName>BspUartDispatch.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\bsp_uart_dispatch.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\BspUartDispatch.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_usart.c</FileName>
+              <FileName>BspUsart.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\bsp_usart.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\BspUsart.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_referee_uart.c</FileName>
+              <FileName>BspRefereeUart.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\bsp_referee_uart.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\BspRefereeUart.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_rc_port.c</FileName>
+              <FileName>BspRcPort.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\bsp_rc_port.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\BspRcPort.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_sd_spi_port.c</FileName>
+              <FileName>BspSdSpiPort.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\bsp_sd_spi_port.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\BspSdSpiPort.c</FilePath>
             </File>
             <File>
-              <FileName>diskio.c</FileName>
+              <FileName>Diskio.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\diskio.c</FilePath>
+              <FilePath>..\..\..\boards\DM_MC02_H7\bsp\Diskio.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_bmi088_port.c</FileName>
+              <FileName>BspBmi088Port.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_bmi088_port.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\hal\\BspBmi088Port.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_delay.c</FileName>
+              <FileName>BspDelay.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\hal\\bsp_delay.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\hal\\BspDelay.c</FilePath>
             </File>
             <File>
-              <FileName>BMI088driver.c</FileName>
+              <FileName>Bmi088Driver.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\components\\devices\\BMI088driver.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\devices\\Bmi088Driver.c</FilePath>
             </File>
             <File>
-              <FileName>cpu_usage.c</FileName>
+              <FileName>CpuUsage.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\services\\diagnostics\\cpu_usage.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\services\\diagnostics\\CpuUsage.c</FilePath>
             </File>
             <File>
-              <FileName>motor_model_db.c</FileName>
+              <FileName>MotorModelDb.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\application\\motors\\motor_model_db.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\application\\motors\\MotorModelDb.c</FilePath>
             </File>
             <File>
               <FileName>MotorInst.c</FileName>
@@ -810,19 +810,19 @@
               <FilePath>..\\..\\..\\shared\\components\\algorithm\\kalman_filter.c</FilePath>
             </File>
             <File>
-              <FileName>axis_current_conditioner.c</FileName>
+              <FileName>AxisCurrentConditioner.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\components\\controller\\axis_current_conditioner.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\controller\\AxisCurrentConditioner.c</FilePath>
             </File>
             <File>
-              <FileName>chassis_power_limiter.c</FileName>
+              <FileName>ChassisPowerLimiter.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\components\\controller\\chassis_power_limiter.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\controller\\ChassisPowerLimiter.c</FilePath>
             </File>
             <File>
-              <FileName>gimbal_pid.c</FileName>
+              <FileName>GimbalPid.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\components\\controller\\gimbal_pid.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\controller\\GimbalPid.c</FilePath>
             </File>
           </Files>
         </Group>

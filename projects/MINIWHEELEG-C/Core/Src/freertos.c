@@ -29,9 +29,9 @@
 /* USER CODE BEGIN Includes */
 
 #include "config.h"
-#include "robot_task_build_config.h"
+#include "RobotTaskBuildConfig.h"
 #if ROBOT_TASK_BUILD_CALIBRATION
-#include "calibrate_task.h"
+#include "CalibrateTask.h"
 #endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
 #include "CanTxTask.h"
@@ -40,58 +40,58 @@
 #include "CanRxTask.h"
 #endif
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-#include "chassis_control_task.h"
+#include "ChassisControlTask.h"
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-#include "detect_task.h"
+#include "DetectTask.h"
 #endif
 #if ROBOT_TASK_BUILD_ANY_GIMBAL
-#include "gimbal_control_task.h"
+#include "GimbalControlTask.h"
 #endif
 #if ROBOT_TASK_BUILD_IMU
-#include "INS_task.h"
+#include "InsTask.h"
 #endif
 #if ROBOT_TASK_BUILD_STATUS_LED
-#include "status_led_task.h"
+#include "StatusLedTask.h"
 #endif
 #if ROBOT_TASK_BUILD_RC_SBUS
-#include "rc_sbus_task.h"
+#include "RcSbusTask.h"
 #endif
 #if ROBOT_TASK_BUILD_REFEREE_RX
-#include "referee_rx_task.h"
+#include "RefereeRxTask.h"
 #endif
 #if ROBOT_TASK_BUILD_HOST_LINK
-#include "host_link_task.h"
+#include "HostLinkTask.h"
 #endif
 #if ROBOT_TASK_BUILD_ELRS_LINK
-#include "elrs_task.h"
+#include "ElrsTask.h"
 #endif
 #if ROBOT_TASK_BUILD_BATTERY_MONITOR
-#include "battery_monitor_task.h"
+#include "BatteryMonitorTask.h"
 #endif
 #if ROBOT_TASK_BUILD_SERVO
-#include "servo_control_task.h"
+#include "ServoControlTask.h"
 #endif
 #if ROBOT_TASK_BUILD_STARTUP_SERVICE
-#include "startup_service_task.h"
+#include "StartupServiceTask.h"
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
 #include "SdLogTask.h"
 #endif
-#include "watch.h"
-#include "app_task_bootstrap.h"
+#include "Watch.h"
+#include "AppTaskBootstrap.h"
 #include "ControlMgr.h"
-#include "robot_fault_guard.h"
-#include "robot_control_registry.h"
+#include "RobotFaultGuard.h"
+#include "RobotControlRegistry.h"
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
-#include "wheelleg_mit_task.h"
+#include "WheelLegMitTask.h"
 #endif
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 #if ROBOT_TASK_BUILD_CALIBRATION
-osThreadId_t calibrate_tast_handle;
+osThreadId_t CalibrateTastHandle;
 #endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
 osThreadId_t canCommandTxTaskHandle;
@@ -103,7 +103,7 @@ osThreadId_t canFeedbackRxTaskHandle;
 osThreadId_t chassisControlTaskHandle;
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-osThreadId_t detect_handle;
+osThreadId_t DetectHandle;
 #endif
 #if ROBOT_TASK_BUILD_ANY_GIMBAL
 osThreadId_t gimbalControlTaskHandle;
@@ -115,16 +115,16 @@ osThreadId_t imuTaskHandle;
 osThreadId_t statusLedTaskHandle;
 #endif
 #if ROBOT_TASK_BUILD_RC_SBUS
-osThreadId_t rc_sbus_task_handle;
+osThreadId_t RcSbusTaskHandle;
 #endif
 #if ROBOT_TASK_BUILD_REFEREE_RX
 osThreadId_t refereeRxTaskHandle;
 #endif
 #if ROBOT_TASK_BUILD_HOST_LINK
-osThreadId_t host_link_task_handle;
+osThreadId_t HostLinkTaskHandle;
 #endif
 #if ROBOT_TASK_BUILD_ELRS_LINK
-osThreadId_t elrs_link_thread_handle;
+osThreadId_t ElrsLinkThreadHandle;
 #endif
 #if ROBOT_TASK_BUILD_BATTERY_MONITOR
 osThreadId_t batteryMonitorTaskHandle;
@@ -191,16 +191,16 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   osThreadNew((osThreadFunc_t)(entry), NULL, &thread_id##_attr)
 
 #if ROBOT_TASK_BUILD_STARTUP_SERVICE
-APP_STATIC_THREAD(startupServiceTask, startup_service_task, osPriorityNormal, 512);
+APP_STATIC_THREAD(startupServiceTask, StartupServiceTask, osPriorityNormal, 512);
 #endif
 #if ROBOT_TASK_BUILD_CALIBRATION
-APP_STATIC_THREAD(cali, calibrate_task, osPriorityNormal, 512);
+APP_STATIC_THREAD(cali, CalibrateTask, osPriorityNormal, 512);
 #endif
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-APP_STATIC_THREAD(chassisControlTask, chassis_control_task, osPriorityAboveNormal, 512);
+APP_STATIC_THREAD(chassisControlTask, ChassisControlTask, osPriorityAboveNormal, 512);
 #endif
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
-APP_STATIC_THREAD(wheellegMitTask, wheelleg_mit_task, osPriorityAboveNormal, 768);
+APP_STATIC_THREAD(wheellegMitTask, WheelLegMitTask, osPriorityAboveNormal, 768);
 #endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
 APP_STATIC_THREAD(canCommandTxTask, CanTxTask, osPriorityAboveNormal, 384);
@@ -209,36 +209,36 @@ APP_STATIC_THREAD(canCommandTxTask, CanTxTask, osPriorityAboveNormal, 384);
 APP_STATIC_THREAD(canFeedbackRxTask, CanRxTask, osPriorityHigh, 256);
 #endif
 #if ROBOT_TASK_BUILD_RC_SBUS
-APP_STATIC_THREAD(RCSBUS, rc_sbus_task, osPriorityAboveNormal, 256);
+APP_STATIC_THREAD(RCSBUS, RcSbusTask, osPriorityAboveNormal, 256);
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-APP_STATIC_THREAD(healthMonitorTask, health_monitor_task, osPriorityNormal, 256);
+APP_STATIC_THREAD(healthMonitorTask, HealthMonitorTask, osPriorityNormal, 256);
 #endif
 #if ROBOT_TASK_BUILD_ANY_GIMBAL
-APP_STATIC_THREAD(gimbalControlTask, gimbal_control_task, osPriorityHigh, 1024);
+APP_STATIC_THREAD(gimbalControlTask, GimbalControlTask, osPriorityHigh, 1024);
 #endif
 #if ROBOT_TASK_BUILD_IMU
-APP_STATIC_THREAD(imuFusionTask, imu_fusion_task, osPriorityRealtime, 1024);
+APP_STATIC_THREAD(imuFusionTask, ImuFusionTask, osPriorityRealtime, 1024);
 #endif
 #if ROBOT_TASK_BUILD_STATUS_LED
-APP_STATIC_THREAD(statusLedTask, status_led_task, osPriorityNormal, 256);
+APP_STATIC_THREAD(statusLedTask, StatusLedTask, osPriorityNormal, 256);
 #endif
 #if ROBOT_TASK_BUILD_REFEREE_RX
-APP_STATIC_THREAD(refereeRxTask, referee_rx_task, osPriorityNormal, 128);
+APP_STATIC_THREAD(refereeRxTask, RefereeRxTask, osPriorityNormal, 128);
 #endif
 // HostLinkTask now also owns AUX image-remote parsing and manual-input updates.
 // 128 words (512B) is too tight once image traffic starts flowing.
 #if ROBOT_TASK_BUILD_HOST_LINK
-APP_STATIC_THREAD(HostLinkTask, host_link_task, osPriorityNormal, 512);
+APP_STATIC_THREAD(HostLinkTask, HostLinkTask, osPriorityNormal, 512);
 #endif
 #if ROBOT_TASK_BUILD_ELRS_LINK
-APP_STATIC_THREAD(ELRS_LINK, elrs_link_task, osPriorityAboveNormal, 256);
+APP_STATIC_THREAD(ELRS_LINK, ElrsLinkTask, osPriorityAboveNormal, 256);
 #endif
 #if ROBOT_TASK_BUILD_BATTERY_MONITOR
-APP_STATIC_THREAD(batteryMonitorTask, battery_monitor_task, osPriorityNormal, 128);
+APP_STATIC_THREAD(batteryMonitorTask, BatteryMonitorTask, osPriorityNormal, 128);
 #endif
 #if ROBOT_TASK_BUILD_SERVO
-APP_STATIC_THREAD(servoControlTask, servo_control_task, osPriorityNormal, 128);
+APP_STATIC_THREAD(servoControlTask, ServoControlTask, osPriorityNormal, 128);
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
 APP_STATIC_THREAD(SDLOG, SdLogTask, osPriorityLow, 512);
@@ -252,7 +252,7 @@ APP_STATIC_THREAD(SDLOG, SdLogTask, osPriorityLow, 512);
     } \
   } while (0)
 
-static const char *app_task_name_from_handle(TaskHandle_t task)
+static const char *AppTaskNameFromHandle(TaskHandle_t task)
 {
   if (task == NULL)
   {
@@ -263,7 +263,7 @@ static const char *app_task_name_from_handle(TaskHandle_t task)
   APP_TASK_MATCH_HANDLE(task, startupServiceTaskHandle, "startupServiceTask");
 #endif
 #if ROBOT_TASK_BUILD_CALIBRATION
-  APP_TASK_MATCH_HANDLE(task, calibrate_tast_handle, "cali");
+  APP_TASK_MATCH_HANDLE(task, CalibrateTastHandle, "cali");
 #endif
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
   APP_TASK_MATCH_HANDLE(task, chassisControlTaskHandle, "chassisControlTask");
@@ -278,10 +278,10 @@ static const char *app_task_name_from_handle(TaskHandle_t task)
   APP_TASK_MATCH_HANDLE(task, canFeedbackRxTaskHandle, "canFeedbackRxTask");
 #endif
 #if ROBOT_TASK_BUILD_RC_SBUS
-  APP_TASK_MATCH_HANDLE(task, rc_sbus_task_handle, "RCSBUS");
+  APP_TASK_MATCH_HANDLE(task, RcSbusTaskHandle, "RCSBUS");
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-  APP_TASK_MATCH_HANDLE(task, detect_handle, "healthMonitorTask");
+  APP_TASK_MATCH_HANDLE(task, DetectHandle, "healthMonitorTask");
 #endif
 #if ROBOT_TASK_BUILD_ANY_GIMBAL
   APP_TASK_MATCH_HANDLE(task, gimbalControlTaskHandle, "gimbalControlTask");
@@ -296,10 +296,10 @@ static const char *app_task_name_from_handle(TaskHandle_t task)
   APP_TASK_MATCH_HANDLE(task, refereeRxTaskHandle, "refereeRxTask");
 #endif
 #if ROBOT_TASK_BUILD_HOST_LINK
-  APP_TASK_MATCH_HANDLE(task, host_link_task_handle, "HostLinkTask");
+  APP_TASK_MATCH_HANDLE(task, HostLinkTaskHandle, "HostLinkTask");
 #endif
 #if ROBOT_TASK_BUILD_ELRS_LINK
-  APP_TASK_MATCH_HANDLE(task, elrs_link_thread_handle, "ELRS_LINK");
+  APP_TASK_MATCH_HANDLE(task, ElrsLinkThreadHandle, "ELRS_LINK");
 #endif
 #if ROBOT_TASK_BUILD_BATTERY_MONITOR
   APP_TASK_MATCH_HANDLE(task, batteryMonitorTaskHandle, "batteryMonitorTask");
@@ -327,192 +327,192 @@ static const char *app_task_name_from_handle(TaskHandle_t task)
 #undef APP_TASK_MATCH_HANDLE
 
 #if ROBOT_TASK_BUILD_STARTUP_SERVICE
-static osThreadId_t app_create_startup_service_task(void)
+static osThreadId_t AppCreateStartupServiceTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(startupServiceTask, startup_service_task);
+  return APP_STATIC_THREAD_CREATE(startupServiceTask, StartupServiceTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_CALIBRATION
-static osThreadId_t app_create_calibration_task(void)
+static osThreadId_t AppCreateCalibrationTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(cali, calibrate_task);
+  return APP_STATIC_THREAD_CREATE(cali, CalibrateTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-static osThreadId_t app_create_chassis_control_task(void)
+static osThreadId_t AppCreateChassisControlTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(chassisControlTask, chassis_control_task);
+  return APP_STATIC_THREAD_CREATE(chassisControlTask, ChassisControlTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
-static osThreadId_t app_create_wheelleg_mit_task(void)
+static osThreadId_t AppCreateWheelLegMitTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(wheellegMitTask, wheelleg_mit_task);
+  return APP_STATIC_THREAD_CREATE(wheellegMitTask, WheelLegMitTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-static osThreadId_t app_create_CanTxTask(void)
+static osThreadId_t AppCreateCanTxTask(void)
 {
   return APP_STATIC_THREAD_CREATE(canCommandTxTask, CanTxTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-static osThreadId_t app_create_CanRxTask(void)
+static osThreadId_t AppCreateCanRxTask(void)
 {
   return APP_STATIC_THREAD_CREATE(canFeedbackRxTask, CanRxTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_RC_SBUS
-static osThreadId_t app_create_rc_sbus_task(void)
+static osThreadId_t AppCreateRcSbusTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(RCSBUS, rc_sbus_task);
+  return APP_STATIC_THREAD_CREATE(RCSBUS, RcSbusTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-static osThreadId_t app_create_health_monitor_task(void)
+static osThreadId_t AppCreateHealthMonitorTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(healthMonitorTask, health_monitor_task);
+  return APP_STATIC_THREAD_CREATE(healthMonitorTask, HealthMonitorTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
-static osThreadId_t app_create_single_gimbal_task(void)
+static osThreadId_t AppCreateSingleGimbalTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(gimbalControlTask, gimbal_control_task);
+  return APP_STATIC_THREAD_CREATE(gimbalControlTask, GimbalControlTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
-static osThreadId_t app_create_dual_yaw_gimbal_task(void)
+static osThreadId_t AppCreateDualYawGimbalTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(gimbalControlTask, dual_yaw_gimbal_control_task);
+  return APP_STATIC_THREAD_CREATE(gimbalControlTask, DualYawGimbalControlTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_IMU
-static osThreadId_t app_create_imu_task(void)
+static osThreadId_t AppCreateImuTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(imuFusionTask, imu_fusion_task);
+  return APP_STATIC_THREAD_CREATE(imuFusionTask, ImuFusionTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_STATUS_LED
-static osThreadId_t app_create_status_led_task(void)
+static osThreadId_t AppCreateStatusLedTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(statusLedTask, status_led_task);
+  return APP_STATIC_THREAD_CREATE(statusLedTask, StatusLedTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_REFEREE_RX
-static osThreadId_t app_create_referee_rx_task(void)
+static osThreadId_t AppCreateRefereeRxTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(refereeRxTask, referee_rx_task);
+  return APP_STATIC_THREAD_CREATE(refereeRxTask, RefereeRxTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_HOST_LINK
-static osThreadId_t app_create_host_link_task(void)
+static osThreadId_t AppCreateHostLinkTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(HostLinkTask, host_link_task);
+  return APP_STATIC_THREAD_CREATE(HostLinkTask, HostLinkTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_ELRS_LINK
-static osThreadId_t app_create_elrs_link_task(void)
+static osThreadId_t AppCreateElrsLinkTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(ELRS_LINK, elrs_link_task);
+  return APP_STATIC_THREAD_CREATE(ELRS_LINK, ElrsLinkTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_BATTERY_MONITOR
-static osThreadId_t app_create_battery_monitor_task(void)
+static osThreadId_t AppCreateBatteryMonitorTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(batteryMonitorTask, battery_monitor_task);
+  return APP_STATIC_THREAD_CREATE(batteryMonitorTask, BatteryMonitorTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_SERVO
-static osThreadId_t app_create_servo_control_task(void)
+static osThreadId_t AppCreateServoControlTask(void)
 {
-  return APP_STATIC_THREAD_CREATE(servoControlTask, servo_control_task);
+  return APP_STATIC_THREAD_CREATE(servoControlTask, ServoControlTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_SDLOG
-static osThreadId_t app_create_SdLogTask(void)
+static osThreadId_t AppCreateSdLogTask(void)
 {
   return APP_STATIC_THREAD_CREATE(SDLOG, SdLogTask);
 }
 #endif
 
-static void app_create_module_tasks(void)
+static void AppCreateModuleTasks(void)
 {
-  static const app_task_module_desc_t module_tasks[] =
+  static const AppTaskModuleDesc module_tasks[] =
   {
 #if ROBOT_TASK_BUILD_STARTUP_SERVICE
-    {ROBOT_TASK_MODULE_STARTUP_SERVICE, &startupServiceTaskHandle, app_create_startup_service_task},
+    {ROBOT_TASK_MODULE_STARTUP_SERVICE, &startupServiceTaskHandle, AppCreateStartupServiceTask},
 #endif
 #if ROBOT_TASK_BUILD_CALIBRATION
-    {ROBOT_TASK_MODULE_CALIBRATION, &calibrate_tast_handle, app_create_calibration_task},
+    {ROBOT_TASK_MODULE_CALIBRATION, &CalibrateTastHandle, AppCreateCalibrationTask},
 #endif
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-    {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, &chassisControlTaskHandle, app_create_chassis_control_task},
+    {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, &chassisControlTaskHandle, AppCreateChassisControlTask},
 #endif
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
-    {ROBOT_TASK_MODULE_WHEELLEG_MIT, &wheellegMitTaskHandle, app_create_wheelleg_mit_task},
+    {ROBOT_TASK_MODULE_WHEELLEG_MIT, &wheellegMitTaskHandle, AppCreateWheelLegMitTask},
 #endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-    {ROBOT_TASK_MODULE_CAN_COMMAND_TX, &canCommandTxTaskHandle, app_create_CanTxTask},
+    {ROBOT_TASK_MODULE_CAN_COMMAND_TX, &canCommandTxTaskHandle, AppCreateCanTxTask},
 #endif
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-    {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, &canFeedbackRxTaskHandle, app_create_CanRxTask},
+    {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, &canFeedbackRxTaskHandle, AppCreateCanRxTask},
 #endif
 #if ROBOT_TASK_BUILD_RC_SBUS
-    {ROBOT_TASK_MODULE_RC_SBUS, &rc_sbus_task_handle, app_create_rc_sbus_task},
+    {ROBOT_TASK_MODULE_RC_SBUS, &RcSbusTaskHandle, AppCreateRcSbusTask},
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-    {ROBOT_TASK_MODULE_HEALTH_MONITOR, &detect_handle, app_create_health_monitor_task},
+    {ROBOT_TASK_MODULE_HEALTH_MONITOR, &DetectHandle, AppCreateHealthMonitorTask},
 #endif
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
-    {ROBOT_TASK_MODULE_SINGLE_GIMBAL, &gimbalControlTaskHandle, app_create_single_gimbal_task},
+    {ROBOT_TASK_MODULE_SINGLE_GIMBAL, &gimbalControlTaskHandle, AppCreateSingleGimbalTask},
 #endif
 #if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
-    {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL, &gimbalControlTaskHandle, app_create_dual_yaw_gimbal_task},
+    {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL, &gimbalControlTaskHandle, AppCreateDualYawGimbalTask},
 #endif
 #if ROBOT_TASK_BUILD_IMU
-    {ROBOT_TASK_MODULE_IMU, &imuTaskHandle, app_create_imu_task},
+    {ROBOT_TASK_MODULE_IMU, &imuTaskHandle, AppCreateImuTask},
 #endif
 #if ROBOT_TASK_BUILD_STATUS_LED
-    {ROBOT_TASK_MODULE_STATUS_LED, &statusLedTaskHandle, app_create_status_led_task},
+    {ROBOT_TASK_MODULE_STATUS_LED, &statusLedTaskHandle, AppCreateStatusLedTask},
 #endif
 #if ROBOT_TASK_BUILD_REFEREE_RX
-    {ROBOT_TASK_MODULE_REFEREE_RX, &refereeRxTaskHandle, app_create_referee_rx_task},
+    {ROBOT_TASK_MODULE_REFEREE_RX, &refereeRxTaskHandle, AppCreateRefereeRxTask},
 #endif
 #if ROBOT_TASK_BUILD_HOST_LINK
-    {ROBOT_TASK_MODULE_HOST_LINK, &host_link_task_handle, app_create_host_link_task},
+    {ROBOT_TASK_MODULE_HOST_LINK, &HostLinkTaskHandle, AppCreateHostLinkTask},
 #endif
 #if ROBOT_TASK_BUILD_ELRS_LINK
-    {ROBOT_TASK_MODULE_ELRS_LINK, &elrs_link_thread_handle, app_create_elrs_link_task},
+    {ROBOT_TASK_MODULE_ELRS_LINK, &ElrsLinkThreadHandle, AppCreateElrsLinkTask},
 #endif
 #if ROBOT_TASK_BUILD_BATTERY_MONITOR
-    {ROBOT_TASK_MODULE_BATTERY_MONITOR, &batteryMonitorTaskHandle, app_create_battery_monitor_task},
+    {ROBOT_TASK_MODULE_BATTERY_MONITOR, &batteryMonitorTaskHandle, AppCreateBatteryMonitorTask},
 #endif
 #if ROBOT_TASK_BUILD_SERVO
-    {ROBOT_TASK_MODULE_SERVO, &servoControlTaskHandle, app_create_servo_control_task},
+    {ROBOT_TASK_MODULE_SERVO, &servoControlTaskHandle, AppCreateServoControlTask},
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
-    {ROBOT_TASK_MODULE_SDLOG, &SdLogTask_handle, app_create_SdLogTask},
+    {ROBOT_TASK_MODULE_SDLOG, &SdLogTask_handle, AppCreateSdLogTask},
 #endif
   };
 
-  app_create_enabled_module_tasks(module_tasks, (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])));
+  AppCreateEnabledModuleTasks(module_tasks, (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])));
 }
 
 /* GetIdleTaskMemory prototype (linked to static allocation support) */
@@ -554,7 +554,7 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-  robot_control_bootstrap_profile_defaults();
+  RobotControlBootstrapProfileDefaults();
 
   /* USER CODE END Init */
 
@@ -577,29 +577,29 @@ void MX_FREERTOS_Init(void) {
   /* Create the thread(s) */
 
   /* USER CODE BEGIN RTOS_THREADS */
-  app_create_module_tasks();
+  AppCreateModuleTasks();
   /* USER CODE END RTOS_THREADS */
 
 }
 
-/* USER CODE BEGIN Header_startup_service_task */
+/* USER CODE BEGIN Header_StartupServiceTask */
 /**
   * @brief  Function implementing the startup service thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_startup_service_task */
-__weak void startup_service_task(void const * argument)
+/* USER CODE END Header_StartupServiceTask */
+__weak void StartupServiceTask(void const * argument)
 {
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
-  /* USER CODE BEGIN startup_service_task */
+  /* USER CODE BEGIN StartupServiceTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END startup_service_task */
+  /* USER CODE END StartupServiceTask */
 }
 
 /* Private application code --------------------------------------------------*/
@@ -608,23 +608,23 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
   (void)pcTaskName;
 
-  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
+  RobotFaultEnterSafeStateEx((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
                                   0u,
                                   0u,
                                   (uint32_t)xTask,
-                                  app_task_name_from_handle(xTask));
-  robot_fault_halt_forever();
+                                  AppTaskNameFromHandle(xTask));
+  RobotFaultHaltForever();
 }
 
 void vApplicationMallocFailedHook(void)
 {
   TaskHandle_t current_task = xTaskGetCurrentTaskHandle();
-  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
+  RobotFaultEnterSafeStateEx((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
                                   0u,
                                   0u,
                                   (uint32_t)current_task,
                                   pcTaskGetTaskName(NULL));
-  robot_fault_halt_forever();
+  RobotFaultHaltForever();
 }
 
 /* USER CODE END Application */

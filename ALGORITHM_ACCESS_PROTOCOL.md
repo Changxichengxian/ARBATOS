@@ -4,16 +4,16 @@
 
 已接代码：
 
-- 新协议解析：`shared/application/comm/vision/vision_link.c`
-- 外部运动意图缓存：`shared/application/robot/external_motion_intent.c`
-- 云台命令入口：`shared/application/gimbal/gimbal_control_task.c`
-- 移动命令执行：`shared/application/chassis/chassis_behaviour.c`
+- 新协议解析：`shared/application/comm/vision/VisionLink.c`
+- 外部运动意图缓存：`shared/application/robot/ExternalMotionIntent.c`
+- 云台命令入口：`shared/application/gimbal/GimbalControlTask.c`
+- 移动命令执行：`shared/application/chassis/ChassisBehaviour.c`
 - USB 虚拟串口入口：`projects/*/USB_DEVICE/App/usbd_cdc_if.c`
 
 代码边界：
 
-- `vision_link.c` 只认识串口包格式，负责解析 `AIM_CMD` 和 `MOVE_CMD`。
-- `MOVE_CMD` 会先转换成 `external_motion_intent_t`，再写入 `external_motion_intent.c`。
+- `VisionLink.c` 只认识串口包格式，负责解析 `AIM_CMD` 和 `MOVE_CMD`。
+- `MOVE_CMD` 会先转换成 `external_motion_intent_t`，再写入 `ExternalMotionIntent.c`。
 - 底盘只读取 `external_motion_intent_t`，不直接依赖 `AlgorithmMoveCmd` 这类串口包结构。
 - 没有算法链路的目标不需要各自写空实现；统一由 `external_motion_intent` 在无有效命令时返回 false。
 
@@ -94,12 +94,12 @@ typedef struct __attribute__((packed)) AlgorithmAimCmd
 当前代码接入情况：
 
 - 新 `AIM_CMD` 会被转换成旧 `VisionToGimbal`，所以云台现有逻辑能直接吃到 `yaw/pitch/yaw_vel/yaw_acc/pitch_vel/pitch_acc`。
-- `gimbal_control_task.c` 目前只把 `yaw_rad` 和 `pitch_rad` 用到目标角里，速度和加速度先保留在包里。
+- `GimbalControlTask.c` 目前只把 `yaw_rad` 和 `pitch_rad` 用到目标角里，速度和加速度先保留在包里。
 - 旧代码里 pitch 有取负逻辑，实车第一次联调用小角度确认方向。
 
 ## 4. MOVE_CMD：底盘移动命令
 
-移动命令先由 `vision_link.c` 解析，再写入 `external_motion_intent.c`。`chassis_behaviour.c` 只读取转换后的外部运动意图。它只覆盖底盘目标速度，不绕过后面的运动学、功率限制和电机 PID。
+移动命令先由 `VisionLink.c` 解析，再写入 `ExternalMotionIntent.c`。`ChassisBehaviour.c` 只读取转换后的外部运动意图。它只覆盖底盘目标速度，不绕过后面的运动学、功率限制和电机 PID。
 
 参考其他队伍的做法，这里不让算法直接给四个轮子的目标值。算法只给 `vx/vy/wz`，板端按云台、底盘或场地坐标做转换，再交给原来的底盘控制链路。
 

@@ -4,16 +4,16 @@
 
 ## 当前内容
 
-- `bsp/INS_task.c`：C 板 IMU 姿态任务。
-- `bsp/bsp_rc_port.c`：遥控器端口适配。
-- `bsp/bsp_bmi088_cfg.h`：BMI088 板级配置。
-- `bsp/bsp_buzzer_cfg.h`：蜂鸣器板级配置。
-- `bsp/bsp_imu_pwm_cfg.h`：IMU 加热 PWM 配置。
-- `bsp/bsp_key_cfg.h`：按键板级配置。
-- `bsp/bsp_rc_cfg.h`：遥控器板级配置。
-- `bsp/diskio.c`：FatFs 磁盘接口。
+- `bsp/InsTask.c`：C 板 IMU 姿态任务。
+- `bsp/BspRcPort.c`：遥控器端口适配。
+- `bsp/BspBmi088Cfg.h`：BMI088 板级配置。
+- `bsp/BspBuzzerCfg.h`：蜂鸣器板级配置。
+- `bsp/BspImuPwmCfg.h`：IMU 加热 PWM 配置。
+- `bsp/BspKeyCfg.h`：按键板级配置。
+- `bsp/BspRcCfg.h`：遥控器板级配置。
+- `bsp/Diskio.c`：FatFs 磁盘接口。
 
-`bsp/INS_task.c` 只保留 C 板的 BMI088 读取、安装矩阵、温控和姿态融合差异。陀螺仪零偏采样流程共用 `shared/application/services/calibration/gyro_zero_cali.h`：正常上电温稳后静止 3 秒微调；`ROBOT_RUN_MODE_CALIBRATION + ROBOT_CALI_TARGET_IMU_GYRO` 下温度到 40 度后静止 30 秒并保存。
+`bsp/InsTask.c` 只保留 C 板的 BMI088 读取、安装矩阵、温控和姿态融合差异。陀螺仪零偏采样流程共用 `shared/application/services/calibration/GyroZeroCali.h`：正常上电温稳后静止 3 秒微调；`ROBOT_RUN_MODE_CALIBRATION + ROBOT_CALI_TARGET_IMU_GYRO` 下温度到 40 度后静止 30 秒并保存。
 
 ## 当前使用者
 

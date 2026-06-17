@@ -21,10 +21,10 @@
 - `USB_DEVICE/`：CubeMX 生成的 USB CDC 代码
 - `Drivers/`、`Middlewares/`：HAL / CMSIS / FreeRTOS / USB 组件
 - `MDK-ARM/`：Keil 工程
-- `Robotconfig/HERO-C/`：HERO-C 目标配置和健康监测，包含 `config.c`、`config.h`、`detect_task.c`
-- `boards/DJI_C_F407/bsp/INS_task.c`：C 板 IMU 任务
+- `Robotconfig/HERO-C/`：HERO-C 目标配置和健康监测，包含 `config.c`、`config.h`、`DetectTask.c`
+- `boards/DJI_C_F407/bsp/InsTask.c`：C 板 IMU 任务
 - `boards/DJI_C_F407/bsp/`：C 板 BSP 适配
-- `shared/application/`：共用任务和控制逻辑，包含 `host_link_task.c`、`chassis_control_task.c`、`gimbal_control_task.c`、`shoot.c`、`SdLogTask.c` 等
+- `shared/application/`：共用任务和控制逻辑，包含 `HostLinkTask.c`、`ChassisControlTask.c`、`GimbalControlTask.c`、`Shoot.c`、`SdLogTask.c` 等
 
 ---
 
@@ -33,16 +33,16 @@
 典型数据链路（简化）：
 
 ```
-USART3(DBUS) -> manual_input -> behaviour -> chassis_control_task / gimbal_control_task
-INS(BMI088/IST) -> INS_task -> 角度/角速度/四元数
-CAN RX -> CAN_receive -> 电机反馈(measure)
+USART3(DBUS) -> ManualInput -> behaviour -> ChassisControlTask / GimbalControlTask
+INS(BMI088/IST) -> ImuFusionTask -> 角度/角速度/四元数
+CAN RX -> CanReceive -> 电机反馈(measure)
 
-chassis_control_task/gimbal_control_task -> LowCmd -> CanTxTask -> CAN1(0x200/0x1FF)
+ChassisControlTask/GimbalControlTask -> LowCmd -> CanTxTask -> CAN1(0x200/0x1FF)
 
-USART6(裁判) -> referee_rx_task -> referee.c -> 功率/热量等
+USART6(裁判) -> RefereeRxTask -> Referee.c -> 功率/热量等
 
-USB CDC -> host_link_task(视觉链路收发)
-AUX 口（当前 HERO-C 为 USART1） -> host_link_task(调参/遥测/图传遥控) + elrs_task.c(ELRS/CRSF 接收)
+USB CDC -> HostLinkTask(视觉链路收发)
+AUX 口（当前 HERO-C 为 USART1） -> HostLinkTask(调参/遥测/图传遥控) + ElrsTask.c(ELRS/CRSF 接收)
 ```
 
 ---
@@ -72,7 +72,7 @@ USB 以 CDC ACM（虚拟串口）方式枚举。PC 端需打开串口设备才�
 
 ## AUX 口调参 + TF/SD 遥测日志
 
-实现位置：`shared/application/comm/host/host_link_task.c`
+实现位置：`shared/application/comm/host/HostLinkTask.c`
 
 ### 1) 调参（AUX 口命令）
 
@@ -92,17 +92,17 @@ USB 以 CDC ACM（虚拟串口）方式枚举。PC 端需打开串口设备才�
 - 帧格式：`N * float32` + `float32(+Inf)` 尾
 - 字节序：STM32 小端（IEEE754 `float32`）
 - INF 尾（小端字节序）：`00 00 80 7F`
-- 这里说的 AUX 口是可换的辅助串口；当前 HERO-C 板接在 USART1。代码里结构体、枚举和值表都使用 `aux_*`。
+- 这里说的 AUX 口是可换的辅助串口；当前 HERO-C 板接在 USART1。代码入口使用 `AuxTelem*`，协议字段和导出字段仍按已发布名字保留。
 
 #### 默认“全量精简”遥测
 
 在 `Robotconfig/HERO-C/config.c`：
 
-- `aux_telem.channel_num = 0`
+- `AuxTelem.channel_num = 0`
 
-此时发送 **内置默认列表**（当前 `N=219` 通道；`channel_map[]` 会被忽略），统一周期由 `aux_telem.period_ms` 控制（0=auto）。
+此时发送 **内置默认列表**（当前 `N=219` 通道；`channel_map[]` 会被忽略），统一周期由 `AuxTelem.period_ms` 控制（0=auto）。
 
-默认列表在“原全量”的基础上精简了 `*_MODE/*_OFFLINE/*_ERR` 等通道，并用 2 个打包通道替代（见下表）；默认列表内容见 `shared/application/comm/host/host_link_task.c` 的 `aux_telem_default_list[]`。
+默认列表在“原全量”的基础上精简了 `*_MODE/*_OFFLINE/*_ERR` 等通道，并用 2 个打包通道替代（见下表）；默认列表内容见 `shared/application/comm/host/AuxTelem.c` 的 `AuxTelemDefaultList[]`。
 
 **PACK_MODE（`AUX_TELEM_SIG_PACK_MODE`）**
 
@@ -111,8 +111,8 @@ USB 以 CDC ACM（虚拟串口）方式枚举。PC 端需打开串口设备才�
 | 位权 | 字段 | 枚举/取值 |
 |---:|---|---|
 | 1 | `gimbal_behaviour` | `0:GIMBAL_ZERO_FORCE` `1:GIMBAL_INIT` `2:GIMBAL_CALI` `3:GIMBAL_ANGLE` `4:GIMBAL_MOTIONLESS` |
-| 10 | `yaw_motor_mode` | `0:GIMBAL_MOTOR_RAW` `1:GIMBAL_MOTOR_ENCONDE` |
-| 100 | `pitch_motor_mode` | `0:GIMBAL_MOTOR_RAW` `1:GIMBAL_MOTOR_ENCONDE` |
+| 10 | `yaw_motor_mode` | `0:GIMBAL_MOTOR_RAW` `1:GIMBAL_MOTOR_ENCODER` |
+| 100 | `pitch_motor_mode` | `0:GIMBAL_MOTOR_RAW` `1:GIMBAL_MOTOR_ENCODER` |
 | 1000 | `chassis_mode` | `0:CHASSIS_VECTOR_FOLLOW_GIMBAL_YAW` `1:CHASSIS_VECTOR_FOLLOW_CHASSIS_YAW` `2:CHASSIS_VECTOR_NO_FOLLOW_YAW` `3:CHASSIS_VECTOR_RAW` |
 | 10000 | `last_chassis_mode` | 同 `chassis_mode` |
 | 100000 | `shoot_mode` | `0:SHOOT_STOP` `1:SHOOT_READY_FRIC` `2:SHOOT_READY_BULLET` `3:SHOOT_READY` `4:SHOOT_BULLET` `5:SHOOT_CONTINUE_BULLET` `6:SHOOT_DONE` |
@@ -144,12 +144,12 @@ bitmask（以整数解释），bit=1 表示对应 TOE 离线/错误：
 
 #### 自定义遥测列表
 
-把 `aux_telem.channel_map[]` 填成“遥测信号 ID 列表”，并设置 `aux_telem.channel_num = <列表长度>`。
+把 `AuxTelem.channel_map[]` 填成“遥测信号 ID 列表”，并设置 `AuxTelem.channel_num = <列表长度>`。
 
 - `channel_num=0` 表示使用默认列表（219 通道）
 - `0` 是合法的遥测信号 ID（`AUX_TELEM_SIG_SYS_TICK_MS`），不再作为结束符
 
-- 遥测信号枚举：`aux_telem_sig_e`（见 `Robotconfig/HERO-C/config.h`）
+- 遥测信号枚举：`AuxTelemSig`（见 `Robotconfig/HERO-C/config.h`）
 - `channel_map` 使用的是 **遥测信号 ID**（不是调参用的 `[ID]`）
 
 ### 3) TF/SD 遥测日志（sdlog）
@@ -166,7 +166,7 @@ bitmask（以整数解释），bit=1 表示对应 TOE 离线/错误：
 
 ## USB CDC 视觉链路
 
-实现位置：`shared/application/comm/host/host_link_task.c` + `USB_DEVICE/App/usbd_cdc_if.c`
+实现位置：`shared/application/comm/host/HostLinkTask.c` + `USB_DEVICE/App/usbd_cdc_if.c`
 
 ### 板 → PC：`VisionTxFrame`（43B）
 
@@ -189,7 +189,7 @@ Python 打包示例（小端）：
 
 ## 功率限制（底盘限流）
 
-底盘功率限制实现：`shared/application/chassis/chassis_power_control.c`
+底盘功率限制实现：`shared/application/chassis/ChassisPowerControl.c`
 
 - 有裁判系统（USART6 正常在线）时：读取裁判下发的 `chassis_power` / `chassis_power_buffer`，对底盘总电流进行缩放
 - 无裁判系统（USART6 离线/未插）时：退化为 `no_judge_total_current_limit` 的固定限流，避免失控

@@ -22,7 +22,7 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "watch.h"
+#include "Watch.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -374,7 +374,7 @@ void DebugMon_Handler(void)
 void EXTI3_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI3_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_IST8310_EXTI);
+  WatchIrqHit(WATCH_IRQ_IST8310_EXTI);
 
   /* USER CODE END EXTI3_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(IST8310_INT_Pin);
@@ -389,7 +389,7 @@ void EXTI3_IRQHandler(void)
 void CAN1_RX0_IRQHandler(void)
 {
   /* USER CODE BEGIN CAN1_RX0_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_CAN1_RX0);
+  WatchIrqHit(WATCH_IRQ_CAN1_RX0);
 
   /* USER CODE END CAN1_RX0_IRQn 0 */
   HAL_CAN_IRQHandler(&hcan1);
@@ -404,7 +404,7 @@ void CAN1_RX0_IRQHandler(void)
 void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_IMU_EXTI);
+  WatchIrqHit(WATCH_IRQ_IMU_EXTI);
 
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(IMU_INT_Pin);
@@ -419,7 +419,7 @@ void EXTI9_5_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_USART1);
+  WatchIrqHit(WATCH_IRQ_USART1);
 
   /* USER CODE END USART1_IRQn 0 */
   HAL_UART_IRQHandler(&huart1);
@@ -434,7 +434,7 @@ void USART1_IRQHandler(void)
 void EXTI15_10_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI15_10_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_SD_EXTI);
+  WatchIrqHit(WATCH_IRQ_SD_EXTI);
 
   /* USER CODE END EXTI15_10_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(SD_EXTI_Pin);
@@ -463,7 +463,7 @@ void SDIO_IRQHandler(void)
 void TIM6_DAC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_TIM6_DAC);
+  WatchIrqHit(WATCH_IRQ_TIM6_DAC);
 
   /* USER CODE END TIM6_DAC_IRQn 0 */
   HAL_TIM_IRQHandler(&htim6);
@@ -506,7 +506,7 @@ void DMA1_Stream6_IRQHandler(void)
 void DMA2_Stream2_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA2_Stream2_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_DMA_USART1_RX);
+  WatchIrqHit(WATCH_IRQ_DMA_USART1_RX);
 
   /* USER CODE END DMA2_Stream2_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart1_rx);
@@ -535,7 +535,7 @@ void DMA2_Stream3_IRQHandler(void)
 void DMA2_Stream4_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA2_Stream4_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_DMA_SPI5_TX);
+  WatchIrqHit(WATCH_IRQ_DMA_SPI5_TX);
 
   /* USER CODE END DMA2_Stream4_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_spi5_tx);
@@ -550,7 +550,7 @@ void DMA2_Stream4_IRQHandler(void)
 void CAN2_RX0_IRQHandler(void)
 {
   /* USER CODE BEGIN CAN2_RX0_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_CAN2_RX0);
+  WatchIrqHit(WATCH_IRQ_CAN2_RX0);
 
   /* USER CODE END CAN2_RX0_IRQn 0 */
   HAL_CAN_IRQHandler(&hcan2);
@@ -565,7 +565,7 @@ void CAN2_RX0_IRQHandler(void)
 void OTG_FS_IRQHandler(void)
 {
   /* USER CODE BEGIN OTG_FS_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_OTG_FS);
+  WatchIrqHit(WATCH_IRQ_OTG_FS);
 
   /* USER CODE END OTG_FS_IRQn 0 */
   HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
@@ -580,7 +580,7 @@ void OTG_FS_IRQHandler(void)
 void DMA2_Stream5_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA2_Stream5_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_DMA_SPI5_RX);
+  WatchIrqHit(WATCH_IRQ_DMA_SPI5_RX);
 
   /* USER CODE END DMA2_Stream5_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_spi5_rx);
@@ -595,7 +595,7 @@ void DMA2_Stream5_IRQHandler(void)
 void DMA2_Stream6_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA2_Stream6_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_DMA_SDIO_TX);
+  WatchIrqHit(WATCH_IRQ_DMA_SDIO_TX);
 
   /* USER CODE END DMA2_Stream6_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_sdio_tx);
@@ -610,7 +610,7 @@ void DMA2_Stream6_IRQHandler(void)
 void UART7_IRQHandler(void)
 {
   /* USER CODE BEGIN UART7_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_UART7);
+  WatchIrqHit(WATCH_IRQ_UART7);
 
   /* USER CODE END UART7_IRQn 0 */
   HAL_UART_IRQHandler(&huart7);
@@ -625,7 +625,7 @@ void UART7_IRQHandler(void)
 void UART8_IRQHandler(void)
 {
   /* USER CODE BEGIN UART8_IRQn 0 */
-  watch_irq_hit(WATCH_IRQ_UART8);
+  WatchIrqHit(WATCH_IRQ_UART8);
 
   /* USER CODE END UART8_IRQn 0 */
   HAL_UART_IRQHandler(&huart8);

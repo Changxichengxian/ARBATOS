@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-#include "bsp_dwt.h"
+#include "BspDwt.h"
 
 #ifndef RT_PROFILER_ENABLE
 #define RT_PROFILER_ENABLE 1u

@@ -20,20 +20,20 @@
 #include "task.h"
 #include "cmsis_os.h"
 
-#include "CAN_receive.h"
+#include "CanReceive.h"
 #include "LowCmd.h"
-#include "bsp_time.h"
-#include "can_mit_motor_driver.h"
+#include "BspTime.h"
+#include "CanMitMotorDriver.h"
 #include "config.h"
-#include "watch.h"
-#include "detect_task.h"
-#include "motor_config.h"
+#include "Watch.h"
+#include "DetectTask.h"
+#include "MotorConfig.h"
 #include "MotorInst.h"
 #include "SdLog.h"
 #include "RtProf.h"
-#include "robot_task_profile.h"
-#include "robot_mode.h"
-#include "robot_safety.h"
+#include "RobotTaskProfile.h"
+#include "RobotMode.h"
+#include "RobotSafety.h"
 
 #include <string.h>
 
@@ -63,13 +63,13 @@ static uint8_t s_can_tx_mit_budget_used;
 static uint8_t s_can_tx_rm_group_configured[2][2];
 static uint8_t s_can_tx_route_start_index;
 
-#include "can_command_tx_common_helpers.inc"
+#include "CanCommandTxCommonHelpers.inc"
 
-#include "can_command_tx_mit_helpers.inc"
+#include "CanCommandTxMitHelpers.inc"
 
-#include "can_command_tx_route_helpers.inc"
+#include "CanCommandTxRouteHelpers.inc"
 
-#include "can_command_tx_emit_helpers.inc"
+#include "CanCommandTxEmitHelpers.inc"
 
 // 目标工程可在这里接入非大疆、非 MIT 的特殊电机发送逻辑。
 __weak uint8_t CanTxProcessExtraItem(uint8_t bus,
@@ -84,10 +84,10 @@ __weak uint8_t CanTxProcessExtraItem(uint8_t bus,
     return 0u;
 }
 
-__weak int can_mit_motor_send_cmd(uint8_t bus,
+__weak int CanMitMotorSendCmd(uint8_t bus,
                                   uint16_t std_id,
-                                  const can_mit_motor_limits_t *limits,
-                                  const can_mit_motor_cmd_t *cmd)
+                                  const CanMitMotorLimits *limits,
+                                  const CanMitMotorCmd *cmd)
 {
     (void)bus;
     (void)std_id;
@@ -96,23 +96,23 @@ __weak int can_mit_motor_send_cmd(uint8_t bus,
     return -1;
 }
 
-__weak int can_mit_motor_send_enable(uint8_t bus, uint16_t std_id)
+__weak int CanMitMotorSendEnable(uint8_t bus, uint16_t std_id)
 {
     (void)bus;
     (void)std_id;
     return -1;
 }
 
-__weak int can_mit_motor_send_disable(uint8_t bus, uint16_t std_id)
+__weak int CanMitMotorSendDisable(uint8_t bus, uint16_t std_id)
 {
     (void)bus;
     (void)std_id;
     return -1;
 }
 
-__weak int can_mit_motor_send_stop(uint8_t bus,
+__weak int CanMitMotorSendStop(uint8_t bus,
                                    uint16_t std_id,
-                                   const can_mit_motor_limits_t *limits)
+                                   const CanMitMotorLimits *limits)
 {
     (void)bus;
     (void)std_id;
@@ -120,12 +120,12 @@ __weak int can_mit_motor_send_stop(uint8_t bus,
     return -1;
 }
 
-__weak uint8_t can_mit_motor_update_feedback(uint16_t std_id,
+__weak uint8_t CanMitMotorUpdateFeedback(uint16_t std_id,
                                              uint8_t motor_id,
-                                             const can_mit_motor_limits_t *limits,
+                                             const CanMitMotorLimits *limits,
                                              uint8_t dlc,
                                              const uint8_t data[8],
-                                             can_mit_motor_feedback_t *feedback)
+                                             CanMitMotorFeedback *feedback)
 {
     (void)std_id;
     (void)motor_id;
@@ -142,18 +142,18 @@ void CanTxTask(void const *pvParameters)
     (void)pvParameters;
 
     TickType_t last_wake = xTaskGetTickCount();
-    can_tx_cache_rm_groups();
+    CanTxCacheRmGroups();
 
     while (1)
     {
         const uint64_t loop_start_us = RtProfBegin();
-        watch_task_beat(WATCH_TASK_CAN_COMMAND_TX);
-        const uint16_t period_ms = robot_profile_can_command_tx_period_ms();
+        WatchTaskBeat(WATCH_TASK_CAN_COMMAND_TX);
+        const uint16_t period_ms = RobotProfileCanCommandTxPeriodMs();
         const bool_t dbus_offline = toe_is_error(DBUS_TOE);
-        const uint8_t output_locked = robot_safety_output_locked();
+        const uint8_t output_locked = RobotSafetyOutputLocked();
 
-        can_tx_exec_instances(dbus_offline ? 0u : 1u, output_locked);
-        can_tx_emit_rm_frames();
+        CanTxExecInstances(dbus_offline ? 0u : 1u, output_locked);
+        CanTxEmitRmFrames();
 
         RtProfEnd(RtProfCanTxLoop, loop_start_us);
         {

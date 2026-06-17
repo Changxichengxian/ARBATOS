@@ -48,7 +48,7 @@ python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --viewer 
 
 `--check` only validates the MJCF file and project configuration. A real run
 requires the Python `mujoco` package and a local C compiler so the runner can
-build the tiny native bridge that calls `wheelleg_core.h`.
+build the tiny native bridge that calls `WheelLegCore.h`.
 
 The current MJCF is a minimal fixture, not a final wheel-leg dynamics model.
 It is meant to validate the control-core-to-physics path before the full
@@ -64,12 +64,12 @@ simulator actuators.
 
 Current core boundary files:
 
-- `shared/application/robot/control_core.h`: shared step metadata and actuator
+- `shared/application/robot/ControlCore.h`: shared step metadata and actuator
   command helpers.
-- `shared/application/arm/arm_core.h`: manual arm joint command core.
-- `shared/application/chassis/chassis_core.h`: chassis command/state/output
+- `shared/application/arm/ArmCore.h`: manual arm joint command core.
+- `shared/application/chassis/ChassisCore.h`: chassis command/state/output
   contract.
-- `shared/application/gimbal/gimbal_core.h`: gimbal axis command/state/output
+- `shared/application/gimbal/GimbalCore.h`: gimbal axis command/state/output
   contract.
-- `shared/application/wheelleg/wheelleg_core.h`: wheel-leg command/state/output
+- `shared/application/wheelleg/WheelLegCore.h`: wheel-leg command/state/output
   contract for future MuJoCo runners.

@@ -10,34 +10,34 @@
 
 ## 这一层负责什么
 
-- 板级启动：`app/board_main.c`
-- FreeRTOS 任务挂接：`app/board_freertos.c`
-- 板级 IMU：`app/INS_task.c`
+- 板级启动：`app/BoardMain.c`
+- FreeRTOS 任务挂接：`app/BoardFreertos.c`
+- 板级 IMU：`app/InsTask.c`
 - H7 串口、遥控器、裁判系统、SD 卡等板级适配：`bsp/`
-- FatFs 磁盘接口：`bsp/diskio.c`
+- FatFs 磁盘接口：`bsp/Diskio.c`
 
-`app/INS_task.c` 只保留 MC02 H7 的 BMI088 读取、安装矩阵、温控和姿态融合差异。陀螺仪零偏采样流程共用 `shared/application/services/calibration/gyro_zero_cali.h`：正常上电温稳后静止 3 秒微调；`ROBOT_RUN_MODE_CALIBRATION + ROBOT_CALI_TARGET_IMU_GYRO` 下温度到 40 度后静止 30 秒并保存。
+`app/InsTask.c` 只保留 MC02 H7 的 BMI088 读取、安装矩阵、温控和姿态融合差异。陀螺仪零偏采样流程共用 `shared/application/services/calibration/GyroZeroCali.h`：正常上电温稳后静止 3 秒微调；`ROBOT_RUN_MODE_CALIBRATION + ROBOT_CALI_TARGET_IMU_GYRO` 下温度到 40 度后静止 30 秒并保存。
 
 ## 当前任务创建逻辑
 
-`app/board_freertos.c` 默认创建：
+`app/BoardFreertos.c` 默认创建：
 
 - `defaultTask`
-- `rc_sbus_task`
-- `referee_rx_task`
-- `health_monitor_task`
+- `RcSbusTask`
+- `RefereeRxTask`
+- `HealthMonitorTask`
 - `SdLogTask`
-- `battery_monitor_task`
+- `BatteryMonitorTask`
 - `CanTxTask`
 - `CanRxTask`
-- `imu_fusion_task`
+- `ImuFusionTask`
 
 按机器人 profile 条件创建：
 
-- `chassis_control_task`
-- `wheelleg_mit_task`
-- `gimbal_control_task`
-- `arm_task`
+- `ChassisControlTask`
+- `WheelLegMitTask`
+- `GimbalControlTask`
+- `ArmTask`
 
 这些任务现在按 `profile.task_modules` 里的 `ROBOT_TASK_MODULE_*` 创建。`CARRIER_DIRECT_ARM_BRINGUP` 打开时，板级入口会跳过底盘、轮腿 MIT 和云台任务，只保留直接机械臂调试需要的任务。
 

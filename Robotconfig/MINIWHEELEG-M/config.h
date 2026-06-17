@@ -50,4 +50,4 @@
 
 #define MINIWHEELEG_MIT_MOTOR_CAN_BUS 1u
 
-#include "robot_config_types.h"
+#include "RobotConfigTypes.h"

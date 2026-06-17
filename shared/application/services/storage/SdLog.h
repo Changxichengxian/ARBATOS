@@ -68,7 +68,7 @@ typedef enum
     SDLOG_TAG_GIMBAL_LOOP = 0x0010u,
     SDLOG_TAG_CHASSIS_LOOP = 0x0011u,
 
-    // Referee system (payload is raw bytes or packed structs from referee.h)
+    // Referee system (payload is raw bytes or packed structs from Referee.h)
     SDLOG_TAG_REFEREE_RAW = 0x0020u,
     SDLOG_TAG_REF_GAME_STATE = 0x0021u,
     SDLOG_TAG_REF_GAME_RESULT = 0x0022u,
@@ -90,7 +90,7 @@ typedef enum
     SDLOG_TAG_CAN_RX = 0x0030u,
 
     // High-level state/health snapshots
-    SDLOG_TAG_WATCH = 0x0031u,      // payload: watch_t (see watch.h)
+    SDLOG_TAG_WATCH = 0x0031u,      // payload: Watch (see Watch.h)
     SDLOG_TAG_DETECT_STATUS = 0x0032u,  // payload: sdlog_detect_status_t
     SDLOG_TAG_CHASSIS_POWER_LIMIT = 0x0033u,
     SDLOG_TAG_GIMBAL_LIMIT = 0x0034u,
@@ -164,7 +164,7 @@ typedef struct __attribute__((packed))
 typedef struct __attribute__((packed))
 {
     uint16_t ch_raw[16]; // CRSF 11-bit channels (0..2047)
-    uint8_t rc_ctrl[22]; // manual_input_state_t (packed) snapshot for exact control values used by the system
+    uint8_t rc_ctrl[22]; // ManualInputState (packed) snapshot for exact control values used by the system
 } sdlog_rc_crsf_t;
 
 typedef struct __attribute__((packed))
@@ -201,7 +201,7 @@ typedef struct __attribute__((packed))
 {
     uint16_t version;     // SDLOG_CONFIG_VERSION
     uint16_t header_size; // sizeof(sdlog_config_header_t)
-    uint16_t config_size; // raw config bytes copied after the header
+    uint16_t ConfigSize; // raw config bytes copied after the header
     uint16_t flags;       // reserved
 } sdlog_config_header_t;
 
@@ -212,8 +212,8 @@ typedef struct __attribute__((packed))
     uint16_t schema_version; // SDLOG_SCHEMA_VERSION
     uint16_t flags;          // reserved
 
-    uint32_t config_size;    // sizeof(config_t)
-    uint32_t config_crc32;   // CRC32(config_t bytes at log start)
+    uint32_t ConfigSize;    // sizeof(Config)
+    uint32_t ConfigCrc32;   // CRC32(Config bytes at log start)
 
     uint8_t task_module_count;
     uint8_t high_rate_div;
@@ -224,10 +224,10 @@ typedef struct __attribute__((packed))
     uint8_t motorInstCount;
     uint8_t controller_count;
     uint8_t profile_kind;
-    uint8_t board_kind;
+    uint8_t BoardKind;
     uint8_t rtProfCount;
-    uint8_t board_can_bus_count;
-    uint32_t board_cpu_hz;
+    uint8_t BoardCanBusCount;
+    uint32_t BoardCpuHz;
 
     char target[SDLOG_BUILD_INFO_TEXT_LEN];
     char board[SDLOG_BUILD_INFO_TEXT_LEN];
@@ -338,20 +338,20 @@ typedef struct __attribute__((packed))
 typedef struct __attribute__((packed))
 {
     uint8_t manual_source;
-    uint8_t chassis_mode;
+    uint8_t ChassisMode;
     uint8_t yaw_mode;
     uint8_t pitch_mode;
-    uint8_t shoot_mode;
+    uint8_t ShootMode;
     int8_t rc_s0;
     int8_t rc_s1;
     uint8_t reserved0;
     int16_t rc_ch[4];
-    float chassis_vx_set;
-    float chassis_vy_set;
-    float chassis_wz_set;
-    float chassis_vx;
-    float chassis_vy;
-    float chassis_wz;
+    float ChassisVxSet;
+    float ChassisVySet;
+    float ChassisWzSet;
+    float ChassisVx;
+    float ChassisVy;
+    float ChassisWz;
     float yaw_set_deg;
     float yaw_deg;
     float pitch_set_deg;
@@ -411,7 +411,7 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    sdlog_detect_item_t items[14]; // detect_task.h: DETECT_ERROR_COUNT
+    sdlog_detect_item_t items[14]; // DetectTask.h: DETECT_ERROR_COUNT
 } sdlog_detect_status_t;
 
 typedef struct __attribute__((packed))
@@ -428,12 +428,12 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    float chassis_power;
-    float chassis_power_buffer;
+    float ChassisPower;
+    float ChassisPowerBuffer;
     float total_current;
     float total_current_limit;
     float current_scale;
-    uint8_t referee_offline;
+    uint8_t RefereeOffline;
     uint8_t robot_id;
     uint8_t reserved[2];
 } sdlog_chassis_power_limit_t;
@@ -490,8 +490,8 @@ typedef struct __attribute__((packed))
     uint32_t stack_detect;
     uint32_t stack_calibrate;
 
-    uint32_t gimbal_loop_cnt;
-    uint32_t chassis_loop_cnt;
+    uint32_t GimbalLoopCnt;
+    uint32_t ChassisLoopCnt;
 
     uint16_t cpu_load_permille; // 0..1000
     uint16_t reserved16_2;
@@ -720,10 +720,10 @@ typedef struct __attribute__((packed))
     uint32_t arg2_u32;
 } sdlog_event_t;
 
-// Runtime view of pid_type_def, enough for offline replay.
+// Runtime view of PidTypeDef, enough for offline replay.
 typedef struct
 {
-    uint16_t pid_id;
+    uint16_t PidId;
     uint8_t mode;
     uint8_t reserved;
 
@@ -732,10 +732,10 @@ typedef struct
     float out;
 } sdlog_pid_runtime_t;
 
-// Legacy full snapshot of pid_type_def, kept for old log decode reference.
+// Legacy full snapshot of PidTypeDef, kept for old log decode reference.
 typedef struct
 {
-    uint16_t pid_id;
+    uint16_t PidId;
     uint8_t mode;
     uint8_t reserved;
 
@@ -757,10 +757,10 @@ typedef struct
     float error[3];
 } sdlog_pid_snapshot_t;
 
-// Legacy full snapshot of gimbal_PID_t, kept for old log decode reference.
+// Legacy full snapshot of GimbalPid, kept for old log decode reference.
 typedef struct
 {
-    uint16_t pid_id;
+    uint16_t PidId;
     uint16_t reserved;
 
     float kp;
@@ -792,7 +792,7 @@ typedef struct
     uint16_t reserved16;
     uint8_t yaw_mode;
     uint8_t pitch_mode;
-    uint8_t shoot_mode;
+    uint8_t ShootMode;
     uint8_t reserved8;
 
     sdlog_pid_runtime_t yaw_angle_pid;
@@ -800,14 +800,14 @@ typedef struct
     sdlog_pid_runtime_t pitch_angle_pid;
     sdlog_pid_runtime_t pitch_speed_pid;
 
-    sdlog_pid_runtime_t shoot_trigger_pid;
-    sdlog_pid_runtime_t shoot_fric_pid[SDLOG_FRIC_NUM];
+    sdlog_pid_runtime_t ShootTriggerPid;
+    sdlog_pid_runtime_t ShootFricPid[SDLOG_FRIC_NUM];
 } sdlog_gimbal_loop_t;
 
 typedef struct
 {
     uint32_t loop_cnt;
-    uint8_t chassis_mode;
+    uint8_t ChassisMode;
     uint8_t last_chassis_mode;
     uint16_t reserved;
 
@@ -819,7 +819,7 @@ typedef struct
     float wz_set;
 
     sdlog_pid_runtime_t motor_speed_pid[4];
-    sdlog_pid_runtime_t chassis_angle_pid;
+    sdlog_pid_runtime_t ChassisAnglePid;
 } sdlog_chassis_loop_t;
 
 #define SDLOG_CHASSIS_BASE_STREAM_VERSION 1u
@@ -836,7 +836,7 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    uint8_t chassis_mode;
+    uint8_t ChassisMode;
     uint8_t last_chassis_mode;
     uint16_t reserved;
     int16_t wheel_rpm[4];
@@ -857,7 +857,7 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    uint8_t gimbal_behaviour;
+    uint8_t GimbalBehaviour;
     uint8_t test_mode;
     uint8_t yaw_motor_mode;
     uint8_t pitch_motor_mode;

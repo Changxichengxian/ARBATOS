@@ -1,9 +1,0 @@
-#ifndef BSP_IMU_PWM_CFG_H
-#define BSP_IMU_PWM_CFG_H
-
-#include "bsp_board_ports.h"
-
-#define BSP_IMU_PWM_TIM_HANDLE  BSP_BOARD_IMU_PWM_TIM_HANDLE
-#define BSP_IMU_PWM_TIM_CHANNEL BSP_BOARD_IMU_PWM_TIM_CHANNEL
-
-#endif

@@ -260,10 +260,10 @@ def bridge_library_path(native_dir: Path) -> Path:
 def source_dependencies() -> list[Path]:
     return [
         BRIDGE_SOURCE,
-        REPO_ROOT / "shared" / "application" / "wheelleg" / "wheelleg_core.h",
-        REPO_ROOT / "shared" / "application" / "robot" / "control_core.h",
+        REPO_ROOT / "shared" / "application" / "wheelleg" / "WheelLegCore.h",
+        REPO_ROOT / "shared" / "application" / "robot" / "ControlCore.h",
         REPO_ROOT / "shared" / "application" / "robot" / "LowCmd.h",
-        REPO_ROOT / "shared" / "application" / "wheelleg" / "wheelleg_msg.h",
+        REPO_ROOT / "shared" / "application" / "wheelleg" / "WheelLegMsg.h",
     ]
 
 
@@ -371,9 +371,9 @@ def read_wheelleg_config_body(project: str) -> str:
     if not config_path.exists():
         raise SystemExit(f"Missing project config: {config_path}")
     text = robot_sim.strip_c_comments(robot_sim.read_text_with_local_config_includes(config_path))
-    body = robot_sim.extract_initializer(text, "wheelleg_mit")
+    body = robot_sim.extract_initializer(text, "WheelLegMit")
     if body is None:
-        raise SystemExit(f"{config_path} has no wheelleg_mit initializer")
+        raise SystemExit(f"{config_path} has no WheelLegMit initializer")
     return body
 
 
@@ -484,8 +484,8 @@ def print_model_params(args: argparse.Namespace, config: BridgeConfig, model_pat
     print(f"project={args.project}")
     print(f"model={model_path}")
     print(f"leg_branch={args.leg_branch}")
-    print("control_core=shared/application/wheelleg/wheelleg_core.h")
-    print("project_config=Robotconfig/{}/config.c: wheelleg_mit".format(args.project))
+    print("control_core=shared/application/wheelleg/WheelLegCore.h")
+    print("project_config=Robotconfig/{}/config.c: WheelLegMit".format(args.project))
     print(
         "geometry_from_config="
         f"l1={float(config.geometry.l1_m):.5f}, "

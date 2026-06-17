@@ -26,12 +26,12 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "config.h"
-#include "robot_task_build_config.h"
+#include "RobotTaskBuildConfig.h"
 #if ROBOT_TASK_BUILD_RC_SBUS
-#include "rc_sbus_task.h"
+#include "RcSbusTask.h"
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-#include "detect_task.h"
+#include "DetectTask.h"
 #endif
 #if ROBOT_TASK_BUILD_SDLOG && BOARD_SD_ENABLE
 #include "SdLogTask.h"
@@ -43,27 +43,27 @@
 #include "CanTxTask.h"
 #endif
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-#include "chassis_control_task.h"
+#include "ChassisControlTask.h"
 #endif
 #if ROBOT_TASK_BUILD_ANY_GIMBAL
-#include "gimbal_control_task.h"
+#include "GimbalControlTask.h"
 #endif
 #if ROBOT_TASK_BUILD_IMU
-#include "INS_task.h"
+#include "InsTask.h"
 #endif
 #if ROBOT_TASK_BUILD_HOST_LINK
-#include "host_link_task.h"
+#include "HostLinkTask.h"
 #endif
 #if ROBOT_TASK_BUILD_ELRS_LINK
-#include "elrs_task.h"
+#include "ElrsTask.h"
 #endif
-#include "watch.h"
-#include "app_task_bootstrap.h"
+#include "Watch.h"
+#include "AppTaskBootstrap.h"
 #include "ControlMgr.h"
-#include "robot_fault_guard.h"
-#include "robot_control_registry.h"
+#include "RobotFaultGuard.h"
+#include "RobotControlRegistry.h"
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
-#include "wheelleg_mit_task.h"
+#include "WheelLegMitTask.h"
 #endif
 
 /* USER CODE END Includes */
@@ -124,7 +124,7 @@ osThreadId_t defaultTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-static const char *watch_rtos_task_name_from_handle(TaskHandle_t xTask, const char *fallback_name);
+static const char *WatchRtosTaskNameFromHandle(TaskHandle_t xTask, const char *fallback_name);
 
 /* USER CODE END FunctionPrototypes */
 
@@ -179,132 +179,132 @@ APP_THREAD_ATTR(imuFusionTask, osPriorityRealtime, 1024);
 #endif
 
 #if ROBOT_TASK_BUILD_RC_SBUS
-static osThreadId_t app_create_rc_sbus_task(void)
+static osThreadId_t AppCreateRcSbusTask(void)
 {
-  return APP_THREAD_CREATE(rcSbusTask, rc_sbus_task);
+  return APP_THREAD_CREATE(rcSbusTask, RcSbusTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-static osThreadId_t app_create_health_monitor_task(void)
+static osThreadId_t AppCreateHealthMonitorTask(void)
 {
-  return APP_THREAD_CREATE(healthMonitorTask, health_monitor_task);
+  return APP_THREAD_CREATE(healthMonitorTask, HealthMonitorTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_SDLOG && BOARD_SD_ENABLE
-static osThreadId_t app_create_SdLogTask(void)
+static osThreadId_t AppCreateSdLogTask(void)
 {
   return APP_THREAD_CREATE(sdlogTask, SdLogTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-static osThreadId_t app_create_CanTxTask(void)
+static osThreadId_t AppCreateCanTxTask(void)
 {
   return APP_THREAD_CREATE(canCommandTxTask, CanTxTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-static osThreadId_t app_create_CanRxTask(void)
+static osThreadId_t AppCreateCanRxTask(void)
 {
   return APP_THREAD_CREATE(canFeedbackRxTask, CanRxTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-static osThreadId_t app_create_chassis_control_task(void)
+static osThreadId_t AppCreateChassisControlTask(void)
 {
-  return APP_THREAD_CREATE(chassisControlTask, chassis_control_task);
+  return APP_THREAD_CREATE(chassisControlTask, ChassisControlTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
-static osThreadId_t app_create_wheelleg_mit_task(void)
+static osThreadId_t AppCreateWheelLegMitTask(void)
 {
-  return APP_THREAD_CREATE(wheellegMitTask, wheelleg_mit_task);
+  return APP_THREAD_CREATE(wheellegMitTask, WheelLegMitTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
-static osThreadId_t app_create_single_gimbal_task(void)
+static osThreadId_t AppCreateSingleGimbalTask(void)
 {
-  return APP_THREAD_CREATE(gimbalControlTask, gimbal_control_task);
+  return APP_THREAD_CREATE(gimbalControlTask, GimbalControlTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
-static osThreadId_t app_create_dual_yaw_gimbal_task(void)
+static osThreadId_t AppCreateDualYawGimbalTask(void)
 {
-  return APP_THREAD_CREATE(gimbalControlTask, dual_yaw_gimbal_control_task);
+  return APP_THREAD_CREATE(gimbalControlTask, DualYawGimbalControlTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_HOST_LINK
-static osThreadId_t app_create_host_link_task(void)
+static osThreadId_t AppCreateHostLinkTask(void)
 {
-  return APP_THREAD_CREATE(hostLinkTask, host_link_task);
+  return APP_THREAD_CREATE(hostLinkTask, HostLinkTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_ELRS_LINK
-static osThreadId_t app_create_elrs_link_task(void)
+static osThreadId_t AppCreateElrsLinkTask(void)
 {
-  return APP_THREAD_CREATE(elrsLinkTask, elrs_link_task);
+  return APP_THREAD_CREATE(elrsLinkTask, ElrsLinkTask);
 }
 #endif
 
 #if ROBOT_TASK_BUILD_IMU
-static osThreadId_t app_create_imu_task(void)
+static osThreadId_t AppCreateImuTask(void)
 {
-  return APP_THREAD_CREATE(imuFusionTask, imu_fusion_task);
+  return APP_THREAD_CREATE(imuFusionTask, ImuFusionTask);
 }
 #endif
 
-static void app_create_module_tasks(void)
+static void AppCreateModuleTasks(void)
 {
-  static const app_task_module_desc_t module_tasks[] =
+  static const AppTaskModuleDesc module_tasks[] =
   {
 #if ROBOT_TASK_BUILD_RC_SBUS
-    {ROBOT_TASK_MODULE_RC_SBUS, &rcSbusTaskHandle, app_create_rc_sbus_task},
+    {ROBOT_TASK_MODULE_RC_SBUS, &rcSbusTaskHandle, AppCreateRcSbusTask},
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-    {ROBOT_TASK_MODULE_HEALTH_MONITOR, &detectTaskHandle, app_create_health_monitor_task},
+    {ROBOT_TASK_MODULE_HEALTH_MONITOR, &detectTaskHandle, AppCreateHealthMonitorTask},
 #endif
 #if ROBOT_TASK_BUILD_SDLOG && BOARD_SD_ENABLE
-    {ROBOT_TASK_MODULE_SDLOG, &sdlogTaskHandle, app_create_SdLogTask},
+    {ROBOT_TASK_MODULE_SDLOG, &sdlogTaskHandle, AppCreateSdLogTask},
 #endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
-    {ROBOT_TASK_MODULE_CAN_COMMAND_TX, &canCommandTxTaskHandle, app_create_CanTxTask},
+    {ROBOT_TASK_MODULE_CAN_COMMAND_TX, &canCommandTxTaskHandle, AppCreateCanTxTask},
 #endif
 #if ROBOT_TASK_BUILD_CAN_FEEDBACK_RX
-    {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, &canFeedbackRxTaskHandle, app_create_CanRxTask},
+    {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, &canFeedbackRxTaskHandle, AppCreateCanRxTask},
 #endif
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-    {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, &chassisControlTaskHandle, app_create_chassis_control_task},
+    {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, &chassisControlTaskHandle, AppCreateChassisControlTask},
 #endif
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
-    {ROBOT_TASK_MODULE_WHEELLEG_MIT, &wheellegMitTaskHandle, app_create_wheelleg_mit_task},
+    {ROBOT_TASK_MODULE_WHEELLEG_MIT, &wheellegMitTaskHandle, AppCreateWheelLegMitTask},
 #endif
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
-    {ROBOT_TASK_MODULE_SINGLE_GIMBAL, &gimbalControlTaskHandle, app_create_single_gimbal_task},
+    {ROBOT_TASK_MODULE_SINGLE_GIMBAL, &gimbalControlTaskHandle, AppCreateSingleGimbalTask},
 #endif
 #if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
-    {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL, &gimbalControlTaskHandle, app_create_dual_yaw_gimbal_task},
+    {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL, &gimbalControlTaskHandle, AppCreateDualYawGimbalTask},
 #endif
 #if ROBOT_TASK_BUILD_HOST_LINK
-    {ROBOT_TASK_MODULE_HOST_LINK, &hostLinkTaskHandle, app_create_host_link_task},
+    {ROBOT_TASK_MODULE_HOST_LINK, &hostLinkTaskHandle, AppCreateHostLinkTask},
 #endif
 #if ROBOT_TASK_BUILD_ELRS_LINK
-    {ROBOT_TASK_MODULE_ELRS_LINK, &elrsLinkTaskHandle, app_create_elrs_link_task},
+    {ROBOT_TASK_MODULE_ELRS_LINK, &elrsLinkTaskHandle, AppCreateElrsLinkTask},
 #endif
 #if ROBOT_TASK_BUILD_IMU
-    {ROBOT_TASK_MODULE_IMU, &imuTaskHandle, app_create_imu_task},
+    {ROBOT_TASK_MODULE_IMU, &imuTaskHandle, AppCreateImuTask},
 #endif
   };
 
-  app_create_enabled_module_tasks(module_tasks, (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])));
+  AppCreateEnabledModuleTasks(module_tasks, (uint32_t)(sizeof(module_tasks) / sizeof(module_tasks[0])));
 }
 
 /* GetIdleTaskMemory prototype (linked to static allocation support) */
@@ -346,7 +346,7 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-  robot_control_bootstrap_profile_defaults();
+  RobotControlBootstrapProfileDefaults();
 
   /* USER CODE END Init */
 
@@ -370,7 +370,7 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = APP_THREAD_CREATE(defaultTask, StartDefaultTask);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  app_create_module_tasks();
+  AppCreateModuleTasks();
   /* USER CODE END RTOS_THREADS */
 
 }
@@ -386,14 +386,14 @@ void StartDefaultTask(void *argument)
 {
   (void)argument;
   /* init code for USB_DEVICE */
-  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_DEFAULT_TASK_START);
+  WatchDiagSetBootStage(WATCH_BOOT_STAGE_DEFAULT_TASK_START);
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN StartDefaultTask */
-  watch_diag_set_boot_stage(WATCH_BOOT_STAGE_RUN);
+  WatchDiagSetBootStage(WATCH_BOOT_STAGE_RUN);
   /* Infinite loop */
   for(;;)
   {
-    watch_task_beat(WATCH_TASK_DEFAULT);
+    WatchTaskBeat(WATCH_TASK_DEFAULT);
     osDelay(1);
   }
   /* USER CODE END StartDefaultTask */
@@ -402,7 +402,7 @@ void StartDefaultTask(void *argument)
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 
-static const char *watch_rtos_task_name_from_handle(TaskHandle_t xTask, const char *fallback_name)
+static const char *WatchRtosTaskNameFromHandle(TaskHandle_t xTask, const char *fallback_name)
 {
   if (xTask == (TaskHandle_t)defaultTaskHandle)
   {
@@ -485,25 +485,25 @@ static const char *watch_rtos_task_name_from_handle(TaskHandle_t xTask, const ch
 
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
-  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
+  RobotFaultEnterSafeStateEx((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
                                   0u,
                                   0u,
                                   (uint32_t)xTask,
-                                  watch_rtos_task_name_from_handle(xTask, pcTaskName));
-  robot_fault_halt_forever();
+                                  WatchRtosTaskNameFromHandle(xTask, pcTaskName));
+  RobotFaultHaltForever();
 }
 
 void vApplicationMallocFailedHook(void)
 {
   const TaskHandle_t current_task = xTaskGetCurrentTaskHandle();
 
-  robot_fault_enter_safe_state_ex((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
+  RobotFaultEnterSafeStateEx((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
                                   0u,
                                   0u,
                                   (uint32_t)current_task,
-                                  watch_rtos_task_name_from_handle(current_task,
+                                  WatchRtosTaskNameFromHandle(current_task,
                                                                     pcTaskGetTaskName(NULL)));
-  robot_fault_halt_forever();
+  RobotFaultHaltForever();
 }
 
 /* USER CODE END Application */

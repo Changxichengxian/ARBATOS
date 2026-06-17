@@ -40,4 +40,4 @@
 #define ROBOT_TASK_BUILD_STATUS_LED 1
 #define ROBOT_TASK_BUILD_SHOOT_RM 1
 
-#include "robot_config_types.h"
+#include "RobotConfigTypes.h"

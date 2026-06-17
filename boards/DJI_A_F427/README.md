@@ -4,14 +4,14 @@
 
 ## 当前内容
 
-- `bsp/INS_task.c`：A 板 IMU 姿态任务。
-- `bsp/bsp_rc_port.c`：遥控器端口适配。
-- `bsp/bsp_referee_port.c`：裁判系统端口适配。
-- `bsp/bsp_usart.c`：板级串口适配。
+- `bsp/InsTask.c`：A 板 IMU 姿态任务。
+- `bsp/BspRcPort.c`：遥控器端口适配。
+- `bsp/BspRefereePort.c`：裁判系统端口适配。
+- `bsp/BspUsart.c`：板级串口适配。
 - `devices/mpu6500.*`：A 板使用的 MPU6500 驱动。
-- `bsp/diskio.c`：FatFs 磁盘接口。
+- `bsp/Diskio.c`：FatFs 磁盘接口。
 
-`bsp/INS_task.c` 只保留 A 板的 MPU6500 读取、安装矩阵、温控和姿态融合差异。陀螺仪零偏采样流程共用 `shared/application/services/calibration/gyro_zero_cali.h`：正常上电温稳后静止 3 秒微调；`ROBOT_RUN_MODE_CALIBRATION + ROBOT_CALI_TARGET_IMU_GYRO` 下温度到 40 度后静止 30 秒并保存。
+`bsp/InsTask.c` 只保留 A 板的 MPU6500 读取、安装矩阵、温控和姿态融合差异。陀螺仪零偏采样流程共用 `shared/application/services/calibration/GyroZeroCali.h`：正常上电温稳后静止 3 秒微调；`ROBOT_RUN_MODE_CALIBRATION + ROBOT_CALI_TARGET_IMU_GYRO` 下温度到 40 度后静止 30 秒并保存。
 
 ## 当前使用者
 

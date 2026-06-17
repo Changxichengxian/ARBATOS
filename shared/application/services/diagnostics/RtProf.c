@@ -12,7 +12,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
-#include "robot_task_profile.h"
+#include "RobotTaskProfile.h"
 
 static const RtProfDesc sRtProfDesc[RtProfCount] = {
     {RtProfGimbalLoop,
@@ -20,21 +20,21 @@ static const RtProfDesc sRtProfDesc[RtProfCount] = {
      (uint8_t)ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL,
      (uint8_t)RtProfKindLoop,
      (uint8_t)RT_PROF_FAST_PATH,
-     "prof.gimbal_control_loop",
+     "prof.GimbalControlLoop",
      ROBOT_PROFILE_GIMBAL_CONTROL_BUDGET_US},
     {RtProfChassisLoop,
      (uint8_t)ROBOT_TASK_MODULE_CLASSIC_CHASSIS,
      (uint8_t)ROBOT_TASK_MODULE_NONE,
      (uint8_t)RtProfKindLoop,
      (uint8_t)RT_PROF_FAST_PATH,
-     "prof.chassis_control_loop",
+     "prof.ChassisControlLoop",
      ROBOT_PROFILE_CHASSIS_CONTROL_BUDGET_US},
     {RtProfWheellegMitLoop,
      (uint8_t)ROBOT_TASK_MODULE_WHEELLEG_MIT,
      (uint8_t)ROBOT_TASK_MODULE_NONE,
      (uint8_t)RtProfKindLoop,
      (uint8_t)RT_PROF_FAST_PATH,
-     "prof.wheelleg_mit_control_loop",
+     "prof.WheelLegMitControlLoop",
      ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_BUDGET_US},
     {RtProfCanTxLoop,
      (uint8_t)ROBOT_TASK_MODULE_CAN_COMMAND_TX,
@@ -83,7 +83,7 @@ static const RtProfDesc sRtProfDesc[RtProfCount] = {
      (uint8_t)ROBOT_TASK_MODULE_NONE,
      (uint8_t)RtProfKindService,
      0u,
-     "prof.watch_task_beat",
+     "prof.WatchTaskBeat",
      ROBOT_PROFILE_WATCH_TASK_BEAT_BUDGET_US},
 };
 
@@ -134,13 +134,13 @@ uint32_t RtProfPeriodMs(RtProfId id)
     switch (id)
     {
     case RtProfGimbalLoop:
-        return (uint32_t)robot_profile_gimbal_control_period_ms();
+        return (uint32_t)RobotProfileGimbalControlPeriodMs();
     case RtProfChassisLoop:
-        return (uint32_t)robot_profile_chassis_control_period_ms();
+        return (uint32_t)RobotProfileChassisControlPeriodMs();
     case RtProfWheellegMitLoop:
-        return (uint32_t)g_config.wheelleg_mit.control_period_ms;
+        return (uint32_t)g_config.WheelLegMit.control_period_ms;
     case RtProfCanTxLoop:
-        return (uint32_t)robot_profile_can_command_tx_period_ms();
+        return (uint32_t)RobotProfileCanCommandTxPeriodMs();
     case RtProfWatchBeat:
         return (uint32_t)ROBOT_PROFILE_WATCH_TASK_BEAT_MIN_PERIOD_MS;
     default:
@@ -191,8 +191,8 @@ uint8_t RtProfActive(RtProfId id)
         return 1u;
     }
 
-    return (uint8_t)(robot_profile_module_id_enabled(desc->module) ||
-                     robot_profile_module_id_enabled(desc->module_alt));
+    return (uint8_t)(RobotProfileModuleIdEnabled(desc->module) ||
+                     RobotProfileModuleIdEnabled(desc->module_alt));
 }
 
 void RtProfGetSummary(RtProfSummary *out)

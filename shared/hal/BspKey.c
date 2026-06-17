@@ -1,0 +1,68 @@
+/*
+ * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * First published in this repository: 2026-04-06
+ * Use of this file is governed by the LICENSE file in the repository root.
+ */
+
+
+#include "BspKey.h"
+#include "main.h"
+#include "BspKeyCfg.h"
+
+#ifndef BSP_KEY_GPIO_Port
+#error "BSP_KEY_GPIO_Port is not defined in BspKeyCfg.h"
+#endif
+#ifndef BSP_KEY_Pin
+#error "BSP_KEY_Pin is not defined in BspKeyCfg.h"
+#endif
+#ifndef BSP_KEY_ACTIVE_LOW
+#define BSP_KEY_ACTIVE_LOW 1u
+#endif
+#ifndef BSP_KEY_DEBOUNCE_MS
+#define BSP_KEY_DEBOUNCE_MS 30u
+#endif
+
+static volatile uint32_t g_key_press_cnt = 0u;
+static volatile uint32_t g_key_last_press_tick_ms = 0u;
+static volatile uint32_t g_key_last_irq_tick_ms = 0u;
+
+uint8_t BspKeyReadRawDown(void)
+{
+    const GPIO_PinState state = HAL_GPIO_ReadPin(BSP_KEY_GPIO_Port, BSP_KEY_Pin);
+#if (BSP_KEY_ACTIVE_LOW != 0u)
+    return (state == GPIO_PIN_RESET) ? 1u : 0u;
+#else
+    return (state == GPIO_PIN_SET) ? 1u : 0u;
+#endif
+}
+
+uint32_t BspKeyGetPressCnt(void)
+{
+    return g_key_press_cnt;
+}
+
+uint32_t BspKeyGetLastPressTickMs(void)
+{
+    return g_key_last_press_tick_ms;
+}
+
+void BspKeyExti0Callback(void)
+{
+    const uint32_t now_ms = HAL_GetTick();
+
+    if (g_key_last_irq_tick_ms != 0u && (uint32_t)(now_ms - g_key_last_irq_tick_ms) < BSP_KEY_DEBOUNCE_MS)
+    {
+        return;
+    }
+    g_key_last_irq_tick_ms = now_ms;
+
+    if (BspKeyReadRawDown() == 0u)
+    {
+        return;
+    }
+
+    g_key_press_cnt++;
+    g_key_last_press_tick_ms = now_ms;
+}

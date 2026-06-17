@@ -15,8 +15,8 @@
 - 板级端口配置：UART、CAN、SPI、I2C、PWM、GPIO。
 - 板载设备适配：IMU、蜂鸣器、按键、SD 卡、裁判串口等。
 - 板级 IMU 安装差异：传感器安装矩阵、原始数据旋转、温控 PWM、DMA/中断收数。
-- 板级启动代码：只有独立板级实验入口才放 `board_main.c`、`board_freertos.c`。
-- 和某块板子强绑定的端口文件，例如 `bsp_board_ports.h`、`bsp_imu_pwm_cfg.h`。
+- 板级启动代码：只有独立板级实验入口才放 `BoardMain.c`、`BoardFreertos.c`。
+- 和某块板子强绑定的端口文件，例如 `BspBoardPorts.h`、`BspImuPwmCfg.h`。
 
 ## 不应该放这里
 
@@ -29,7 +29,7 @@
 
 ## IMU 和零偏校准边界
 
-各板的 `INS_task.c` 负责把原始 IMU 数据转成板载坐标系，并接入对应的温控、DMA、SPI/I2C 读取方式。陀螺仪零偏采样流程放在 `shared/application/services/calibration/gyro_zero_cali.h`，避免三块板各写一套状态机。
+各板的 `InsTask.c` 负责把原始 IMU 数据转成板载坐标系，并接入对应的温控、DMA、SPI/I2C 读取方式。陀螺仪零偏采样流程放在 `shared/application/services/calibration/GyroZeroCali.h`，避免三块板各写一套状态机。
 
 板级代码只保留这些差异：
 

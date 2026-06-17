@@ -63,7 +63,7 @@ Keil 工程仍是可直接编译和下载的完整入口，也是工程清单来
 1. 修改 Keil 工程名和输出名。
 2. Include Path 改到新的 `Robotconfig/<TARGET>`，保留对应 `boards/<BOARD>` 和 `shared/` 路径。
 3. Source Group 里确认只包含一个目标的 `Robotconfig/<TARGET>` 文件，不要把多个目标的 `config.c` 同时编进去。
-4. 如果换了板卡，确认 `Core/`、`Drivers/`、`Middlewares/` 和板级 `INS_task.c` 对应同一块芯片。
+4. 如果换了板卡，确认 `Core/`、`Drivers/`、`Middlewares/` 和板级 `InsTask.c` 对应同一块芯片。
 5. 第一次编译通过后，再去调 `Robotconfig/` 参数。
 6. 如果新目标也要支持 GCC/CMake，运行：
 

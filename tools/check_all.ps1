@@ -85,7 +85,7 @@ function Get-RobotConfigContent {
     [void]$Seen.Add($fullPath)
     $content = Get-Content -LiteralPath $fullPath -Raw -Encoding UTF8
     $baseDir = Split-Path -Parent $fullPath
-    $includePattern = '(?m)^\s*#\s*include\s+"(config_[A-Za-z0-9_]+\.inc)"\s*$'
+    $includePattern = '(?m)^\s*#\s*include\s+"(Config[A-Za-z0-9_]+\.inc)"\s*$'
 
     $expanded = [regex]::Replace($content, $includePattern, {
             param($match)
@@ -319,11 +319,11 @@ function Test-UvProject {
     $moduleCount = Get-ProfileModuleCount $configContent
     $modules = @(Get-ProfileModules $configContent)
 
-    if ($configHeader -notmatch '#include\s+"robot_config_types\.h"') {
-        Add-CheckError "$(Format-RepoPath $configH): target config.h must include the shared robot_config_types.h."
+    if ($configHeader -notmatch '#include\s+"RobotConfigTypes\.h"') {
+        Add-CheckError "$(Format-RepoPath $configH): target config.h must include the shared RobotConfigTypes.h."
     }
     if ($configHeader -match '(?m)^\s*typedef\s+(struct|enum)\b') {
-        Add-CheckError "$(Format-RepoPath $configH): target config.h must only carry target identity/build macros; common config types belong in shared\application\robot\robot_config_types.h."
+        Add-CheckError "$(Format-RepoPath $configH): target config.h must only carry target identity/build macros; common config types belong in shared\application\robot\RobotConfigTypes.h."
     }
 
     $profileFamilyPattern = '\.(locomotion_family|gimbal_family|arm_family)\s*=|LOCOMOTION_FAMILY_|GIMBAL_FAMILY_|ARM_FAMILY_'
@@ -339,7 +339,7 @@ function Test-UvProject {
     if ($null -ne $moduleCount -and $moduleCount -ne $modules.Count) {
         Add-CheckError "$(Format-RepoPath $configC): .task_module_count is $moduleCount, but task_modules contains $($modules.Count) unique modules."
     }
-    if ($configHeader -match 'robot_device_config_table_t\s+devices\s*;' -and
+    if ($configHeader -match 'RobotConfigDeviceTable\s+devices\s*;' -and
         $configContent -notmatch '\.devices\s*=') {
         Add-CheckError "$(Format-RepoPath $configC): cannot find .devices initializer; MotorInst now uses the runtime device table."
     }
@@ -360,14 +360,14 @@ function Test-UvProject {
         }
     }
 
-    if ($taskText -notmatch 'app_create_enabled_module_tasks') {
-        Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): task creation must use shared app_create_enabled_module_tasks()."
+    if ($taskText -notmatch 'AppCreateEnabledModuleTasks') {
+        Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): task creation must use shared AppCreateEnabledModuleTasks()."
     }
-    if ($taskText -notmatch 'robot_control_bootstrap_profile_defaults') {
-        Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): FreeRTOS init must bootstrap default controllers with robot_control_bootstrap_profile_defaults()."
+    if ($taskText -notmatch 'RobotControlBootstrapProfileDefaults') {
+        Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): FreeRTOS init must bootstrap default controllers with RobotControlBootstrapProfileDefaults()."
     }
-    if ($taskText -match 'typedef\s+struct[\s\S]*?app_task_module_desc_t') {
-        Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): task source must use app_task_bootstrap.h instead of redefining app_task_module_desc_t locally."
+    if ($taskText -match 'typedef\s+struct[\s\S]*?AppTaskModuleDesc') {
+        Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): task source must use AppTaskBootstrap.h instead of redefining AppTaskModuleDesc locally."
     }
 
     Test-ProfileTaskMapping $Project $modules $sourceSet $taskText
@@ -433,32 +433,32 @@ function Test-ProfileTaskMapping {
     )
 
     if (Test-ProfileHasModule $Modules "ROBOT_TASK_MODULE_CLASSIC_CHASSIS") {
-        Test-RequiredSource $Project $SourceSet "shared\application\chassis\chassis_control_task.c"
+        Test-RequiredSource $Project $SourceSet "shared\application\chassis\ChassisControlTask.c"
         Test-RequiredTaskText $Project $TaskText "ROBOT_TASK_MODULE_CLASSIC_CHASSIS"
-        Test-RequiredTaskText $Project $TaskText "chassis_control_task"
+        Test-RequiredTaskText $Project $TaskText "ChassisControlTask"
     }
     if (Test-ProfileHasModule $Modules "ROBOT_TASK_MODULE_WHEELLEG_MIT") {
-        Test-RequiredSource $Project $SourceSet "shared\application\wheelleg\wheelleg_mit_task.c"
+        Test-RequiredSource $Project $SourceSet "shared\application\wheelleg\WheelLegMitTask.c"
         Test-RequiredTaskText $Project $TaskText "ROBOT_TASK_MODULE_WHEELLEG_MIT"
-        Test-RequiredTaskText $Project $TaskText "wheelleg_mit_task"
+        Test-RequiredTaskText $Project $TaskText "WheelLegMitTask"
     }
     if (Test-ProfileHasModule $Modules "ROBOT_TASK_MODULE_WHEELLEG_SERVO") {
         Add-CheckError "$(Format-RepoPath $Project.UvprojxPath): profile lists WHEELLEG_SERVO, but no servo wheel-leg task is wired yet."
     }
     if (Test-ProfileHasModule $Modules "ROBOT_TASK_MODULE_SINGLE_GIMBAL") {
-        Test-RequiredSource $Project $SourceSet "shared\application\gimbal\gimbal_control_task.c"
+        Test-RequiredSource $Project $SourceSet "shared\application\gimbal\GimbalControlTask.c"
         Test-RequiredTaskText $Project $TaskText "ROBOT_TASK_MODULE_SINGLE_GIMBAL"
-        Test-RequiredTaskText $Project $TaskText "gimbal_control_task"
+        Test-RequiredTaskText $Project $TaskText "GimbalControlTask"
     }
     if (Test-ProfileHasModule $Modules "ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL") {
-        Test-RequiredSource $Project $SourceSet "shared\application\gimbal\gimbal_control_task.c"
+        Test-RequiredSource $Project $SourceSet "shared\application\gimbal\GimbalControlTask.c"
         Test-RequiredTaskText $Project $TaskText "ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL"
-        Test-RequiredTaskText $Project $TaskText "dual_yaw_gimbal_control_task"
+        Test-RequiredTaskText $Project $TaskText "DualYawGimbalControlTask"
     }
     if (Test-ProfileHasModule $Modules "ROBOT_TASK_MODULE_ARM") {
-        Test-RequiredSource $Project $SourceSet "shared\application\arm\arm_task.c"
+        Test-RequiredSource $Project $SourceSet "shared\application\arm\ArmTask.c"
         Test-RequiredTaskText $Project $TaskText "ROBOT_TASK_MODULE_ARM"
-        Test-RequiredTaskText $Project $TaskText "arm_task"
+        Test-RequiredTaskText $Project $TaskText "ArmTask"
     }
 }
 
@@ -524,7 +524,7 @@ function Expand-ConfigParamRange {
 function Test-ConfigParamGovernance {
     Write-Host "[check] config param governance"
 
-    $paramPath = Join-Path $script:RepoRoot "shared\application\robot\config_param_list.inc"
+    $paramPath = Join-Path $script:RepoRoot "shared\application\robot\ConfigParamList.inc"
     if (-not (Test-Path -LiteralPath $paramPath -PathType Leaf)) {
         Add-CheckError "Missing config parameter list: $(Format-RepoPath $paramPath)"
         return
@@ -606,8 +606,8 @@ function Test-TaskModuleNames {
 
     Write-Host "[check] task module names"
 
-    $profileHeader = Join-Path $script:RepoRoot "shared\application\robot\robot_task_profile.h"
-    $schemaHeader = Join-Path $script:RepoRoot "shared\application\robot\robot_config_schema.h"
+    $profileHeader = Join-Path $script:RepoRoot "shared\application\robot\RobotTaskProfile.h"
+    $schemaHeader = Join-Path $script:RepoRoot "shared\application\robot\RobotConfigSchema.h"
     if (-not (Test-Path -LiteralPath $profileHeader -PathType Leaf)) {
         Add-CheckError "Missing robot task profile header: $(Format-RepoPath $profileHeader)"
         return
@@ -742,8 +742,8 @@ function Test-ProfileProductRules {
             }
             foreach ($requiredZero in @(
                     '\.arm\s*=\s*\{\s*0\s*\}',
-                    '\.wheelleg_mit\s*=\s*\{\s*0\s*\}',
-                    '\.arm_j0_unitree\s*=\s*\{\s*0\s*\}'
+                    '\.WheelLegMit\s*=\s*\{\s*0\s*\}',
+                    '\.ArmJ0Unitree\s*=\s*\{\s*0\s*\}'
                 )) {
                 if ($configContent -notmatch $requiredZero) {
                     Add-CheckError "$(Format-RepoPath $configC): HERO profile should keep ARM/wheelleg configs zeroed."
@@ -963,12 +963,12 @@ function Test-StaleText {
             Message = 'legal document path should be legal/<file>, not docs/legal/<file>.'
         },
         [pscustomobject]@{
-            Pattern = 'MIT wheel-leg.*no actual|wheel-leg MIT.*not wired|wheelleg_mit_task.*not wired'
+            Pattern = 'MIT wheel-leg.*no actual|wheel-leg MIT.*not wired|WheelLegMitTask.*not wired'
             Message = 'MIT wheel-leg task is already wired; this sentence is stale.'
         },
         [pscustomobject]@{
-            Pattern = 'wheelleg_mit_task.*missing'
-            Message = 'wheelleg_mit_task already exists and is wired in current entries.'
+            Pattern = 'WheelLegMitTask.*missing'
+            Message = 'WheelLegMitTask already exists and is wired in current entries.'
         }
     )
 
@@ -995,11 +995,11 @@ function Test-HighRateApiBoundaries {
     Write-Host "[check] high-rate API boundaries"
 
     $highRateFiles = @(
-        "shared\application\chassis\chassis_control_task.c",
-        "shared\application\gimbal\gimbal_control_task.c",
-        "shared\application\shoot\shoot.c",
+        "shared\application\chassis\ChassisControlTask.c",
+        "shared\application\gimbal\GimbalControlTask.c",
+        "shared\application\shoot\Shoot.c",
         "shared\application\comm\can\CanTxTask.c",
-        "shared\application\wheelleg\wheelleg_mit_task.c"
+        "shared\application\wheelleg\WheelLegMitTask.c"
     )
     $forbiddenPatterns = @(
         [pscustomobject]@{
@@ -1019,7 +1019,7 @@ function Test-HighRateApiBoundaries {
             Message = 'name lookup belongs in init/config/diagnostics paths, not high-rate task sources.'
         },
         [pscustomobject]@{
-            Pattern = 'robot_config_(motor_)?device_find_by_name\s*\('
+            Pattern = 'RobotConfig(Motor)?DeviceFindByName\s*\('
             Message = 'device-table name lookup belongs in init/config/diagnostics paths, not high-rate task sources.'
         },
         [pscustomobject]@{
@@ -1059,7 +1059,7 @@ function Test-CanTxDeviceConfigBoundaries {
     }
 
     $content = Get-SourceContentWithPrivateIncludes -Path $fullPath
-    $rmUsesResolvedBus = $content -match 'static\s+inline\s+void\s+can_tx_process_rm_axis[\s\S]*?const\s+uint8_t\s+node_bus\s*=\s*can_tx_node_bus\s*\(\s*fallback_bus\s*,\s*node\s*\)\s*;[\s\S]*?can_tx_store_rm_current\s*\(\s*node_bus\s*,'
+    $rmUsesResolvedBus = $content -match 'static\s+inline\s+void\s+CanTxProcessRmAxis[\s\S]*?const\s+uint8_t\s+node_bus\s*=\s*CanTxNodeBus\s*\(\s*fallback_bus\s*,\s*node\s*\)\s*;[\s\S]*?CanTxStoreRmCurrent\s*\(\s*node_bus\s*,'
     if (-not $rmUsesResolvedBus) {
         Add-CheckError "${repoPath}: RM group send path must use the resolved node CAN bus, not the fixed fallback bus."
     }
@@ -1068,7 +1068,7 @@ function Test-CanTxDeviceConfigBoundaries {
 function Test-ControlRegistryBoundaries {
     Write-Host "[check] control registry boundaries"
 
-    $repoPath = "shared\application\robot\robot_control_registry.h"
+    $repoPath = "shared\application\robot\RobotControlRegistry.h"
     $fullPath = Join-Path $script:RepoRoot $repoPath
     if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
         Add-CheckError "Missing control registry header: $repoPath"
@@ -1076,7 +1076,7 @@ function Test-ControlRegistryBoundaries {
     }
 
     $content = Get-Content -LiteralPath $fullPath -Raw
-    foreach ($required in @("robot_control_bootstrap_profile_defaults", "robot_control_start_profile_defaults")) {
+    foreach ($required in @("RobotControlBootstrapProfileDefaults", "RobotControlStartProfileDefaults")) {
         if ($content -notmatch [regex]::Escape($required)) {
             Add-CheckError "${repoPath}: control registry must expose '$required'."
         }
@@ -1099,10 +1099,10 @@ function Test-FaultGuardBoundaries {
     foreach ($mainFile in $mainFiles) {
         $content = Get-Content -LiteralPath $mainFile.FullName -Raw
         $repoPath = Format-RepoPath $mainFile.FullName
-        if ($content -notmatch '#include\s+"robot_fault_guard\.h"') {
-            Add-CheckError "${repoPath}: Error_Handler must include robot_fault_guard.h."
+        if ($content -notmatch '#include\s+"RobotFaultGuard\.h"') {
+            Add-CheckError "${repoPath}: Error_Handler must include RobotFaultGuard.h."
         }
-        if ($content -notmatch 'void\s+Error_Handler\s*\(\s*void\s*\)[\s\S]*?robot_fault_record_and_halt\s*\(') {
+        if ($content -notmatch 'void\s+Error_Handler\s*\(\s*void\s*\)[\s\S]*?RobotFaultRecordAndHalt\s*\(') {
             Add-CheckError "${repoPath}: Error_Handler must record the fault and enter the shared safe halt path."
         }
     }
@@ -1131,7 +1131,7 @@ function Test-FaultGuardBoundaries {
         $content = Get-Content -LiteralPath $freertosFile.FullName -Raw
         $repoPath = Format-RepoPath $freertosFile.FullName
         if ($content -match 'void\s+vApplication(StackOverflowHook|MallocFailedHook)\s*\(' -and
-            $content -notmatch 'robot_fault_enter_safe_state_ex\s*\(') {
+            $content -notmatch 'RobotFaultEnterSafeStateEx\s*\(') {
             Add-CheckError "${repoPath}: FreeRTOS fatal hooks must enter the shared safe state."
         }
     }
@@ -1141,21 +1141,21 @@ function Test-ControlCoreBoundaries {
     Write-Host "[check] control core boundaries"
 
     $coreFiles = @(
-        "shared\application\robot\control_core.h",
-        "shared\application\arm\arm_core.h",
-        "shared\application\chassis\chassis_core.h",
-        "shared\application\gimbal\gimbal_core.h",
-        "shared\application\wheelleg\wheelleg_core.h"
+        "shared\application\robot\ControlCore.h",
+        "shared\application\arm\ArmCore.h",
+        "shared\application\chassis\ChassisCore.h",
+        "shared\application\gimbal\GimbalCore.h",
+        "shared\application\wheelleg\WheelLegCore.h"
     )
     $forbiddenPatterns = @(
         'FreeRTOS\.h',
         'cmsis_os\.h',
         'task\.h',
-        'CAN_receive\.h',
+        'CanReceive\.h',
         'MotorInst\.h',
-        'INS_task\.h',
-        'sdlog\.h',
-        'watch\.h',
+        'InsTask\.h',
+        'SdLog\.h',
+        'Watch\.h',
         'config\.h',
         '\bg_config\b',
         '\bosDelay\s*\(',
@@ -1179,30 +1179,30 @@ function Test-ControlCoreBoundaries {
 
     $adapterIncludes = @(
         [pscustomobject]@{
-            Source = "shared\application\arm\arm_motion.c"
-            Include = '#include "arm_core.h"'
-            Step = 'arm_core_step_manual'
+            Source = "shared\application\arm\ArmMotion.c"
+            Include = '#include "ArmCore.h"'
+            Step = 'ArmCoreStepManual'
         },
         [pscustomobject]@{
-            Source = "shared\application\chassis\chassis_control_task.c"
-            Include = '#include "chassis_core.h"'
-            Step = 'chassis_core_step_velocity'
+            Source = "shared\application\chassis\ChassisControlTask.c"
+            Include = '#include "ChassisCore.h"'
+            Step = 'ChassisCoreStepVelocity'
         },
         [pscustomobject]@{
-            Source = "shared\application\gimbal\gimbal_control_task.c"
-            Include = '#include "gimbal_core.h"'
-            Step = 'gimbal_core_step_axis_base'
+            Source = "shared\application\gimbal\GimbalControlTask.c"
+            Include = '#include "GimbalCore.h"'
+            Step = 'GimbalCoreStepAxisBase'
         },
         [pscustomobject]@{
-            Source = "shared\application\wheelleg\wheelleg_mit_task.c"
-            Include = '#include "wheelleg_core.h"'
+            Source = "shared\application\wheelleg\WheelLegMitTask.c"
+            Include = '#include "WheelLegCore.h"'
             Step = @(
-                'wheelleg_core_calc_kinematics',
-                'wheelleg_core_set_wheel_torques',
-                'wheelleg_core_lqr_wheel_output',
-                'wheelleg_core_target_smooth_update_xy',
-                'wheelleg_core_observer_update',
-                'wheelleg_core_pid_calc'
+                'WheelLegCoreCalcKinematics',
+                'WheelLegCoreSetWheelTorques',
+                'WheelLegCoreLqrWheelOutput',
+                'WheelLegCoreTargetSmoothUpdateXy',
+                'WheelLegCoreObserverUpdate',
+                'WheelLegCorePidCalc'
             )
         }
     )
@@ -1229,8 +1229,8 @@ function Test-ControlCoreBoundaries {
 function Test-RobotDeviceSchema {
     Write-Host "[check] robot device schema"
 
-    $schemaPath = Join-Path $script:RepoRoot "shared\application\robot\robot_config_schema.h"
-    $devicePath = Join-Path $script:RepoRoot "shared\application\robot\robot_device_config.h"
+    $schemaPath = Join-Path $script:RepoRoot "shared\application\robot\RobotConfigSchema.h"
+    $devicePath = Join-Path $script:RepoRoot "shared\application\robot\RobotDeviceConfig.h"
     if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
         Add-CheckError "Missing robot config schema header: $(Format-RepoPath $schemaPath)"
         return
@@ -1278,7 +1278,7 @@ function Test-RobotDeviceSchema {
             "sensor.imu",
             "input.manual",
             "sensor.battery",
-            "link.aux_telem",
+            "link.AuxTelem",
             "service.sdlog"
         )) {
         if ($schemaContent -notmatch [regex]::Escape($deviceName)) {
@@ -1290,7 +1290,7 @@ function Test-RobotDeviceSchema {
 function Test-SharedConfigTypes {
     Write-Host "[check] shared config types"
 
-    $typesPath = Join-Path $script:RepoRoot "shared\application\robot\robot_config_types.h"
+    $typesPath = Join-Path $script:RepoRoot "shared\application\robot\RobotConfigTypes.h"
     if (-not (Test-Path -LiteralPath $typesPath -PathType Leaf)) {
         Add-CheckError "Missing shared config types header: $(Format-RepoPath $typesPath)"
         return
@@ -1300,14 +1300,14 @@ function Test-SharedConfigTypes {
     if ($content -match '\bARBATOS_TARGET_NAME\b|\bROBOT_PROFILE_KIND\s+ROBOT_PROFILE_KIND_|\bROBOT_BOARD_KIND\s+ROBOT_BOARD_KIND_') {
         Add-CheckError "$(Format-RepoPath $typesPath): shared config types must not contain target identity macros."
     }
-    if ($content -notmatch 'typedef\s+struct[\s\S]*?\}\s*config_t\s*;') {
-        Add-CheckError "$(Format-RepoPath $typesPath): cannot find shared config_t definition."
+    if ($content -notmatch 'typedef\s+struct[\s\S]*?\}\s*Config\s*;') {
+        Add-CheckError "$(Format-RepoPath $typesPath): cannot find shared Config definition."
     }
     if ($content -notmatch '#ifndef\s+MOTOR_ARM_JOINT_COUNT[\s\S]*?#define\s+MOTOR_ARM_JOINT_COUNT\s+6u[\s\S]*?#endif') {
         Add-CheckError "$(Format-RepoPath $typesPath): MOTOR_ARM_JOINT_COUNT must be a target-overridable default."
     }
-    if ($content -notmatch '#include\s+"robot_config_schema\.h"') {
-        Add-CheckError "$(Format-RepoPath $typesPath): shared config types must include robot_config_schema.h."
+    if ($content -notmatch '#include\s+"RobotConfigSchema\.h"') {
+        Add-CheckError "$(Format-RepoPath $typesPath): shared config types must include RobotConfigSchema.h."
     }
 }
 

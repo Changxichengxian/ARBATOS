@@ -11,33 +11,33 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "bsp_can.h"
-#include "CAN_receive.h"
-#include "watch.h"
+#include "BspCan.h"
+#include "CanReceive.h"
+#include "Watch.h"
 #include "RtProf.h"
-#include "robot_task_profile.h"
+#include "RobotTaskProfile.h"
 
 void CanRxTask(void const *pvParameters)
 {
     (void)pvParameters;
 
-    bsp_can_rx_attach_task(xTaskGetCurrentTaskHandle());
+    BspCanRxAttachTask(xTaskGetCurrentTaskHandle());
 
-    bsp_can_frame_t f;
+    BspCanFrame f;
     for (;;)
     {
-        if (bsp_can_rx_pending() == 0u)
+        if (BspCanRxPending() == 0u)
         {
-            watch_task_wait(WATCH_TASK_CAN_FEEDBACK_RX);
+            WatchTaskWait(WATCH_TASK_CAN_FEEDBACK_RX);
             (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         }
-        watch_task_beat(WATCH_TASK_CAN_FEEDBACK_RX);
+        WatchTaskBeat(WATCH_TASK_CAN_FEEDBACK_RX);
         const uint64_t wake_start_us = RtProfBegin();
-        const uint32_t max_frames = robot_profile_can_feedback_rx_max_frames_per_wake();
-        const uint32_t budget_us = robot_profile_can_feedback_rx_budget_us();
+        const uint32_t max_frames = RobotProfileCanFeedbackRxMaxFramesPerWake();
+        const uint32_t budget_us = RobotProfileCanFeedbackRxBudgetUs();
         uint32_t processed = 0u;
 
-        while (processed < max_frames && bsp_can_rx_pop(&f))
+        while (processed < max_frames && BspCanRxPop(&f))
         {
             CAN_rx_process_frame(f.bus, f.std_id, f.dlc, f.data);
             processed++;
@@ -48,7 +48,7 @@ void CanRxTask(void const *pvParameters)
             }
         }
         RtProfEnd(RtProfCanRxWake, wake_start_us);
-        if (bsp_can_rx_pending() != 0u)
+        if (BspCanRxPending() != 0u)
         {
             vTaskDelay(1u);
         }

@@ -6,10 +6,10 @@ The runner generates a project-specific five-bar wheel-leg model from
 `Robotconfig/<project>/config.c`:
 
 - wheels are real contact wheels attached to a free base;
-- front/back active joints use the same names as `wheelleg_core.h` expects;
+- front/back active joints use the same names as `WheelLegCore.h` expects;
 - each side has a constrained five-bar leg with passive knee joints;
 - the wheel carrier follows the closed chain through MuJoCo equality constraints;
-- the runner calls a tiny native C bridge that includes `wheelleg_core.h`.
+- the runner calls a tiny native C bridge that includes `WheelLegCore.h`.
 
 ## Requirements
 

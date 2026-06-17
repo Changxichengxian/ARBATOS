@@ -12,9 +12,9 @@
 #include <stdint.h>
 
 #include "LowCmd.h"
-#include "CAN_receive.h"
+#include "CanReceive.h"
 #include "config.h"
-#include "motor_model_db.h"
+#include "MotorModelDb.h"
 
 struct control_controller;
 
@@ -37,7 +37,7 @@ typedef struct
     MotorRole role;
     uint8_t role_index;
     uint8_t fallback_bus;
-    uint8_t detect_toe;
+    uint8_t DetectToe;
     uint8_t use_detect;
     const char *name;
     const motor_node_param_t *node;
@@ -63,7 +63,7 @@ typedef struct
     const char *name;
     const motor_node_param_t *node;
     motor_measure_t *measure;
-    const motor_model_mit_limits_t *mitLimits;
+    const MotorModelMitLimits *mitLimits;
 } MotorRoute;
 
 typedef struct

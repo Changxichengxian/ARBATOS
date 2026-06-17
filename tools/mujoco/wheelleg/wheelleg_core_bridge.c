@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Tiny native bridge for the MuJoCo wheel-leg runner. It keeps the physics
- * adapter out of firmware tasks while calling the same reusable wheelleg_core.h
+ * adapter out of firmware tasks while calling the same reusable WheelLegCore.h
  * functions that firmware uses.
  */
 
 #include <string.h>
 
-#include "wheelleg_core.h"
+#include "WheelLegCore.h"
 
 #define ARBATOS_WHEELLEG_BRIDGE_VERSION 1u
 #define ARBATOS_WHEELLEG_HOLD_LIMIT_M 0.05f
@@ -26,7 +26,7 @@ typedef struct
 
 typedef struct
 {
-    wheelleg_core_geometry_t geometry;
+    WheelLegCoreGeometry geometry;
     fp32 wheel_radius_m;
     fp32 lqr_poly[WHEELLEG_CORE_LQR_ROW_COUNT][WHEELLEG_CORE_LQR_COEFF_COUNT];
     fp32 support_bias_n;
@@ -49,10 +49,10 @@ typedef struct
 
 typedef struct
 {
-    wheelleg_core_leg_calc_t leg[WHEELLEG_SIDE_COUNT];
-    wheelleg_core_observer_t observer;
-    wheelleg_core_pid_t leg_pid[WHEELLEG_SIDE_COUNT];
-    wheelleg_core_pid_t split_pid;
+    WheelLegCoreLegCalc leg[WHEELLEG_SIDE_COUNT];
+    WheelLegCoreObserver observer;
+    WheelLegCorePid leg_pid[WHEELLEG_SIDE_COUNT];
+    WheelLegCorePid split_pid;
     fp32 yaw_set;
     uint8_t yaw_inited;
 } arbatos_wheelleg_bridge_state_t;
@@ -108,7 +108,7 @@ static const fp32 s_default_lqr_poly[WHEELLEG_CORE_LQR_ROW_COUNT][WHEELLEG_CORE_
     {202.812f, -76.6035f, 10.1013f, 0.345984f},
 };
 
-static void bridge_pid_configure(wheelleg_core_pid_t *pid,
+static void BridgePidConfigure(WheelLegCorePid *pid,
                                  const arbatos_wheelleg_bridge_pid_config_t *config)
 {
     if (pid == 0 || config == 0)
@@ -116,7 +116,7 @@ static void bridge_pid_configure(wheelleg_core_pid_t *pid,
         return;
     }
 
-    wheelleg_core_pid_configure(pid,
+    WheelLegCorePidConfigure(pid,
                                 config->kp,
                                 config->ki,
                                 config->kd,
@@ -124,7 +124,7 @@ static void bridge_pid_configure(wheelleg_core_pid_t *pid,
                                 config->max_iout);
 }
 
-static void bridge_eval_lqr(const arbatos_wheelleg_bridge_config_t *config,
+static void BridgeEvalLqr(const arbatos_wheelleg_bridge_config_t *config,
                             fp32 leg_length,
                             fp32 out[WHEELLEG_CORE_LQR_ROW_COUNT])
 {
@@ -138,15 +138,15 @@ static void bridge_eval_lqr(const arbatos_wheelleg_bridge_config_t *config,
 
     if (config->min_leg_length_m < config->max_leg_length_m)
     {
-        length = wheelleg_core_clamp(length, config->min_leg_length_m, config->max_leg_length_m);
+        length = WheelLegCoreClamp(length, config->min_leg_length_m, config->max_leg_length_m);
     }
 
     for (i = 0u; i < WHEELLEG_CORE_LQR_ROW_COUNT; i++)
     {
-        const fp32 *row = (wheelleg_core_lqr_row_is_zero(&config->lqr_poly[i][0]) == 0u)
+        const fp32 *row = (WheelLegCoreLqrRowIsZero(&config->lqr_poly[i][0]) == 0u)
                               ? &config->lqr_poly[i][0]
                               : &s_default_lqr_poly[i][0];
-        out[i] = wheelleg_core_poly4(row, length);
+        out[i] = WheelLegCorePoly4(row, length);
     }
 }
 
@@ -212,16 +212,16 @@ void arbatos_wheelleg_bridge_state_init(arbatos_wheelleg_bridge_state_t *state,
     }
 
     (void)memset(state, 0, sizeof(*state));
-    bridge_pid_configure(&state->leg_pid[WHEELLEG_SIDE_LEFT], &config->leg_length_pid);
-    bridge_pid_configure(&state->leg_pid[WHEELLEG_SIDE_RIGHT], &config->leg_length_pid);
-    bridge_pid_configure(&state->split_pid, &config->leg_split_pid);
+    BridgePidConfigure(&state->leg_pid[WHEELLEG_SIDE_LEFT], &config->leg_length_pid);
+    BridgePidConfigure(&state->leg_pid[WHEELLEG_SIDE_RIGHT], &config->leg_length_pid);
+    BridgePidConfigure(&state->split_pid, &config->leg_split_pid);
 }
 
 uint8_t arbatos_wheelleg_bridge_home_pose(const arbatos_wheelleg_bridge_config_t *config,
                                           fp32 *front_out,
                                           fp32 *back_out)
 {
-    wheelleg_core_foot_point_t target;
+    WheelLegCoreFootPoint target;
     fp32 length;
 
     if (config == 0 || front_out == 0 || back_out == 0)
@@ -232,13 +232,13 @@ uint8_t arbatos_wheelleg_bridge_home_pose(const arbatos_wheelleg_bridge_config_t
     length = (config->min_leg_length_m > 0.02f) ? config->min_leg_length_m : config->default_leg_length_m;
     if (config->max_leg_length_m > 0.02f)
     {
-        length = wheelleg_core_clamp(length, 0.02f, config->max_leg_length_m);
+        length = WheelLegCoreClamp(length, 0.02f, config->max_leg_length_m);
     }
 
     target.x_m = 0.0f;
     target.y_m = length;
     target.length_m = length;
-    return wheelleg_core_inverse_point(&config->geometry,
+    return WheelLegCoreInversePoint(&config->geometry,
                                        &target,
                                        -WHEELLEG_CORE_PI,
                                        -WHEELLEG_CORE_PI,
@@ -264,7 +264,7 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
     fp32 roll_f0;
     fp32 split_tp;
     fp32 hip_scale;
-    wheelleg_core_output_t core_output;
+    WheelLegCoreOutput CoreOutput;
     uint8_t i;
 
     if (config == 0 || state == 0 || input == 0 || output == 0 || input->dt_s <= 0.0f)
@@ -273,7 +273,7 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
     }
 
     (void)memset(output, 0, sizeof(*output));
-    if (wheelleg_core_calc_kinematics(&config->geometry,
+    if (WheelLegCoreCalcKinematics(&config->geometry,
                                       &state->leg[WHEELLEG_SIDE_RIGHT],
                                       input->right_front_pos_rad,
                                       input->right_back_pos_rad,
@@ -281,7 +281,7 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
                                       input->gyro_y_radps,
                                       0u,
                                       input->dt_s) == 0u ||
-        wheelleg_core_calc_kinematics(&config->geometry,
+        WheelLegCoreCalcKinematics(&config->geometry,
                                       &state->leg[WHEELLEG_SIDE_LEFT],
                                       input->left_front_pos_rad,
                                       input->left_back_pos_rad,
@@ -293,7 +293,7 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
         return 0u;
     }
 
-    wheelleg_core_observer_update(&state->observer,
+    WheelLegCoreObserverUpdate(&state->observer,
                                   &state->leg[WHEELLEG_SIDE_LEFT],
                                   &state->leg[WHEELLEG_SIDE_RIGHT],
                                   input->left_wheel_vel_radps,
@@ -303,8 +303,8 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
                                   config->observer_lpf,
                                   input->dt_s);
 
-    bridge_eval_lqr(config, state->leg[WHEELLEG_SIDE_RIGHT].length, k_right);
-    bridge_eval_lqr(config, state->leg[WHEELLEG_SIDE_LEFT].length, k_left);
+    BridgeEvalLqr(config, state->leg[WHEELLEG_SIDE_RIGHT].length, k_right);
+    BridgeEvalLqr(config, state->leg[WHEELLEG_SIDE_LEFT].length, k_left);
 
     if (state->yaw_inited == 0u)
     {
@@ -312,23 +312,23 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
         state->yaw_inited = 1u;
     }
     state->yaw_set += input->target_yaw_rate_radps * input->dt_s;
-    turn_t = wheelleg_core_turn_torque(state->yaw_set,
+    turn_t = WheelLegCoreTurnTorque(state->yaw_set,
                                        input->yaw_rad,
                                        input->gyro_z_radps,
                                        config->turn_pid.kp,
                                        config->turn_pid.kd,
                                        config->turn_pid.max_out);
-    roll_f0 = wheelleg_core_roll_force(0.0f,
+    roll_f0 = WheelLegCoreRollForce(0.0f,
                                        input->roll_rad,
                                        input->gyro_x_radps,
                                        config->roll_pid.kp,
                                        config->roll_pid.kd,
                                        config->roll_pid.max_out);
 
-    target_theta = wheelleg_core_target_theta_from_foot_x(input->target_foot_x_m, input->target_leg_m);
+    target_theta = WheelLegCoreTargetThetaFromFootX(input->target_foot_x_m, input->target_leg_m);
     right_theta_err = state->leg[WHEELLEG_SIDE_RIGHT].theta - target_theta;
     left_theta_err = state->leg[WHEELLEG_SIDE_LEFT].theta - target_theta;
-    x_err_r = wheelleg_core_lqr_x_error(state->observer.x_m,
+    x_err_r = WheelLegCoreLqrXError(state->observer.x_m,
                                         input->target_v_mps,
                                         input->target_yaw_rate_radps,
                                         ARBATOS_WHEELLEG_HOLD_LIMIT_M,
@@ -338,7 +338,7 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
     v_err_l = input->target_v_mps - state->observer.v_mps;
 
     output->wheel_torque_nm[WHEELLEG_SIDE_RIGHT] =
-        wheelleg_core_lqr_wheel_output(k_right,
+        WheelLegCoreLqrWheelOutput(k_right,
                                        right_theta_err,
                                        state->leg[WHEELLEG_SIDE_RIGHT].d_theta,
                                        x_err_r,
@@ -346,7 +346,7 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
                                        input->pitch_rad - config->pitch_balance_offset_right_rad,
                                        input->gyro_y_radps);
     output->wheel_torque_nm[WHEELLEG_SIDE_LEFT] =
-        wheelleg_core_lqr_wheel_output(k_left,
+        WheelLegCoreLqrWheelOutput(k_left,
                                        left_theta_err,
                                        state->leg[WHEELLEG_SIDE_LEFT].d_theta,
                                        x_err_l,
@@ -357,12 +357,12 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
     hip_scale = (input->use_vmc != 0u && input->support_only == 0u) ? config->lqr_hip_torque_scale : 0.0f;
     if (input->use_vmc != 0u && input->support_only == 0u)
     {
-        split_tp = wheelleg_core_pid_calc(&state->split_pid,
+        split_tp = WheelLegCorePidCalc(&state->split_pid,
                                           state->leg[WHEELLEG_SIDE_RIGHT].theta +
                                               state->leg[WHEELLEG_SIDE_LEFT].theta,
                                           2.0f * target_theta);
         state->leg[WHEELLEG_SIDE_RIGHT].tp =
-            hip_scale * wheelleg_core_lqr_hip_output(k_right,
+            hip_scale * WheelLegCoreLqrHipOutput(k_right,
                                                      right_theta_err,
                                                      state->leg[WHEELLEG_SIDE_RIGHT].d_theta,
                                                      x_err_r,
@@ -371,7 +371,7 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
                                                      input->gyro_y_radps,
                                                      split_tp);
         state->leg[WHEELLEG_SIDE_LEFT].tp =
-            hip_scale * wheelleg_core_lqr_hip_output(k_left,
+            hip_scale * WheelLegCoreLqrHipOutput(k_left,
                                                      left_theta_err,
                                                      state->leg[WHEELLEG_SIDE_LEFT].d_theta,
                                                      x_err_l,
@@ -382,7 +382,7 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
     }
     else
     {
-        wheelleg_core_pid_clear(&state->split_pid);
+        WheelLegCorePidClear(&state->split_pid);
         state->leg[WHEELLEG_SIDE_RIGHT].tp = 0.0f;
         state->leg[WHEELLEG_SIDE_LEFT].tp = 0.0f;
     }
@@ -390,7 +390,7 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
     for (i = 0u; i < WHEELLEG_SIDE_COUNT; i++)
     {
         fp32 cos_theta = cosf(state->leg[i].theta);
-        if (wheelleg_core_abs(cos_theta) < 0.1f)
+        if (WheelLegCoreAbs(cos_theta) < 0.1f)
         {
             cos_theta = (cos_theta >= 0.0f) ? 0.1f : -0.1f;
         }
@@ -398,27 +398,27 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
         if (input->use_vmc != 0u)
         {
             state->leg[i].f0 = config->support_bias_n / cos_theta +
-                               wheelleg_core_pid_calc(&state->leg_pid[i],
+                               WheelLegCorePidCalc(&state->leg_pid[i],
                                                       state->leg[i].length,
                                                       input->target_leg_m);
             state->leg[i].f0 += input->jump_force_n;
             state->leg[i].f0 += (i == WHEELLEG_SIDE_RIGHT) ? roll_f0 : -roll_f0;
-            state->leg[i].f0 = wheelleg_core_clamp(state->leg[i].f0,
+            state->leg[i].f0 = WheelLegCoreClamp(state->leg[i].f0,
                                                    -config->max_support_force_n,
                                                    config->max_support_force_n);
-            state->leg[i].tp = wheelleg_core_clamp(state->leg[i].tp,
+            state->leg[i].tp = WheelLegCoreClamp(state->leg[i].tp,
                                                    -config->max_joint_torque_nm,
                                                    config->max_joint_torque_nm);
-            if (wheelleg_core_calc_vmc(&state->leg[i]) == 0u)
+            if (WheelLegCoreCalcVmc(&state->leg[i]) == 0u)
             {
                 return 0u;
             }
             state->leg[i].joint_torque[(uint8_t)WHEELLEG_CORE_JOINT_FRONT] =
-                wheelleg_core_clamp(state->leg[i].joint_torque[(uint8_t)WHEELLEG_CORE_JOINT_FRONT],
+                WheelLegCoreClamp(state->leg[i].joint_torque[(uint8_t)WHEELLEG_CORE_JOINT_FRONT],
                                     -config->max_joint_torque_nm,
                                     config->max_joint_torque_nm);
             state->leg[i].joint_torque[(uint8_t)WHEELLEG_CORE_JOINT_BACK] =
-                wheelleg_core_clamp(state->leg[i].joint_torque[(uint8_t)WHEELLEG_CORE_JOINT_BACK],
+                WheelLegCoreClamp(state->leg[i].joint_torque[(uint8_t)WHEELLEG_CORE_JOINT_BACK],
                                     -config->max_joint_torque_nm,
                                     config->max_joint_torque_nm);
         }
@@ -430,7 +430,7 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
         }
 
         output->wheel_torque_nm[i] =
-            wheelleg_core_clamp(output->wheel_torque_nm[i] * config->lqr_wheel_torque_scale - turn_t,
+            WheelLegCoreClamp(output->wheel_torque_nm[i] * config->lqr_wheel_torque_scale - turn_t,
                                 -config->max_wheel_torque_nm,
                                 config->max_wheel_torque_nm);
         output->joint_torque_nm[i][(uint8_t)WHEELLEG_CORE_JOINT_FRONT] =
@@ -441,16 +441,16 @@ uint8_t arbatos_wheelleg_bridge_step(const arbatos_wheelleg_bridge_config_t *con
         output->leg_theta_rad[i] = state->leg[i].theta;
     }
 
-    wheelleg_core_output_clear(&core_output);
-    wheelleg_core_set_wheel_torques(&core_output, output->wheel_torque_nm);
+    WheelLegCoreOutputClear(&CoreOutput);
+    WheelLegCoreSetWheelTorques(&CoreOutput, output->wheel_torque_nm);
     if (input->use_vmc != 0u)
     {
-        wheelleg_core_set_vmc_joint_torques(&core_output, state->leg, 1, 1, 1, 1);
+        WheelLegCoreSetVmcJointTorques(&CoreOutput, state->leg, 1, 1, 1, 1);
     }
 
     for (i = 0u; i < WHEELLEG_CORE_ACTUATOR_COUNT; i++)
     {
-        output->actuator_torque_nm[i] = core_output.actuator[i].tau;
+        output->actuator_torque_nm[i] = CoreOutput.actuator[i].tau;
     }
     output->observer_x_m = state->observer.x_m;
     output->observer_v_mps = state->observer.v_mps;

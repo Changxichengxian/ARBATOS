@@ -9,10 +9,10 @@
 #include "MotorInst.h"
 
 #include "ControlMgr.h"
-#include "detect_task.h"
-#include "motor_config.h"
-#include "robot_device_config.h"
-#include "robot_task_profile.h"
+#include "DetectTask.h"
+#include "MotorConfig.h"
+#include "RobotDeviceConfig.h"
+#include "RobotTaskProfile.h"
 
 #include <string.h>
 
@@ -42,7 +42,7 @@ static void MotorInstAdd(MotorId actuator_id,
                                MotorRole role,
                                uint8_t role_index,
                                uint8_t fallback_bus,
-                               uint8_t detect_toe,
+                               uint8_t DetectToe,
                                uint8_t use_detect,
                                const char *name,
                                const motor_node_param_t *node,
@@ -64,7 +64,7 @@ static void MotorInstAdd(MotorId actuator_id,
     inst->role = role;
     inst->role_index = role_index;
     inst->fallback_bus = fallback_bus;
-    inst->detect_toe = detect_toe;
+    inst->DetectToe = DetectToe;
     inst->use_detect = use_detect;
     inst->name = name;
     inst->node = node;
@@ -74,7 +74,7 @@ static void MotorInstAdd(MotorId actuator_id,
 
 static MotorRole MotorInstRoleFromConfig(uint8_t group)
 {
-    switch ((robot_config_motor_group_e)group)
+    switch ((RobotConfigMotorGroup)group)
     {
     case ROBOT_CONFIG_MOTOR_GROUP_CHASSIS:
         return MotorRoleChassis;
@@ -95,14 +95,14 @@ static MotorRole MotorInstRoleFromConfig(uint8_t group)
     }
 }
 
-static uint8_t MotorInstDetectToeFromConfig(const robot_config_motor_device_t *device)
+static uint8_t MotorInstDetectToeFromConfig(const RobotConfigMotorDevice *device)
 {
     if (device == NULL)
     {
         return MOTOR_INST_INVALID_DETECT_TOE;
     }
 
-    switch ((robot_config_motor_group_e)device->group)
+    switch ((RobotConfigMotorGroup)device->group)
     {
     case ROBOT_CONFIG_MOTOR_GROUP_CHASSIS:
         return (uint8_t)(CHASSIS_MOTOR1_TOE + device->group_index);
@@ -117,14 +117,14 @@ static uint8_t MotorInstDetectToeFromConfig(const robot_config_motor_device_t *d
     }
 }
 
-static uint8_t MotorInstUseDetectFromConfig(const robot_config_motor_device_t *device)
+static uint8_t MotorInstUseDetectFromConfig(const RobotConfigMotorDevice *device)
 {
     if (device == NULL)
     {
         return 0u;
     }
 
-    switch ((robot_config_motor_group_e)device->group)
+    switch ((RobotConfigMotorGroup)device->group)
     {
     case ROBOT_CONFIG_MOTOR_GROUP_CHASSIS:
     case ROBOT_CONFIG_MOTOR_GROUP_YAW:
@@ -148,7 +148,7 @@ static motor_measure_t *MotorInstMeasureFromId(MotorId actuator_id)
 
 static uint8_t MotorInstArmRoleEnabled(void)
 {
-    return (uint8_t)(robot_profile_need_arm_task() || robot_profile_is_wheelleg_mit());
+    return (uint8_t)(RobotProfileNeedArmTask() || RobotProfileIsWheelLegMit());
 }
 
 static uint8_t MotorInstRxEnabled(const MotorInst *inst)
@@ -179,13 +179,13 @@ static void MotorInstFeedbackInsert(const MotorInst *inst)
 {
     uint8_t slot = 0u;
     const uint8_t bus = (inst != NULL) ? MotorInstBus(inst) : 0u;
-    const uint16_t std_id = (inst != NULL) ? motor_cfg_feedback_id(inst->node) : 0u;
+    const uint16_t std_id = (inst != NULL) ? MotorCfgFeedbackId(inst->node) : 0u;
 
     if (inst == NULL ||
         MotorInstRxEnabled(inst) == 0u ||
         bus == 0u ||
-        motor_cfg_transport(inst->node) != MOTOR_TRANSPORT_CAN ||
-        motor_cfg_can_id(inst->node) == 0u)
+        MotorCfgTransport(inst->node) != MOTOR_TRANSPORT_CAN ||
+        MotorCfgCanId(inst->node) == 0u)
     {
         return;
     }
@@ -238,11 +238,11 @@ static uint8_t MotorRouteNodeBus(const MotorInst *inst)
     {
         return 0u;
     }
-    if (motor_cfg_transport(inst->node) == MOTOR_TRANSPORT_RS485)
+    if (MotorCfgTransport(inst->node) == MOTOR_TRANSPORT_RS485)
     {
         return inst->node->rs485_port;
     }
-    return motor_cfg_can_bus(inst->fallback_bus, inst->node);
+    return MotorCfgCanBus(inst->fallback_bus, inst->node);
 }
 
 static void MotorRouteAdd(const MotorInst *inst)
@@ -266,18 +266,18 @@ static void MotorRouteAdd(const MotorInst *inst)
     route->fallbackBus = inst->fallback_bus;
     route->bus = MotorRouteNodeBus(inst);
     route->enabled = 1u;
-    route->transport = (uint8_t)motor_cfg_transport(inst->node);
-    route->protocol = (uint8_t)motor_cfg_protocol(inst->node);
-    route->controlMode = (uint8_t)motor_cfg_control_mode(inst->node);
-    route->isRmGroup = motor_cfg_is_rm_group_protocol(inst->node);
+    route->transport = (uint8_t)MotorCfgTransport(inst->node);
+    route->protocol = (uint8_t)MotorCfgProtocol(inst->node);
+    route->controlMode = (uint8_t)MotorCfgControlMode(inst->node);
+    route->isRmGroup = MotorCfgIsRmGroupProtocol(inst->node);
     route->cmdCaps = MotorInstNodeCaps(inst->node);
     route->model = (uint8_t)inst->node->model;
-    route->canId = motor_cfg_can_id(inst->node);
-    route->feedbackId = motor_cfg_feedback_id(inst->node);
+    route->canId = MotorCfgCanId(inst->node);
+    route->feedbackId = MotorCfgFeedbackId(inst->node);
     route->name = inst->name;
     route->node = inst->node;
     route->measure = inst->measure;
-    route->mitLimits = motor_cfg_mit_limits(inst->node);
+    route->mitLimits = MotorCfgMitLimits(inst->node);
     sRouteByMotor[route->motorId] = route;
 }
 
@@ -325,7 +325,7 @@ static void MotorInstEnsure(void)
 
 void MotorInstRefresh(void)
 {
-    const uint8_t device_count = robot_config_motor_device_count();
+    const uint8_t device_count = RobotConfigMotorDeviceCount();
 
     sMotorInstCount = 0u;
     (void)memset(sMotorInst, 0, sizeof(sMotorInst));
@@ -334,10 +334,10 @@ void MotorInstRefresh(void)
 
     for (uint8_t i = 0u; i < device_count; i++)
     {
-        robot_config_motor_device_t device;
+        RobotConfigMotorDevice device;
         motor_measure_t *measure;
 
-        if (robot_config_motor_device_get(i, &device) == 0u)
+        if (RobotConfigMotorDeviceGet(i, &device) == 0u)
         {
             continue;
         }
@@ -448,9 +448,9 @@ uint8_t MotorInstResolveIds(const char *const *names, uint8_t count, MotorId *ou
 
     for (uint8_t i = 0u; i < count; i++)
     {
-        robot_config_motor_device_t device;
+        RobotConfigMotorDevice device;
 
-        if (robot_config_motor_device_find_by_name(names[i], &device) != 0u)
+        if (RobotConfigMotorDeviceFindByName(names[i], &device) != 0u)
         {
             out[i] = device.actuator_id;
             resolved++;
@@ -517,7 +517,7 @@ uint8_t MotorInstBus(const MotorInst *inst)
     {
         return 0u;
     }
-    return motor_cfg_can_bus(inst->fallback_bus, inst->node);
+    return MotorCfgCanBus(inst->fallback_bus, inst->node);
 }
 
 uint8_t MotorInstEnabled(const MotorInst *inst)
@@ -526,7 +526,7 @@ uint8_t MotorInstEnabled(const MotorInst *inst)
     {
         return 0u;
     }
-    return (motor_cfg_node_id(inst->node) != 0u) ? 1u : 0u;
+    return (MotorCfgNodeId(inst->node) != 0u) ? 1u : 0u;
 }
 
 static uint8_t MotorInstResolveCmdTarget(const char *name, MotorId *out)
@@ -551,12 +551,12 @@ static uint8_t MotorInstCmdEnabled(MotorId id)
 
 static uint8_t MotorInstNodeCaps(const motor_node_param_t *node)
 {
-    const motor_model_db_entry_t *entry;
+    const MotorModelDbEntry *entry;
     uint8_t caps = (uint8_t)MotorCmdCapCurrent;
-    const motor_transport_e transport = motor_cfg_transport(node);
-    const motor_protocol_e protocol = motor_cfg_protocol(node);
+    const motor_transport_e transport = MotorCfgTransport(node);
+    const motor_protocol_e protocol = MotorCfgProtocol(node);
 
-    if (node == NULL || motor_cfg_node_id(node) == 0u)
+    if (node == NULL || MotorCfgNodeId(node) == 0u)
     {
         return 0u;
     }
@@ -571,7 +571,7 @@ static uint8_t MotorInstNodeCaps(const motor_node_param_t *node)
                          (uint8_t)MotorCmdCapForcePos);
     }
 
-    entry = motor_cfg_model_db(node->model);
+    entry = MotorCfgModelDb(node->model);
     if (entry == NULL)
     {
         return caps;
@@ -607,21 +607,21 @@ uint8_t MotorInstTransportId(MotorId id)
 {
     const motor_node_param_t *node = MotorInstNode(id);
 
-    return (node != NULL) ? (uint8_t)motor_cfg_transport(node) : 0u;
+    return (node != NULL) ? (uint8_t)MotorCfgTransport(node) : 0u;
 }
 
 uint8_t MotorInstProtocolId(MotorId id)
 {
     const motor_node_param_t *node = MotorInstNode(id);
 
-    return (node != NULL) ? (uint8_t)motor_cfg_protocol(node) : 0u;
+    return (node != NULL) ? (uint8_t)MotorCfgProtocol(node) : 0u;
 }
 
 uint8_t MotorInstControlModeId(MotorId id)
 {
     const motor_node_param_t *node = MotorInstNode(id);
 
-    return (node != NULL) ? (uint8_t)motor_cfg_control_mode(node) : 0u;
+    return (node != NULL) ? (uint8_t)MotorCfgControlMode(node) : 0u;
 }
 
 uint8_t MotorInstCapsId(MotorId id)

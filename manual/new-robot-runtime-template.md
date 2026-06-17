@@ -12,7 +12,7 @@
 | `sensor.xxx` | sensor | CAN / UART / SPI | 设备表 | 后续接入通用设备表 |
 | `link.xxx` | link | USB / UART | 设备表 | 遥控、图传、上位机链路 |
 
-当前代码里设备先写在 `g_config.devices`，再通过 `robot_device_config.h` 解析成运行时设备。不要让新控制器直接读 `g_config.motor.yaw` 这类固定字段。
+当前代码里设备先写在 `g_config.devices`，再通过 `RobotDeviceConfig.h` 解析成运行时设备。不要让新控制器直接读 `g_config.motor.yaw` 这类固定字段。
 
 ## 2. 绑定电机实例
 
@@ -87,7 +87,7 @@ static const ControlController triple_yaw_controller = {
 
 ## 4. 加任务模块
 
-确实需要新任务时，再加任务模块。已有项目都用 `app_task_bootstrap.h` 创建启用任务：
+确实需要新任务时，再加任务模块。已有项目都用 `AppTaskBootstrap.h` 创建启用任务：
 
 1. 给模块一个 ID。内置模块继续用 `ROBOT_TASK_MODULE_XXX`；项目私有模块从 `ROBOT_TASK_MODULE_CUSTOM_BASE` 往后取。
 2. 在 `g_config.profile.task_modules[]` 里启用这个 ID。

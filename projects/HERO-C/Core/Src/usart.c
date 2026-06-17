@@ -237,7 +237,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     __HAL_LINKDMA(uartHandle,hdmarx,hdma_usart3_rx);
 
     /* USART3 interrupt Init */
-    /* NOTE: USART3 IRQ handler uses FreeRTOS *FromISR APIs (see bsp_rc.c), so keep
+    /* NOTE: USART3 IRQ handler uses FreeRTOS *FromISR APIs (see BspRc.c), so keep
      * its preempt priority at or below (numerically >=) the max syscall level. */
     HAL_NVIC_SetPriority(USART3_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(USART3_IRQn);

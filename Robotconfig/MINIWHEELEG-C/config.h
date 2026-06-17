@@ -61,4 +61,4 @@
 #define WHEELLEG_IMU_GYRO_Y_SIGN (1.0f)
 #define WHEELLEG_BENCH_TARGET_FOOT_X_M 0.0f
 
-#include "robot_config_types.h"
+#include "RobotConfigTypes.h"
