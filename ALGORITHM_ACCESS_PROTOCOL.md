@@ -1,21 +1,11 @@
 # 算法接入协议
 
-这份文档定第一版算法串口协议：算法可以给云台目标角，也可以给底盘移动命令。压缩的是包头，不删控制信息。
+本文按当前代码写，主要看 `shared/application/comm/vision/VisionLink.c`。
 
-已接代码：
+现在所有算法串口包都用 2 字节包头。`LS` 是 2 字节，`0xA5 0x5A 0x02` 是 3 字节，所以底盘移动不再用 `0xA5 0x5A + cmd`，改成带类型的 2 字节包头：
 
-- 新协议解析：`shared/application/comm/vision/VisionLink.c`
-- 外部运动意图缓存：`shared/application/robot/ExternalMotionIntent.c`
-- 云台命令入口：`shared/application/gimbal/GimbalControlTask.c`
-- 移动命令执行：`shared/application/chassis/ChassisBehaviour.c`
-- USB 虚拟串口入口：`projects/*/USB_DEVICE/App/usbd_cdc_if.c`
-
-代码边界：
-
-- `VisionLink.c` 只认识串口包格式，负责解析 `AIM_CMD` 和 `MOVE_CMD`。
-- `MOVE_CMD` 会先转换成 `external_motion_intent_t`，再写入 `ExternalMotionIntent.c`。
-- 底盘只读取 `external_motion_intent_t`，不直接依赖 `AlgorithmMoveCmd` 这类串口包结构。
-- 没有算法链路的目标不需要各自写空实现；统一由 `external_motion_intent` 在无有效命令时返回 false。
+- `LS`：云台自瞄和板端瞄准状态。
+- `LC`：底盘移动目标和移动反馈。
 
 ## 1. 基本约定
 
@@ -23,224 +13,78 @@
 - `float` 为 32 位 IEEE754。
 - 角度单位 rad，角速度 rad/s，角加速度 rad/s^2。
 - 平移速度 m/s，平移加速度 m/s^2。
-- CRC16 复用工程里的 `append_CRC16_check_sum()` / `verify_CRC16_check_sum()`，初值 `0xffff`，低字节在前。
-- 算法只发目标，不直接发电机电流，也不直接发四个轮子的目标转速。
+- CRC16 使用工程里的 `append_CRC16_check_sum()` / `verify_CRC16_check_sum()`。
+- 算法发目标量，不直接发电机电流，也不直接发四个轮子的目标转速。
+- 算法只关心板端实际用于控制的反馈，不关心底层来自 IMU、编码器还是融合结果。
 
-## 2. 紧凑帧格式
+## 2. 包总览
 
-外层帧只保留 2 字节包头、1 字节命令号和 CRC16。没有版本号、序号、长度字段；每个命令都是固定长度。
+| 包 | 方向 | 包头 | payload | 总长 |
+| --- | --- | --- | ---: | ---: |
+| `GimbalToVision` | 板端 -> 算法 | `'L' 'S'` | 39 | 43 |
+| `VisionToGimbal` | 算法 -> 板端 | `'L' 'S'` | 25 | 29 |
+| `VisionToChassis` | 算法 -> 板端 | `'L' 'C'` | 16 | 20 |
+| `ChassisToVision` | 板端 -> 算法 | `'L' 'C'` | 14 | 18 |
 
-```text
-sof0 sof1 cmd payload crc16
-```
+板端接收算法数据时：
 
-| 字段 | 长度 | 说明 |
-| --- | ---: | --- |
-| `sof0` | 1 | 固定 `0xA5` |
-| `sof1` | 1 | 固定 `0x5A` |
-| `cmd` | 1 | 命令号 |
-| `payload` | 固定 | 按命令号决定长度 |
-| `crc16` | 2 | 从 `sof0` 算到 payload 末尾 |
+- `LS` 按 29 字节 `VisionToGimbal` 解析。
+- `LC` 按 20 字节 `VisionToChassis` 解析。
 
-命令号：
+板端发送给算法时：
 
-| cmd | 名称 | payload 长度 | 总帧长 | 方向 |
-| ---: | --- | ---: | ---: | --- |
-| `0x01` | `AIM_CMD` | 28 | 33 | 算法 -> 板端 |
-| `0x02` | `MOVE_CMD` | 36 | 41 | 算法 -> 板端 |
+- `LS` 是 43 字节 `GimbalToVision`。
+- `LC` 是 18 字节 `ChassisToVision`。
 
-解析策略：
+## 3. 板端瞄准状态：GimbalToVision
 
-- 按 `0xA5 0x5A` 找包头。
-- 第 3 字节决定固定帧长。
-- CRC 不过就滑动 1 字节继续找包头。
-- 旧 `SP` 自瞄包仍然兼容，方便先联调云台。
-
-## 3. AIM_CMD：云台命令
-
-速度、加速度保留。现在云台控制代码主要使用 `yaw_rad / pitch_rad`，但协议里保留速度和加速度，后续可以做前馈或预测。
+板端周期发送瞄准相关反馈、姿态参考和射速信息。
 
 ```c
-typedef struct __attribute__((packed)) AlgorithmAimCmd
+typedef struct __attribute__((packed)) GimbalToVision
 {
+    uint8_t head[2];     // 'L','S'
     uint8_t mode;
-    uint8_t flags;
-    uint16_t timeout_ms;
-    float yaw_rad;
-    float yaw_vel_radps;
-    float yaw_acc_radps2;
-    float pitch_rad;
-    float pitch_vel_radps;
-    float pitch_acc_radps2;
-} AlgorithmAimCmd;
+    float q[4];
+    float yaw;
+    float yaw_vel;
+    float pitch;
+    float pitch_vel;
+    float bullet_speed;
+    uint16_t bullet_count;
+    uint16_t crc16;
+} GimbalToVision;
 ```
 
-字段：
+字段说明：
 
 | 字段 | 说明 |
 | --- | --- |
-| `mode` | 0 关闭自瞄；1 控制云台；2 控制云台并请求开火 |
-| `flags bit0` | yaw 有效 |
-| `flags bit1` | pitch 有效 |
-| `flags bit2` | 目标角为绝对角 |
-| `timeout_ms` | 建议 100；0 表示板端默认 |
-| `yaw_rad` | yaw 目标角 |
-| `yaw_vel_radps` | yaw 目标角速度 |
-| `yaw_acc_radps2` | yaw 目标角加速度 |
-| `pitch_rad` | pitch 目标角 |
-| `pitch_vel_radps` | pitch 目标角速度 |
-| `pitch_acc_radps2` | pitch 目标角加速度 |
+| `head` | 固定 `'L' 'S'` |
+| `mode` | 0 空闲，1 自瞄，2 小符，3 大符；当前发送侧保持 0 |
+| `q[4]` | 板端姿态参考，顺序 `w, x, y, z`；算法不要假设它一定是云台 IMU |
+| `yaw` | 板端实际用于瞄准控制的 yaw 反馈 |
+| `yaw_vel` | 板端实际用于瞄准控制的 yaw 角速度反馈 |
+| `pitch` | 板端实际用于瞄准控制的 pitch 反馈 |
+| `pitch_vel` | 板端实际用于瞄准控制的 pitch 角速度反馈 |
+| `bullet_speed` | 当前射速估计 |
+| `bullet_count` | 17mm 剩余允许发弹量 |
+| `crc16` | 整包 CRC16 |
 
-当前代码接入情况：
+代码里 `yaw/pitch/yaw_vel/pitch_vel` 优先来自 `GimbalState`，也就是云台控制任务实际使用的反馈。具体是 IMU、编码器还是融合值，由各车型底层决定；比如英雄可以用云台 IMU，哨兵如果 IMU 不在云台上，就应该由底层给出编码器或融合后的云台反馈。
 
-- 新 `AIM_CMD` 会被转换成旧 `VisionToGimbal`，所以云台现有逻辑能直接吃到 `yaw/pitch/yaw_vel/yaw_acc/pitch_vel/pitch_acc`。
-- `GimbalControlTask.c` 目前只把 `yaw_rad` 和 `pitch_rad` 用到目标角里，速度和加速度先保留在包里。
-- 旧代码里 pitch 有取负逻辑，实车第一次联调用小角度确认方向。
+`q[4]` 只作为板端姿态参考保留。算法如果要算目标角，优先按 `yaw/pitch` 这组控制反馈对齐，不要把 `q[4]` 固定理解成云台姿态。
 
-## 4. MOVE_CMD：底盘移动命令
+`HostLinkTask` 每 2ms 调一次 `VisionLinkPollTx()`。底盘状态有效后，每 5 次里有 1 次会发 `ChassisToVision`，其余时间发 `GimbalToVision`。USB 忙时跳过当次发送。
 
-移动命令先由 `VisionLink.c` 解析，再写入 `ExternalMotionIntent.c`。`ChassisBehaviour.c` 只读取转换后的外部运动意图。它只覆盖底盘目标速度，不绕过后面的运动学、功率限制和电机 PID。
+## 4. 云台自瞄：VisionToGimbal
 
-参考其他队伍的做法，这里不让算法直接给四个轮子的目标值。算法只给 `vx/vy/wz`，板端按云台、底盘或场地坐标做转换，再交给原来的底盘控制链路。
-
-```c
-typedef struct __attribute__((packed)) AlgorithmMoveCmd
-{
-    uint8_t mode;
-    uint8_t frame;
-    uint16_t flags;
-    uint16_t timeout_ms;
-    uint16_t reserved;
-    float vx_mps;
-    float vy_mps;
-    float wz_radps;
-    float yaw_offset_rad;
-    float ax_mps2;
-    float ay_mps2;
-    float wz_acc_radps2;
-} AlgorithmMoveCmd;
-```
-
-字段：
-
-| 字段 | 说明 |
-| --- | --- |
-| `mode` | 0 不接管；1 跟随云台；2 不跟随 yaw，直接用 `wz`；3 小陀螺平移；4 停车 |
-| `frame` | 0 云台坐标系；1 底盘坐标系；2 场地坐标系 |
-| `flags bit0` | `vx_mps / vy_mps` 有效 |
-| `flags bit1` | `wz_radps` 有效 |
-| `flags bit2` | `yaw_offset_rad` 有效 |
-| `flags bit3` | 加速度字段有效 |
-| `timeout_ms` | 建议 200；0 表示板端默认 200 |
-| `vx_mps` | 前进为正 |
-| `vy_mps` | 左移为正 |
-| `wz_radps` | 逆时针为正 |
-| `yaw_offset_rad` | 跟随云台时的底盘相对云台目标偏角 |
-| `ax_mps2` | 前后加速度，用来限制 `vx_mps` 的变化速度 |
-| `ay_mps2` | 左右加速度，用来限制 `vy_mps` 的变化速度 |
-| `wz_acc_radps2` | 自转角加速度，用来限制 `wz_radps` 的变化速度 |
-
-板端映射：
-
-| `mode` | 当前接入方式 |
-| ---: | --- |
-| 0 | 清空外部运动接管，不使用算法移动 |
-| 1 | 切到 `CHASSIS_VECTOR_FOLLOW_GIMBAL_YAW`，覆盖 `vx/vy/yaw_offset` |
-| 2 | 切到 `CHASSIS_VECTOR_NO_FOLLOW_YAW`，覆盖 `vx/vy/wz` |
-| 3 | 切到小陀螺行为，覆盖 `vx/vy/wz`；如果 `wz` 无效，用板端小陀螺默认速度 |
-| 4 | 切到停车，速度清零 |
-
-内部接口：
-
-```c
-typedef struct
-{
-    uint8_t mode;
-    uint8_t frame;
-    uint16_t flags;
-    uint16_t timeout_ms;
-    fp32 vx_mps;
-    fp32 vy_mps;
-    fp32 wz_radps;
-    fp32 yaw_offset_rad;
-    fp32 ax_mps2;
-    fp32 ay_mps2;
-    fp32 wz_acc_radps2;
-} external_motion_intent_t;
-```
-
-`AlgorithmMoveCmd` 是串口协议结构，只在解析层使用；底盘层只接触 `external_motion_intent_t`。后面如果 UART、AUX 或别的链路也要给底盘移动命令，直接写入同一个外部运动意图接口即可。
-
-坐标系处理：
-
-- `frame=0`：算法以云台朝向为前方，适合自瞄边打边移动。
-- `frame=1`：算法以车体正前为前方，适合直接控制底盘。
-- `frame=2`：算法以 IMU 算出来的场地 yaw 为参考，板端会先转到底盘坐标。
-- `mode=1` 跟随云台时，`vx/vy` 最终仍会走底盘原来的跟随云台转换和 yaw 跟随 PID。
-- `mode=2/3` 时，`vx/vy/wz` 会直接变成底盘速度目标，再走轮速分解、功率限制和电机 PID。
-
-小陀螺接入：
-
-- `mode=3` 就是小陀螺移动。
-- `flags bit0=1` 时，`vx_mps / vy_mps` 有效，板端会保留平移。
-- `flags bit1=1` 时，`wz_radps` 有效，算法指定自转速度。
-- `flags bit1=0` 时，板端使用当前车型配置里的小陀螺默认自转速度。
-- `flags bit3=1` 时，`ax_mps2 / ay_mps2 / wz_acc_radps2` 会限制速度变化，避免小陀螺突然加速。
-- 推荐第一版先用云台坐标系：不带加速度限制用 `mode=3, frame=0, flags=0x0003`；带加速度限制用 `mode=3, frame=0, flags=0x000B`。
-
-非全向车说明：
-
-- 麦轮、X-drive 这类全向底盘可以直接响应 `vx/vy/wz`。
-- 轮腿平衡车、差速车、舵轮未转到位的底盘这类非全向移动平台，不能像麦轮一样直接侧移。
-- 非小陀螺模式下，`vy_mps` 这类横向平移只能通过“车体转向 + 前进/后退”慢慢拼出来，所以横移响应会明显慢。
-- 小陀螺模式下车体持续旋转，算法给的平移方向更容易被分解到前后运动里，横向机动会比非小陀螺模式自然一些。
-- 如果目标车不是全向底盘，算法端不要假设 `vy_mps` 能瞬时执行；建议降低横移期望，并提高 `timeout_ms` 和轨迹预测容错。
-
-建议算法先用：
-
-- 普通移动：`mode=1, frame=0, flags=0x000F`。
-- 小陀螺移动：`mode=3, frame=0, flags=0x000B`。
-
-## 5. 串口链路
-
-现在最方便的是 USB 虚拟串口。物理 UART 后续可以把 AUX UART 收到的字节喂给同一个解析器。
-
-推荐参数：
-
-| 项目 | 建议 |
-| --- | --- |
-| 物理 UART | 3.3V TTL，TX/RX 交叉，GND 共地 |
-| 波特率 | 921600；低速测试可用 115200 |
-| 格式 | 8N1，也就是 8 数据位、无校验、1 停止位 |
-| 算法频率 | 50-200Hz |
-
-## 6. 安全规则
-
-- 遥控安全档最高优先级，安全档下忽略算法命令。
-- 遥控离线、IMU 离线、云台电机离线、底盘电机离线时，算法不能接管。
-- 移动命令超时后不再覆盖底盘输入。
-- `timeout_ms=0` 时，板端按 200ms 默认超时处理。
-- 拒绝 NaN、Inf、过大角度、过大速度这类异常输入。
-- `vx/vy/wz` 仍要走板端限幅、功率限制和电机 PID。
-- 算法只能请求开火，不能绕过发射安全判断。
-
-第一版限幅建议：
-
-| 项目 | 建议值 |
-| --- | --- |
-| yaw 单包变化 | 不超过 0.35rad |
-| pitch 单包变化 | 不超过 0.20rad |
-| 平移速度 | 不超过板端最大速度的 60% |
-| 自转速度 | 不超过板端小陀螺速度的 60% |
-
-## 7. 旧自瞄包兼容
-
-旧包仍然能用：
+算法给云台发目标角。速度和加速度字段保留给前馈或预测使用。
 
 ```c
 typedef struct __attribute__((packed)) VisionToGimbal
 {
-    uint8_t head[2]; // 'S','P'
+    uint8_t head[2];   // 'L','S'
     uint8_t mode;
     float yaw;
     float yaw_vel;
@@ -252,4 +96,150 @@ typedef struct __attribute__((packed)) VisionToGimbal
 } VisionToGimbal;
 ```
 
-旧包没有命令号，不能扩展移动控制。后续建议算法统一发新帧。
+字段说明：
+
+| 字段 | 说明 |
+| --- | --- |
+| `head` | 固定 `'L' 'S'` |
+| `mode` | 0 关闭自瞄，1 控制云台，2 控制云台并请求开火 |
+| `yaw` | yaw 目标角 |
+| `yaw_vel` | yaw 目标角速度 |
+| `yaw_acc` | yaw 目标角加速度 |
+| `pitch` | pitch 目标角 |
+| `pitch_vel` | pitch 目标角速度 |
+| `pitch_acc` | pitch 目标角加速度 |
+| `crc16` | 整包 CRC16 |
+
+当前云台控制主要使用 `yaw` 和 `pitch`。算法可以继续填速度、加速度，板端后续要加前馈时不用再改包。
+
+## 5. 底盘移动：VisionToChassis
+
+算法发 `VisionToChassis` 控制底盘移动。板端解析后会转换成 `ExternalMotionIntent`，再由底盘控制代码执行。
+
+```c
+typedef struct __attribute__((packed)) VisionToChassis
+{
+    uint8_t head[2];     // 'L','C'
+    uint8_t mode;
+    uint8_t frame;
+    uint8_t flags;
+    uint8_t timeout_10ms;
+    int16_t vx_cmps;
+    int16_t vy_cmps;
+    int16_t wz_mradps;
+    int16_t yaw_offset_mrad;
+    int16_t ax_cmps2;
+    int16_t ay_cmps2;
+    int16_t wz_acc_mradps2;
+    uint16_t crc16;
+} VisionToChassis;
+```
+
+总长：20 字节。
+
+缩放关系：
+
+| 字段 | 实际值 |
+| --- | --- |
+| `timeout_10ms` | `0` 表示板端默认 200ms；非 0 表示 `raw * 10ms` |
+| `vx_cmps` | `vx_mps = raw * 0.01` |
+| `vy_cmps` | `vy_mps = raw * 0.01` |
+| `wz_mradps` | `wz_radps = raw * 0.001` |
+| `yaw_offset_mrad` | `yaw_offset_rad = raw * 0.001` |
+| `ax_cmps2` | `ax_mps2 = raw * 0.01` |
+| `ay_cmps2` | `ay_mps2 = raw * 0.01` |
+| `wz_acc_mradps2` | `wz_acc_radps2 = raw * 0.001` |
+
+`mode`：
+
+| 值 | 含义 |
+| ---: | --- |
+| 0 | 不接管移动 |
+| 1 | 跟随云台 yaw，使用 `vx/vy/yaw_offset` |
+| 2 | 不跟随 yaw，直接使用 `vx/vy/wz` |
+| 3 | 小陀螺移动，使用 `vx/vy/wz` |
+| 4 | 停车，速度清零 |
+
+`frame`：
+
+| 值 | 坐标系 |
+| ---: | --- |
+| 0 | 云台坐标系，算法以云台朝向为前方 |
+| 1 | 底盘坐标系，算法以车体正前为前方 |
+| 2 | 场地坐标系，板端按自己的姿态估计转换到底盘坐标 |
+
+`flags`：
+
+| bit | 含义 |
+| ---: | --- |
+| 0 | `vx/vy` 有效 |
+| 1 | `wz` 有效 |
+| 2 | `yaw_offset` 有效 |
+| 3 | 加速度字段有效 |
+
+小陀螺接入：
+
+- `mode=3` 表示小陀螺移动。
+- `flags bit1=1` 时使用算法给的 `wz`。
+- `flags bit1=0` 时使用板端配置里的默认小陀螺速度。
+- 推荐起步用 `mode=3, frame=0, flags=0x0B`。
+
+非全向底盘注意：
+
+- 麦轮、X-drive 这类全向底盘可以直接响应 `vx/vy/wz`。
+- 轮腿平衡车、差速车、舵轮没转到位的底盘，不能瞬时侧移。
+- 非小陀螺模式下，横向平移一般只能由车体旋转和前进后退拼出来，所以 `vy` 响应会慢。
+
+## 6. 底盘移动反馈：ChassisToVision
+
+板端把当前底盘速度和目标速度发给算法。
+
+```c
+typedef struct __attribute__((packed)) ChassisToVision
+{
+    uint8_t head[2];     // 'L','C'
+    uint8_t valid;
+    uint8_t mode;
+    int16_t vx_cmps;
+    int16_t vy_cmps;
+    int16_t wz_mradps;
+    int16_t vx_set_cmps;
+    int16_t vy_set_cmps;
+    int16_t wz_set_mradps;
+    uint16_t crc16;
+} ChassisToVision;
+```
+
+总长：18 字节。
+
+字段说明：
+
+| 字段 | 说明 |
+| --- | --- |
+| `valid` | 1 表示底盘状态有效 |
+| `mode` | 当前底盘模式 |
+| `vx_cmps / vy_cmps / wz_mradps` | 底盘反馈速度 |
+| `vx_set_cmps / vy_set_cmps / wz_set_mradps` | 底盘目标速度 |
+
+缩放和 `VisionToChassis` 一样：`cmps * 0.01` 转 m/s，`mradps * 0.001` 转 rad/s。
+
+## 7. 串口建议
+
+| 项目 | 建议 |
+| --- | --- |
+| 物理 UART | 3.3V TTL，TX/RX 交叉，GND 共地 |
+| 波特率 | 921600；低速测试可用 115200 |
+| 格式 | 8N1 |
+| 算法发送频率 | 自瞄 50-200Hz，移动 20-100Hz |
+
+当前代码走 USB 虚拟串口入口。后面物理 UART 接入时，把收到的字节交给同一个解析函数即可。
+
+## 8. 安全规则
+
+- 遥控安全档优先级最高。
+- 遥控离线、云台控制反馈无效、底盘电机离线时，算法不能接管。
+- 移动命令超时后不再覆盖底盘输入。
+- `timeout_10ms=0` 时，板端按默认 200ms 处理。
+- 拒绝 NaN、Inf 和明显过大的速度、角度输入。
+- `vx/vy/wz` 仍然要走板端限幅、功率限制和电机 PID。
+- 算法只能请求开火，不能绕过发射安全判断。

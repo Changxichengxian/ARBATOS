@@ -16,13 +16,13 @@
 
 typedef struct __attribute__((packed)) GimbalToVision
 {
-    uint8_t head[2];
+    uint8_t head[2];     // 'L','S'
     uint8_t mode;        // 0: idle, 1: auto-aim, 2: small buff, 3: large buff
-    float   q[4];        // wxyz
-    float   yaw;
-    float   yaw_vel;
-    float   pitch;
-    float   pitch_vel;
+    float   q[4];        // board attitude reference, wxyz
+    float   yaw;         // aiming feedback yaw
+    float   yaw_vel;     // aiming feedback yaw rate
+    float   pitch;       // aiming feedback pitch
+    float   pitch_vel;   // aiming feedback pitch rate
     float   bullet_speed;
     uint16_t bullet_count;
     uint16_t crc16;
@@ -30,7 +30,7 @@ typedef struct __attribute__((packed)) GimbalToVision
 
 typedef struct __attribute__((packed)) VisionToGimbal
 {
-    uint8_t head[2];
+    uint8_t head[2];   // 'L','S'
     uint8_t mode;      // 0: idle, 1: control no-fire, 2: control and fire
     float   yaw;
     float   yaw_vel;

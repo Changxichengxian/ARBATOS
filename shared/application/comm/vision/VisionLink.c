@@ -13,98 +13,88 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "InsTask.h"
 #include "Referee.h"
 #include "SdLog.h"
 #include "CRC8_CRC16.h"
+#include "ChassisState.h"
 #include "ExternalMotionIntent.h"
+#include "GimbalState.h"
 #include "usbd_cdc_if.h"
 
 #define VISION_RX_FRAME_SIZE      ((uint32_t)sizeof(VisionToGimbal))
+#define CHASSIS_RX_FRAME_SIZE     ((uint32_t)sizeof(VisionToChassis))
 #define VISION_RX_STREAM_BUF_SIZE 128u
-#define ALGORITHM_FRAME_HEADER_SIZE 3u
-#define ALGORITHM_FRAME_CRC_SIZE    2u
-#define ALGORITHM_AIM_FRAME_SIZE    (ALGORITHM_FRAME_HEADER_SIZE + (uint32_t)sizeof(AlgorithmAimCmd) + ALGORITHM_FRAME_CRC_SIZE)
-#define ALGORITHM_MOVE_FRAME_SIZE   (ALGORITHM_FRAME_HEADER_SIZE + (uint32_t)sizeof(AlgorithmMoveCmd) + ALGORITHM_FRAME_CRC_SIZE)
+#define VISION_FRAME_SOF0         'L'
+#define VISION_FRAME_SOF1         'S'
+#define CHASSIS_FRAME_SOF0        'L'
+#define CHASSIS_FRAME_SOF1        'C'
+#define VISION_MOVE_STATE_TX_DIV    5u
 
-#define ALGORITHM_FRAME_SOF0 0xA5u
-#define ALGORITHM_FRAME_SOF1 0x5Au
-
-typedef enum
+typedef struct __attribute__((packed)) VisionToChassis
 {
-    ALGORITHM_CMD_AIM = 0x01u,
-    ALGORITHM_CMD_MOVE = 0x02u,
-} algorithm_cmd_e;
-
-typedef enum
-{
-    ALGORITHM_AIM_MODE_IDLE = 0u,
-    ALGORITHM_AIM_MODE_CONTROL = 1u,
-    ALGORITHM_AIM_MODE_CONTROL_FIRE = 2u,
-} algorithm_aim_mode_e;
-
-typedef struct __attribute__((packed)) AlgorithmAimCmd
-{
-    uint8_t mode;
-    uint8_t flags;
-    uint16_t timeout_ms;
-    float yaw_rad;
-    float yaw_vel_radps;
-    float yaw_acc_radps2;
-    float pitch_rad;
-    float pitch_vel_radps;
-    float pitch_acc_radps2;
-} AlgorithmAimCmd;
-
-typedef struct __attribute__((packed)) AlgorithmMoveCmd
-{
+    uint8_t head[2];
     uint8_t mode;
     uint8_t frame;
-    uint16_t flags;
-    uint16_t timeout_ms;
-    uint16_t reserved;
-    float vx_mps;
-    float vy_mps;
-    float wz_radps;
-    float yaw_offset_rad;
-    float ax_mps2;
-    float ay_mps2;
-    float wz_acc_radps2;
-} AlgorithmMoveCmd;
+    uint8_t flags;
+    uint8_t timeout_10ms;
+    int16_t vx_cmps;
+    int16_t vy_cmps;
+    int16_t wz_mradps;
+    int16_t yaw_offset_mrad;
+    int16_t ax_cmps2;
+    int16_t ay_cmps2;
+    int16_t wz_acc_mradps2;
+    uint16_t crc16;
+} VisionToChassis;
+
+typedef struct __attribute__((packed)) ChassisToVision
+{
+    uint8_t head[2];
+    uint8_t valid;
+    uint8_t mode;
+    int16_t vx_cmps;
+    int16_t vy_cmps;
+    int16_t wz_mradps;
+    int16_t vx_set_cmps;
+    int16_t vy_set_cmps;
+    int16_t wz_set_mradps;
+    uint16_t crc16;
+} ChassisToVision;
 
 typedef char _check_GimbalToVision_size[(sizeof(GimbalToVision) == 43) ? 1 : -1];
 typedef char _check_VisionToGimbal_size[(sizeof(VisionToGimbal) == 29) ? 1 : -1];
-typedef char _check_AlgorithmAimCmd_size[(sizeof(AlgorithmAimCmd) == 28) ? 1 : -1];
-typedef char _check_AlgorithmMoveCmd_size[(sizeof(AlgorithmMoveCmd) == 36) ? 1 : -1];
+typedef char _check_VisionToChassis_size[(sizeof(VisionToChassis) == 20) ? 1 : -1];
+typedef char _check_ChassisToVision_size[(sizeof(ChassisToVision) == 18) ? 1 : -1];
 
 static GimbalToVision VisionTx;
+static ChassisToVision ChassisTx;
 static VisionToGimbal VisionRx;
 static volatile bool VisionRxUpdated = false;
 static uint8_t VisionLinkRxStreamBuf[VISION_RX_STREAM_BUF_SIZE];
 static uint32_t VisionLinkRxStreamLen = 0u;
+static uint32_t VisionLinkTxCycle = 0u;
 
 static const fp32 *VisionInsQuat = NULL;
-static const fp32 *VisionInsAngle = NULL;
-static const fp32 *VisionInsGyro = NULL;
 
 static void VisionLinkHandleRx(const VisionToGimbal *pkt);
-static void VisionLinkHandleAlgorithmAim(const AlgorithmAimCmd *cmd);
-static void VisionLinkHandleAlgorithmMove(const AlgorithmMoveCmd *cmd);
+static void VisionLinkHandleChassisCmd(const VisionToChassis *cmd);
+static bool VisionLinkPollChassisStateTx(void);
+static bool VisionLinkApplyGimbalState(GimbalToVision *tx);
 static void VisionLinkRxStreamConsume(const uint8_t *buf, uint32_t len);
-static uint32_t VisionLinkAlgorithmFrameSize(uint8_t cmd_id);
 static bool VisionLinkFloatInRange(float v, float limit_abs);
-static bool VisionLinkAlgorithmAimValid(const AlgorithmAimCmd *cmd);
-static bool VisionLinkAlgorithmMoveValid(const AlgorithmMoveCmd *cmd);
+static bool VisionLinkExternalMotionIntentValid(const ExternalMotionIntent *intent);
+static void VisionLinkChassisCmdToIntent(const VisionToChassis *cmd, ExternalMotionIntent *intent);
+static int16_t VisionLinkFp32ToI16Scaled(fp32 value, fp32 scale);
 
 void VisionLinkInit(const fp32 *quat, const fp32 *angle, const fp32 *gyro)
 {
     VisionInsQuat = quat;
-    VisionInsAngle = angle;
-    VisionInsGyro = gyro;
+    (void)angle;
+    (void)gyro;
 
     memset(&VisionTx, 0, sizeof(VisionTx));
-    VisionTx.head[0] = 'S';
-    VisionTx.head[1] = 'P';
+    VisionTx.head[0] = VISION_FRAME_SOF0;
+    VisionTx.head[1] = VISION_FRAME_SOF1;
     VisionTx.mode = 0u;
 
     taskENTER_CRITICAL();
@@ -114,6 +104,7 @@ void VisionLinkInit(const fp32 *quat, const fp32 *angle, const fp32 *gyro)
     ExternalMotionIntentClear();
 
     VisionLinkRxStreamLen = 0u;
+    VisionLinkTxCycle = 0u;
 }
 
 bool VisionTakeLatest(VisionToGimbal *out)
@@ -132,6 +123,13 @@ bool VisionTakeLatest(VisionToGimbal *out)
 
 void VisionLinkPollTx(void)
 {
+    VisionLinkTxCycle++;
+    if ((VisionLinkTxCycle % VISION_MOVE_STATE_TX_DIV) == 0u &&
+        VisionLinkPollChassisStateTx())
+    {
+        return;
+    }
+
     VisionTx.q[0] = 0.0f;
     VisionTx.q[1] = 0.0f;
     VisionTx.q[2] = 0.0f;
@@ -151,16 +149,7 @@ void VisionLinkPollTx(void)
         VisionTx.q[2] = VisionInsQuat[2];
         VisionTx.q[3] = VisionInsQuat[3];
     }
-    if (VisionInsAngle != NULL)
-    {
-        VisionTx.yaw = VisionInsAngle[INS_YAW_ADDRESS_OFFSET];
-        VisionTx.pitch = VisionInsAngle[INS_PITCH_ADDRESS_OFFSET];
-    }
-    if (VisionInsGyro != NULL)
-    {
-        VisionTx.yaw_vel = VisionInsGyro[INS_GYRO_Z_ADDRESS_OFFSET];
-        VisionTx.pitch_vel = VisionInsGyro[INS_GYRO_Y_ADDRESS_OFFSET];
-    }
+    (void)VisionLinkApplyGimbalState(&VisionTx);
 
     VisionTx.bullet_speed = ShootData.initial_speed;
     VisionTx.bullet_count = bullet_remaining_t.projectile_allowance_17mm;
@@ -192,7 +181,7 @@ static void VisionLinkStoreRxFromIsr(const VisionToGimbal *pkt)
 
 static void VisionLinkHandleRx(const VisionToGimbal *pkt)
 {
-    if (pkt->head[0] != 'S' || pkt->head[1] != 'P')
+    if (pkt->head[0] != VISION_FRAME_SOF0 || pkt->head[1] != VISION_FRAME_SOF1)
     {
         return;
     }
@@ -215,71 +204,77 @@ static void VisionLinkHandleRx(const VisionToGimbal *pkt)
     VisionLinkStoreRxFromIsr(pkt);
 }
 
-static void VisionLinkHandleAlgorithmAim(const AlgorithmAimCmd *cmd)
-{
-    VisionToGimbal pkt;
-
-    if (!VisionLinkAlgorithmAimValid(cmd))
-    {
-        return;
-    }
-
-    memset(&pkt, 0, sizeof(pkt));
-    pkt.head[0] = 'S';
-    pkt.head[1] = 'P';
-    pkt.mode = cmd->mode;
-    pkt.yaw = cmd->yaw_rad;
-    pkt.yaw_vel = cmd->yaw_vel_radps;
-    pkt.yaw_acc = cmd->yaw_acc_radps2;
-    pkt.pitch = cmd->pitch_rad;
-    pkt.pitch_vel = cmd->pitch_vel_radps;
-    pkt.pitch_acc = cmd->pitch_acc_radps2;
-
-    if (pkt.mode == (uint8_t)ALGORITHM_AIM_MODE_CONTROL ||
-        pkt.mode == (uint8_t)ALGORITHM_AIM_MODE_CONTROL_FIRE)
-    {
-        SdLogWriteIsr(SDLOG_TAG_VISION_RX, &pkt, (uint16_t)sizeof(pkt));
-    }
-
-    VisionLinkStoreRxFromIsr(&pkt);
-}
-
-static void VisionLinkHandleAlgorithmMove(const AlgorithmMoveCmd *cmd)
+static void VisionLinkHandleChassisCmd(const VisionToChassis *cmd)
 {
     ExternalMotionIntent intent;
 
-    if (!VisionLinkAlgorithmMoveValid(cmd))
+    if (cmd == NULL ||
+        cmd->head[0] != CHASSIS_FRAME_SOF0 ||
+        cmd->head[1] != CHASSIS_FRAME_SOF1)
     {
         return;
     }
 
-    memset(&intent, 0, sizeof(intent));
-    intent.mode = cmd->mode;
-    intent.frame = cmd->frame;
-    intent.flags = cmd->flags;
-    intent.timeout_ms = cmd->timeout_ms;
-    intent.vx_mps = cmd->vx_mps;
-    intent.vy_mps = cmd->vy_mps;
-    intent.wz_radps = cmd->wz_radps;
-    intent.yaw_offset_rad = cmd->yaw_offset_rad;
-    intent.ax_mps2 = cmd->ax_mps2;
-    intent.ay_mps2 = cmd->ay_mps2;
-    intent.wz_acc_radps2 = cmd->wz_acc_radps2;
+    VisionLinkChassisCmdToIntent(cmd, &intent);
+    if (!VisionLinkExternalMotionIntentValid(&intent))
+    {
+        return;
+    }
 
     ExternalMotionIntentWriteFromIsr(&intent);
 }
 
-static uint32_t VisionLinkAlgorithmFrameSize(uint8_t cmd_id)
+static bool VisionLinkApplyGimbalState(GimbalToVision *tx)
 {
-    if (cmd_id == (uint8_t)ALGORITHM_CMD_AIM)
+    GimbalState state;
+
+    if (tx == NULL ||
+        GimbalStateRead(&state) == 0u ||
+        state.valid == 0u)
     {
-        return ALGORITHM_AIM_FRAME_SIZE;
+        return false;
     }
-    if (cmd_id == (uint8_t)ALGORITHM_CMD_MOVE)
+
+    if (state.yaw.valid != 0u)
     {
-        return ALGORITHM_MOVE_FRAME_SIZE;
+        tx->yaw = state.yaw.angle;
+        tx->yaw_vel = state.yaw.motor_gyro;
     }
-    return 0u;
+    if (state.pitch.valid != 0u)
+    {
+        tx->pitch = state.pitch.angle;
+        tx->pitch_vel = state.pitch.motor_gyro;
+    }
+    return true;
+}
+
+static bool VisionLinkPollChassisStateTx(void)
+{
+    ChassisState state;
+
+    if (ChassisStateRead(&state) == 0u || state.valid == 0u)
+    {
+        return false;
+    }
+
+    memset(&ChassisTx, 0, sizeof(ChassisTx));
+    ChassisTx.head[0] = CHASSIS_FRAME_SOF0;
+    ChassisTx.head[1] = CHASSIS_FRAME_SOF1;
+    ChassisTx.valid = 1u;
+    ChassisTx.mode = state.mode;
+    ChassisTx.vx_cmps = VisionLinkFp32ToI16Scaled(state.vx, 100.0f);
+    ChassisTx.vy_cmps = VisionLinkFp32ToI16Scaled(state.vy, 100.0f);
+    ChassisTx.wz_mradps = VisionLinkFp32ToI16Scaled(state.wz, 1000.0f);
+    ChassisTx.vx_set_cmps = VisionLinkFp32ToI16Scaled(state.vx_set, 100.0f);
+    ChassisTx.vy_set_cmps = VisionLinkFp32ToI16Scaled(state.vy_set, 100.0f);
+    ChassisTx.wz_set_mradps = VisionLinkFp32ToI16Scaled(state.wz_set, 1000.0f);
+    append_CRC16_check_sum((uint8_t *)&ChassisTx, (uint32_t)sizeof(ChassisTx));
+
+    if (CDC_Transmit_FS((uint8_t *)&ChassisTx, sizeof(ChassisTx)) == USBD_BUSY)
+    {
+        return true;
+    }
+    return true;
 }
 
 static bool VisionLinkFloatInRange(float v, float limit_abs)
@@ -287,38 +282,69 @@ static bool VisionLinkFloatInRange(float v, float limit_abs)
     return (v == v && v <= limit_abs && v >= -limit_abs) ? true : false;
 }
 
-static bool VisionLinkAlgorithmAimValid(const AlgorithmAimCmd *cmd)
+static bool VisionLinkExternalMotionIntentValid(const ExternalMotionIntent *intent)
 {
-    if (cmd == NULL ||
-        cmd->mode > (uint8_t)ALGORITHM_AIM_MODE_CONTROL_FIRE)
+    if (intent == NULL ||
+        intent->mode > (uint8_t)EXTERNAL_MOTION_MODE_STOP ||
+        intent->frame > (uint8_t)EXTERNAL_MOTION_FRAME_FIELD)
     {
         return false;
     }
 
-    return VisionLinkFloatInRange(cmd->yaw_rad, 1000.0f) &&
-           VisionLinkFloatInRange(cmd->yaw_vel_radps, 1000.0f) &&
-           VisionLinkFloatInRange(cmd->yaw_acc_radps2, 10000.0f) &&
-           VisionLinkFloatInRange(cmd->pitch_rad, 1000.0f) &&
-           VisionLinkFloatInRange(cmd->pitch_vel_radps, 1000.0f) &&
-           VisionLinkFloatInRange(cmd->pitch_acc_radps2, 10000.0f);
+    return VisionLinkFloatInRange(intent->vx_mps, 100.0f) &&
+           VisionLinkFloatInRange(intent->vy_mps, 100.0f) &&
+           VisionLinkFloatInRange(intent->wz_radps, 100.0f) &&
+           VisionLinkFloatInRange(intent->yaw_offset_rad, 1000.0f) &&
+           VisionLinkFloatInRange(intent->ax_mps2, 1000.0f) &&
+           VisionLinkFloatInRange(intent->ay_mps2, 1000.0f) &&
+           VisionLinkFloatInRange(intent->wz_acc_radps2, 1000.0f);
 }
 
-static bool VisionLinkAlgorithmMoveValid(const AlgorithmMoveCmd *cmd)
+static void VisionLinkChassisCmdToIntent(const VisionToChassis *cmd, ExternalMotionIntent *intent)
 {
-    if (cmd == NULL ||
-        cmd->mode > (uint8_t)EXTERNAL_MOTION_MODE_STOP ||
-        cmd->frame > (uint8_t)EXTERNAL_MOTION_FRAME_FIELD)
+    if (intent == NULL)
     {
-        return false;
+        return;
     }
 
-    return VisionLinkFloatInRange(cmd->vx_mps, 100.0f) &&
-           VisionLinkFloatInRange(cmd->vy_mps, 100.0f) &&
-           VisionLinkFloatInRange(cmd->wz_radps, 100.0f) &&
-           VisionLinkFloatInRange(cmd->yaw_offset_rad, 1000.0f) &&
-           VisionLinkFloatInRange(cmd->ax_mps2, 1000.0f) &&
-           VisionLinkFloatInRange(cmd->ay_mps2, 1000.0f) &&
-           VisionLinkFloatInRange(cmd->wz_acc_radps2, 1000.0f);
+    memset(intent, 0, sizeof(*intent));
+    if (cmd == NULL)
+    {
+        return;
+    }
+
+    intent->mode = cmd->mode;
+    intent->frame = cmd->frame;
+    intent->flags = cmd->flags;
+    intent->timeout_ms = (cmd->timeout_10ms != 0u) ? ((uint16_t)cmd->timeout_10ms * 10u) : 0u;
+    intent->vx_mps = (fp32)cmd->vx_cmps * 0.01f;
+    intent->vy_mps = (fp32)cmd->vy_cmps * 0.01f;
+    intent->wz_radps = (fp32)cmd->wz_mradps * 0.001f;
+    intent->yaw_offset_rad = (fp32)cmd->yaw_offset_mrad * 0.001f;
+    intent->ax_mps2 = (fp32)cmd->ax_cmps2 * 0.01f;
+    intent->ay_mps2 = (fp32)cmd->ay_cmps2 * 0.01f;
+    intent->wz_acc_radps2 = (fp32)cmd->wz_acc_mradps2 * 0.001f;
+}
+
+static int16_t VisionLinkFp32ToI16Scaled(fp32 value, fp32 scale)
+{
+    fp32 scaled;
+
+    if (!(value == value))
+    {
+        return 0;
+    }
+
+    scaled = value * scale;
+    if (scaled > 32767.0f)
+    {
+        return 32767;
+    }
+    if (scaled < -32768.0f)
+    {
+        return -32768;
+    }
+    return (int16_t)scaled;
 }
 
 static void VisionLinkRxStreamConsume(const uint8_t *buf, uint32_t len)
@@ -359,7 +385,7 @@ static void VisionLinkRxStreamConsume(const uint8_t *buf, uint32_t len)
     {
         const uint8_t *candidate = &VisionLinkRxStreamBuf[consume];
 
-        if (candidate[0] == 'S' && candidate[1] == 'P')
+        if (candidate[0] == VISION_FRAME_SOF0 && candidate[1] == VISION_FRAME_SOF1)
         {
             if ((VisionLinkRxStreamLen - consume) < VISION_RX_FRAME_SIZE)
             {
@@ -377,44 +403,21 @@ static void VisionLinkRxStreamConsume(const uint8_t *buf, uint32_t len)
             continue;
         }
 
-        if (candidate[0] == ALGORITHM_FRAME_SOF0 && candidate[1] == ALGORITHM_FRAME_SOF1)
+        if (candidate[0] == CHASSIS_FRAME_SOF0 && candidate[1] == CHASSIS_FRAME_SOF1)
         {
-            if ((VisionLinkRxStreamLen - consume) < ALGORITHM_FRAME_HEADER_SIZE)
+            if ((VisionLinkRxStreamLen - consume) < CHASSIS_RX_FRAME_SIZE)
             {
                 break;
             }
-
-            const uint8_t cmd_id = candidate[2];
-            const uint32_t frame_size = VisionLinkAlgorithmFrameSize(cmd_id);
-            if (frame_size == 0u)
+            if (verify_CRC16_check_sum((uint8_t *)candidate, CHASSIS_RX_FRAME_SIZE))
             {
-                consume++;
+                VisionToChassis cmd;
+                memcpy(&cmd, candidate, sizeof(cmd));
+                VisionLinkHandleChassisCmd(&cmd);
+                consume += CHASSIS_RX_FRAME_SIZE;
                 continue;
             }
-            if ((VisionLinkRxStreamLen - consume) < frame_size)
-            {
-                break;
-            }
-            if (!verify_CRC16_check_sum((uint8_t *)candidate, frame_size))
-            {
-                consume++;
-                continue;
-            }
-
-            const uint8_t *payload = &candidate[ALGORITHM_FRAME_HEADER_SIZE];
-            if (cmd_id == (uint8_t)ALGORITHM_CMD_AIM)
-            {
-                AlgorithmAimCmd cmd;
-                memcpy(&cmd, payload, sizeof(cmd));
-                VisionLinkHandleAlgorithmAim(&cmd);
-            }
-            else if (cmd_id == (uint8_t)ALGORITHM_CMD_MOVE)
-            {
-                AlgorithmMoveCmd cmd;
-                memcpy(&cmd, payload, sizeof(cmd));
-                VisionLinkHandleAlgorithmMove(&cmd);
-            }
-            consume += frame_size;
+            consume++;
             continue;
         }
 
