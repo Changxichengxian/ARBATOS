@@ -1,6 +1,6 @@
 #include "GimbalPid.h"
 
-#include "user_lib.h"
+#include "UserLib.h"
 
 void GimbalPidInit(GimbalPid *pid, fp32 maxout, fp32 max_iout, fp32 kp, fp32 ki, fp32 kd)
 {

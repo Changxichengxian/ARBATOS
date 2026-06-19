@@ -17,7 +17,7 @@
   */
 #ifndef BSP_IMU_PWM_H
 #define BSP_IMU_PWM_H
-#include "types.h"
+#include "Types.h"
 
 // Board-specific timer mapping is configured in BspImuPwmCfg.h.
 

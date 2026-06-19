@@ -13,10 +13,10 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "ControlInput.h"
 #include "ManualInput.h"
-#include "CRC8_CRC16.h"
+#include "Crc8Crc16.h"
 
 #define IMAGE_REMOTE_FRAME_SOF          0xA5u
 #define IMAGE_REMOTE_DMA_RX_BUF_SIZE    512u

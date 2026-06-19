@@ -8,7 +8,7 @@
 
 #ifndef STARTUP_SERVICE_TASK_H
 #define STARTUP_SERVICE_TASK_H
-#include "types.h"
+#include "Types.h"
 
 extern void StartupServiceTask(void const * argument);
 

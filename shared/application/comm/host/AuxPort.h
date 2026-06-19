@@ -10,7 +10,7 @@
 #define AUX_PORT_H
 
 #include <stdint.h>
-#include "types.h"
+#include "Types.h"
 
 #define AUX_TUNE_BAUD 230400u
 

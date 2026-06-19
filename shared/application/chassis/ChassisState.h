@@ -12,7 +12,7 @@
 #include "RobotMsg.h"
 #include "StateStore.h"
 #include "Pid.h"
-#include "types.h"
+#include "Types.h"
 
 #ifdef __cplusplus
 extern "C" {

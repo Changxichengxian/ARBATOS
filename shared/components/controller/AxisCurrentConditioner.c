@@ -1,6 +1,6 @@
 #include "AxisCurrentConditioner.h"
 
-#include "user_lib.h"
+#include "UserLib.h"
 
 #include <math.h>
 

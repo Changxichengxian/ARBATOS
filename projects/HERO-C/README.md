@@ -21,7 +21,7 @@
 - `USB_DEVICE/`：CubeMX 生成的 USB CDC 代码
 - `Drivers/`、`Middlewares/`：HAL / CMSIS / FreeRTOS / USB 组件
 - `MDK-ARM/`：Keil 工程
-- `Robotconfig/HERO-C/`：HERO-C 目标配置和健康监测，包含 `config.c`、`config.h`、`DetectTask.c`
+- `Robotconfig/HERO-C/`：HERO-C 目标配置和健康监测，包含 `RobotConfig.c`、`RobotConfig.h`、`DetectTask.c`
 - `boards/DJI_C_F407/bsp/InsTask.c`：C 板 IMU 任务
 - `boards/DJI_C_F407/bsp/`：C 板 BSP 适配
 - `shared/application/`：共用任务和控制逻辑，包含 `HostLinkTask.c`、`ChassisControlTask.c`、`GimbalControlTask.c`、`Shoot.c`、`SdLogTask.c` 等
@@ -77,10 +77,10 @@ USB 以 CDC ACM（虚拟串口）方式枚举。PC 端需打开串口设备才�
 ### 1) 调参（AUX 口命令）
 
 - 命令格式：`<id>:<value>\r\n`
-- `id` 对应 `Robotconfig/HERO-C/config.c` 中每行末尾的 `[ID]` 注释
+- `id` 对应 `Robotconfig/HERO-C/RobotConfig.c` 中每行末尾的 `[ID]` 注释
 - 只修改 RAM 中的 `g_config`；**重启会恢复默认值**
 
-示例（具体 ID 以 `config.c` 为准）：
+示例（具体 ID 以 `RobotConfig.c` 为准）：
 
 - 开关 AUX 口实时遥测：`241:1`（开）/ `241:0`（关）
 - AUX 口遥测周期(ms)：`242:0`（0=auto，额外50%回退，适合无线）
@@ -96,7 +96,7 @@ USB 以 CDC ACM（虚拟串口）方式枚举。PC 端需打开串口设备才�
 
 #### 默认“全量精简”遥测
 
-在 `Robotconfig/HERO-C/config.c`：
+在 `Robotconfig/HERO-C/RobotConfig.c`：
 
 - `AuxTelem.channel_num = 0`
 
@@ -149,7 +149,7 @@ bitmask（以整数解释），bit=1 表示对应 TOE 离线/错误：
 - `channel_num=0` 表示使用默认列表（219 通道）
 - `0` 是合法的遥测信号 ID（`AUX_TELEM_SIG_SYS_TICK_MS`），不再作为结束符
 
-- 遥测信号枚举：`AuxTelemSig`（见 `Robotconfig/HERO-C/config.h`）
+- 遥测信号枚举：`AuxTelemSig`（见 `Robotconfig/HERO-C/RobotConfig.h`）
 - `channel_map` 使用的是 **遥测信号 ID**（不是调参用的 `[ID]`）
 
 ### 3) TF/SD 遥测日志（sdlog）
@@ -194,7 +194,7 @@ Python 打包示例（小端）：
 - 有裁判系统（USART6 正常在线）时：读取裁判下发的 `chassis_power` / `chassis_power_buffer`，对底盘总电流进行缩放
 - 无裁判系统（USART6 离线/未插）时：退化为 `no_judge_total_current_limit` 的固定限流，避免失控
 
-相关参数：`Robotconfig/HERO-C/config.c` 的 `g_config.power.*`
+相关参数：`Robotconfig/HERO-C/RobotConfig.c` 的 `g_config.power.*`
 
 ---
 

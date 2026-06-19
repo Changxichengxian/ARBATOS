@@ -17,7 +17,7 @@
   */
 #ifndef BSP_BUZZER_H
 #define BSP_BUZZER_H
-#include "types.h"
+#include "Types.h"
 
 // Board-specific configuration is provided by BspBuzzerCfg.h.
 

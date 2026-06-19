@@ -1,4 +1,4 @@
-// Included by config.c inside g_config's initializer; do not compile directly.
+// Included by RobotConfig.c inside g_config's initializer; do not compile directly.
     .profile =
         {
             .task_module_count = 9u,

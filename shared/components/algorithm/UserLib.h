@@ -1,6 +1,6 @@
 #ifndef USER_LIB_H
 #define USER_LIB_H
-#include "types.h"
+#include "Types.h"
 
 typedef struct
 {
@@ -73,7 +73,7 @@ extern fp32 loop_fp32_constrain(fp32 Input, fp32 minValue, fp32 maxValue);
 //角度 °限幅 180 ~ -180
 extern fp32 theta_format(fp32 Ang);
 
-// Some modules only include user_lib.h but not arm_math.h / AHRS headers.
+// Some modules only include UserLib.h but not arm_math.h / AHRS headers.
 // Provide PI here to keep rad_format() self-contained.
 #ifndef PI
 #define PI 3.14159265358979f

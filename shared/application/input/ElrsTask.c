@@ -15,7 +15,7 @@
 #include "task.h"
 
 #include "DetectTask.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "Watch.h"
 #include "ManualInput.h"
 #include "SdLog.h"

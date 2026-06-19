@@ -4,7 +4,7 @@
 
 #include "LowCmd.h"
 #include "RobotConfigTypes.h"
-#include "types.h"
+#include "Types.h"
 
 #define UNITREE_MOTOR_RS485_PORT0 0u
 #define UNITREE_MOTOR_RS485_PORT1 1u

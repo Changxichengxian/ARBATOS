@@ -11,7 +11,7 @@
 #include "ControlCore.h"
 #include "GimbalPid.h"
 #include "Pid.h"
-#include "types.h"
+#include "Types.h"
 
 #ifdef __cplusplus
 extern "C" {

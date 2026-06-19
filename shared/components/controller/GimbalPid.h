@@ -1,7 +1,7 @@
 #ifndef GIMBAL_PID_H
 #define GIMBAL_PID_H
 
-#include "types.h"
+#include "Types.h"
 
 typedef struct
 {

@@ -6,30 +6,16 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "LowCmd.h"
 
 /*
- * 这份表现在分两类：
- * 1. 稳定配置：只在代码里改，不给 AUX 参数号。
- * 2. 动态配置：只保留需要临时试的量，注释里带 [ID]。
+ * AUX 口临时改参：发送 "<id>:<value>"（例如 "1:1000"）
+ * - 编号见本文件 g_config 初始化处每行末尾的 [ID] 注释
+ * - 未标 [ID] 的参数：只在 init 使用 / 未运行时应用（AUX 口不支持改）
+ * - 仅修改 RAM 中的 g_config，重启后恢复默认值
  */
 
-/*
- * AUX 口临时调参：发送 "<id>:<value>"，例如 "1:1000"。
- * - 带 [ID] 的注释，表示还能通过 AUX 口临时改。
- * - 不带 [ID] 的注释，表示稳定配置，只能改代码默认值。
- * - AUX 口只改 RAM 里的 g_config，重启后会回到这里的默认值。
- */
-
-#if defined(__CC_ARM) || defined(__ARMCC_VERSION)
-#pragma push
-#pragma diag_suppress 188
-#endif
-#if defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-braces"
-#endif
 Config g_config = {
 #include "ConfigOperation.inc"
 #include "ConfigHardware.inc"
@@ -37,12 +23,6 @@ Config g_config = {
 #include "ConfigInput.inc"
 #include "ConfigDiagnostics.inc"
 };
-#if defined(__GNUC__)
-#pragma GCC diagnostic pop
-#endif
-#if defined(__CC_ARM) || defined(__ARMCC_VERSION)
-#pragma pop
-#endif
 
 // 这些函数只判断某个参数块当前是否有效，不负责修改配置内容。
 static uint8_t ConfigBlockActiveAlways(void)

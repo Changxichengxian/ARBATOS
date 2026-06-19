@@ -10,7 +10,7 @@
 
 #include <string.h>
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "main.h"
 
 #include "FreeRTOS.h"
@@ -26,9 +26,9 @@
 #include "ControlInput.h"
 #include "GimbalState.h"
 #include "InsTask.h"
-#include "bmi088driver.h"
+#include "Bmi088Driver.h"
 #include "DetectTask.h"
-#include "mem_mang.h"
+#include "MemMang.h"
 #include "ManualInput.h"
 #include "BspCan.h"
 #include "BspRc.h"

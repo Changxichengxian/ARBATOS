@@ -26,7 +26,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\check_all.ps1
 - Keil 工程里列出的源码文件是否真实存在。
 - Include Path 里本地目录是否存在；Keil Pack 提供的目录如果仓库里没有，会先作为警告。
 - 每个工程是否只引用自己的 `Robotconfig/<TARGET>`。
-- `Robotconfig/<TARGET>/config.c` 里的 profile 是否和工程包含的任务源码、任务创建入口匹配。
+- `Robotconfig/<TARGET>/RobotConfig.c` 里的 profile 是否和工程包含的任务源码、任务创建入口匹配。
 - `tools/**/*.py` 是否有 Python 语法错误。
 - 文档里是否还残留几类已经确认过时的路径或 MIT 轮腿描述。
 

@@ -3,17 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Common robot configuration types. Target identity and target-specific build
- * macros stay in Robotconfig/<TARGET>/config.h; default values stay in
- * Robotconfig/<TARGET>/config.c.
+ * macros stay in Robotconfig/<TARGET>/RobotConfig.h; default values stay in
+ * Robotconfig/<TARGET>/RobotConfig.c.
  */
 
 #pragma once
 
 #include <stdint.h>
-#include "types.h"
+#include "Types.h"
 
-// Common configuration data. Target config.h keeps identity/build macros;
-// config.c keeps default values.
+// Common configuration data. Target RobotConfig.h keeps identity/build macros;
+// RobotConfig.c keeps default values.
 typedef struct
 {
     fp32 kp;       // 比例

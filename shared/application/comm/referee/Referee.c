@@ -17,7 +17,7 @@
 #include "Referee.h"
 #include "string.h"
 #include "stdio.h"
-#include "CRC8_CRC16.h"
+#include "Crc8Crc16.h"
 #include "RefereeProtocol.h"
 #include "BspUsart.h"
 #include "SdLog.h"

@@ -301,16 +301,16 @@ function Test-UvProject {
     }
 
     $configDir = Join-Path $script:RepoRoot "Robotconfig\$($Project.Name)"
-    $configC = Join-Path $configDir "config.c"
-    $configH = Join-Path $configDir "config.h"
+    $configC = Join-Path $configDir "RobotConfig.c"
+    $configH = Join-Path $configDir "RobotConfig.h"
 
     if (-not (Test-Path -LiteralPath $configC -PathType Leaf)) {
-        Add-CheckError "Missing Robotconfig config.c for $($Project.Name): $(Format-RepoPath $configC)"
+        Add-CheckError "Missing Robotconfig RobotConfig.c for $($Project.Name): $(Format-RepoPath $configC)"
         return
     }
 
     if (-not (Test-Path -LiteralPath $configH -PathType Leaf)) {
-        Add-CheckError "Missing Robotconfig config.h for $($Project.Name): $(Format-RepoPath $configH)"
+        Add-CheckError "Missing Robotconfig RobotConfig.h for $($Project.Name): $(Format-RepoPath $configH)"
         return
     }
 
@@ -320,10 +320,10 @@ function Test-UvProject {
     $modules = @(Get-ProfileModules $configContent)
 
     if ($configHeader -notmatch '#include\s+"RobotConfigTypes\.h"') {
-        Add-CheckError "$(Format-RepoPath $configH): target config.h must include the shared RobotConfigTypes.h."
+        Add-CheckError "$(Format-RepoPath $configH): target RobotConfig.h must include the shared RobotConfigTypes.h."
     }
     if ($configHeader -match '(?m)^\s*typedef\s+(struct|enum)\b') {
-        Add-CheckError "$(Format-RepoPath $configH): target config.h must only carry target identity/build macros; common config types belong in shared\application\robot\RobotConfigTypes.h."
+        Add-CheckError "$(Format-RepoPath $configH): target RobotConfig.h must only carry target identity/build macros; common config types belong in shared\application\robot\RobotConfigTypes.h."
     }
 
     $profileFamilyPattern = '\.(locomotion_family|gimbal_family|arm_family)\s*=|LOCOMOTION_FAMILY_|GIMBAL_FAMILY_|ARM_FAMILY_'
@@ -578,7 +578,7 @@ function Test-ConfigParamGovernance {
         }
     }
 
-    $robotConfigFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "Robotconfig") -Filter "config.c" -Recurse | Sort-Object FullName)
+    $robotConfigFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "Robotconfig") -Filter "RobotConfig.c" -Recurse | Sort-Object FullName)
     foreach ($file in $robotConfigFiles) {
         $configContent = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
         if ($configContent -match 'g_config_active_blocks') {
@@ -652,7 +652,7 @@ function Test-ProfileIdentity {
     )
 
     foreach ($project in $Projects) {
-        $configHeader = Join-Path $script:RepoRoot "Robotconfig\$($project.Name)\config.h"
+        $configHeader = Join-Path $script:RepoRoot "Robotconfig\$($project.Name)\RobotConfig.h"
         if (-not (Test-Path -LiteralPath $configHeader -PathType Leaf)) {
             continue
         }
@@ -712,8 +712,8 @@ function Test-ProfileProductRules {
     }
 
     foreach ($project in $Projects) {
-        $configHeader = Join-Path $script:RepoRoot "Robotconfig\$($project.Name)\config.h"
-        $configC = Join-Path $script:RepoRoot "Robotconfig\$($project.Name)\config.c"
+        $configHeader = Join-Path $script:RepoRoot "Robotconfig\$($project.Name)\RobotConfig.h"
+        $configC = Join-Path $script:RepoRoot "Robotconfig\$($project.Name)\RobotConfig.c"
         if (-not (Test-Path -LiteralPath $configHeader -PathType Leaf) -or
             -not (Test-Path -LiteralPath $configC -PathType Leaf)) {
             continue
@@ -986,6 +986,84 @@ function Test-StaleText {
         foreach ($stalePattern in $stalePatterns) {
             if ($content -match $stalePattern.Pattern) {
                 Add-CheckError "${repoPath}: $($stalePattern.Message)"
+            }
+        }
+    }
+}
+
+function Test-IncludeFilenameCase {
+    Write-Host "[check] include filename case"
+
+    $fileMap = [System.Collections.Generic.Dictionary[string, System.Collections.Generic.List[object]]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase)
+
+    foreach ($path in (git -C $script:RepoRoot -c core.quotepath=false ls-files)) {
+        $name = ($path -split '/|\\')[-1]
+        if (-not $fileMap.ContainsKey($name)) {
+            $fileMap[$name] = [System.Collections.Generic.List[object]]::new()
+        }
+        $fileMap[$name].Add([pscustomobject]@{
+                Name = $name
+                Path = $path
+            })
+    }
+
+    $sourceExt = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($ext in @(".c", ".h", ".inc", ".cpp", ".hpp", ".s", ".S")) {
+        [void]$sourceExt.Add($ext)
+    }
+
+    foreach ($path in (git -C $script:RepoRoot -c core.quotepath=false ls-files)) {
+        $normPath = $path -replace '\\', '/'
+        if ($normPath -match '^projects/[^/]+/(Drivers|Middlewares)/') {
+            continue
+        }
+        if ($normPath -match '^tools/build/gcc_support/') {
+            continue
+        }
+        if ($normPath -match '^shared/components/algorithm/Include/') {
+            continue
+        }
+        if ($normPath -match '^shared/components/support/fatfs/') {
+            continue
+        }
+
+        $name = ($normPath -split '/')[-1]
+        $dot = $name.LastIndexOf(".")
+        if ($dot -lt 0 -or -not $sourceExt.Contains($name.Substring($dot))) {
+            continue
+        }
+
+        $fullPath = Join-Path $script:RepoRoot $normPath
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+            continue
+        }
+
+        try {
+            $content = Get-Content -LiteralPath $fullPath -Raw -Encoding UTF8
+        }
+        catch {
+            continue
+        }
+
+        foreach ($match in [regex]::Matches($content, '(?m)^\s*#\s*include\s+"([^"]+)"')) {
+            $include = $match.Groups[1].Value
+            $includeName = ($include -split '/|\\')[-1]
+            if (-not $fileMap.ContainsKey($includeName)) {
+                continue
+            }
+
+            $hasExactCase = $false
+            foreach ($candidate in $fileMap[$includeName]) {
+                if ($candidate.Name -ceq $includeName) {
+                    $hasExactCase = $true
+                    break
+                }
+            }
+
+            if (-not $hasExactCase) {
+                $actualNames = ($fileMap[$includeName] | ForEach-Object { $_.Name } | Select-Object -Unique) -join ", "
+                Add-CheckError "$(Format-RepoPath $fullPath): include '$include' differs from tracked file name: $actualNames."
             }
         }
     }
@@ -1333,6 +1411,7 @@ Test-PythonTools
 Test-SimulationTools
 Test-BuildManifestTools $projects.Count
 Test-StaleText
+Test-IncludeFilenameCase
 Test-HighRateApiBoundaries
 Test-CanTxDeviceConfigBoundaries
 Test-ControlRegistryBoundaries

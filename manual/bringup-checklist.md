@@ -105,7 +105,7 @@ local/logs/sdlog/<TARGET>/<YYYY-MM-DD>/
 
 ## 7. 结束后
 
-- [ ] 把有价值的参数改回 `Robotconfig/<TARGET>/config_*.inc`。
+- [ ] 把有价值的参数改回 `Robotconfig/<TARGET>/Config*.inc`。
 - [ ] 重新 Rebuild，确认参数不是只停留在 RAM 临时值。
 - [ ] 把关键结论写到 `local/docs/02_接入记录/` 或正式手册。
 - [ ] 如果发现代码问题，先留日志和复现步骤，再改代码。

@@ -276,7 +276,7 @@ Useful entry points:
 
 ## Configuration Model
 
-Each target owns a `Robotconfig/<TARGET>/config.h` and `config.c`.
+Each target owns a `Robotconfig/<TARGET>/RobotConfig.h` and `RobotConfig.c`.
 
 The main runtime object is `g_config`. It contains:
 
@@ -294,7 +294,7 @@ The main runtime object is `g_config`. It contains:
 Temporary AUX tuning is limited to fields listed in each target's
 `g_config_blocks` table. Motor mounting is intentionally not treated as a normal
 runtime tuning field; changing motor wiring or model usually requires editing
-`Robotconfig/<TARGET>/config.c`, rebuilding, and reflashing.
+`Robotconfig/<TARGET>/RobotConfig.c`, rebuilding, and reflashing.
 
 ## Build and Local Checks
 
@@ -407,7 +407,7 @@ For a new user:
 
 1. Install Keil MDK-ARM v5 and the required STM32 device packs.
 2. Open a target project such as `projects/HERO-C/MDK-ARM/HERO-C.uvprojx`.
-3. Check `Robotconfig/<TARGET>/config.c`, especially `g_config.profile`,
+3. Check `Robotconfig/<TARGET>/RobotConfig.c`, especially `g_config.profile`,
    `task_modules`, `g_config.devices`, `g_config.motor`, input mapping, and safe
    switch positions.
 4. Check `boards/<BOARD>/` for UART, CAN, IMU, buzzer, key, SD card, and port
@@ -426,7 +426,7 @@ For detailed workflows, start with `QUICK_START.md` and `manual/README.md`.
 2. Rename the Keil project and output target.
 3. Update include paths so the project references exactly one
    `Robotconfig/<TARGET>`.
-4. Set target identity macros in `config.h`: `ARBATOS_TARGET_NAME`,
+4. Set target identity macros in `RobotConfig.h`: `ARBATOS_TARGET_NAME`,
    `ARBATOS_BOARD_NAME`, `ROBOT_PROFILE_KIND`, `ROBOT_BOARD_KIND`,
    `ROBOT_BOARD_CPU_HZ`, `ROBOT_BOARD_CAN_BUS_COUNT`, and `ROBOT_BOARD_HAS_FPU`.
 5. Configure `g_config.profile.task_modules`.
@@ -450,7 +450,7 @@ For detailed workflows, start with `QUICK_START.md` and `manual/README.md`.
 
 ## Adding a Motor Model or Protocol
 
-1. Add the model enum in the target-compatible `config.h`.
+1. Add the model enum in the target-compatible `RobotConfig.h`.
 2. Add the model entry, protocol capability, feedback format, limits, reduction
    ratio, and control range in `shared/application/motors/MotorModelDb.c`.
 3. Add or extend protocol drivers if the existing RM, DM, MIT-style, or Unitree

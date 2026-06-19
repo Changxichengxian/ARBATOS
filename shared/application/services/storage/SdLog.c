@@ -23,7 +23,7 @@
 #include "BspTime.h"
 #include "SdCard.h"
 #include "RtProf.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "ControlMgr.h"
 #include "MotorInst.h"
 #include "RobotDeviceConfig.h"

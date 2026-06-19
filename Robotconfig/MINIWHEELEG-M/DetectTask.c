@@ -9,7 +9,7 @@
 #include "DetectTask.h"
 #include "DetectCommon.h"
 
-#include "config.h"
+#include "RobotConfig.h"
 
 #include "FreeRTOS.h"
 #include "cmsis_os2.h"

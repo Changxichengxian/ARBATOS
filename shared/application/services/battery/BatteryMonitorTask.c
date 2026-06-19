@@ -12,8 +12,8 @@
 
 #include "BspAdc.h"
 #include "BspBuzzer.h"
-#include "user_lib.h"
-#include "config.h"
+#include "UserLib.h"
+#include "RobotConfig.h"
 #include "SdLog.h"
 
 static const voltage_config_t *const voltage_cfg = &g_config.voltage;

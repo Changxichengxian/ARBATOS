@@ -13,7 +13,7 @@
 
 #include "LowCmd.h"
 #include "CanReceive.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "MotorModelDb.h"
 
 struct control_controller;

@@ -9,7 +9,7 @@
 #ifndef AUX_PARAM_H
 #define AUX_PARAM_H
 
-#include "config.h"
+#include "RobotConfig.h"
 
 #ifndef AUX_TUNE_ENABLE_PARAM_NAME_LOOKUP
 #define AUX_TUNE_ENABLE_PARAM_NAME_LOOKUP 1u

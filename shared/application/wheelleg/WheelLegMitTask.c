@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotTaskBuildConfig.h"
 
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
@@ -19,7 +19,7 @@
 #include "CanReceive.h"
 #include "LowCmd.h"
 #include "BspCan.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "ControlInput.h"
 #include "DetectTask.h"
 #include "MotorInst.h"

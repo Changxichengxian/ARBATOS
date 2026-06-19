@@ -10,7 +10,7 @@
 #include <string.h>
 
 #include "LowCmd.h"
-#include "types.h"
+#include "Types.h"
 
 #ifdef __cplusplus
 extern "C" {

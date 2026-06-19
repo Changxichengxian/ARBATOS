@@ -10,7 +10,7 @@
 #define HOST_TUNE_BRIDGE_H
 
 #include "ChassisControlTask.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "GimbalControlTask.h"
 
 void ShootTuneApplyFricSpeedPid(void);

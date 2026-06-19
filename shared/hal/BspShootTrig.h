@@ -18,7 +18,7 @@
 #ifndef BSP_SHOOT_TRIG_H
 #define BSP_SHOOT_TRIG_H
 
-#include "types.h"
+#include "Types.h"
 
 // Read raw GPIO level (0/1) of shoot trigger micro-switch.
 // - Returns 1 when the GPIO exists on this board and *out_level is valid.

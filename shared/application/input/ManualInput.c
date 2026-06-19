@@ -15,7 +15,7 @@
 
 #include <string.h>
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "ControlInput.h"
 #include "BspKey.h"
 

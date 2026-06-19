@@ -8,7 +8,7 @@
 
 #ifndef BSP_FLASH_H
 #define BSP_FLASH_H
-#include "types.h"
+#include "Types.h"
 
 /* Base address of the Flash sectors */
 #define ADDR_FLASH_SECTOR_0 ((uint32_t)0x08000000)  /* Base address of Sector 0, 16 Kbytes   */

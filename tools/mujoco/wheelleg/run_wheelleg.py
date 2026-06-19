@@ -25,7 +25,7 @@ import robot_sim  # type: ignore  # noqa: E402
 
 
 HERE = Path(__file__).resolve().parent
-BRIDGE_SOURCE = HERE / "wheelleg_core_bridge.c"
+BRIDGE_SOURCE = HERE / "WheelLegCoreBridge.c"
 DEFAULT_NATIVE_DIR = REPO_ROOT / "tmp" / "mujoco_wheelleg"
 
 SIM_TOTAL_MASS_KG = 2.25
@@ -294,7 +294,7 @@ def compile_bridge(native_dir: Path, rebuild: bool) -> Path:
         REPO_ROOT / "shared" / "components" / "support",
     ]
     if "msvc" in tags:
-        obj = native_dir / "wheelleg_core_bridge.obj"
+        obj = native_dir / "WheelLegCoreBridge.obj"
         cmd = [compiler_path, "/nologo", "/LD", "/O2"]
         cmd += [f"/I{path}" for path in include_dirs]
         cmd += [str(BRIDGE_SOURCE), f"/Fo{obj}", f"/Fe{target}"]
@@ -367,7 +367,7 @@ def parse_number_list(text: str) -> list[float]:
 
 
 def read_wheelleg_config_body(project: str) -> str:
-    config_path = REPO_ROOT / "Robotconfig" / project / "config.c"
+    config_path = REPO_ROOT / "Robotconfig" / project / "RobotConfig.c"
     if not config_path.exists():
         raise SystemExit(f"Missing project config: {config_path}")
     text = robot_sim.strip_c_comments(robot_sim.read_text_with_local_config_includes(config_path))
@@ -485,7 +485,7 @@ def print_model_params(args: argparse.Namespace, config: BridgeConfig, model_pat
     print(f"model={model_path}")
     print(f"leg_branch={args.leg_branch}")
     print("control_core=shared/application/wheelleg/WheelLegCore.h")
-    print("project_config=Robotconfig/{}/config.c: WheelLegMit".format(args.project))
+    print("project_config=Robotconfig/{}/RobotConfig.c: WheelLegMit".format(args.project))
     print(
         "geometry_from_config="
         f"l1={float(config.geometry.l1_m):.5f}, "

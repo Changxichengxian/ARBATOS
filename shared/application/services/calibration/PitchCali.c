@@ -14,7 +14,7 @@
  * - 对外入口：boot_load() 启动加载，tick_pre/control/tick_post 接入云台循环。
  */
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotTaskBuildConfig.h"
 
 #if ROBOT_TASK_BUILD_ANY_GIMBAL
@@ -28,7 +28,7 @@
 #include "BspTime.h"
 #include "BspBuzzer.h"
 #include "SdLog.h"
-#include "user_lib.h"
+#include "UserLib.h"
 
 #include "fatfs/ff.h"
 #include "SdCard.h"

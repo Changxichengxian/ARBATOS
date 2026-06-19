@@ -14,7 +14,7 @@
  * - 输出：电流命令写入 LowCmd，由 CAN 发送任务统一发出。
  */
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotTaskBuildConfig.h"
 
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
@@ -40,7 +40,7 @@
 #include "DetectTask.h"
 #include "InsTask.h"
 #include "BspTime.h"
-#include "kalman_filter.h"
+#include "KalmanFilter.h"
 #include "ChassisPowerControl.h"
 #include "SdLog.h"
 #include "RtProf.h"

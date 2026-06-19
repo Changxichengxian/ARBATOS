@@ -9,13 +9,13 @@
 #ifndef SHOOT_H
 #define SHOOT_H
 
-#include "types.h"
+#include "Types.h"
 
 #include "CanReceive.h"
 #include "Pid.h"
 #include "ManualInput.h"
-#include "user_lib.h"
-#include "config.h"
+#include "UserLib.h"
+#include "RobotConfig.h"
 
 // shoot mode channel
 #define SHOOT_RC_MODE_CHANNEL        (g_config.shoot.rc_mode_channel)

@@ -6,7 +6,7 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "LowCmd.h"
 
 /*
@@ -22,6 +22,14 @@
  * - AUX 口只改 RAM 里的 g_config，重启后会回到这里的默认值。
  */
 
+#if defined(__CC_ARM) || defined(__ARMCC_VERSION)
+#pragma push
+#pragma diag_suppress 188
+#endif
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-braces"
+#endif
 Config g_config = {
 #include "ConfigOperation.inc"
 #include "ConfigHardware.inc"
@@ -29,6 +37,12 @@ Config g_config = {
 #include "ConfigInput.inc"
 #include "ConfigDiagnostics.inc"
 };
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+#if defined(__CC_ARM) || defined(__ARMCC_VERSION)
+#pragma pop
+#endif
 
 // 这些函数只判断某个参数块当前是否有效，不负责修改配置内容。
 static uint8_t ConfigBlockActiveAlways(void)
@@ -54,8 +68,7 @@ static uint8_t ConfigProfileModuleEnabled(RobotTaskModule module)
 
 static uint8_t ConfigBlockActiveGimbalSingle(void)
 {
-    return (uint8_t)(ConfigProfileModuleEnabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
-                     ConfigProfileModuleEnabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u);
+    return ConfigProfileModuleEnabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL);
 }
 
 static uint8_t ConfigBlockActiveGimbalDual(void)

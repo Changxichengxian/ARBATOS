@@ -8,7 +8,7 @@
 
 #ifndef BSP_SERVO_PWM_H
 #define BSP_SERVO_PWM_H
-#include "types.h"
+#include "Types.h"
 
 extern void ServoPwmSet(uint16_t pwm, uint8_t i);
 

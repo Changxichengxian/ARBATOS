@@ -750,9 +750,9 @@
               <FilePath>..\\..\\..\\shared\\application\\services\\servo\\ServoControlTask.c</FilePath>
             </File>
             <File>
-              <FileName>config.c</FileName>
+              <FileName>RobotConfig.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\Robotconfig\\HERO-C\\config.c</FilePath>
+              <FilePath>..\\..\\..\\Robotconfig\\HERO-C\\RobotConfig.c</FilePath>
             </File>
             <File>
               <FileName>ControlInput.c</FileName>
@@ -810,9 +810,9 @@
               <FilePath>..\\..\\..\\shared\\components\\algorithm\AHRS.lib</FilePath>
             </File>
             <File>
-              <FileName>AHRS_middleware.c</FileName>
+              <FileName>AhrsMiddleware.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\components\\algorithm\AHRS_middleware.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\algorithm\AhrsMiddleware.c</FilePath>
             </File>
             <File>
               <FileName>arm_cortexM4lf_math.lib</FileName>
@@ -820,14 +820,14 @@
               <FilePath>..\\..\\..\\shared\\components\\algorithm\arm_cortexM4lf_math.lib</FilePath>
             </File>
             <File>
-              <FileName>user_lib.c</FileName>
+              <FileName>UserLib.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\components\\algorithm\user_lib.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\algorithm\UserLib.c</FilePath>
             </File>
             <File>
-              <FileName>kalman_filter.c</FileName>
+              <FileName>KalmanFilter.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\components\\algorithm\kalman_filter.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\algorithm\KalmanFilter.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -835,19 +835,19 @@
           <GroupName>support</GroupName>
           <Files>
             <File>
-              <FileName>CRC8_CRC16.c</FileName>
+              <FileName>Crc8Crc16.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\components\\support\CRC8_CRC16.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\support\Crc8Crc16.c</FilePath>
             </File>
             <File>
-              <FileName>fifo.c</FileName>
+              <FileName>Fifo.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\components\\support\fifo.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\support\Fifo.c</FilePath>
             </File>
             <File>
-              <FileName>mem_mang4.c</FileName>
+              <FileName>MemMang4.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\\..\\..\\shared\\components\\support\mem_mang4.c</FilePath>
+              <FilePath>..\\..\\..\\shared\\components\\support\MemMang4.c</FilePath>
             </File>
             <File>
               <FileName>ff.c</FileName>

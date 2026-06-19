@@ -9,7 +9,7 @@
 #include "DetectTask.h"
 #include "DetectCommon.h"
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "MotorConfig.h"
 #include "RobotTaskProfile.h"
 #include "Watch.h"

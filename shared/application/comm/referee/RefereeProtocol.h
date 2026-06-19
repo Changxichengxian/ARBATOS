@@ -9,7 +9,7 @@
 #ifndef REFEREE_PROTOCOL_H
 #define REFEREE_PROTOCOL_H
 
-#include "types.h"
+#include "Types.h"
 
 #define HEADER_SOF 0xA5
 #define REF_PROTOCOL_FRAME_MAX_SIZE         128

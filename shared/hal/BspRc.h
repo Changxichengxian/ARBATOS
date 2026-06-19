@@ -17,7 +17,7 @@
   */
 #ifndef BSP_RC_H
 #define BSP_RC_H
-#include "types.h"
+#include "Types.h"
 
 #include <stdint.h>
 

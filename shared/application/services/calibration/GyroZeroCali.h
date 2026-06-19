@@ -1,7 +1,7 @@
 #ifndef GYRO_ZERO_CALI_H
 #define GYRO_ZERO_CALI_H
 
-#include "types.h"
+#include "Types.h"
 
 #include <math.h>
 #include <string.h>

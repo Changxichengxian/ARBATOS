@@ -9,7 +9,7 @@
 #ifndef MOTOR_CONFIG_H
 #define MOTOR_CONFIG_H
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "MotorModelDb.h"
 
 static inline const MotorModelDbEntry *MotorCfgModelDb(MotorModel model);

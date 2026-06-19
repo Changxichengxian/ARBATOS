@@ -9,13 +9,13 @@
 #ifndef CHASSIS_CONTROL_TASK_H
 #define CHASSIS_CONTROL_TASK_H
 
-#include "types.h"
+#include "Types.h"
 #include "CanReceive.h"
 #include "GimbalState.h"
 #include "Pid.h"
 #include "ManualInput.h"
-#include "user_lib.h"
-#include "config.h"
+#include "UserLib.h"
+#include "RobotConfig.h"
 
 #define CHASSIS_TASK_INIT_TIME                 (g_config.chassis.task_init_time_ms)
 

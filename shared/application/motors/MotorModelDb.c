@@ -46,7 +46,7 @@ static const MotorModelRxDesc s_motor_model_rx_desc[MOTOR_MODEL_RX_FMT__COUNT] =
 };
 
 // 跨 target 共享的电机能力表：协议、控制方式、反馈格式和 MIT 限幅都放这里。
-static const MotorModelDbEntry s_motor_model_db[MOTOR_MODEL__COUNT] =
+static const MotorModelDbEntry s_MotorModelDb[MOTOR_MODEL__COUNT] =
 {
     [MOTOR_MODEL_3508] =
         {
@@ -342,7 +342,7 @@ const MotorModelDbEntry *MotorModelDbGet(MotorModel model)
         return 0;
     }
 
-    return &s_motor_model_db[model];
+    return &s_MotorModelDb[model];
 }
 
 // 按电机型号取反馈解析描述；格式无效时退回大疆标准反馈格式。

@@ -10,7 +10,7 @@
 #ifndef BSP_KEY_H
 #define BSP_KEY_H
 
-#include "types.h"
+#include "Types.h"
 
 // Board-specific pin/level is configured in BspKeyCfg.h.
 

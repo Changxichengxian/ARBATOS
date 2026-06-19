@@ -6,20 +6,20 @@
 
 | 配置 | 说明 | 主要文件 |
 |---|---|---|
-| `HERO-C` | 英雄机器人 | `config.c`、`config_*.inc`、`config.h`、`DetectTask.c`、`PitchCaliBuiltin.c` |
-| `HERO-M` | 英雄机器人临时接 MC02 H7 板 | `config.c`、`config_*.inc`、`config.h`、`DetectTask.c`、`PitchCaliBuiltin.c` |
-| `INFANTRY-A` | 步兵机器人 | `config.c`、`config_*.inc`、`config.h`、`DetectTask.c`、`UsbTaskStub.c` |
-| `SENTINEL-M` | 哨兵机器人接 MC02 H7 板 | `config.c`、`config_*.inc`、`config.h`、`DetectTask.c`、`Mc02Compat.c` |
-| `CARRIER-A` | 工程机器人 | `config.c`、`config_*.inc`、`config.h`、`DetectTask.c`、`UsbTaskStub.c` |
-| `MINIWHEELEG-M` | H7 接板和机械臂实验 | `config.c`、`config_*.inc`、`config.h`、`DetectTask.c`、`ArmMotorTable.c` |
-| `MINIWHEELEG-C` | 小轮腿临时接 DJI C 板 | `config.c`、`config_*.inc`、`config.h`、`DetectTask.c`、`ArmMotorTable.c` |
+| `HERO-C` | 英雄机器人 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`PitchCaliBuiltin.c` |
+| `HERO-M` | 英雄机器人临时接 MC02 H7 板 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`PitchCaliBuiltin.c` |
+| `INFANTRY-A` | 步兵机器人 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`UsbTaskStub.c` |
+| `SENTINEL-M` | 哨兵机器人接 MC02 H7 板 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`Mc02Compat.c` |
+| `CARRIER-A` | 工程机器人 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`UsbTaskStub.c` |
+| `MINIWHEELEG-M` | H7 接板和机械臂实验 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`ArmMotorTable.c` |
+| `MINIWHEELEG-C` | 小轮腿临时接 DJI C 板 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`ArmMotorTable.c` |
 
 目标目录采用扁平结构：
 
 ```text
 Robotconfig/<TARGET>/
-|-- config.h
-|-- config.c
+|-- RobotConfig.h
+|-- RobotConfig.c
 |-- ConfigOperation.inc
 |-- ConfigHardware.inc
 |-- ConfigTuning.inc
@@ -29,7 +29,7 @@ Robotconfig/<TARGET>/
 `-- 目标私有补充文件
 ```
 
-`config.c` 只保留 `g_config` 总入口、调参块表和块启用判断。真正要改默认值时，按下面几个片段找：
+`RobotConfig.c` 只保留 `g_config` 总入口、调参块表和块启用判断。真正要改默认值时，按下面几个片段找：
 
 - `ConfigOperation.inc`：运行模式、目标任务/电机、任务模块列表。
 - `ConfigHardware.inc`：设备表和电机装配。

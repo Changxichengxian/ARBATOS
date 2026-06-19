@@ -28,7 +28,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotTaskBuildConfig.h"
 #if ROBOT_TASK_BUILD_CALIBRATION
 #include "CalibrateTask.h"

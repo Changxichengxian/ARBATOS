@@ -1,7 +1,7 @@
 #ifndef AHRS_H
 #define AHRS_H
 
-#include "AHRS_MiddleWare.h"
+#include "AhrsMiddleware.h"
 
 /**
   * @brief          根据加速度的数据，磁力计的数据进行四元数初始化

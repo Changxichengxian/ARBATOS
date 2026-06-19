@@ -1,4 +1,4 @@
-// Included by config.c inside g_config's initializer; do not compile directly.
+// Included by RobotConfig.c inside g_config's initializer; do not compile directly.
     // 手动输入配置
     // Manual control input (SBUS/DBUS / ELRS(CRSF) / USB CDC / board key).
     .manual_input =

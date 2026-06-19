@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "ManualInput.h"
 
 typedef struct

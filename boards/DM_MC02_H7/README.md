@@ -43,9 +43,9 @@
 
 ## 当前状态
 
-- `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` 使用 `Robotconfig/MINIWHEELEG-M/config.c`
-- `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` 使用 `Robotconfig/HERO-M/config.c`
-- 配置入口统一是 `config.c` / `config.h`，没有单独的板子配置文件名
+- `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` 使用 `Robotconfig/MINIWHEELEG-M/RobotConfig.c`
+- `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` 使用 `Robotconfig/HERO-M/RobotConfig.c`
+- 配置入口统一是 `RobotConfig.c` / `RobotConfig.h`，没有单独的板子配置文件名
 - H7 板级启动、任务挂接和 BMI088 IMU 已有 ARBATOS 自己的实现
 - USB Device 初始化在 `defaultTask` 里执行；AUX 口调参、ELRS 和 host_link 业务任务在这套 H7 板级入口里还没有默认接上
 - MIT 轮腿任务已经接入 H7 板级创建入口，当前主要服务 `MINIWHEELEG-M` 这类实验目标

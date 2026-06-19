@@ -14,7 +14,7 @@
 
 #include "cmsis_os2.h"
 
-#include "AHRS.h"
+#include "Ahrs.h"
 #include "BspImuPwm.h"
 #include "DetectTask.h"
 #include "GyroZeroCali.h"
@@ -24,11 +24,11 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
-#include "user_lib.h"
+#include "UserLib.h"
 #include <math.h>
 #include <string.h>
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotMode.h"
 #include "ControlInput.h"
 #include "ManualInput.h"

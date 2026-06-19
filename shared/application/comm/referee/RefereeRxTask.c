@@ -15,8 +15,8 @@
 #include "BspUsart.h"
 #include "DetectTask.h"
 
-#include "CRC8_CRC16.h"
-#include "fifo.h"
+#include "Crc8Crc16.h"
+#include "Fifo.h"
 #include "RefereeProtocol.h"
 #include "Referee.h"
 

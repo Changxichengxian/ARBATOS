@@ -8,9 +8,9 @@
 
 #pragma once
 
-#include "types.h"
+#include "Types.h"
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "GimbalBehaviour.h"
 #include "GimbalControlTask.h"
 

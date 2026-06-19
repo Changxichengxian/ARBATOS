@@ -11,7 +11,7 @@
 #include "DetectTask.h"
 #include "DetectCommon.h"
 #include "cmsis_os.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "Watch.h"
 #include "ManualInput.h"
 #include "SdLog.h"

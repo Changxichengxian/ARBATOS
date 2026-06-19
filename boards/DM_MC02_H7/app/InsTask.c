@@ -5,19 +5,19 @@
 
 #include "cmsis_os2.h"
 
-#include "bmi088driver.h"
+#include "Bmi088Driver.h"
 #include "BspImuPwm.h"
 #include "BspTime.h"
 #include "DetectTask.h"
 #include "GyroZeroCali.h"
 #include "Pid.h"
 #include "SdLog.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotMode.h"
 #include "ControlInput.h"
 #include "ManualInput.h"
 #include "tim.h"
-#include "user_lib.h"
+#include "UserLib.h"
 #include "Watch.h"
 
 #include <math.h>

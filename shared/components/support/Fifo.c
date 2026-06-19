@@ -1,8 +1,8 @@
 
-#include "fifo.h"
+#include "Fifo.h"
 
 #ifdef USE_DYNAMIC_MEMORY
-#include "mem_mang.h"
+#include "MemMang.h"
 #define FIFO_MALLOC heap_malloc
 #define FIFO_FREE heap_free
 #endif

@@ -3,8 +3,8 @@
 #include <stdint.h>
 
 #include "LowCmd.h"
-#include "config.h"
-#include "types.h"
+#include "RobotConfig.h"
+#include "Types.h"
 
 #define N6014B_MOTOR_RS485_PORT0 0u
 #define N6014B_MOTOR_RS485_PORT1 1u

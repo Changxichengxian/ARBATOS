@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-#include "types.h"
+#include "Types.h"
 
 #define LOWCMD_DEFAULT_TIMEOUT_MS 100u
 #define LOWCMD_PRIORITY_HOLD_MS 100u

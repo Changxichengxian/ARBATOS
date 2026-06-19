@@ -14,7 +14,7 @@
  * - 入口：GimbalControlTask() 按任务周期运行，最后把电流写入 LowCmd。
  */
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotTaskBuildConfig.h"
 
 #if ROBOT_TASK_BUILD_ANY_GIMBAL
@@ -29,7 +29,7 @@
 #include "LowCmd.h"
 #include "MotorInst.h"
 #include "MotorConfig.h"
-#include "user_lib.h"
+#include "UserLib.h"
 #include "AxisCurrentConditioner.h"
 #include "DetectTask.h"
 #include "ManualInput.h"

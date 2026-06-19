@@ -9,7 +9,7 @@
 #ifndef CAN_RECEIVE_H
 #define CAN_RECEIVE_H
 
-#include "types.h"
+#include "Types.h"
 
 /* CAN send and receive ID */
 typedef enum

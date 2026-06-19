@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "DetectTask.h"
 
 #ifndef DETECT_COMMON_DEFAULT_OFFLINE_MS

@@ -18,7 +18,7 @@
 #include "BspTime.h"
 #include "BspUsb.h"
 #include "BuzzerFilePlayer.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "ControlInput.h"
 #include "DetectTask.h"
 #include "ImageRemoteLink.h"

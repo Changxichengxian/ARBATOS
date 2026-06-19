@@ -11,7 +11,7 @@
 #ifndef BSP_IST8310_PORT_H
 #define BSP_IST8310_PORT_H
 
-#include "types.h"
+#include "Types.h"
 
 #define IST8310_IIC_ADDRESS (0x0E << 1)  //IST8310的IIC地址
 #define IST8310_IIC_READ_MSB (0x80) //IST8310的SPI读取发送第一个bit为1

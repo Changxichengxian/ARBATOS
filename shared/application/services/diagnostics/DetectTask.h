@@ -10,7 +10,7 @@
   
 #ifndef DETECT_TASK_H
 #define DETECT_TASK_H
-#include "types.h"
+#include "Types.h"
 
 
 #define DETECT_TASK_INIT_TIME 57

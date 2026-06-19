@@ -11,8 +11,8 @@
 #ifndef CALIBRATE_TASK_H
 #define CALIBRATE_TASK_H
 
-#include "types.h"
-#include "config.h"
+#include "Types.h"
+#include "RobotConfig.h"
 #include "BspBuzzer.h"
 
 //when imu is calibrating ,buzzer set frequency and strength. 当imu在校准,蜂鸣器的设置频率和强度

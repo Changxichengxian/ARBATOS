@@ -24,7 +24,7 @@
 #include "LowCmd.h"
 #include "BspTime.h"
 #include "CanMitMotorDriver.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "Watch.h"
 #include "DetectTask.h"
 #include "MotorConfig.h"

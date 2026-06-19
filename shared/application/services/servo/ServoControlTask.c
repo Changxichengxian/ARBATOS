@@ -6,7 +6,7 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotTaskBuildConfig.h"
 
 #if ROBOT_TASK_BUILD_SERVO

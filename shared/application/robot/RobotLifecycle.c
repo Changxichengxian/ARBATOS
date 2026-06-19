@@ -11,7 +11,7 @@
 #include "task.h"
 #include "main.h"
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "ControlInput.h"
 #include "DetectTask.h"
 #include "ManualInput.h"

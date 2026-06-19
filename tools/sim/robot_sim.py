@@ -632,8 +632,8 @@ def parse_wheel_actuators(config_c: str, macros: dict[str, str]) -> set[int]:
 
 def load_project(project: str) -> ProjectConfig:
     config_dir = REPO_ROOT / "Robotconfig" / project
-    config_h_path = config_dir / "config.h"
-    config_c_path = config_dir / "config.c"
+    config_h_path = config_dir / "RobotConfig.h"
+    config_c_path = config_dir / "RobotConfig.c"
     if not config_h_path.exists() or not config_c_path.exists():
         raise FileNotFoundError(f"missing Robotconfig/{project}/config.[ch]")
 

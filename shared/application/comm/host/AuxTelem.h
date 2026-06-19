@@ -9,7 +9,7 @@
 #ifndef AUX_TELEM_H
 #define AUX_TELEM_H
 
-#include "types.h"
+#include "Types.h"
 
 void AuxTelemPrepareMotorIds(void);
 void AuxTelemSetInsSources(const fp32 *quat, const fp32 *angle, const fp32 *gyro, const fp32 *accel);

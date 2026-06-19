@@ -37,7 +37,7 @@
 #include "BspDelay.h"
 #include "BspBuzzer.h"
 #include "BspUsart.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "ManualInput.h"
 
 #include "CalibrateTask.h"

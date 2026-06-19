@@ -10,7 +10,7 @@
 #ifndef GIMBAL_BEHAVIOUR_H
 #define GIMBAL_BEHAVIOUR_H
 
-#include "types.h"
+#include "Types.h"
 #include "GimbalControlTask.h"
 
 typedef enum

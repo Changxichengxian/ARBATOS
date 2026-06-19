@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-#include "types.h"
+#include "Types.h"
 
 #ifdef __cplusplus
 extern "C" {

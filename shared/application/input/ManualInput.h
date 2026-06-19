@@ -11,9 +11,9 @@
 #define MANUAL_INPUT_H
 #include <stddef.h>
 
-#include "types.h"
+#include "Types.h"
 #include "BspRc.h"
-#include "config.h"
+#include "RobotConfig.h"
 
 #define SBUS_RX_BUF_NUM BSP_RC_SBUS_RX_BUF_NUM
 
@@ -178,7 +178,7 @@ typedef char ManualInputKeyOffsetCheck[(offsetof(ManualInputState, key) == MANUA
  * If you want to:
  * - change SBUS/DBUS decode: edit `ManualInputOnSbusFrame()` / `sbus_to_rc()` in `ManualInput.c`
  * - change which source wins: edit `ManualInputUpdateSource()` and the `ManualInput*` merge helpers
- * - change axis/switch mapping: edit `ControlInput.c` and the `input` block in `Robotconfig/<TARGET>/config.c`
+ * - change axis/switch mapping: edit `ControlInput.c` and the `input` block in `Robotconfig/<TARGET>/RobotConfig.c`
  */
 
 /* Preferred names for new code. Legacy `remote_control_*` names stay for compatibility. */

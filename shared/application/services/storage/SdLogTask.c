@@ -10,7 +10,7 @@
 
 #include "cmsis_os.h"
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "BspTime.h"
 #include "SdCard.h"
 #include "SdLog.h"

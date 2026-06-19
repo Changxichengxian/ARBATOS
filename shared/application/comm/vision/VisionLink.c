@@ -15,7 +15,7 @@
 
 #include "Referee.h"
 #include "SdLog.h"
-#include "CRC8_CRC16.h"
+#include "Crc8Crc16.h"
 #include "ChassisState.h"
 #include "ExternalMotionIntent.h"
 #include "GimbalState.h"

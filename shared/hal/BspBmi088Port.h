@@ -9,7 +9,7 @@
 #ifndef BSP_BMI088_PORT_H
 #define BSP_BMI088_PORT_H
 
-#include "types.h"
+#include "Types.h"
 
 #define BMI088_USE_SPI
 //#define BMI088_USE_IIC

@@ -15,7 +15,7 @@
 #include "BspCan.h"
 #include "BspDelay.h"
 #include "ManualInput.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "Watch.h"
 
 void SystemClock_Config(void);

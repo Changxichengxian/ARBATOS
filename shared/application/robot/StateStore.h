@@ -9,7 +9,7 @@
 #ifndef STATE_STORE_H
 #define STATE_STORE_H
 
-#include "types.h"
+#include "Types.h"
 
 typedef enum
 {

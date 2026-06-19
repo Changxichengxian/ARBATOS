@@ -1,8 +1,8 @@
 #ifndef CHASSIS_POWER_LIMITER_H
 #define CHASSIS_POWER_LIMITER_H
 
-#include "types.h"
-#include "config.h"
+#include "Types.h"
+#include "RobotConfig.h"
 
 typedef struct
 {

@@ -14,7 +14,7 @@
  * - 被调用方：ChassisControlTask 先问这里要目标，再做运动学和 PID。
  */
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotTaskBuildConfig.h"
 
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS

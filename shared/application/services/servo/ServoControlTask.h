@@ -8,7 +8,7 @@
 
 #ifndef SERVO_CONTROL_TASK_H
 #define SERVO_CONTROL_TASK_H
-#include "types.h"
+#include "Types.h"
 
 
 extern void ServoControlTask(void const * argument);

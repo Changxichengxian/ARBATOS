@@ -30,7 +30,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "config.h"
+#include "RobotConfig.h"
 #include "BspBuzzer.h"
 #include "BspCan.h"
 #include "ManualInput.h"

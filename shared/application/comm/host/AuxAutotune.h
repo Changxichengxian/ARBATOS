@@ -9,7 +9,7 @@
 #ifndef AUX_AUTOTUNE_H
 #define AUX_AUTOTUNE_H
 
-#include "types.h"
+#include "Types.h"
 
 typedef enum
 {

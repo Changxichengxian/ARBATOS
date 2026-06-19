@@ -3,7 +3,7 @@
 This is the MuJoCo entry for the ARBATOS wheel-leg control core.
 
 The runner generates a project-specific five-bar wheel-leg model from
-`Robotconfig/<project>/config.c`:
+`Robotconfig/<project>/RobotConfig.c`:
 
 - wheels are real contact wheels attached to a free base;
 - front/back active joints use the same names as `WheelLegCore.h` expects;
@@ -26,7 +26,7 @@ Compiler options on Windows:
 - MinGW, providing `gcc`.
 - Zig, providing `zig`.
 
-The runner builds `tools/mujoco/wheelleg/wheelleg_core_bridge.c` into
+The runner builds `tools/mujoco/wheelleg/WheelLegCoreBridge.c` into
 `tmp/mujoco_wheelleg/arbatos_wheelleg_core_bridge.dll` on first run. It also
 writes generated MJCF files to `tmp/mujoco_wheelleg/`.
 
@@ -95,7 +95,7 @@ This runner is good for checking:
 - whether the reusable core can run outside FreeRTOS.
 
 It is still not a final calibrated robot model. Geometry and control gains come
-from `Robotconfig/<project>/config.c`, and the default mass assumptions come
+from `Robotconfig/<project>/RobotConfig.c`, and the default mass assumptions come
 from `tools/wheelleg_lqr/small_3510_lqr_report.md`. Track width, wheel width,
 contact material, joint damping, and detailed inertia are still simulation
 assumptions. The diamond branch fixes the visible five-bar shape, but VMC

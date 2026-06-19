@@ -8,7 +8,7 @@
 
 #ifndef BSP_FRIC_H
 #define BSP_FRIC_H
-#include "types.h"
+#include "Types.h"
 
 // Legacy PWM interface (no longer used by shoot): kept for compatibility.
 // 摩擦轮已切换为 CAN2 速度环/电流输出；此处仅保留默认 PWM 值，避免旧代码编译报错。

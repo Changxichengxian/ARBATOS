@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "macro_mutex.h"
+#include "MacroMutex.h"
 
 #define HEAP_ASSERT(x)
 

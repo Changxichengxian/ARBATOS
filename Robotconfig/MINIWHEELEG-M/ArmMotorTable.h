@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 
-#include "config.h"
+#include "RobotConfig.h"
 
 #define ARM_MOTOR_COUNT MOTOR_ARM_JOINT_COUNT
 

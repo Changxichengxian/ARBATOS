@@ -15,9 +15,9 @@
 不要再新增这种句子式名字：
 
 ```c
-MotorInstSetCurrentIdsBestEffort();
-ControlMgrSwitchByName();
-RtProfGetSummary();
+motor_instance_set_current_ids_best_effort();
+control_manager_switch_to_named_control();
+rt_profiler_get_runtime_summary();
 ```
 
 优先写成：

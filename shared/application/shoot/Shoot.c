@@ -14,7 +14,7 @@
  * - 输出：拨弹电流作为返回值，摩擦轮电流写入 LowCmd。
  */
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotTaskBuildConfig.h"
 
 #if ROBOT_TASK_BUILD_SHOOT_RM
@@ -25,7 +25,7 @@
 #include "cmsis_os.h"
 
 #include "BspShootTrig.h"
-#include "user_lib.h"
+#include "UserLib.h"
 #include "Referee.h"
 
 #include "CanReceive.h"

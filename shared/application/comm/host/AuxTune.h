@@ -10,7 +10,7 @@
 #define AUX_TUNE_H
 
 #include <stdint.h>
-#include "types.h"
+#include "Types.h"
 
 #define AUX_TUNE_RX_LINE_MAX 96u
 

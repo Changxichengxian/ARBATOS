@@ -195,9 +195,9 @@ IMU 正常后再调云台和底盘。重点看：
 
 ### AUX 调参改了没效果
 
-- 只有 `config.c` 的 `g_config_blocks` 表里列出的字段能临时改。
+- 只有 `RobotConfig.c` 的 `g_config_blocks` 表里列出的字段能临时改。
 - `ConfigHardware.inc` 里的 `.motor` 这类装配信息默认不走 AUX 临时调参，改完要重新编译下载。
-- AUX 只改 RAM 里的当前值，重启会回到 `config_*.inc` 默认值。
+- AUX 只改 RAM 里的当前值，重启会回到 `Config*.inc` 默认值。
 
 ## 什么时候该改 shared
 

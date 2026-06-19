@@ -14,7 +14,7 @@
  * - 被调用方：GimbalControlTask 先决定行为，再进入角度/速度/电流控制。
  */
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotTaskBuildConfig.h"
 
 #if ROBOT_TASK_BUILD_ANY_GIMBAL
@@ -22,14 +22,14 @@
 #include "GimbalBehaviour.h"
 #include "arm_math.h"
 #include "BspBuzzer.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "ControlInput.h"
 #include "DetectTask.h"
 #include "PitchCali.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "user_lib.h"
+#include "UserLib.h"
 
 //when gimbal is in calibrating, set buzzer frequency and strenght
 //当云台在校准, 设置蜂鸣器频率和强度

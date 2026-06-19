@@ -18,7 +18,7 @@
 #include "AuxTelem.h"
 #include "BspUsart.h"
 #include "ChassisControlTask.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "ElrsTask.h"
 #include "GimbalControlTask.h"
 #include "HostTuneBridge.h"
@@ -26,7 +26,7 @@
 #include "ManualInput.h"
 #include "RobotSafety.h"
 #include "RobotTaskProfile.h"
-#include "types.h"
+#include "Types.h"
 
 static char AuxRxLine[AUX_TUNE_RX_LINE_MAX];
 static volatile uint16_t AuxRxLen = 0;

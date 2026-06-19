@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "types.h"
+#include "Types.h"
 
 typedef enum
 {

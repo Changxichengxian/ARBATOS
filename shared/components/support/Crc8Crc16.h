@@ -2,7 +2,7 @@
 #ifndef CRC8_CRC16_H
 #define CRC8_CRC16_H
 
-#include "types.h"
+#include "Types.h"
 
 /**
   * @brief          calculate the crc8  

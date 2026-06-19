@@ -9,8 +9,8 @@
 
 #ifndef INS_Task_H
 #define INS_Task_H
-#include "types.h"
-#include "config.h"
+#include "Types.h"
+#include "RobotConfig.h"
 
 #define SPI_DMA_GYRO_LENGTH       8
 #define SPI_DMA_ACCEL_LENGTH      9

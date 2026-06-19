@@ -12,7 +12,7 @@
 #include "main.h"
 
 #include "RefereeProtocol.h"
-#include "types.h"
+#include "Types.h"
 
 #define REFEREE_INTERACTIVE_DATA_MAX_LEN 112u
 #define REFEREE_UI_GRAPHIC_RAW_LEN       15u

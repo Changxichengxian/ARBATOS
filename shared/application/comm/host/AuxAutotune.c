@@ -17,7 +17,7 @@
 #include "GimbalControlTask.h"
 #include "HostTuneBridge.h"
 #include "RobotTaskProfile.h"
-#include "user_lib.h"
+#include "UserLib.h"
 
 typedef struct
 {

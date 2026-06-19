@@ -22,19 +22,19 @@
 #include "BspTime.h"
 #include "BspUsart.h"
 #include "ChassisControlTask.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "DetectTask.h"
 #include "GimbalBehaviour.h"
 #include "GimbalControlTask.h"
 #include "GimbalState.h"
 #include "HostTuneBridge.h"
 #include "ManualInput.h"
-#include "mem_mang.h"
+#include "MemMang.h"
 #include "MotorConfig.h"
 #include "MotorInst.h"
 #include "RobotTaskProfile.h"
 #include "ShootState.h"
-#include "user_lib.h"
+#include "UserLib.h"
 
 #define AUX_TELEM_AUTO_EXTRA_BACKOFF_PCT 50u
 

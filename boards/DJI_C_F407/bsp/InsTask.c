@@ -18,21 +18,21 @@
 
 #include "BspImuPwm.h"
 #include "BspSpi.h"
-#include "bmi088driver.h"
+#include "Bmi088Driver.h"
 #include "Ist8310Driver.h"
 #include "Pid.h"
-#include "user_lib.h"
+#include "UserLib.h"
 #include <math.h>
 #include <string.h>
 
 #include "CalibrateTask.h"
 #include "DetectTask.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotMode.h"
 #include "ControlInput.h"
 #include "ManualInput.h"
 #include "BspKey.h"
-#include "AHRS.h"
+#include "Ahrs.h"
 #include "GyroZeroCali.h"
 #include "SdLog.h"
 

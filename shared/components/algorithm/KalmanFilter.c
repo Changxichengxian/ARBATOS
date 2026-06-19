@@ -1,4 +1,4 @@
-#include "kalman_filter.h"
+#include "KalmanFilter.h"
 
 static fp32 kalman_safe_div(fp32 num, fp32 denom)
 {

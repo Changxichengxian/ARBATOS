@@ -26,7 +26,7 @@ GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 
 
 ## 2. 填目标身份
 
-在 `Robotconfig/<TARGET>/config.h` 顶部写清楚：
+在 `Robotconfig/<TARGET>/RobotConfig.h` 顶部写清楚：
 
 ```c
 #define ARBATOS_TARGET_NAME "NEW-TARGET"
@@ -128,7 +128,7 @@ GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 
 在 `projects/<TARGET>/MDK-ARM/<TARGET>.uvprojx` 里确认：
 
 - Include Path 只指向一个 `Robotconfig/<TARGET>`。
-- Source Group 里没有混进别的目标的 `config.c`。
+- Source Group 里没有混进别的目标的 `RobotConfig.c`。
 - 目标使用的 board 路径正确。
 - `BeforeMake` 里有构建信息生成脚本：
 

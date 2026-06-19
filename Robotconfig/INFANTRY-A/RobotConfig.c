@@ -6,7 +6,7 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
-#include "config.h"
+#include "RobotConfig.h"
 #include "LowCmd.h"
 
 /*

@@ -1,7 +1,7 @@
 
 #ifndef PID_H
 #define PID_H
-#include "types.h"
+#include "Types.h"
 enum PID_MODE
 {
     PID_POSITION = 0,

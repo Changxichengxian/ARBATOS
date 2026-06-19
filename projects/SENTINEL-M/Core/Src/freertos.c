@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "config.h"
+#include "RobotConfig.h"
 #include "RobotTaskBuildConfig.h"
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
 #include "ChassisControlTask.h"

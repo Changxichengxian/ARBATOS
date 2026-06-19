@@ -8,7 +8,7 @@
 
 #ifndef BSP_ADC_H
 #define BSP_ADC_H
-#include "types.h"
+#include "Types.h"
 
 extern void init_vrefint_reciprocal(void);
 extern fp32 get_temprate(void);

@@ -1,4 +1,4 @@
-// Included by config.c inside g_config's initializer; do not compile directly.
+// Included by RobotConfig.c inside g_config's initializer; do not compile directly.
     // 手动输入配置
     // ===== 稳定配置：硬件归属 / 输入语义 / 调试默认值，只在代码里改 =====
     // 这些项不会出现在 AUX 动态参数表里。

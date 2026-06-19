@@ -13,7 +13,7 @@
 #include <string.h>
 
 #include "LowCmd.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "ControlMgr.h"
 
 #ifndef ROBOT_CONFIG_DEVICE_BINDING_MAX_INPUTS

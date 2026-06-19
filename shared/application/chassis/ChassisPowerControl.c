@@ -13,7 +13,7 @@
 #include <float.h>
 #include <math.h>
 #include "DetectTask.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "SdLog.h"
 #include "ChassisPowerLimiter.h"
 #include "RobotTaskProfile.h"

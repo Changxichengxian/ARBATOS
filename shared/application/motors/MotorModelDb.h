@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-#include "config.h"
+#include "RobotConfig.h"
 
 typedef enum
 {

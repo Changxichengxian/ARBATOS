@@ -9,12 +9,12 @@
 #ifndef GIMBAL_CONTROL_TASK_H
 #define GIMBAL_CONTROL_TASK_H
 
-#include "types.h"
+#include "Types.h"
 #include "CanReceive.h"
 #include "GimbalPid.h"
 #include "Pid.h"
 #include "ManualInput.h"
-#include "config.h"
+#include "RobotConfig.h"
 
 // pitch speed close-loop PID params, max out and max iout
 #define PITCH_SPEED_PID_KP            (g_config.gimbal.pitch_speed_pid.kp)

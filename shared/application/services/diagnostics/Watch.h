@@ -10,9 +10,9 @@
 
 #include "LowCmd.h"
 #include "ControlMgr.h"
-#include "config.h"
+#include "RobotConfig.h"
 #include "RuntimeInstance.h"
-#include "types.h"
+#include "Types.h"
 
 #ifndef WATCH_ENABLE_LOCOMOTION_CLASSIC
 #define WATCH_ENABLE_LOCOMOTION_CLASSIC 1

@@ -6,7 +6,7 @@
 #ifndef ROBOT_MODE_H
 #define ROBOT_MODE_H
 
-#include "config.h"
+#include "RobotConfig.h"
 
 static inline robot_run_mode_e robot_mode_current(void)
 {
