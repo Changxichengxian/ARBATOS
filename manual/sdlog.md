@@ -40,7 +40,7 @@ SD 日志的目标不是“把所有东西都写下来”，而是让一次上�
 Keil 工程的 `BeforeMake` 会运行：
 
 ```text
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\gen_build_info.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\GenBuildInfo.ps1
 ```
 
 GCC/CMake 路线也会在 `tools/build.ps1 -Action gcc` 和 `tools/build.ps1 -Action gcc-build` 开始时运行同一个脚本。
@@ -54,7 +54,7 @@ GCC/CMake 路线也会在 `tools/build.ps1 -Action gcc` 和 `tools/build.ps1 -Ac
 启动网页查看器：
 
 ```powershell
-python tools\sdlog\sdlog_viewer.py sdlog_0001.bin
+python tools\sdlog\SdLogViewer.py sdlog_0001.bin
 ```
 
 常用导出：
@@ -78,7 +78,7 @@ python tools\sdlog\sdlog_viewer.py sdlog_0001.bin
 如果固件开启 LZ4 块压缩，可以先解压成当前格式的未压缩文件：
 
 ```powershell
-python tools\sdlog\sdlog_decompress.py sdlog_0001.bin
+python tools\sdlog\SdLogDecompress.py sdlog_0001.bin
 ```
 
 默认输出：

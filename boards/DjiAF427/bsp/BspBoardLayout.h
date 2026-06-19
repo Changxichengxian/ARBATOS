@@ -10,12 +10,12 @@
 #define BSP_BOARD_LAYOUT_H
 
 /*
- * DJI_A_F427 fixed board resources.
+ * DjiAF427 fixed board resources.
  * Serial port reference is kept in the target-local BspBoardPortUsage.h
  * file so daily port changes only need one entry point.
  */
 
-#define BSP_BOARD_NAME "DJI_A_F427"
+#define BSP_BOARD_NAME "DjiAF427"
 
 #define BSP_BOARD_KEY_GPIO_Port        KEY_GPIO_Port
 #define BSP_BOARD_KEY_Pin              KEY_Pin

@@ -12,7 +12,7 @@
 #include "BspBoardLayout.h"
 
 /*
- * CARRIER-A port table on DJI_A_F427.
+ * CARRIER-A port table on DjiAF427.
  *
  * The notes below are reference only. Editing the note block does not change
  * code. The macros under "active assignment" are the real binding.

@@ -21,7 +21,7 @@
 ## 文档分层
 
 - `README.md`：项目总览和当前主线状态。
-- `QUICK_START.md`：非常短的入门路径，适合第一次打开仓库。
+- `QuickStart.md`：非常短的入门路径，适合第一次打开仓库。
 - `manual/`：正式操作手册，按具体任务组织。
 - `projects/README.md`：工程入口层，只讲 Keil 工程和启动入口。
 - `Robotconfig/README.md`：目标配置层，只讲车型参数、装配和检测。

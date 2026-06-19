@@ -825,7 +825,7 @@ function Test-PythonTools {
 function Test-SimulationTools {
     Write-Host "[check] simulation tools"
 
-    $simTool = Join-Path $script:RepoRoot "tools\sim\robot_sim.py"
+    $simTool = Join-Path $script:RepoRoot "tools\sim\RobotSim.py"
     if (-not (Test-Path -LiteralPath $simTool -PathType Leaf)) {
         Add-CheckWarning "simulation tool not found; skipped pressure simulation smoke checks."
         return
@@ -841,29 +841,29 @@ function Test-SimulationTools {
         $output = & $python.Source $simTool --project $projectName --json 2>&1
         $jsonText = ($output -join "`n")
         if ($LASTEXITCODE -ne 0) {
-            Add-CheckError "tools\sim\robot_sim.py $projectName failed: $jsonText"
+            Add-CheckError "tools\sim\RobotSim.py $projectName failed: $jsonText"
             continue
         }
 
         try {
             $report = $jsonText | ConvertFrom-Json
             if ($report.project.name -ne $projectName) {
-                Add-CheckError "tools\sim\robot_sim.py $projectName returned project '$($report.project.name)'."
+                Add-CheckError "tools\sim\RobotSim.py $projectName returned project '$($report.project.name)'."
             }
             if ($null -eq $report.can.buses -or $report.can.buses.Count -eq 0) {
-                Add-CheckError "tools\sim\robot_sim.py $projectName returned no CAN bus report."
+                Add-CheckError "tools\sim\RobotSim.py $projectName returned no CAN bus report."
             }
         }
         catch {
-            Add-CheckError "tools\sim\robot_sim.py $projectName returned invalid JSON: $($_.Exception.Message)"
+            Add-CheckError "tools\sim\RobotSim.py $projectName returned invalid JSON: $($_.Exception.Message)"
         }
     }
 
-    $mujocoWheellegTool = Join-Path $script:RepoRoot "tools\mujoco\wheelleg\run_wheelleg.py"
+    $mujocoWheellegTool = Join-Path $script:RepoRoot "tools\mujoco\wheelleg\RunWheelLeg.py"
     if (Test-Path -LiteralPath $mujocoWheellegTool -PathType Leaf) {
         $output = & $python.Source $mujocoWheellegTool --check --project MINIWHEELEG-C 2>&1
         if ($LASTEXITCODE -ne 0) {
-            Add-CheckError "tools\mujoco\wheelleg\run_wheelleg.py --check failed: $($output -join "`n")"
+            Add-CheckError "tools\mujoco\wheelleg\RunWheelLeg.py --check failed: $($output -join "`n")"
         }
     }
 }
@@ -873,8 +873,8 @@ function Test-BuildManifestTools {
 
     Write-Host "[check] build manifest tools"
 
-    $manifestTool = Join-Path $script:RepoRoot "tools\build\project_manifest.py"
-    $gccTool = Join-Path $script:RepoRoot "tools\build\gcc_project.py"
+    $manifestTool = Join-Path $script:RepoRoot "tools\build\ProjectManifest.py"
+    $gccTool = Join-Path $script:RepoRoot "tools\build\GccProject.py"
     if (-not (Test-Path -LiteralPath $manifestTool -PathType Leaf)) {
         Add-CheckError "Missing build manifest tool: $(Format-RepoPath $manifestTool)"
         return
@@ -893,30 +893,30 @@ function Test-BuildManifestTools {
     $output = & $python.Source $manifestTool --all --check --json --summary-only 2>&1
     $jsonText = ($output -join "`n")
     if ($LASTEXITCODE -ne 0) {
-        Add-CheckError "tools\build\project_manifest.py --all --check failed: $jsonText"
+        Add-CheckError "tools\build\ProjectManifest.py --all --check failed: $jsonText"
         return
     }
 
     try {
         $report = $jsonText | ConvertFrom-Json
         if ($report.summary.project_count -ne $ExpectedProjectCount) {
-            Add-CheckError "tools\build\project_manifest.py returned $($report.summary.project_count) project(s), expected $ExpectedProjectCount."
+            Add-CheckError "tools\build\ProjectManifest.py returned $($report.summary.project_count) project(s), expected $ExpectedProjectCount."
         }
         if ($report.summary.validation_errors -ne 0) {
-            Add-CheckError "tools\build\project_manifest.py reported $($report.summary.validation_errors) validation error(s)."
+            Add-CheckError "tools\build\ProjectManifest.py reported $($report.summary.validation_errors) validation error(s)."
         }
         if ($null -eq $report.projects -or $report.projects.Count -eq 0) {
-            Add-CheckError "tools\build\project_manifest.py returned no project manifests."
+            Add-CheckError "tools\build\ProjectManifest.py returned no project manifests."
         }
     }
     catch {
-        Add-CheckError "tools\build\project_manifest.py returned invalid JSON: $($_.Exception.Message)"
+        Add-CheckError "tools\build\ProjectManifest.py returned invalid JSON: $($_.Exception.Message)"
     }
 
     $gccOutput = & $python.Source $gccTool --all --check-only --json 2>&1
     $gccJsonText = ($gccOutput -join "`n")
     if ($LASTEXITCODE -ne 0) {
-        Add-CheckError "tools\build\gcc_project.py --all --check-only failed: $gccJsonText"
+        Add-CheckError "tools\build\GccProject.py --all --check-only failed: $gccJsonText"
         return
     }
 
@@ -929,7 +929,7 @@ function Test-BuildManifestTools {
         }
     }
     catch {
-        Add-CheckError "tools\build\gcc_project.py returned invalid JSON: $($_.Exception.Message)"
+        Add-CheckError "tools\build\GccProject.py returned invalid JSON: $($_.Exception.Message)"
     }
 }
 
@@ -973,7 +973,7 @@ function Test-StaleText {
     )
 
     foreach ($repoPath in Get-TextFilesToCheck) {
-        if ($repoPath.Replace("/", "\") -eq "tools\check_all.ps1") {
+        if ($repoPath.Replace("/", "\") -eq "tools\CheckAll.ps1") {
             continue
         }
 
@@ -1065,6 +1065,75 @@ function Test-IncludeFilenameCase {
                 $actualNames = ($fileMap[$includeName] | ForEach-Object { $_.Name } | Select-Object -Unique) -join ", "
                 Add-CheckError "$(Format-RepoPath $fullPath): include '$include' differs from tracked file name: $actualNames."
             }
+        }
+    }
+}
+
+function Test-ProjectOwnedPathNames {
+    Write-Host "[check] project-owned path names"
+
+    $allowedTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($target in @("CARRIER-A", "HERO-C", "HERO-M", "INFANTRY-A", "MINIWHEELEG-C", "MINIWHEELEG-M", "SENTINEL-M")) {
+        [void]$allowedTargets.Add($target)
+    }
+
+    $reported = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+    foreach ($path in (git -C $script:RepoRoot -c core.quotepath=false ls-files)) {
+        $normPath = $path -replace '\\', '/'
+        if ($normPath -match '^projects/[^/]+/(Drivers|Middlewares|Core|USB_DEVICE)/') {
+            continue
+        }
+        if ($normPath -match '^tools/build/gcc_support/') {
+            continue
+        }
+        if ($normPath -match '^shared/components/algorithm/Include/') {
+            continue
+        }
+        if ($normPath -match '^shared/components/support/fatfs/') {
+            continue
+        }
+        if ($normPath -match '^\.github/PULL_REQUEST_TEMPLATE\.md$') {
+            continue
+        }
+        if ($normPath -match '^projects/[^/]+/MDK-ARM/startup_stm32[a-z0-9]+\.s$') {
+            continue
+        }
+        if ($normPath -match '^projects/[^/]+/MDK-ARM/[^/]+_ccm\.sct$') {
+            continue
+        }
+        if ($normPath -eq 'shared/components/algorithm/arm_cortexM4lf_math.lib') {
+            continue
+        }
+        if ($normPath -match '^tools/Mp3ToU8/(FFMPEG_LICENSE\.txt|FFMPEG_README\.txt|ffmpeg\.exe|\.gitignore)$') {
+            continue
+        }
+        if ($normPath -match '^tools/Mp3ToU8/U8/') {
+            continue
+        }
+
+        $parts = $normPath -split '/'
+        for ($i = 0; $i -lt $parts.Count; $i++) {
+            $name = $parts[$i]
+            if ($name -eq "LICENSE") {
+                continue
+            }
+            if ($i -eq 1 -and ($parts[0] -eq "projects" -or $parts[0] -eq "Robotconfig") -and $allowedTargets.Contains($name)) {
+                continue
+            }
+            if ($i -eq 2 -and $parts[0] -eq "projects" -and $name -eq "MDK-ARM") {
+                continue
+            }
+
+            if ($name -notmatch '_' -and $name -cnotmatch '^[A-Z0-9_.-]+$') {
+                continue
+            }
+
+            $componentPath = ($parts[0..$i] -join '/')
+            if (-not $reported.Add($componentPath)) {
+                continue
+            }
+            Add-CheckError "$(Format-RepoPath (Join-Path $script:RepoRoot $componentPath)): project-owned path name should avoid underscores or all-uppercase words unless it is generated, vendor-owned, or a fixed external identity."
         }
     }
 }
@@ -1412,6 +1481,7 @@ Test-SimulationTools
 Test-BuildManifestTools $projects.Count
 Test-StaleText
 Test-IncludeFilenameCase
+Test-ProjectOwnedPathNames
 Test-HighRateApiBoundaries
 Test-CanTxDeviceConfigBoundaries
 Test-ControlRegistryBoundaries

@@ -1,6 +1,6 @@
-﻿# DJI A F427
+# DJI A F427
 
-`boards/DJI_A_F427/` 只表示 DJI A 开发板这一层，不混入具体机器人目标。
+`boards/DjiAF427/` 只表示 DJI A 开发板这一层，不混入具体机器人目标。
 
 ## 当前内容
 
@@ -15,8 +15,8 @@
 
 ## 当前使用者
 
-- `INFANTRY-A`：`open_INFANTRY-A.cmd` 或 `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx`
-- `CARRIER-A`：`open_CARRIER-A.cmd` 或 `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx`
+- `INFANTRY-A`：`OpenInfantryA.cmd` 或 `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx`
+- `CARRIER-A`：`OpenCarrierA.cmd` 或 `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx`
 
 ## 边界
 

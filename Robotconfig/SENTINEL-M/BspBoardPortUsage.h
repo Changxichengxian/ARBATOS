@@ -12,7 +12,7 @@
 #include "BspBoardLayout.h"
 
 /*
- * SENTINEL-M port table on DM_MC02_H7.
+ * SENTINEL-M port table on DmMc02H7.
  *
  * The notes below are reference only. Editing the note block does not change
  * code. The macros under "active assignment" are the real binding.

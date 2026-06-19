@@ -30,7 +30,7 @@ GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 
 
 ```c
 #define ARBATOS_TARGET_NAME "NEW-TARGET"
-#define ARBATOS_BOARD_NAME "DJI_C_F407"
+#define ARBATOS_BOARD_NAME "DjiCF407"
 ```
 
 这两个值会进入 SD 日志的 `BUILD_INFO`。以后只拿到一张 SD 卡，也能知道日志来自哪台车、哪块板。
@@ -133,7 +133,7 @@ GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 
 - `BeforeMake` 里有构建信息生成脚本：
 
 ```text
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\gen_build_info.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\GenBuildInfo.ps1
 ```
 
 这个脚本会生成 `shared/generated/build_info_autogen.h`，让 SD 日志里带 Git 提交、编译时间和 dirty 状态。
@@ -149,7 +149,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action ma
 在仓库根目录先跑：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\check_all.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\CheckAll.ps1
 ```
 
 这个脚本不会替代 Keil 编译，也不会默认跑完整 GCC 编译，但能先抓出工程引用、缺文件、profile 和任务创建不匹配、Python 工具语法这类低级问题。
@@ -166,7 +166,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gc
 
 新目标至少满足这些，才算初步接起来：
 
-- `tools/check_all.ps1` 通过。
+- `tools/CheckAll.ps1` 通过。
 - Keil Rebuild 通过。
 - 如果目标承诺支持 GCC/CMake，`tools/build.ps1 -Action gcc-build -Project <TARGET>` 通过。
 - SD 日志 `BUILD_INFO` 能显示正确 target、board、Git、编译时间。

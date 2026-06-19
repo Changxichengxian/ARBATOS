@@ -1,4 +1,4 @@
-﻿# boards
+# boards
 
 `boards/` 放“这块硬件板有什么”的内容。这里关心芯片、引脚、外设和板级启动，不关心某台车的 PID 或电机 ID。
 
@@ -6,9 +6,9 @@
 
 | Board | 芯片 | 说明 |
 |---|---|---|
-| `DJI_C_F407` | STM32F407 | DJI C 开发板适配 |
-| `DJI_A_F427` | STM32F427 | DJI A 开发板适配 |
-| `DM_MC02_H7` | STM32H723 | 达妙 MC02 H7 开发板适配 |
+| `DjiCF407` | STM32F407 | DJI C 开发板适配 |
+| `DjiAF427` | STM32F427 | DJI A 开发板适配 |
+| `DmMc02H7` | STM32H723 | 达妙 MC02 H7 开发板适配 |
 
 ## 应该放这里
 

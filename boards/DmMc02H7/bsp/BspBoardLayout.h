@@ -10,12 +10,12 @@
 #define BSP_BOARD_LAYOUT_H
 
 /*
- * DM_MC02_H7 fixed board resources.
+ * DmMc02H7 fixed board resources.
  * Serial port reference is kept in the target-local BspBoardPortUsage.h
  * file so daily port changes only need one entry point.
  */
 
-#define BSP_BOARD_NAME "DM_MC02_H7"
+#define BSP_BOARD_NAME "DmMc02H7"
 
 #define BSP_BOARD_KEY_GPIO_Port              GPIOA
 #define BSP_BOARD_KEY_Pin                    GPIO_PIN_15

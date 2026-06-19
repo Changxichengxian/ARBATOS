@@ -94,14 +94,14 @@ function Invoke-GccGenerator {
     }
 
     $python = Require-Tool "python"
-    & $python (Join-Path $RepoRoot "tools\build\gcc_project.py") @($arguments.ToArray())
+    & $python (Join-Path $RepoRoot "tools\build\GccProject.py") @($arguments.ToArray())
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
 }
 
 function Update-BuildInfo {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "tools\gen_build_info.ps1")
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "tools\GenBuildInfo.ps1")
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
@@ -109,7 +109,7 @@ function Update-BuildInfo {
 
 switch ($Action) {
     "check" {
-        & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "tools\check_all.ps1")
+        & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "tools\CheckAll.ps1")
         exit $LASTEXITCODE
     }
 
@@ -130,7 +130,7 @@ switch ($Action) {
             $arguments.Add("--fail-on-gcc-blockers")
         }
 
-        Invoke-PythonTool -ToolPath (Join-Path $RepoRoot "tools\build\project_manifest.py") -Arguments $arguments.ToArray()
+        Invoke-PythonTool -ToolPath (Join-Path $RepoRoot "tools\build\ProjectManifest.py") -Arguments $arguments.ToArray()
     }
 
     "gcc" {
@@ -183,10 +183,10 @@ switch ($Action) {
 
         $python = Get-Command python -ErrorAction SilentlyContinue
         if ($null -eq $python) {
-            Write-Error "python is not available. Install Python or run tools\sim\robot_sim.py directly."
+            Write-Error "python is not available. Install Python or run tools\sim\RobotSim.py directly."
         }
 
-        $simTool = Join-Path $RepoRoot "tools\sim\robot_sim.py"
+        $simTool = Join-Path $RepoRoot "tools\sim\RobotSim.py"
         $projects = @()
         if ($Project -eq "all") {
             $projects = @(Get-ChildItem -Path (Join-Path $RepoRoot "Robotconfig") -Directory |

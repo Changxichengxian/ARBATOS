@@ -45,13 +45,13 @@ timestamp_ms, setpoint, input, output, error, kp, ki, kd
 先把 UART1 切到 tune 模式，再跑主机工具。
 
 ```powershell
-python tools\pid_autotune\arbatos_pid_autotune.py --port COM5 --target ps
+python tools\PidAutotune\arbatos_PidAutotune.py --port COM5 --target ps
 ```
 
 更完整一点的例子：
 
 ```powershell
-python tools\pid_autotune\arbatos_pid_autotune.py `
+python tools\PidAutotune\arbatos_PidAutotune.py `
   --port COM5 `
   --target ps `
   --window 120 `
@@ -62,7 +62,7 @@ python tools\pid_autotune\arbatos_pid_autotune.py `
 如果你想接 OpenAI 兼容接口：
 
 ```powershell
-python tools\pid_autotune\arbatos_pid_autotune.py `
+python tools\PidAutotune\arbatos_PidAutotune.py `
   --port COM5 `
   --target ps `
   --mode llm `

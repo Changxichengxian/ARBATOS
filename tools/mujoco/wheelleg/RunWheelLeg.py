@@ -21,7 +21,7 @@ TOOLS_SIM = REPO_ROOT / "tools" / "sim"
 if str(TOOLS_SIM) not in sys.path:
     sys.path.insert(0, str(TOOLS_SIM))
 
-import robot_sim  # type: ignore  # noqa: E402
+import RobotSim  # type: ignore  # noqa: E402
 
 
 HERE = Path(__file__).resolve().parent
@@ -370,8 +370,8 @@ def read_wheelleg_config_body(project: str) -> str:
     config_path = REPO_ROOT / "Robotconfig" / project / "RobotConfig.c"
     if not config_path.exists():
         raise SystemExit(f"Missing project config: {config_path}")
-    text = robot_sim.strip_c_comments(robot_sim.read_text_with_local_config_includes(config_path))
-    body = robot_sim.extract_initializer(text, "WheelLegMit")
+    text = RobotSim.strip_c_comments(RobotSim.read_text_with_local_config_includes(config_path))
+    body = RobotSim.extract_initializer(text, "WheelLegMit")
     if body is None:
         raise SystemExit(f"{config_path} has no WheelLegMit initializer")
     return body
@@ -401,20 +401,20 @@ def load_project_config(config: BridgeConfig, project: str) -> None:
     }
     for field_name, target in scalar_fields.items():
         parent, attr = target
-        raw = robot_sim.extract_named_value(body, field_name)
+        raw = RobotSim.extract_named_value(body, field_name)
         holder = getattr(config, parent) if parent else config
         setattr(holder, attr, parse_float(raw, float(getattr(holder, attr))))
 
-    lqr_body = robot_sim.extract_initializer(body, "lqr_poly")
+    lqr_body = RobotSim.extract_initializer(body, "lqr_poly")
     if lqr_body:
-        rows = robot_sim.split_top_level(lqr_body)
+        rows = RobotSim.split_top_level(lqr_body)
         for row_index, row in enumerate(rows[:12]):
             values = parse_number_list(row)
             for coeff_index, value in enumerate(values[:4]):
                 config.lqr_poly[row_index][coeff_index] = value
 
     for pid_name in ("leg_length_pid", "leg_split_pid", "turn_pid", "roll_pid"):
-        pid_body = robot_sim.extract_initializer(body, pid_name)
+        pid_body = RobotSim.extract_initializer(body, pid_name)
         if not pid_body:
             continue
         values = parse_number_list(pid_body)
@@ -476,7 +476,7 @@ def clamped_leg_length(config: BridgeConfig, target_leg_m: float | None) -> floa
 
 
 def read_project_scalar(project: str, field_name: str, fallback: float = float("nan")) -> float:
-    raw = robot_sim.extract_named_value(read_wheelleg_config_body(project), field_name)
+    raw = RobotSim.extract_named_value(read_wheelleg_config_body(project), field_name)
     return parse_float(raw, fallback)
 
 
@@ -504,7 +504,7 @@ def print_model_params(args: argparse.Namespace, config: BridgeConfig, model_pat
         f"max_joint_torque={float(config.max_joint_torque_nm):.2f}"
     )
     print(f"leg_mass_kg_from_config={read_project_scalar(args.project, 'leg_mass_kg'):.3f}")
-    print("lqr_mass_source=tools/wheelleg_lqr/small_3510_lqr_report.md")
+    print("lqr_mass_source=tools/WheelLegLqr/Small3510LqrReport.md")
     print(
         "lqr_mass_assumption="
         f"total={SIM_TOTAL_MASS_KG:.3f}, "
@@ -1111,8 +1111,8 @@ def main(argv: Iterable[str] | None = None) -> int:
         print_model_params(args, config, model_path)
         return 0
     if args.check:
-        lqr_rows = robot_sim.extract_initializer(body, "lqr_poly")
-        row_count = len(robot_sim.split_top_level(lqr_rows or ""))
+        lqr_rows = RobotSim.extract_initializer(body, "lqr_poly")
+        row_count = len(RobotSim.split_top_level(lqr_rows or ""))
         print(f"MuJoCo wheelleg check ok: project={args.project} model={model_path} lqr_rows={row_count}")
         return 0
     run_sim(args)

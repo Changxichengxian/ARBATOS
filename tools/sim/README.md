@@ -1,6 +1,6 @@
 # ARBATOS simulation tools
 
-`robot_sim.py` reads the current `Robotconfig/<PROJECT>` files, Keil project
+`RobotSim.py` reads the current `Robotconfig/<PROJECT>` files, Keil project
 defines, and shared profile defaults. It estimates:
 
 - simulated motor traffic and CAN bus placement;
@@ -15,9 +15,9 @@ Run from the repository root:
 ```powershell
 .\tools\build.ps1 -Action sim -Project MINIWHEELEG-C
 .\tools\build.ps1 -Action sim -Project all
-python .\tools\sim\robot_sim.py --project HERO-C
-python .\tools\sim\robot_sim.py --project MINIWHEELEG-C
-python .\tools\sim\robot_sim.py --project HERO-C --json
+python .\tools\sim\RobotSim.py --project HERO-C
+python .\tools\sim\RobotSim.py --project MINIWHEELEG-C
+python .\tools\sim\RobotSim.py --project HERO-C --json
 ```
 
 Useful options:
@@ -41,9 +41,9 @@ can emit zero-current group frames for configured RM motors.
 The first wheel-leg MuJoCo entry lives under:
 
 ```powershell
-python .\tools\mujoco\wheelleg\run_wheelleg.py --check --project MINIWHEELEG-C
-python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --duration-s 5
-python .\tools\mujoco\wheelleg\run_wheelleg.py --project MINIWHEELEG-C --viewer --realtime
+python .\tools\mujoco\wheelleg\RunWheelLeg.py --check --project MINIWHEELEG-C
+python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-C --duration-s 5
+python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-C --viewer --realtime
 ```
 
 `--check` only validates the MJCF file and project configuration. A real run

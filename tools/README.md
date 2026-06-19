@@ -7,7 +7,7 @@
 Keil 工程的 `BeforeMake` 会调用：
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\gen_build_info.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\GenBuildInfo.ps1
 ```
 
 这个脚本生成 `shared/generated/build_info_autogen.h`，把 Git 提交、dirty 状态和编译时间带进固件。生成文件被 `.gitignore` 忽略，不需要手工提交。
@@ -17,7 +17,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\gen_build
 在仓库根目录运行：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\check_all.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\CheckAll.ps1
 ```
 
 当前会检查：
@@ -37,7 +37,7 @@ GitHub 上的 `.github/workflows/check-all.yml` 也会跑同一个脚本。也�
 如果想连未跟踪的本地文档也扫一遍，可以加 `-AllText`：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\check_all.ps1 -AllText
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\CheckAll.ps1 -AllText
 ```
 
 ## 构建入口
@@ -64,7 +64,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gc
 
 ## SD 日志工具
 
-- `tools/sdlog/sdlog_viewer.py`：打开 SD 日志网页查看器，支持导出 tag、字段和未知记录 CSV。
-- `tools/sdlog/sdlog_decompress.py`：去掉当前格式日志里的 LZ4 块压缩，输出仍然是当前格式。
+- `tools/sdlog/SdLogViewer.py`：打开 SD 日志网页查看器，支持导出 tag、字段和未知记录 CSV。
+- `tools/sdlog/SdLogDecompress.py`：去掉当前格式日志里的 LZ4 块压缩，输出仍然是当前格式。
 
 使用流程见 `../manual/sdlog.md`。

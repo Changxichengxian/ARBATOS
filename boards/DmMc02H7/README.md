@@ -1,12 +1,12 @@
-﻿# DM MC02 H7
+# DM MC02 H7
 
-`boards/DM_MC02_H7/` 现在只放 H7 板级适配，不再放完整 Keil/CubeMX 工程。
+`boards/DmMc02H7/` 现在只放 H7 板级适配，不再放完整 Keil/CubeMX 工程。
 
 ## 当前入口
 
 - H7 实验入口：`projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx`
 - 英雄换板入口：`projects/HERO-M/MDK-ARM/HERO-M.uvprojx`
-- 根目录可以用 `open_MINIWHEELEG-M.cmd` 或 `open_HERO-M.cmd` 直接打开。
+- 根目录可以用 `OpenMiniWheelLegM.cmd` 或 `OpenHeroM.cmd` 直接打开。
 
 ## 这一层负责什么
 

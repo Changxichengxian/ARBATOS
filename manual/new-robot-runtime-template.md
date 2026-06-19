@@ -116,8 +116,8 @@ static const ControlController triple_yaw_controller = {
 ## 完成前检查
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\check_all.ps1
-powershell -ExecutionPolicy Bypass -File tools\check_all.ps1 -AllText
+powershell -ExecutionPolicy Bypass -File tools\CheckAll.ps1
+powershell -ExecutionPolicy Bypass -File tools\CheckAll.ps1 -AllText
 git diff --check
 ```
 

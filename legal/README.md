@@ -6,7 +6,7 @@
 - `CLA.md`：贡献授权说明
 - `COMMERCIAL.md`：商用使用说明
 - `CONTRIBUTING.md`：贡献流程说明
-- `THIRD_PARTY.md`：第三方代码和资料边界
+- `ThirdParty.md`：第三方代码和资料边界
 
 继续留在根目录的文件：
 

@@ -1,4 +1,4 @@
-﻿# HERO-C（RoboMaster 2026 Hero）固件工程
+# HERO-C（RoboMaster 2026 Hero）固件工程
 
 本仓库为 **RoboMaster 英雄机器人** STM32 主控固件工程，基于 **STM32F407IGH6 (STM32F4)** + **FreeRTOS**，包含底盘/云台/射击/裁判系统/姿态解算/在线检测/调试观测等模块。
 
@@ -22,8 +22,8 @@
 - `Drivers/`、`Middlewares/`：HAL / CMSIS / FreeRTOS / USB 组件
 - `MDK-ARM/`：Keil 工程
 - `Robotconfig/HERO-C/`：HERO-C 目标配置和健康监测，包含 `RobotConfig.c`、`RobotConfig.h`、`DetectTask.c`
-- `boards/DJI_C_F407/bsp/InsTask.c`：C 板 IMU 任务
-- `boards/DJI_C_F407/bsp/`：C 板 BSP 适配
+- `boards/DjiCF407/bsp/InsTask.c`：C 板 IMU 任务
+- `boards/DjiCF407/bsp/`：C 板 BSP 适配
 - `shared/application/`：共用任务和控制逻辑，包含 `HostLinkTask.c`、`ChassisControlTask.c`、`GimbalControlTask.c`、`Shoot.c`、`SdLogTask.c` 等
 
 ---
@@ -157,8 +157,8 @@ bitmask（以整数解释），bit=1 表示对应 TOE 离线/错误：
 - 写入文件：`0:/sdlog_XXXX.bin`
 - 文件序号：优先读取 `0:/sdlog_index.bin`（带 CRC）；若不存在/损坏则回退遍历 `0:/` 找最大号 +1
 - 当前格式：v2（块写入；raw 或 LZ4 压缩，lossless；每块带 CRC32(raw) 校验；压缩不划算时会回退为 raw，仅多块头约 20B/块）
-- PC 解压为 v1 记录流：在仓库根目录运行 `python tools/sdlog/sdlog_decompress.py sdlog_0000.bin`（输出 `sdlog_0000.bin.raw.bin`）
-- Web 可视化：在仓库根目录运行 `python tools/sdlog/sdlog_viewer.py sdlog_0000.bin`（浏览器打开地址，可导出 CSV）
+- PC 解压为 v1 记录流：在仓库根目录运行 `python tools/sdlog/SdLogDecompress.py sdlog_0000.bin`（输出 `sdlog_0000.bin.raw.bin`）
+- Web 可视化：在仓库根目录运行 `python tools/sdlog/SdLogViewer.py sdlog_0000.bin`（浏览器打开地址，可导出 CSV）
 - 记录内容：IMU/PID/云台&底盘 loop/CAN/裁判/视觉等（tag 定义见 `shared/application/services/storage/SdLog.h`）
 - 注意：TF/SD 不会记录 AUX 口的 JustFloat 帧（避免重复/占用写入带宽）
 
@@ -202,6 +202,6 @@ Python 打包示例（小端）：
 
 - 本地检查入口：在仓库根目录运行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check`
 - 工程清单：在仓库根目录运行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project HERO-C`
-- 日志解压脚本：在仓库根目录运行 `python tools/sdlog/sdlog_decompress.py sdlog_0000.bin`
-- Web 查看脚本：在仓库根目录运行 `python tools/sdlog/sdlog_viewer.py sdlog_0000.bin`
+- 日志解压脚本：在仓库根目录运行 `python tools/sdlog/SdLogDecompress.py sdlog_0000.bin`
+- Web 查看脚本：在仓库根目录运行 `python tools/sdlog/SdLogViewer.py sdlog_0000.bin`
 - 本机输出和临时材料：`local/logs/`

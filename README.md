@@ -63,7 +63,7 @@ contributors.
 See:
 
 - `LICENSE`
-- `legal/THIRD_PARTY.md`
+- `legal/ThirdParty.md`
 - `legal/CONTRIBUTING.md`
 - `legal/CLA.md`
 
@@ -124,21 +124,21 @@ when the hardware changes.
 
 | Board | MCU | Notes |
 |---|---:|---|
-| `DJI_C_F407` | STM32F407 | DJI C board support |
-| `DJI_A_F427` | STM32F427 | DJI A board support |
-| `DM_MC02_H7` | STM32H723 | DM MC02 H7 board support |
+| `DjiCF407` | STM32F407 | DJI C board support |
+| `DjiAF427` | STM32F427 | DJI A board support |
+| `DmMc02H7` | STM32H723 | DM MC02 H7 board support |
 
 ## Firmware Targets
 
 | Target | Keil project | Robotconfig | Board |
 |---|---|---|---|
-| `HERO-C` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | `Robotconfig/HERO-C` | `boards/DJI_C_F407` |
-| `HERO-M` | `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` | `Robotconfig/HERO-M` | `boards/DM_MC02_H7` |
-| `INFANTRY-A` | `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx` | `Robotconfig/INFANTRY-A` | `boards/DJI_A_F427` |
-| `SENTINEL-M` | `projects/SENTINEL-M/MDK-ARM/SENTINEL-M.uvprojx` | `Robotconfig/SENTINEL-M` | `boards/DM_MC02_H7` |
-| `CARRIER-A` | `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx` | `Robotconfig/CARRIER-A` | `boards/DJI_A_F427` |
-| `MINIWHEELEG-M` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | `Robotconfig/MINIWHEELEG-M` | `boards/DM_MC02_H7` |
-| `MINIWHEELEG-C` | `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx` | `Robotconfig/MINIWHEELEG-C` | `boards/DJI_C_F407` |
+| `HERO-C` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | `Robotconfig/HERO-C` | `boards/DjiCF407` |
+| `HERO-M` | `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` | `Robotconfig/HERO-M` | `boards/DmMc02H7` |
+| `INFANTRY-A` | `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx` | `Robotconfig/INFANTRY-A` | `boards/DjiAF427` |
+| `SENTINEL-M` | `projects/SENTINEL-M/MDK-ARM/SENTINEL-M.uvprojx` | `Robotconfig/SENTINEL-M` | `boards/DmMc02H7` |
+| `CARRIER-A` | `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx` | `Robotconfig/CARRIER-A` | `boards/DjiAF427` |
+| `MINIWHEELEG-M` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | `Robotconfig/MINIWHEELEG-M` | `boards/DmMc02H7` |
+| `MINIWHEELEG-C` | `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx` | `Robotconfig/MINIWHEELEG-C` | `boards/DjiCF407` |
 
 ## Runtime Flow
 
@@ -161,8 +161,8 @@ main.c
 
 F4 targets mainly create tasks in `projects/<TARGET>/Core/Src/freertos.c`.
 The DM MC02 H7 board also has board-level entry points in
-`boards/DM_MC02_H7/app/BoardMain.c` and
-`boards/DM_MC02_H7/app/BoardFreertos.c`.
+`boards/DmMc02H7/app/BoardMain.c` and
+`boards/DmMc02H7/app/BoardFreertos.c`.
 
 Known task module IDs are defined in
 `shared/application/robot/RobotConfigSchema.h`, and their names and helper
@@ -359,21 +359,21 @@ GCC/CMake compile; use `-Action gcc-build` when compiler verification is needed.
 | Tool | Purpose |
 |---|---|
 | `tools/build.ps1` | top-level check, manifest, tool-probe, GCC generation, and GCC build entry point |
-| `tools/check_all.ps1` | local and CI validation script |
-| `tools/build/project_manifest.py` | extracts Keil project metadata and GCC readiness notes |
-| `tools/build/gcc_project.py` | generates CMake/GCC build files from Keil project metadata |
-| `tools/gen_build_info.ps1` | generates `shared/generated/build_info_autogen.h` for firmware logs |
-| `tools/sim/robot_sim.py` | estimates CAN and CPU pressure from current configuration |
-| `tools/sdlog/sdlog_viewer.py` | opens the SD log web viewer and exports records |
-| `tools/sdlog/sdlog_decompress.py` | removes LZ4 block compression from current log files |
-| `tools/pid_autotune/arbatos_pid_autotune.py` | PID autotune helper |
-| `tools/mp3_to_u8/` | converts MP3 files to unsigned 8-bit PCM `.U8` files for buzzer playback |
+| `tools/CheckAll.ps1` | local and CI validation script |
+| `tools/build/ProjectManifest.py` | extracts Keil project metadata and GCC readiness notes |
+| `tools/build/GccProject.py` | generates CMake/GCC build files from Keil project metadata |
+| `tools/GenBuildInfo.ps1` | generates `shared/generated/build_info_autogen.h` for firmware logs |
+| `tools/sim/RobotSim.py` | estimates CAN and CPU pressure from current configuration |
+| `tools/sdlog/SdLogViewer.py` | opens the SD log web viewer and exports records |
+| `tools/sdlog/SdLogDecompress.py` | removes LZ4 block compression from current log files |
+| `tools/PidAutotune/arbatos_PidAutotune.py` | PID autotune helper |
+| `tools/Mp3ToU8/` | converts MP3 files to unsigned 8-bit PCM `.U8` files for buzzer playback |
 
 Example simulator usage:
 
 ```powershell
-python .\tools\sim\robot_sim.py --project HERO-C
-python .\tools\sim\robot_sim.py --project MINIWHEELEG-C --json
+python .\tools\sim\RobotSim.py --project HERO-C
+python .\tools\sim\RobotSim.py --project MINIWHEELEG-C --json
 ```
 
 The simulator is a configuration pressure check, not a physics simulator.
@@ -418,7 +418,7 @@ For a new user:
 7. Bring up subsystems in this order: IMU, CAN feedback, single subsystem
    control, then whole-robot integration.
 
-For detailed workflows, start with `QUICK_START.md` and `manual/README.md`.
+For detailed workflows, start with `QuickStart.md` and `manual/README.md`.
 
 ## Adding a Robot Target
 
@@ -469,12 +469,12 @@ For detailed workflows, start with `QUICK_START.md` and `manual/README.md`.
 4. Add the task source file and task creation entry in the target project or
    board-level FreeRTOS file.
 5. Add diagnostics, log fields, and a minimal validation path.
-6. Update `tools/check_all.ps1` if the module requires source or task-creation
+6. Update `tools/CheckAll.ps1` if the module requires source or task-creation
    consistency checks.
 
 ## Documentation
 
-- `QUICK_START.md`: first-pass bring-up guide.
+- `QuickStart.md`: first-pass bring-up guide.
 - `manual/README.md`: manual index.
 - `manual/new-target.md`: adding a new target.
 - `manual/bringup-checklist.md`: real-robot bring-up checklist.
@@ -486,7 +486,7 @@ For detailed workflows, start with `QUICK_START.md` and `manual/README.md`.
   legacy-style handling.
 - `manual/runtime-architecture.md`: direction for device and controller instance
   based runtime evolution.
-- `ALGORITHM_ACCESS_PROTOCOL.md`: compact algorithm link protocol and external
+- `AlgorithmAccessProtocol.md`: compact algorithm link protocol and external
   chassis-motion command path.
 - `projects/README.md`: project layer details.
 - `Robotconfig/README.md`: robot configuration layer details.

@@ -12,7 +12,7 @@
 #include "BspBoardLayout.h"
 
 /*
- * MINIWHEELEG-C port table on DJI_C_F407.
+ * MINIWHEELEG-C port table on DjiCF407.
  *
  * The notes below are reference only. Editing the note block does not change
  * code. The macros under "active assignment" are the real binding.

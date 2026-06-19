@@ -1234,7 +1234,7 @@ def main(argv: Iterable[str]) -> int:
     try:
         report = build_report(args)
     except Exception as exc:  # pragma: no cover - CLI boundary
-        print(f"robot_sim: {exc}", file=sys.stderr)
+        print(f"RobotSim: {exc}", file=sys.stderr)
         return 2
 
     if args.json:

@@ -1,4 +1,4 @@
-<mujoco model="arbatos_wheelleg_minimal">
+<mujoco model="ArbatosWheelLegMinimal">
   <compiler angle="radian" autolimits="true"/>
   <option timestep="0.003" integrator="RK4" gravity="0 0 -9.81"/>
 

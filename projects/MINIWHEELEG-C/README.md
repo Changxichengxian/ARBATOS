@@ -4,6 +4,6 @@
 
 - Keil 工程：`projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx`
 - 车型配置：`Robotconfig/MINIWHEELEG-C/`
-- 板级适配：`boards/DJI_C_F407/`
+- 板级适配：`boards/DjiCF407/`
 
-根目录可以用 `open_MINIWHEELEG-C.cmd` 直接打开。
+根目录可以用 `OpenMiniWheelLegC.cmd` 直接打开。

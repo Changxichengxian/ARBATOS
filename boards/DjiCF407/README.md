@@ -1,6 +1,6 @@
-﻿# DJI C F407
+# DJI C F407
 
-`boards/DJI_C_F407/` 只表示 DJI C 开发板这一层，不再把 `HERO-C` 这种机器人目标混进来。
+`boards/DjiCF407/` 只表示 DJI C 开发板这一层，不再把 `HERO-C` 这种机器人目标混进来。
 
 ## 当前内容
 
@@ -17,8 +17,8 @@
 
 ## 当前使用者
 
-- `HERO-C`：`open_HERO-C.cmd` 或 `projects/HERO-C/MDK-ARM/HERO-C.uvprojx`
-- `MINIWHEELEG-C`：`open_MINIWHEELEG-C.cmd` 或 `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx`
+- `HERO-C`：`OpenHeroC.cmd` 或 `projects/HERO-C/MDK-ARM/HERO-C.uvprojx`
+- `MINIWHEELEG-C`：`OpenMiniWheelLegC.cmd` 或 `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx`
 
 ## 边界
 

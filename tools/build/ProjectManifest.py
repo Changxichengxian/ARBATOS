@@ -22,7 +22,7 @@ PROJECTS_ROOT = REPO_ROOT / "projects"
 
 SOURCE_EXTS = {".c", ".cc", ".cpp", ".cxx", ".s", ".asm"}
 LIB_EXTS = {".a", ".lib"}
-GCC_GENERATOR = REPO_ROOT / "tools" / "build" / "gcc_project.py"
+GCC_GENERATOR = REPO_ROOT / "tools" / "build" / "GccProject.py"
 GCC_SUPPORT_ROOT = REPO_ROOT / "tools" / "build" / "gcc_support"
 GCC_SUPPORTED_ARMCC_LIBS = {
     "ahrs.lib": "GCC AHRS source",

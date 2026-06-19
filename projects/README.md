@@ -1,4 +1,4 @@
-﻿# projects
+# projects
 
 `projects/` 放可以直接打开、编译、下载的固件工程入口。这里回答的是“怎么编译这份固件”，不是“这台车参数是什么”，也不是“这块板子有哪些引脚”。
 
@@ -17,23 +17,23 @@ Keil 工程仍是可直接编译和下载的完整入口，也是工程清单来
 
 | Project | Keil 工程 | 使用的 Robotconfig | 使用的 board |
 |---|---|---|---|
-| `HERO-C` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | `Robotconfig/HERO-C` | `boards/DJI_C_F407` |
-| `HERO-M` | `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` | `Robotconfig/HERO-M` | `boards/DM_MC02_H7` |
-| `INFANTRY-A` | `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx` | `Robotconfig/INFANTRY-A` | `boards/DJI_A_F427` |
-| `SENTINEL-M` | `projects/SENTINEL-M/MDK-ARM/SENTINEL-M.uvprojx` | `Robotconfig/SENTINEL-M` | `boards/DM_MC02_H7` |
-| `CARRIER-A` | `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx` | `Robotconfig/CARRIER-A` | `boards/DJI_A_F427` |
-| `MINIWHEELEG-M` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | `Robotconfig/MINIWHEELEG-M` | `boards/DM_MC02_H7` |
-| `MINIWHEELEG-C` | `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx` | `Robotconfig/MINIWHEELEG-C` | `boards/DJI_C_F407` |
+| `HERO-C` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | `Robotconfig/HERO-C` | `boards/DjiCF407` |
+| `HERO-M` | `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` | `Robotconfig/HERO-M` | `boards/DmMc02H7` |
+| `INFANTRY-A` | `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx` | `Robotconfig/INFANTRY-A` | `boards/DjiAF427` |
+| `SENTINEL-M` | `projects/SENTINEL-M/MDK-ARM/SENTINEL-M.uvprojx` | `Robotconfig/SENTINEL-M` | `boards/DmMc02H7` |
+| `CARRIER-A` | `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx` | `Robotconfig/CARRIER-A` | `boards/DjiAF427` |
+| `MINIWHEELEG-M` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | `Robotconfig/MINIWHEELEG-M` | `boards/DmMc02H7` |
+| `MINIWHEELEG-C` | `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx` | `Robotconfig/MINIWHEELEG-C` | `boards/DjiCF407` |
 
 更完整的对应表见 `../manual/project-map.md`。
 
 ## 这一层负责什么
 
 - 统一脚本入口：`../tools/build.ps1`。
-- 工程清单解析：`../tools/build/project_manifest.py`。
-- GCC/CMake 生成：`../tools/build/gcc_project.py`，输出到 `../build/gcc/<TARGET>/`。
+- 工程清单解析：`../tools/build/ProjectManifest.py`。
+- GCC/CMake 生成：`../tools/build/GccProject.py`，输出到 `../build/gcc/<TARGET>/`。
 - Keil 工程文件：`MDK-ARM/*.uvprojx`。
-- Keil 编译前命令，例如生成构建身份信息的 `tools/gen_build_info.ps1`。
+- Keil 编译前命令，例如生成构建身份信息的 `tools/GenBuildInfo.ps1`。
 - CubeMX 生成的启动、外设初始化和中断入口：`Core/`。
 - HAL、CMSIS、FreeRTOS、USB 等工程内依赖：`Drivers/`、`Middlewares/`、`USB_DEVICE/`。
 - 最终固件入口如何把 `Robotconfig/`、`boards/`、`shared/` 编进来。
@@ -72,4 +72,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action ma
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project <TARGET>
 ```
 
-根目录的 `QUICK_START.md` 写的是入门路径；完整新车接入流程见 `../manual/new-target.md`。这里主要负责工程入口本身。
+根目录的 `QuickStart.md` 写的是入门路径；完整新车接入流程见 `../manual/new-target.md`。这里主要负责工程入口本身。

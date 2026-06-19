@@ -9,8 +9,8 @@
 - `projects/*/Drivers/`
 - `projects/*/Middlewares/`
 - `shared/components/algorithm/*.lib`
-- `tools/mp3_to_u8/ffmpeg.exe`
-- `tools/mp3_to_u8/FFMPEG_LICENSE.txt`
+- `tools/Mp3ToU8/ffmpeg.exe`
+- `tools/Mp3ToU8/FFMPEG_LICENSE.txt`
 - `local/reference/`
 - `local/docs/04_原厂资料包/`
 - 任何带独立版权头、许可证文本、来源声明或上游归属说明的文件

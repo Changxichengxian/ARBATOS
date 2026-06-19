@@ -8,13 +8,13 @@
 
 | Project | Target | Board | Keil 工程 | 当前用途 |
 |---|---|---|---|---|
-| `projects/HERO-C` | `Robotconfig/HERO-C` | `boards/DJI_C_F407` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | 英雄 C 板主入口 |
-| `projects/HERO-M` | `Robotconfig/HERO-M` | `boards/DM_MC02_H7` | `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` | 英雄 H7 接板入口 |
-| `projects/INFANTRY-A` | `Robotconfig/INFANTRY-A` | `boards/DJI_A_F427` | `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx` | 步兵 A 板入口 |
-| `projects/SENTINEL-M` | `Robotconfig/SENTINEL-M` | `boards/DM_MC02_H7` | `projects/SENTINEL-M/MDK-ARM/SENTINEL-M.uvprojx` | 哨兵 H7 接板入口 |
-| `projects/CARRIER-A` | `Robotconfig/CARRIER-A` | `boards/DJI_A_F427` | `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx` | 工程 A 板入口 |
-| `projects/MINIWHEELEG-M` | `Robotconfig/MINIWHEELEG-M` | `boards/DM_MC02_H7` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | H7 轮腿 MIT 调试入口 |
-| `projects/MINIWHEELEG-C` | `Robotconfig/MINIWHEELEG-C` | `boards/DJI_C_F407` | `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx` | C 板小轮腿临时入口 |
+| `projects/HERO-C` | `Robotconfig/HERO-C` | `boards/DjiCF407` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | 英雄 C 板主入口 |
+| `projects/HERO-M` | `Robotconfig/HERO-M` | `boards/DmMc02H7` | `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` | 英雄 H7 接板入口 |
+| `projects/INFANTRY-A` | `Robotconfig/INFANTRY-A` | `boards/DjiAF427` | `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx` | 步兵 A 板入口 |
+| `projects/SENTINEL-M` | `Robotconfig/SENTINEL-M` | `boards/DmMc02H7` | `projects/SENTINEL-M/MDK-ARM/SENTINEL-M.uvprojx` | 哨兵 H7 接板入口 |
+| `projects/CARRIER-A` | `Robotconfig/CARRIER-A` | `boards/DjiAF427` | `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx` | 工程 A 板入口 |
+| `projects/MINIWHEELEG-M` | `Robotconfig/MINIWHEELEG-M` | `boards/DmMc02H7` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | H7 轮腿 MIT 调试入口 |
+| `projects/MINIWHEELEG-C` | `Robotconfig/MINIWHEELEG-C` | `boards/DjiCF407` | `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx` | C 板小轮腿临时入口 |
 
 ## 分工
 
