@@ -240,7 +240,7 @@ static fp32 WheelLegKinematicToRaw(fp32 kinematic_position,
 
 static uint16_t WheelLegPeriodMs(void)
 {
-    return (g_config.WheelLegMit.control_period_ms == 0u) ? 3u : g_config.WheelLegMit.control_period_ms;
+    return RobotProfileWheellegMitControlPeriodMs();
 }
 
 static fp32 WheelLegPeriodS(void)

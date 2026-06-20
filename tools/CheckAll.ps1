@@ -217,6 +217,17 @@ function Get-NamedTaskModules {
         Select-Object -Unique)
 }
 
+function Get-NamedTaskModuleMap {
+    param([string]$Content)
+
+    $map = @{}
+    foreach ($match in [regex]::Matches($Content, '\{\s*(ROBOT_TASK_MODULE_[A-Z0-9_]+)\s*,\s*"(task\.[^"]+)"\s*\}')) {
+        $map[$match.Groups[1].Value] = $match.Groups[2].Value
+    }
+
+    return $map
+}
+
 function Test-UvProject {
     param([object]$Project)
 
@@ -627,6 +638,128 @@ function Test-TaskModuleNames {
     foreach ($module in Get-TaskModuleEnums $schemaContent) {
         if (-not $namedModules.Contains($module)) {
             Add-CheckError "$(Format-RepoPath $schemaHeader): $module has no task.* name in $(Format-RepoPath $profileHeader)."
+        }
+    }
+}
+
+function Test-RobotModuleDescriptors {
+    Write-Host "[check] robot module descriptors"
+
+    $moduleHeader = Join-Path $script:RepoRoot "shared\application\robot\RobotModule.h"
+    $profileHeader = Join-Path $script:RepoRoot "shared\application\robot\RobotTaskProfile.h"
+    $schemaHeader = Join-Path $script:RepoRoot "shared\application\robot\RobotConfigSchema.h"
+    foreach ($path in @($moduleHeader, $profileHeader, $schemaHeader)) {
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            Add-CheckError "Missing robot module check input: $(Format-RepoPath $path)"
+            return
+        }
+    }
+
+    $moduleContent = Get-Content -LiteralPath $moduleHeader -Raw -Encoding UTF8
+    $profileContent = Get-Content -LiteralPath $profileHeader -Raw -Encoding UTF8
+    $schemaContent = Get-Content -LiteralPath $schemaHeader -Raw -Encoding UTF8
+    $profileNames = Get-NamedTaskModuleMap $profileContent
+
+    $descMatch = [regex]::Match($moduleContent,
+        'RobotModuleDesc\s+modules\[\]\s*=\s*\{(?<body>.*?)\};',
+        [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if (-not $descMatch.Success) {
+        Add-CheckError "$(Format-RepoPath $moduleHeader): cannot find RobotModuleDesc modules[] table."
+        return
+    }
+
+    $descByModule = @{}
+    $moduleNames = @{}
+    $descPattern = '\{\s*(ROBOT_TASK_MODULE_[A-Z0-9_]+)\s*,\s*"(module\.[^"]+)"\s*,\s*"(task\.[^"]+)"'
+    foreach ($match in [regex]::Matches($descMatch.Groups["body"].Value, $descPattern)) {
+        $module = $match.Groups[1].Value
+        $moduleName = $match.Groups[2].Value
+        $taskName = $match.Groups[3].Value
+
+        if ($descByModule.ContainsKey($module)) {
+            Add-CheckError "$(Format-RepoPath $moduleHeader): duplicate descriptor for $module."
+        }
+        $descByModule[$module] = [pscustomobject]@{
+            ModuleName = $moduleName
+            TaskName = $taskName
+        }
+
+        if ($moduleName -notmatch '^module\.[a-z0-9_]+$') {
+            Add-CheckError "$(Format-RepoPath $moduleHeader): $module uses non-standard module name '$moduleName'."
+        }
+        if ($moduleNames.ContainsKey($moduleName)) {
+            Add-CheckError "$(Format-RepoPath $moduleHeader): duplicate module name '$moduleName'."
+        }
+        $moduleNames[$moduleName] = $module
+
+        if (-not $profileNames.ContainsKey($module)) {
+            Add-CheckError "$(Format-RepoPath $moduleHeader): $module has descriptor task name '$taskName', but no task name in RobotTaskProfile.h."
+        }
+        elseif ($profileNames[$module] -ne $taskName) {
+            Add-CheckError "$(Format-RepoPath $moduleHeader): $module descriptor task name '$taskName' differs from RobotTaskProfile.h '$($profileNames[$module])'."
+        }
+    }
+
+    foreach ($module in Get-TaskModuleEnums $schemaContent) {
+        if (-not $descByModule.ContainsKey($module)) {
+            Add-CheckError "$(Format-RepoPath $moduleHeader): $module has no RobotModuleDesc entry."
+        }
+    }
+
+    $resourceEnumMatch = [regex]::Match($moduleContent,
+        'typedef\s+enum\s*\{(?<body>.*?)\}\s*RobotResourceId\s*;',
+        [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if (-not $resourceEnumMatch.Success) {
+        Add-CheckError "$(Format-RepoPath $moduleHeader): cannot find RobotResourceId enum."
+        return
+    }
+
+    $resourceEnums = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($match in [regex]::Matches($resourceEnumMatch.Groups["body"].Value, 'RobotResource[A-Za-z0-9_]+')) {
+        if ($match.Value -ne "RobotResourceCount") {
+            [void]$resourceEnums.Add($match.Value)
+        }
+    }
+
+    $resourceTableMatch = [regex]::Match($moduleContent,
+        'RobotResourceDesc\s+resources\[\]\s*=\s*\{(?<body>.*?)\};',
+        [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if (-not $resourceTableMatch.Success) {
+        Add-CheckError "$(Format-RepoPath $moduleHeader): cannot find RobotResourceDesc resources[] table."
+        return
+    }
+
+    $resourceNames = @{}
+    $resourceDesc = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($match in [regex]::Matches($resourceTableMatch.Groups["body"].Value, '\{\s*(RobotResource[A-Za-z0-9_]+)\s*,\s*"([^"]+)"\s*\}')) {
+        $resource = $match.Groups[1].Value
+        $name = $match.Groups[2].Value
+        [void]$resourceDesc.Add($resource)
+
+        if (-not $resourceEnums.Contains($resource)) {
+            Add-CheckError "$(Format-RepoPath $moduleHeader): resource table names unknown $resource."
+        }
+        if ($name -notmatch '^(resource|input|runtime|actuator|bus|port|link|sensor|device|state|output|service)\.[a-z0-9_]+$') {
+            Add-CheckError "$(Format-RepoPath $moduleHeader): $resource uses non-standard resource name '$name'."
+        }
+        if ($resourceNames.ContainsKey($name)) {
+            Add-CheckError "$(Format-RepoPath $moduleHeader): duplicate resource name '$name'."
+        }
+        $resourceNames[$name] = $resource
+    }
+
+    foreach ($resource in $resourceEnums) {
+        if (-not $resourceDesc.Contains($resource)) {
+            Add-CheckError "$(Format-RepoPath $moduleHeader): $resource has no RobotResourceDesc entry."
+        }
+    }
+
+    $resourceArrayPattern = 'sRobotModule(?:Req|Pro)[A-Za-z0-9_]+\[\]\s*=\s*\{(?<body>.*?)\};'
+    foreach ($arrayMatch in [regex]::Matches($moduleContent, $resourceArrayPattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
+        foreach ($resourceMatch in [regex]::Matches($arrayMatch.Groups["body"].Value, 'RobotResource[A-Za-z0-9_]+')) {
+            if (-not $resourceEnums.Contains($resourceMatch.Value)) {
+                Add-CheckError "$(Format-RepoPath $moduleHeader): module resource array uses unknown $($resourceMatch.Value)."
+            }
         }
     }
 }
@@ -1473,6 +1606,7 @@ foreach ($project in $projects) {
 Test-RobotconfigCoverage $projects
 Test-ConfigParamGovernance
 Test-TaskModuleNames $projects
+Test-RobotModuleDescriptors
 Test-ProfileIdentity $projects
 Test-ProfileProductRules $projects
 Test-RtProfilerDescriptors

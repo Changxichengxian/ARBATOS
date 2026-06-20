@@ -38,6 +38,7 @@
 #include "ShootState.h"
 #include "HostLinkTask.h"
 #include "RobotDeviceConfig.h"
+#include "RobotModule.h"
 #include "RobotTaskProfile.h"
 #include "RobotMode.h"
 #include "RtProf.h"

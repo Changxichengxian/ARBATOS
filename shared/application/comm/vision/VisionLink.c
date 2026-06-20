@@ -63,7 +63,7 @@ typedef struct __attribute__((packed)) ChassisToVision
 
 typedef char _check_GimbalToVision_size[(sizeof(GimbalToVision) == 43) ? 1 : -1];
 typedef char _check_VisionToGimbal_size[(sizeof(VisionToGimbal) == 29) ? 1 : -1];
-typedef char _check_VisionToChassis_size[(sizeof(VisionToChassis) == 20) ? 1 : -1];
+typedef char _check_VisionToChassis_size[(sizeof(VisionToChassis) == 22) ? 1 : -1];
 typedef char _check_ChassisToVision_size[(sizeof(ChassisToVision) == 18) ? 1 : -1];
 
 static GimbalToVision VisionTx;

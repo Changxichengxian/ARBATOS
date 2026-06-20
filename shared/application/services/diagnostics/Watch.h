@@ -770,9 +770,18 @@ typedef struct
 typedef struct
 {
     const char *name;
+    const char *module_name;
     uint8_t module;
+    uint8_t kind;
     uint8_t create_state;
+    uint8_t priority;
     uint16_t create_fail_count;
+    uint16_t period_ms;
+    uint16_t budget_us;
+    uint16_t stack_words;
+    uint16_t flags;
+    uint8_t require_count;
+    uint8_t provide_count;
     uint32_t thread_handle;
     uint32_t create_attempt_count;
 } WatchRuntimeTaskModule;
@@ -816,6 +825,10 @@ typedef struct
     uint8_t active_controller_count;
     uint8_t task_module_count;
     uint8_t task_module_visible_count;
+    uint8_t module_desc_count;
+    uint8_t module_missing_desc_count;
+    uint8_t module_required_count;
+    uint8_t module_fast_count;
     uint8_t device_count;
     uint8_t entry_count;
     uint8_t entry_visible_count;
@@ -842,6 +855,13 @@ typedef struct
     uint16_t lowcmd_emergency_writer;
     uint8_t lowcmd_emergency_active;
     uint8_t reserved1;
+    uint32_t motor_feedback_conflict_count;
+    uint32_t motor_feedback_table_full_count;
+    uint16_t motor_feedback_conflict_id;
+    uint8_t motor_feedback_conflict_bus;
+    uint8_t motor_feedback_conflict_kept;
+    uint8_t motor_feedback_conflict_dropped;
+    uint8_t reserved2;
     uint32_t active_claim_mask;
     RuntimeInstanceRef entry[WATCH_RUNTIME_MAX_ENTRIES];
     WatchRuntimeTaskModule task_module[WATCH_RUNTIME_MAX_TASK_MODULES];

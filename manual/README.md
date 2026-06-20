@@ -11,6 +11,7 @@
 | 判断 project、Robotconfig、board 怎么对应 | [工程目标对应表](project-map.md) |
 | 新接一辆车或复制一个新目标 | [新车接入流程](new-target.md) |
 | 新接一台机器人或新增模块 | [新机器人和新模块接入模板](new-robot-runtime-template.md) |
+| 新增或评审机器人模块边界 | [机器人模块声明](module-system.md) |
 | 第一次上车、上电、联调前检查 | [上车检查清单](bringup-checklist.md) |
 | 调云台、底盘、射击 PID | [PID 调试流程](pid-tuning.md) |
 | 看 SD 日志、留基线日志、改日志 tag | [SD 日志和复盘](sdlog.md) |

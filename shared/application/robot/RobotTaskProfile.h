@@ -211,6 +211,10 @@ static inline void RobotProfileFillIdentity(RobotProfileIdentity *out)
 #define ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_BUDGET_US 1500u
 #endif
 
+#ifndef ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_DEFAULT_PERIOD_MS
+#define ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_DEFAULT_PERIOD_MS 3u
+#endif
+
 #ifndef ROBOT_PROFILE_CAN_COMMAND_TX_BUDGET_US
 #define ROBOT_PROFILE_CAN_COMMAND_TX_BUDGET_US 300u
 #endif
@@ -264,6 +268,12 @@ static inline uint16_t RobotProfileChassisControlPeriodMs(void)
 {
     return RobotProfilePeriodOrDefaultU16(g_config.chassis.control_period_ms,
                                                ROBOT_PROFILE_CHASSIS_CONTROL_DEFAULT_PERIOD_MS);
+}
+
+static inline uint16_t RobotProfileWheellegMitControlPeriodMs(void)
+{
+    return RobotProfilePeriodOrDefaultU16(g_config.WheelLegMit.control_period_ms,
+                                               ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_DEFAULT_PERIOD_MS);
 }
 
 static inline float RobotProfileChassisControlPeriodS(void)

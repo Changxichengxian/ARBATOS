@@ -18,6 +18,9 @@
 static MotorCmd gMotorCmd[MotorCount];
 static MotorState gMotorState[MotorCount];
 static MotorApplied gMotorApplied[MotorCount];
+static MotorCmd gMotorCmdSnapshot[MotorCount];
+static MotorState gMotorStateSnapshot[MotorCount];
+static MotorApplied gMotorAppliedSnapshot[MotorCount];
 static uint32_t gLowCmdSeq;
 static uint32_t gLowStateTick;
 static LowCmdDiag gLowCmdDiag;
@@ -480,12 +483,13 @@ uint8_t LowCmdGetMotorMany(const MotorId *ids, MotorCmd *out, uint8_t count)
 
 const MotorCmd *LowCmdGetMotorPtr(MotorId id)
 {
-    if (MotorIdValid(id) == 0u)
+    if (MotorIdValid(id) == 0u ||
+        LowCmdGetMotor(id, &gMotorCmdSnapshot[id]) == 0u)
     {
         return NULL;
     }
 
-    return &gMotorCmd[id];
+    return &gMotorCmdSnapshot[id];
 }
 
 uint8_t LowCmdEnterEmergencyStop(uint16_t writer)
@@ -643,12 +647,13 @@ uint8_t LowStateGetMotorMany(const MotorId *ids, MotorState *out, uint8_t count)
 
 const MotorState *LowStateGetMotorPtr(MotorId id)
 {
-    if (MotorIdValid(id) == 0u)
+    if (MotorIdValid(id) == 0u ||
+        LowStateGetMotor(id, &gMotorStateSnapshot[id]) == 0u)
     {
         return NULL;
     }
 
-    return &gMotorState[id];
+    return &gMotorStateSnapshot[id];
 }
 
 uint8_t LowStateGetApplied(MotorId id, MotorApplied *out)
@@ -666,10 +671,11 @@ uint8_t LowStateGetApplied(MotorId id, MotorApplied *out)
 
 const MotorApplied *LowStateGetAppliedPtr(MotorId id)
 {
-    if (MotorIdValid(id) == 0u)
+    if (MotorIdValid(id) == 0u ||
+        LowStateGetApplied(id, &gMotorAppliedSnapshot[id]) == 0u)
     {
         return NULL;
     }
 
-    return &gMotorApplied[id];
+    return &gMotorAppliedSnapshot[id];
 }

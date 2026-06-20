@@ -249,12 +249,15 @@ static void WatchCopyRuntime(void)
     uint8_t task_module_count;
     uint8_t task_module_visible_count;
     uint8_t device_count;
+    uint8_t module_desc_count;
     RtProfSummary profiler_summary;
     LowCmdDiag lowcmd_diag = {0};
+    MotorInstDiag motor_inst_diag = {0};
 
     memset(&g_watch.runtime, 0, sizeof(g_watch.runtime));
     RtProfGetSummary(&profiler_summary);
     (void)LowCmdGetDiag(&lowcmd_diag);
+    (void)MotorInstGetDiag(&motor_inst_diag);
     g_watch.runtime.profile_kind = (uint8_t)RobotProfileGetKind();
     g_watch.runtime.BoardKind = (uint8_t)RobotBoardGetKind();
     g_watch.runtime.BoardCanBusCount = RobotBoardCanBusCount();
@@ -275,7 +278,15 @@ static void WatchCopyRuntime(void)
     g_watch.runtime.lowcmd_last_reject_owner = lowcmd_diag.last_reject_owner;
     g_watch.runtime.lowcmd_emergency_writer = lowcmd_diag.emergency_writer;
     g_watch.runtime.lowcmd_emergency_active = lowcmd_diag.emergency_active;
+    g_watch.runtime.motor_feedback_conflict_count = motor_inst_diag.feedback_conflict_count;
+    g_watch.runtime.motor_feedback_table_full_count = motor_inst_diag.feedback_table_full_count;
+    g_watch.runtime.motor_feedback_conflict_id = motor_inst_diag.last_feedback_conflict_id;
+    g_watch.runtime.motor_feedback_conflict_bus = motor_inst_diag.last_feedback_conflict_bus;
+    g_watch.runtime.motor_feedback_conflict_kept = motor_inst_diag.last_feedback_conflict_kept;
+    g_watch.runtime.motor_feedback_conflict_dropped = motor_inst_diag.last_feedback_conflict_dropped;
 
+    (void)RobotModuleKnownModules(&module_desc_count);
+    g_watch.runtime.module_desc_count = module_desc_count;
     task_module_count = RobotProfileModuleCount();
     task_module_visible_count = task_module_count;
     if (task_module_visible_count > (uint8_t)(sizeof(g_watch.runtime.task_module) / sizeof(g_watch.runtime.task_module[0])))
@@ -290,9 +301,35 @@ static void WatchCopyRuntime(void)
         const RobotTaskModuleId module = RobotProfileModuleIdAt(i);
         WatchRuntimeTaskModule *dst = &g_watch.runtime.task_module[i];
         const WatchTaskModuleCreateSlot *create = WatchTaskModuleCreateFind((uint8_t)module);
+        const RobotModuleDesc *module_desc = RobotModuleFindByTaskModule(module);
 
         dst->module = (uint8_t)module;
         dst->name = RobotProfileModuleName(module);
+        dst->module_name = dst->name;
+        if (module_desc != NULL)
+        {
+            dst->module_name = module_desc->name;
+            dst->kind = (uint8_t)module_desc->kind;
+            dst->priority = module_desc->defaultPriority;
+            dst->period_ms = RobotModulePeriodMs(module_desc);
+            dst->budget_us = RobotModuleBudgetUs(module_desc);
+            dst->stack_words = module_desc->defaultStackWords;
+            dst->flags = module_desc->flags;
+            dst->require_count = module_desc->requireCount;
+            dst->provide_count = module_desc->provideCount;
+            if ((module_desc->flags & ROBOT_MODULE_FLAG_REQUIRED_BY_PROFILE) != 0u)
+            {
+                g_watch.runtime.module_required_count++;
+            }
+            if ((module_desc->flags & ROBOT_MODULE_FLAG_FAST_PATH) != 0u)
+            {
+                g_watch.runtime.module_fast_count++;
+            }
+        }
+        else
+        {
+            g_watch.runtime.module_missing_desc_count++;
+        }
         if (create != NULL)
         {
             if (create->name != NULL)

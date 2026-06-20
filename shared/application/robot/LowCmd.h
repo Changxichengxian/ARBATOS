@@ -221,6 +221,7 @@ void LowCmdSetStateTorque(MotorId id, const MotorCmd *cmd);
 void LowCmdSetSpeed(MotorId id, fp32 velocity, fp32 kd, fp32 torque);
 uint8_t LowCmdGetMotor(MotorId id, MotorCmd *out);
 uint8_t LowCmdGetMotorMany(const MotorId *ids, MotorCmd *out, uint8_t count);
+/* 兼容调试接口：返回快照缓存，新代码优先用 LowCmdGetMotor。 */
 const MotorCmd *LowCmdGetMotorPtr(MotorId id);
 uint8_t LowCmdEnterEmergencyStop(uint16_t writer);
 uint8_t LowCmdClearEmergencyStop(uint16_t writer);
@@ -233,8 +234,10 @@ void LowStateUpdateApplied(MotorId id, const MotorApplied *applied);
 uint8_t LowStateGet(LowState *out);
 uint8_t LowStateGetMotor(MotorId id, MotorState *out);
 uint8_t LowStateGetMotorMany(const MotorId *ids, MotorState *out, uint8_t count);
+/* 兼容调试接口：返回快照缓存，新代码优先用 LowStateGetMotor。 */
 const MotorState *LowStateGetMotorPtr(MotorId id);
 uint8_t LowStateGetApplied(MotorId id, MotorApplied *out);
+/* 兼容调试接口：返回快照缓存，新代码优先用 LowStateGetApplied。 */
 const MotorApplied *LowStateGetAppliedPtr(MotorId id);
 
 #endif

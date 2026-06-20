@@ -74,3 +74,6 @@ codex-rule/
 /boards/DM_MC02_H7/Drivers/CMSIS/DSP/Lib/ARM/
 /boards/DM_MC02_H7/Drivers/CMSIS/DSP/Lib/GCC/
 /boards/DM_MC02_H7/Drivers/CMSIS/DSP/Lib/IAR/
+
+# Mp3ToU8 generated audio payloads
+/tools/Mp3ToU8/U8/

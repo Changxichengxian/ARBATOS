@@ -32,6 +32,7 @@ static MotorInst *sMotorById[MotorCount];
 static MotorRoute sMotorRoute[MotorCount];
 static MotorRoute *sRouteByMotor[MotorCount];
 static MotorFeedbackSlot sMotorFbLookup[MOTOR_INST_FEEDBACK_LOOKUP_CAPACITY];
+static MotorInstDiag sMotorInstDiag;
 static uint8_t sMotorInstCount = 0u;
 static uint8_t sMotorRouteCount = 0u;
 static uint8_t sMotorInstReady = 0u;
@@ -175,6 +176,31 @@ static void MotorInstFeedbackClear(void)
     (void)memset(sMotorFbLookup, 0, sizeof(sMotorFbLookup));
 }
 
+static void MotorInstDiagClear(void)
+{
+    (void)memset(&sMotorInstDiag, 0, sizeof(sMotorInstDiag));
+    sMotorInstDiag.last_feedback_conflict_kept = (uint8_t)MotorCount;
+    sMotorInstDiag.last_feedback_conflict_dropped = (uint8_t)MotorCount;
+}
+
+static void MotorInstFeedbackRecordConflict(const MotorFeedbackSlot *entry,
+                                            const MotorInst *dropped,
+                                            uint8_t bus,
+                                            uint16_t std_id)
+{
+    sMotorInstDiag.feedback_conflict_count++;
+    sMotorInstDiag.last_feedback_conflict_bus = bus;
+    sMotorInstDiag.last_feedback_conflict_id = std_id;
+    sMotorInstDiag.last_feedback_conflict_kept =
+        (entry != NULL && entry->inst != NULL) ? (uint8_t)entry->inst->actuator_id : (uint8_t)MotorCount;
+    sMotorInstDiag.last_feedback_conflict_dropped =
+        (dropped != NULL) ? (uint8_t)dropped->actuator_id : (uint8_t)MotorCount;
+    sMotorInstDiag.last_feedback_conflict_kept_name =
+        (entry != NULL && entry->inst != NULL) ? entry->inst->name : NULL;
+    sMotorInstDiag.last_feedback_conflict_dropped_name =
+        (dropped != NULL) ? dropped->name : NULL;
+}
+
 static void MotorInstFeedbackInsert(const MotorInst *inst)
 {
     uint8_t slot = 0u;
@@ -206,9 +232,15 @@ static void MotorInstFeedbackInsert(const MotorInst *inst)
         }
         if (entry->bus == bus && entry->std_id == std_id)
         {
+            if (entry->inst != inst)
+            {
+                MotorInstFeedbackRecordConflict(entry, inst, bus, std_id);
+            }
             return;
         }
     }
+
+    sMotorInstDiag.feedback_table_full_count++;
 }
 
 static void MotorInstFeedbackRebuild(void)
@@ -331,6 +363,7 @@ void MotorInstRefresh(void)
     (void)memset(sMotorInst, 0, sizeof(sMotorInst));
     (void)memset(sMotorById, 0, sizeof(sMotorById));
     MotorInstFeedbackClear();
+    MotorInstDiagClear();
 
     for (uint8_t i = 0u; i < device_count; i++)
     {
@@ -409,6 +442,18 @@ const MotorInst *MotorInstFindByName(const char *name)
         }
     }
     return NULL;
+}
+
+uint8_t MotorInstGetDiag(MotorInstDiag *out)
+{
+    if (out == NULL)
+    {
+        return 0u;
+    }
+
+    MotorInstEnsure();
+    *out = sMotorInstDiag;
+    return 1u;
 }
 
 uint8_t MotorRouteCount(void)

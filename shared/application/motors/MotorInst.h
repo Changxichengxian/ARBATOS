@@ -72,6 +72,19 @@ typedef struct
     uint8_t enabled;
 } MotorCurrentBind;
 
+typedef struct
+{
+    uint32_t feedback_conflict_count;
+    uint32_t feedback_table_full_count;
+    uint16_t last_feedback_conflict_id;
+    uint8_t last_feedback_conflict_bus;
+    uint8_t last_feedback_conflict_kept;
+    uint8_t last_feedback_conflict_dropped;
+    uint8_t reserved0;
+    const char *last_feedback_conflict_kept_name;
+    const char *last_feedback_conflict_dropped_name;
+} MotorInstDiag;
+
 /*
  * Usage budget:
  * - Init/config/diagnostics code may use name lookup and resolve helpers.
@@ -83,6 +96,7 @@ const MotorInst *MotorInstGet(uint8_t index);
 const MotorInst *MotorInstFindByMotor(MotorId id);
 const MotorInst *MotorInstFindByName(const char *name);
 const MotorInst *MotorInstFindFeedback(uint8_t bus, uint16_t std_id);
+uint8_t MotorInstGetDiag(MotorInstDiag *out);
 uint8_t MotorRouteCount(void);
 const MotorRoute *MotorRouteGet(uint8_t index);
 const MotorRoute *MotorRouteFindByMotor(MotorId id);

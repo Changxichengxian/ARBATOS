@@ -22,13 +22,13 @@
 | --- | --- | --- | ---: | ---: |
 | `GimbalToVision` | 板端 -> 算法 | `'L' 'S'` | 39 | 43 |
 | `VisionToGimbal` | 算法 -> 板端 | `'L' 'S'` | 25 | 29 |
-| `VisionToChassis` | 算法 -> 板端 | `'L' 'C'` | 16 | 20 |
+| `VisionToChassis` | 算法 -> 板端 | `'L' 'C'` | 18 | 22 |
 | `ChassisToVision` | 板端 -> 算法 | `'L' 'C'` | 14 | 18 |
 
 板端接收算法数据时：
 
 - `LS` 按 29 字节 `VisionToGimbal` 解析。
-- `LC` 按 20 字节 `VisionToChassis` 解析。
+- `LC` 按 22 字节 `VisionToChassis` 解析。
 
 板端发送给算法时：
 
@@ -134,7 +134,7 @@ typedef struct __attribute__((packed)) VisionToChassis
 } VisionToChassis;
 ```
 
-总长：20 字节。
+总长：22 字节。
 
 缩放关系：
 
