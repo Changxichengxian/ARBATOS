@@ -25,6 +25,7 @@
 #include "RobotConfig.h"
 #include "ControlInput.h"
 #include "DetectTask.h"
+#include "MotorConfig.h"
 #include "PitchCali.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -227,17 +228,20 @@ static fp32 GimbalGetYawRelativeAngle(const GimbalMotor *yaw_motor)
         return 0.0f;
     }
 
+    const uint32_t ecd_range = MotorCfgEncoderRange(g_config.motor.yaw.model);
+    const int32_t half_ecd_range = (int32_t)(ecd_range / 2u);
+    const int32_t full_ecd_range = (int32_t)ecd_range;
     int32_t relative_ecd = (int32_t)yaw_motor->GimbalMotorMeasure->ecd - (int32_t)yaw_motor->offset_ecd;
-    if (relative_ecd > HALF_ECD_RANGE)
+    if (relative_ecd > half_ecd_range)
     {
-        relative_ecd -= ECD_RANGE;
+        relative_ecd -= full_ecd_range;
     }
-    else if (relative_ecd < -HALF_ECD_RANGE)
+    else if (relative_ecd < -half_ecd_range)
     {
-        relative_ecd += ECD_RANGE;
+        relative_ecd += full_ecd_range;
     }
 
-    return (YAW_TURN ? -1.0f : 1.0f) * ((fp32)relative_ecd * MOTOR_ECD_TO_RAD);
+    return (YAW_TURN ? -1.0f : 1.0f) * ((fp32)relative_ecd * (6.28318530718f / (fp32)ecd_range));
 }
 
 bool_t GimbalTurnaroundIsActive(void)

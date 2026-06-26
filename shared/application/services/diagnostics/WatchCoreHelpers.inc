@@ -16,7 +16,7 @@ static void WatchUpdateSetStage(WatchUpdateStage stage)
     g_watch.rtos.WatchUpdateStageTickMs = HAL_GetTick();
 }
 
-#if WATCH_ENABLE_ARM_J0_UNITREE || WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT || WATCH_ENABLE_GIMBAL_SINGLE
+#if WATCH_ENABLE_ARM_J0_UNITREE || WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT || WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
 static fp32 WatchRadToDeg(fp32 rad)
 {
     return rad * 57.29577951308232f;
@@ -24,11 +24,9 @@ static fp32 WatchRadToDeg(fp32 rad)
 #endif
 
 #if WATCH_ENABLE_GIMBAL_SINGLE
-static fp32 WatchEcdToDeg(uint16_t ecd)
+static fp32 WatchEcdToDeg(MotorModel model, uint16_t ecd)
 {
-    const fp32 full_range = (g_config.gimbal.full_ecd_range != 0u) ?
-                                (fp32)g_config.gimbal.full_ecd_range :
-                                8192.0f;
+    const fp32 full_range = (fp32)MotorCfgEncoderRange(model);
 
     return (fp32)ecd * 360.0f / full_range;
 }
@@ -414,6 +412,10 @@ void WatchUpdate(void)
 #if WATCH_ENABLE_GIMBAL_SINGLE
     WatchUpdateSetStage(WATCH_UPDATE_STAGE_GIMBAL);
     WatchCopyGimbal();
+#endif
+#if WATCH_ENABLE_GIMBAL_DUAL
+    WatchUpdateSetStage(WATCH_UPDATE_STAGE_GIMBAL);
+    WatchCopyDualGimbal();
 #endif
 #if WATCH_ENABLE_SHOOT_RM
     WatchUpdateSetStage(WATCH_UPDATE_STAGE_SHOOT);

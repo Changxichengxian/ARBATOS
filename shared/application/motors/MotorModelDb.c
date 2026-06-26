@@ -210,6 +210,9 @@ static const MotorModelDbEntry s_MotorModelDb[MOTOR_MODEL__COUNT] =
             .caps = (uint8_t)(MOTOR_MODEL_CAP_MIT |
                                MOTOR_MODEL_CAP_POS_VEL |
                                MOTOR_MODEL_CAP_SPEED),
+            .specs = {
+                .encoder_bits = 14u,
+            },
             .mit_limits = {
                 .position_max = 12.5f,
                 .velocity_max = 12.0f,
@@ -234,6 +237,9 @@ static const MotorModelDbEntry s_MotorModelDb[MOTOR_MODEL__COUNT] =
                                MOTOR_MODEL_CAP_CAN_PARAM_RW |
                                MOTOR_MODEL_CAP_CAN_SAVE |
                                MOTOR_MODEL_CAP_CAN_BAUD_RW),
+            .specs = {
+                .encoder_bits = 14u,
+            },
             .mit_limits = {
                 .position_max = 12.5f,
                 .velocity_max = 12.0f,

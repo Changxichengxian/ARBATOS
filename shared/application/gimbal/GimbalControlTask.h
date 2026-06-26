@@ -205,8 +205,28 @@ typedef struct
     GimbalControlSnapshot fast;
 } GimbalControl;
 
+typedef struct
+{
+    uint8_t active;
+    uint8_t upper_online;
+    uint8_t upper_limited;
+    uint8_t reserved0;
+    fp32 total_set_rad;
+    fp32 big_angle_rad;
+    fp32 big_set_rad;
+    fp32 big_error_rad;
+    fp32 upper_angle_rad;
+    fp32 upper_set_rad;
+    fp32 upper_error_rad;
+    fp32 upper_gyro_radps;
+    int16_t yaw_current;
+    int16_t yaw_upper_current;
+    uint16_t yaw_upper_ecd;
+} GimbalDualYawDebugState;
+
 extern const GimbalMotor *get_yaw_motor_point(void);
 extern const GimbalMotor *get_pitch_motor_point(void);
+extern uint8_t GimbalDualYawDebugRead(GimbalDualYawDebugState *out);
 
 extern void GimbalControlTask(void const *pvParameters);
 extern void DualYawGimbalControlTask(void const *pvParameters);

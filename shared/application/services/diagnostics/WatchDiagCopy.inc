@@ -7,125 +7,145 @@
 
 static void WatchCopyDiag(void)
 {
+    VisionLinkDebug vision = {0};
+    ExternalMotionIntent motion = {0};
+    ChassisAlgorithmDebug algorithm = {0};
+    RobotLifecycleSnapshot lifecycle = {0};
+    uint32_t now_ms;
+    uint32_t motion_age_ms = 0u;
+    uint8_t dbus_error;
+    uint8_t manual_online;
+    uint8_t chassis_safe;
+    uint8_t output_allowed;
+    uint8_t robot_ok;
+    uint8_t ctrl_ok;
+    uint8_t motion_on;
+
     memset(&g_watch.diag, 0, sizeof(g_watch.diag));
 
-#if WATCH_ENABLE_DIAG_COPY
-    SdLogStats sd_stats = {0};
-
-    g_watch.diag.offline_need_geometry = 1u;
-    g_watch.diag.offline_need_mass_inertia = 1u;
-    g_watch.diag.offline_need_com_inertia = 1u;
-    g_watch.diag.offline_need_motor_limits = 0u;
-    g_watch.diag.offline_need_lqr_model = 1u;
-    g_watch.diag.offline_need_stage_k = 1u;
-    g_watch.diag.offline_need_qr_weights = 1u;
-    g_watch.diag.offline_need_sign_table = 0u;
-
-    g_watch.diag.power_need_imu_sign = 0u;
-    g_watch.diag.power_need_motor_online = 0u;
-    g_watch.diag.power_need_joint_zero_dir = 0u;
-    g_watch.diag.power_need_wheel_dir = 0u;
-    g_watch.diag.power_need_fk_leg_state = 1u;
-    g_watch.diag.power_need_jacobian_dir = 1u;
-    g_watch.diag.power_need_observer_speed = 1u;
-    g_watch.diag.power_need_lqr_response = 1u;
-
-    SdLogGetStats(&sd_stats);
-    g_watch.diag.live_sdlog_active = sd_stats.active;
-    g_watch.diag.live_operation_mode = (uint8_t)robot_mode_current();
-    g_watch.diag.live_imu_online =
-        (uint8_t)((toe_is_error(BOARD_GYRO_TOE) == 0u && toe_is_error(BOARD_ACCEL_TOE) == 0u) ? 1u : 0u);
-    g_watch.diag.pitch_deg = g_watch.imu.angle_deg[INS_PITCH_ADDRESS_OFFSET];
-    g_watch.diag.pitch_gyro_deg_s = g_watch.imu.gyro_dps[INS_GYRO_Y_ADDRESS_OFFSET];
-
-#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
+    now_ms = HAL_GetTick();
+    (void)RobotLifecycleGetSnapshot(&lifecycle);
+    VisionLinkGetDebug(&vision);
+    ChassisAlgorithmDebugRead(&algorithm);
+    if (vision.lc_last_tick_ms != 0u)
     {
-        WheelLegDebug debug = {0};
-        const uint8_t WheelLegDebugValid =
-            (RobotProfileIsWheelLegMit() != 0u) ? WheelLegDebugRead(&debug) : 0u;
+        g_watch.diag.lc_age_ms = now_ms - vision.lc_last_tick_ms;
+    }
+    if (algorithm.last_ms != 0u)
+    {
+        g_watch.diag.alg_age_ms = now_ms - algorithm.last_ms;
+    }
 
-        g_watch.diag.live_profile_on = g_watch.WheelLegMit.profile_on;
-        g_watch.diag.live_manual_on = g_watch.WheelLegMit.manual_on;
-        g_watch.diag.live_enabled = g_watch.WheelLegMit.enabled;
-        g_watch.diag.live_control_stage = (uint8_t)g_config.WheelLegMit.control_stage;
-        g_watch.diag.live_mode = g_watch.WheelLegMit.mode;
-        g_watch.diag.live_status_valid = g_watch.WheelLegMit.status_valid;
-        g_watch.diag.live_state_valid = g_watch.WheelLegMit.state_valid;
-        g_watch.diag.live_fault_flags = g_watch.WheelLegMit.fault_flags;
-        g_watch.diag.live_lqr_debug_valid = WheelLegDebugValid;
-        g_watch.diag.live_all_mit_online =
-            (uint8_t)((g_watch.WheelLegMit.joint[0].online != 0u &&
-                       g_watch.WheelLegMit.joint[1].online != 0u &&
-                       g_watch.WheelLegMit.joint[2].online != 0u &&
-                       g_watch.WheelLegMit.joint[3].online != 0u &&
-                       g_watch.WheelLegMit.wheel[0].online != 0u &&
-                       g_watch.WheelLegMit.wheel[1].online != 0u)
-                          ? 1u
-                          : 0u);
+    dbus_error = toe_is_error(DBUS_TOE) ? 1u : 0u;
+    manual_online = lifecycle.manual_online;
+    output_allowed = lifecycle.output_allowed;
+    robot_ok = robot_mode_allow_chassis();
+    ctrl_ok = (ControlMgrActiveId(ControlDomainChassis) == ControlIdClassicChassis) ? 1u : 0u;
+    chassis_safe = ControlInputSwitchIsPos(ControlInputSwitch(INPUT_SW_CHASSIS_MODE),
+                                           g_config.manual_input.semantics.ChassisSafePos);
 
-        g_watch.diag.lqr_wheel_scale = g_config.WheelLegMit.lqr_wheel_torque_scale;
-        g_watch.diag.lqr_hip_scale = g_config.WheelLegMit.lqr_hip_torque_scale;
-        g_watch.diag.max_wheel_torque_nm = g_config.WheelLegMit.max_wheel_torque_nm;
-        g_watch.diag.max_joint_torque_nm = g_config.WheelLegMit.max_joint_torque_nm;
+    if (dbus_error != 0u) g_watch.diag.gate_bits |= (1u << 0);
+    if (manual_online == 0u) g_watch.diag.gate_bits |= (1u << 1);
+    if (chassis_safe != 0u || lifecycle.manual_safe != 0u) g_watch.diag.gate_bits |= (1u << 2);
+    if (output_allowed == 0u) g_watch.diag.gate_bits |= (1u << 3);
+    if (robot_ok == 0u) g_watch.diag.gate_bits |= (1u << 4);
+    if (ctrl_ok == 0u) g_watch.diag.gate_bits |= (1u << 5);
 
-        g_watch.diag.target_v_mps = g_watch.WheelLegMit.target_v_mps;
-        g_watch.diag.target_yaw_rate_radps = g_watch.WheelLegMit.target_yaw_rate_radps;
-        g_watch.diag.target_leg_length_m = g_watch.WheelLegMit.target_leg_length_m;
-        g_watch.diag.target_foot_x_m = g_watch.WheelLegMit.target_foot_x_m;
-        g_watch.diag.target_foot_y_m = g_watch.WheelLegMit.target_foot_y_m;
-        g_watch.diag.target_leg_theta_deg = g_watch.WheelLegMit.target_leg_theta_deg;
+    motion_on = ExternalMotionIntentReadLatest(&motion, &motion_age_ms) ? 1u : 0u;
+    if (motion_on != 0u)
+    {
+        g_watch.diag.motion_on = 1u;
+        g_watch.diag.motion_age_ms = motion_age_ms;
+    }
 
-        if (g_watch.WheelLegMit.status_valid != 0u)
+    g_watch.diag.usb_rx = vision.rx_callback_count;
+    g_watch.diag.lc_ok = vision.lc_crc_ok_count;
+    g_watch.diag.lc_fail = vision.lc_crc_fail_count;
+    g_watch.diag.crc_rx = vision.lc_last_crc_rx;
+    g_watch.diag.crc_calc = vision.lc_last_crc_calc;
+    g_watch.diag.alg = algorithm.count;
+    g_watch.diag.mode = vision.lc_last_mode;
+    g_watch.diag.frame = vision.lc_last_frame;
+    g_watch.diag.flags = vision.lc_last_flags;
+    g_watch.diag.t10ms = vision.lc_last_timeout_10ms;
+    g_watch.diag.vx_cmps = vision.lc_last_vx_cmps;
+    g_watch.diag.vy_cmps = vision.lc_last_vy_cmps;
+    g_watch.diag.wz_mradps = vision.lc_last_wz_mradps;
+    g_watch.diag.alg_vx_cmps = algorithm.vx_cmps;
+    g_watch.diag.alg_vy_cmps = algorithm.vy_cmps;
+    g_watch.diag.alg_wz_mradps = algorithm.wz_mradps;
+
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
+    g_watch.diag.vx_set = g_watch.chassis.vx_set;
+    g_watch.diag.vy_set = g_watch.chassis.vy_set;
+    g_watch.diag.wz_set = g_watch.chassis.wz_set;
+    for (uint8_t i = 0u; i < 4u; i++)
+    {
+        g_watch.diag.cur[i] = g_watch.chassis.motor_current[i];
+        if (g_watch.chassis.motor_current[i] != 0)
         {
-            g_watch.diag.pitch_deg = g_watch.WheelLegMit.pitch_deg;
+            g_watch.diag.cur_on = 1u;
         }
-        g_watch.diag.x_dot_mps = g_watch.WheelLegMit.x_dot_mps;
-        g_watch.diag.left_leg_length_m = g_watch.WheelLegMit.leg[0].length_m;
-        g_watch.diag.right_leg_length_m = g_watch.WheelLegMit.leg[1].length_m;
-        g_watch.diag.left_leg_theta_deg = g_watch.WheelLegMit.leg[0].theta_deg;
-        g_watch.diag.right_leg_theta_deg = g_watch.WheelLegMit.leg[1].theta_deg;
-        g_watch.diag.left_front_rel_deg = g_watch.WheelLegMit.joint[0].rel_position_deg;
-        g_watch.diag.left_back_rel_deg = g_watch.WheelLegMit.joint[1].rel_position_deg;
-        g_watch.diag.right_front_rel_deg = g_watch.WheelLegMit.joint[2].rel_position_deg;
-        g_watch.diag.right_back_rel_deg = g_watch.WheelLegMit.joint[3].rel_position_deg;
-        g_watch.diag.left_wheel_vel_deg_s = g_watch.WheelLegMit.wheel[0].fb_velocity_deg_s;
-        g_watch.diag.right_wheel_vel_deg_s = g_watch.WheelLegMit.wheel[1].fb_velocity_deg_s;
-        g_watch.diag.left_wheel_cmd_torque_nm = g_watch.WheelLegMit.wheel[0].cmd_torque_nm;
-        g_watch.diag.right_wheel_cmd_torque_nm = g_watch.WheelLegMit.wheel[1].cmd_torque_nm;
-        g_watch.diag.wheel_balance_cmd_nm =
-            g_watch.diag.right_wheel_cmd_torque_nm - g_watch.diag.left_wheel_cmd_torque_nm;
-        g_watch.diag.wheel_turn_cmd_nm =
-            g_watch.diag.right_wheel_cmd_torque_nm + g_watch.diag.left_wheel_cmd_torque_nm;
-        g_watch.diag.left_wheel_fb_torque_nm = g_watch.WheelLegMit.wheel[0].fb_torque_nm;
-        g_watch.diag.right_wheel_fb_torque_nm = g_watch.WheelLegMit.wheel[1].fb_torque_nm;
-        g_watch.diag.left_support_force_n = g_watch.WheelLegMit.leg[0].support_force_n;
-        g_watch.diag.right_support_force_n = g_watch.WheelLegMit.leg[1].support_force_n;
-        g_watch.diag.lqr_pitch_err_deg =
-            g_watch.diag.pitch_deg - WatchRadToDeg(g_config.WheelLegMit.pitch_balance_offset_right_rad);
-        g_watch.diag.lqr_left_pitch_err_deg =
-            -g_watch.diag.pitch_deg - WatchRadToDeg(g_config.WheelLegMit.pitch_balance_offset_left_rad);
-
-        if (WheelLegDebugValid != 0u)
-        {
-            g_watch.diag.left_hip_torque_nm = debug.lqr.output[3];
-            g_watch.diag.right_hip_torque_nm = debug.lqr.output[2];
-            g_watch.diag.lqr_theta_err_deg = WatchRadToDeg(debug.lqr.error[0]);
-            g_watch.diag.lqr_dtheta_deg_s = WatchRadToDeg(debug.lqr.error[1]);
-            g_watch.diag.lqr_x_m = debug.lqr.error[2];
-            g_watch.diag.lqr_v_err_mps = debug.lqr.error[3];
-            g_watch.diag.lqr_pitch_err_deg = WatchRadToDeg(debug.lqr.error[4]);
-            g_watch.diag.lqr_left_pitch_err_deg =
-                -g_watch.diag.pitch_deg - WatchRadToDeg(g_config.WheelLegMit.pitch_balance_offset_left_rad);
-            g_watch.diag.lqr_pitch_gyro_deg_s = WatchRadToDeg(debug.lqr.error[5]);
-            g_watch.diag.lqr_right_output_nm = debug.lqr.output[0];
-            g_watch.diag.lqr_left_output_nm = debug.lqr.output[1];
-        }
-
-        WatchWheelLegRunCaptureUpdate();
-        WatchWheelLegRunCaptureCopy();
     }
 #endif
-#endif
+
+    if (vision.rx_callback_count == 0u)
+    {
+        g_watch.diag.reason = 1u; // USB CDC 没进接收回调
+    }
+    else if (vision.lc_head_count == 0u)
+    {
+        g_watch.diag.reason = 2u; // 没识别到 LC 包头
+    }
+    else if (vision.lc_crc_ok_count == 0u)
+    {
+        g_watch.diag.reason = 3u; // LC CRC 没通过
+    }
+    else if (vision.lc_valid_count == 0u)
+    {
+        g_watch.diag.reason = 4u; // LC 包内容非法
+    }
+    else if (motion_on == 0u)
+    {
+        g_watch.diag.reason = 5u; // 导航命令没有保持活跃，通常是超时
+    }
+    else if (dbus_error != 0u || manual_online == 0u)
+    {
+        g_watch.diag.reason = 6u; // 手动输入离线，底盘电流会被清零
+    }
+    else if (chassis_safe != 0u || lifecycle.manual_safe != 0u)
+    {
+        g_watch.diag.reason = 7u; // 安全档仍然有效
+    }
+    else if (output_allowed == 0u)
+    {
+        g_watch.diag.reason = 8u; // 生命周期不允许输出
+    }
+    else if (robot_ok == 0u)
+    {
+        g_watch.diag.reason = 9u; // 机器人模式不允许底盘
+    }
+    else if (ctrl_ok == 0u)
+    {
+        g_watch.diag.reason = 10u; // 底盘控制器没有占用控制域
+    }
+    else if (g_watch.diag.vx_set < 0.001f &&
+             g_watch.diag.vx_set > -0.001f &&
+             g_watch.diag.vy_set < 0.001f &&
+             g_watch.diag.vy_set > -0.001f &&
+             g_watch.diag.wz_set < 0.001f &&
+             g_watch.diag.wz_set > -0.001f)
+    {
+        g_watch.diag.reason = 11u; // 命令进来了，但底盘目标仍是 0
+    }
+    else if (g_watch.diag.cur_on == 0u)
+    {
+        g_watch.diag.reason = 12u; // 底盘目标有了，但四个电流还是 0
+    }
+    else
+    {
+        g_watch.diag.reason = 0u; // Watch 侧看到已经有底盘电流输出
+    }
 }
 
 #if INCLUDE_uxTaskGetStackHighWaterMark

@@ -15,6 +15,7 @@
 
 void WatchInit(void) {}
 void WatchUpdate(void) {}
+void WatchUpdateRcSnapshot(const struct ManualInputState *rc) { (void)rc; }
 void WatchDiagSetBootStage(WatchBootStage stage) { (void)stage; }
 void WatchDiagMarkErrorHandler(uint32_t tick_ms, uint32_t ipsr)
 {

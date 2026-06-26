@@ -12,7 +12,7 @@ typedef enum
 } SdSpiCardType;
 
 /**
-  * @brief  Initialize SD card (SPI mode) on SPI2 + PB12(CS).
+  * @brief  Initialize SD card on the board SPI SD port.
   * @retval 0 on success, non-zero on failure.
   */
 int SdSpiInit(void);
@@ -53,4 +53,3 @@ int SdSpiGetSectorCount(uint32_t *out_sectors);
 int SdSpiSync(void);
 
 #endif
-

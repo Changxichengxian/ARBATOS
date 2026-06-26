@@ -6,6 +6,8 @@
 - `Robotconfig/`：这份固件使用哪台机器人的参数和装配。
 - `boards/`：这份固件按哪块硬件板适配。
 
+每个 `Robotconfig/<TARGET>/MountLayout.md` 记录这台车的控制板固定位置、开发板正方向和 INS 姿态含义；坐标总口径见 [坐标系和安装基准](coordinate-frames.md)。
+
 | Project | Target | Board | Keil 工程 | 当前用途 |
 |---|---|---|---|---|
 | `projects/HERO-C` | `Robotconfig/HERO-C` | `boards/DjiCF407` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | 英雄 C 板主入口 |

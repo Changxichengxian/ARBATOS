@@ -244,7 +244,7 @@ static inline void RobotProfileFillIdentity(RobotProfileIdentity *out)
 #endif
 
 #ifndef ROBOT_PROFILE_WATCH_TASK_BEAT_MIN_PERIOD_MS
-#define ROBOT_PROFILE_WATCH_TASK_BEAT_MIN_PERIOD_MS 10u
+#define ROBOT_PROFILE_WATCH_TASK_BEAT_MIN_PERIOD_MS 1000u
 #endif
 
 #ifndef ROBOT_TASK_MODULE_CUSTOM_BASE

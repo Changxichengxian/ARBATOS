@@ -113,7 +113,7 @@ static void WatchCopyGimbal(void)
         g_watch.gimbal.yaw_rpm = (yaw->measure.valid != 0u) ? yaw->measure.speed_rpm : 0;
         g_watch.gimbal.yaw_current_fb = (yaw->measure.valid != 0u) ? yaw->measure.given_current : 0;
         g_watch.gimbal.yaw_ecd = (yaw->measure.valid != 0u) ? yaw->measure.ecd : 0;
-        g_watch.gimbal.yaw_ecd_deg = (yaw->measure.valid != 0u) ? WatchEcdToDeg(yaw->measure.ecd) : 0.0f;
+        g_watch.gimbal.yaw_ecd_deg = (yaw->measure.valid != 0u) ? WatchEcdToDeg(g_config.motor.yaw.model, yaw->measure.ecd) : 0.0f;
         g_watch.gimbal.yaw_temp = (yaw->measure.valid != 0u) ? yaw->measure.temperature : 0;
     }
     else
@@ -141,7 +141,7 @@ static void WatchCopyGimbal(void)
         g_watch.gimbal.pitch_rpm = (pitch->measure.valid != 0u) ? pitch->measure.speed_rpm : 0;
         g_watch.gimbal.pitch_current_fb = (pitch->measure.valid != 0u) ? pitch->measure.given_current : 0;
         g_watch.gimbal.pitch_ecd = (pitch->measure.valid != 0u) ? pitch->measure.ecd : 0;
-        g_watch.gimbal.pitch_ecd_deg = (pitch->measure.valid != 0u) ? WatchEcdToDeg(pitch->measure.ecd) : 0.0f;
+        g_watch.gimbal.pitch_ecd_deg = (pitch->measure.valid != 0u) ? WatchEcdToDeg(g_config.motor.pitch.model, pitch->measure.ecd) : 0.0f;
         g_watch.gimbal.pitch_temp = (pitch->measure.valid != 0u) ? pitch->measure.temperature : 0;
     }
     else
@@ -157,6 +157,37 @@ static void WatchCopyGimbal(void)
         g_watch.gimbal.pitch_ecd_deg = 0.0f;
         g_watch.gimbal.pitch_temp = 0;
     }
+}
+#endif
+
+#if WATCH_ENABLE_GIMBAL_DUAL
+static void WatchCopyDualGimbal(void)
+{
+    GimbalDualYawDebugState debug;
+
+    if (!WatchBlockActiveGimbalDual())
+    {
+        memset(&g_watch.dual_gimbal, 0, sizeof(g_watch.dual_gimbal));
+        return;
+    }
+
+    memset(&debug, 0, sizeof(debug));
+    (void)GimbalDualYawDebugRead(&debug);
+
+    g_watch.dual_gimbal.active = debug.active;
+    g_watch.dual_gimbal.upper_online = debug.upper_online;
+    g_watch.dual_gimbal.upper_limited = debug.upper_limited;
+    g_watch.dual_gimbal.total_set_deg = WatchRadToDeg(debug.total_set_rad);
+    g_watch.dual_gimbal.big_angle_deg = WatchRadToDeg(debug.big_angle_rad);
+    g_watch.dual_gimbal.big_set_deg = WatchRadToDeg(debug.big_set_rad);
+    g_watch.dual_gimbal.big_error_deg = WatchRadToDeg(debug.big_error_rad);
+    g_watch.dual_gimbal.upper_angle_deg = WatchRadToDeg(debug.upper_angle_rad);
+    g_watch.dual_gimbal.upper_set_deg = WatchRadToDeg(debug.upper_set_rad);
+    g_watch.dual_gimbal.upper_error_deg = WatchRadToDeg(debug.upper_error_rad);
+    g_watch.dual_gimbal.upper_gyro_dps = WatchRadToDeg(debug.upper_gyro_radps);
+    g_watch.dual_gimbal.yaw_current = debug.yaw_current;
+    g_watch.dual_gimbal.yaw_upper_current = debug.yaw_upper_current;
+    g_watch.dual_gimbal.yaw_upper_ecd = debug.yaw_upper_ecd;
 }
 #endif
 

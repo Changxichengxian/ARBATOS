@@ -90,6 +90,36 @@ static void WatchDiagPushStage(WatchBootStage stage)
     g_watch.fault.boot_stage = stage;
 }
 
+static void WatchFillRcFromManualInput(const struct ManualInputState *src)
+{
+    if (src == NULL)
+    {
+        memset(&g_watch.rc, 0, sizeof(g_watch.rc));
+        return;
+    }
+
+    for (uint8_t i = 0; i < 5; i++)
+    {
+        g_watch.rc.ch[i] = src->rc.ch[i];
+    }
+    g_watch.rc.s[0] = src->rc.s[0];
+    g_watch.rc.s[1] = src->rc.s[1];
+
+    g_watch.rc.mouse_x = src->mouse.x;
+    g_watch.rc.mouse_y = src->mouse.y;
+    g_watch.rc.mouse_z = src->mouse.z;
+    g_watch.rc.mouse_l = src->mouse.press_l;
+    g_watch.rc.mouse_r = src->mouse.press_r;
+    g_watch.rc.key = src->key.v;
+}
+
+void WatchUpdateRcSnapshot(const struct ManualInputState *rc)
+{
+    taskENTER_CRITICAL();
+    WatchFillRcFromManualInput(rc);
+    taskEXIT_CRITICAL();
+}
+
 static void WatchCopyRc(void)
 {
     if (ManualInputGetCurrentCopy(&rc_snapshot) != 0u)
@@ -101,25 +131,7 @@ static void WatchCopyRc(void)
         rc_src = NULL;
     }
 
-    if (rc_src == NULL)
-    {
-        memset(&g_watch.rc, 0, sizeof(g_watch.rc));
-        return;
-    }
-
-    for (uint8_t i = 0; i < 5; i++)
-    {
-        g_watch.rc.ch[i] = rc_src->rc.ch[i];
-    }
-    g_watch.rc.s[0] = rc_src->rc.s[0];
-    g_watch.rc.s[1] = rc_src->rc.s[1];
-
-    g_watch.rc.mouse_x = rc_src->mouse.x;
-    g_watch.rc.mouse_y = rc_src->mouse.y;
-    g_watch.rc.mouse_z = rc_src->mouse.z;
-    g_watch.rc.mouse_l = rc_src->mouse.press_l;
-    g_watch.rc.mouse_r = rc_src->mouse.press_r;
-    g_watch.rc.key = rc_src->key.v;
+    WatchUpdateRcSnapshot(rc_src);
 }
 
 static void WatchCopyNewrc(void)

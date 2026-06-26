@@ -28,7 +28,7 @@ void ExitRun0Mode(void)
 
 int main(void)
 {
-    HAL_Init();
+   HAL_Init();
     WatchDiagSetBootStage(WATCH_BOOT_STAGE_HAL_INIT_DONE);
     SystemClock_Config();
     WatchDiagSetBootStage(WATCH_BOOT_STAGE_SYS_CLOCK_BUS);

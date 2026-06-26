@@ -884,7 +884,15 @@ typedef struct
 // add fields and a block-table entry, without reshaping the whole config.
 typedef struct
 {
-    uint8_t reserved0;
+    uint8_t enable;              // [400]
+    uint8_t yaw_upper_turn;      // [401]
+    uint16_t yaw_upper_middle_ecd; // [402]
+    fp32 yaw_upper_soft_limit_max; // [403]
+    fp32 yaw_upper_soft_limit_min; // [404]
+    fp32 yaw_upper_kp;           // [405]
+    fp32 yaw_upper_kd;           // [406]
+    fp32 yaw_upper_current_limit; // [407]
+    fp32 yaw_upper_center_deadband; // [408]
 } dual_gimbal_config_t;
 
 typedef struct

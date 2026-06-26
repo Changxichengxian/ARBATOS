@@ -38,7 +38,7 @@ extern volatile uint32_t GimbalLoopCounter;
 extern volatile uint32_t ChassisLoopCounter;
 extern ChassisBehaviour ChassisBehaviourMode;
 
-#define WATCH_UPDATE_PERIOD_MS 250u
+#define WATCH_UPDATE_PERIOD_MS 1000u
 #define SYS_STATS_PERIOD_MS 250u
 
 

@@ -2,12 +2,12 @@
     // 云台配置
     .gimbal =
         {
-            .yaw_speed_pid = {500.0f, 1.0f, 0.0f, 7000.0f, 1000.0f},   // [001]kp [002]ki [003]kd [004]max_out [005]max_iout | 小 yaw 轻，速度环先按轻云台压低防震荡
+            .yaw_speed_pid = {800.0f, 0.0f, 0.0f, 7000.0f, 1000.0f},   // [001]kp [002]ki [003]kd [004]max_out [005]max_iout | 小 yaw 轻，速度环先按轻云台压低防震荡
             // PITCH 速度环：
             // - 控制周期为 1ms，PID_calc 内部未乘 dt，因此 Ki 属于“每次迭代”的积分系数；过大极易导致抖动/风up
             // - 默认以 P 为主（接近 YAW 的量级），I 默认先关；若需要重力补偿再通过 AUX 口逐步加一点 Ki
             .pitch_speed_pid = {2000.0f, 5.0f, 0.0f, 14000.0f, 1000.0f},   // [006]kp [007]ki [008]kd [009]max_out [010]max_iout
-            .yaw_encode_angle_pid = {9.0f, 0.0f, 0.0f, 25.0f, 3.0f},      // [011]kp [012]ki [013]kd [014]max_out [015]max_iout | 小 yaw 角度环，先保守止振再往上加
+            .yaw_encode_angle_pid = {10.0f, 0.0f, 0.0f, 25.0f, 3.0f},      // [011]kp [012]ki [013]kd [014]max_out [015]max_iout | 大 yaw 角度环，偏猛先降 P
             .pitch_encode_angle_pid = {6.0f, 0.0f, 0.0f, 20.0f, 0.0f},   // [016]kp [017]ki [018]kd [019]max_out [020]max_iout | PITCH 角度环（编码器）：同上
 
             .task_init_time_ms = 201,   // 任务启动延时
@@ -17,7 +17,7 @@
             .channel_pitch = 1,         // 云台 pitch 逻辑轴，保留给兼容代码
             .channel_mode = 0,          // 云台模式逻辑拨杆，保留给兼容代码
 
-            .yaw_rc_sen = -0.000003f,    // [026] 遥控 yaw 灵敏度（ch0 正=右转）
+            .yaw_rc_sen = 0.000003f,     // [026] 遥控 yaw 灵敏度（ch0 正=右转）
             .pitch_rc_sen = 0.000005f,  // [027] 遥控 pitch 灵敏度（ch1 正=抬头）
             .yaw_mouse_sen = 0.000023f,  // [028] 鼠标 yaw 灵敏度
             .pitch_mouse_sen = 0.00015f,// [029] 鼠标 pitch 灵敏度
@@ -33,9 +33,9 @@
             .init_pitch_set = 0.0f,     // 初始 pitch 设定：机械零点，偏移会导致上电姿态不同
             .init_yaw_set = 0.0f,       // 初始 yaw 设定：同上
 
-            .yaw_middle_ecd = 6150,     // yaw 云台在车身中位时的编码器值（常用调参项）
-            .yaw_soft_limit_max = 1.342f, // [062] 小 yaw 正向软限位：右 8000，留约 100 计数余量
-            .yaw_soft_limit_min = -1.572f,// [063] 小 yaw 负向软限位：左 4000，留约 100 计数余量
+            .yaw_middle_ecd = 9102,     // 大 yaw 相对底盘中位：J8006 14位 position 约 200deg
+            .yaw_soft_limit_max = 0.0f,   // 大 yaw 用 IMU 闭环，不用原小 yaw 软限位
+            .yaw_soft_limit_min = 0.0f,   // 小 yaw 限位放在 dual_gimbal.yaw_upper_* 参数里
             .yaw_kick_current = 500.0f, // [064] 小 yaw 起步电流：按目标速度方向给正负，不是重力保持
             .pitch_kick_up_current = 1000.0f,   // [041] pitch 抬头起步电流（静摩擦/重力补偿，持续叠加到 PID 输出上）
             .pitch_kick_down_current = 100.0f, // [042] pitch 低头起步电流（静摩擦/重力补偿，持续叠加到 PID 输出上）
@@ -92,8 +92,21 @@
             .turn_key_mask = 1u << 9,     // 一键转身键：F
             .test_key_mask = 1u << 8,     // 测试键：R
 
-            .yaw_turn = 0,                // 云台 yaw 方向：0=不反转，1=反转
+            .yaw_turn = 1,                // 云台 yaw 方向：0=不反转，1=反转
             .pitch_turn = 1,              // 云台 pitch 方向：0=不反转，1=反转
+        },
+
+    .dual_gimbal =
+        {
+            .enable = 1u,                  // [400] 双 yaw 分配开关
+            .yaw_upper_turn = 0u,          // [401] 小 yaw 输出方向：不对就改 1
+            .yaw_upper_middle_ecd = 6150u, // [402] 小 yaw 中位编码器，沿用原 yaw 中位
+            .yaw_upper_soft_limit_max = 1.342f, // [403] 小 yaw 正向软限位
+            .yaw_upper_soft_limit_min = -1.572f,// [404] 小 yaw 负向软限位
+            .yaw_upper_kp = 4500.0f,       // [405] 小 yaw 角度 P，单位约 cmd/rad
+            .yaw_upper_kd = 120.0f,        // [406] 小 yaw 速度阻尼，单位约 cmd/(rad/s)
+            .yaw_upper_current_limit = 6000.0f, // [407] 小 yaw 电流限幅
+            .yaw_upper_center_deadband = 0.01f, // [408] 小 yaw 回中死区
         },
 
     // 底盘配置
@@ -104,7 +117,7 @@
             // - 误差：云台-底盘相对 yaw（单位 rad）
             // - Kd：对底盘 wz（rad/s）的阻尼项（不是“每 tick 误差差分”的 Kd）
             // 轮距参数修正后（motor_distance_to_center=0.395m），为保持原手感，将 wz_set 相关量按 0.2/0.395≈0.506 缩放。
-            .follow_gimbal_pid = {10.13f, 0.0f, 1.0f, 3.04f, 0.2f}, // [071]kp [072]ki [073]kd [074]max_out [075]max_iout
+            .follow_gimbal_pid = {2.0f, 0.0f, 1.0f, 2.2f, 0.2f}, // [071]kp [072]ki [073]kd [074]max_out [075]max_iout | 地盘跟随偏猛，先降 P 和最大转速
             .motor_dir = {1, -1, 1, -1},          // 底盘四轮方向系数：LF / RF / LR / RR
             .wheel_type = CHASSIS_WHEEL_TYPE_MECANUM,
 

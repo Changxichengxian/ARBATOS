@@ -62,6 +62,8 @@ static uint32_t s_can_tx_mit_budget_tick_ms;
 static uint8_t s_can_tx_mit_budget_used;
 static uint8_t s_can_tx_rm_group_configured[2][2];
 static uint8_t s_can_tx_route_start_index;
+static uint32_t s_can_tx_mit_enable_tx_count[MotorCount];
+static uint32_t s_can_tx_mit_cmd_tx_count[MotorCount];
 
 #include "CanCommandTxCommonHelpers.inc"
 
@@ -134,6 +136,16 @@ __weak uint8_t CanMitMotorUpdateFeedback(uint16_t std_id,
     (void)data;
     (void)feedback;
     return 0u;
+}
+
+uint32_t CanTxMitEnableTxCount(uint8_t actuator_id)
+{
+    return (actuator_id < (uint8_t)MotorCount) ? s_can_tx_mit_enable_tx_count[actuator_id] : 0u;
+}
+
+uint32_t CanTxMitCmdTxCount(uint8_t actuator_id)
+{
+    return (actuator_id < (uint8_t)MotorCount) ? s_can_tx_mit_cmd_tx_count[actuator_id] : 0u;
 }
 
 // CAN 命令发送任务：收集各轴命令，按轴装配表转换协议并统一发出。

@@ -1,7 +1,7 @@
 // Included by RobotConfig.c inside g_config's initializer; do not compile directly.
     .profile =
         {
-            .task_module_count = 8u,
+            .task_module_count = 9u,
             .task_modules =
                 {
                     ROBOT_TASK_MODULE_RC_SBUS,
@@ -11,6 +11,7 @@
                     ROBOT_TASK_MODULE_CAN_FEEDBACK_RX,
                     ROBOT_TASK_MODULE_CLASSIC_CHASSIS,
                     ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL,
+                    ROBOT_TASK_MODULE_HOST_LINK,
                     ROBOT_TASK_MODULE_IMU,
                 },
         },
@@ -23,9 +24,9 @@
             //   ROBOT_RUN_MODE_SINGLE_MOTOR - only .target_motor output is released
             //   ROBOT_RUN_MODE_CALIBRATION  - calibration flow
             //   ROBOT_RUN_MODE_ENTERTAIN    - entertainment/demo
-            .mode = ROBOT_RUN_MODE_SINGLE_TASK,
+            .mode = ROBOT_RUN_MODE_FULL,
             .target_task = ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL,
             .target_motor = (uint8_t)MotorCount,
-            .variant = ROBOT_RUN_VARIANT_GIMBAL_DUAL,
+            .variant = ROBOT_RUN_VARIANT_GIMBAL_YAW_ONLY,
             .cali_target = ROBOT_CALI_TARGET_NONE,
         },

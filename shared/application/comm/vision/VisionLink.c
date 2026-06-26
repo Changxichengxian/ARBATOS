@@ -73,6 +73,7 @@ static volatile bool VisionRxUpdated = false;
 static uint8_t VisionLinkRxStreamBuf[VISION_RX_STREAM_BUF_SIZE];
 static uint32_t VisionLinkRxStreamLen = 0u;
 static uint32_t VisionLinkTxCycle = 0u;
+static VisionLinkDebug VisionLinkDbg;
 
 static const fp32 *VisionInsQuat = NULL;
 
@@ -85,6 +86,10 @@ static bool VisionLinkFloatInRange(float v, float limit_abs);
 static bool VisionLinkExternalMotionIntentValid(const ExternalMotionIntent *intent);
 static void VisionLinkChassisCmdToIntent(const VisionToChassis *cmd, ExternalMotionIntent *intent);
 static int16_t VisionLinkFp32ToI16Scaled(fp32 value, fp32 scale);
+static uint32_t VisionLinkNowFromIsrMs(void);
+static uint16_t VisionLinkReadLe16(const uint8_t *buf);
+static uint16_t VisionLinkCalcCrc16(const uint8_t *buf, uint32_t len);
+static void VisionLinkDebugStoreChassisCmd(const VisionToChassis *cmd);
 
 void VisionLinkInit(const fp32 *quat, const fp32 *angle, const fp32 *gyro)
 {
@@ -105,6 +110,7 @@ void VisionLinkInit(const fp32 *quat, const fp32 *angle, const fp32 *gyro)
 
     VisionLinkRxStreamLen = 0u;
     VisionLinkTxCycle = 0u;
+    memset(&VisionLinkDbg, 0, sizeof(VisionLinkDbg));
 }
 
 bool VisionTakeLatest(VisionToGimbal *out)
@@ -163,7 +169,23 @@ void VisionLinkPollTx(void)
 
 void VisionLinkRxCallback(uint8_t *buf, uint32_t len)
 {
+    VisionLinkDbg.rx_callback_count++;
+    VisionLinkDbg.rx_bytes += len;
+    VisionLinkDbg.rx_last_len = len;
+    VisionLinkDbg.rx_last_tick_ms = VisionLinkNowFromIsrMs();
     VisionLinkRxStreamConsume(buf, len);
+}
+
+void VisionLinkGetDebug(VisionLinkDebug *out)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    taskENTER_CRITICAL();
+    *out = VisionLinkDbg;
+    taskEXIT_CRITICAL();
 }
 
 static void VisionLinkStoreRxFromIsr(const VisionToGimbal *pkt)
@@ -215,12 +237,15 @@ static void VisionLinkHandleChassisCmd(const VisionToChassis *cmd)
         return;
     }
 
+    VisionLinkDebugStoreChassisCmd(cmd);
     VisionLinkChassisCmdToIntent(cmd, &intent);
     if (!VisionLinkExternalMotionIntentValid(&intent))
     {
+        VisionLinkDbg.lc_invalid_count++;
         return;
     }
 
+    VisionLinkDbg.lc_valid_count++;
     ExternalMotionIntentWriteFromIsr(&intent);
 }
 
@@ -359,11 +384,13 @@ static void VisionLinkRxStreamConsume(const uint8_t *buf, uint32_t len)
         buf += (len - VISION_RX_STREAM_BUF_SIZE);
         len = VISION_RX_STREAM_BUF_SIZE;
         VisionLinkRxStreamLen = 0u;
+        VisionLinkDbg.rx_stream_overflow_count++;
     }
 
     if ((VisionLinkRxStreamLen + len) > VISION_RX_STREAM_BUF_SIZE)
     {
         const uint32_t overflow = (VisionLinkRxStreamLen + len) - VISION_RX_STREAM_BUF_SIZE;
+        VisionLinkDbg.rx_stream_overflow_count++;
         if (overflow >= VisionLinkRxStreamLen)
         {
             VisionLinkRxStreamLen = 0u;
@@ -387,6 +414,7 @@ static void VisionLinkRxStreamConsume(const uint8_t *buf, uint32_t len)
 
         if (candidate[0] == VISION_FRAME_SOF0 && candidate[1] == VISION_FRAME_SOF1)
         {
+            VisionLinkDbg.ls_head_count++;
             if ((VisionLinkRxStreamLen - consume) < VISION_RX_FRAME_SIZE)
             {
                 break;
@@ -394,29 +422,36 @@ static void VisionLinkRxStreamConsume(const uint8_t *buf, uint32_t len)
             if (verify_CRC16_check_sum((uint8_t *)candidate, VISION_RX_FRAME_SIZE))
             {
                 VisionToGimbal pkt;
+                VisionLinkDbg.ls_crc_ok_count++;
                 memcpy(&pkt, candidate, sizeof(pkt));
                 VisionLinkHandleRx(&pkt);
                 consume += VISION_RX_FRAME_SIZE;
                 continue;
             }
+            VisionLinkDbg.ls_crc_fail_count++;
             consume++;
             continue;
         }
 
         if (candidate[0] == CHASSIS_FRAME_SOF0 && candidate[1] == CHASSIS_FRAME_SOF1)
         {
+            VisionLinkDbg.lc_head_count++;
             if ((VisionLinkRxStreamLen - consume) < CHASSIS_RX_FRAME_SIZE)
             {
                 break;
             }
+            VisionLinkDbg.lc_last_crc_rx = VisionLinkReadLe16(&candidate[CHASSIS_RX_FRAME_SIZE - 2u]);
+            VisionLinkDbg.lc_last_crc_calc = VisionLinkCalcCrc16(candidate, CHASSIS_RX_FRAME_SIZE);
             if (verify_CRC16_check_sum((uint8_t *)candidate, CHASSIS_RX_FRAME_SIZE))
             {
                 VisionToChassis cmd;
+                VisionLinkDbg.lc_crc_ok_count++;
                 memcpy(&cmd, candidate, sizeof(cmd));
                 VisionLinkHandleChassisCmd(&cmd);
                 consume += CHASSIS_RX_FRAME_SIZE;
                 continue;
             }
+            VisionLinkDbg.lc_crc_fail_count++;
             consume++;
             continue;
         }
@@ -436,4 +471,50 @@ static void VisionLinkRxStreamConsume(const uint8_t *buf, uint32_t len)
                 &VisionLinkRxStreamBuf[consume],
                 VisionLinkRxStreamLen);
     }
+}
+
+static uint32_t VisionLinkNowFromIsrMs(void)
+{
+    return (uint32_t)(xTaskGetTickCountFromISR() * portTICK_PERIOD_MS);
+}
+
+static uint16_t VisionLinkReadLe16(const uint8_t *buf)
+{
+    if (buf == NULL)
+    {
+        return 0u;
+    }
+
+    return (uint16_t)((uint16_t)buf[0] | ((uint16_t)buf[1] << 8));
+}
+
+static uint16_t VisionLinkCalcCrc16(const uint8_t *buf, uint32_t len)
+{
+    if (buf == NULL || len < 2u)
+    {
+        return 0u;
+    }
+
+    return get_CRC16_check_sum((uint8_t *)buf, len - 2u, 0xffffu);
+}
+
+static void VisionLinkDebugStoreChassisCmd(const VisionToChassis *cmd)
+{
+    if (cmd == NULL)
+    {
+        return;
+    }
+
+    VisionLinkDbg.lc_last_tick_ms = VisionLinkNowFromIsrMs();
+    VisionLinkDbg.lc_last_mode = cmd->mode;
+    VisionLinkDbg.lc_last_frame = cmd->frame;
+    VisionLinkDbg.lc_last_flags = cmd->flags;
+    VisionLinkDbg.lc_last_timeout_10ms = cmd->timeout_10ms;
+    VisionLinkDbg.lc_last_vx_cmps = cmd->vx_cmps;
+    VisionLinkDbg.lc_last_vy_cmps = cmd->vy_cmps;
+    VisionLinkDbg.lc_last_wz_mradps = cmd->wz_mradps;
+    VisionLinkDbg.lc_last_yaw_offset_mrad = cmd->yaw_offset_mrad;
+    VisionLinkDbg.lc_last_ax_cmps2 = cmd->ax_cmps2;
+    VisionLinkDbg.lc_last_ay_cmps2 = cmd->ay_cmps2;
+    VisionLinkDbg.lc_last_wz_acc_mradps2 = cmd->wz_acc_mradps2;
 }

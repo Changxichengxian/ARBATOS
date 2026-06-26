@@ -11,6 +11,91 @@
   * @param[out]     init: "GimbalControl" variable point
   * @retval         none
   */
+static uint8_t GimbalDualYawImuCenterEnabled(const GimbalRuntimeSnapshot *snapshot)
+{
+#if GIMBAL_USE_ENCODER_FEEDBACK
+    (void)snapshot;
+    return 0u;
+#else
+    (void)snapshot;
+    return (uint8_t)(RobotProfileNeedDualGimbalControlTask() != 0u &&
+                     MotorCfgNodeId(&g_config.motor.yaw) != 0u);
+#endif
+}
+
+static uint8_t GimbalYawImuFeedbackTurn(const GimbalRuntimeSnapshot *snapshot)
+{
+    if (GimbalDualYawImuCenterEnabled(snapshot) != 0u)
+    {
+        return (uint8_t)((GIMBAL_DUAL_YAW_IMU_TURN != 0u) ? 1u : 0u);
+    }
+
+    return (snapshot != NULL) ? snapshot->yaw_turn : (YAW_TURN ? 1u : 0u);
+}
+
+static uint8_t GimbalDualYawImuAngleRead(const GimbalRuntimeSnapshot *snapshot,
+                                             const GimbalControl *control,
+                                             fp32 *out)
+{
+    const fp32 *ins_angle = (snapshot != NULL) ? snapshot->ins_angle :
+                                                   ((control != NULL) ? control->GimbalInsAnglePoint : NULL);
+    const uint8_t yaw_turn = GimbalYawImuFeedbackTurn(snapshot);
+
+    if (GimbalDualYawImuCenterEnabled(snapshot) == 0u ||
+        ins_angle == NULL ||
+        out == NULL)
+    {
+        return 0u;
+    }
+
+    *out = (yaw_turn != 0u) ? -ins_angle[INS_YAW_ADDRESS_OFFSET] : ins_angle[INS_YAW_ADDRESS_OFFSET];
+    return 1u;
+}
+
+static uint8_t GimbalDualYawImuCenterCapture(GimbalControl *control, const GimbalRuntimeSnapshot *snapshot)
+{
+    fp32 yaw_angle = 0.0f;
+
+    if (control == NULL || GimbalDualYawImuAngleRead(snapshot, control, &yaw_angle) == 0u)
+    {
+        return 0u;
+    }
+
+    s_dual_yaw_imu_center = yaw_angle;
+    s_dual_yaw_imu_center_ready = 1u;
+    control->GimbalYawMotor.angle = 0.0f;
+    control->GimbalYawMotor.angle_set = 0.0f;
+    control->GimbalYawMotor.motor_gyro_set = control->GimbalYawMotor.motor_gyro;
+    return 1u;
+}
+
+static void GimbalDualYawImuCenterUpdateOnOutput(GimbalControl *control,
+                                                    const GimbalRuntimeSnapshot *snapshot,
+                                                    uint8_t output_allowed)
+{
+    if (GimbalDualYawImuCenterEnabled(snapshot) == 0u)
+    {
+        return;
+    }
+
+    if (output_allowed == 0u)
+    {
+        s_dual_yaw_output_allowed_prev = 0u;
+        s_dual_yaw_imu_center_ready = 0u;
+        return;
+    }
+
+    if (s_dual_yaw_output_allowed_prev == 0u || s_dual_yaw_imu_center_ready == 0u)
+    {
+        if (GimbalDualYawImuCenterCapture(control, snapshot) != 0u)
+        {
+            GimbalTotalPidClear(control);
+        }
+    }
+
+    s_dual_yaw_output_allowed_prev = s_dual_yaw_imu_center_ready;
+}
+
 static void GimbalInit(GimbalControl *init)
 {
 
@@ -55,6 +140,9 @@ static void GimbalInit(GimbalControl *init)
 
     //清除所有PID
     GimbalTotalPidClear(init);
+    s_dual_yaw_imu_center_ready = 0u;
+    s_dual_yaw_imu_center = 0.0f;
+    s_dual_yaw_output_allowed_prev = 0u;
     init->GimbalYawMotor.offset_ecd = g_config.gimbal.yaw_middle_ecd;
     init->GimbalPitchMotor.offset_ecd = GIMBAL_PITCH_MIDDLE_ECD;
 
@@ -194,9 +282,10 @@ static void GimbalFeedbackUpdate(GimbalControl *feedback_update, const GimbalRun
     {
         fp32 yaw_angle_raw = 0.0f;
         fp32 yaw_speed_raw = 0.0f;
+        fp32 yaw_angle = 0.0f;
         const fp32 *ins_angle = (snapshot != NULL) ? snapshot->ins_angle : feedback_update->GimbalInsAnglePoint;
         const fp32 *gyro = (snapshot != NULL) ? snapshot->gyro : feedback_update->GimbalINTGyroPoint;
-        const uint8_t yaw_turn = (snapshot != NULL) ? snapshot->yaw_turn : (YAW_TURN ? 1u : 0u);
+        const uint8_t yaw_turn = GimbalYawImuFeedbackTurn(snapshot);
 
         if (ins_angle != NULL)
         {
@@ -208,7 +297,17 @@ static void GimbalFeedbackUpdate(GimbalControl *feedback_update, const GimbalRun
             yaw_speed_raw = gyro[INS_GYRO_Z_ADDRESS_OFFSET];
         }
 
-        feedback_update->GimbalYawMotor.angle = (yaw_turn != 0u) ? -yaw_angle_raw : yaw_angle_raw;
+        yaw_angle = (yaw_turn != 0u) ? -yaw_angle_raw : yaw_angle_raw;
+        if (GimbalDualYawImuCenterEnabled(snapshot) != 0u)
+        {
+            feedback_update->GimbalYawMotor.angle = (s_dual_yaw_imu_center_ready != 0u) ?
+                                                        rad_format(yaw_angle - s_dual_yaw_imu_center) :
+                                                        0.0f;
+        }
+        else
+        {
+            feedback_update->GimbalYawMotor.angle = yaw_angle;
+        }
         feedback_update->GimbalYawMotor.motor_gyro = (yaw_turn != 0u) ? -yaw_speed_raw : yaw_speed_raw;
     }
 #endif

@@ -7,7 +7,7 @@
 ## 先记住四个目录
 
 - `projects/<TARGET>/`：能打开、编译、下载的 Keil 工程，也是 GCC/CMake 生成路线的工程清单来源。
-- `Robotconfig/<TARGET>/`：这台车的配置，主要是 PID、电机 ID、输入映射和任务模块。
+- `Robotconfig/<TARGET>/`：这台车的配置，主要是 PID、电机 ID、输入映射、任务模块和安装坐标。
 - `boards/<BOARD>/`：这块控制板的外设适配，主要是 CAN、UART、SPI、IMU、按键、蜂鸣器。
 - `shared/`：多台车共用的控制逻辑、通信、输入、电机、诊断、日志。
 
@@ -39,7 +39,18 @@
 
 任务没开，后面的 PID 和电机配得再对也不会跑。现在任务创建只看 `task_modules`，所以新车先从少量模块开始，确认后再加。
 
-### 3. 再配电机装配
+### 3. 先确认板子装在哪里
+
+在新目标的 `Robotconfig/<TARGET>/MountLayout.md` 里先写清楚：
+
+- 控制板固定在哪个机械部件上：底盘、大 yaw、小 yaw、云台、轮腿本体、机械臂某一级，还是其他位置。
+- 控制板 `+X/+Y/+Z` 分别朝这个部件的哪个方向。
+- INS 姿态主要代表谁：底盘、云台、大 yaw、轮腿本体，还是机械臂某一级。
+- 算法接口里的 `q[4]` 和 `frame=2` 在这台车上该怎么解释。
+
+这一步很重要，优先级和电机 ID 一样高。板子如果固定在云台上，姿态就不能当底盘姿态用；板子如果固定在机械臂上，也不能直接拿来当车体 yaw。没确认前就写“待实车确认”，不要把猜测写成结论。
+
+### 4. 再配电机装配
 
 看 `Robotconfig/<TARGET>/ConfigHardware.inc` 里的 `.motor`，先把每个轴的电机型号和 CAN ID 填对：
 
@@ -50,7 +61,7 @@
 
 不用的电机先把 `can_id` 设成 `0`。达妙、宇树和 RM 电机还要确认协议、控制模式、总线和限幅。新车第一次上电时，建议先只开一个子系统，不要一口气把所有电机都接上闭环。
 
-### 4. 配输入和安全档
+### 5. 配输入和安全档
 
 输入分两层：
 
@@ -61,7 +72,7 @@
 
 安全档位置在 `ConfigInput.inc` 的 `.manual_input.semantics` 里。现在 IMU 陀螺零偏微调也会看安全档：温度稳定后，遥控器未连接，或者云台和底盘都在安全档，才会采 3 秒静止数据做微调。
 
-### 5. 配检测项
+### 6. 配检测项
 
 每个目标都有自己的 `DetectTask.c`。新车调试时先把关键设备配进去：
 
@@ -215,6 +226,7 @@ IMU 正常后再调云台和底盘。重点看：
 更完整的操作步骤放在：
 
 - `manual/new-target.md`：新车接入流程。
+- `manual/coordinate-frames.md`：坐标系和安装基准。
 - `manual/bringup-checklist.md`：上车检查清单。
 - `manual/pid-tuning.md`：PID 调试流程。
 - `manual/sdlog.md`：SD 日志和复盘。
@@ -224,7 +236,7 @@ IMU 正常后再调云台和底盘。重点看：
 新车能算“初步接起来”，至少要满足：
 
 - 目标 Keil 工程能从干净状态编译。
-- `ConfigOperation.inc`、`ConfigHardware.inc`、`ConfigInput.inc` 里的任务、电机、输入映射和安全档配置正确。
+- `ConfigOperation.inc`、`ConfigHardware.inc`、`MountLayout.md`、`ConfigInput.inc` 里的任务、电机、安装坐标、输入映射和安全档配置正确。
 - IMU 温控和零偏校准路径可用。
 - 遥控输入、CAN 反馈、状态灯、`g_watch` 都能观察。
 - 底盘、云台、射击每个子系统都能单独关闭或单独测试。

@@ -28,6 +28,7 @@
 #include "ControlInput.h"
 #include "DetectTask.h"
 #include "ExternalMotionIntent.h"
+#include "MotorConfig.h"
 
 #include <math.h>
 #include <string.h>
@@ -50,6 +51,10 @@
 
 #ifndef YAW_TURN
 #define YAW_TURN (g_config.gimbal.yaw_turn)
+#endif
+
+#ifndef CHASSIS_GIMBAL_YAW_RELATIVE_TURN
+#define CHASSIS_GIMBAL_YAW_RELATIVE_TURN YAW_TURN
 #endif
 
 // "Small gyro" (小陀螺) is implemented as a constant chassis yaw rate (wz) while:
@@ -214,6 +219,7 @@ static void ChassisOpenSetControl(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, Chas
 //highlight, the variable chassis behaviour mode
 //留意，这个底盘行为模式变量
 ChassisBehaviour ChassisBehaviourMode = CHASSIS_ZERO_FORCE;
+static ChassisAlgorithmDebug s_chassis_algorithm_debug = {0};
 
 typedef struct
 {
@@ -351,6 +357,44 @@ static bool_t ChassisAlgorithmMoveGetActive(ExternalMotionIntent *out)
 static void ChassisAlgorithmMoveResetSlew(void)
 {
     memset(&s_move_slew, 0, sizeof(s_move_slew));
+}
+
+void ChassisAlgorithmDebugRead(ChassisAlgorithmDebug *out)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    taskENTER_CRITICAL();
+    *out = s_chassis_algorithm_debug;
+    taskEXIT_CRITICAL();
+}
+
+static int16_t ChassisAlgorithmDebugFp32ToI16(fp32 value, fp32 scale)
+{
+    fp32 scaled = value * scale;
+
+    if (scaled > 32767.0f)
+    {
+        return 32767;
+    }
+    if (scaled < -32768.0f)
+    {
+        return -32768;
+    }
+    return (int16_t)scaled;
+}
+
+static void ChassisAlgorithmDebugRecord(fp32 vx, fp32 vy, fp32 wz)
+{
+    taskENTER_CRITICAL();
+    s_chassis_algorithm_debug.count++;
+    s_chassis_algorithm_debug.last_ms = BspTimeGetTickMs();
+    s_chassis_algorithm_debug.vx_cmps = ChassisAlgorithmDebugFp32ToI16(vx, 100.0f);
+    s_chassis_algorithm_debug.vy_cmps = ChassisAlgorithmDebugFp32ToI16(vy, 100.0f);
+    s_chassis_algorithm_debug.wz_mradps = ChassisAlgorithmDebugFp32ToI16(wz, 1000.0f);
+    taskEXIT_CRITICAL();
 }
 
 static fp32 ChassisAlgorithmYawFrame(const ChassisMove *ChassisMoveRcToVector)
@@ -632,6 +676,7 @@ static void ChassisAlgorithmMoveOverride(fp32 *vx_set, fp32 *vy_set, fp32 *angle
         *vx_set = 0.0f;
         *vy_set = 0.0f;
         *angle_set = 0.0f;
+        ChassisAlgorithmDebugRecord(*vx_set, *vy_set, *angle_set);
         return;
     }
 
@@ -645,6 +690,7 @@ static void ChassisAlgorithmMoveOverride(fp32 *vx_set, fp32 *vy_set, fp32 *angle
         *angle_set = ((cmd.flags & EXTERNAL_MOTION_FLAG_YAW_OFFSET_VALID) != 0u) ? cmd.yaw_offset_rad : 0.0f;
         ChassisAlgorithmApplySlew(&cmd, ChassisMoveRcToVector, vx_set, vy_set, angle_set,
                                      start_vx, start_vy, start_wz, 0u);
+        ChassisAlgorithmDebugRecord(*vx_set, *vy_set, *angle_set);
         return;
     }
 
@@ -672,6 +718,7 @@ static void ChassisAlgorithmMoveOverride(fp32 *vx_set, fp32 *vy_set, fp32 *angle
         }
         ChassisAlgorithmApplySlew(&cmd, ChassisMoveRcToVector, vx_set, vy_set, angle_set,
                                      start_vx, start_vy, start_wz, 1u);
+        ChassisAlgorithmDebugRecord(*vx_set, *vy_set, *angle_set);
     }
 }
 
@@ -1178,18 +1225,21 @@ static fp32 ChassisGetGimbalYawRelativeAngle(const GimbalMotorState *yaw_motor)
         return 0.0f;
     }
 
+    const uint32_t ecd_range = MotorCfgEncoderRange(g_config.motor.yaw.model);
+    const int32_t half_ecd_range = (int32_t)(ecd_range / 2u);
+    const int32_t full_ecd_range = (int32_t)ecd_range;
     int32_t relative_ecd = (int32_t)yaw_motor->measure.ecd - (int32_t)yaw_motor->offset_ecd;
-    if (relative_ecd > HALF_ECD_RANGE)
+    if (relative_ecd > half_ecd_range)
     {
-        relative_ecd -= ECD_RANGE;
+        relative_ecd -= full_ecd_range;
     }
-    else if (relative_ecd < -HALF_ECD_RANGE)
+    else if (relative_ecd < -half_ecd_range)
     {
-        relative_ecd += ECD_RANGE;
+        relative_ecd += full_ecd_range;
     }
 
-    fp32 angle = (fp32)relative_ecd * MOTOR_ECD_TO_RAD;
-    return YAW_TURN ? -angle : angle;
+    fp32 angle = (fp32)relative_ecd * (6.28318530718f / (fp32)ecd_range);
+    return CHASSIS_GIMBAL_YAW_RELATIVE_TURN ? -angle : angle;
 }
 
 static void ChassisGyroSpinControl(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, ChassisMove *ChassisMoveRcToVector)

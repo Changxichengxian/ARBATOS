@@ -67,7 +67,18 @@ GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 
 
 新车先少开模块：输入、在线检测、CAN 收发、IMU，加一个要调的子系统。确认能跑后再把日志、遥测、裁判、发射等模块补上。
 
-## 4. 配电机装配
+## 4. 配安装坐标
+
+先从 `Robotconfig/MountLayoutTemplate.md` 复制一份到 `Robotconfig/<TARGET>/MountLayout.md`，把这几件事写清：
+
+- 控制板固定在哪个机械部件上：底盘、大 yaw、小 yaw、云台、轮腿本体，还是其他位置。
+- 控制板 `+X/+Y/+Z` 分别朝固定部件的哪个方向。
+- INS yaw/pitch/roll 主要代表哪个部件。
+- 算法接口里的 `q[4]` 和 `frame=2` 在这台车上该怎么理解。
+
+这一步和电机 ID 一样重要。没确认前写“待实车确认”，不要把猜测写成结论。
+
+## 5. 配电机装配
 
 看 `Robotconfig/<TARGET>/ConfigHardware.inc` 里的 `.motor`。新车第一次上电前至少确认：
 
@@ -87,7 +98,7 @@ GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 
 3. 再接入控制闭环：先低限幅、短时间动作，确认没有反向追飞。
 4. 最后才恢复正常限幅和多轴联动。
 
-## 5. 配输入和安全档
+## 6. 配输入和安全档
 
 输入分两层：
 
@@ -100,7 +111,7 @@ GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 
 - 安全档时底盘、云台、射击输出都能停。
 - 输入源切换不会突然跳到另一个非零命令。
 
-## 6. 配 DetectTask
+## 7. 配 DetectTask
 
 `Robotconfig/<TARGET>/DetectTask.c` 是这台车的在线检测表。不要为了让灯变绿就关检测。
 
@@ -123,7 +134,7 @@ GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 
 
 不要把还没接线的设备硬塞进检测表。实物没接就先不列对应任务模块或不启用对应检测；等接线确定后再补。这样上车时红灯才有意义。
 
-## 7. 配工程入口
+## 8. 配工程入口
 
 在 `projects/<TARGET>/MDK-ARM/<TARGET>.uvprojx` 里确认：
 
@@ -144,7 +155,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\GenBuildI
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project <TARGET> -FailOnGccBlockers
 ```
 
-## 8. 第一次检查
+## 9. 第一次检查
 
 在仓库根目录先跑：
 

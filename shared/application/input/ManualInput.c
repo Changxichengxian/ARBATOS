@@ -18,6 +18,7 @@
 #include "RobotConfig.h"
 #include "ControlInput.h"
 #include "BspKey.h"
+#include "Watch.h"
 
 #include "DetectTask.h"
 #include "SdLog.h"
@@ -469,6 +470,7 @@ static void ManualInputCommitOutput(const ManualInputState *out, uint8_t active_
     ManualInputExitCritical(critical);
 
     ControlInputUpdateFromManualInput(out);
+    WatchUpdateRcSnapshot(out);
 
     if (prev_src != active_src)
     {

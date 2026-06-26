@@ -26,6 +26,73 @@ static int16_t GimbalApplyOutputTurn(int16_t current, uint8_t turn)
     return (turn != 0u) ? (int16_t)-current : current;
 }
 
+static uint8_t GimbalSingleMitYawTestActive(const GimbalRuntimeSnapshot *snapshot)
+{
+    const MotorId target = robot_mode_target_motor();
+    const motor_node_param_t *node = MotorInstNode(target);
+    const robot_run_variant_e variant = (snapshot != NULL) ? snapshot->run_variant : robot_mode_variant();
+
+    if (robot_mode_current() != ROBOT_RUN_MODE_SINGLE_MOTOR ||
+        variant != ROBOT_RUN_VARIANT_GIMBAL_YAW_ONLY ||
+        target != Motor4 ||
+        node == NULL)
+    {
+        return 0u;
+    }
+
+    if (MotorCfgTransport(node) != MOTOR_TRANSPORT_CAN ||
+        MotorCfgControlMode(node) != MOTOR_CONTROL_MODE_MIT ||
+        MotorCfgProtocol(node) == MOTOR_PROTOCOL_RM_GROUP)
+    {
+        return 0u;
+    }
+
+    return 1u;
+}
+
+static fp32 GimbalSingleMitYawTestTorque(const GimbalRuntimeSnapshot *snapshot)
+{
+    int16_t axis = input_axis(INPUT_AXIS_GIMBAL_YAW);
+    const int16_t deadband = (int16_t)RC_DEADBAND;
+    const int16_t max_axis = (int16_t)RC_CH_VALUE_ABS_MAX;
+    fp32 torque;
+
+    if (axis > -deadband && axis < deadband)
+    {
+        return 0.0f;
+    }
+    if (axis > max_axis)
+    {
+        axis = max_axis;
+    }
+    else if (axis < -max_axis)
+    {
+        axis = (int16_t)-max_axis;
+    }
+
+    {
+        const fp32 yaw_input_dir = (YAW_RC_SEN >= 0.0f) ? -1.0f : 1.0f;
+        torque = ((fp32)axis / (fp32)max_axis) * yaw_input_dir * GIMBAL_SINGLE_MIT_TEST_MAX_TORQUE_NM;
+    }
+    if (snapshot != NULL && snapshot->yaw_turn != 0u)
+    {
+        torque = -torque;
+    }
+    return torque;
+}
+
+static void GimbalApplySingleMitYawTest(const GimbalRuntimeSnapshot *snapshot)
+{
+    const fp32 torque = GimbalSingleMitYawTestTorque(snapshot);
+
+    GimbalTotalPidClear(&g_gimbal);
+    g_gimbal.GimbalYawMotor.current_set = 0.0f;
+    g_gimbal.GimbalYawMotor.given_current = 0;
+    g_gimbal.GimbalPitchMotor.current_set = 0.0f;
+    g_gimbal.GimbalPitchMotor.given_current = 0;
+    (void)MotorInstSetDampingId(Motor4, GIMBAL_SINGLE_MIT_TEST_DAMPING_KD, torque);
+}
+
 static uint8_t GimbalDualYawUseUpperControl(void)
 {
     return (uint8_t)(RobotProfileNeedDualGimbalControlTask() != 0u &&

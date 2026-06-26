@@ -26,6 +26,22 @@ static inline const MotorModelParam *MotorCfgModel(MotorModel model)
     return &entry->base;
 }
 
+static inline uint8_t MotorCfgEncoderBits(MotorModel model)
+{
+    const MotorModelDbEntry *entry = MotorCfgModelDb(model);
+
+    if (entry != NULL && entry->specs.encoder_bits > 0u && entry->specs.encoder_bits <= 16u)
+    {
+        return entry->specs.encoder_bits;
+    }
+    return 13u;
+}
+
+static inline uint32_t MotorCfgEncoderRange(MotorModel model)
+{
+    return (uint32_t)1u << MotorCfgEncoderBits(model);
+}
+
 static inline motor_transport_e MotorCfgTransport(const motor_node_param_t *node)
 {
     if (node == NULL || node->transport == (uint8_t)MOTOR_TRANSPORT_INHERIT)

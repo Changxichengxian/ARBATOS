@@ -82,6 +82,10 @@ static const int16_t ChassisZeroCurrentCmd[CHASSIS_MOTOR_COUNT] = {0};
 #define YAW_TURN (g_config.gimbal.yaw_turn)
 #endif
 
+#ifndef CHASSIS_GIMBAL_YAW_RELATIVE_TURN
+#define CHASSIS_GIMBAL_YAW_RELATIVE_TURN YAW_TURN
+#endif
+
 // Chassis yaw-rate fusion (wheel odom + IMU yaw-rate minus gimbal-yaw rate).
 // IMU is installed on the gimbal, so gyro Z includes chassis yaw-rate + gimbal yaw-rate.
 // We subtract gimbal yaw motor rate to obtain chassis yaw-rate measurement.

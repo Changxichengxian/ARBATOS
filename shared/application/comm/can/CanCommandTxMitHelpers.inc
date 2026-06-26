@@ -93,6 +93,10 @@ static void CanTxMitSyncModeState(MotorId actuator_id,
         *enabled = 1u;
         *disabled_confirmed = 0u;
     }
+    else if (feedback.state == 0u && MotorCfgProtocol(node) == MOTOR_PROTOCOL_DM_3MODE)
+    {
+        *disabled_confirmed = 0u;
+    }
     else if (feedback.state >= CAN_TX_MIT_STATE_FAULT_MIN)
     {
         *enabled = 0u;
@@ -368,6 +372,7 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
                     if (ret == 0)
                     {
                         mit_last_enable_tick[actuator_id] = now;
+                        s_can_tx_mit_enable_tx_count[actuator_id]++;
                     }
                     else if (flags != NULL)
                     {
@@ -403,6 +408,7 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
             if (ret == 0)
             {
                 mit_last_cmd_tick[actuator_id] = now;
+                s_can_tx_mit_cmd_tx_count[actuator_id]++;
             }
             else if (flags != NULL)
             {
@@ -418,9 +424,16 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
     }
 
     CanTxBuildMitCmdFromActuator(node, &cmd, current, limits, &mit_cmd);
-    if (CanMitMotorSendCmd(bus, std_id, limits, &mit_cmd) != 0 && flags != NULL)
     {
-        *flags |= (uint8_t)MotorAppliedFlagSkipped;
+        const int ret = CanMitMotorSendCmd(bus, std_id, limits, &mit_cmd);
+        if (ret == 0)
+        {
+            s_can_tx_mit_cmd_tx_count[actuator_id]++;
+        }
+        else if (flags != NULL)
+        {
+            *flags |= (uint8_t)MotorAppliedFlagSkipped;
+        }
     }
     return 1u;
 }

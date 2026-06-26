@@ -17,13 +17,16 @@
 #include "task.h"
 
 #include "CanReceive.h"
+#include "CanTxTask.h"
 #include "LowCmd.h"
 #include "ArmTask.h"
 #include "BatteryMonitorTask.h"
 #include "BspAdc.h"
+#include "ChassisBehaviour.h"
 #include "ChassisState.h"
 #include "ControlMgr.h"
 #include "ControlInput.h"
+#include "GimbalControlTask.h"
 #include "GimbalState.h"
 #include "InsTask.h"
 #include "Bmi088Driver.h"
@@ -32,16 +35,20 @@
 #include "ManualInput.h"
 #include "BspCan.h"
 #include "BspRc.h"
+#include "MotorConfig.h"
 #include "MotorInst.h"
+#include "RobotLifecycle.h"
 #include "SdCard.h"
 #include "SdLog.h"
 #include "ShootState.h"
 #include "HostLinkTask.h"
+#include "ExternalMotionIntent.h"
 #include "RobotDeviceConfig.h"
 #include "RobotModule.h"
 #include "RobotTaskProfile.h"
 #include "RobotMode.h"
 #include "RtProf.h"
+#include "VisionLink.h"
 #include "WheelLegMitTask.h"
 #include "WheelLegMsg.h"
 
@@ -310,6 +317,9 @@ static void WatchCopyChassis(void);
 #endif
 #if WATCH_ENABLE_GIMBAL_SINGLE
 static void WatchCopyGimbal(void);
+#endif
+#if WATCH_ENABLE_GIMBAL_DUAL
+static void WatchCopyDualGimbal(void);
 #endif
 #if WATCH_ENABLE_SHOOT_RM
 static void WatchCopyShoot(void);

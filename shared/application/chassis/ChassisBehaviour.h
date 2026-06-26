@@ -29,8 +29,18 @@ typedef enum
 
 #define CHASSIS_OPEN_RC_SCALE 10
 
+typedef struct
+{
+    uint32_t count;
+    uint32_t last_ms;
+    int16_t vx_cmps;
+    int16_t vy_cmps;
+    int16_t wz_mradps;
+} ChassisAlgorithmDebug;
+
 extern void ChassisBehaviourModeSet(ChassisMove *ChassisMoveMode);
 extern void ChassisBehaviourControlSet(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set,
                                           ChassisMove *ChassisMoveRcToVector);
+extern void ChassisAlgorithmDebugRead(ChassisAlgorithmDebug *out);
 
 #endif

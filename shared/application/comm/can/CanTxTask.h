@@ -10,6 +10,10 @@
 #ifndef CAN_TX_TASK_H
 #define CAN_TX_TASK_H
 
+#include <stdint.h>
+
 void CanTxTask(void const *pvParameters);
+uint32_t CanTxMitEnableTxCount(uint8_t actuator_id);
+uint32_t CanTxMitCmdTxCount(uint8_t actuator_id);
 
 #endif

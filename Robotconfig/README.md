@@ -33,6 +33,7 @@ Robotconfig/<TARGET>/
 
 - `ConfigOperation.inc`：运行模式、目标任务/电机、任务模块列表。
 - `ConfigHardware.inc`：设备表和电机装配。
+- `MountLayout.md`：控制板固定在哪个机械部件上、开发板朝向、INS 姿态代表谁。
 - `ConfigTuning.inc`：云台、底盘、轮腿、射击、功率、IMU、电压、蜂鸣器、LED 参数。
 - `ConfigInput.inc`：输入源策略、遥控/键鼠/图传映射。
 - `ConfigDiagnostics.inc`：在线检测、AUX 实时遥测、SD 日志默认值。
@@ -41,6 +42,7 @@ Robotconfig/<TARGET>/
 
 - 默认参数和车型配置：`g_config`、PID、限位、输入映射和任务模块选择。
 - 轴电机装配：哪个轴用什么电机、哪个 CAN ID、正反方向、反馈 ID。
+- 机械安装坐标：控制板固定在底盘、云台、大 yaw、轮腿本体还是其他部件上，开发板 `+X/+Y/+Z` 朝哪里。
 - 目标在线检测：这台车关心哪些设备、哪些离线算故障。
 - 目标私有的小补丁：例如某个目标不接 USB 主机链路，就放对应空实现。
 - 目标专属装配表：例如 `MINIWHEELEG-M`、`MINIWHEELEG-C` 的机械臂关节表。
@@ -59,7 +61,7 @@ Robotconfig/<TARGET>/
 建议按这五类理解目标配置：
 
 1. 运行编排：`ConfigOperation.inc` 里的 `g_config.operation` 和 `g_config.profile`，决定默认怎么跑、哪些任务静态启用。
-2. 硬件装配：`ConfigHardware.inc` 里的 `g_config.devices` 和 `g_config.motor`，决定有哪些设备、电机怎么接。
+2. 硬件装配：`ConfigHardware.inc` 里的 `g_config.devices` 和 `g_config.motor`，决定有哪些设备、电机怎么接；`MountLayout.md` 决定控制板和主要部件装在哪里、朝哪里。
 3. 控制参数：`ConfigTuning.inc`，放云台、底盘、射击、功率、轮腿、机械臂等 PID、限幅和几何参数。
 4. 输入映射：`ConfigInput.inc`，放输入源策略、遥控通道、语义开关和安全档。
 5. 诊断记录：`ConfigDiagnostics.inc`，放在线检测、AUX 实时遥测、SD 日志默认值。
@@ -78,9 +80,10 @@ Robotconfig/<TARGET>/
 
 1. `ConfigOperation.inc`：先决定默认运行方式，再列 `task_modules`。这台车启用什么任务，就在这里写什么模块；任务创建、调参块和观测块都按它判断。
 2. `ConfigHardware.inc`：填电机型号、CAN ID、总线、反馈 ID、协议和限幅；不用的轴先设 `can_id = 0`。
-3. `ConfigInput.inc`：确认遥控通道、语义开关、安全档和输入源策略。
-4. `ConfigTuning.inc`：底盘、云台、射击、功率、IMU 等参数先保守限幅，再逐步调手感。
-5. `ConfigDiagnostics.inc` 和 `DetectTask.c`：按已启用模块补在线检测；设备拔掉能报错、插回能恢复，才算检测有效。
+3. `MountLayout.md`：从 `MountLayoutTemplate.md` 复制，写清控制板固定部件、板正方向、INS 姿态含义和算法坐标基准。
+4. `ConfigInput.inc`：确认遥控通道、语义开关、安全档和输入源策略。
+5. `ConfigTuning.inc`：底盘、云台、射击、功率、IMU 等参数先保守限幅，再逐步调手感。
+6. `ConfigDiagnostics.inc` 和 `DetectTask.c`：按已启用模块补在线检测；设备拔掉能报错、插回能恢复，才算检测有效。
 
 常用做法是先用 `operation` 开单任务或单电机，再回到全任务正常运行做整车联调。陀螺仪零偏校准使用 `ROBOT_RUN_MODE_CALIBRATION + ROBOT_CALI_TARGET_IMU_GYRO`：温度升到 40 度并稳定后，静止采 30 秒并保存。
 

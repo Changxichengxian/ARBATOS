@@ -349,6 +349,38 @@ typedef struct
 
 typedef struct
 {
+    uint8_t reason;
+    uint8_t motion_on;
+    uint8_t flags;
+    uint8_t gate_bits;
+    uint8_t mode;
+    uint8_t frame;
+    uint8_t t10ms;
+    uint8_t cur_on;
+
+    uint16_t crc_rx;
+    uint16_t crc_calc;
+    uint32_t usb_rx;
+    uint32_t lc_ok;
+    uint32_t lc_fail;
+    uint32_t lc_age_ms;
+    uint32_t motion_age_ms;
+    uint32_t alg;
+    uint32_t alg_age_ms;
+
+    int16_t vx_cmps;
+    int16_t vy_cmps;
+    int16_t wz_mradps;
+    int16_t alg_vx_cmps;
+    int16_t alg_vy_cmps;
+    int16_t alg_wz_mradps;
+    int16_t cur[4];
+
+    fp32 vx_set;
+    fp32 vy_set;
+    fp32 wz_set;
+
+#if WATCH_ENABLE_DIAG_COPY
     uint8_t offline_need_geometry;
     uint8_t offline_need_mass_inertia;
     uint8_t offline_need_com_inertia;
@@ -467,6 +499,7 @@ typedef struct
     fp32 run_lqr_left_pitch_err_avg_deg;
     fp32 run_lqr_left_pitch_err_min_deg;
     fp32 run_lqr_left_pitch_err_max_deg;
+#endif
 
 } WatchDiag;
 
@@ -577,7 +610,21 @@ typedef struct
 
 typedef struct
 {
+    uint8_t active;
+    uint8_t upper_online;
+    uint8_t upper_limited;
     uint8_t reserved0;
+    fp32 total_set_deg;
+    fp32 big_angle_deg;
+    fp32 big_set_deg;
+    fp32 big_error_deg;
+    fp32 upper_angle_deg;
+    fp32 upper_set_deg;
+    fp32 upper_error_deg;
+    fp32 upper_gyro_dps;
+    int16_t yaw_current;
+    int16_t yaw_upper_current;
+    uint16_t yaw_upper_ecd;
 } WatchDualGimbal;
 
 typedef struct
@@ -939,8 +986,10 @@ typedef struct
 } Watch;
 
 extern Watch g_watch;
+struct ManualInputState;
 void WatchInit(void);
 void WatchUpdate(void);
+void WatchUpdateRcSnapshot(const struct ManualInputState *rc);
 void WatchDiagSetBootStage(WatchBootStage stage);
 void WatchDiagMarkErrorHandler(uint32_t tick_ms, uint32_t ipsr);
 void WatchDiagSetErrorArgs(uint32_t arg0, uint32_t arg1);

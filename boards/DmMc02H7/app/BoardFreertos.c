@@ -39,6 +39,9 @@
 #if ROBOT_TASK_BUILD_REFEREE_RX
 #include "RefereeRxTask.h"
 #endif
+#if ROBOT_TASK_BUILD_HOST_LINK
+#include "HostLinkTask.h"
+#endif
 #if ROBOT_TASK_BUILD_SDLOG
 #include "SdLogTask.h"
 #endif
@@ -63,6 +66,7 @@ osThreadId_t wheellegMitTaskHandle;
 osThreadId_t gimbalControlTaskHandle;
 osThreadId_t imuTaskHandle;
 osThreadId_t refereeRxTaskHandle;
+osThreadId_t hostLinkTaskHandle;
 
 void StartDefaultTask(void *argument);
 
@@ -79,12 +83,19 @@ void MX_FREERTOS_Init(void);
 #define APP_THREAD_CREATE(thread_id, entry) \
     osThreadNew((osThreadFunc_t)(entry), NULL, &thread_id##_attr)
 
+#ifndef ROBOT_WATCH_UPDATE_PERIOD_MS
+#define ROBOT_WATCH_UPDATE_PERIOD_MS 1000u
+#endif
+
 APP_THREAD_ATTR(defaultTask, osPriorityNormal, 1024);
 #if ROBOT_TASK_BUILD_RC_SBUS
 APP_THREAD_ATTR(rcSbusTask, osPriorityAboveNormal, 512);
 #endif
 #if ROBOT_TASK_BUILD_REFEREE_RX
 APP_THREAD_ATTR(refereeRxTask, osPriorityNormal, 256);
+#endif
+#if ROBOT_TASK_BUILD_HOST_LINK
+APP_THREAD_ATTR(hostLinkTask, osPriorityNormal, 512);
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
 APP_THREAD_ATTR(healthMonitorTask, osPriorityNormal, 256);
@@ -135,6 +146,13 @@ static osThreadId_t AppCreateRcSbusTask(void)
 static osThreadId_t AppCreateRefereeRxTask(void)
 {
     return APP_THREAD_CREATE(refereeRxTask, RefereeRxTask);
+}
+#endif
+
+#if ROBOT_TASK_BUILD_HOST_LINK
+static osThreadId_t AppCreateHostLinkTask(void)
+{
+    return APP_THREAD_CREATE(hostLinkTask, HostLinkTask);
 }
 #endif
 
@@ -221,6 +239,9 @@ static void AppCreateModuleTasks(void)
 #if ROBOT_TASK_BUILD_REFEREE_RX
         {ROBOT_TASK_MODULE_REFEREE_RX, &refereeRxTaskHandle, AppCreateRefereeRxTask},
 #endif
+#if ROBOT_TASK_BUILD_HOST_LINK
+        {ROBOT_TASK_MODULE_HOST_LINK, &hostLinkTaskHandle, AppCreateHostLinkTask},
+#endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
         {ROBOT_TASK_MODULE_HEALTH_MONITOR, &detectTaskHandle, AppCreateHealthMonitorTask},
 #endif
@@ -305,7 +326,7 @@ void StartDefaultTask(void *argument)
     {
         WatchTaskBeat(WATCH_TASK_DEFAULT);
         WatchUpdate();
-        osDelay(10);
+        osDelay(ROBOT_WATCH_UPDATE_PERIOD_MS);
     }
 }
 
@@ -325,6 +346,12 @@ static const char *AppTaskNameFromHandle(TaskHandle_t task, const char *fallback
     if (task == (TaskHandle_t)refereeRxTaskHandle)
     {
         return "refereeRxTask";
+    }
+#endif
+#if ROBOT_TASK_BUILD_HOST_LINK
+    if (task == (TaskHandle_t)hostLinkTaskHandle)
+    {
+        return "hostLinkTask";
     }
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR

@@ -57,6 +57,17 @@ CONFIG_PARAM_F32(62, "gimbal.yaw_soft_limit_max", CONFIG_PARAM_SCOPE_GIMBAL_SING
 CONFIG_PARAM_F32(63, "gimbal.yaw_soft_limit_min", CONFIG_PARAM_SCOPE_GIMBAL_SINGLE, g_config.gimbal.yaw_soft_limit_min, CONFIG_PARAM_APPLY_NONE)
 CONFIG_PARAM_F32(64, "gimbal.yaw_kick_current", CONFIG_PARAM_SCOPE_GIMBAL_SINGLE, g_config.gimbal.yaw_kick_current, CONFIG_PARAM_APPLY_NONE)
 
+// dual yaw gimbal
+CONFIG_PARAM_BOOL(400, "gimbal.dual.enable", CONFIG_PARAM_SCOPE_GIMBAL_DUAL, g_config.dual_gimbal.enable, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_BOOL(401, "gimbal.dual.yaw_upper_turn", CONFIG_PARAM_SCOPE_GIMBAL_DUAL, g_config.dual_gimbal.yaw_upper_turn, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_U16(402, "gimbal.dual.yaw_upper_middle_ecd", CONFIG_PARAM_SCOPE_GIMBAL_DUAL, g_config.dual_gimbal.yaw_upper_middle_ecd, CONFIG_PARAM_APPLY_NONE)
+CONFIG_PARAM_F32_RANGE(403, "gimbal.dual.yaw_upper_soft_limit_max", CONFIG_PARAM_SCOPE_GIMBAL_DUAL, g_config.dual_gimbal.yaw_upper_soft_limit_max, -3.1415926f, 3.1415926f, "rad", CONFIG_PARAM_APPLY_NONE, CONFIG_PARAM_POLICY_SAFE_ONLY)
+CONFIG_PARAM_F32_RANGE(404, "gimbal.dual.yaw_upper_soft_limit_min", CONFIG_PARAM_SCOPE_GIMBAL_DUAL, g_config.dual_gimbal.yaw_upper_soft_limit_min, -3.1415926f, 3.1415926f, "rad", CONFIG_PARAM_APPLY_NONE, CONFIG_PARAM_POLICY_SAFE_ONLY)
+CONFIG_PARAM_F32_RANGE(405, "gimbal.dual.yaw_upper_kp", CONFIG_PARAM_SCOPE_GIMBAL_DUAL, g_config.dual_gimbal.yaw_upper_kp, 0.0f, 20000.0f, "cmd/rad", CONFIG_PARAM_APPLY_NONE, CONFIG_PARAM_POLICY_SAFE_ONLY)
+CONFIG_PARAM_F32_RANGE(406, "gimbal.dual.yaw_upper_kd", CONFIG_PARAM_SCOPE_GIMBAL_DUAL, g_config.dual_gimbal.yaw_upper_kd, 0.0f, 5000.0f, "cmd/radps", CONFIG_PARAM_APPLY_NONE, CONFIG_PARAM_POLICY_SAFE_ONLY)
+CONFIG_PARAM_F32_RANGE(407, "gimbal.dual.yaw_upper_current_limit", CONFIG_PARAM_SCOPE_GIMBAL_DUAL, g_config.dual_gimbal.yaw_upper_current_limit, 0.0f, 20000.0f, "cmd", CONFIG_PARAM_APPLY_NONE, CONFIG_PARAM_POLICY_SAFE_ONLY)
+CONFIG_PARAM_F32_RANGE(408, "gimbal.dual.yaw_upper_center_deadband", CONFIG_PARAM_SCOPE_GIMBAL_DUAL, g_config.dual_gimbal.yaw_upper_center_deadband, 0.0f, 0.20f, "rad", CONFIG_PARAM_APPLY_NONE, CONFIG_PARAM_POLICY_SAFE_ONLY)
+
 // classic chassis
 CONFIG_PARAM_F32(66, "chassis.motor_speed_pid.kp", CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC, g_config.chassis.motor_speed_pid.kp, CONFIG_PARAM_APPLY_CHASSIS_MOTOR_SPEED_PID)
 CONFIG_PARAM_F32(67, "chassis.motor_speed_pid.ki", CONFIG_PARAM_SCOPE_LOCOMOTION_CLASSIC, g_config.chassis.motor_speed_pid.ki, CONFIG_PARAM_APPLY_CHASSIS_MOTOR_SPEED_PID)

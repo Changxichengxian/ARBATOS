@@ -67,11 +67,15 @@ static void SdSpiPortGpioInit(void)
     SD_SPI_PORT_GPIO_CLK_ENABLE();
     SD_SPI_PORT_CS_GPIO_CLK_ENABLE();
 
-    GPIO_InitStruct.Pin = SD_SPI_PORT_SCK_PIN | SD_SPI_PORT_MISO_PIN | SD_SPI_PORT_MOSI_PIN;
+    GPIO_InitStruct.Pin = SD_SPI_PORT_SCK_PIN | SD_SPI_PORT_MOSI_PIN;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = SD_SPI_PORT_AF;
+    HAL_GPIO_Init(SD_SPI_PORT_GPIO, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = SD_SPI_PORT_MISO_PIN;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(SD_SPI_PORT_GPIO, &GPIO_InitStruct);
 
     HAL_GPIO_WritePin(SD_SPI_PORT_CS_GPIO, SD_SPI_PORT_CS_PIN, GPIO_PIN_SET);
@@ -102,6 +106,9 @@ static void SdSpiPortApplyPrescaler(uint32_t prescaler)
 {
     if (SdSpiPortInited != 0u && SdSpiPortPrescaler == prescaler)
     {
+        SdSpiPortClockInit();
+        SdSpiPortGpioInit();
+        HAL_GPIO_WritePin(SD_SPI_PORT_CS_GPIO, SD_SPI_PORT_CS_PIN, GPIO_PIN_SET);
         return;
     }
 

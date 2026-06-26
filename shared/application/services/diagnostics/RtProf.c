@@ -138,7 +138,7 @@ uint32_t RtProfPeriodMs(RtProfId id)
     case RtProfChassisLoop:
         return (uint32_t)RobotProfileChassisControlPeriodMs();
     case RtProfWheellegMitLoop:
-        return (uint32_t)g_config.WheelLegMit.control_period_ms;
+        return (uint32_t)RobotProfileWheellegMitControlPeriodMs();
     case RtProfCanTxLoop:
         return (uint32_t)RobotProfileCanCommandTxPeriodMs();
     case RtProfWatchBeat:

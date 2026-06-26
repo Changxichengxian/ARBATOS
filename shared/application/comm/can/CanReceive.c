@@ -25,7 +25,6 @@
 #define CAN_RX_TWO_PI 6.28318530718f
 #define CAN_RX_RADPS_TO_RPM 9.54929659f
 #define CAN_RX_RPM_TO_RADPS 0.104719755f
-#define CAN_RX_ECD_RANGE_F 8192.0f
 #define CAN_RX_MIT_STATE_DISABLED 0u
 #define CAN_RX_MIT_STATE_ENABLED 1u
 #define CAN_RX_MIT_STATE_FAULT_MIN 8u
@@ -189,15 +188,21 @@ static fp32 CanRxWrap02pi(fp32 angle)
     return angle;
 }
 
-// MIT 电机返回弧度位置，旧控制代码仍看 ecd，所以这里转换成 0..8191。
-static uint16_t CanRxPositionToEcd(fp32 position)
+// MIT 电机返回弧度位置，旧控制代码仍看 ecd，这里按电机型号转换成单圈计数。
+static uint32_t CanRxNodeEcdRange(const motor_node_param_t *node)
+{
+    return (node != NULL) ? MotorCfgEncoderRange(node->model) : 8192u;
+}
+
+static uint16_t CanRxPositionToEcd(fp32 position, const motor_node_param_t *node)
 {
     const fp32 wrapped = CanRxWrap02pi(position);
-    uint32_t ecd = (uint32_t)((wrapped * CAN_RX_ECD_RANGE_F / CAN_RX_TWO_PI) + 0.5f);
+    const uint32_t ecd_range = CanRxNodeEcdRange(node);
+    uint32_t ecd = (uint32_t)((wrapped * (fp32)ecd_range / CAN_RX_TWO_PI) + 0.5f);
 
-    if (ecd > 8191u)
+    if (ecd >= ecd_range)
     {
-        ecd = 8191u;
+        ecd = ecd_range - 1u;
     }
     return (uint16_t)ecd;
 }
@@ -230,19 +235,23 @@ static int16_t CanRxTorqueToCurrentLike(const CanMitMotorLimits *limits, fp32 to
     return CanRxFloatToI16Saturated(scaled);
 }
 
-static uint8_t CanRxMitDriveState(uint8_t state)
+static uint8_t CanRxMitDriveState(const motor_node_param_t *node, uint8_t state)
 {
+    if (state >= CAN_RX_MIT_STATE_FAULT_MIN)
+    {
+        return (uint8_t)MotorDriveStateFault;
+    }
     if (state == CAN_RX_MIT_STATE_ENABLED)
     {
         return (uint8_t)MotorDriveStateEnabled;
     }
+    if (state == 0u && MotorCfgProtocol(node) == MOTOR_PROTOCOL_DM_3MODE)
+    {
+        return (uint8_t)MotorDriveStateReady;
+    }
     if (state == CAN_RX_MIT_STATE_DISABLED)
     {
         return (uint8_t)MotorDriveStateDisabled;
-    }
-    if (state >= CAN_RX_MIT_STATE_FAULT_MIN)
-    {
-        return (uint8_t)MotorDriveStateFault;
     }
     return (uint8_t)MotorDriveStateReady;
 }
@@ -252,11 +261,13 @@ static void CanRxUpdateLowStateFromMeasure(MotorId actuator_id,
                                                          uint8_t bus,
                                                          uint16_t std_id,
                                                          uint8_t dlc,
+                                                         const motor_node_param_t *node,
                                                          const motor_measure_t *measure)
 {
     MotorState prev;
     MotorState fb;
     uint32_t prev_rx_count = 0u;
+    const uint32_t ecd_range = CanRxNodeEcdRange(node);
 
     if ((uint32_t)actuator_id >= (uint32_t)MotorCount || measure == NULL)
     {
@@ -280,7 +291,7 @@ static void CanRxUpdateLowStateFromMeasure(MotorId actuator_id,
     fb.speedRpm = measure->speed_rpm;
     fb.current = measure->given_current;
     fb.temperature = measure->temperate;
-    fb.q = ((fp32)measure->ecd) * CAN_RX_TWO_PI / CAN_RX_ECD_RANGE_F;
+    fb.q = ((fp32)measure->ecd) * CAN_RX_TWO_PI / (fp32)ecd_range;
     fb.dq = ((fp32)measure->speed_rpm) * CAN_RX_RPM_TO_RADPS;
     fb.tauEst = (fp32)measure->given_current;
     LowStateUpdateMotor(actuator_id, &fb);
@@ -289,6 +300,7 @@ static void CanRxUpdateLowStateFromMeasure(MotorId actuator_id,
 // MIT 反馈没有旧 ecd/rpm/current 格式，这里合成一份给老任务继续用。
 static void CanRxSynthesizeMeasureFromMit(motor_measure_t *measure,
                                                const CanMitMotorLimits *limits,
+                                               const motor_node_param_t *node,
                                                const CanMitMotorFeedback *mit)
 {
     if (measure == NULL || limits == NULL || mit == NULL)
@@ -297,7 +309,7 @@ static void CanRxSynthesizeMeasureFromMit(motor_measure_t *measure,
     }
 
     measure->last_ecd = measure->ecd;
-    measure->ecd = CanRxPositionToEcd(mit->position);
+    measure->ecd = CanRxPositionToEcd(mit->position, node);
     measure->speed_rpm = CanRxFloatToI16Saturated(mit->velocity * CAN_RX_RADPS_TO_RPM);
     measure->given_current = CanRxTorqueToCurrentLike(limits, mit->torque);
     measure->temperate = mit->mos_temperature;
@@ -337,7 +349,7 @@ static uint8_t CanRxProcessMitNodeFrame(motor_measure_t *measure,
         return 0u;
     }
 
-    CanRxSynthesizeMeasureFromMit(measure, limits, &mit);
+    CanRxSynthesizeMeasureFromMit(measure, limits, node, &mit);
 
     if ((uint32_t)actuator_id < (uint32_t)MotorCount)
     {
@@ -353,7 +365,7 @@ static uint8_t CanRxProcessMitNodeFrame(motor_measure_t *measure,
         fb.transport = (uint8_t)MotorTransportCAN;
         fb.motorId = mit.motor_id;
         fb.state = mit.state;
-        fb.driveState = CanRxMitDriveState(mit.state);
+        fb.driveState = CanRxMitDriveState(node, mit.state);
         fb.rxId = std_id;
         fb.rxCount = prev_rx_count + 1u;
         fb.lastRxTick = mit.last_rx_tick;
@@ -443,7 +455,7 @@ static uint8_t CanRxProcessNodeFrame(motor_measure_t *measure,
         {
             DetectHook(DetectToe);
         }
-        CanRxUpdateLowStateFromMeasure(actuator_id, bus, std_id, dlc, measure);
+        CanRxUpdateLowStateFromMeasure(actuator_id, bus, std_id, dlc, node, measure);
         return 1u;
     }
 

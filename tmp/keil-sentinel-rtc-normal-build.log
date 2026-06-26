@@ -1,0 +1,14 @@
+*** Using Compiler 'V5.06 update 7 (build 960)', folder: 'C:\App\Work\keil5\ARM\arm compiler5\Bin'
+Build target 'SENTINEL-M'
+Before Build - User command #1: powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\GenBuildInfo.ps1
+generated C:\Users\28111\Desktop\ARBATOS\shared\generated\build_info_autogen.h
+compiling SdLog.c...
+compiling SubBoardBringup.c...
+..\..\..\Robotconfig\SENTINEL-M\SubBoardBringup.c(46): warning:  #550-D: variable "SubBoardI2cHoldLowConfigured"  was set but never used
+  static uint8_t SubBoardI2cHoldLowConfigured = 0u;
+..\..\..\Robotconfig\SENTINEL-M\SubBoardBringup.c: 1 warning, 0 errors
+linking...
+Program Size: Code=202512 RO-data=181748 RW-data=70144 ZI-data=103544  
+FromELF: creating hex file...
+"SENTINEL-M\\SENTINEL-M.axf" - 0 Error(s), 1 Warning(s).
+Build Time Elapsed:  00:00:05

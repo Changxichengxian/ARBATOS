@@ -49,6 +49,7 @@
 #include "RtProf.h"
 #include "RobotTaskProfile.h"
 #include "ControlMgr.h"
+#include "RobotLifecycle.h"
 
 #include <string.h>
 
@@ -157,6 +158,18 @@ typedef struct
 #define DUAL_YAW_UPPER_TURN 0u
 #endif
 
+#ifndef GIMBAL_DUAL_YAW_IMU_TURN
+#define GIMBAL_DUAL_YAW_IMU_TURN YAW_TURN
+#endif
+
+#ifndef GIMBAL_SINGLE_MIT_TEST_MAX_TORQUE_NM
+#define GIMBAL_SINGLE_MIT_TEST_MAX_TORQUE_NM 4.0f
+#endif
+
+#ifndef GIMBAL_SINGLE_MIT_TEST_DAMPING_KD
+#define GIMBAL_SINGLE_MIT_TEST_DAMPING_KD 0.2f
+#endif
+
 #if INCLUDE_uxTaskGetStackHighWaterMark
 uint32_t GimbalHighWater;
 #endif
@@ -187,6 +200,9 @@ static void GimbalSetMode(GimbalControl *set_mode);
   */
 static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot, GimbalControl *control);
 static void GimbalFeedbackUpdate(GimbalControl *feedback_update, const GimbalRuntimeSnapshot *snapshot);
+static void GimbalDualYawImuCenterUpdateOnOutput(GimbalControl *control,
+                                                    const GimbalRuntimeSnapshot *snapshot,
+                                                    uint8_t output_allowed);
 
 /**
   * @brief          when gimbal mode change, some param should be changed, such as  yaw_set should be new yaw
@@ -302,6 +318,9 @@ static fp32 GimbalPitchKickScale(fp32 angle_err);
 
 //gimbal control data
 static GimbalControl g_gimbal;
+static uint8_t s_dual_yaw_imu_center_ready = 0u;
+static fp32 s_dual_yaw_imu_center = 0.0f;
+static uint8_t s_dual_yaw_output_allowed_prev = 0u;
 volatile uint32_t GimbalLoopCounter = 0;
 
 //motor current
@@ -327,6 +346,8 @@ static GimbalSdLogBaseStreamState s_gimbal_sdlog_base_stream = {0};
 #include "GimbalSdlogHelpers.inc"
 
 #include "GimbalRuntimeHelpers.inc"
+
+#include "GimbalDualYawHelpers.inc"
 
 
 /**
@@ -391,6 +412,14 @@ void GimbalControlTask(void const *pvParameters)
         // watch 输出：观察最终下发电流（含运行模式、安全模式及方向翻转后的值）
         GimbalWatchYawCurrent = yaw_can_set_current;
         GimbalWatchPitchCurrent = pitch_can_set_current;
+        if (GimbalSingleMitYawTestActive(&snapshot) != 0u)
+        {
+            ShootCanSetCurrent = 0;
+            GimbalWatchYawCurrent = 0;
+            GimbalWatchPitchCurrent = 0;
+            GimbalApplySingleMitYawTest(&snapshot);
+        }
+        else
         {
             const int16_t GimbalCurrentCmd[] = {
                 ShootCanSetCurrent,
@@ -453,9 +482,14 @@ void DualYawGimbalControlTask(void const *pvParameters)
 
         WatchTaskBeat(WATCH_TASK_GIMBAL_CONTROL);
         GimbalSnapshotCapture(&snapshot, &g_gimbal);
+        const uint8_t output_allowed = RobotLifecycleOutputAllowed();
         GimbalLoopCounter++;
         if (!GimbalControlMgrAllows(ControlIdDualYawGimbal, &snapshot))
         {
+            if (output_allowed == 0u)
+            {
+                GimbalDualYawImuCenterUpdateOnOutput(&g_gimbal, &snapshot, 0u);
+            }
             GimbalStopOutputs(DualYawGimbalOutputCurrentBindings, DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT);
             RtProfEnd(RtProfGimbalLoop, loop_start_us);
             GimbalControlDelay(&last_wake, snapshot.period_ms);
@@ -469,6 +503,7 @@ void DualYawGimbalControlTask(void const *pvParameters)
         GimbalSetMode(&g_gimbal);
         GimbalModeChangeControlTransit(&g_gimbal);
         GimbalFeedbackUpdate(&g_gimbal, &snapshot);
+        GimbalDualYawImuCenterUpdateOnOutput(&g_gimbal, &snapshot, output_allowed);
         GimbalSetControl(&g_gimbal);
         GimbalControlLoop(&g_gimbal);
         GimbalWriteState();
@@ -482,7 +517,7 @@ void DualYawGimbalControlTask(void const *pvParameters)
 
         GimbalApplyOperationMode(&snapshot, &yaw_can_set_current, &pitch_can_set_current);
 
-        int16_t yaw_upper_can_set_current = GimbalApplyOutputTurn(yaw_can_set_current, (uint8_t)DUAL_YAW_UPPER_TURN);
+        int16_t yaw_upper_can_set_current = GimbalDualYawUpperControlCurrent(&snapshot, yaw_can_set_current);
         int16_t yaw_log_current_output;
 
         if (snapshot.yaw_control_is_upper != 0u)
@@ -500,6 +535,15 @@ void DualYawGimbalControlTask(void const *pvParameters)
         GimbalWatchYawCurrent = yaw_can_set_current;
         GimbalWatchYawUpperCurrent = yaw_upper_can_set_current;
         GimbalWatchPitchCurrent = pitch_can_set_current;
+        if (GimbalSingleMitYawTestActive(&snapshot) != 0u)
+        {
+            ShootCanSetCurrent = 0;
+            GimbalWatchYawCurrent = 0;
+            GimbalWatchYawUpperCurrent = 0;
+            GimbalWatchPitchCurrent = 0;
+            GimbalApplySingleMitYawTest(&snapshot);
+        }
+        else
         {
             const int16_t GimbalCurrentCmd[] = {
                 ShootCanSetCurrent,

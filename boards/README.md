@@ -29,7 +29,7 @@
 
 ## IMU 和零偏校准边界
 
-各板的 `InsTask.c` 负责把原始 IMU 数据转成板载坐标系，并接入对应的温控、DMA、SPI/I2C 读取方式。陀螺仪零偏采样流程放在 `shared/application/services/calibration/GyroZeroCali.h`，避免三块板各写一套状态机。
+各板的 `InsTask.c` 负责把原始 IMU 数据转成板载坐标系，并接入对应的温控、DMA、SPI/I2C 读取方式。开发板整体装在车上的位置和朝向，写在 `Robotconfig/<TARGET>/MountLayout.md`，不要混进板级 INS 文件。陀螺仪零偏采样流程放在 `shared/application/services/calibration/GyroZeroCali.h`，避免三块板各写一套状态机。
 
 板级代码只保留这些差异：
 
