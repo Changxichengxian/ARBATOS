@@ -11,8 +11,8 @@
 #include "DetectTask.h"
 #include "GyroZeroCali.h"
 #include "Pid.h"
-#include "SdLog.h"
 #include "RobotConfig.h"
+#include "SdLog.h"
 #include "RobotMode.h"
 #include "ControlInput.h"
 #include "ManualInput.h"
@@ -396,16 +396,7 @@ void InsTask(void const *pvParameters)
         imu_update_euler_from_quat(INS_quat, INS_angle);
 
         sdlog_imu_base_sample_t pkt = {0};
-        pkt.temp = raw.temp;
-        for (uint8_t i = 0u; i < 4u; i++)
-        {
-            pkt.quat[i] = INS_quat[i];
-        }
-        for (uint8_t i = 0u; i < 3u; i++)
-        {
-            pkt.gyro[i] = INS_gyro[i];
-            pkt.accel[i] = INS_accel[i];
-        }
+        SdLogImuBaseSampleSet(&pkt, INS_quat, INS_gyro, INS_accel, raw.temp);
         imu_sdlog_append_base_sample(&pkt, now_ms, imu_sdlog_period_us_from_dt(dt));
 
         if ((uint32_t)(now_ms - imu_pid_log_tick_ms) >= IMU_SDLOG_PID_PERIOD_MS)

@@ -386,6 +386,31 @@ def _unpack_stream_header(payload: bytes, expected_sample_size: int) -> tuple[in
     return None
 
 
+def _unpack_imu_base_stream_header(payload: bytes) -> tuple[int, int, int, int, int | None, int, int] | None:
+    sample_size_by_version = {
+        1: 44,
+        2: 22,
+        3: 20,
+    }
+
+    if len(payload) >= 8:
+        start_tick_ms, period_us, sample_count, version = struct.unpack_from("<IHBB", payload, 0)
+        sample_size = sample_size_by_version.get(version)
+        if sample_size is not None and sample_count != 0 and len(payload) == 8 + sample_count * sample_size:
+            return 8, start_tick_ms, period_us, sample_count, None, version, sample_size
+
+    if len(payload) >= 20:
+        version, sample_size, sample_count, _reserved, start_tick_ms, period_us, seq0 = struct.unpack_from("<HHHHIII", payload, 0)
+        if (
+            sample_size_by_version.get(version) == sample_size
+            and sample_count != 0
+            and len(payload) == 20 + sample_count * sample_size
+        ):
+            return 20, start_tick_ms, period_us, sample_count, seq0, version, sample_size
+
+    return None
+
+
 def _extract_chassis_base_stream_records(payload: bytes) -> list[tuple[int, str, str, dict[str, Any]]] | None:
     header = _unpack_stream_header(payload, 28)
     if header is None:
@@ -468,36 +493,61 @@ def _extract_gimbal_base_stream_records(payload: bytes) -> list[tuple[int, str, 
 
 
 def _extract_imu_base_stream_records(payload: bytes) -> list[tuple[int, str, str, dict[str, Any]]] | None:
-    header = _unpack_stream_header(payload, 44)
+    header = _unpack_imu_base_stream_header(payload)
     if header is None:
         return None
 
-    header_size, start_tick_ms, period_us, sample_count, seq0 = header
+    header_size, start_tick_ms, period_us, sample_count, seq0, version, sample_size = header
 
     out: list[tuple[int, str, str, dict[str, Any]]] = []
     for sample_idx in range(sample_count):
-        off = header_size + sample_idx * 44
-        qw, qx, qy, qz, gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z, temp = struct.unpack_from("<11f", payload, off)
+        off = header_size + sample_idx * sample_size
+        values: dict[str, Any]
+        if version == 1:
+            qw, qx, qy, qz, gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z, temp = struct.unpack_from("<11f", payload, off)
+            values = {
+                "sample_idx": sample_idx,
+                "quat_w": qw,
+                "quat_x": qx,
+                "quat_y": qy,
+                "quat_z": qz,
+                "gyro_x": gyro_x,
+                "gyro_y": gyro_y,
+                "gyro_z": gyro_z,
+                "accel_x": accel_x,
+                "accel_y": accel_y,
+                "accel_z": accel_z,
+                "temp": temp,
+            }
+        else:
+            if version == 2:
+                qw, qx, qy, qz, gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z, temp = struct.unpack_from("<11h", payload, off)
+            else:
+                qw, qx, qy, qz, gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z = struct.unpack_from("<10h", payload, off)
+                temp = None
+            values = {
+                "sample_idx": sample_idx,
+                "quat_w": qw / 32767.0,
+                "quat_x": qx / 32767.0,
+                "quat_y": qy / 32767.0,
+                "quat_z": qz / 32767.0,
+                "gyro_x": gyro_x / 512.0,
+                "gyro_y": gyro_y / 512.0,
+                "gyro_z": gyro_z / 512.0,
+                "accel_x": accel_x / 128.0,
+                "accel_y": accel_y / 128.0,
+                "accel_z": accel_z / 128.0,
+            }
+            if temp is not None:
+                values["temp"] = temp / 100.0
+
         tick_ms = _stream_sample_tick_ms(start_tick_ms, period_us, sample_idx)
         out.append(
             (
                 tick_ms,
                 "IMU",
                 "IMU",
-                {
-                    "sample_idx": sample_idx,
-                    "quat_w": qw,
-                    "quat_x": qx,
-                    "quat_y": qy,
-                    "quat_z": qz,
-                    "gyro_x": gyro_x,
-                    "gyro_y": gyro_y,
-                    "gyro_z": gyro_z,
-                    "accel_x": accel_x,
-                    "accel_y": accel_y,
-                    "accel_z": accel_z,
-                    "temp": temp,
-                },
+                values,
             )
         )
         if seq0 is not None:

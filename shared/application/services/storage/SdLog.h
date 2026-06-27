@@ -824,7 +824,24 @@ typedef struct
 
 #define SDLOG_CHASSIS_BASE_STREAM_VERSION 1u
 #define SDLOG_GIMBAL_BASE_STREAM_VERSION 1u
-#define SDLOG_IMU_BASE_STREAM_VERSION 1u
+#define SDLOG_IMU_BASE_STREAM_VERSION_FLOAT 1u
+#define SDLOG_IMU_BASE_STREAM_VERSION_FIXED_TEMP 2u
+#define SDLOG_IMU_BASE_STREAM_VERSION_FIXED 3u
+
+#ifndef SDLOG_IMU_BASE_ENABLE_TEMP
+#define SDLOG_IMU_BASE_ENABLE_TEMP 1
+#endif
+
+#define SDLOG_IMU_BASE_QUAT_SCALE 32767.0f
+#define SDLOG_IMU_BASE_GYRO_SCALE 512.0f
+#define SDLOG_IMU_BASE_ACCEL_SCALE 128.0f
+#define SDLOG_IMU_BASE_TEMP_SCALE 100.0f
+
+#if SDLOG_IMU_BASE_ENABLE_TEMP
+#define SDLOG_IMU_BASE_STREAM_VERSION SDLOG_IMU_BASE_STREAM_VERSION_FIXED_TEMP
+#else
+#define SDLOG_IMU_BASE_STREAM_VERSION SDLOG_IMU_BASE_STREAM_VERSION_FIXED
+#endif
 
 typedef struct __attribute__((packed))
 {
@@ -884,14 +901,69 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    float quat[4];
-    float gyro[3];
-    float accel[3];
-    float temp;
+    int16_t quat_q15[4];
+    int16_t gyro_rad_s_q9[3];
+    int16_t accel_m_s2_q7[3];
+#if SDLOG_IMU_BASE_ENABLE_TEMP
+    int16_t temp_centi_c;
+#endif
 } sdlog_imu_base_sample_t;
 
-typedef char _check_sdlog_imu_base_sample_size[(sizeof(sdlog_imu_base_sample_t) == 44) ? 1 : -1];
+#if SDLOG_IMU_BASE_ENABLE_TEMP
+typedef char _check_sdlog_imu_base_sample_size[(sizeof(sdlog_imu_base_sample_t) == 22) ? 1 : -1];
+#else
+typedef char _check_sdlog_imu_base_sample_size[(sizeof(sdlog_imu_base_sample_t) == 20) ? 1 : -1];
+#endif
 typedef char _check_sdlog_imu_base_stream_header_size[(sizeof(sdlog_imu_base_stream_header_t) == 8) ? 1 : -1];
+
+static inline int16_t SdLogI16FromScaledFloat(float value, float scale)
+{
+    if (!(value == value))
+    {
+        return 0;
+    }
+
+    const float scaled = value * scale;
+    if (scaled > 32767.0f)
+    {
+        return 32767;
+    }
+    if (scaled < -32768.0f)
+    {
+        return -32768;
+    }
+    return (int16_t)((scaled >= 0.0f) ? (scaled + 0.5f) : (scaled - 0.5f));
+}
+
+static inline void SdLogImuBaseSampleSet(sdlog_imu_base_sample_t *sample,
+                                         const float quat[4],
+                                         const float gyro[3],
+                                         const float accel[3],
+                                         float temp_c)
+{
+    if (sample == 0)
+    {
+        return;
+    }
+
+    for (uint8_t i = 0u; i < 4u; i++)
+    {
+        const float v = (quat != 0) ? quat[i] : 0.0f;
+        sample->quat_q15[i] = SdLogI16FromScaledFloat(v, SDLOG_IMU_BASE_QUAT_SCALE);
+    }
+    for (uint8_t i = 0u; i < 3u; i++)
+    {
+        const float g = (gyro != 0) ? gyro[i] : 0.0f;
+        const float a = (accel != 0) ? accel[i] : 0.0f;
+        sample->gyro_rad_s_q9[i] = SdLogI16FromScaledFloat(g, SDLOG_IMU_BASE_GYRO_SCALE);
+        sample->accel_m_s2_q7[i] = SdLogI16FromScaledFloat(a, SDLOG_IMU_BASE_ACCEL_SCALE);
+    }
+#if SDLOG_IMU_BASE_ENABLE_TEMP
+    sample->temp_centi_c = SdLogI16FromScaledFloat(temp_c, SDLOG_IMU_BASE_TEMP_SCALE);
+#else
+    (void)temp_c;
+#endif
+}
 
 // ===== Runtime API =====
 

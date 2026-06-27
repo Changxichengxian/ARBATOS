@@ -654,16 +654,7 @@ void InsTask(void const *pvParameters)
         }
 
         sdlog_imu_base_sample_t pkt = {0};
-        for (uint8_t i = 0; i < 4u; i++)
-        {
-            pkt.quat[i] = INS_quat[i];
-        }
-        for (uint8_t i = 0; i < 3u; i++)
-        {
-            pkt.gyro[i] = INS_gyro[i];
-            pkt.accel[i] = INS_accel[i];
-        }
-        pkt.temp = bmi088_real_data.temp;
+        SdLogImuBaseSampleSet(&pkt, INS_quat, INS_gyro, INS_accel, bmi088_real_data.temp);
         imu_sdlog_append_base_sample(&pkt, now_ms, imu_sdlog_period_us_from_dt(dt));
 
         if ((uint32_t)(now_ms - imu_pid_log_tick_ms) >= IMU_SDLOG_PID_PERIOD_MS)
