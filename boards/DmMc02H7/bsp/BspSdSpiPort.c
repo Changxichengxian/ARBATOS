@@ -16,8 +16,9 @@
 #define SD_SPI_PORT_CS_PIN               GPIO_PIN_14
 #define SD_SPI_PORT_AF                   GPIO_AF6_SPI3
 #define SD_SPI_PORT_TIMEOUT_MS           1000u
+#define SD_SPI_PORT_BYTE_TIMEOUT_MS      10u
 #define SD_SPI_PORT_INIT_MAX_HZ          400000u
-#define SD_SPI_PORT_FAST_MAX_HZ          12000000u
+#define SD_SPI_PORT_FAST_MAX_HZ          8000000u
 #define SD_SPI_PORT_CHUNK_SIZE           64u
 
 static SPI_HandleTypeDef hspi3_sd;
@@ -70,7 +71,7 @@ static void SdSpiPortGpioInit(void)
     GPIO_InitStruct.Pin = SD_SPI_PORT_SCK_PIN | SD_SPI_PORT_MOSI_PIN;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     GPIO_InitStruct.Alternate = SD_SPI_PORT_AF;
     HAL_GPIO_Init(SD_SPI_PORT_GPIO, &GPIO_InitStruct);
 
@@ -83,7 +84,7 @@ static void SdSpiPortGpioInit(void)
     GPIO_InitStruct.Pin = SD_SPI_PORT_CS_PIN;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     GPIO_InitStruct.Alternate = 0u;
     HAL_GPIO_Init(SD_SPI_PORT_CS_GPIO, &GPIO_InitStruct);
 }
@@ -183,7 +184,7 @@ uint8_t SdSpiPortTxrx(uint8_t data)
     uint8_t rx = 0xFFu;
 
     SdSpiPortEnsureReady();
-    (void)HAL_SPI_TransmitReceive(&hspi3_sd, &data, &rx, 1u, SD_SPI_PORT_TIMEOUT_MS);
+    (void)HAL_SPI_TransmitReceive(&hspi3_sd, &data, &rx, 1u, SD_SPI_PORT_BYTE_TIMEOUT_MS);
     return rx;
 }
 

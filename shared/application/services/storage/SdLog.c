@@ -673,6 +673,135 @@ static uint8_t sdlog_ascii_lower(uint8_t c)
     return c;
 }
 
+static uint8_t sdlog_ascii_is_digit(char c)
+{
+    return (uint8_t)(c >= '0' && c <= '9');
+}
+
+static uint8_t sdlog_filename_token_char(char c)
+{
+    return (uint8_t)((c >= 'A' && c <= 'Z') ||
+                     (c >= 'a' && c <= 'z') ||
+                     (c >= '0' && c <= '9') ||
+                     c == '-' ||
+                     c == '_');
+}
+
+#if defined(__CC_ARM)
+__weak int SdLogRtcNow(SdLogDateTime *out)
+#else
+__attribute__((weak)) int SdLogRtcNow(SdLogDateTime *out)
+#endif
+{
+    (void)out;
+    return 0;
+}
+
+static uint8_t sdlog_datetime_valid(const SdLogDateTime *time)
+{
+    if (time == NULL)
+    {
+        return 0u;
+    }
+
+    if (time->year < 2020u || time->year > 2099u)
+    {
+        return 0u;
+    }
+    if (time->month < 1u || time->month > 12u)
+    {
+        return 0u;
+    }
+    if (time->day < 1u || time->day > 31u)
+    {
+        return 0u;
+    }
+    if (time->hour > 23u || time->minute > 59u || time->second > 59u)
+    {
+        return 0u;
+    }
+    return 1u;
+}
+
+static void sdlog_make_filename_token(char *dst, uint32_t dst_len, const char *src)
+{
+    uint32_t out = 0u;
+
+    if (dst == NULL || dst_len == 0u)
+    {
+        return;
+    }
+
+    if (src != NULL)
+    {
+        while (*src != '\0' && out + 1u < dst_len && out < 31u)
+        {
+            const char c = *src++;
+            if (sdlog_filename_token_char(c) != 0u)
+            {
+                dst[out++] = c;
+            }
+            else
+            {
+                dst[out++] = '_';
+            }
+        }
+    }
+
+    if (out == 0u)
+    {
+        const char fallback[] = "target";
+        while (fallback[out] != '\0' && out + 1u < dst_len)
+        {
+            dst[out] = fallback[out];
+            out++;
+        }
+    }
+
+    dst[out] = '\0';
+}
+
+static uint8_t sdlog_make_target_file_prefix(char *dst, uint32_t dst_len)
+{
+    if (dst == NULL || dst_len == 0u)
+    {
+        return 0u;
+    }
+
+    sdlog_make_filename_token(dst, dst_len, ARBATOS_TARGET_NAME);
+    return (uint8_t)(dst[0] != '\0');
+}
+
+static uint8_t sdlog_make_rtc_file_prefix(char *dst, uint32_t dst_len)
+{
+    SdLogDateTime now;
+    char target[32];
+
+    if (dst == NULL || dst_len == 0u)
+    {
+        return 0u;
+    }
+
+    if (SdLogRtcNow(&now) == 0 || sdlog_datetime_valid(&now) == 0u)
+    {
+        return 0u;
+    }
+
+    sdlog_make_filename_token(target, (uint32_t)sizeof(target), ARBATOS_TARGET_NAME);
+    const int n = snprintf(dst,
+                           dst_len,
+                           "%04u%02u%02u_%02u%02u%02u_%s",
+                           (unsigned int)now.year,
+                           (unsigned int)now.month,
+                           (unsigned int)now.day,
+                           (unsigned int)now.hour,
+                           (unsigned int)now.minute,
+                           (unsigned int)now.second,
+                           target);
+
+    return (uint8_t)(n > 0 && (uint32_t)n < dst_len);
+}
+
 static FRESULT sdlog_sync_profiled(void)
 {
     const uint64_t sync_start_us = RtProfBegin();
@@ -688,37 +817,80 @@ static int sdlog_parse_log_index_from_name(const char *name, uint32_t *out_idx)
         return 0;
     }
 
-    // Expected format: "sdlog_0000.bin" (case-insensitive)
-    if (strlen(name) != 14u)
+    const uint32_t len = (uint32_t)strlen(name);
+    uint32_t idx_start = 0u;
+
+    if (len < 10u)
     {
         return 0;
     }
 
-    const char prefix[] = "sdlog_";
-    for (uint32_t i = 0u; i < 6u; i++)
+    if (name[len - 4u] != '.' ||
+        sdlog_ascii_lower((uint8_t)name[len - 3u]) != (uint8_t)'b' ||
+        sdlog_ascii_lower((uint8_t)name[len - 2u]) != (uint8_t)'i' ||
+        sdlog_ascii_lower((uint8_t)name[len - 1u]) != (uint8_t)'n')
     {
-        if (sdlog_ascii_lower((uint8_t)name[i]) != (uint8_t)prefix[i])
+        return 0;
+    }
+
+    if (len == 14u)
+    {
+        const char prefix[] = "sdlog_";
+        for (uint32_t i = 0u; i < 6u; i++)
+        {
+            if (sdlog_ascii_lower((uint8_t)name[i]) != (uint8_t)prefix[i])
+            {
+                return 0;
+            }
+        }
+        idx_start = 6u;
+    }
+    else if (len > 25u &&
+             name[8] == '_' &&
+             name[15] == '_' &&
+             name[len - 9u] == '_')
+    {
+        for (uint32_t i = 0u; i < 8u; i++)
+        {
+            if (sdlog_ascii_is_digit(name[i]) == 0u)
+            {
+                return 0;
+            }
+        }
+        if (name[8] != '_' || name[15] != '_' || name[len - 9u] != '_')
         {
             return 0;
         }
+        for (uint32_t i = 9u; i < 15u; i++)
+        {
+            if (sdlog_ascii_is_digit(name[i]) == 0u)
+            {
+                return 0;
+            }
+        }
+        idx_start = len - 8u;
     }
-
-    if (name[10] != '.')
+    else if (name[len - 9u] == '_')
     {
-        return 0;
+        for (uint32_t i = 0u; i < len - 9u; i++)
+        {
+            if (sdlog_filename_token_char(name[i]) == 0u)
+            {
+                return 0;
+            }
+        }
+        idx_start = len - 8u;
     }
-    if (sdlog_ascii_lower((uint8_t)name[11]) != (uint8_t)'b' ||
-        sdlog_ascii_lower((uint8_t)name[12]) != (uint8_t)'i' ||
-        sdlog_ascii_lower((uint8_t)name[13]) != (uint8_t)'n')
+    else
     {
         return 0;
     }
 
     uint32_t idx = 0u;
-    for (uint32_t i = 6u; i < 10u; i++)
+    for (uint32_t i = idx_start; i < idx_start + 4u; i++)
     {
         const char c = name[i];
-        if (c < '0' || c > '9')
+        if (sdlog_ascii_is_digit(c) == 0u)
         {
             return 0;
         }
@@ -789,7 +961,11 @@ static int sdlog_open_next_file(void)
         return -1;
     }
 
-    char path[32];
+    char path[96];
+    char rtc_prefix[64];
+    char target_prefix[32];
+    const uint8_t has_rtc_prefix = sdlog_make_rtc_file_prefix(rtc_prefix, (uint32_t)sizeof(rtc_prefix));
+    (void)sdlog_make_target_file_prefix(target_prefix, (uint32_t)sizeof(target_prefix));
     uint32_t start = 0u;
 
     if (sdlog_index_read(&start) != 0)
@@ -808,7 +984,9 @@ static int sdlog_open_next_file(void)
 
     for (uint32_t i = start; i < 10000u; i++)
     {
-        const int n = snprintf(path, sizeof(path), "0:/sdlog_%04lu.bin", (unsigned long)i);
+        const int n = (has_rtc_prefix != 0u) ?
+            snprintf(path, sizeof(path), "0:/%s_%04lu.bin", rtc_prefix, (unsigned long)i) :
+            snprintf(path, sizeof(path), "0:/%s_%04lu.bin", target_prefix, (unsigned long)i);
         if (n <= 0 || (uint32_t)n >= sizeof(path))
         {
             continue;

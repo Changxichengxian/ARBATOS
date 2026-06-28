@@ -23,6 +23,14 @@
 #define SD_SPI_TRANSFER_TIMEOUT_MS 1000u
 #endif
 
+#ifndef SD_SPI_ENABLE_MULTI_BLOCK_WRITE
+#if defined(STM32H723xx) || defined(STM32H7xx) || defined(STM32H7)
+#define SD_SPI_ENABLE_MULTI_BLOCK_WRITE 1u
+#else
+#define SD_SPI_ENABLE_MULTI_BLOCK_WRITE 0u
+#endif
+#endif
+
 // Start slow for init, then speed up. Actual prescaler values are owned by the BSP port.
 #define SD_SPI_SPEED_INIT SD_SPI_PORT_SPEED_INIT
 #define SD_SPI_SPEED_FAST SD_SPI_PORT_SPEED_FAST
@@ -36,13 +44,16 @@
 #define SD_SPI_CMD16 (16u)  // SET_BLOCKLEN
 #define SD_SPI_CMD17 (17u)  // READ_SINGLE_BLOCK
 #define SD_SPI_CMD24 (24u)  // WRITE_BLOCK
+#define SD_SPI_CMD25 (25u)  // WRITE_MULTIPLE_BLOCK
 #define SD_SPI_CMD55 (55u)  // APP_CMD
 #define SD_SPI_CMD58 (58u)  // READ_OCR
 
 #define SD_SPI_ACMD41 (41u) // SD_SEND_OP_COND
 
 // Data tokens
-#define SD_SPI_TOKEN_START_BLOCK 0xFEu
+#define SD_SPI_TOKEN_START_BLOCK       0xFEu
+#define SD_SPI_TOKEN_MULTI_WRITE_BLOCK 0xFCu
+#define SD_SPI_TOKEN_STOP_TRAN         0xFDu
 
 // Card type flags
 #define SD_SPI_TYPE_MMC  0x01u
@@ -230,14 +241,14 @@ static int SdSpiRecvData(uint8_t *buf, uint32_t len, uint32_t timeout_ms)
     return 0;
 }
 
-static int SdSpiXmitData(const uint8_t *buf, uint32_t len)
+static int SdSpiXmitDataToken(const uint8_t *buf, uint32_t len, uint8_t token)
 {
     if (!SdSpiWaitReady(SD_SPI_WRITE_READY_TIMEOUT_MS))
     {
         return -1;
     }
 
-    (void)SdSpiTxrx(SD_SPI_TOKEN_START_BLOCK);
+    (void)SdSpiTxrx(token);
     if (len <= SD_SPI_SECTOR_SIZE &&
         SdSpiTxrxDma(buf, SdSpiDummyRx, (uint16_t)len, SD_SPI_TRANSFER_TIMEOUT_MS) == 0)
     {
@@ -263,6 +274,11 @@ static int SdSpiXmitData(const uint8_t *buf, uint32_t len)
         return -4;
     }
     return 0;
+}
+
+static int SdSpiXmitData(const uint8_t *buf, uint32_t len)
+{
+    return SdSpiXmitDataToken(buf, len, SD_SPI_TOKEN_START_BLOCK);
 }
 
 int SdSpiInit(void)
@@ -553,6 +569,50 @@ int SdSpiWrite(const uint8_t *buf, uint32_t sector, uint32_t count)
     {
         addr *= SD_SPI_SECTOR_SIZE;
     }
+
+#if SD_SPI_ENABLE_MULTI_BLOCK_WRITE
+    if (count > 1u)
+    {
+        if (!SdSpiSelect())
+        {
+            SdSpiUnlock();
+            return -2;
+        }
+
+        const uint8_t r = SdSpiSendCmd(SD_SPI_CMD25, addr);
+        if (r != 0u)
+        {
+            SdSpiDeselect();
+            SdSpiUnlock();
+            return -3;
+        }
+
+        for (uint32_t i = 0u; i < count; i++)
+        {
+            if (SdSpiXmitDataToken(buf, SD_SPI_SECTOR_SIZE, SD_SPI_TOKEN_MULTI_WRITE_BLOCK) != 0)
+            {
+                (void)SdSpiTxrx(SD_SPI_TOKEN_STOP_TRAN);
+                SdSpiDeselect();
+                SdSpiUnlock();
+                return -4;
+            }
+
+            buf += SD_SPI_SECTOR_SIZE;
+        }
+
+        (void)SdSpiTxrx(SD_SPI_TOKEN_STOP_TRAN);
+        if (!SdSpiWaitReady(SD_SPI_WRITE_READY_TIMEOUT_MS))
+        {
+            SdSpiDeselect();
+            SdSpiUnlock();
+            return -5;
+        }
+
+        SdSpiDeselect();
+        SdSpiUnlock();
+        return 0;
+    }
+#endif
 
     for (uint32_t i = 0u; i < count; i++)
     {

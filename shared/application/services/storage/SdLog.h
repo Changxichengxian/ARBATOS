@@ -967,6 +967,18 @@ static inline void SdLogImuBaseSampleSet(sdlog_imu_base_sample_t *sample,
 
 // ===== Runtime API =====
 
+typedef struct
+{
+    uint16_t year;
+    uint8_t month;
+    uint8_t day;
+    uint8_t hour;
+    uint8_t minute;
+    uint8_t second;
+} SdLogDateTime;
+
+int SdLogRtcNow(SdLogDateTime *out);
+
 int SdLogIsActive(void);
 uint32_t SdLogDropped(void);
 
