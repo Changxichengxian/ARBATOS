@@ -15,6 +15,7 @@ typedef struct
 {
     uint16_t lastSwitch;
     uint32_t semanticsSeq;
+    uint32_t actionSeq;
     uint8_t initialized;
     uint8_t fireEngaged;
     uint8_t mouseRearmMask;
@@ -50,6 +51,21 @@ static inline uint8_t ShootInputGateSyncSemantics(ShootInputGateState *state,
     }
 
     state->semanticsSeq = semanticsSeq;
+    ShootInputGateReset(state, stopRaw);
+    ShootInputGateBlockMouse(state);
+    return 1u;
+}
+
+static inline uint8_t ShootInputGateSyncAction(ShootInputGateState *state,
+                                                uint32_t actionSeq,
+                                                uint16_t stopRaw)
+{
+    if (state == 0 || actionSeq == 0u || state->actionSeq == actionSeq)
+    {
+        return 0u;
+    }
+
+    state->actionSeq = actionSeq;
     ShootInputGateReset(state, stopRaw);
     ShootInputGateBlockMouse(state);
     return 1u;

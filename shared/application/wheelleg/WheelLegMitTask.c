@@ -21,6 +21,7 @@
 #include "BspCan.h"
 #include "RobotConfig.h"
 #include "ControlInput.h"
+#include "ManualInputSnapshot.h"
 #include "DetectTask.h"
 #include "FaultMgr.h"
 #include "MotorHealth.h"
@@ -310,7 +311,7 @@ typedef struct
     int16_t single_test_axis;
     int16_t leg_axis;
     MotorId single_test_target;
-    ManualInputState manual_input;
+    ManualInputSnapshot manual_input_snapshot;
     uint8_t control_stage;
     uint8_t profile_on;
     uint8_t manual_input_valid;

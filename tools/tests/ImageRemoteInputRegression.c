@@ -29,7 +29,6 @@ static uint8_t s_publishInjectPending;
 static uint8_t s_publishInjectFailed;
 static uint8_t s_publishInjectFrame[TEST_IMAGE_REMOTE_FRAME_MAX_SIZE];
 static uint16_t s_publishInjectLength;
-static uint32_t s_watchCount;
 static uint8_t s_sdLogActive;
 static uint32_t s_rawLogCount;
 static sdlog_manual_input_raw_t s_lastRawLog;
@@ -38,6 +37,16 @@ static sdlog_manual_input_raw_t s_lastRawLog;
 #include "ManualInput.c"
 #include "Crc8Crc16.c"
 #include "ImageRemoteLink.c"
+
+static void TestUpdateSource(uint8_t source, const ManualInputState *input)
+{
+    const uint8_t protocol = (source == MANUAL_INPUT_SRC_ELRS) ?
+                                 MANUAL_INPUT_PROTOCOL_CRSF :
+                                 MANUAL_INPUT_PROTOCOL_NONE;
+    ManualInputUpdateSourceDetail(source, input, protocol, 0u, 0u, NULL);
+}
+
+#define ManualInputUpdateSource TestUpdateSource
 
 static int TestCheck(int condition, const char *message)
 {
@@ -93,7 +102,6 @@ static void TestReset(uint16_t timeoutMs)
     s_publishInjectFailed = 0u;
     memset(s_publishInjectFrame, 0, sizeof(s_publishInjectFrame));
     s_publishInjectLength = 0u;
-    s_watchCount = 0u;
     s_sdLogActive = 0u;
     s_rawLogCount = 0u;
     memset(&s_lastRawLog, 0, sizeof(s_lastRawLog));
@@ -132,11 +140,11 @@ static int TestFeedFrame(const uint8_t *frame, uint16_t length)
     return 1;
 }
 
-static uint16_t TestBuildCustomFrame(uint8_t *frame,
-                                     uint16_t commandId,
-                                     const ImageRemoteRcPacket *packet)
+static uint16_t TestBuildCustomPayloadFrame(uint8_t *frame,
+                                            uint16_t commandId,
+                                            const void *payload,
+                                            uint16_t payloadLength)
 {
-    const uint16_t payloadLength = (uint16_t)sizeof(*packet);
     const uint16_t frameLength = (uint16_t)(payloadLength + 9u);
 
     memset(frame, 0, frameLength);
@@ -147,9 +155,19 @@ static uint16_t TestBuildCustomFrame(uint8_t *frame,
     append_CRC8_check_sum(frame, 5u);
     frame[5] = (uint8_t)(commandId & 0xFFu);
     frame[6] = (uint8_t)(commandId >> 8);
-    memcpy(&frame[7], packet, payloadLength);
+    memcpy(&frame[7], payload, payloadLength);
     append_CRC16_check_sum(frame, frameLength);
     return frameLength;
+}
+
+static uint16_t TestBuildCustomFrame(uint8_t *frame,
+                                     uint16_t commandId,
+                                     const ImageRemoteRcPacket *packet)
+{
+    return TestBuildCustomPayloadFrame(frame,
+                                       commandId,
+                                       packet,
+                                       (uint16_t)sizeof(*packet));
 }
 
 static void TestPackVt13Channels(uint8_t frame[IMAGE_REMOTE_VT13_FRAME_SIZE],
@@ -248,10 +266,8 @@ static int TestCustomProtocolFailureAndExpiry(void)
                    "自定义图传帧必须同代发布输入、协议和业务标志")) return 0;
     if (!TestCheck(ImageRemoteGetState(&imageState) &&
                        imageState.proto == SDLOG_MANUAL_INPUT_PROTO_IMAGE_CUSTOM &&
-                       imageState.range_mode == SDLOG_MANUAL_INPUT_RANGE_CENTERED_660 &&
-                       ImageRemoteAutoAimRequested() &&
-                       ImageRemoteAuxFireRequested(),
-                   "图传状态和兼容业务接口必须读取统一快照结果")) return 0;
+                       imageState.range_mode == SDLOG_MANUAL_INPUT_RANGE_CENTERED_660,
+                   "图传诊断状态必须保留自定义协议结果")) return 0;
     ImageRemoteLinkGetStats(&stats);
     if (!TestCheck(stats.frame_count == 1u &&
                        stats.controller_frame_count == 1u &&
@@ -265,10 +281,8 @@ static int TestCustomProtocolFailureAndExpiry(void)
     if (!TestCheck(ManualInputSnapshotRead(&snapshot) == 0u &&
                        snapshot.online == 0u &&
                        snapshot.sourceProtocol == MANUAL_INPUT_PROTOCOL_NONE &&
-                       snapshot.sourceFlags == 0u &&
-                       !ImageRemoteAutoAimRequested() &&
-                       !ImageRemoteAuxFireRequested(),
-                   "统一快照读取失败时图传业务接口必须返回安全值")) return 0;
+                       snapshot.sourceFlags == 0u,
+                   "统一快照读取失败时必须返回安全元数据")) return 0;
     ManualInputStore.ready = 1u;
 
     if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u,
@@ -293,8 +307,215 @@ static int TestCustomProtocolFailureAndExpiry(void)
                        snapshot.sourceFlags == 0u &&
                        snapshot.manual.rc.ch[0] == 0,
                    "图传读取持续失败并过期后必须清空协议、标志和控制值")) return 0;
-    return TestCheck(!ImageRemoteAutoAimRequested() && !ImageRemoteAuxFireRequested(),
-                     "过期图传不得经兼容接口复活业务请求");
+    return 1;
+}
+
+static int TestInvalidCustomSwitchInvalidatesVt13(void)
+{
+    ManualInputSnapshot before;
+    ManualInputSnapshot after;
+    ManualInputState elrs;
+    ImageRemoteState imageState;
+    sdlog_image_link_stats_t stats;
+    uint8_t customFrame[IMAGE_REMOTE_RM_FRAME_MAX_SIZE];
+    uint8_t vt13Frame[IMAGE_REMOTE_VT13_FRAME_SIZE];
+    const uint16_t channel[5] = {1024u, 1024u, 1024u, 1024u, 1024u};
+    ImageRemoteRcPacket packet;
+    uint16_t customFrameLength;
+
+    TestReset(20u);
+    s_sdLogActive = 1u;
+    memset(&elrs, 0, sizeof(elrs));
+    elrs.rc.ch[0] = 321;
+    elrs.rc.s[0] = RC_SW_UP;
+    elrs.rc.s[1] = RC_SW_MID;
+    s_tick = 1u;
+    ManualInputUpdateSource(MANUAL_INPUT_SRC_ELRS, &elrs);
+    s_tick = 2u;
+    TestBuildVt13Frame(vt13Frame, channel, 0u, 0u, 0u, 0u, 0u, 0u);
+    if (!TestFeedFrame(vt13Frame, IMAGE_REMOTE_VT13_FRAME_SIZE)) return 0;
+    if (!TestCheck(ManualInputSnapshotRead(&before) != 0u &&
+                       before.online != 0u &&
+                       before.sourceProtocol == MANUAL_INPUT_PROTOCOL_IMAGE_VT13 &&
+                       before.manual.rc.s[0] == RC_SW_UP &&
+                       before.manual.rc.s[1] == RC_SW_UP &&
+                       s_rawLogCount == 1u,
+                   "无按键 VT13 必须先建立双安全档基线")) return 0;
+
+    packet = TestCustomPacket(0, 0, 0u);
+    packet.sw[0] = 0u;
+    packet.sw[1] = RC_SW_DOWN;
+    customFrameLength = TestBuildCustomFrame(customFrame,
+                                              IMAGE_REMOTE_CMD_CUSTOM_CONTROLLER_RX,
+                                              &packet);
+    s_tick = 10u;
+    if (!TestFeedFrame(customFrame, customFrameLength)) return 0;
+    ImageRemoteLinkGetStats(&stats);
+    if (!TestCheck(ManualInputSnapshotRead(&after) != 0u &&
+                       after.online != 0u &&
+                       after.activeSource == MANUAL_INPUT_SRC_ELRS &&
+                       after.sourceProtocol == MANUAL_INPUT_PROTOCOL_CRSF &&
+                       after.sourceSeq != before.sourceSeq &&
+                       after.sourceTickMs == 1u &&
+                       after.manual.rc.ch[0] == 321 &&
+                       after.manual.rc.s[0] == RC_SW_UP &&
+                       stats.parse_error_count == 1u &&
+                       stats.crc_error_count == 0u &&
+                       s_rawLogCount == 1u,
+                   "CRC 正确但拨杆非法的 custom 帧必须撤销 VT13 且不得变成 DOWN")) return 0;
+    if (!TestCheck(!ImageRemoteGetState(&imageState) &&
+                       imageState.proto == SDLOG_MANUAL_INPUT_PROTO_IMAGE_VT13 &&
+                       (uint8_t)imageState.s[0] == 0u,
+                   "非法 custom 帧必须清有效位，同时保留最近协议供故障诊断")) return 0;
+
+    s_tick = 22u;
+    return TestCheck(ManualInputSnapshotRead(&after) != 0u &&
+                         after.online == 0u &&
+                         after.activeSource == MANUAL_INPUT_SRC_AUTO &&
+                         after.sourceProtocol == MANUAL_INPUT_PROTOCOL_NONE &&
+                         after.manual.rc.s[0] == RC_SW_UP,
+                     "非法 custom 帧不得给 IMAGE 或备用来源续期");
+}
+
+static int TestFeedInvalidCustomPacket(const ImageRemoteRcPacket *invalidPacket,
+                                       const char *message)
+{
+    ManualInputSnapshot snapshot;
+    sdlog_image_link_stats_t stats;
+    uint8_t frame[IMAGE_REMOTE_RM_FRAME_MAX_SIZE];
+    ImageRemoteRcPacket validPacket;
+    uint16_t frameLength;
+
+    TestReset(100u);
+    validPacket = TestCustomPacket(100, -100, 0u);
+    frameLength = TestBuildCustomFrame(frame,
+                                       IMAGE_REMOTE_CMD_CUSTOM_CONTROLLER_RX,
+                                       &validPacket);
+    if (!TestFeedFrame(frame, frameLength)) return 0;
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u && snapshot.online != 0u,
+                   "非法字段测试必须先建立有效图传来源")) return 0;
+
+    frameLength = TestBuildCustomFrame(frame,
+                                       IMAGE_REMOTE_CMD_CUSTOM_CONTROLLER_RX,
+                                       invalidPacket);
+    if (!TestFeedFrame(frame, frameLength)) return 0;
+    ImageRemoteLinkGetStats(&stats);
+    return TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                         snapshot.online == 0u &&
+                         snapshot.activeSource == MANUAL_INPUT_SRC_AUTO &&
+                         stats.parse_error_count == 1u,
+                     message);
+}
+
+static int TestInvalidCustomBusinessFields(void)
+{
+    ManualInputSnapshot snapshot;
+    sdlog_image_link_stats_t stats;
+    uint8_t frame[IMAGE_REMOTE_RM_FRAME_MAX_SIZE];
+    ImageRemoteRcPacket packet;
+    uint16_t frameLength;
+
+    packet = TestCustomPacket(0, 0, 0u);
+    packet.version++;
+    if (!TestFeedInvalidCustomPacket(&packet,
+                                     "RC magic 匹配但版本非法时必须立即撤销图传来源")) return 0;
+
+    packet = TestCustomPacket(0, 0, 0u);
+    packet.range_mode = 0xFFu;
+    if (!TestFeedInvalidCustomPacket(&packet,
+                                     "RC range_mode 非法时必须立即撤销图传来源")) return 0;
+
+    packet = TestCustomPacket((int16_t)(IMAGE_REMOTE_RC_ABS_MAX_DBUS + 1), 0, 0u);
+    if (!TestFeedInvalidCustomPacket(&packet,
+                                     "RC 原始轴越界时不得截成满量程动作")) return 0;
+
+    packet = TestCustomPacket(0, 0, 0x80u);
+    if (!TestFeedInvalidCustomPacket(&packet,
+                                     "RC 未定义鼠标位出现时必须立即撤销图传来源")) return 0;
+
+    packet = TestCustomPacket(0, 0, 0u);
+    packet.reserved[0] = 1u;
+    if (!TestFeedInvalidCustomPacket(&packet,
+                                     "RC 当前版本保留字段非零时必须立即撤销图传来源")) return 0;
+
+    TestReset(100u);
+    packet = TestCustomPacket(100, 0, 0u);
+    frameLength = TestBuildCustomFrame(frame,
+                                       IMAGE_REMOTE_CMD_CUSTOM_CONTROLLER_RX,
+                                       &packet);
+    if (!TestFeedFrame(frame, frameLength)) return 0;
+    frameLength = TestBuildCustomPayloadFrame(frame,
+                                              IMAGE_REMOTE_CMD_CUSTOM_CONTROLLER_RX,
+                                              &packet,
+                                              (uint16_t)(sizeof(packet) - 1u));
+    if (!TestFeedFrame(frame, frameLength)) return 0;
+    ImageRemoteLinkGetStats(&stats);
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                       snapshot.online == 0u &&
+                       snapshot.activeSource == MANUAL_INPUT_SRC_AUTO &&
+                       stats.parse_error_count == 1u,
+                   "已知图传遥控命令的错误载荷长度必须立即撤销旧来源")) return 0;
+
+    TestReset(100u);
+    packet = TestCustomPacket(100, 0, 0u);
+    frameLength = TestBuildCustomFrame(frame,
+                                       IMAGE_REMOTE_CMD_CUSTOM_CONTROLLER_RX,
+                                       &packet);
+    if (!TestFeedFrame(frame, frameLength)) return 0;
+    packet.magic0 = 'X';
+    packet.magic1 = 'Y';
+    frameLength = TestBuildCustomFrame(frame,
+                                       IMAGE_REMOTE_CMD_CUSTOM_CONTROLLER_RX,
+                                       &packet);
+    if (!TestFeedFrame(frame, frameLength)) return 0;
+    ImageRemoteLinkGetStats(&stats);
+    return TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                         snapshot.online != 0u &&
+                         snapshot.activeSource == MANUAL_INPUT_SRC_IMAGE &&
+                         stats.parse_error_count == 0u,
+                     "通用自定义通道上的非 RC magic 载荷不得误伤已有图传遥控");
+}
+
+static int TestInterruptFallbackDefersParsingToTask(void)
+{
+    ManualInputSnapshot snapshot;
+    uint8_t frame[IMAGE_REMOTE_RM_FRAME_MAX_SIZE];
+    ImageRemoteRcPacket packet;
+    uint16_t frameLength;
+
+    TestReset(100u);
+    ImageRemoteLinkStop();
+    s_auxDmaAvailable = 0u;
+    ImageRemoteLinkStart();
+    if (!TestCheck(s_auxByteCallback != NULL && s_auxDmaBuffer == NULL,
+                   "无 DMA 板必须启动逐字节中断缓冲入口")) return 0;
+
+    packet = TestCustomPacket(330, 0, 0u);
+    frameLength = TestBuildCustomFrame(frame,
+                                       IMAGE_REMOTE_CMD_CUSTOM_CONTROLLER_RX,
+                                       &packet);
+    for (uint16_t i = 0u; i < frameLength; i++)
+    {
+        s_auxByteCallback(frame[i]);
+    }
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u && snapshot.online == 0u,
+                   "逐字节 ISR 只能入环形缓冲，不得直接解析或发布")) return 0;
+    ImageRemoteLinkPoll();
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                       snapshot.online != 0u &&
+                       snapshot.activeSource == MANUAL_INPUT_SRC_IMAGE,
+                   "任务轮询必须完整消费逐字节缓冲并发布图传输入")) return 0;
+
+    ImageRemoteLinkStop();
+    for (uint16_t i = 0u; i < frameLength; i++)
+    {
+        ImageRemoteLinkOnItByte(frame[i]);
+    }
+    ImageRemoteLinkPoll();
+    return TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                         snapshot.online == 0u &&
+                         snapshot.activeSource == MANUAL_INPUT_SRC_AUTO,
+                     "链路停止后迟到的逐字节数据不得重新发布旧图传来源");
 }
 
 static int TestVt13FrozenConfigRemap(void)
@@ -405,13 +626,15 @@ static int TestMergeAuthorityMetadata(void)
     ManualInputUpdateSource(MANUAL_INPUT_SRC_ELRS, &crsf);
     if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
                        snapshot.mixMode == MANUAL_INPUT_MIX_MERGE &&
-                       snapshot.activeSource == MANUAL_INPUT_SRC_ELRS &&
-                       snapshot.sourceProtocol == MANUAL_INPUT_PROTOCOL_CRSF &&
-                       snapshot.sourceFlags == 0u &&
+                       snapshot.activeSource == MANUAL_INPUT_SRC_IMAGE &&
+                       snapshot.sourceProtocol == MANUAL_INPUT_PROTOCOL_IMAGE_CUSTOM &&
+                       snapshot.sourceFlags == (MANUAL_INPUT_SOURCE_FLAG_AUTO_AIM |
+                                                MANUAL_INPUT_SOURCE_FLAG_AUX_FIRE) &&
                        snapshot.manual.rc.ch[0] == 1024 &&
-                       snapshot.manual.rc.ch[1] == -900 &&
-                       snapshot.manual.rc.s[0] == RC_SW_UP,
-                   "合并数值可来自多源，但 CRSF 元数据必须跟随最新权威来源")) return 0;
+                       snapshot.manual.rc.ch[1] == 155 &&
+                       snapshot.manual.key.v == KEY_PRESSED_OFFSET_E &&
+                       snapshot.manual.rc.s[0] == RC_SW_MID,
+                   "合并模式必须保持图传完整操纵帧，同时合并明确的图传业务请求")) return 0;
 
     s_tick = 7u;
     if (!TestFeedFrame(frame, frameLength)) return 0;
@@ -420,10 +643,9 @@ static int TestMergeAuthorityMetadata(void)
                          snapshot.sourceProtocol == MANUAL_INPUT_PROTOCOL_IMAGE_CUSTOM &&
                          snapshot.sourceFlags == (MANUAL_INPUT_SOURCE_FLAG_AUTO_AIM |
                                                   MANUAL_INPUT_SOURCE_FLAG_AUX_FIRE) &&
-                         snapshot.manual.rc.ch[1] == -900 &&
-                         snapshot.manual.key.v == (KEY_PRESSED_OFFSET_W |
-                                                   KEY_PRESSED_OFFSET_E),
-                     "图传再次成为权威来源时必须切回 IMAGE_CUSTOM 元数据并保留合并值");
+                         snapshot.manual.rc.ch[1] == 155 &&
+                         snapshot.manual.key.v == KEY_PRESSED_OFFSET_E,
+                     "稳定图传代表来源更新时不得混入其他来源的轴和通用按键");
 }
 
 static int TestParserArrivalDuringPublish(void)
@@ -453,16 +675,14 @@ static int TestParserArrivalDuringPublish(void)
         IMAGE_REMOTE_CMD_CUSTOM_CONTROLLER_RX,
         &packet);
     s_publishInjectPending = 1u;
-    s_watchCount = 0u;
     s_tick = 2u;
     g_config.manual_input.BoardKeyKeyMask = KEY_PRESSED_OFFSET_Q;
     g_config.input.axis[0].invert = 1u;
     ManualInputRefresh();
 
     if (!TestCheck(s_publishInjectPending == 0u &&
-                       s_publishInjectFailed == 0u &&
-                       s_watchCount == 1u,
-                   "发布计算中到达的真实图传帧必须作废旧候选且只产生一次副作用")) return 0;
+                       s_publishInjectFailed == 0u,
+                   "发布计算中到达的真实图传帧必须作废旧候选")) return 0;
     return TestCheck(ManualInputSnapshotRead(&after) != 0u &&
                          after.publishSeq == before.publishSeq + 1u &&
                          after.activeSource == MANUAL_INPUT_SRC_IMAGE &&
@@ -537,12 +757,6 @@ uint8_t BspKeyReadRawDown(void)
     return 0u;
 }
 
-void WatchUpdateRcSnapshot(const struct ManualInputState *snapshot)
-{
-    (void)snapshot;
-    s_watchCount++;
-}
-
 void DetectHook(uint8_t toe)
 {
     (void)toe;
@@ -611,6 +825,11 @@ int BspAuxLinkRxToIdleDmaStart(uint8_t *buffer, uint16_t length)
     return s_auxDmaStartResult;
 }
 
+int BspAuxLinkRxItStart(void)
+{
+    return s_auxDmaStartResult;
+}
+
 void BspAuxLinkRxItStop(void)
 {
     s_auxDmaBuffer = NULL;
@@ -621,6 +840,9 @@ void BspAuxLinkRxItStop(void)
 int main(void)
 {
     if (!TestCustomProtocolFailureAndExpiry()) return 1;
+    if (!TestInvalidCustomSwitchInvalidatesVt13()) return 1;
+    if (!TestInvalidCustomBusinessFields()) return 1;
+    if (!TestInterruptFallbackDefersParsingToTask()) return 1;
     if (!TestMergeAuthorityMetadata()) return 1;
     if (!TestParserArrivalDuringPublish()) return 1;
     if (!TestVt13FrozenConfigRemap()) return 1;

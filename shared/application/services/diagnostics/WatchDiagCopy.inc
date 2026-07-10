@@ -42,12 +42,16 @@ static void WatchCopyDiag(void)
     }
 
     dbus_error = toe_is_error(DBUS_TOE) ? 1u : 0u;
-    manual_online = lifecycle.manual_online;
+    manual_online = (uint8_t)(s_watch_manual_input_valid != 0u &&
+                              s_watch_manual_input.online != 0u);
     output_allowed = lifecycle.output_allowed;
     robot_ok = robot_mode_allow_chassis();
     ctrl_ok = (ControlMgrActiveId(ControlDomainChassis) == ControlIdClassicChassis) ? 1u : 0u;
-    chassis_safe = ControlInputSwitchIsPos(ControlInputSwitch(INPUT_SW_CHASSIS_MODE),
-                                           g_config.manual_input.semantics.ChassisSafePos);
+    chassis_safe = (manual_online != 0u) ?
+        ControlInputSwitchIsPos(
+            s_watch_manual_input.control.sw[INPUT_SW_CHASSIS_MODE],
+            s_watch_manual_input.semantics.ChassisSafePos) :
+        1u;
 
     if (dbus_error != 0u) g_watch.diag.gate_bits |= (1u << 0);
     if (manual_online == 0u) g_watch.diag.gate_bits |= (1u << 1);
@@ -114,7 +118,7 @@ static void WatchCopyDiag(void)
     {
         g_watch.diag.reason = 5u; // 导航命令没有保持活跃，通常是超时
     }
-    else if (dbus_error != 0u || manual_online == 0u)
+    else if (manual_online == 0u)
     {
         g_watch.diag.reason = 6u; // 手动输入离线，底盘电流会被清零
     }

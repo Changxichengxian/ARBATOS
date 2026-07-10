@@ -185,6 +185,13 @@ static void RobotLifecycleUpdateFromInput(const ManualInputSnapshot *manualInput
         g_robot_lifecycle.manual_semantics_seq = manualInput->semanticsSeq;
         g_robot_lifecycle.startup_safe_seen = 0u;
     }
+    if (manualInput != NULL && manualInput->authoritySeq != 0u &&
+        g_robot_lifecycle.manual_authority_seq != manualInput->authoritySeq)
+    {
+        /* 代表控制来源换权后，新来源必须重新给出本代安全档。 */
+        g_robot_lifecycle.manual_authority_seq = manualInput->authoritySeq;
+        g_robot_lifecycle.startup_safe_seen = 0u;
+    }
     if (manual_online != 0u && manual_safe != 0u)
     {
         /* 每次 MCU 启动后必须真实见过一次安全档，复位时保持运行档不会自动重新上力。 */

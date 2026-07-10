@@ -123,16 +123,25 @@ static void WatchCopyWheelLegMitFootTest(uint8_t side)
     out->wheel_target_deg = WatchRadToDeg(wheel_target_rad);
 }
 
-static uint8_t WatchWheelLegManualEnabledBySwitch(uint8_t ChassisSw)
+static uint8_t WatchWheelLegManualEnabledBySwitch(uint8_t ChassisSw,
+                                                   uint8_t ChassisSafePos,
+                                                   uint8_t manualOnline)
 {
-    return (uint8_t)(ControlInputSwitchIsPos(ChassisSw,
-                                                 g_config.manual_input.semantics.ChassisSafePos) == 0u);
+    return (uint8_t)(manualOnline != 0u &&
+                     ControlInputSwitchIsPos(ChassisSw, ChassisSafePos) == 0u);
 }
 
 static void WatchCopyWheelLegMit(void)
 {
     const uint8_t profile_on = WatchBlockActiveWheelLegMit();
-    const uint8_t ChassisSw = input_switch(INPUT_SW_CHASSIS_MODE);
+    const uint8_t manualOnline = (uint8_t)(s_watch_manual_input_valid != 0u &&
+                                           s_watch_manual_input.online != 0u);
+    const uint8_t ChassisSafePos = (s_watch_manual_input_valid != 0u) ?
+                                       s_watch_manual_input.semantics.ChassisSafePos :
+                                       MANUAL_INPUT_SWITCH_POS_UP;
+    const uint8_t ChassisSw = (manualOnline != 0u) ?
+                                  s_watch_manual_input.control.sw[INPUT_SW_CHASSIS_MODE] :
+                                  ControlInputSwitchPosToRaw(ChassisSafePos);
     const uint8_t run_variant = (uint8_t)robot_mode_variant();
     WheelLegStatus status;
     WheelLegState state;
@@ -163,7 +172,10 @@ static void WatchCopyWheelLegMit(void)
     g_watch.WheelLegMit.lowcmd_emergency_active = lowcmd_diag.emergency_active;
     g_watch.WheelLegMit.input_chassis_switch = ChassisSw;
     g_watch.WheelLegMit.enable_switch_pos = g_config.WheelLegMit.enable_switch_pos;
-    g_watch.WheelLegMit.manual_on = WatchWheelLegManualEnabledBySwitch(ChassisSw);
+    g_watch.WheelLegMit.manual_on = WatchWheelLegManualEnabledBySwitch(
+        ChassisSw,
+        ChassisSafePos,
+        manualOnline);
     g_watch.WheelLegMit.test_mode = run_variant;
     g_watch.WheelLegMit.foot_test_phase = WheelLegMitGetFootTestPhase();
     g_watch.WheelLegMit.foot_test_ik_ok = WheelLegMitGetFootTestIkOk();

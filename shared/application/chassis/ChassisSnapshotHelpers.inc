@@ -284,6 +284,12 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
 
         fast.gimbal = snapshot->gimbal;
         fast.manual_online = snapshot->manual_online;
+        fast.authority_seq = (snapshot->manual_input != NULL) ?
+                                 snapshot->manual_input->authoritySeq :
+                                 0u;
+        fast.semantics_seq = (snapshot->manual_input != NULL) ?
+                                 snapshot->manual_input->semanticsSeq :
+                                 0u;
         fast.ChassisOnlyMode = snapshot->ChassisOnlyMode;
         fast.safe_pos = (snapshot->manual_input != NULL) ?
                             snapshot->manual_input->semantics.ChassisSafePos :

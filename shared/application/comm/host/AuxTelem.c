@@ -28,7 +28,7 @@
 #include "GimbalControlTask.h"
 #include "GimbalState.h"
 #include "HostTuneBridge.h"
-#include "ManualInput.h"
+#include "ManualInputSnapshot.h"
 #include "MemMang.h"
 #include "MotorConfig.h"
 #include "MotorInst.h"
@@ -40,8 +40,8 @@
 
 typedef struct
 {
-    ManualInputState rc_copy;
     const ManualInputState *rc;
+    const ControlInputState *control;
     const fp32 *quat;
     const fp32 *angle;
     const fp32 *gyro;
@@ -53,6 +53,8 @@ typedef struct
     uint8_t ShootValid;
     const motor_measure_t *trigger_meas;
     const motor_measure_t *fric_meas[SHOOT_STATE_FRIC_MOTOR_COUNT];
+    uint8_t manualOnline;
+    uint8_t manualDataValid;
 } AuxTelemCtx;
 
 typedef struct
@@ -78,6 +80,7 @@ static AuxTelemMotorIdCache s_aux_telem_friction_ids[4u] = {
 static AuxTelemMotorIdCache s_aux_telem_yaw_id = {"motor.yaw", Motor4, MotorCount, 0u};
 static AuxTelemMotorIdCache s_aux_telem_pitch_id = {"motor.pitch", Motor6, MotorCount, 0u};
 static AuxTelemMotorIdCache s_aux_telem_trigger_id = {"motor.trigger", Motor7, MotorCount, 0u};
+static ManualInputSnapshot s_aux_telem_manual_input;
 
 static void AuxTelemPrepareMotorIdCache(AuxTelemMotorIdCache *cache)
 {
@@ -468,9 +471,12 @@ void AuxTelemTrySendFrame(void)
     }
 
     AuxTelemCtx ctx = {0};
-    if (ManualInputGetCurrentCopy(&ctx.rc_copy) != 0u)
+    if (ManualInputSnapshotRead(&s_aux_telem_manual_input) != 0u)
     {
-        ctx.rc = &ctx.rc_copy;
+        ctx.rc = &s_aux_telem_manual_input.manual;
+        ctx.control = &s_aux_telem_manual_input.control;
+        ctx.manualOnline = s_aux_telem_manual_input.online;
+        ctx.manualDataValid = s_aux_telem_manual_input.dataValid;
     }
     ctx.quat = ins_quat;
     ctx.angle = ins_angle;
@@ -819,7 +825,7 @@ static fp32 AuxTelemGetValue(const AuxTelemCtx *ctx, AuxTelemSig sig)
     case AUX_TELEM_SIG_RC_KEY:
         return ctx->rc ? (fp32)ctx->rc->key.v : 0.0f;
     case AUX_TELEM_SIG_RC_ERROR:
-        return (fp32)RC_data_is_error();
+        return (ctx->manualOnline != 0u && ctx->manualDataValid != 0u) ? 0.0f : 1.0f;
 
     case AUX_TELEM_SIG_IMU_Q0:
     case AUX_TELEM_SIG_IMU_Q1:
@@ -941,9 +947,9 @@ static fp32 AuxTelemGetValue(const AuxTelemCtx *ctx, AuxTelemSig sig)
     case AUX_TELEM_SIG_CHASSIS_ROLL:
         return ctx->chassis ? ctx->chassis->ChassisRoll : 0.0f;
     case AUX_TELEM_SIG_CHASSIS_SWING_KEY:
-        if (ctx->rc)
+        if (ctx->rc && ctx->control)
         {
-            const uint16_t sw = (uint16_t)ctx->rc->rc.s[CHASSIS_MODE_CHANNEL];
+            const uint16_t sw = ctx->control->sw[INPUT_SW_CHASSIS_MODE];
             const uint16_t key = ctx->rc->key.v;
             const bool_t swing = ((key & SWING_KEY) != 0u) ||
                                  ((key & CHASSIS_GYRO_SPIN_VAR_KEY) != 0u) ||
@@ -1036,6 +1042,7 @@ static fp32 AuxTelemGetValue(const AuxTelemCtx *ctx, AuxTelemSig sig)
         GimbalState state;
         const uint8_t state_valid_gimbal =
             (GimbalStateRead(&state) != 0u && state.valid != 0u) ? 1u : 0u;
+        /* PACK_OFFLINE 是既有物理 TOE 协议；统一输入质量由 RC_ERROR 单独表达。 */
         if (toe_is_error(DBUS_TOE)) mask |= 1u << 0;
         if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR1_TOE)) mask |= 1u << 1;
         if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR2_TOE)) mask |= 1u << 2;

@@ -34,6 +34,7 @@
 #include "DetectTask.h"
 #include "MemMang.h"
 #include "ManualInput.h"
+#include "ManualInputSnapshot.h"
 #include "BspCan.h"
 #include "BspRc.h"
 #include "MotorConfig.h"
@@ -254,8 +255,8 @@ __weak uint32_t BspAdcGetStartFailCount(void)
     return 0u;
 }
 
-static ManualInputState rc_snapshot;
-static const ManualInputState *rc_src;
+static ManualInputSnapshot s_watch_manual_input;
+static uint8_t s_watch_manual_input_valid;
 static const fp32 *ins_quat_src;
 static const fp32 *ins_angle_src;
 static const fp32 *ins_gyro_src;

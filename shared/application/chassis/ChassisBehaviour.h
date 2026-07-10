@@ -39,6 +39,7 @@ typedef struct
 } ChassisAlgorithmDebug;
 
 extern void ChassisBehaviourModeSet(ChassisMove *ChassisMoveMode);
+extern void ChassisBehaviourInputGateBlock(void);
 extern void ChassisBehaviourControlSet(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set,
                                           ChassisMove *ChassisMoveRcToVector);
 extern void ChassisAlgorithmDebugRead(ChassisAlgorithmDebug *out);

@@ -5,66 +5,27 @@
  * Private implementation chunk included by WheelLegMitTask.c.
  */
 
-static uint8_t WheelLegInputSnapshotConfigValid(void)
+static int16_t WheelLegInputAxisFromSnapshot(const ManualInputSnapshot *input, input_axis_e axis)
 {
-    return (uint8_t)(g_config.input.axis[INPUT_AXIS_CHASSIS_X].rc_ch < 5u &&
-                     g_config.input.axis[INPUT_AXIS_CHASSIS_Y].rc_ch < 5u &&
-                     g_config.input.axis[INPUT_AXIS_CHASSIS_WZ].rc_ch < 5u &&
-                     g_config.input.axis[INPUT_AXIS_CALIB_3].rc_ch < 5u &&
-                     g_config.input.sw[INPUT_SW_CHASSIS_MODE].rc_sw < 2u);
-}
-
-static int16_t WheelLegInputAxisFromSnapshot(const ManualInputState *input, input_axis_e axis)
-{
-    const input_axis_map_t *map;
-    int16_t value;
-
     if (input == NULL || (uint32_t)axis >= (uint32_t)INPUT_AXIS_COUNT)
     {
         return 0;
     }
-    map = &g_config.input.axis[axis];
-    if (map->rc_ch >= 5u)
-    {
-        return 0;
-    }
-
-    value = input->rc.ch[map->rc_ch];
-    return (map->invert != 0u) ? (int16_t)-value : value;
+    return input->control.axis[axis];
 }
 
-static uint8_t WheelLegInputSwitchFromSnapshot(const ManualInputState *input, input_switch_e sw)
+static uint8_t WheelLegInputSwitchFromSnapshot(const ManualInputSnapshot *input, input_switch_e sw)
 {
-    const input_switch_map_t *map;
-    uint8_t value;
-
     if (input == NULL || (uint32_t)sw >= (uint32_t)INPUT_SW_COUNT)
     {
         return RC_SW_UP;
     }
-    map = &g_config.input.sw[sw];
-    if (map->rc_sw >= 2u)
-    {
-        return RC_SW_UP;
-    }
-
-    value = (uint8_t)input->rc.s[map->rc_sw];
-    if (map->invert != 0u)
-    {
-        if (value == RC_SW_UP)
-        {
-            value = RC_SW_DOWN;
-        }
-        else if (value == RC_SW_DOWN)
-        {
-            value = RC_SW_UP;
-        }
-    }
-    return value;
+    return input->control.sw[sw];
 }
 
 static void WheelLegInputSnapshotCapture(WheelLegTaskFrame *frame)
 {
+    uint8_t snapshot_valid;
     uint8_t input_valid;
 
     if (frame == NULL)
@@ -72,23 +33,30 @@ static void WheelLegInputSnapshotCapture(WheelLegTaskFrame *frame)
         return;
     }
 
-    input_valid = ManualInputGetCurrentCopy(&frame->manual_input);
-    input_valid = (uint8_t)(input_valid != 0u &&
-                            toe_is_error(DBUS_TOE) == 0u &&
-                            WheelLegInputSnapshotConfigValid() != 0u);
+    snapshot_valid = ManualInputSnapshotRead(&frame->manual_input_snapshot);
+    input_valid = (uint8_t)(snapshot_valid != 0u &&
+                            frame->manual_input_snapshot.online != 0u);
     frame->manual_input_valid = input_valid;
-    frame->vx_axis = WheelLegInputAxisFromSnapshot(&frame->manual_input, INPUT_AXIS_CHASSIS_X);
-    frame->leg_axis = WheelLegInputAxisFromSnapshot(&frame->manual_input, INPUT_AXIS_CHASSIS_Y);
-    frame->yaw_axis = WheelLegInputAxisFromSnapshot(&frame->manual_input, INPUT_AXIS_CHASSIS_WZ);
-    frame->single_test_axis = WheelLegInputAxisFromSnapshot(&frame->manual_input, INPUT_AXIS_CALIB_3);
-    frame->chassis_switch = WheelLegInputSwitchFromSnapshot(&frame->manual_input, INPUT_SW_CHASSIS_MODE);
-    frame->manual_on = WheelLegManualEnabledFromSnapshot(input_valid, frame->chassis_switch);
+    frame->vx_axis = WheelLegInputAxisFromSnapshot(&frame->manual_input_snapshot,
+                                                    INPUT_AXIS_CHASSIS_X);
+    frame->leg_axis = WheelLegInputAxisFromSnapshot(&frame->manual_input_snapshot,
+                                                     INPUT_AXIS_CHASSIS_Y);
+    frame->yaw_axis = WheelLegInputAxisFromSnapshot(&frame->manual_input_snapshot,
+                                                     INPUT_AXIS_CHASSIS_WZ);
+    frame->single_test_axis = WheelLegInputAxisFromSnapshot(&frame->manual_input_snapshot,
+                                                             INPUT_AXIS_CALIB_3);
+    frame->chassis_switch = WheelLegInputSwitchFromSnapshot(&frame->manual_input_snapshot,
+                                                             INPUT_SW_CHASSIS_MODE);
+    frame->manual_on = WheelLegManualEnabledFromSnapshot(input_valid,
+                                                          frame->chassis_switch,
+                                                          &frame->manual_input_snapshot.semantics);
     frame->recovery_input_safe = WheelLegRecoveryInputSafeFromSnapshot(input_valid,
                                                                        frame->chassis_switch,
                                                                        frame->vx_axis,
                                                                        frame->leg_axis,
                                                                        frame->yaw_axis,
-                                                                       frame->single_test_axis);
+                                                                       frame->single_test_axis,
+                                                                       &frame->manual_input_snapshot.semantics);
 }
 
 static void WheelLegSingleTestScopeUpdate(WheelLegTaskFrame *frame)

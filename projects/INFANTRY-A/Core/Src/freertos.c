@@ -148,7 +148,7 @@ APP_THREAD_ATTR(defaultTask, osPriorityNormal, 256);
 APP_THREAD_ATTR(rcSbusTask, osPriorityAboveNormal, 256);
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-APP_THREAD_ATTR(healthMonitorTask, osPriorityNormal, 256);
+APP_THREAD_ATTR(healthMonitorTask, osPriorityNormal, 384);
 #endif
 #if ROBOT_TASK_BUILD_SDLOG && BOARD_SD_ENABLE
 APP_THREAD_ATTR(sdlogTask, osPriorityLow, 512);
@@ -169,7 +169,8 @@ APP_THREAD_ATTR(wheellegMitTask, osPriorityAboveNormal, 768);
 APP_THREAD_ATTR(gimbalControlTask, osPriorityHigh, 1024);
 #endif
 #if ROBOT_TASK_BUILD_HOST_LINK
-APP_THREAD_ATTR(hostLinkTask, osPriorityNormal, 128);
+/* AuxTelem 和图传解析的 ARMCC 静态调用深度已超过 1 KiB。 */
+APP_THREAD_ATTR(hostLinkTask, osPriorityNormal, 512);
 #endif
 #if ROBOT_TASK_BUILD_ELRS_LINK
 APP_THREAD_ATTR(elrsLinkTask, osPriorityAboveNormal, 256);

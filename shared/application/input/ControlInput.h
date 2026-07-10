@@ -20,26 +20,11 @@ typedef struct
 } ControlInputState;
 
 /*
- * `ControlInput.c` is the business-facing mapping layer:
- * - input source merge happens in `ManualInput.c`
- * - axis/switch remap happens here, driven by `g_config.input`
+ * `ControlInput.c` 是无状态映射层：来源合并在 `ManualInput.c` 完成，
+ * 调用者把同代冻结的输入配置传入这里生成轴和开关。
  */
 void ControlInputBuild(const ManualInputState *manual,
                        const input_config_t *config,
                        ControlInputState *out);
-void ControlInputUpdateFromManualInput(const ManualInputState *rc);
-const ControlInputState *ControlInputGetState(void);
-uint8_t ControlInputGetCopy(ControlInputState *out);
-int16_t ControlInputAxis(input_axis_e axis);
-uint8_t ControlInputSwitch(input_switch_e sw);
 uint8_t ControlInputSwitchPosToRaw(uint8_t pos);
 uint8_t ControlInputSwitchIsPos(uint16_t raw, uint8_t pos);
-
-// Legacy compatibility names.
-void input_update_from_rc(const ManualInputState *rc);
-const ControlInputState *input_get(void);
-uint8_t input_get_copy(ControlInputState *out);
-int16_t input_axis(input_axis_e axis);
-uint8_t input_switch(input_switch_e sw);
-uint8_t input_switch_pos_to_raw(uint8_t pos);
-uint8_t input_switch_is_pos(uint16_t raw, uint8_t pos);

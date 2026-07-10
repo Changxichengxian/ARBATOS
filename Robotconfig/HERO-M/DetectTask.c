@@ -13,7 +13,7 @@
 #include "cmsis_os.h"
 #include "RobotConfig.h"
 #include "Watch.h"
-#include "ManualInput.h"
+#include "ManualInputSnapshot.h"
 #include "SdLog.h"
 #include "SdCard.h"
 #include "BspBuzzer.h"
@@ -38,7 +38,7 @@ extern volatile uint32_t GimbalLoopCounter;
 extern volatile uint32_t ChassisLoopCounter;
 extern ChassisBehaviour ChassisBehaviourMode;
 
-#define WATCH_UPDATE_PERIOD_MS 1000u
+#define DETECT_LOG_PERIOD_MS 1000u
 #define SYS_STATS_PERIOD_MS 250u
 
 
@@ -60,6 +60,7 @@ static void DetectInit(uint32_t time);
 DetectError error_list[DETECT_ERROR_COUNT + 1];
 static uint32_t g_last_tick_ms[DETECT_ERROR_COUNT];
 static const DetectConfig *const DetectCfg = &g_config.detect;
+static ManualInputSnapshot s_control_summary_manual_input;
 
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
@@ -126,18 +127,22 @@ static void sdlog_pack_control_summary(sdlog_control_summary_t *out)
     }
 
     memset(out, 0, sizeof(*out));
-    out->manual_source = remote_control_get_active_source();
+    if (ManualInputSnapshotRead(&s_control_summary_manual_input) != 0u)
+    {
+        out->manual_source = (s_control_summary_manual_input.online != 0u) ?
+            s_control_summary_manual_input.activeSource :
+            MANUAL_INPUT_SRC_AUTO;
+        out->rc_s0 = (int8_t)s_control_summary_manual_input.manual.rc.s[0];
+        out->rc_s1 = (int8_t)s_control_summary_manual_input.manual.rc.s[1];
+        for (uint8_t i = 0u; i < 4u; i++)
+        {
+            out->rc_ch[i] = s_control_summary_manual_input.manual.rc.ch[i];
+        }
+    }
     out->ChassisMode = (uint8_t)g_watch.chassis.mode;
     out->yaw_mode = (uint8_t)g_watch.gimbal.yaw_mode;
     out->pitch_mode = (uint8_t)g_watch.gimbal.pitch_mode;
     out->ShootMode = (uint8_t)g_watch.shoot.mode;
-    out->rc_s0 = (int8_t)g_watch.rc.s[0];
-    out->rc_s1 = (int8_t)g_watch.rc.s[1];
-
-    for (uint8_t i = 0u; i < 4u; i++)
-    {
-        out->rc_ch[i] = g_watch.rc.ch[i];
-    }
 
     out->ChassisVxSet = g_watch.chassis.vx_set;
     out->ChassisVySet = g_watch.chassis.vy_set;
@@ -181,8 +186,6 @@ void DetectTask(void const *pvParameters)
     system_time = xTaskGetTickCount();
     //init,初始化
     DetectInit(system_time);
-    // 初始化调试观察指针（一次即可）
-    WatchInit();
     //wait a time.空闲一段时间
     vTaskDelay(DETECT_TASK_INIT_TIME);
     CpuUsageInit();
@@ -198,7 +201,7 @@ void DetectTask(void const *pvParameters)
     uint32_t sdlog_dropped_last = 0u;
     uint32_t last_sys_stats_tick = system_time;
     uint32_t last_bsp_cfg_tick = system_time;
-    uint32_t last_watch_snapshot_tick = system_time;
+    uint32_t last_log_snapshot_tick = system_time;
 
     uint8_t run_variant_last = (uint8_t)robot_mode_variant();
     uint8_t GimbalBehaviourLast = (uint8_t)GimbalBehaviourWatch;
@@ -268,10 +271,9 @@ void DetectTask(void const *pvParameters)
             toe_last_data_err[i] = err_now;
         }
 
-        if ((uint32_t)(system_time - last_watch_snapshot_tick) >= (uint32_t)pdMS_TO_TICKS(WATCH_UPDATE_PERIOD_MS))
+        if ((uint32_t)(system_time - last_log_snapshot_tick) >= (uint32_t)pdMS_TO_TICKS(DETECT_LOG_PERIOD_MS))
         {
-            last_watch_snapshot_tick = system_time;
-            WatchUpdate();
+            last_log_snapshot_tick = system_time;
 
             sdlog_control_summary_t control_log = {0};
             sdlog_pack_control_summary(&control_log);
@@ -478,8 +480,5 @@ static void DetectInit(uint32_t time)
         g_last_tick_ms[i] = time;
     }
 
-//    error_list[DBUSTOE].dataIsErrorFun = RC_data_is_error;
-//    error_list[DBUSTOE].solveLostFun = slove_RC_lost;
-//    error_list[DBUSTOE].solveDataErrorFun = slove_data_error;
 
 }

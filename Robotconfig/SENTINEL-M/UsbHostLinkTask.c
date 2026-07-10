@@ -46,16 +46,6 @@ bool ImageRemoteGetState(ImageRemoteState *out)
     return false;
 }
 
-bool ImageRemoteAutoAimRequested(void)
-{
-    return false;
-}
-
-bool ImageRemoteAuxFireRequested(void)
-{
-    return false;
-}
-
 void ImageRemoteLinkGetStats(sdlog_image_link_stats_t *out)
 {
     if (out != NULL)

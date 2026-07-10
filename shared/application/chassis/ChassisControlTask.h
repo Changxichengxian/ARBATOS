@@ -101,6 +101,8 @@ typedef struct
 typedef struct
 {
     bool_t manual_online;
+    uint32_t authority_seq;
+    uint32_t semantics_seq;
     uint8_t ChassisOnlyMode;
     uint16_t mode_sw;
     uint8_t safe_pos;

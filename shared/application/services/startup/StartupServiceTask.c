@@ -21,10 +21,10 @@
 #include "RobotConfig.h"
 #include "ControlInput.h"
 #include "DetectTask.h"
-#include "ImageRemoteLink.h"
-#include "ManualInput.h"
+#include "ManualInputSnapshot.h"
 #include "Referee.h"
 #include "SdCard.h"
+#include "RobotLifecycle.h"
 #include "RobotMode.h"
 
 #define TEST_TASK_PERIOD_MS 2U
@@ -39,13 +39,11 @@
 #define ENTERTAIN_MUSIC_PATH_MAX 256u
 #define ENTERTAIN_MUSIC_ROOT "0:/"
 
-static uint8_t lost_beep_confirm_due(void);
+static uint8_t lost_beep_confirm_due(uint8_t manualOnline);
 static void BuzzerSchedule(uint8_t times);
 static void BuzzerTick(void);
 static uint8_t BuzzerIsIdle(void);
-static void entertainment_music_tick(void);
-static uint8_t entertainment_manual_connected(void);
-static uint8_t entertainment_switch_is_ready(uint16_t raw_sw);
+static void entertainment_music_tick(const ManualInputSnapshot *manualInput);
 static uint8_t entertainment_music_name_is_u8(const char *name);
 static int entertainment_find_music_by_index(int32_t *index_io,
                                              char *out,
@@ -62,22 +60,34 @@ static uint8_t lost_beeped[DETECT_ERROR_COUNT];
 
 static uint16_t entertainment_switch_raw_from_pos(uint8_t pos)
 {
-    return (uint16_t)input_switch_pos_to_raw(pos);
+    return (uint16_t)ControlInputSwitchPosToRaw(pos);
 }
 
-static uint8_t entertainment_switch_is_stop(uint16_t raw_sw)
+static uint8_t entertainment_switch_is_stop(uint16_t raw_sw,
+                                            const ManualInputSemanticsConfig *semantics)
 {
-    return input_switch_is_pos(raw_sw, g_config.manual_input.semantics.ShootStopPos);
+    return (semantics != NULL) ?
+               ControlInputSwitchIsPos(raw_sw, semantics->ShootStopPos) :
+               0u;
 }
 
-static uint8_t entertainment_switch_is_ready(uint16_t raw_sw)
+static uint8_t entertainment_switch_is_ready(uint16_t raw_sw,
+                                             const ManualInputSemanticsConfig *semantics)
 {
-    return input_switch_is_pos(raw_sw, g_config.manual_input.semantics.ShootReadyPos);
+    return (semantics != NULL) ?
+               ControlInputSwitchIsPos(raw_sw, semantics->ShootReadyPos) :
+               0u;
 }
 
-static input_switch_e entertainment_get_image_switch_input(void)
+static input_switch_e entertainment_get_image_switch_input(
+    const ManualInputSemanticsConfig *semantics)
 {
-    switch (g_config.manual_input.semantics.image_vt13_shoot_switch_input)
+    if (semantics == NULL)
+    {
+        return INPUT_SW_SHOOT_MODE;
+    }
+
+    switch (semantics->image_vt13_shoot_switch_input)
     {
     case MANUAL_INPUT_IMAGE_SWITCH_CHASSIS:
         return INPUT_SW_CHASSIS_MODE;
@@ -89,37 +99,40 @@ static input_switch_e entertainment_get_image_switch_input(void)
     }
 }
 
-static uint16_t entertainment_get_raw_switch(void)
+static uint16_t entertainment_get_raw_switch(const ManualInputSnapshot *manualInput)
 {
-    uint16_t raw_sw = (uint16_t)input_switch(INPUT_SW_SHOOT_MODE);
+    const ManualInputSemanticsConfig *semantics;
+    uint16_t raw_sw;
 
-    if (remote_control_get_active_source() != MANUAL_INPUT_SRC_IMAGE)
+    if (manualInput == NULL || manualInput->online == 0u)
+    {
+        return entertainment_switch_raw_from_pos(MANUAL_INPUT_SWITCH_POS_UP);
+    }
+
+    semantics = &manualInput->semantics;
+    raw_sw = (uint16_t)manualInput->control.sw[INPUT_SW_SHOOT_MODE];
+    if (manualInput->activeSource != MANUAL_INPUT_SRC_IMAGE ||
+        manualInput->sourceProtocol != MANUAL_INPUT_PROTOCOL_IMAGE_VT13)
     {
         return raw_sw;
     }
 
-    ImageRemoteState image_state;
-    if (!ImageRemoteGetState(&image_state) ||
-        image_state.proto != SDLOG_MANUAL_INPUT_PROTO_IMAGE_VT13)
+    raw_sw = (uint16_t)manualInput->control.sw[
+        entertainment_get_image_switch_input(semantics)];
+    if (entertainment_switch_is_stop(raw_sw, semantics))
     {
-        return raw_sw;
+        return entertainment_switch_raw_from_pos(semantics->ShootStopPos);
     }
-
-    raw_sw = (uint16_t)input_switch(entertainment_get_image_switch_input());
-    if (entertainment_switch_is_stop(raw_sw))
+    if (entertainment_switch_is_ready(raw_sw, semantics))
     {
-        return entertainment_switch_raw_from_pos(g_config.manual_input.semantics.ShootStopPos);
+        return entertainment_switch_raw_from_pos(semantics->ShootReadyPos);
     }
-    if (entertainment_switch_is_ready(raw_sw))
-    {
-        return entertainment_switch_raw_from_pos(g_config.manual_input.semantics.ShootReadyPos);
-    }
-    return entertainment_switch_raw_from_pos(g_config.manual_input.semantics.ShootFirePos);
+    return entertainment_switch_raw_from_pos(semantics->ShootFirePos);
 }
 
-static uint8_t entertainment_manual_connected(void)
+static uint8_t entertainment_manual_connected(const ManualInputSnapshot *manualInput)
 {
-    return (remote_control_get_active_source() != MANUAL_INPUT_SRC_AUTO) ? 1u : 0u;
+    return (uint8_t)(manualInput != NULL && manualInput->online != 0u);
 }
 
 static char entertainment_ascii_upper(char c)
@@ -273,7 +286,7 @@ static int entertainment_find_music_by_index(int32_t *index_io,
     return -4;
 }
 
-static void entertainment_music_tick(void)
+static void entertainment_music_tick(const ManualInputSnapshot *manualInput)
 {
     static uint8_t last_mode_entertain = 0u;
     static uint8_t last_manual_connected = 0u;
@@ -302,8 +315,8 @@ static void entertainment_music_tick(void)
 
     last_mode_entertain = 1u;
 
-    const uint16_t music_sw = entertainment_get_raw_switch();
-    const uint8_t manual_connected = entertainment_manual_connected();
+    const uint16_t music_sw = entertainment_get_raw_switch(manualInput);
+    const uint8_t manual_connected = entertainment_manual_connected(manualInput);
     const BuzzerPcmConfig *pcm_cfg = &g_config.buzzer.pcm;
     const uint32_t sample_rate_hz = (pcm_cfg->sample_rate_hz != 0u) ? pcm_cfg->sample_rate_hz : 12000u;
     const uint8_t volume = pcm_cfg->volume;
@@ -409,6 +422,7 @@ void StartupServiceTask(void const * argument)
     static uint8_t ever_all_online = 0;
     static uint8_t startup_beep_done = 0;
     static uint16_t startup_lost_beep_mute_ticks = STARTUP_LOST_BEEP_MUTE_TICKS;
+    static ManualInputSnapshot manual_input;
     (void)argument;
     error_list_test_local = get_error_list_point();
 
@@ -421,11 +435,20 @@ void StartupServiceTask(void const * argument)
 
     while(1)
     {
+        RobotLifecycleSnapshot lifecycle;
+
+        memset(&lifecycle, 0, sizeof(lifecycle));
+        (void)RobotLifecycleGetSnapshot(&lifecycle);
         error = 0;
 
         // find error
         for(error_num = 0; error_num < REFEREE_TOE; error_num++)
         {
+            if (error_num == (uint8_t)DBUS_TOE && lifecycle.manual_online != 0u)
+            {
+                /* ELRS/图传仍在线时，物理 DBUS 故障只保留诊断，不触发整机掉线蜂鸣。 */
+                continue;
+            }
             if(error_list_test_local[error_num].is_lost)
             {
                 error = 1;
@@ -433,14 +456,20 @@ void StartupServiceTask(void const * argument)
             }
         }
 
-        const uint8_t confirmed_lost = lost_beep_confirm_due();
+        const uint8_t confirmed_lost = lost_beep_confirm_due(lifecycle.manual_online);
         if (startup_lost_beep_mute_ticks != 0u)
         {
             startup_lost_beep_mute_ticks--;
         }
 
         const uint8_t entertainment_mode = robot_mode_is_entertain();
-        entertainment_music_tick();
+        const ManualInputSnapshot *frame_input = NULL;
+        if (entertainment_mode != 0u &&
+            ManualInputSnapshotRead(&manual_input) != 0u)
+        {
+            frame_input = &manual_input;
+        }
+        entertainment_music_tick(frame_input);
 
         if(error == 0)
         {
@@ -513,7 +542,7 @@ static uint8_t BuzzerIsIdle(void)
             BuzzerPcmIsRunning() == 0u) ? 1u : 0u;
 }
 
-static uint8_t lost_beep_confirm_due(void)
+static uint8_t lost_beep_confirm_due(uint8_t manualOnline)
 {
     uint8_t due = 0u;
     const uint8_t toe_limit = ((uint8_t)REFEREE_TOE < (uint8_t)DETECT_ERROR_COUNT) ?
@@ -527,6 +556,15 @@ static uint8_t lost_beep_confirm_due(void)
 
     for (uint8_t toe = 0u; toe < toe_limit; toe++)
     {
+        if (toe == (uint8_t)DBUS_TOE && manualOnline != 0u)
+        {
+            /* 替代输入在线时物理 DBUS 只做诊断，确认计数也不能借给其他故障。 */
+            lost_confirm_step_ticks[toe] = 0u;
+            lost_confirm_count[toe] = 0u;
+            lost_beeped[toe] = 0u;
+            continue;
+        }
+
         if (error_list_test_local[toe].is_lost != 0u)
         {
             const uint8_t step_ticks =

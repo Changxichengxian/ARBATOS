@@ -191,7 +191,7 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   osThreadNew((osThreadFunc_t)(entry), NULL, &thread_id##_attr)
 
 #if ROBOT_TASK_BUILD_STARTUP_SERVICE
-APP_STATIC_THREAD(startupServiceTask, StartupServiceTask, osPriorityNormal, 512);
+APP_STATIC_THREAD(startupServiceTask, StartupServiceTask, osPriorityNormal, 768);
 #endif
 #if ROBOT_TASK_BUILD_CALIBRATION
 APP_STATIC_THREAD(cali, CalibrateTask, osPriorityNormal, 512);
@@ -212,7 +212,7 @@ APP_STATIC_THREAD(canFeedbackRxTask, CanRxTask, osPriorityHigh, 256);
 APP_STATIC_THREAD(RCSBUS, RcSbusTask, osPriorityAboveNormal, 256);
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-APP_STATIC_THREAD(healthMonitorTask, HealthMonitorTask, osPriorityNormal, 256);
+APP_STATIC_THREAD(healthMonitorTask, HealthMonitorTask, osPriorityNormal, 384);
 #endif
 #if ROBOT_TASK_BUILD_ANY_GIMBAL
 APP_STATIC_THREAD(gimbalControlTask, GimbalControlTask, osPriorityHigh, 1024);
@@ -238,7 +238,7 @@ APP_STATIC_THREAD(ELRS_LINK, ElrsLinkTask, osPriorityAboveNormal, 256);
 APP_STATIC_THREAD(batteryMonitorTask, BatteryMonitorTask, osPriorityNormal, 128);
 #endif
 #if ROBOT_TASK_BUILD_SERVO
-APP_STATIC_THREAD(servoControlTask, ServoControlTask, osPriorityNormal, 128);
+APP_STATIC_THREAD(servoControlTask, ServoControlTask, osPriorityNormal, 192);
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
 APP_STATIC_THREAD(SDLOG, SdLogTask, osPriorityLow, 512);

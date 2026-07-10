@@ -291,6 +291,7 @@ void ChassisRuntimeSafeStep(const ManualInputSnapshot *manualInput,
     ChassisRuntimeSnapshot snapshot;
 
     /* 安全帧仍刷新反馈、故障分组和逐轴禁写，只跳过控制量及功率计算。 */
+    ChassisBehaviourInputGateBlock();
     ChassisRuntimeReadFrame(&snapshot, manualInput, tickMs, periodMs);
     ChassisRuntimePublishSafeFrame();
 }
@@ -313,6 +314,7 @@ void ChassisRuntimeStep(const ManualInputSnapshot *manualInput,
     ChassisRuntimeReadFrame(&snapshot, manualInput, tickMs, periodMs);
     if (snapshot.manual_online == 0u || robot_mode_allow_chassis() == 0u)
     {
+        ChassisBehaviourInputGateBlock();
         ChassisRuntimePublishSafeFrame();
         for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT; i++)
         {
@@ -364,6 +366,7 @@ void ChassisRuntimeStep(const ManualInputSnapshot *manualInput,
 
 void ChassisRuntimeStop(void)
 {
+    ChassisBehaviourInputGateBlock();
     ChassisControlStopOutputs(&g_chassis);
     ChassisWriteState(&g_chassis);
 }

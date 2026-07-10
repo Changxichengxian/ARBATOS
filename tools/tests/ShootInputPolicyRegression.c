@@ -88,6 +88,17 @@ int main(void)
                                         TEST_SWITCH_STOP) == TEST_SWITCH_STOP,
                    "新语义下真实离开并重新进入后才能恢复开火")) return 1;
 
+    if (!TestCheck(ShootInputGateSyncAction(&state, 10u, TEST_SWITCH_STOP) != 0u &&
+                   ShootInputGateSyncAction(&state, 10u, TEST_SWITCH_STOP) == 0u &&
+                   TestSwitch(&state, TEST_SWITCH_FIRE, 1u) == TEST_SWITCH_READY,
+                   "动作贡献代变化必须清除旧开火边沿，同代帧不得反复重置")) return 1;
+    if (!TestCheck(TestSwitch(&state, TEST_SWITCH_STOP, 1u) == TEST_SWITCH_STOP &&
+                   TestSwitch(&state, TEST_SWITCH_FIRE, 1u) == TEST_SWITCH_FIRE,
+                   "换权后必须真实离开开火档再重新进入")) return 1;
+    if (!TestCheck(ShootInputGateSyncAction(&state, 11u, TEST_SWITCH_STOP) != 0u &&
+                   TestSwitch(&state, TEST_SWITCH_FIRE, 1u) == TEST_SWITCH_READY,
+                   "连续第二次换权也必须再次建立开火重启锁")) return 1;
+
     ShootInputGateBlockMouse(&state);
     pressLeft = 1u;
     pressRight = 0u;
@@ -136,6 +147,21 @@ int main(void)
     ShootInputGateApplyFrameMouse(&state, 1u, &pressLeft, &pressRight);
     if (!TestCheck(pressLeft == 1u,
                    "普通离线恢复后观察到真实释放，下一次按下才可生效")) return 1;
+
+    ShootInputGateSyncAction(&state, 12u, TEST_SWITCH_STOP);
+    pressLeft = 1u;
+    pressRight = 1u;
+    ShootInputGateApplyFrameMouse(&state, 1u, &pressLeft, &pressRight);
+    if (!TestCheck(pressLeft == 0u && pressRight == 0u,
+                   "换权时持续按住的左右鼠标都必须被遮蔽")) return 1;
+    pressLeft = 0u;
+    pressRight = 1u;
+    ShootInputGateApplyFrameMouse(&state, 1u, &pressLeft, &pressRight);
+    pressLeft = 1u;
+    pressRight = 1u;
+    ShootInputGateApplyFrameMouse(&state, 1u, &pressLeft, &pressRight);
+    if (!TestCheck(pressLeft == 1u && pressRight == 0u,
+                   "换权后左右鼠标必须分别真实释放再恢复")) return 1;
 
     (void)puts("PASS: Shoot 输入安全恢复门控回归");
     return 0;

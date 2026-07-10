@@ -10,12 +10,15 @@
 
 #include "cmsis_os.h"
 
-#include "ManualInput.h"
+#include "ManualInputSnapshot.h"
 #include "Watch.h"
 #include "BspTime.h"
 #include "RobotTaskBuildConfig.h"
+#include "RobotSafety.h"
 #include "ControlMgr.h"
 
+#include "ArmInputPolicy.h"
+#include "ArmMotorTable.h"
 #include "ArmMotion.h"
 
 #include <string.h>
@@ -113,26 +116,42 @@ static uint8_t ArmControlMgrAllows(void)
 
 void ArmTask(void const *argument)
 {
+    ArmInputGate inputGate;
+    uint16_t actionKeyMask = 0u;
+
     (void)argument;
+    for (uint8_t i = 0u; i < (uint8_t)ARM_MOTOR_COUNT; i++)
+    {
+        actionKeyMask |= g_arm_motor_table[i].key_mask;
+    }
+    ArmInputGateInit(&inputGate);
     ArmMotionInit();
 
     for (;;)
     {
-        ManualInputState rc_snapshot;
-        const uint16_t key_mask =
-            (ManualInputGetCurrentCopy(&rc_snapshot) != 0u) ? rc_snapshot.key.v : 0u;
+        ManualInputSnapshot manualInput;
+        const uint8_t inputValid = ManualInputSnapshotRead(&manualInput);
+        const uint8_t outputLocked = RobotSafetyOutputLocked();
+        const uint8_t managerAllowed = ArmControlMgrAllows();
+        const uint8_t controlAllowed =
+            (uint8_t)(inputValid != 0u &&
+                      manualInput.online != 0u &&
+                      outputLocked == 0u &&
+                      managerAllowed != 0u);
+        const uint16_t observedKeys =
+            (inputValid != 0u) ? manualInput.manual.key.v : 0u;
+        ArmInputGateSync(&inputGate,
+                         (inputValid != 0u) ? manualInput.authoritySeq : 0u,
+                         (inputValid != 0u) ? manualInput.semanticsSeq : 0u);
+        const uint16_t keyMask =
+            ArmInputGateApply(&inputGate,
+                              controlAllowed,
+                              actionKeyMask,
+                              observedKeys);
 
         WatchTaskBeat(WATCH_TASK_ARM);
-        if (ArmControlMgrAllows() == 0u)
-        {
-            ArmMotionStepManual(0u);
-            ArmWriteStatus(0u);
-            osDelay(ARM_TASK_PERIOD_MS);
-            continue;
-        }
-
-        ArmMotionStepManual(key_mask);
-        ArmWriteStatus(key_mask);
+        ArmMotionStepManual(keyMask);
+        ArmWriteStatus(keyMask);
         osDelay(ARM_TASK_PERIOD_MS);
     }
 }

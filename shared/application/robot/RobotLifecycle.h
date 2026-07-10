@@ -44,6 +44,7 @@ typedef struct
     uint8_t startup_safe_seen;
     uint32_t update_tick;
     uint32_t manual_semantics_seq;
+    uint32_t manual_authority_seq;
 } RobotLifecycleSnapshot;
 
 void RobotLifecycleInit(void);

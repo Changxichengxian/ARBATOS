@@ -25,6 +25,7 @@
 #include "arm_math.h"
 
 #include "BspTime.h"
+#include "ChassisInputPolicy.h"
 #include "ControlInput.h"
 #include "ExternalMotionIntent.h"
 #include "MotorConfig.h"
@@ -221,7 +222,13 @@ static void ChassisOpenSetControl(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, Chas
 //highlight, the variable chassis behaviour mode
 //留意，这个底盘行为模式变量
 ChassisBehaviour ChassisBehaviourMode = CHASSIS_ZERO_FORCE;
+static ChassisInputGate s_chassisInputGate = {0};
 static ChassisAlgorithmDebug s_chassis_algorithm_debug = {0};
+
+void ChassisBehaviourInputGateBlock(void)
+{
+    s_chassisInputGate.waitRelease = 1u;
+}
 
 typedef struct
 {
@@ -287,51 +294,6 @@ static bool_t ChassisGimbalFollowAvailable(const ChassisMove *control)
 static bool_t ChassisBehaviourNeedsGimbalFollow(ChassisBehaviour mode)
 {
     return (mode == CHASSIS_INFANTRY_FOLLOW_GIMBAL_YAW || mode == CHASSIS_SWING) ? 1 : 0;
-}
-
-static uint16_t ChassisGetEffectiveSwitch(uint16_t raw_sw,
-                                             uint8_t manual_online,
-                                             uint8_t spin_pos,
-                                             uint8_t follow_pos,
-                                             uint8_t safe_pos)
-{
-    static uint8_t gate_inited = 0u;
-    static uint8_t down_engaged = 0u;
-    static uint16_t last_sw_raw = RC_SW_UP;
-    const uint16_t follow_raw = (uint16_t)ControlInputSwitchPosToRaw(follow_pos);
-    uint16_t effective_sw = raw_sw;
-
-    if (manual_online == 0u)
-    {
-        gate_inited = 0u;
-        down_engaged = 0u;
-        last_sw_raw = (uint16_t)ControlInputSwitchPosToRaw(safe_pos);
-        return raw_sw;
-    }
-
-    if (gate_inited == 0u)
-    {
-        gate_inited = 1u;
-        down_engaged = 0u;
-        last_sw_raw = raw_sw;
-    }
-
-    if (!ControlInputSwitchIsPos(raw_sw, spin_pos))
-    {
-        down_engaged = 0u;
-    }
-    else if (!ControlInputSwitchIsPos(last_sw_raw, spin_pos))
-    {
-        down_engaged = 1u;
-    }
-
-    if (ControlInputSwitchIsPos(raw_sw, spin_pos) && down_engaged == 0u)
-    {
-        effective_sw = follow_raw;
-    }
-
-    last_sw_raw = raw_sw;
-    return effective_sw;
 }
 
 static bool_t ChassisAlgorithmMoveGetActive(ExternalMotionIntent *out)
@@ -750,11 +712,22 @@ void ChassisBehaviourModeSet(ChassisMove *ChassisMoveMode)
     // 函数地图：先处理安全档/运行模式；再按拨杆和按键选行为；最后映射到底盘控制模式。
     const ChassisControlSnapshot *fast = &ChassisMoveMode->fast;
     const uint16_t ChassisSw = fast->mode_sw;
-    const uint16_t ChassisSwEffective = ChassisGetEffectiveSwitch(ChassisSw,
-                                                                       fast->manual_online,
-                                                                       fast->spin_pos,
-                                                                       fast->follow_pos,
-                                                                       fast->safe_pos);
+    const uint16_t actionKeyMask = (uint16_t)(fast->gyro_spin_key_mask |
+                                               fast->gyro_spin_var_key_mask |
+                                               fast->swing_key_mask);
+    const uint8_t actionGateReady = ChassisInputGateApply(
+        &s_chassisInputGate,
+        fast->authority_seq,
+        fast->semantics_seq,
+        fast->manual_online,
+        ControlInputSwitchIsPos(ChassisSw, fast->spin_pos),
+        (uint8_t)((fast->key_mask & actionKeyMask) != 0u));
+    const uint16_t ChassisSwEffective = (actionGateReady != 0u) ?
+                                            ChassisSw :
+                                            (uint16_t)ControlInputSwitchPosToRaw(fast->follow_pos);
+    const uint16_t effectiveKeys = (actionGateReady != 0u) ?
+                                       fast->key_mask :
+                                       (uint16_t)(fast->key_mask & (uint16_t)~actionKeyMask);
 
     // 优先级最高的安全模式：拨杆上档立即停转所有底盘电机
     if (ControlInputSwitchIsPos(ChassisSw, fast->safe_pos))
@@ -783,7 +756,7 @@ void ChassisBehaviourModeSet(ChassisMove *ChassisMoveMode)
     {
         // 普通模式：底盘跟随云台 yaw（让云台 yaw 回中，底盘转向对齐云台朝向）
         // CTRL 按下：进入小陀螺持续自转（不跟随云台角度）
-        const uint16_t key_mask = fast->key_mask;
+        const uint16_t key_mask = effectiveKeys;
         const uint8_t want_swing = ((key_mask & fast->swing_key_mask) != 0u) ? 1u : 0u;
         const uint8_t want_gyro = ((key_mask & fast->gyro_spin_key_mask) != 0u) ? 1u : 0u;
         const uint8_t want_gyro_var = ((key_mask & fast->gyro_spin_var_key_mask) != 0u) ? 1u : 0u;
@@ -803,7 +776,7 @@ void ChassisBehaviourModeSet(ChassisMove *ChassisMoveMode)
     else if (ControlInputSwitchIsPos(ChassisSwEffective, fast->spin_pos))
     {
         // 小陀螺：持续自转（类似 WH 的 SelfProtect），同时保留平移控制
-        ChassisBehaviourMode = ((fast->key_mask & fast->gyro_spin_var_key_mask) != 0u) ?
+        ChassisBehaviourMode = ((effectiveKeys & fast->gyro_spin_var_key_mask) != 0u) ?
                                      CHASSIS_GYRO_SPIN_VAR :
                                      CHASSIS_GYRO_SPIN;
     }

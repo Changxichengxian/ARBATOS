@@ -181,51 +181,42 @@ typedef char ManualInputKeyOffsetCheck[(offsetof(ManualInputState, key) == MANUA
 /*
  * Manual input layers:
  * - `RcSbusTask.c`: only drains board-level SBUS/DBUS frames and forwards them here.
- * - `ManualInput.c`: decodes raw frames, merges DBUS/ELRS/Image sources, and owns the shared `ManualInputState`.
- * - `ControlInput.c`: remaps the merged `ManualInputState` into game-facing axes/switches via `g_config.input`.
+ * - `ManualInput.c`: arbitrates DBUS/ELRS/Image, unions only typed auxiliary flags, and publishes `ManualInputSnapshot`.
+ * - `ControlInput.c`: uses the frozen input config to map the representative state into business axes/switches.
  *
  * If you want to:
  * - change SBUS/DBUS decode: edit `ManualInputDbus.h` and `ManualInputOnSbusFrame()` in `ManualInput.c`
- * - change which source wins: edit `ManualInputUpdateSource()` and the `ManualInput*` merge helpers
- * - change axis/switch mapping: edit `ControlInput.c` and the `input` block in `Robotconfig/<TARGET>/RobotConfig.c`
+ * - change source arbitration: edit the `ManualInput*` selection helpers
+ * - change axis/switch mapping: edit `ControlInput.c` and `Robotconfig/<TARGET>/ConfigInput.inc`
  */
 
-/* Preferred names for new code. Legacy `remote_control_*` names stay for compatibility. */
+/*
+ * 输入发布只允许通过 ManualInputSnapshotRead 读取；这里保留来源写入和诊断计数。
+ * 下列 Init/Update/Invalidate/Refresh 接口都只允许任务上下文调用：它们会取 RTOS tick、
+ * 更新检测状态并可能完成整帧发布与日志。中断只能把原始字节写入驱动缓冲后通知任务。
+ */
 extern void ManualInputInit(void);
 extern void ManualInputOnSbusFrame(const uint8_t frame[RC_FRAME_LENGTH]);
-extern const ManualInputState *ManualInputGetCurrentRc(void);
-extern uint8_t ManualInputGetCurrentCopy(ManualInputState *out);
-extern void ManualInputUpdateSource(uint8_t source, const ManualInputState *rc);
-/* 带来源协议原始业务位的原子更新；语义开关在统一快照构建时按同代配置解释。 */
-extern void ManualInputUpdateSourceMeta(uint8_t source,
-                                        const ManualInputState *rc,
-                                        uint8_t protocol,
-                                        uint8_t rawFlags,
-                                        uint8_t rawSwitch1);
-extern uint8_t ManualInputGetActiveSource(void);
+/* 图传协议与来源固定绑定；语义开关在统一快照构建时按同代配置解释。 */
+extern void ManualInputUpdateImageSource(const ManualInputState *rc,
+                                         uint8_t protocol,
+                                         uint8_t rawFlags,
+                                         uint8_t rawSwitch1);
+/* CRSF 原始 16 通道与解码值原子入库，配置刷新可用冻结映射重建旧帧。 */
+extern void ManualInputUpdateElrsChannels(const ManualInputState *decoded,
+                                          const uint16_t raw[16]);
+/* CRC 正确但业务字段非法时使用；旧命令立即失效，等待该来源的新合法帧。 */
+extern void ManualInputInvalidateSource(uint8_t source);
 extern void ManualInputRefresh(void);
 extern uint32_t ManualInputGetSbusFrameCount(void);
 extern uint32_t ManualInputGetSbusRejectCount(void);
 extern uint32_t ManualInputGetSetSourceCount(void);
 
-extern void remote_control_init(void);
-extern void remote_control_on_sbus_frame(const uint8_t frame[RC_FRAME_LENGTH]);
-extern const ManualInputState *get_remote_control_point(void);
-extern void remote_control_set_rc(const ManualInputState *rc);
-extern void remote_control_set_rc_source(uint8_t source, const ManualInputState *rc);
-extern void remote_control_log_raw_source(uint8_t source,
-                                          uint8_t proto,
-                                          uint8_t range_mode,
-                                          uint8_t channel_count,
-                                          const int16_t *ch_raw,
-                                          const uint8_t sw_raw[2],
-                                          const ManualInputState *decoded);
-extern uint8_t remote_control_get_active_source(void);
-extern void remote_control_refresh(void);
-extern uint32_t remote_control_get_sbus_frame_count(void);
-extern uint32_t remote_control_get_sbus_reject_count(void);
-extern uint32_t remote_control_get_set_source_count(void);
-extern uint8_t RC_data_is_error(void);
-extern void slove_RC_lost(void);
-extern void slove_data_error(void);
+extern void ManualInputLogRawSource(uint8_t source,
+                                    uint8_t proto,
+                                    uint8_t range_mode,
+                                    uint8_t channel_count,
+                                    const int16_t *ch_raw,
+                                    const uint8_t sw_raw[2],
+                                    const ManualInputState *decoded);
 #endif

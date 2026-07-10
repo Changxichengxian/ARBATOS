@@ -771,15 +771,16 @@ typedef struct
 // - SBUS/DBUS：板级遥控口推帧，RcSbusTask 解析并更新 RC_ctrl_t。
 // - ELRS/CRSF / 图传：共用 AUX 口抽象接口，由对应任务更新 RC_ctrl_t。
 // - USB/板载按键：作为额外输入源，可与其它源做合并。
-#define MANUAL_INPUT_SRC_AUTO  0u  // 自动：选择最近活跃的源（或混合，见 mix_mode）
+#define MANUAL_INPUT_SRC_AUTO  0u  // 自动：保持当前健康来源，失效后再回退（或混合，见 mix_mode）
 #define MANUAL_INPUT_SRC_DBUS  1u  // SBUS/DBUS 遥控
 #define MANUAL_INPUT_SRC_ELRS  2u  // ELRS/CRSF 遥控
 #define MANUAL_INPUT_SRC_IMAGE 3u  // 图传遥控
 #define MANUAL_INPUT_SRC_USB   4u  // USB CDC（预留）
 #define MANUAL_INPUT_SRC_MAX   MANUAL_INPUT_SRC_USB
 
-#define MANUAL_INPUT_MIX_SELECT_LATEST 0u // 输出=选中的源（强制或最近活跃）
-#define MANUAL_INPUT_MIX_MERGE         1u // 输出=合并多个活跃源
+#define MANUAL_INPUT_MIX_SELECT_LATEST 0u // 输出=最近一帧来源；保留历史参数数值
+#define MANUAL_INPUT_MIX_MERGE         1u // 代表来源独占操纵帧，仅合并类型明确的辅助请求
+#define MANUAL_INPUT_MIX_SELECT_STICKY 2u // 输出=保持当前健康来源，失效后才切换
 
 #define MANUAL_INPUT_SWITCH_POS_UP   0u
 #define MANUAL_INPUT_SWITCH_POS_MID  1u

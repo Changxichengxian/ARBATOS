@@ -3,8 +3,8 @@
     // Manual control input (SBUS/DBUS / ELRS(CRSF) / USB CDC / board key).
     .manual_input =
         {
-            .active_source = MANUAL_INPUT_SRC_AUTO,     // [300] auto select
-            .mix_mode = MANUAL_INPUT_MIX_SELECT_LATEST, // [301] safe default: keep legacy "latest wins"
+            .active_source = MANUAL_INPUT_SRC_AUTO,     // [300] 首个健康来源接管，健康期间不被其他来源抢权
+            .mix_mode = MANUAL_INPUT_MIX_SELECT_STICKY, // [301] 默认保持当前健康来源，掉线后再回退
             .source_timeout_ms = 100,                   // [302] active within 100ms
             .semantics =
                 {

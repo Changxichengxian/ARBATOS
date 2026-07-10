@@ -31,6 +31,7 @@ typedef enum
 /*
  * 这里仅处理已经无法可靠继续调度的系统致命故障。普通设备掉线和控制域故障
  * 必须走 FaultMgr 的局部策略，不能调用本文件的全局安全帧和复位入口。
+ * DEVICE_DOMAIN_FAULTS_USE_FAULT_MGR：这个标记由架构检查固定上述边界。
  */
 
 static inline TaskHandle_t RobotFaultCurrentTaskHandle(void)

@@ -55,6 +55,7 @@ typedef struct
     uint16_t effectiveSwitch;
     ManualInputSemanticsConfig semantics;
     uint32_t semanticsSeq;
+    uint32_t actionSeq;
     uint8_t manualOnline;
     uint8_t mousePressL;
     uint8_t mousePressR;
@@ -529,6 +530,7 @@ static void ShootFrameInputCapture(const ManualInputSnapshot *manualInput,
                            manualInput->semantics :
                            ShootDefaultSemantics;
     frame->semanticsSeq = (manualInput != NULL) ? manualInput->semanticsSeq : 0u;
+    frame->actionSeq = (manualInput != NULL) ? manualInput->actionSeq : 0u;
     frame->manualOnline = (uint8_t)(manualInput != NULL && manualInput->online != 0u);
     if (frame->manualOnline != 0u)
     {
@@ -537,7 +539,6 @@ static void ShootFrameInputCapture(const ManualInputSnapshot *manualInput,
     }
 
     if (frame->manualOnline != 0u &&
-        manualInput->activeSource == MANUAL_INPUT_SRC_IMAGE &&
         (manualInput->sourceFlags & MANUAL_INPUT_SOURCE_FLAG_AUX_FIRE) != 0u)
     {
         frame->mousePressL = 1u;
@@ -561,6 +562,10 @@ static void ShootFrameInputBuild(const ManualInputSnapshot *manualInput,
     (void)ShootInputGateSyncSemantics(
         &s_shootInputGate,
         frame->semanticsSeq,
+        ShootSwitchRawFromPos(frame->semantics.ShootStopPos));
+    (void)ShootInputGateSyncAction(
+        &s_shootInputGate,
+        frame->actionSeq,
         ShootSwitchRawFromPos(frame->semantics.ShootStopPos));
     frame->effectiveSwitch = ShootGetEffectiveSwitch(frame->rawSwitch,
                                                      frame->manualOnline,
@@ -914,10 +919,15 @@ void ShootRuntimeSafeStep(const struct ManualInputSnapshot *manualInput)
         &s_shootInputGate,
         observed.semanticsSeq,
         ShootSwitchRawFromPos(observed.semantics.ShootStopPos));
+    (void)ShootInputGateSyncAction(
+        &s_shootInputGate,
+        observed.actionSeq,
+        ShootSwitchRawFromPos(observed.semantics.ShootStopPos));
     ShootResetInputGate(&observed.semantics);
     ShootMouseRearmSyncSafe(&observed);
     safeFrame.semantics = observed.semantics;
     safeFrame.semanticsSeq = observed.semanticsSeq;
+    safeFrame.actionSeq = observed.actionSeq;
     safeFrame.rawSwitch = ShootSwitchRawFromPos(safeFrame.semantics.ShootStopPos);
     safeFrame.effectiveSwitch = safeFrame.rawSwitch;
     g_shoot.mode = SHOOT_STOP;

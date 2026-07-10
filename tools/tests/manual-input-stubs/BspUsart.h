@@ -21,6 +21,7 @@ void BspAuxLinkSetErrorCb(BspAuxLinkErrorCb callback);
 uint32_t BspAuxLinkGetBaudrate(void);
 uint8_t BspAuxLinkRxHasDma(void);
 int BspAuxLinkRxToIdleDmaStart(uint8_t *buffer, uint16_t length);
+int BspAuxLinkRxItStart(void);
 void BspAuxLinkRxItStop(void);
 
 #endif

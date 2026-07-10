@@ -113,7 +113,7 @@ static void WatchFillRcFromManualInput(const struct ManualInputState *src)
     g_watch.rc.key = src->key.v;
 }
 
-void WatchUpdateRcSnapshot(const struct ManualInputState *rc)
+static void WatchUpdateRcSnapshot(const struct ManualInputState *rc)
 {
     taskENTER_CRITICAL();
     WatchFillRcFromManualInput(rc);
@@ -122,16 +122,9 @@ void WatchUpdateRcSnapshot(const struct ManualInputState *rc)
 
 static void WatchCopyRc(void)
 {
-    if (ManualInputGetCurrentCopy(&rc_snapshot) != 0u)
-    {
-        rc_src = &rc_snapshot;
-    }
-    else
-    {
-        rc_src = NULL;
-    }
-
-    WatchUpdateRcSnapshot(rc_src);
+    WatchUpdateRcSnapshot((s_watch_manual_input_valid != 0u) ?
+                              &s_watch_manual_input.manual :
+                              NULL);
 }
 
 static void WatchCopyNewrc(void)

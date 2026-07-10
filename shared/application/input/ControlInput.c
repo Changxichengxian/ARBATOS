@@ -7,11 +7,8 @@
  */
 
 #include "ControlInput.h"
-#include "ManualInputSnapshot.h"
 
 #include <string.h>
-
-static ControlInputState g_control_input_legacy;
 
 static uint8_t ControlInputSanitizeSwitchPos(uint8_t pos)
 {
@@ -96,56 +93,6 @@ void ControlInputBuild(const ManualInputState *manual,
     }
 }
 
-void ControlInputUpdateFromManualInput(const ManualInputState *rc)
-{
-    ControlInputBuild(rc, &g_config.input, &g_control_input_legacy);
-}
-
-const ControlInputState *ControlInputGetState(void)
-{
-    (void)ControlInputGetCopy(&g_control_input_legacy);
-    return &g_control_input_legacy;
-}
-
-uint8_t ControlInputGetCopy(ControlInputState *out)
-{
-    if (out == NULL)
-    {
-        return 0u;
-    }
-
-    ManualInputSnapshot snapshot;
-    if (ManualInputSnapshotRead(&snapshot) == 0u)
-    {
-        ControlInputBuild(NULL, NULL, out);
-        return 0u;
-    }
-    *out = snapshot.control;
-    return 1u;
-}
-
-int16_t ControlInputAxis(input_axis_e axis)
-{
-    if ((uint32_t)axis >= (uint32_t)INPUT_AXIS_COUNT)
-    {
-        return 0;
-    }
-
-    ControlInputState snapshot;
-    return (ControlInputGetCopy(&snapshot) != 0u) ? snapshot.axis[axis] : 0;
-}
-
-uint8_t ControlInputSwitch(input_switch_e sw)
-{
-    if ((uint32_t)sw >= (uint32_t)INPUT_SW_COUNT)
-    {
-        return RC_SW_UP;
-    }
-
-    ControlInputState snapshot;
-    return (ControlInputGetCopy(&snapshot) != 0u) ? snapshot.sw[sw] : RC_SW_UP;
-}
-
 uint8_t ControlInputSwitchPosToRaw(uint8_t pos)
 {
     switch (ControlInputSanitizeSwitchPos(pos))
@@ -163,39 +110,4 @@ uint8_t ControlInputSwitchPosToRaw(uint8_t pos)
 uint8_t ControlInputSwitchIsPos(uint16_t raw, uint8_t pos)
 {
     return (uint8_t)(raw == (uint16_t)ControlInputSwitchPosToRaw(pos));
-}
-
-void input_update_from_rc(const ManualInputState *rc)
-{
-    ControlInputUpdateFromManualInput(rc);
-}
-
-const ControlInputState *input_get(void)
-{
-    return ControlInputGetState();
-}
-
-uint8_t input_get_copy(ControlInputState *out)
-{
-    return ControlInputGetCopy(out);
-}
-
-int16_t input_axis(input_axis_e axis)
-{
-    return ControlInputAxis(axis);
-}
-
-uint8_t input_switch(input_switch_e sw)
-{
-    return ControlInputSwitch(sw);
-}
-
-uint8_t input_switch_pos_to_raw(uint8_t pos)
-{
-    return ControlInputSwitchPosToRaw(pos);
-}
-
-uint8_t input_switch_is_pos(uint16_t raw, uint8_t pos)
-{
-    return ControlInputSwitchIsPos(raw, pos);
 }

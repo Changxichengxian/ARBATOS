@@ -11,6 +11,8 @@ typedef struct ManualInputSnapshot
     ControlInputState control;
     ManualInputSemanticsConfig semantics;
     uint32_t semanticsSeq;
+    uint32_t actionSeq;
+    uint32_t authoritySeq;
     uint8_t online;
 } ManualInputSnapshot;
 

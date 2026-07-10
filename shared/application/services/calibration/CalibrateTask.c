@@ -16,8 +16,7 @@
 #include "BspFlash.h"
 
 #include "CanReceive.h"
-#include "ManualInput.h"
-#include "ControlInput.h"
+#include "ManualInputSnapshot.h"
 #include "InsTask.h"
 #include "GimbalControlTask.h"
 #include "RobotTaskProfile.h"
@@ -312,22 +311,65 @@ static void RC_cmd_to_calibrate(void)
     static const uint8_t GIMBAL_FLAG  = 2;
     static const uint8_t CHASSIS_FLAG = 4;
 
-    static uint8_t  i;
     static uint32_t rc_cmd_systemTick = 0;
     static uint16_t BuzzerTime       = 0;
     static uint16_t rc_cmd_time       = 0;
     static uint8_t  rc_action_flag    = 0;
+    static uint8_t  rc_buzzer_owned   = 0u;
+    static uint32_t last_authority_seq = 0u;
+    static uint32_t last_semantics_seq = 0u;
+    ManualInputSnapshot manualInput;
+    const uint8_t inputValid = ManualInputSnapshotRead(&manualInput);
 
     //if something is calibrating, return
+    for (uint8_t sensorIndex = 0u; sensorIndex < CALI_LIST_LENGTH; sensorIndex++)
     {
-        if (cali_sensor[i].cali_cmd)
+        if (cali_sensor[sensorIndex].cali_cmd)
         {
             BuzzerTime = 0;
             rc_cmd_time = 0;
             rc_action_flag = 0;
+            if (rc_buzzer_owned != 0u)
+            {
+                cali_buzzer_off();
+                rc_buzzer_owned = 0u;
+            }
 
             return;
         }
+    }
+
+    /* 离线帧不能延续上一段长按计时，也不能在恢复时补触发校准。 */
+    if (inputValid == 0u || manualInput.online == 0u)
+    {
+        BuzzerTime = 0u;
+        rc_cmd_time = 0u;
+        rc_cmd_systemTick = 0u;
+        rc_action_flag = 0u;
+        if (rc_buzzer_owned != 0u)
+        {
+            cali_buzzer_off();
+            rc_buzzer_owned = 0u;
+        }
+        return;
+    }
+
+    /* 真正控制来源或解释变化后，旧来源的半段校准手势不能接着计时。 */
+    if (last_authority_seq != manualInput.authoritySeq ||
+        last_semantics_seq != manualInput.semanticsSeq)
+    {
+        last_authority_seq = manualInput.authoritySeq;
+        last_semantics_seq = manualInput.semanticsSeq;
+        BuzzerTime = 0u;
+        rc_cmd_time = 0u;
+        rc_cmd_systemTick = 0u;
+        rc_action_flag = 0u;
+        if (rc_buzzer_owned != 0u)
+        {
+            cali_buzzer_off();
+            rc_buzzer_owned = 0u;
+        }
+        return;
     }
 
     if (rc_action_flag == 0 && rc_cmd_time > RC_CMD_LONG_TIME)
@@ -346,7 +388,11 @@ static void RC_cmd_to_calibrate(void)
             cali_sensor[CALI_GIMBAL].cali_cmd = 1;
             manual_cali_buzzer_enable = 1u;
         }
-        cali_buzzer_off();
+        if (rc_buzzer_owned != 0u)
+        {
+            cali_buzzer_off();
+            rc_buzzer_owned = 0u;
+        }
     }
     else if (rc_action_flag == CHASSIS_FLAG && rc_cmd_time > RC_CMD_LONG_TIME)
     {
@@ -360,15 +406,19 @@ static void RC_cmd_to_calibrate(void)
             CAN_cmd_chassis_reset_ID();
             CAN_cmd_chassis_reset_ID();
         }
-        cali_buzzer_off();
+        if (rc_buzzer_owned != 0u)
+        {
+            cali_buzzer_off();
+            rc_buzzer_owned = 0u;
+        }
     }
 
-    const int16_t cali_ch0 = input_axis(INPUT_AXIS_CALIB_0);
-    const int16_t cali_ch1 = input_axis(INPUT_AXIS_CALIB_1);
-    const int16_t cali_ch2 = input_axis(INPUT_AXIS_CALIB_2);
-    const int16_t cali_ch3 = input_axis(INPUT_AXIS_CALIB_3);
-    const uint8_t cali_sw_l = input_switch(INPUT_SW_CALIB_L);
-    const uint8_t cali_sw_r = input_switch(INPUT_SW_CALIB_R);
+    const int16_t cali_ch0 = manualInput.control.axis[INPUT_AXIS_CALIB_0];
+    const int16_t cali_ch1 = manualInput.control.axis[INPUT_AXIS_CALIB_1];
+    const int16_t cali_ch2 = manualInput.control.axis[INPUT_AXIS_CALIB_2];
+    const int16_t cali_ch3 = manualInput.control.axis[INPUT_AXIS_CALIB_3];
+    const uint8_t cali_sw_l = manualInput.control.sw[INPUT_SW_CALIB_L];
+    const uint8_t cali_sw_r = manualInput.control.sw[INPUT_SW_CALIB_R];
 
     if (cali_ch0 < -RC_CALI_VALUE_HOLE && cali_ch1 < -RC_CALI_VALUE_HOLE && cali_ch2 > RC_CALI_VALUE_HOLE && cali_ch3 < -RC_CALI_VALUE_HOLE && switch_is_down(cali_sw_l) && switch_is_down(cali_sw_r) && rc_action_flag == 0)
     {
@@ -409,15 +459,22 @@ static void RC_cmd_to_calibrate(void)
         //over 20 seconds, end
         //超过20s,停止
         rc_action_flag = 0;
+        if (rc_buzzer_owned != 0u)
+        {
+            cali_buzzer_off();
+            rc_buzzer_owned = 0u;
+        }
         return;
     }
     else if (CalibrateSystemTick - rc_cmd_systemTick > RC_CALI_BUZZER_MIDDLE_TIME && rc_cmd_systemTick != 0 && rc_action_flag != 0)
     {
         rc_cali_buzzer_middle_on();
+        rc_buzzer_owned = 1u;
     }
     else if (CalibrateSystemTick - rc_cmd_systemTick > 0 && rc_cmd_systemTick != 0 && rc_action_flag != 0)
     {
         rc_cali_buzzer_start_on();
+        rc_buzzer_owned = 1u;
     }
 
     if (rc_action_flag != 0)
@@ -429,9 +486,11 @@ static void RC_cmd_to_calibrate(void)
     {
         BuzzerTime = 0;
     }
-    if (BuzzerTime > RC_CALI_BUZZER_PAUSE_TIME && rc_action_flag != 0)
+    if (BuzzerTime > RC_CALI_BUZZER_PAUSE_TIME &&
+        rc_action_flag != 0 && rc_buzzer_owned != 0u)
     {
         cali_buzzer_off();
+        rc_buzzer_owned = 0u;
     }
 }
 

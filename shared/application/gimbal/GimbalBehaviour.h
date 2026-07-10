@@ -33,6 +33,7 @@ extern bool_t GimbalCmdToShootStop(void);
 
 // One-button turnaround helpers shared with chassis.
 extern bool_t GimbalTurnaroundIsActive(void);
+extern void GimbalBehaviourInputGateBlock(void);
 extern fp32 GimbalTurnaroundChassisFollowOffsetRad(void);
 extern bool_t GimbalTurnaroundGetFrameYawRelative(fp32 *out_yaw_relative);
 

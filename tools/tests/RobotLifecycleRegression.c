@@ -124,6 +124,17 @@ static int TestCachedSemanticsSeq(uint32_t expectedSeq, const char *message)
                      message);
 }
 
+static int TestCachedAuthoritySeq(uint32_t expectedSeq, const char *message)
+{
+    RobotLifecycleSnapshot snapshot;
+    const uint32_t readsBefore = s_manualReadCount;
+
+    return TestCheck(RobotLifecycleGetSnapshot(&snapshot) != 0u &&
+                         snapshot.manual_authority_seq == expectedSeq &&
+                         s_manualReadCount == readsBefore,
+                     message);
+}
+
 int main(void)
 {
     uint32_t readsBefore;
@@ -330,6 +341,54 @@ int main(void)
                          0u,
                          1u,
                          "新映射下重新经过安全档后才能恢复输出")) return 1;
+
+    s_manualInput.authoritySeq = 10u;
+    TestSetInput(1u, 1u, TEST_SWITCH_RUN,
+                 TEST_SWITCH_SAFE, TEST_SEMANTICS_NEW_SEQ);
+    if (!TestUpdateReadsOnce("新控制权威运行档必须只读取一次快照")) return 1;
+    if (!TestCachedState(ROBOT_LIFECYCLE_SAFE,
+                         ROBOT_LIFECYCLE_REASON_STARTUP_SAFE_REQUIRED,
+                         0u,
+                         0u,
+                         0u,
+                         "控制权威变化后新来源运行档不得继承旧解锁资格")) return 1;
+    if (!TestCachedAuthoritySeq(10u,
+                             "生命周期必须记住新的控制权威代")) return 1;
+
+    TestSetInput(1u, 1u, TEST_SWITCH_SAFE,
+                 TEST_SWITCH_SAFE, TEST_SEMANTICS_NEW_SEQ);
+    if (!TestUpdateReadsOnce("新控制权威安全档必须只读取一次快照")) return 1;
+    TestSetInput(1u, 1u, TEST_SWITCH_RUN,
+                 TEST_SWITCH_SAFE, TEST_SEMANTICS_NEW_SEQ);
+    if (!TestUpdateReadsOnce("新控制权威安全后运行必须只读取一次快照")) return 1;
+    if (!TestCachedState(ROBOT_LIFECYCLE_ACTIVE,
+                         ROBOT_LIFECYCLE_REASON_NONE,
+                         1u,
+                         0u,
+                         1u,
+                         "新来源重新给出安全档后才能恢复运行")) return 1;
+
+    s_manualInput.actionSeq++;
+    TestSetInput(1u, 1u, TEST_SWITCH_RUN,
+                 TEST_SWITCH_SAFE, TEST_SEMANTICS_NEW_SEQ);
+    if (!TestUpdateReadsOnce("备用来源变化但权威代不变时仍只读一次")) return 1;
+    if (!TestCachedState(ROBOT_LIFECYCLE_ACTIVE,
+                         ROBOT_LIFECYCLE_REASON_NONE,
+                         1u,
+                         0u,
+                         1u,
+                         "控制权威代不变的备用来源变化不得误停主控制")) return 1;
+
+    s_manualInput.authoritySeq = 11u;
+    TestSetInput(1u, 1u, TEST_SWITCH_SAFE,
+                 TEST_SWITCH_SAFE, TEST_SEMANTICS_NEW_SEQ);
+    if (!TestUpdateReadsOnce("换权同周期安全档必须只读取一次快照")) return 1;
+    if (!TestCachedState(ROBOT_LIFECYCLE_SAFE,
+                         ROBOT_LIFECYCLE_REASON_MANUAL_SAFE_SWITCH,
+                         0u,
+                         0u,
+                         1u,
+                         "换权帧本身已在安全档时应建立新代安全资格")) return 1;
 
     (void)puts("PASS: RobotLifecycle 统一快照与锁定状态回归");
     return 0;

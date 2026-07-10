@@ -365,14 +365,8 @@ void WatchInit(void)
     WatchPrepareMotorIds();
 #endif
 
-    if (ManualInputGetCurrentCopy(&rc_snapshot) != 0u)
-    {
-        rc_src = &rc_snapshot;
-    }
-    else
-    {
-        rc_src = NULL;
-    }
+    memset(&s_watch_manual_input, 0, sizeof(s_watch_manual_input));
+    s_watch_manual_input_valid = 0u;
     ins_quat_src = get_INS_quat_point();
     ins_angle_src = get_INS_angle_point();
     ins_gyro_src = get_gyro_data_point();
@@ -384,6 +378,7 @@ void WatchInit(void)
 void WatchUpdate(void)
 {
     g_watch.rtos.WatchUpdateEnterCount++;
+    s_watch_manual_input_valid = ManualInputSnapshotRead(&s_watch_manual_input);
     WatchUpdateSetStage(WATCH_UPDATE_STAGE_RC);
     WatchCopyRc();
     WatchUpdateSetStage(WATCH_UPDATE_STAGE_NEWRC);

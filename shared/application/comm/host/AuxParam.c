@@ -551,7 +551,7 @@ static void AuxParamApplyConfigParam(ConfigParamApply action)
     case CONFIG_PARAM_APPLY_NONE:
         return;
     case CONFIG_PARAM_APPLY_REMOTE_REFRESH:
-        remote_control_refresh();
+        ManualInputRefresh();
         return;
     case CONFIG_PARAM_APPLY_GIMBAL_YAW_SPEED_PID:
         AuxParamApplyGimbalYawSpeedPid();

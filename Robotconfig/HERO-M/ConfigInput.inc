@@ -4,8 +4,8 @@
     // 这些项不会出现在 AUX 动态参数表里。
     .manual_input =
         {
-            .active_source = MANUAL_INPUT_SRC_AUTO,     // 默认自动选择最近活跃输入源
-            .mix_mode = MANUAL_INPUT_MIX_SELECT_LATEST, // 默认谁最近在发就用谁
+            .active_source = MANUAL_INPUT_SRC_AUTO,     // 首个健康来源接管，健康期间不被其他来源抢权
+            .mix_mode = MANUAL_INPUT_MIX_SELECT_STICKY, // 默认保持当前健康来源，掉线后再回退
             .source_timeout_ms = 100,                   // 活跃源超时窗口(ms)
             .semantics =
                 {

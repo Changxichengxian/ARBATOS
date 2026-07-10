@@ -133,7 +133,7 @@ APP_THREAD_ATTR(defaultTask, osPriorityNormal, 512);
 APP_THREAD_ATTR(rcSbusTask, osPriorityAboveNormal, 256);
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-APP_THREAD_ATTR(healthMonitorTask, osPriorityNormal, 256);
+APP_THREAD_ATTR(healthMonitorTask, osPriorityNormal, 384);
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
 APP_THREAD_ATTR(sdlogTask, osPriorityLow, 512);

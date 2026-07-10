@@ -337,11 +337,17 @@ static void WheelLegEvalLqr(fp32 leg_length, fp32 out[12])
     }
 }
 
-static uint8_t WheelLegManualEnabledFromSnapshot(uint8_t input_valid, uint8_t chassis_switch)
+static uint8_t WheelLegManualEnabledFromSnapshot(
+    uint8_t input_valid,
+    uint8_t chassis_switch,
+    const ManualInputSemanticsConfig *semantics)
 {
+    const uint8_t safe_pos = (semantics != NULL) ?
+                                 semantics->ChassisSafePos :
+                                 MANUAL_INPUT_SWITCH_POS_UP;
+
     return (uint8_t)(input_valid != 0u &&
-                     ControlInputSwitchIsPos(chassis_switch,
-                                             g_config.manual_input.semantics.ChassisSafePos) == 0u);
+                     ControlInputSwitchIsPos(chassis_switch, safe_pos) == 0u);
 }
 
 static uint8_t WheelLegRecoveryInputSafeFromSnapshot(uint8_t input_valid,
@@ -349,13 +355,16 @@ static uint8_t WheelLegRecoveryInputSafeFromSnapshot(uint8_t input_valid,
                                                      int16_t vx_axis,
                                                      int16_t leg_axis,
                                                      int16_t yaw_axis,
-                                                     int16_t single_test_axis)
+                                                     int16_t single_test_axis,
+                                                     const ManualInputSemanticsConfig *semantics)
 {
     const uint16_t deadband = g_config.WheelLegMit.rc_deadband;
+    const uint8_t safe_pos = (semantics != NULL) ?
+                                 semantics->ChassisSafePos :
+                                 MANUAL_INPUT_SWITCH_POS_UP;
 
     if (input_valid == 0u ||
-        ControlInputSwitchIsPos(chassis_switch,
-                                g_config.manual_input.semantics.ChassisSafePos) == 0u)
+        ControlInputSwitchIsPos(chassis_switch, safe_pos) == 0u)
     {
         return 0u;
     }

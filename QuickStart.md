@@ -193,8 +193,8 @@ IMU 正常后再调云台和底盘。重点看：
 ### 遥控没反应
 
 - 看输入源是否在线。
-- 看 `ManualInputGetActiveSource()` 当前选的是哪个源。
-- 看 `control_input` 的语义轴和语义开关有没有变化。
+- 在调试器 Watch 中看 `s_watch_manual_input.activeSource`；启用控制摘要日志的目标也可看 `manual_source`。
+- 看同一快照里的 `control` 语义轴和语义开关有没有变化。
 - 检查 `ConfigInput.inc` 里的 `.input.axis`、`.input.sw` 映射。
 
 ### 姿态漂或上电不准

@@ -20,6 +20,7 @@
 #if ROBOT_TASK_BUILD_ANY_GIMBAL
 
 #include "GimbalBehaviour.h"
+#include "GimbalInputPolicy.h"
 #include "arm_math.h"
 #include "BspBuzzer.h"
 #include "RobotConfig.h"
@@ -218,7 +219,22 @@ typedef struct
 } GimbalTurnaroundState;
 
 static GimbalTurnaroundState s_turn = {0};
+static GimbalInputGate s_gimbalInputGate = {0};
 static const uint32_t GIMBAL_TURNAROUND_TIMEOUT_MS = 3000u;
+
+static void GimbalTurnaroundCancel(void)
+{
+    s_turn.active = 0u;
+    s_turn.setpoint_done = 0u;
+    s_turn.remaining_setpoint_rad = 0.0f;
+    s_turn.key_prev = 0u;
+}
+
+void GimbalBehaviourInputGateBlock(void)
+{
+    GimbalInputGateBlock(&s_gimbalInputGate);
+    GimbalTurnaroundCancel();
+}
 
 static fp32 GimbalGetYawRelativeAngle(const GimbalMotor *yaw_motor)
 {
@@ -355,10 +371,7 @@ void GimbalBehaviourControlSet(fp32 *add_yaw, fp32 *add_pitch, GimbalControl *Gi
 
     if (s_gimbal_behaviour != GIMBAL_ANGLE)
     {
-        s_turn.active = 0u;
-        s_turn.setpoint_done = 0u;
-        s_turn.remaining_setpoint_rad = 0.0f;
-        s_turn.key_prev = 0u;
+        GimbalBehaviourInputGateBlock();
     }
 
     if (s_gimbal_behaviour == GIMBAL_ZERO_FORCE)
@@ -738,8 +751,19 @@ static void GimbalAngleControl(fp32 *yaw, fp32 *pitch, GimbalControl *GimbalCont
     rc_deadband_limit(fast->pitch_axis, pitch_channel, fast->rc_deadband);
 
     const uint16_t key_mask = fast->key_mask;
-    const uint8_t turn_key_down = ((key_mask & fast->turn_key_mask) != 0u) ? 1u : 0u;
+    const uint8_t observed_turn_down = ((key_mask & fast->turn_key_mask) != 0u) ? 1u : 0u;
+    uint8_t turn_key_down = 0u;
     const uint32_t now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+
+    if (GimbalInputGateApplyTurn(&s_gimbalInputGate,
+                                 fast->authority_seq,
+                                 fast->semantics_seq,
+                                 fast->control_allowed,
+                                 observed_turn_down,
+                                 &turn_key_down) != 0u)
+    {
+        GimbalTurnaroundCancel();
+    }
 
     if (turn_key_down != 0u && s_turn.key_prev == 0u && s_turn.active == 0u)
     {

@@ -36,16 +36,6 @@ bool ImageRemoteGetState(ImageRemoteState *out)
     return false;
 }
 
-bool ImageRemoteAutoAimRequested(void)
-{
-    return false;
-}
-
-bool ImageRemoteAuxFireRequested(void)
-{
-    return false;
-}
-
 void VisionLinkRxCallback(uint8_t *buf, uint32_t len)
 {
     (void)buf;

@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "cmsis_os.h"
+#include "cmsis_compiler.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -18,9 +19,8 @@
 #include "RobotConfig.h"
 #include "Watch.h"
 #include "ManualInput.h"
+#include "ManualInputCrsf.h"
 #include "SdLog.h"
-
-extern void Error_Handler(void);
 
 // ===== ELRS(CRSF) RX on aux link =====
 #define CRSF_FRAME_LEN_MAX 64u // length byte: [type + payload + crc]
@@ -28,15 +28,20 @@ extern void Error_Handler(void);
 #define CRSF_FRAMETYPE_RC_CHANNELS_PACKED 0x16u
 #define CRSF_RC_FRAME_LEN 24u // length byte for RC_CHANNELS_PACKED
 #define CRSF_RC_PAYLOAD_LEN 22u
-#define CRSF_CHANNEL_VALUE_MIN 172u
-#define CRSF_CHANNEL_VALUE_MID 992u
-#define CRSF_CHANNEL_VALUE_MAX 1811u
-
 #define ELRS_LINK_DMA_RX_BUF_SIZE 4096u
+#define ELRS_LINK_IT_RX_RING_SIZE 4096u
 typedef char _check_elrs_link_dma_buf_size_u16[(ELRS_LINK_DMA_RX_BUF_SIZE <= 65535u) ? 1 : -1];
+typedef char _check_elrs_link_it_ring_power_of_two[
+    ((ELRS_LINK_IT_RX_RING_SIZE & (ELRS_LINK_IT_RX_RING_SIZE - 1u)) == 0u) ? 1 : -1];
 
 #define ELRS_LINK_NOTIFY_RX (1u << 0)
 #define ELRS_LINK_NOTIFY_RESTART (1u << 1)
+
+typedef union
+{
+    uint8_t dma[ELRS_LINK_DMA_RX_BUF_SIZE];
+    uint8_t itRing[ELRS_LINK_IT_RX_RING_SIZE];
+} ElrsLinkRxStorage;
 
 static uint8_t ElrsCrsfBuf[CRSF_FRAME_SIZE_MAX];
 static uint8_t ElrsCrsfPos = 0u;
@@ -44,7 +49,11 @@ static uint8_t ElrsCrsfExpected = 0u;
 static volatile uint32_t ElrsLinkLastFrameTickMs = 0u;
 static volatile uint32_t ElrsLinkFrameCnt = 0u;
 
-static uint8_t ElrsLinkDmaRxBuf[ELRS_LINK_DMA_RX_BUF_SIZE];
+/* DMA 与逐字节中断接收由同一串口模式决定，不会同时运行。 */
+static ElrsLinkRxStorage ElrsLinkRx;
+static volatile uint16_t ElrsLinkItRxHead = 0u;
+static volatile uint16_t ElrsLinkItRxTail = 0u;
+static volatile uint8_t ElrsLinkItRxOverflow = 0u;
 static volatile uint16_t ElrsLinkDmaPos = 0u;
 static uint16_t ElrsLinkDmaLastPos = 0u;
 static volatile uint32_t ElrsLinkDmaWrapCnt = 0u;
@@ -58,13 +67,12 @@ static volatile uint32_t ElrsLinkNotifyPending = 0u;
 static void ElrsLinkRxStartInternal(void);
 static void ElrsLinkReset(void);
 static void ElrsLinkDmaProcessTo(uint16_t pos);
+static void ElrsLinkItDrain(void);
 static void ElrsLinkNotifyFromIsr(uint32_t notify_bits);
 static void ElrsLinkOnByte(uint8_t b);
 static void ElrsLinkHandleFrame(const uint8_t *frame, uint8_t total_len);
 static void ElrsLinkDecodeRcChannels(const uint8_t *payload, uint8_t payload_len);
 static uint8_t ElrsLinkCrc8DvbS2(const uint8_t *data, uint8_t len);
-static int16_t ElrsLinkMapAxis(uint16_t v);
-static uint8_t ElrsLinkMapSwitch(uint16_t v);
 
 void ElrsLinkTask(void const *argument)
 {
@@ -94,8 +102,10 @@ void ElrsLinkTask(void const *argument)
             continue;
         }
 
-        if (ElrsLinkDmaRestartReq || (bits & ELRS_LINK_NOTIFY_RESTART) != 0u)
+        if (ElrsLinkDmaActive != 0u &&
+            (ElrsLinkDmaRestartReq || (bits & ELRS_LINK_NOTIFY_RESTART) != 0u))
         {
+            WatchTaskError(WATCH_TASK_ELRS);
             ElrsLinkDmaRestartReq = 0u;
             ElrsLinkRxStartInternal();
             continue;
@@ -108,14 +118,25 @@ void ElrsLinkTask(void const *argument)
 
         if ((bits & ELRS_LINK_NOTIFY_RX) != 0u)
         {
-            const uint32_t wrap = ElrsLinkDmaWrapCnt;
-            const uint16_t pos = ElrsLinkDmaPos;
+            if (BspAuxLinkRxHasDma() == 0u)
+            {
+                ElrsLinkItDrain();
+                continue;
+            }
+            uint32_t wrap;
+            uint16_t pos;
+            taskENTER_CRITICAL();
+            wrap = ElrsLinkDmaWrapCnt;
+            pos = ElrsLinkDmaPos;
+            taskEXIT_CRITICAL();
             const uint32_t wraps = wrap - ElrsLinkDmaLastWrapCnt;
-            if (wraps > 1u)
+            if (wraps > 1u ||
+                (wraps == 1u && pos > ElrsLinkDmaLastPos))
             {
                 // Too late: DMA has wrapped multiple times before we could process.
                 WatchTaskTimeout(WATCH_TASK_ELRS);
                 ElrsLinkReset();
+                ManualInputInvalidateSource(MANUAL_INPUT_SRC_ELRS);
                 ElrsLinkDmaLastWrapCnt = wrap;
                 ElrsLinkDmaLastPos = pos;
                 continue;
@@ -135,12 +156,18 @@ void ElrsLinkTask(void const *argument)
 void ElrsLinkStop(void)
 {
     ElrsLinkDmaActive = 0u;
+    __DMB();
     ElrsLinkDmaRestartReq = 0u;
     ElrsLinkReset();
     ElrsLinkDmaPos = 0u;
     ElrsLinkDmaLastPos = 0u;
     ElrsLinkDmaWrapCnt = 0u;
     ElrsLinkDmaLastWrapCnt = 0u;
+    BspAuxLinkRxItStop();
+    ElrsLinkItRxHead = 0u;
+    ElrsLinkItRxTail = 0u;
+    ElrsLinkItRxOverflow = 0u;
+    ManualInputInvalidateSource(MANUAL_INPUT_SRC_ELRS);
 }
 
 void ElrsLinkRxStart(void)
@@ -175,13 +202,31 @@ void ElrsLinkOnRxEvent(uint16_t Size, BspAuxLinkRxEvent evt)
 
 void ElrsLinkOnItByte(uint8_t b)
 {
-    ElrsLinkOnByte(b);
+    const uint16_t head = ElrsLinkItRxHead;
+    const uint16_t next =
+        (uint16_t)((head + 1u) & (uint16_t)(ELRS_LINK_IT_RX_RING_SIZE - 1u));
+    const uint8_t was_empty = (head == ElrsLinkItRxTail) ? 1u : 0u;
+
+    if (BspAuxLinkGetBaudrate() != ELRS_LINK_BAUD || ElrsLinkDmaActive == 0u)
+    {
+        return;
+    }
+    if (next == ElrsLinkItRxTail)
+    {
+        ElrsLinkItRxOverflow = 1u;
+        return;
+    }
+    ElrsLinkRx.itRing[head] = b;
+    __DMB();
+    ElrsLinkItRxHead = next;
+    if (was_empty != 0u)
+    {
+        ElrsLinkNotifyFromIsr(ELRS_LINK_NOTIFY_RX);
+    }
 }
 
 bool_t ElrsLinkOnUartError(void)
 {
-    WatchTaskError(WATCH_TASK_ELRS);
-    ElrsLinkReset();
     if (!ElrsLinkDmaActive)
     {
         return 0;
@@ -198,15 +243,24 @@ static void ElrsLinkRxStartInternal(void)
 
     if (!BspAuxLinkRxHasDma())
     {
-        // Fallback (shouldn't happen): IT per byte.
-        (void)BspAuxLinkRxItStart();
+        ElrsLinkItRxHead = 0u;
+        ElrsLinkItRxTail = 0u;
+        ElrsLinkItRxOverflow = 0u;
+        ElrsLinkDmaActive = 1u;
+        if (BspAuxLinkRxItStart() != 0)
+        {
+            ElrsLinkDmaActive = 0u;
+            WatchTaskError(WATCH_TASK_ELRS);
+        }
         return;
     }
 
-    if (BspAuxLinkRxToIdleDmaStart(ElrsLinkDmaRxBuf, (uint16_t)ELRS_LINK_DMA_RX_BUF_SIZE) != 0)
+    if (BspAuxLinkRxToIdleDmaStart(ElrsLinkRx.dma, (uint16_t)ELRS_LINK_DMA_RX_BUF_SIZE) != 0)
     {
         WatchTaskError(WATCH_TASK_ELRS);
-        Error_Handler();
+        /* 备用输入链路启动失败只撤销 ELRS，不能复位仍可由 DBUS/Image 控制的整机。 */
+        ElrsLinkDmaActive = 0u;
+        return;
     }
     ElrsLinkDmaActive = 1u;
 }
@@ -240,22 +294,56 @@ static void ElrsLinkDmaProcessTo(uint16_t pos)
     {
         for (uint16_t i = last; i < pos; i++)
         {
-            ElrsLinkOnByte(ElrsLinkDmaRxBuf[i]);
+            ElrsLinkOnByte(ElrsLinkRx.dma[i]);
         }
     }
     else
     {
         for (uint16_t i = last; i < size; i++)
         {
-            ElrsLinkOnByte(ElrsLinkDmaRxBuf[i]);
+            ElrsLinkOnByte(ElrsLinkRx.dma[i]);
         }
         for (uint16_t i = 0u; i < pos; i++)
         {
-            ElrsLinkOnByte(ElrsLinkDmaRxBuf[i]);
+            ElrsLinkOnByte(ElrsLinkRx.dma[i]);
         }
     }
 
     ElrsLinkDmaLastPos = (pos == size) ? 0u : pos;
+}
+
+static void ElrsLinkItDrain(void)
+{
+    if (ElrsLinkItRxOverflow != 0u)
+    {
+        taskENTER_CRITICAL();
+        ElrsLinkItRxOverflow = 0u;
+        ElrsLinkItRxTail = ElrsLinkItRxHead;
+        taskEXIT_CRITICAL();
+        ElrsLinkReset();
+        WatchTaskTimeout(WATCH_TASK_ELRS);
+        ManualInputInvalidateSource(MANUAL_INPUT_SRC_ELRS);
+        return;
+    }
+
+    while (ElrsLinkItRxTail != ElrsLinkItRxHead)
+    {
+        const uint16_t tail = ElrsLinkItRxTail;
+        const uint8_t value = ElrsLinkRx.itRing[tail];
+        ElrsLinkItRxTail =
+            (uint16_t)((tail + 1u) & (uint16_t)(ELRS_LINK_IT_RX_RING_SIZE - 1u));
+        ElrsLinkOnByte(value);
+    }
+    if (ElrsLinkItRxOverflow != 0u)
+    {
+        taskENTER_CRITICAL();
+        ElrsLinkItRxOverflow = 0u;
+        ElrsLinkItRxTail = ElrsLinkItRxHead;
+        taskEXIT_CRITICAL();
+        ElrsLinkReset();
+        WatchTaskTimeout(WATCH_TASK_ELRS);
+        ManualInputInvalidateSource(MANUAL_INPUT_SRC_ELRS);
+    }
 }
 
 static void ElrsLinkNotifyFromIsr(uint32_t notify_bits)
@@ -283,54 +371,6 @@ static uint8_t ElrsLinkCrc8DvbS2(const uint8_t *data, uint8_t len)
         }
     }
     return crc;
-}
-
-static int16_t ElrsLinkMapAxis(uint16_t v)
-{
-    if (v < CRSF_CHANNEL_VALUE_MIN)
-    {
-        v = CRSF_CHANNEL_VALUE_MIN;
-    }
-    if (v > CRSF_CHANNEL_VALUE_MAX)
-    {
-        v = CRSF_CHANNEL_VALUE_MAX;
-    }
-
-    if (v >= CRSF_CHANNEL_VALUE_MID)
-    {
-        const uint16_t delta = (uint16_t)(v - CRSF_CHANNEL_VALUE_MID);
-        const uint16_t denom = (uint16_t)(CRSF_CHANNEL_VALUE_MAX - CRSF_CHANNEL_VALUE_MID);
-        return (int16_t)((((uint32_t)delta * (uint32_t)RC_CH_VALUE_ABS_MAX) + (denom / 2u)) / denom);
-    }
-
-    const uint16_t delta = (uint16_t)(CRSF_CHANNEL_VALUE_MID - v);
-    const uint16_t denom = (uint16_t)(CRSF_CHANNEL_VALUE_MID - CRSF_CHANNEL_VALUE_MIN);
-    return (int16_t)(-((int16_t)((((uint32_t)delta * (uint32_t)RC_CH_VALUE_ABS_MAX) + (denom / 2u)) / denom)));
-}
-
-static uint8_t ElrsLinkMapSwitch(uint16_t v)
-{
-    if (v < CRSF_CHANNEL_VALUE_MIN)
-    {
-        v = CRSF_CHANNEL_VALUE_MIN;
-    }
-    if (v > CRSF_CHANNEL_VALUE_MAX)
-    {
-        v = CRSF_CHANNEL_VALUE_MAX;
-    }
-
-    const uint16_t t_down = (uint16_t)((CRSF_CHANNEL_VALUE_MIN + CRSF_CHANNEL_VALUE_MID) / 2u);
-    const uint16_t t_up = (uint16_t)((CRSF_CHANNEL_VALUE_MID + CRSF_CHANNEL_VALUE_MAX) / 2u);
-
-    if (v <= t_down)
-    {
-        return RC_SW_DOWN;
-    }
-    if (v >= t_up)
-    {
-        return RC_SW_UP;
-    }
-    return RC_SW_MID;
 }
 
 static void ElrsLinkDecodeRcChannels(const uint8_t *payload, uint8_t payload_len)
@@ -362,7 +402,6 @@ static void ElrsLinkDecodeRcChannels(const uint8_t *payload, uint8_t payload_len
         return;
     }
 
-    const input_config_t *cfg = &g_config.input;
     int16_t ch_raw[16] = {0};
     for (uint8_t i = 0u; i < 16u; i++)
     {
@@ -370,34 +409,16 @@ static void ElrsLinkDecodeRcChannels(const uint8_t *payload, uint8_t payload_len
     }
 
     ManualInputState rc = {0};
-    for (uint8_t i = 0u; i < 5u; i++)
-    {
-        uint8_t idx_ch = cfg->ElrsChMap[i];
-        if (idx_ch >= 16u)
-        {
-            idx_ch = (i < 4u) ? i : 6u;
-        }
-        rc.rc.ch[i] = ElrsLinkMapAxis(ch[idx_ch]);
-    }
+    ManualInputCrsfDecode(ch, &g_config.input, &rc);
 
-    for (uint8_t i = 0u; i < 2u; i++)
-    {
-        uint8_t idx_sw = cfg->ElrsSwMap[i];
-        if (idx_sw >= 16u)
-        {
-            idx_sw = (uint8_t)(4u + i);
-        }
-        rc.rc.s[i] = (char)ElrsLinkMapSwitch(ch[idx_sw]);
-    }
-
-    remote_control_log_raw_source(MANUAL_INPUT_SRC_ELRS,
+    ManualInputLogRawSource(MANUAL_INPUT_SRC_ELRS,
                                   SDLOG_MANUAL_INPUT_PROTO_CRSF,
                                   SDLOG_MANUAL_INPUT_RANGE_RAW_11BIT,
                                   16u,
                                   ch_raw,
                                   NULL,
                                   &rc);
-    ManualInputUpdateSource(MANUAL_INPUT_SRC_ELRS, &rc);
+    ManualInputUpdateElrsChannels(&rc, ch);
 
     sdlog_rc_crsf_t pkt = {0};
     for (uint8_t i = 0u; i < 16u; i++)

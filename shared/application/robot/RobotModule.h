@@ -411,7 +411,7 @@ static inline const RobotModuleDesc *RobotModuleKnownModules(uint8_t *count)
          RobotModuleKindSafety,
          ROBOT_PROFILE_WATCH_TASK_BEAT_MIN_PERIOD_MS,
          ROBOT_PROFILE_WATCH_TASK_BEAT_BUDGET_US,
-         256u,
+         384u,
          (uint8_t)RobotModulePriorityNormal,
          (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK |
                    ROBOT_MODULE_FLAG_REQUIRED_BY_PROFILE |
@@ -608,7 +608,7 @@ static inline const RobotModuleDesc *RobotModuleKnownModules(uint8_t *count)
          RobotModuleKindControl,
          0u,
          0u,
-         128u,
+         192u,
          (uint8_t)RobotModulePriorityNormal,
          (uint8_t)ROBOT_MODULE_FLAG_HAS_TASK,
          sRobotModuleReqServo,
@@ -647,7 +647,7 @@ static inline const RobotModuleDesc *RobotModuleKnownModules(uint8_t *count)
          RobotModuleKindService,
          0u,
          0u,
-         512u,
+         768u,
          (uint8_t)RobotModulePriorityNormal,
          (uint8_t)ROBOT_MODULE_FLAG_HAS_TASK,
          sRobotModuleReqStartupService,

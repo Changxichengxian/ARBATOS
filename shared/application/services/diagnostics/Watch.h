@@ -1074,10 +1074,8 @@ typedef struct
 } Watch;
 
 extern Watch g_watch;
-struct ManualInputState;
 void WatchInit(void);
 void WatchUpdate(void);
-void WatchUpdateRcSnapshot(const struct ManualInputState *rc);
 void WatchDiagSetBootStage(WatchBootStage stage);
 void WatchDiagMarkErrorHandler(uint32_t tick_ms, uint32_t ipsr);
 void WatchDiagSetErrorArgs(uint32_t arg0, uint32_t arg1);

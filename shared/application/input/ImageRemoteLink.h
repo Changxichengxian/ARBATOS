@@ -58,14 +58,13 @@ typedef struct
 } ImageRemoteState;
 
 bool ImageRemoteGetState(ImageRemoteState *out);
-bool ImageRemoteAutoAimRequested(void);
-bool ImageRemoteAuxFireRequested(void);
 void ImageRemoteLinkGetStats(sdlog_image_link_stats_t *out);
 
 void ImageRemoteLinkStart(void);
 void ImageRemoteLinkStop(void);
 void ImageRemoteLinkPoll(void);
 void ImageRemoteLinkOnRxEvent(uint16_t size, BspAuxLinkRxEvent evt);
+void ImageRemoteLinkOnItByte(uint8_t value);
 uint8_t ImageRemoteLinkOnUartError(void);
 
 #endif

@@ -32,7 +32,6 @@
 #define cali_flash_erase(address, page_num) flash_erase_address((address), (page_num))              //flash erase function,flash擦除函数
 
 
-#define get_remote_ctrl_point_cali()        get_remote_control_point()  //get the remote control point，获取遥控器指针
 #define gyro_cali_disable_control()         RC_unable()                 //when imu is calibrating, disable the remote control.当imu在校准时候,失能遥控器
 #define gyro_cali_enable_control()          RC_restart(SBUS_RX_BUF_NUM)
 

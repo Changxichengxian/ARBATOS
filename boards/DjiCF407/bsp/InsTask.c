@@ -29,8 +29,7 @@
 #include "DetectTask.h"
 #include "RobotConfig.h"
 #include "RobotMode.h"
-#include "ControlInput.h"
-#include "ManualInput.h"
+#include "ManualInputSnapshot.h"
 #include "BspKey.h"
 #include "Ahrs.h"
 #include "GyroZeroCali.h"
@@ -470,15 +469,18 @@ static bool_t GyroZeroSaveOffsetCb(const fp32 offset[3], void *ctx)
 
 static uint8_t GyroZeroBootAdjustAllowedByInput(void)
 {
-    const uint8_t rc_disconnected =
-        (ManualInputGetActiveSource() == MANUAL_INPUT_SRC_AUTO) ? 1u : 0u;
-    const uint8_t GimbalSafe = input_switch_is_pos(input_switch(INPUT_SW_GIMBAL_MODE),
-                                                    g_config.manual_input.semantics.GimbalSafePos);
-    const uint8_t ChassisSafe = input_switch_is_pos(input_switch(INPUT_SW_CHASSIS_MODE),
-                                                     g_config.manual_input.semantics.ChassisSafePos);
-    const uint8_t safe_mode = (GimbalSafe != 0u && ChassisSafe != 0u) ? 1u : 0u;
+    ManualInputSnapshot input;
+    if (ManualInputSnapshotRead(&input) == 0u || input.online == 0u)
+    {
+        /* 保持原有策略：无人工输入时由静止检测决定是否自动修正零偏。 */
+        return 1u;
+    }
 
-    return (rc_disconnected != 0u || safe_mode != 0u) ? 1u : 0u;
+    const uint8_t gimbal_safe = ControlInputSwitchIsPos(
+        input.control.sw[INPUT_SW_GIMBAL_MODE], input.semantics.GimbalSafePos);
+    const uint8_t chassis_safe = ControlInputSwitchIsPos(
+        input.control.sw[INPUT_SW_CHASSIS_MODE], input.semantics.ChassisSafePos);
+    return (gimbal_safe != 0u && chassis_safe != 0u) ? 1u : 0u;
 }
 
 static void GyroZeroRuntimeUpdate(const fp32 gyro_raw[3], const fp32 accel_raw[3], fp32 temp_c, uint32_t now_ms)

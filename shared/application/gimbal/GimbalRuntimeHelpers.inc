@@ -344,6 +344,14 @@ static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot,
                                                      NULL;
 
         fast.manual_offline = (snapshot->manual_online != 0u) ? 0u : 1u;
+        fast.control_allowed = (uint8_t)(snapshot->manual_online != 0u &&
+                                         RobotLifecycleOutputAllowed() != 0u);
+        fast.authority_seq = (snapshot->manual_input != NULL) ?
+                                 snapshot->manual_input->authoritySeq :
+                                 0u;
+        fast.semantics_seq = (snapshot->manual_input != NULL) ?
+                                 snapshot->manual_input->semanticsSeq :
+                                 0u;
         fast.run_variant = snapshot->run_variant;
         fast.PitchCaliMode = snapshot->PitchCaliMode;
         fast.safe_pos = (snapshot->manual_input != NULL) ?
@@ -357,7 +365,6 @@ static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot,
                                  MANUAL_INPUT_SRC_AUTO;
         fast.image_auto_aim_requested =
             (snapshot->manual_online != 0u &&
-             snapshot->manual_input->activeSource == MANUAL_INPUT_SRC_IMAGE &&
              (snapshot->manual_input->sourceFlags & MANUAL_INPUT_SOURCE_FLAG_AUTO_AIM) != 0u) ? 1u : 0u;
         fast.yaw_axis = (control_input != NULL) ? control_input->axis[INPUT_AXIS_GIMBAL_YAW] : 0;
         fast.pitch_axis = (control_input != NULL) ? control_input->axis[INPUT_AXIS_GIMBAL_PITCH] : 0;

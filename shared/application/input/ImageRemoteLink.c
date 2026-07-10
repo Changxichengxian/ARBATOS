@@ -12,12 +12,14 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "cmsis_compiler.h"
 
 #include "ManualInputSnapshot.h"
 #include "Crc8Crc16.h"
 
 #define IMAGE_REMOTE_FRAME_SOF          0xA5u
-#define IMAGE_REMOTE_DMA_RX_BUF_SIZE    512u
+#define IMAGE_REMOTE_DMA_RX_BUF_SIZE    1024u
+#define IMAGE_REMOTE_IT_RX_RING_SIZE    1024u
 #define IMAGE_REMOTE_RM_FRAME_MAX_SIZE  64u
 #define IMAGE_REMOTE_VT13_FRAME_SIZE    21u
 #define IMAGE_REMOTE_RC_MAGIC0          'R'
@@ -50,6 +52,8 @@ typedef struct __attribute__((packed))
 } ImageRemoteRcPacket;
 
 typedef char _check_image_remote_rc_packet_size[(sizeof(ImageRemoteRcPacket) == 30u) ? 1 : -1];
+typedef char _check_image_remote_it_ring_power_of_two[
+    ((IMAGE_REMOTE_IT_RX_RING_SIZE & (IMAGE_REMOTE_IT_RX_RING_SIZE - 1u)) == 0u) ? 1 : -1];
 
 typedef enum
 {
@@ -58,7 +62,17 @@ typedef enum
     IMAGE_REMOTE_PARSE_VT13,
 } ImageRemoteParseMode;
 
-static uint8_t ImageRemoteDmaRxBuf[IMAGE_REMOTE_DMA_RX_BUF_SIZE];
+typedef union
+{
+    uint8_t dma[IMAGE_REMOTE_DMA_RX_BUF_SIZE];
+    uint8_t itRing[IMAGE_REMOTE_IT_RX_RING_SIZE];
+} ImageRemoteRxStorage;
+
+/* DMA 与逐字节中断接收由同一串口模式决定，不会同时运行。 */
+static ImageRemoteRxStorage ImageRemoteRx;
+static volatile uint16_t ImageRemoteItRxHead = 0u;
+static volatile uint16_t ImageRemoteItRxTail = 0u;
+static volatile uint8_t ImageRemoteItRxOverflow = 0u;
 static volatile uint16_t ImageRemoteDmaPos = 0u;
 static uint16_t ImageRemoteDmaLastPos = 0u;
 static volatile uint32_t ImageRemoteDmaWrapCnt = 0u;
@@ -84,6 +98,7 @@ static volatile uint8_t ImageRemoteLastRangeMode = 0u;
 static ImageRemoteState s_image_remote_state = {0};
 
 static void ImageRemoteStore(const ImageRemoteState *state);
+static void ImageRemoteInvalidate(void);
 static uint8_t ImageRemoteRawFlags(const ImageRemoteState *state);
 static void ImageRemoteLinkProcessTo(uint16_t pos);
 static void ImageRemoteLinkResetParser(void);
@@ -92,7 +107,7 @@ static void ImageRemoteLinkHandleRmFrame(const uint8_t *frame, uint16_t frame_le
 static void ImageRemoteLinkHandleVt13Frame(const uint8_t *frame, uint16_t frame_len);
 static bool_t ImageRemoteLinkTryDecodeCustomRc(const uint8_t *data);
 static int16_t ImageRemoteLinkScaleAxis(int16_t raw, int16_t raw_abs_max);
-static uint8_t ImageRemoteLinkSanitizeSwitch(uint8_t value);
+static bool_t ImageRemoteLinkSwitchValid(uint8_t value);
 
 bool ImageRemoteGetState(ImageRemoteState *out)
 {
@@ -105,26 +120,6 @@ bool ImageRemoteGetState(ImageRemoteState *out)
     *out = s_image_remote_state;
     taskEXIT_CRITICAL();
     return (out->valid != 0u);
-}
-
-bool ImageRemoteAutoAimRequested(void)
-{
-    ManualInputSnapshot snapshot;
-
-    return ManualInputSnapshotRead(&snapshot) != 0u &&
-           snapshot.online != 0u &&
-           snapshot.activeSource == MANUAL_INPUT_SRC_IMAGE &&
-           (snapshot.sourceFlags & MANUAL_INPUT_SOURCE_FLAG_AUTO_AIM) != 0u;
-}
-
-bool ImageRemoteAuxFireRequested(void)
-{
-    ManualInputSnapshot snapshot;
-
-    return ManualInputSnapshotRead(&snapshot) != 0u &&
-           snapshot.online != 0u &&
-           snapshot.activeSource == MANUAL_INPUT_SRC_IMAGE &&
-           (snapshot.sourceFlags & MANUAL_INPUT_SOURCE_FLAG_AUX_FIRE) != 0u;
 }
 
 void ImageRemoteLinkGetStats(sdlog_image_link_stats_t *out)
@@ -161,14 +156,23 @@ void ImageRemoteLinkStart(void)
     ImageRemoteLinkResetParser();
 
     BspAuxLinkSetRxEventCb(ImageRemoteLinkOnRxEvent);
-    BspAuxLinkSetRxByteCb(NULL);
+    BspAuxLinkSetRxByteCb(ImageRemoteLinkOnItByte);
     BspAuxLinkSetErrorCb(ImageRemoteLinkOnUartError);
 
     if (BspAuxLinkRxHasDma() == 0u)
     {
+        ImageRemoteItRxHead = 0u;
+        ImageRemoteItRxTail = 0u;
+        ImageRemoteItRxOverflow = 0u;
+        ImageRemoteDmaActive = 1u;
+        if (BspAuxLinkRxItStart() != 0)
+        {
+            ImageRemoteDmaActive = 0u;
+            ImageRemoteParseErrorCnt++;
+        }
         return;
     }
-    if (BspAuxLinkRxToIdleDmaStart(ImageRemoteDmaRxBuf, (uint16_t)IMAGE_REMOTE_DMA_RX_BUF_SIZE) != 0)
+    if (BspAuxLinkRxToIdleDmaStart(ImageRemoteRx.dma, (uint16_t)IMAGE_REMOTE_DMA_RX_BUF_SIZE) != 0)
     {
         return;
     }
@@ -179,17 +183,22 @@ void ImageRemoteLinkStart(void)
 void ImageRemoteLinkStop(void)
 {
     ImageRemoteDmaActive = 0u;
+    __DMB();
     ImageRemoteDmaRestartReq = 0u;
     ImageRemoteDmaPos = 0u;
     ImageRemoteDmaLastPos = 0u;
     ImageRemoteDmaWrapCnt = 0u;
     ImageRemoteDmaLastWrapCnt = 0u;
+    ImageRemoteItRxHead = 0u;
+    ImageRemoteItRxTail = 0u;
+    ImageRemoteItRxOverflow = 0u;
     ImageRemoteLinkResetParser();
 
     BspAuxLinkSetRxEventCb(NULL);
     BspAuxLinkSetRxByteCb(NULL);
     BspAuxLinkSetErrorCb(NULL);
     BspAuxLinkRxItStop();
+    ImageRemoteInvalidate();
 }
 
 void ImageRemoteLinkPoll(void)
@@ -209,13 +218,63 @@ void ImageRemoteLinkPoll(void)
         return;
     }
 
-    const uint32_t wrap_cnt = ImageRemoteDmaWrapCnt;
-    const uint16_t pos = ImageRemoteDmaPos;
+    if (BspAuxLinkRxHasDma() == 0u)
+    {
+        if (ImageRemoteItRxOverflow != 0u)
+        {
+            taskENTER_CRITICAL();
+            ImageRemoteItRxOverflow = 0u;
+            ImageRemoteItRxTail = ImageRemoteItRxHead;
+            taskEXIT_CRITICAL();
+            ImageRemoteParseErrorCnt++;
+            ImageRemoteLinkResetParser();
+            ImageRemoteInvalidate();
+            return;
+        }
+        while (ImageRemoteItRxTail != ImageRemoteItRxHead)
+        {
+            const uint16_t tail = ImageRemoteItRxTail;
+            const uint8_t value = ImageRemoteRx.itRing[tail];
+            ImageRemoteItRxTail =
+                (uint16_t)((tail + 1u) &
+                           (uint16_t)(IMAGE_REMOTE_IT_RX_RING_SIZE - 1u));
+            ImageRemoteLinkFeedByte(value);
+        }
+        if (ImageRemoteItRxOverflow != 0u)
+        {
+            taskENTER_CRITICAL();
+            ImageRemoteItRxOverflow = 0u;
+            ImageRemoteItRxTail = ImageRemoteItRxHead;
+            taskEXIT_CRITICAL();
+            ImageRemoteParseErrorCnt++;
+            ImageRemoteLinkResetParser();
+            ImageRemoteInvalidate();
+        }
+        return;
+    }
 
-    while (ImageRemoteDmaLastWrapCnt != wrap_cnt)
+    uint32_t wrap_cnt;
+    uint16_t pos;
+    taskENTER_CRITICAL();
+    wrap_cnt = ImageRemoteDmaWrapCnt;
+    pos = ImageRemoteDmaPos;
+    taskEXIT_CRITICAL();
+    const uint32_t wraps = wrap_cnt - ImageRemoteDmaLastWrapCnt;
+
+    if (wraps > 1u ||
+        (wraps == 1u && pos > ImageRemoteDmaLastPos))
+    {
+        ImageRemoteParseErrorCnt++;
+        ImageRemoteLinkResetParser();
+        ImageRemoteInvalidate();
+        ImageRemoteDmaLastWrapCnt = wrap_cnt;
+        ImageRemoteDmaLastPos = pos;
+        return;
+    }
+    if (wraps == 1u)
     {
         ImageRemoteLinkProcessTo((uint16_t)IMAGE_REMOTE_DMA_RX_BUF_SIZE);
-        ImageRemoteDmaLastWrapCnt++;
+        ImageRemoteDmaLastWrapCnt = wrap_cnt;
     }
     ImageRemoteLinkProcessTo(pos);
     ImageRemoteDmaLastWrapCnt = wrap_cnt;
@@ -241,9 +300,28 @@ void ImageRemoteLinkOnRxEvent(uint16_t size, BspAuxLinkRxEvent evt)
     ImageRemoteDmaPos = (size >= (uint16_t)IMAGE_REMOTE_DMA_RX_BUF_SIZE) ? 0u : size;
 }
 
+void ImageRemoteLinkOnItByte(uint8_t value)
+{
+    const uint16_t head = ImageRemoteItRxHead;
+    const uint16_t next =
+        (uint16_t)((head + 1u) & (uint16_t)(IMAGE_REMOTE_IT_RX_RING_SIZE - 1u));
+
+    if (BspAuxLinkGetBaudrate() != IMAGE_REMOTE_LINK_BAUD || ImageRemoteDmaActive == 0u)
+    {
+        return;
+    }
+    if (next == ImageRemoteItRxTail)
+    {
+        ImageRemoteItRxOverflow = 1u;
+        return;
+    }
+    ImageRemoteRx.itRing[head] = value;
+    __DMB();
+    ImageRemoteItRxHead = next;
+}
+
 uint8_t ImageRemoteLinkOnUartError(void)
 {
-    ImageRemoteLinkResetParser();
     if (ImageRemoteDmaActive == 0u)
     {
         return 0u;
@@ -264,6 +342,14 @@ static void ImageRemoteStore(const ImageRemoteState *state)
     taskENTER_CRITICAL();
     s_image_remote_state = *state;
     taskEXIT_CRITICAL();
+}
+
+static void ImageRemoteInvalidate(void)
+{
+    taskENTER_CRITICAL();
+    s_image_remote_state.valid = 0u;
+    taskEXIT_CRITICAL();
+    ManualInputInvalidateSource(MANUAL_INPUT_SRC_IMAGE);
 }
 
 static uint8_t ImageRemoteRawFlags(const ImageRemoteState *state)
@@ -315,18 +401,18 @@ static void ImageRemoteLinkProcessTo(uint16_t pos)
     {
         for (uint16_t i = last; i < pos; i++)
         {
-            ImageRemoteLinkFeedByte(ImageRemoteDmaRxBuf[i]);
+            ImageRemoteLinkFeedByte(ImageRemoteRx.dma[i]);
         }
     }
     else
     {
         for (uint16_t i = last; i < size; i++)
         {
-            ImageRemoteLinkFeedByte(ImageRemoteDmaRxBuf[i]);
+            ImageRemoteLinkFeedByte(ImageRemoteRx.dma[i]);
         }
         for (uint16_t i = 0u; i < pos; i++)
         {
-            ImageRemoteLinkFeedByte(ImageRemoteDmaRxBuf[i]);
+            ImageRemoteLinkFeedByte(ImageRemoteRx.dma[i]);
         }
     }
 
@@ -442,16 +528,24 @@ static void ImageRemoteLinkHandleRmFrame(const uint8_t *frame, uint16_t frame_le
     }
 
     const uint16_t payload_len = (uint16_t)(frame[1] | ((uint16_t)frame[2] << 8));
+    const uint16_t cmd_id = (uint16_t)(frame[5] | ((uint16_t)frame[6] << 8));
+    const uint8_t known_rc_command =
+        (uint8_t)(cmd_id == IMAGE_REMOTE_CMD_CUSTOM_CONTROLLER_RX ||
+                  cmd_id == IMAGE_REMOTE_CMD_CUSTOM_CLIENT_RX);
     if ((uint16_t)(payload_len + 9u) != frame_len || payload_len != (uint16_t)sizeof(ImageRemoteRcPacket))
     {
         ImageRemoteParseErrorCnt++;
+        if (known_rc_command != 0u)
+        {
+            /* CRC 正确且命令明确属于遥控时，错误长度也必须立即撤销旧控制。 */
+            ImageRemoteInvalidate();
+        }
         return;
     }
 
-    const uint16_t cmd_id = (uint16_t)(frame[5] | ((uint16_t)frame[6] << 8));
     const uint8_t *payload = &frame[7];
 
-    if (cmd_id == IMAGE_REMOTE_CMD_CUSTOM_CONTROLLER_RX || cmd_id == IMAGE_REMOTE_CMD_CUSTOM_CLIENT_RX)
+    if (known_rc_command != 0u)
     {
         ImageRemoteLastRxTickMs = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
         ImageRemoteFrameCnt++;
@@ -529,7 +623,7 @@ static void ImageRemoteLinkHandleVt13Frame(const uint8_t *frame, uint16_t frame_
     ImageRemoteVt13FrameCnt++;
     ImageRemoteLastCmdId = 0u;
     ImageRemoteLastRangeMode = SDLOG_MANUAL_INPUT_RANGE_RAW_11BIT;
-    remote_control_log_raw_source(MANUAL_INPUT_SRC_IMAGE,
+    ManualInputLogRawSource(MANUAL_INPUT_SRC_IMAGE,
                                   SDLOG_MANUAL_INPUT_PROTO_IMAGE_VT13,
                                   SDLOG_MANUAL_INPUT_RANGE_RAW_11BIT,
                                   5u,
@@ -574,11 +668,10 @@ static void ImageRemoteLinkHandleVt13Frame(const uint8_t *frame, uint16_t frame_
         .last_rx_tick_ms = ImageRemoteLastRxTickMs,
     };
     ImageRemoteStore(&state);
-    ManualInputUpdateSourceMeta(MANUAL_INPUT_SRC_IMAGE,
-                                &rc,
-                                state.proto,
-                                ImageRemoteRawFlags(&state),
-                                vt13_switch1);
+    ManualInputUpdateImageSource(&rc,
+                                 state.proto,
+                                 ImageRemoteRawFlags(&state),
+                                 vt13_switch1);
 }
 
 static bool_t ImageRemoteLinkTryDecodeCustomRc(const uint8_t *data)
@@ -590,41 +683,82 @@ static bool_t ImageRemoteLinkTryDecodeCustomRc(const uint8_t *data)
 
     ImageRemoteRcPacket pkt;
     memcpy(&pkt, data, sizeof(pkt));
+    /* 0x0302/0x0311 是通用通道；magic 不匹配表示其他子协议，不得误伤遥控。 */
     if (pkt.magic0 != (uint8_t)IMAGE_REMOTE_RC_MAGIC0 ||
-        pkt.magic1 != (uint8_t)IMAGE_REMOTE_RC_MAGIC1 ||
-        pkt.version != IMAGE_REMOTE_RC_VERSION)
+        pkt.magic1 != (uint8_t)IMAGE_REMOTE_RC_MAGIC1)
     {
         return 0;
+    }
+    if (pkt.version != IMAGE_REMOTE_RC_VERSION)
+    {
+        ImageRemoteParseErrorCnt++;
+        ImageRemoteInvalidate();
+        return 0;
+    }
+    if (!ImageRemoteLinkSwitchValid(pkt.sw[0]) ||
+        !ImageRemoteLinkSwitchValid(pkt.sw[1]))
+    {
+        /* 非法拨杆不能被修成动作档；立即撤销旧 IMAGE 命令，等待下一帧合法输入。 */
+        ImageRemoteParseErrorCnt++;
+        ImageRemoteInvalidate();
+        return 0;
+    }
+
+    int16_t raw_abs_max;
+    uint8_t log_range_mode;
+    if (pkt.range_mode == IMAGE_REMOTE_RC_RANGE_DBUS)
+    {
+        raw_abs_max = IMAGE_REMOTE_RC_ABS_MAX_DBUS;
+        log_range_mode = SDLOG_MANUAL_INPUT_RANGE_CENTERED_660;
+    }
+    else if (pkt.range_mode == IMAGE_REMOTE_RC_RANGE_VT13)
+    {
+        raw_abs_max = IMAGE_REMOTE_RC_ABS_MAX_VT13;
+        log_range_mode = SDLOG_MANUAL_INPUT_RANGE_CENTERED_1024;
+    }
+    else
+    {
+        ImageRemoteParseErrorCnt++;
+        ImageRemoteInvalidate();
+        return 0;
+    }
+    if ((pkt.mouse_btns & (uint8_t)~(IMAGE_REMOTE_RC_BTN_LEFT |
+                                      IMAGE_REMOTE_RC_BTN_RIGHT)) != 0u)
+    {
+        ImageRemoteParseErrorCnt++;
+        ImageRemoteInvalidate();
+        return 0;
+    }
+    for (uint8_t i = 0u; i < (uint8_t)sizeof(pkt.reserved); i++)
+    {
+        if (pkt.reserved[i] != 0u)
+        {
+            ImageRemoteParseErrorCnt++;
+            ImageRemoteInvalidate();
+            return 0;
+        }
     }
 
     ManualInputState rc = {0};
     int16_t raw_ch[5] = {0};
     uint8_t raw_sw[2] = {0};
-    uint8_t log_range_mode = 0u;
     for (uint8_t i = 0u; i < 5u; i++)
     {
         raw_ch[i] = pkt.ch[i];
-        if (pkt.range_mode == IMAGE_REMOTE_RC_RANGE_DBUS)
-        {
-            log_range_mode = SDLOG_MANUAL_INPUT_RANGE_CENTERED_660;
-            rc.rc.ch[i] = ImageRemoteLinkScaleAxis(pkt.ch[i], IMAGE_REMOTE_RC_ABS_MAX_DBUS);
-        }
-        else if (pkt.range_mode == IMAGE_REMOTE_RC_RANGE_VT13)
-        {
-            log_range_mode = SDLOG_MANUAL_INPUT_RANGE_CENTERED_1024;
-            rc.rc.ch[i] = ImageRemoteLinkScaleAxis(pkt.ch[i], IMAGE_REMOTE_RC_ABS_MAX_VT13);
-        }
-        else
+        if ((int32_t)pkt.ch[i] < -(int32_t)raw_abs_max ||
+            (int32_t)pkt.ch[i] > (int32_t)raw_abs_max)
         {
             ImageRemoteParseErrorCnt++;
+            ImageRemoteInvalidate();
             return 0;
         }
+        rc.rc.ch[i] = ImageRemoteLinkScaleAxis(pkt.ch[i], raw_abs_max);
     }
 
     raw_sw[0] = pkt.sw[0];
     raw_sw[1] = pkt.sw[1];
-    rc.rc.s[0] = (char)ImageRemoteLinkSanitizeSwitch(pkt.sw[0]);
-    rc.rc.s[1] = (char)ImageRemoteLinkSanitizeSwitch(pkt.sw[1]);
+    rc.rc.s[0] = (char)pkt.sw[0];
+    rc.rc.s[1] = (char)pkt.sw[1];
     rc.mouse.x = pkt.mouse_x;
     rc.mouse.y = pkt.mouse_y;
     rc.mouse.z = pkt.mouse_z;
@@ -632,7 +766,7 @@ static bool_t ImageRemoteLinkTryDecodeCustomRc(const uint8_t *data)
     rc.mouse.press_r = ((pkt.mouse_btns & IMAGE_REMOTE_RC_BTN_RIGHT) != 0u) ? 1u : 0u;
     rc.key.v = pkt.key_value;
 
-    remote_control_log_raw_source(MANUAL_INPUT_SRC_IMAGE,
+    ManualInputLogRawSource(MANUAL_INPUT_SRC_IMAGE,
                                   SDLOG_MANUAL_INPUT_PROTO_IMAGE_CUSTOM,
                                   log_range_mode,
                                   5u,
@@ -678,11 +812,10 @@ static bool_t ImageRemoteLinkTryDecodeCustomRc(const uint8_t *data)
         .last_rx_tick_ms = ImageRemoteLastRxTickMs,
     };
     ImageRemoteStore(&state);
-    ManualInputUpdateSourceMeta(MANUAL_INPUT_SRC_IMAGE,
-                                &rc,
-                                state.proto,
-                                ImageRemoteRawFlags(&state),
-                                0u);
+    ManualInputUpdateImageSource(&rc,
+                                 state.proto,
+                                 ImageRemoteRawFlags(&state),
+                                 0u);
     return 1;
 }
 
@@ -695,11 +828,7 @@ static int16_t ImageRemoteLinkScaleAxis(int16_t raw, int16_t raw_abs_max)
     return rc_scale_axis_by_abs(raw, raw_abs_max, (int16_t)RC_CH_VALUE_ABS_MAX);
 }
 
-static uint8_t ImageRemoteLinkSanitizeSwitch(uint8_t value)
+static bool_t ImageRemoteLinkSwitchValid(uint8_t value)
 {
-    if (value == RC_SW_UP || value == RC_SW_MID || value == RC_SW_DOWN)
-    {
-        return value;
-    }
-    return RC_SW_DOWN;
+    return (bool_t)(value == RC_SW_UP || value == RC_SW_MID || value == RC_SW_DOWN);
 }

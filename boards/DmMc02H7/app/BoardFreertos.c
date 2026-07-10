@@ -99,7 +99,7 @@ APP_THREAD_ATTR(refereeRxTask, osPriorityNormal, 256);
 APP_THREAD_ATTR(hostLinkTask, osPriorityNormal, 512);
 #endif
 #if ROBOT_TASK_BUILD_HEALTH_MONITOR
-APP_THREAD_ATTR(healthMonitorTask, osPriorityNormal, 256);
+APP_THREAD_ATTR(healthMonitorTask, osPriorityNormal, 384);
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
 APP_THREAD_ATTR(sdlogTask, osPriorityLow, 512);

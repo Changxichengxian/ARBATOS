@@ -410,6 +410,7 @@ void GimbalControlTask(void const *pvParameters)
         GimbalLoopCounter++;
         if (!GimbalControlMgrAllows(ControlIdSingleGimbal, &snapshot))
         {
+            GimbalBehaviourInputGateBlock();
             (void)GimbalRunShootControl(&snapshot, 1u);
             GimbalStopOutputs(GimbalOutputCurrentBindings, GIMBAL_OUTPUT_MOTOR_COUNT, &snapshot);
             RtProfEnd(RtProfGimbalLoop, loop_start_us);
@@ -529,6 +530,7 @@ void DualYawGimbalControlTask(void const *pvParameters)
         GimbalLoopCounter++;
         if (!GimbalControlMgrAllows(ControlIdDualYawGimbal, &snapshot))
         {
+            GimbalBehaviourInputGateBlock();
             (void)GimbalRunShootControl(&snapshot, 1u);
             if (output_allowed == 0u)
             {

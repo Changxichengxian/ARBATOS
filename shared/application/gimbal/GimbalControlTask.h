@@ -173,6 +173,9 @@ typedef struct
 typedef struct
 {
     bool_t manual_offline;
+    uint8_t control_allowed;
+    uint32_t authority_seq;
+    uint32_t semantics_seq;
     robot_run_variant_e run_variant;
     uint8_t PitchCaliMode;
     uint8_t mode_sw;
