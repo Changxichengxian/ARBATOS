@@ -24,6 +24,9 @@ typedef struct
  * - input source merge happens in `ManualInput.c`
  * - axis/switch remap happens here, driven by `g_config.input`
  */
+void ControlInputBuild(const ManualInputState *manual,
+                       const input_config_t *config,
+                       ControlInputState *out);
 void ControlInputUpdateFromManualInput(const ManualInputState *rc);
 const ControlInputState *ControlInputGetState(void);
 uint8_t ControlInputGetCopy(ControlInputState *out);

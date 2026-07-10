@@ -237,7 +237,7 @@ APP_STATIC_THREAD(ELRS_LINK, ElrsLinkTask, osPriorityAboveNormal, 256);
 APP_STATIC_THREAD(batteryMonitorTask, BatteryMonitorTask, osPriorityNormal, 128);
 #endif
 #if ROBOT_TASK_BUILD_SERVO
-APP_STATIC_THREAD(servoControlTask, ServoControlTask, osPriorityNormal, 128);
+APP_STATIC_THREAD(servoControlTask, ServoControlTask, osPriorityNormal, 192);
 #endif
 #if ROBOT_TASK_BUILD_SDLOG
 APP_STATIC_THREAD(SDLOG, SdLogTask, osPriorityLow, 512);

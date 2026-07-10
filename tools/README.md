@@ -51,6 +51,14 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestInputReferee.p
 它会用 Zig 自带的 C 编译器直接编译生产用的 DBUS 解码、裁判 CRC/拆帧和数据更新代码，覆盖坏拨杆、越界通道、
 CRC8/CRC16 错误、分段收包、未知新命令和 1 字节 payload。
 
+统一手动输入快照的来源选择、同代映射、双 bank 发布、读端超时安全化和 tick 回绕回归：
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestManualInputSnapshot.ps1
+```
+
+该测试直接编译生产用 `ManualInput.c` 与 `ControlInput.c`，还会在候选计算和 Watch 副作用中注入新来源，验证旧候选不会覆盖新帧、发布副作用不会逆序，读取本身也不会重新计算或发布。
+
 StateStore 双缓冲与快照时间信息的主机回归：
 
 ```powershell

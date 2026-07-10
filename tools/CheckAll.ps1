@@ -1407,6 +1407,136 @@ function Test-CanTxDeviceConfigBoundaries {
     }
 }
 
+function Test-ManualInputSnapshotBoundaries {
+    Write-Host "[check] manual input snapshot boundaries"
+
+    $snapshotRepoPath = "shared\application\input\ManualInputSnapshot.h"
+    $manualHeaderRepoPath = "shared\application\input\ManualInput.h"
+    $controlHeaderRepoPath = "shared\application\input\ControlInput.h"
+    $manualRepoPath = "shared\application\input\ManualInput.c"
+    $controlRepoPath = "shared\application\input\ControlInput.c"
+    foreach ($repoPath in @($snapshotRepoPath, $manualHeaderRepoPath, $controlHeaderRepoPath, $manualRepoPath, $controlRepoPath)) {
+        if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $repoPath) -PathType Leaf)) {
+            Add-CheckError "Missing manual input snapshot file: $repoPath"
+            return
+        }
+    }
+
+    $snapshotHeader = Get-Content -LiteralPath (Join-Path $script:RepoRoot $snapshotRepoPath) -Raw -Encoding UTF8
+    $manualHeader = Get-Content -LiteralPath (Join-Path $script:RepoRoot $manualHeaderRepoPath) -Raw -Encoding UTF8
+    $controlHeader = Get-Content -LiteralPath (Join-Path $script:RepoRoot $controlHeaderRepoPath) -Raw -Encoding UTF8
+    $manualContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $manualRepoPath) -Raw -Encoding UTF8
+    $controlContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $controlRepoPath) -Raw -Encoding UTF8
+
+    if ($snapshotHeader -notmatch '#include\s+"ManualInput\.h"' -or
+        $snapshotHeader -notmatch '#include\s+"ControlInput\.h"') {
+        Add-CheckError "${snapshotRepoPath}: aggregate header must own the one-way ManualInput/ControlInput dependency."
+    }
+    if ($manualHeader -match '#include\s+"ManualInputSnapshot\.h"' -or
+        $controlHeader -match '#include\s+"ManualInputSnapshot\.h"') {
+        Add-CheckError "ManualInput.h and ControlInput.h must not include ManualInputSnapshot.h back and form a header cycle."
+    }
+    foreach ($field in @(
+            "manual", "control", "activeMask", "sourceTickMs", "publishTickMs", "readTickMs",
+            "sourceAgeMs", "sourceTimeoutMs", "publishSeq", "sourceSeq", "switchSeq",
+            "activeSource", "online", "mixMode"
+        )) {
+        if ($snapshotHeader -notmatch "\b$field\b") {
+            Add-CheckError "${snapshotRepoPath}: snapshot is missing '$field'."
+        }
+    }
+
+    $buildBody = [regex]::Match(
+        $controlContent,
+        'void\s+ControlInputBuild\s*\([\s\S]*?(?=\r?\nvoid\s+ControlInputUpdateFromManualInput\s*\()'
+    ).Value
+    if ([string]::IsNullOrWhiteSpace($buildBody)) {
+        Add-CheckError "${controlRepoPath}: cannot find pure ControlInputBuild implementation."
+    }
+    elseif ($buildBody -match '\bg_config\b|EnterCritical|ExitCritical|ManualInputSnapshotRead') {
+        Add-CheckError "${controlRepoPath}: ControlInputBuild must stay pure and may not read globals, lock, or read a snapshot."
+    }
+
+    $readBody = [regex]::Match(
+        $manualContent,
+        'uint8_t\s+ManualInputSnapshotRead\s*\([\s\S]*?(?=\r?\nstatic\s+void\s+ManualInputMarkDirty\s*\()'
+    ).Value
+    if ([string]::IsNullOrWhiteSpace($readBody)) {
+        Add-CheckError "${manualRepoPath}: cannot find ManualInputSnapshotRead."
+    }
+    else {
+        foreach ($forbidden in @("ManualInputRefreshIfNeeded", "ManualInputBuildSnapshot", "WatchUpdateRcSnapshot", "SdLogWrite")) {
+            if ($readBody -match [regex]::Escape($forbidden)) {
+                Add-CheckError "${manualRepoPath}: snapshot read must not trigger '$forbidden'."
+            }
+        }
+        if ($readBody -notmatch 'readers\[bank\]\+\+[\s\S]*?\*out\s*=\s*ManualInputStore\.bank\[bank\]' -or
+            $readBody -notmatch 'expired\[bank\]\s*=\s*1u[\s\S]*?readers\[bank\]--') {
+            Add-CheckError "${manualRepoPath}: lock-free aggregate copy must remain protected by reader pin/refcount and pre-unpin expiry latch."
+        }
+        foreach ($safeField in @(
+                'activeMask\s*=\s*0u',
+                'sourceTickMs\s*=\s*0u',
+                'sourceAgeMs\s*=\s*MANUAL_INPUT_AGE_INVALID',
+                'sourceSeq\s*=\s*0u',
+                'activeSource\s*=\s*MANUAL_INPUT_SRC_AUTO'
+            )) {
+            if ($readBody -notmatch $safeField) {
+                Add-CheckError "${manualRepoPath}: stale local read must keep safety compression '$safeField'."
+            }
+        }
+    }
+
+    $refreshBody = [regex]::Match(
+        $manualContent,
+        'static\s+void\s+ManualInputRefreshIfNeeded\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nstatic\s+void\s+ManualInputRefreshTimerCallback\s*\([^;]*\)\s*\{)'
+    ).Value
+    if ([string]::IsNullOrWhiteSpace($refreshBody)) {
+        Add-CheckError "${manualRepoPath}: cannot find bounded snapshot publisher."
+    }
+    else {
+        if ($manualContent -notmatch 'static\s+ManualInputRefreshWorkspace\s+ManualInputWorkspace\s*;' -or
+            $refreshBody -match 'ManualInputSrcState\s+src_snapshot\s*\[|ManualInputSnapshot\s+(candidate|published_snapshot)\s*;') {
+            Add-CheckError "${manualRepoPath}: timer-daemon refresh buffers must stay in the single-writer static workspace."
+        }
+        if ($refreshBody -notmatch 'ManualInputDirtySeq\s*==\s*dirty_seq[\s\S]*?memcmp\s*\(\s*&g_config\.manual_input[\s\S]*?memcmp\s*\(\s*&g_config\.input' -or
+            $refreshBody -notmatch 'ManualInputDirtySeq\s*==\s*dirty_seq[\s\S]*?ManualInputStore\.active_bank\s*=\s*inactive_bank') {
+            Add-CheckError "${manualRepoPath}: dirty generation and both config blocks must be validated immediately before bank flip."
+        }
+        if ($refreshBody -notmatch 'ManualInputExpireSourcesLocked' -or
+            $manualContent -notmatch 'manual_src\[source\]\.update_seq\s*==\s*src_state\[source\]\.update_seq[\s\S]*?manual_src\[source\]\.valid\s*=\s*0u') {
+            Add-CheckError "${manualRepoPath}: confirmed stale sources must be invalidated by matching source generation."
+        }
+        $watchIndex = $refreshBody.IndexOf('WatchUpdateRcSnapshot')
+        $logIndex = $refreshBody.IndexOf('remote_control_log_source_switch')
+        $busyClearIndex = $refreshBody.LastIndexOf('ManualInputRefreshBusy = 0u')
+        if ($watchIndex -lt 0 -or $logIndex -lt 0 -or $busyClearIndex -lt 0 -or
+            $watchIndex -gt $busyClearIndex -or $logIndex -gt $busyClearIndex) {
+            Add-CheckError "${manualRepoPath}: writer busy must cover Watch and source-switch logging side effects."
+        }
+    }
+
+    $updateSourceBody = [regex]::Match(
+        $manualContent,
+        'void\s+ManualInputUpdateSource\s*\([\s\S]*?(?=\r?\nvoid\s+remote_control_set_rc_source\s*\()'
+    ).Value
+    if ($updateSourceBody -notmatch 'DetectHook\s*\(\s*DBUS_TOE\s*\)') {
+        Add-CheckError "${manualRepoPath}: first migration commit must retain generic DBUS_TOE compatibility until old control consumers move."
+    }
+
+    foreach ($testRepoPath in @(
+            "tools\TestManualInputSnapshot.ps1",
+            "tools\tests\ManualInputSnapshotRegression.c",
+            "tools\tests\manual-input-stubs\FreeRTOS.h",
+            "tools\tests\manual-input-stubs\task.h",
+            "tools\tests\manual-input-stubs\timers.h"
+        )) {
+        if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $testRepoPath) -PathType Leaf)) {
+            Add-CheckError "Missing manual input snapshot regression file: $testRepoPath"
+        }
+    }
+}
+
 function Test-ControlRegistryBoundaries {
     Write-Host "[check] control registry boundaries"
 
@@ -2275,6 +2405,7 @@ Test-ProjectOwnedPathNames
 Test-HighRateApiBoundaries
 Test-CanRxAndStackSamplingBoundaries
 Test-CanTxDeviceConfigBoundaries
+Test-ManualInputSnapshotBoundaries
 Test-ControlRegistryBoundaries
 Test-FaultGuardBoundaries
 Test-FaultIsolationBoundaries

@@ -8,6 +8,7 @@
 
 #include "ManualInput.h"
 #include "ManualInputDbus.h"
+#include "ManualInputSnapshot.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -27,6 +28,11 @@
 #ifndef RC_CHANNEL_ERROR_VALUE
 #define RC_CHANNEL_ERROR_VALUE ((int16_t)(RC_CH_VALUE_ABS_MAX + 64u))
 #endif
+
+#define MANUAL_INPUT_SNAPSHOT_BANK_COUNT 2u
+#define MANUAL_INPUT_REFRESH_ATTEMPT_MAX 2u
+#define MANUAL_INPUT_AGE_INVALID         0xFFFFFFFFu
+
 typedef char ManualInputDbusFrameLengthCheck[
     (RC_FRAME_LENGTH == MANUAL_INPUT_DBUS_FRAME_LENGTH) ? 1 : -1];
 typedef char ManualInputDbusChannelOffsetCheck[
@@ -51,16 +57,40 @@ typedef struct
 {
     ManualInputState rc;
     TickType_t last_update_tick;
+    uint32_t update_seq;
     uint8_t valid;
 } ManualInputSrcState;
+
+typedef struct
+{
+    ManualInputSnapshot bank[MANUAL_INPUT_SNAPSHOT_BANK_COUNT];
+    uint16_t readers[MANUAL_INPUT_SNAPSHOT_BANK_COUNT];
+    uint8_t expired[MANUAL_INPUT_SNAPSHOT_BANK_COUNT];
+    uint8_t active_bank;
+    uint8_t ready;
+} ManualInputSnapshotStore;
+
+typedef struct
+{
+    ManualInputSrcState source[MANUAL_INPUT_SRC_MAX + 1u];
+    ManualInputConfig manualConfig;
+    input_config_t inputConfig;
+    ManualInputSnapshot candidate;
+} ManualInputRefreshWorkspace;
 
 // Per-source raw snapshots (index == MANUAL_INPUT_SRC_*).
 static ManualInputSrcState manual_src[MANUAL_INPUT_SRC_MAX + 1u];
 static uint8_t manual_active_src = MANUAL_INPUT_SRC_AUTO;
 static TickType_t ManualInputRefreshTick = 0u;
 static uint8_t ManualInputRefreshDirty = 1u;
+static uint8_t ManualInputRefreshBusy = 0u;
 static uint32_t ManualInputDirtySeq = 1u;
 static uint32_t ManualInputRefreshSeq = 0u;
+static uint32_t ManualInputSourceSeq = 0u;
+static uint32_t ManualInputPublishSeq = 0u;
+static uint32_t ManualInputSwitchSeq = 0u;
+static ManualInputSnapshotStore ManualInputStore;
+static ManualInputRefreshWorkspace ManualInputWorkspace;
 static uint32_t g_remote_control_sbus_frame_cnt = 0u;
 static uint32_t g_remote_control_sbus_reject_cnt = 0u;
 static uint32_t g_remote_control_set_source_cnt = 0u;
@@ -76,19 +106,35 @@ typedef struct
 static void ManualInputResetRc(ManualInputState *rc);
 static uint8_t ManualInputStateValid(const ManualInputState *rc);
 static void ManualInputSanitizeSwitch(ManualInputState *rc);
-static void ManualInputApplyBoardKey(ManualInputState *rc);
+static void ManualInputApplyBoardKey(ManualInputState *rc, uint16_t key_mask);
 static uint8_t ManualInputSrcIsActive(const ManualInputSrcState *src_state,
-                                          uint8_t src,
-                                          TickType_t now_tick,
-                                          TickType_t timeout_tick);
+                                      uint8_t src,
+                                      TickType_t now_tick,
+                                      uint32_t timeout_ms);
 static uint8_t ManualInputPickLatest(const ManualInputSrcState *src_state,
-                                        TickType_t now_tick,
-                                        TickType_t timeout_tick);
-static void ManualInputCommitOutput(const ManualInputState *out, uint8_t active_src);
+                                     TickType_t now_tick,
+                                     uint32_t timeout_ms);
+static uint32_t ManualInputSeqNext(uint32_t seq);
+static uint8_t ManualInputSeqNewer(uint32_t lhs, uint32_t rhs);
+static uint32_t ManualInputTickMs(TickType_t tick);
+static uint32_t ManualInputAgeMs(TickType_t now_tick, TickType_t source_tick);
+static uint32_t ManualInputTimeoutMs(const ManualInputConfig *cfg);
+static uint8_t ManualInputMixMode(const ManualInputConfig *cfg);
+static uint32_t ManualInputSourceMask(uint8_t source);
+static void ManualInputStoreInit(void);
+static void ManualInputCopySources(ManualInputSrcState *out);
+static void ManualInputCopyConfig(ManualInputConfig *manual_cfg, input_config_t *input_cfg);
+static void ManualInputExpireSourcesLocked(const ManualInputSrcState *src_state,
+                                           TickType_t now_tick,
+                                           uint32_t timeout_ms);
+static void ManualInputBuildSnapshot(const ManualInputSrcState *src_state,
+                                     const ManualInputConfig *manual_cfg,
+                                     const input_config_t *input_cfg,
+                                     TickType_t now_tick,
+                                     ManualInputSnapshot *out);
 static void ManualInputMarkDirty(void);
 static void ManualInputRefreshIfNeeded(uint8_t force);
 static void ManualInputRefreshTimerCallback(TimerHandle_t timer);
-static void ManualInputUpdateOutput(void);
 static void remote_control_log_source_switch(uint8_t prev_src, uint8_t next_src);
 static void remote_control_log_sbus_raw_frame(const uint8_t frame[RC_FRAME_LENGTH]);
 
@@ -131,21 +177,28 @@ void ManualInputInit(void)
     TickType_t refresh_period_tick = pdMS_TO_TICKS(5u);
 
     ManualInputResetRc(&rc_ctrl);
-    ControlInputUpdateFromManualInput(&rc_ctrl);
     for (uint8_t i = 0u; i <= (uint8_t)MANUAL_INPUT_SRC_MAX; i++)
     {
         ManualInputResetRc(&manual_src[i].rc);
         manual_src[i].last_update_tick = 0u;
+        manual_src[i].update_seq = 0u;
         manual_src[i].valid = 0u;
     }
     manual_active_src = MANUAL_INPUT_SRC_AUTO;
     ManualInputRefreshTick = 0u;
     ManualInputRefreshDirty = 1u;
+    ManualInputRefreshBusy = 0u;
     ManualInputDirtySeq = 1u;
     ManualInputRefreshSeq = 0u;
+    ManualInputSourceSeq = 0u;
+    ManualInputPublishSeq = 0u;
+    ManualInputSwitchSeq = 0u;
+    memset(&ManualInputStore, 0, sizeof(ManualInputStore));
+    memset(&ManualInputWorkspace, 0, sizeof(ManualInputWorkspace));
     g_remote_control_sbus_frame_cnt = 0u;
     g_remote_control_sbus_reject_cnt = 0u;
     g_remote_control_set_source_cnt = 0u;
+    ManualInputStoreInit();
     if (refresh_period_tick == 0u)
     {
         refresh_period_tick = 1u;
@@ -181,16 +234,19 @@ const ManualInputState *ManualInputGetCurrentRc(void)
 
 uint8_t ManualInputGetCurrentCopy(ManualInputState *out)
 {
+    ManualInputSnapshot snapshot;
+
     if (out == NULL)
     {
         return 0u;
     }
 
-    ManualInputRefreshIfNeeded(0u);
-
-    ManualInputCriticalState critical = ManualInputEnterCritical();
-    *out = rc_ctrl;
-    ManualInputExitCritical(critical);
+    if (ManualInputSnapshotRead(&snapshot) == 0u)
+    {
+        ManualInputResetRc(out);
+        return 0u;
+    }
+    *out = snapshot.manual;
     return 1u;
 }
 
@@ -217,15 +273,18 @@ void ManualInputUpdateSource(uint8_t source, const ManualInputState *rc)
         return;
     }
     ManualInputCriticalState critical = ManualInputEnterCritical();
+    ManualInputSourceSeq = ManualInputSeqNext(ManualInputSourceSeq);
     manual_src[source].rc = *rc;
     manual_src[source].last_update_tick = now_tick;
+    manual_src[source].update_seq = ManualInputSourceSeq;
     manual_src[source].valid = 1u;
     g_remote_control_set_source_cnt++;
     ManualInputRefreshDirty = 1u;
-    ManualInputDirtySeq++;
+    ManualInputDirtySeq = ManualInputSeqNext(ManualInputDirtySeq);
     ManualInputExitCritical(critical);
-    ManualInputRefreshIfNeeded(1u);
+    /* 第二提交迁完旧 toe 消费者前，暂时维持所有手动来源共享 DBUS_TOE 的兼容行为。 */
     DetectHook(DBUS_TOE);
+    ManualInputRefreshIfNeeded(1u);
 }
 
 void remote_control_set_rc_source(uint8_t source, const ManualInputState *rc)
@@ -324,14 +383,10 @@ void remote_control_log_raw_source(uint8_t source,
 
 uint8_t ManualInputGetActiveSource(void)
 {
-    uint8_t active_src;
-
-    ManualInputRefreshIfNeeded(0u);
-
-    ManualInputCriticalState critical = ManualInputEnterCritical();
-    active_src = manual_active_src;
-    ManualInputExitCritical(critical);
-    return active_src;
+    ManualInputSnapshot snapshot;
+    return (ManualInputSnapshotRead(&snapshot) != 0u) ?
+               snapshot.activeSource :
+               (uint8_t)MANUAL_INPUT_SRC_AUTO;
 }
 
 uint8_t remote_control_get_active_source(void)
@@ -461,63 +516,122 @@ static void ManualInputSanitizeSwitch(ManualInputState *rc)
     }
 }
 
-static void ManualInputApplyBoardKey(ManualInputState *rc)
+static void ManualInputApplyBoardKey(ManualInputState *rc, uint16_t key_mask)
 {
     if (rc == NULL)
     {
         return;
     }
 
-    const uint16_t mask = g_config.manual_input.BoardKeyKeyMask;
-    if (mask == 0u)
+    if (key_mask == 0u)
     {
         return;
     }
     if (BspKeyReadRawDown() != 0u)
     {
-        rc->key.v |= mask;
+        rc->key.v |= key_mask;
     }
 }
 
+static uint32_t ManualInputSeqNext(uint32_t seq)
+{
+    seq++;
+    return (seq != 0u) ? seq : 1u;
+}
+
+static uint8_t ManualInputSeqNewer(uint32_t lhs, uint32_t rhs)
+{
+    return (uint8_t)(lhs != rhs && (int32_t)(lhs - rhs) > 0);
+}
+
+static uint32_t ManualInputTickMs(TickType_t tick)
+{
+    uint32_t tick_ms = (uint32_t)portTICK_PERIOD_MS;
+    if (tick_ms == 0u)
+    {
+        tick_ms = 1u;
+    }
+    return (uint32_t)tick * tick_ms;
+}
+
+static uint32_t ManualInputAgeMs(TickType_t now_tick, TickType_t source_tick)
+{
+    const TickType_t age_tick = (TickType_t)(now_tick - source_tick);
+    uint32_t tick_ms = (uint32_t)portTICK_PERIOD_MS;
+
+    if (tick_ms == 0u)
+    {
+        tick_ms = 1u;
+    }
+    if ((uint32_t)age_tick > (MANUAL_INPUT_AGE_INVALID / tick_ms))
+    {
+        return MANUAL_INPUT_AGE_INVALID;
+    }
+    return (uint32_t)age_tick * tick_ms;
+}
+
+static uint32_t ManualInputTimeoutMs(const ManualInputConfig *cfg)
+{
+    if (cfg == NULL || cfg->source_timeout_ms == 0u)
+    {
+        return MANUAL_INPUT_DEFAULT_TIMEOUT_MS;
+    }
+    return cfg->source_timeout_ms;
+}
+
+static uint8_t ManualInputMixMode(const ManualInputConfig *cfg)
+{
+    return (uint8_t)(cfg != NULL && cfg->mix_mode == MANUAL_INPUT_MIX_MERGE ?
+                         MANUAL_INPUT_MIX_MERGE :
+                         MANUAL_INPUT_MIX_SELECT_LATEST);
+}
+
+static uint32_t ManualInputSourceMask(uint8_t source)
+{
+    if (source == 0u || source > 32u)
+    {
+        return 0u;
+    }
+    return (uint32_t)1u << (source - 1u);
+}
+
 static uint8_t ManualInputSrcIsActive(const ManualInputSrcState *src_state,
-                                          uint8_t src,
-                                          TickType_t now_tick,
-                                          TickType_t timeout_tick)
+                                      uint8_t src,
+                                      TickType_t now_tick,
+                                      uint32_t timeout_ms)
 {
     if (src_state == NULL || src == 0u || src > (uint8_t)MANUAL_INPUT_SRC_MAX)
     {
         return 0u;
     }
-    if (src_state[src].valid == 0u)
+    if (src_state[src].valid == 0u || src_state[src].update_seq == 0u)
     {
         return 0u;
     }
-    if (timeout_tick == 0u)
-    {
-        return 1u;
-    }
-    const TickType_t age = (TickType_t)(now_tick - src_state[src].last_update_tick);
-    return (age <= timeout_tick) ? 1u : 0u;
+    return (ManualInputAgeMs(now_tick, src_state[src].last_update_tick) <= timeout_ms) ? 1u : 0u;
 }
 
 static uint8_t ManualInputPickLatest(const ManualInputSrcState *src_state,
-                                        TickType_t now_tick,
-                                        TickType_t timeout_tick)
+                                     TickType_t now_tick,
+                                     uint32_t timeout_ms)
 {
     uint8_t best = 0u;
-    TickType_t best_age = (TickType_t)0xFFFFFFFFu;
+    uint32_t best_age = MANUAL_INPUT_AGE_INVALID;
+    uint32_t best_seq = 0u;
 
     for (uint8_t src = (uint8_t)MANUAL_INPUT_SRC_DBUS; src <= (uint8_t)MANUAL_INPUT_SRC_MAX; src++)
     {
-        if (!ManualInputSrcIsActive(src_state, src, now_tick, timeout_tick))
+        if (ManualInputSrcIsActive(src_state, src, now_tick, timeout_ms) == 0u)
         {
             continue;
         }
 
-        const TickType_t age = (TickType_t)(now_tick - src_state[src].last_update_tick);
-        if (age < best_age)
+        const uint32_t age = ManualInputAgeMs(now_tick, src_state[src].last_update_tick);
+        if (best == 0u || age < best_age ||
+            (age == best_age && ManualInputSeqNewer(src_state[src].update_seq, best_seq) != 0u))
         {
             best_age = age;
+            best_seq = src_state[src].update_seq;
             best = src;
         }
     }
@@ -525,76 +639,420 @@ static uint8_t ManualInputPickLatest(const ManualInputSrcState *src_state,
     return best;
 }
 
-static void ManualInputCommitOutput(const ManualInputState *out, uint8_t active_src)
+static void ManualInputStoreInit(void)
 {
-    uint8_t prev_src;
+    const TickType_t now_tick = xTaskGetTickCount();
 
+    ManualInputWorkspace.manualConfig = g_config.manual_input;
+    ManualInputWorkspace.inputConfig = g_config.input;
+    ManualInputBuildSnapshot(manual_src,
+                             &ManualInputWorkspace.manualConfig,
+                             &ManualInputWorkspace.inputConfig,
+                             now_tick,
+                             &ManualInputWorkspace.candidate);
+    ManualInputPublishSeq = ManualInputSeqNext(ManualInputPublishSeq);
+    ManualInputWorkspace.candidate.publishSeq = ManualInputPublishSeq;
+    ManualInputWorkspace.candidate.switchSeq = ManualInputSwitchSeq;
+
+    ManualInputStore.bank[0] = ManualInputWorkspace.candidate;
+    ManualInputStore.bank[1] = ManualInputWorkspace.candidate;
+    ManualInputStore.readers[0] = 0u;
+    ManualInputStore.readers[1] = 0u;
+    ManualInputStore.expired[0] = 0u;
+    ManualInputStore.expired[1] = 0u;
+    ManualInputStore.active_bank = 0u;
+    ManualInputStore.ready = 1u;
+    rc_ctrl = ManualInputWorkspace.candidate.manual;
+    manual_active_src = ManualInputWorkspace.candidate.activeSource;
+    ManualInputRefreshTick = now_tick;
+    ManualInputRefreshSeq = ManualInputDirtySeq;
+    ManualInputRefreshDirty = 0u;
+}
+
+static void ManualInputCopySources(ManualInputSrcState *out)
+{
     if (out == NULL)
     {
         return;
     }
 
+    for (uint8_t source = 0u; source <= (uint8_t)MANUAL_INPUT_SRC_MAX; source++)
+    {
+        ManualInputCriticalState critical = ManualInputEnterCritical();
+        out[source] = manual_src[source];
+        ManualInputExitCritical(critical);
+    }
+}
+
+static void ManualInputCopyConfig(ManualInputConfig *manual_cfg, input_config_t *input_cfg)
+{
+    if (manual_cfg == NULL || input_cfg == NULL)
+    {
+        return;
+    }
+
     ManualInputCriticalState critical = ManualInputEnterCritical();
-    prev_src = manual_active_src;
-    rc_ctrl = *out;
-    manual_active_src = active_src;
+    *manual_cfg = g_config.manual_input;
+    *input_cfg = g_config.input;
+    ManualInputExitCritical(critical);
+}
+
+/* 调用者必须已进入 ManualInput 临界区并确认配置代与 dirty generation 未变化。 */
+static void ManualInputExpireSourcesLocked(const ManualInputSrcState *src_state,
+                                           TickType_t now_tick,
+                                           uint32_t timeout_ms)
+{
+    if (src_state == NULL)
+    {
+        return;
+    }
+
+    for (uint8_t source = (uint8_t)MANUAL_INPUT_SRC_DBUS;
+         source <= (uint8_t)MANUAL_INPUT_SRC_MAX;
+         source++)
+    {
+        if (src_state[source].valid == 0u || src_state[source].update_seq == 0u ||
+            ManualInputAgeMs(now_tick, src_state[source].last_update_tick) <= timeout_ms)
+        {
+            continue;
+        }
+        if (manual_src[source].valid != 0u &&
+            manual_src[source].update_seq == src_state[source].update_seq)
+        {
+            /* 旧帧一旦确认超时便永久失效，避免完整 tick 回绕后复活。 */
+            manual_src[source].valid = 0u;
+        }
+    }
+}
+
+static void ManualInputBuildSnapshot(const ManualInputSrcState *src_state,
+                                     const ManualInputConfig *manual_cfg,
+                                     const input_config_t *input_cfg,
+                                     TickType_t now_tick,
+                                     ManualInputSnapshot *out)
+{
+    uint8_t latest;
+    uint8_t selected;
+    const uint32_t timeout_ms = ManualInputTimeoutMs(manual_cfg);
+    const uint8_t mix_mode = ManualInputMixMode(manual_cfg);
+
+    if (src_state == NULL || out == NULL)
+    {
+        return;
+    }
+
+    memset(out, 0, sizeof(*out));
+    ManualInputResetRc(&out->manual);
+    out->sourceAgeMs = MANUAL_INPUT_AGE_INVALID;
+    out->sourceTimeoutMs = timeout_ms;
+    out->publishTickMs = ManualInputTickMs(now_tick);
+    out->readTickMs = out->publishTickMs;
+    out->mixMode = mix_mode;
+
+    for (uint8_t source = (uint8_t)MANUAL_INPUT_SRC_DBUS;
+         source <= (uint8_t)MANUAL_INPUT_SRC_MAX;
+         source++)
+    {
+        if (ManualInputSrcIsActive(src_state, source, now_tick, timeout_ms) != 0u)
+        {
+            out->activeMask |= ManualInputSourceMask(source);
+        }
+    }
+
+    latest = ManualInputPickLatest(src_state, now_tick, timeout_ms);
+    selected = latest;
+
+    if (mix_mode == MANUAL_INPUT_MIX_MERGE)
+    {
+        if (latest != 0u)
+        {
+            out->manual.rc.s[0] = src_state[latest].rc.rc.s[0];
+            out->manual.rc.s[1] = src_state[latest].rc.rc.s[1];
+
+            for (uint8_t source = (uint8_t)MANUAL_INPUT_SRC_DBUS;
+                 source <= (uint8_t)MANUAL_INPUT_SRC_MAX;
+                 source++)
+            {
+                if (ManualInputSrcIsActive(src_state, source, now_tick, timeout_ms) == 0u)
+                {
+                    continue;
+                }
+
+                for (uint8_t channel = 0u; channel < 5u; channel++)
+                {
+                    const int16_t value = src_state[source].rc.rc.ch[channel];
+                    if (RC_abs(value) > RC_abs(out->manual.rc.ch[channel]))
+                    {
+                        out->manual.rc.ch[channel] = value;
+                    }
+                }
+
+                const int16_t mouse_x = src_state[source].rc.mouse.x;
+                const int16_t mouse_y = src_state[source].rc.mouse.y;
+                const int16_t mouse_z = src_state[source].rc.mouse.z;
+                if (RC_abs(mouse_x) > RC_abs(out->manual.mouse.x)) out->manual.mouse.x = mouse_x;
+                if (RC_abs(mouse_y) > RC_abs(out->manual.mouse.y)) out->manual.mouse.y = mouse_y;
+                if (RC_abs(mouse_z) > RC_abs(out->manual.mouse.z)) out->manual.mouse.z = mouse_z;
+
+                out->manual.key.v |= src_state[source].rc.key.v;
+                out->manual.mouse.press_l |= src_state[source].rc.mouse.press_l;
+                out->manual.mouse.press_r |= src_state[source].rc.mouse.press_r;
+            }
+        }
+    }
+    else
+    {
+        selected = (manual_cfg != NULL) ? manual_cfg->active_source : MANUAL_INPUT_SRC_AUTO;
+        if (selected == MANUAL_INPUT_SRC_AUTO)
+        {
+            selected = latest;
+        }
+        else if (ManualInputSrcIsActive(src_state, selected, now_tick, timeout_ms) == 0u)
+        {
+            selected = latest;
+        }
+
+        if (selected != 0u)
+        {
+            out->manual = src_state[selected].rc;
+        }
+    }
+
+    ManualInputSanitizeSwitch(&out->manual);
+    ManualInputApplyBoardKey(&out->manual,
+                             (manual_cfg != NULL) ? manual_cfg->BoardKeyKeyMask : 0u);
+    if (selected != 0u)
+    {
+        ControlInputBuild(&out->manual, input_cfg, &out->control);
+    }
+    else
+    {
+        ControlInputBuild(NULL, NULL, &out->control);
+    }
+
+    if (selected != 0u)
+    {
+        out->activeSource = selected;
+        out->sourceTickMs = ManualInputTickMs(src_state[selected].last_update_tick);
+        out->sourceAgeMs = ManualInputAgeMs(now_tick, src_state[selected].last_update_tick);
+        out->sourceSeq = src_state[selected].update_seq;
+        out->online = (out->sourceAgeMs <= timeout_ms) ? 1u : 0u;
+    }
+    else
+    {
+        out->activeSource = MANUAL_INPUT_SRC_AUTO;
+        out->sourceTickMs = 0u;
+        out->sourceAgeMs = MANUAL_INPUT_AGE_INVALID;
+        out->sourceSeq = 0u;
+        out->online = 0u;
+    }
+}
+
+uint8_t ManualInputSnapshotRead(ManualInputSnapshot *out)
+{
+    uint8_t bank;
+    uint8_t expired;
+    uint8_t has_source;
+    uint8_t stale = 0u;
+
+    if (out == NULL)
+    {
+        return 0u;
+    }
+
+    ManualInputCriticalState critical = ManualInputEnterCritical();
+    bank = ManualInputStore.active_bank;
+    if (ManualInputStore.ready == 0u || bank >= MANUAL_INPUT_SNAPSHOT_BANK_COUNT ||
+        ManualInputStore.readers[bank] == 0xFFFFu)
+    {
+        ManualInputExitCritical(critical);
+        memset(out, 0, sizeof(*out));
+        ManualInputResetRc(&out->manual);
+        ControlInputBuild(NULL, NULL, &out->control);
+        out->sourceAgeMs = MANUAL_INPUT_AGE_INVALID;
+        out->sourceTimeoutMs = MANUAL_INPUT_DEFAULT_TIMEOUT_MS;
+        return 0u;
+    }
+    ManualInputStore.readers[bank]++;
+    expired = ManualInputStore.expired[bank];
     ManualInputExitCritical(critical);
 
-    ControlInputUpdateFromManualInput(out);
-    WatchUpdateRcSnapshot(out);
+    __DMB();
+    *out = ManualInputStore.bank[bank];
+    __DMB();
 
-    if (prev_src != active_src)
+    out->readTickMs = ManualInputTickMs(xTaskGetTickCount());
+    if (out->sourceTimeoutMs == 0u)
     {
-        remote_control_log_source_switch(prev_src, active_src);
+        out->sourceTimeoutMs = MANUAL_INPUT_DEFAULT_TIMEOUT_MS;
     }
+    has_source = (uint8_t)(out->activeSource != MANUAL_INPUT_SRC_AUTO && out->sourceSeq != 0u);
+    if (has_source == 0u)
+    {
+        out->sourceAgeMs = MANUAL_INPUT_AGE_INVALID;
+        out->online = 0u;
+    }
+    else
+    {
+        out->sourceAgeMs = out->readTickMs - out->sourceTickMs;
+        stale = (uint8_t)(expired != 0u || out->sourceAgeMs > out->sourceTimeoutMs);
+        out->online = (stale == 0u) ? 1u : 0u;
+    }
+
+    /* stale 判定和 latch 都发生在释放 reader pin 之前，writer 不会误复用这一代。 */
+    critical = ManualInputEnterCritical();
+    if (ManualInputStore.expired[bank] != 0u)
+    {
+        stale = 1u;
+    }
+    if (stale != 0u && has_source != 0u)
+    {
+        ManualInputStore.expired[bank] = 1u;
+    }
+    if (ManualInputStore.readers[bank] != 0u)
+    {
+        ManualInputStore.readers[bank]--;
+    }
+    ManualInputExitCritical(critical);
+
+    if (stale != 0u)
+    {
+        /* 即使定时器守护任务停滞或 tick 完整回绕，旧接口也只能看到安全帧。 */
+        ManualInputResetRc(&out->manual);
+        ControlInputBuild(NULL, NULL, &out->control);
+        out->activeMask = 0u;
+        out->sourceTickMs = 0u;
+        out->sourceAgeMs = MANUAL_INPUT_AGE_INVALID;
+        out->sourceSeq = 0u;
+        out->activeSource = MANUAL_INPUT_SRC_AUTO;
+        out->online = 0u;
+    }
+    return 1u;
 }
 
 static void ManualInputMarkDirty(void)
 {
     ManualInputCriticalState critical = ManualInputEnterCritical();
     ManualInputRefreshDirty = 1u;
-    ManualInputDirtySeq++;
+    ManualInputDirtySeq = ManualInputSeqNext(ManualInputDirtySeq);
     ManualInputExitCritical(critical);
 }
 
 static void ManualInputRefreshIfNeeded(uint8_t force)
 {
-    const ManualInputConfig *cfg = &g_config.manual_input;
-    const TickType_t now_tick = xTaskGetTickCount();
-    const uint8_t needs_periodic_refresh =
-        (cfg->source_timeout_ms != 0u || cfg->BoardKeyKeyMask != 0u) ? 1u : 0u;
-    uint8_t dirty;
-    TickType_t refresh_tick;
-    uint32_t dirty_seq;
-    uint32_t refresh_seq;
+    uint8_t inactive_bank;
+    uint8_t published = 0u;
+    uint8_t prev_source = MANUAL_INPUT_SRC_AUTO;
+    TickType_t now_tick = xTaskGetTickCount();
 
     ManualInputCriticalState critical = ManualInputEnterCritical();
-    dirty = ManualInputRefreshDirty;
-    refresh_tick = ManualInputRefreshTick;
-    dirty_seq = ManualInputDirtySeq;
-    refresh_seq = ManualInputRefreshSeq;
+    if (force == 0u && ManualInputRefreshDirty == 0u &&
+        ManualInputDirtySeq == ManualInputRefreshSeq && ManualInputRefreshTick == now_tick)
+    {
+        ManualInputExitCritical(critical);
+        return;
+    }
+    if (ManualInputRefreshBusy != 0u || ManualInputStore.ready == 0u)
+    {
+        ManualInputExitCritical(critical);
+        return;
+    }
+
+    inactive_bank = (uint8_t)(ManualInputStore.active_bank ^ 1u);
+    if (inactive_bank >= MANUAL_INPUT_SNAPSHOT_BANK_COUNT ||
+        ManualInputStore.readers[inactive_bank] != 0u)
+    {
+        ManualInputRefreshDirty = 1u;
+        ManualInputExitCritical(critical);
+        return;
+    }
+    ManualInputRefreshBusy = 1u;
     ManualInputExitCritical(critical);
 
-    if (force == 0u && dirty == 0u && dirty_seq == refresh_seq)
+    for (uint8_t attempt = 0u; attempt < MANUAL_INPUT_REFRESH_ATTEMPT_MAX; attempt++)
     {
-        if (needs_periodic_refresh == 0u)
+        uint32_t dirty_seq;
+        uint32_t publish_seq;
+        uint32_t switch_seq;
+        uint8_t current_source;
+
+        now_tick = xTaskGetTickCount();
+        critical = ManualInputEnterCritical();
+        dirty_seq = ManualInputDirtySeq;
+        publish_seq = ManualInputPublishSeq;
+        switch_seq = ManualInputSwitchSeq;
+        current_source = ManualInputStore.bank[ManualInputStore.active_bank].activeSource;
+        ManualInputExitCritical(critical);
+
+        ManualInputCopySources(ManualInputWorkspace.source);
+        ManualInputCopyConfig(&ManualInputWorkspace.manualConfig,
+                              &ManualInputWorkspace.inputConfig);
+        ManualInputBuildSnapshot(ManualInputWorkspace.source,
+                                 &ManualInputWorkspace.manualConfig,
+                                 &ManualInputWorkspace.inputConfig,
+                                 now_tick,
+                                 &ManualInputWorkspace.candidate);
+        ManualInputWorkspace.candidate.publishSeq = ManualInputSeqNext(publish_seq);
+        ManualInputWorkspace.candidate.switchSeq =
+            (ManualInputWorkspace.candidate.activeSource != current_source) ?
+                ManualInputSeqNext(switch_seq) :
+                switch_seq;
+
+        /* 非活动 bank 没有读者，整块候选在临界区外写入。 */
+        ManualInputStore.bank[inactive_bank] = ManualInputWorkspace.candidate;
+        __DMB();
+
+        critical = ManualInputEnterCritical();
+        if (ManualInputDirtySeq == dirty_seq &&
+            memcmp(&g_config.manual_input,
+                   &ManualInputWorkspace.manualConfig,
+                   sizeof(ManualInputWorkspace.manualConfig)) == 0 &&
+            memcmp(&g_config.input,
+                   &ManualInputWorkspace.inputConfig,
+                   sizeof(ManualInputWorkspace.inputConfig)) == 0)
         {
-            return;
+            ManualInputExpireSourcesLocked(ManualInputWorkspace.source,
+                                           now_tick,
+                                           ManualInputWorkspace.candidate.sourceTimeoutMs);
+            prev_source = manual_active_src;
+            ManualInputPublishSeq = ManualInputWorkspace.candidate.publishSeq;
+            ManualInputSwitchSeq = ManualInputWorkspace.candidate.switchSeq;
+            ManualInputRefreshTick = now_tick;
+            ManualInputRefreshSeq = dirty_seq;
+            ManualInputRefreshDirty = 0u;
+            rc_ctrl = ManualInputWorkspace.candidate.manual;
+            manual_active_src = ManualInputWorkspace.candidate.activeSource;
+            ManualInputStore.expired[inactive_bank] = 0u;
+            __DMB();
+            ManualInputStore.active_bank = inactive_bank;
+            published = 1u;
         }
-        if (refresh_tick == now_tick)
+        else
         {
-            return;
+            /* 计算期间已有新输入或配置；旧候选绝不翻成当前帧。 */
+            ManualInputRefreshDirty = 1u;
+        }
+        ManualInputExitCritical(critical);
+
+        if (published != 0u)
+        {
+            break;
         }
     }
 
-    ManualInputUpdateOutput();
-    critical = ManualInputEnterCritical();
-    ManualInputRefreshTick = now_tick;
-    ManualInputRefreshSeq = dirty_seq;
-    if (ManualInputDirtySeq == dirty_seq)
+    if (published != 0u)
     {
-        ManualInputRefreshDirty = 0u;
+        /* busy 覆盖观察与日志副作用，保证发布顺序不会被下一 writer 反转。 */
+        WatchUpdateRcSnapshot(&ManualInputWorkspace.candidate.manual);
+        if (prev_source != ManualInputWorkspace.candidate.activeSource)
+        {
+            remote_control_log_source_switch(prev_source,
+                                             ManualInputWorkspace.candidate.activeSource);
+        }
     }
+
+    critical = ManualInputEnterCritical();
+    ManualInputRefreshBusy = 0u;
     ManualInputExitCritical(critical);
 }
 
@@ -604,106 +1062,15 @@ static void ManualInputRefreshTimerCallback(TimerHandle_t timer)
     ManualInputRefreshIfNeeded(0u);
 }
 
-static void ManualInputUpdateOutput(void)
-{
-    const ManualInputConfig *cfg = &g_config.manual_input;
-    const TickType_t now_tick = xTaskGetTickCount();
-    const TickType_t timeout_tick = (cfg->source_timeout_ms == 0u) ? 0u : pdMS_TO_TICKS(cfg->source_timeout_ms);
-    ManualInputSrcState src_snapshot[MANUAL_INPUT_SRC_MAX + 1u];
-
-    ManualInputCriticalState critical = ManualInputEnterCritical();
-    memcpy(src_snapshot, manual_src, sizeof(src_snapshot));
-    ManualInputExitCritical(critical);
-
-    const uint8_t latest = ManualInputPickLatest(src_snapshot, now_tick, timeout_tick);
-
-    if (cfg->mix_mode == MANUAL_INPUT_MIX_MERGE)
-    {
-        if (latest == 0u)
-        {
-            ManualInputState out;
-            ManualInputResetRc(&out);
-            ManualInputApplyBoardKey(&out);
-            ManualInputCommitOutput(&out, MANUAL_INPUT_SRC_AUTO);
-            return;
-        }
-
-        ManualInputState out;
-        ManualInputResetRc(&out);
-
-        // Switches/mouse follow "latest"; keys are merged.
-        out.rc.s[0] = src_snapshot[latest].rc.rc.s[0];
-        out.rc.s[1] = src_snapshot[latest].rc.rc.s[1];
-        ManualInputSanitizeSwitch(&out);
-
-        for (uint8_t src = (uint8_t)MANUAL_INPUT_SRC_DBUS; src <= (uint8_t)MANUAL_INPUT_SRC_MAX; src++)
-        {
-            if (!ManualInputSrcIsActive(src_snapshot, src, now_tick, timeout_tick))
-            {
-                continue;
-            }
-
-            for (uint8_t ch = 0u; ch < 5u; ch++)
-            {
-                const int16_t v = src_snapshot[src].rc.rc.ch[ch];
-                if (RC_abs(v) > RC_abs(out.rc.ch[ch]))
-                {
-                    out.rc.ch[ch] = v;
-                }
-            }
-
-            const int16_t mx = src_snapshot[src].rc.mouse.x;
-            const int16_t my = src_snapshot[src].rc.mouse.y;
-            const int16_t mz = src_snapshot[src].rc.mouse.z;
-            if (RC_abs(mx) > RC_abs(out.mouse.x)) out.mouse.x = mx;
-            if (RC_abs(my) > RC_abs(out.mouse.y)) out.mouse.y = my;
-            if (RC_abs(mz) > RC_abs(out.mouse.z)) out.mouse.z = mz;
-
-            out.key.v |= src_snapshot[src].rc.key.v;
-            out.mouse.press_l |= src_snapshot[src].rc.mouse.press_l;
-            out.mouse.press_r |= src_snapshot[src].rc.mouse.press_r;
-        }
-
-        ManualInputApplyBoardKey(&out);
-        ManualInputCommitOutput(&out, latest);
-        return;
-    }
-
-    uint8_t selected = cfg->active_source;
-    if (selected == MANUAL_INPUT_SRC_AUTO)
-    {
-        selected = latest;
-    }
-    else if (!ManualInputSrcIsActive(src_snapshot, selected, now_tick, timeout_tick))
-    {
-        selected = latest;
-    }
-
-    if (selected == 0u)
-    {
-        ManualInputState out;
-        ManualInputResetRc(&out);
-        ManualInputApplyBoardKey(&out);
-        ManualInputCommitOutput(&out, MANUAL_INPUT_SRC_AUTO);
-        return;
-    }
-
-    ManualInputState out = src_snapshot[selected].rc;
-    ManualInputSanitizeSwitch(&out);
-    ManualInputApplyBoardKey(&out);
-    ManualInputCommitOutput(&out, selected);
-}
-
 uint8_t RC_data_is_error(void)
 {
-    ManualInputState rc_snapshot;
+    ManualInputSnapshot snapshot;
 
-    // Pure check (no side effects): do not modify rc_ctrl here.
-    ManualInputCriticalState critical = ManualInputEnterCritical();
-    rc_snapshot = rc_ctrl;
-    ManualInputExitCritical(critical);
-
-    return (uint8_t)(ManualInputStateValid(&rc_snapshot) == 0u);
+    if (ManualInputSnapshotRead(&snapshot) == 0u || snapshot.online == 0u)
+    {
+        return 1u;
+    }
+    return (uint8_t)(ManualInputStateValid(&snapshot.manual) == 0u);
 }
 
 void slove_RC_lost(void)

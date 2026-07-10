@@ -7,49 +7,11 @@
  */
 
 #include "ControlInput.h"
-
-#include "FreeRTOS.h"
-#include "task.h"
-#include "main.h"
+#include "ManualInputSnapshot.h"
 
 #include <string.h>
 
-static ControlInputState g_control_input;
-
-typedef struct
-{
-    uint8_t from_isr;
-    UBaseType_t saved_mask;
-} ControlInputCriticalState;
-
-static ControlInputCriticalState ControlInputEnterCritical(void)
-{
-    ControlInputCriticalState state;
-
-    state.from_isr = (__get_IPSR() != 0U) ? 1u : 0u;
-    state.saved_mask = 0u;
-    if (state.from_isr != 0u)
-    {
-        state.saved_mask = taskENTER_CRITICAL_FROM_ISR();
-    }
-    else
-    {
-        taskENTER_CRITICAL();
-    }
-    return state;
-}
-
-static void ControlInputExitCritical(ControlInputCriticalState state)
-{
-    if (state.from_isr != 0u)
-    {
-        taskEXIT_CRITICAL_FROM_ISR(state.saved_mask);
-    }
-    else
-    {
-        taskEXIT_CRITICAL();
-    }
-}
+static ControlInputState g_control_input_legacy;
 
 static uint8_t ControlInputSanitizeSwitchPos(uint8_t pos)
 {
@@ -60,7 +22,7 @@ static uint8_t ControlInputSanitizeSwitchPos(uint8_t pos)
     return (uint8_t)MANUAL_INPUT_SWITCH_POS_UP;
 }
 
-static int16_t input_map_axis(const input_axis_map_t *map, const ManualInputState *rc)
+static int16_t ControlInputMapAxis(const input_axis_map_t *map, const ManualInputState *rc)
 {
     if (map == NULL || rc == NULL)
     {
@@ -105,44 +67,44 @@ static uint8_t ControlInputMapSwitch(const input_switch_map_t *map, const Manual
     return value;
 }
 
-void ControlInputUpdateFromManualInput(const ManualInputState *rc)
+void ControlInputBuild(const ManualInputState *manual,
+                       const input_config_t *config,
+                       ControlInputState *out)
 {
-    ControlInputState next;
-
-    memset(&next, 0, sizeof(next));
-    if (rc == NULL)
+    if (out == NULL)
     {
-        for (uint32_t i = 0u; i < (uint32_t)INPUT_AXIS_COUNT; i++)
-        {
-            next.axis[i] = 0;
-        }
-        for (uint32_t i = 0u; i < (uint32_t)INPUT_SW_COUNT; i++)
-        {
-            next.sw[i] = RC_SW_UP;
-        }
-        ControlInputCriticalState critical = ControlInputEnterCritical();
-        g_control_input = next;
-        ControlInputExitCritical(critical);
+        return;
+    }
+
+    memset(out, 0, sizeof(*out));
+    for (uint32_t i = 0u; i < (uint32_t)INPUT_SW_COUNT; i++)
+    {
+        out->sw[i] = RC_SW_UP;
+    }
+    if (manual == NULL || config == NULL)
+    {
         return;
     }
 
     for (uint32_t i = 0u; i < (uint32_t)INPUT_AXIS_COUNT; i++)
     {
-        next.axis[i] = input_map_axis(&g_config.input.axis[i], rc);
+        out->axis[i] = ControlInputMapAxis(&config->axis[i], manual);
     }
     for (uint32_t i = 0u; i < (uint32_t)INPUT_SW_COUNT; i++)
     {
-        next.sw[i] = ControlInputMapSwitch(&g_config.input.sw[i], rc);
+        out->sw[i] = ControlInputMapSwitch(&config->sw[i], manual);
     }
+}
 
-    ControlInputCriticalState critical = ControlInputEnterCritical();
-    g_control_input = next;
-    ControlInputExitCritical(critical);
+void ControlInputUpdateFromManualInput(const ManualInputState *rc)
+{
+    ControlInputBuild(rc, &g_config.input, &g_control_input_legacy);
 }
 
 const ControlInputState *ControlInputGetState(void)
 {
-    return &g_control_input;
+    (void)ControlInputGetCopy(&g_control_input_legacy);
+    return &g_control_input_legacy;
 }
 
 uint8_t ControlInputGetCopy(ControlInputState *out)
@@ -152,40 +114,36 @@ uint8_t ControlInputGetCopy(ControlInputState *out)
         return 0u;
     }
 
-    ControlInputCriticalState critical = ControlInputEnterCritical();
-    *out = g_control_input;
-    ControlInputExitCritical(critical);
+    ManualInputSnapshot snapshot;
+    if (ManualInputSnapshotRead(&snapshot) == 0u)
+    {
+        ControlInputBuild(NULL, NULL, out);
+        return 0u;
+    }
+    *out = snapshot.control;
     return 1u;
 }
 
 int16_t ControlInputAxis(input_axis_e axis)
 {
-    int16_t value;
-
     if ((uint32_t)axis >= (uint32_t)INPUT_AXIS_COUNT)
     {
         return 0;
     }
 
-    ControlInputCriticalState critical = ControlInputEnterCritical();
-    value = g_control_input.axis[axis];
-    ControlInputExitCritical(critical);
-    return value;
+    ControlInputState snapshot;
+    return (ControlInputGetCopy(&snapshot) != 0u) ? snapshot.axis[axis] : 0;
 }
 
 uint8_t ControlInputSwitch(input_switch_e sw)
 {
-    uint8_t value;
-
     if ((uint32_t)sw >= (uint32_t)INPUT_SW_COUNT)
     {
         return RC_SW_UP;
     }
 
-    ControlInputCriticalState critical = ControlInputEnterCritical();
-    value = g_control_input.sw[sw];
-    ControlInputExitCritical(critical);
-    return value;
+    ControlInputState snapshot;
+    return (ControlInputGetCopy(&snapshot) != 0u) ? snapshot.sw[sw] : RC_SW_UP;
 }
 
 uint8_t ControlInputSwitchPosToRaw(uint8_t pos)
