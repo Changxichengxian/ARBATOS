@@ -40,10 +40,12 @@ static sdlog_manual_input_raw_t s_lastRawLog;
 
 static void TestUpdateSource(uint8_t source, const ManualInputState *input)
 {
-    const uint8_t protocol = (source == MANUAL_INPUT_SRC_ELRS) ?
-                                 MANUAL_INPUT_PROTOCOL_CRSF :
-                                 MANUAL_INPUT_PROTOCOL_NONE;
-    ManualInputUpdateSourceDetail(source, input, protocol, 0u, 0u, NULL);
+    ManualInputUpdateSourceDetail(source,
+                                  input,
+                                  MANUAL_INPUT_PROTOCOL_NONE,
+                                  0u,
+                                  0u,
+                                  NULL);
 }
 
 #define ManualInputUpdateSource TestUpdateSource
@@ -354,7 +356,7 @@ static int TestInvalidCustomSwitchInvalidatesVt13(void)
     if (!TestCheck(ManualInputSnapshotRead(&after) != 0u &&
                        after.online != 0u &&
                        after.activeSource == MANUAL_INPUT_SRC_ELRS &&
-                       after.sourceProtocol == MANUAL_INPUT_PROTOCOL_CRSF &&
+                       after.sourceProtocol == MANUAL_INPUT_PROTOCOL_NONE &&
                        after.sourceSeq != before.sourceSeq &&
                        after.sourceTickMs == 1u &&
                        after.manual.rc.ch[0] == 321 &&
@@ -665,8 +667,8 @@ static int TestParserArrivalDuringPublish(void)
     s_tick = 1u;
     ManualInputUpdateSource(MANUAL_INPUT_SRC_ELRS, &crsf);
     if (!TestCheck(ManualInputSnapshotRead(&before) != 0u &&
-                       before.sourceProtocol == MANUAL_INPUT_PROTOCOL_CRSF,
-                   "发布竞态测试必须先建立 CRSF 基线")) return 0;
+                       before.sourceProtocol == MANUAL_INPUT_PROTOCOL_NONE,
+                   "发布竞态测试必须先建立 ELRS 来源基线")) return 0;
 
     packet = TestCustomPacket(660, -330,
                               IMAGE_REMOTE_RC_BTN_LEFT | IMAGE_REMOTE_RC_BTN_RIGHT);

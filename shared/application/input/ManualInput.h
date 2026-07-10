@@ -170,6 +170,9 @@ typedef char ManualInputRcOffsetCheck[(offsetof(ManualInputState, rc) == MANUAL_
 typedef char ManualInputMouseOffsetCheck[(offsetof(ManualInputState, mouse) == MANUAL_INPUT_MOUSE_OFFSET_BYTES) ? 1 : -1];
 typedef char ManualInputKeyOffsetCheck[(offsetof(ManualInputState, key) == MANUAL_INPUT_KEY_OFFSET_BYTES) ? 1 : -1];
 
+/* 条件检查在 ManualInput 短临界区内执行，只能读取代次且不得阻塞；返回 0 时来源状态完全不变。 */
+typedef uint8_t (*ManualInputCommitGuard)(void *context);
+
 #define MANUAL_INPUT_SOURCE_FLAG_AUTO_AIM (1u << 0)
 #define MANUAL_INPUT_SOURCE_FLAG_AUX_FIRE (1u << 1)
 #define MANUAL_INPUT_SOURCE_RAW_PAUSE      (1u << 0)
@@ -205,6 +208,11 @@ extern void ManualInputUpdateImageSource(const ManualInputState *rc,
 /* CRSF 原始 16 通道与解码值原子入库，配置刷新可用冻结映射重建旧帧。 */
 extern void ManualInputUpdateElrsChannels(const ManualInputState *decoded,
                                           const uint16_t raw[16]);
+extern uint8_t ManualInputUpdateElrsChannelsGuarded(
+    const ManualInputState *decoded,
+    const uint16_t raw[16],
+    ManualInputCommitGuard guard,
+    void *guardContext);
 /* CRC 正确但业务字段非法时使用；旧命令立即失效，等待该来源的新合法帧。 */
 extern void ManualInputInvalidateSource(uint8_t source);
 extern void ManualInputRefresh(void);

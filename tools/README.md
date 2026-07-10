@@ -59,6 +59,14 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestManualInputSna
 
 该测试直接编译生产用 `ManualInput.c` 与 `ControlInput.c`，还会在候选计算和 Watch 副作用中注入新来源，验证旧候选不会覆盖新帧、发布副作用不会逆序，读取本身也不会重新计算或发布。
 
+ELRS 严格链路证据、CRSF 重同步、映射通道校验、DMA/逐字节中断批裁决和 stop/restart 会话隔离回归：
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestElrsInput.ps1
+```
+
+该测试直接编译生产用 `ElrsTask.c`、`ManualInput.c` 与 `ControlInput.c`。产品策略要求先收到新鲜的 0x14 Link Statistics，再接收一帧新的 0x16；只发送 0x16 的泛 CRSF 设备不会成为控制来源。
+
 StateStore 双缓冲与快照时间信息的主机回归：
 
 ```powershell

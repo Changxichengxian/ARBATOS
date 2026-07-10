@@ -190,6 +190,14 @@ static void ManualInputUpdateSourceDetail(uint8_t source,
                                           uint8_t raw_flags,
                                           uint8_t raw_switch1,
                                           const uint16_t *crsf_raw);
+static uint8_t ManualInputUpdateSourceDetailGuarded(uint8_t source,
+                                                    const ManualInputState *rc,
+                                                    uint8_t protocol,
+                                                    uint8_t raw_flags,
+                                                    uint8_t raw_switch1,
+                                                    const uint16_t *crsf_raw,
+                                                    ManualInputCommitGuard guard,
+                                                    void *guard_context);
 static void ManualInputStoreInit(void);
 static void ManualInputCopySources(ManualInputSrcState *out,
                                    ManualInputCrsfState *crsf);
@@ -329,17 +337,28 @@ void ManualInputUpdateElrsChannels(
     const ManualInputState *decoded,
     const uint16_t raw[MANUAL_INPUT_CRSF_CHANNEL_COUNT])
 {
+    (void)ManualInputUpdateElrsChannelsGuarded(decoded, raw, NULL, NULL);
+}
+
+uint8_t ManualInputUpdateElrsChannelsGuarded(
+    const ManualInputState *decoded,
+    const uint16_t raw[MANUAL_INPUT_CRSF_CHANNEL_COUNT],
+    ManualInputCommitGuard guard,
+    void *guardContext)
+{
     if (decoded == NULL || raw == NULL)
     {
         ManualInputInvalidateSource(MANUAL_INPUT_SRC_ELRS);
-        return;
+        return 0u;
     }
-    ManualInputUpdateSourceDetail(MANUAL_INPUT_SRC_ELRS,
-                                  decoded,
-                                  MANUAL_INPUT_PROTOCOL_CRSF,
-                                  0u,
-                                  0u,
-                                  raw);
+    return ManualInputUpdateSourceDetailGuarded(MANUAL_INPUT_SRC_ELRS,
+                                                decoded,
+                                                MANUAL_INPUT_PROTOCOL_CRSF,
+                                                0u,
+                                                0u,
+                                                raw,
+                                                guard,
+                                                guardContext);
 }
 
 static void ManualInputUpdateSourceDetail(uint8_t source,
@@ -349,22 +368,46 @@ static void ManualInputUpdateSourceDetail(uint8_t source,
                                           uint8_t raw_switch1,
                                           const uint16_t *crsf_raw)
 {
+    (void)ManualInputUpdateSourceDetailGuarded(source,
+                                               rc,
+                                               protocol,
+                                               raw_flags,
+                                               raw_switch1,
+                                               crsf_raw,
+                                               NULL,
+                                               NULL);
+}
+
+static uint8_t ManualInputUpdateSourceDetailGuarded(uint8_t source,
+                                                    const ManualInputState *rc,
+                                                    uint8_t protocol,
+                                                    uint8_t raw_flags,
+                                                    uint8_t raw_switch1,
+                                                    const uint16_t *crsf_raw,
+                                                    ManualInputCommitGuard guard,
+                                                    void *guard_context)
+{
     const TickType_t now_tick = xTaskGetTickCount();
     ManualInputState source_copy;
     uint8_t source_valid;
 
     if (rc == NULL)
     {
-        return;
+        return 0u;
     }
     if (source == 0u || source > (uint8_t)MANUAL_INPUT_SRC_MAX)
     {
-        return;
+        return 0u;
     }
     /* 校验和入库必须使用同一份值，不能再次解引用调用者的可变缓冲。 */
     source_copy = *rc;
     source_valid = ManualInputStateValid(&source_copy);
     ManualInputCriticalState critical = ManualInputEnterCritical();
+    if (guard != NULL && guard(guard_context) == 0u)
+    {
+        ManualInputExitCritical(critical);
+        return 0u;
+    }
     const uint8_t old_valid = manual_src[source].valid;
     const uint8_t protocol_changed = (uint8_t)(old_valid != 0u && source_valid != 0u &&
                                                 manual_src[source].protocol != protocol);
@@ -408,6 +451,7 @@ static void ManualInputUpdateSourceDetail(uint8_t source,
         DetectHook(DBUS_TOE);
     }
     ManualInputRefreshIfNeeded(1u);
+    return 1u;
 }
 
 void ManualInputInvalidateSource(uint8_t source)
@@ -819,10 +863,13 @@ static void ManualInputResolveSource(const ManualInputSrcState *source,
     }
 
     *out = source->rc;
-    if (source->protocol == MANUAL_INPUT_PROTOCOL_CRSF &&
-        crsf != NULL && crsf->valid != 0u && input_config != NULL)
+    if (source->protocol == MANUAL_INPUT_PROTOCOL_CRSF)
     {
-        ManualInputCrsfDecode(crsf->channel, input_config, out);
+        if (crsf == NULL || crsf->valid == 0u || input_config == NULL ||
+            ManualInputCrsfDecode(crsf->channel, input_config, out) == 0u)
+        {
+            ManualInputResetRc(out);
+        }
     }
 }
 
@@ -1199,6 +1246,15 @@ static void ManualInputBuildSnapshot(const ManualInputSrcState *src_state,
     if (src_state == NULL || out == NULL)
     {
         return;
+    }
+
+    /* CRSF 原始值必须用本次快照冻结的同代映射复核，配置热改不能绕过入库校验。 */
+    if (src_state[MANUAL_INPUT_SRC_ELRS].valid != 0u &&
+        src_state[MANUAL_INPUT_SRC_ELRS].protocol == MANUAL_INPUT_PROTOCOL_CRSF &&
+        (crsf == NULL || crsf->valid == 0u || input_cfg == NULL ||
+         ManualInputCrsfMappedValuesValid(crsf->channel, input_cfg) == 0u))
+    {
+        excluded_mask |= ManualInputSourceMask(MANUAL_INPUT_SRC_ELRS);
     }
 
     memset(out, 0, sizeof(*out));

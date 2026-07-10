@@ -46,10 +46,6 @@ static void TestUpdateSource(uint8_t source, const ManualInputState *input)
     {
         protocol = MANUAL_INPUT_PROTOCOL_DBUS;
     }
-    else if (source == MANUAL_INPUT_SRC_ELRS)
-    {
-        protocol = MANUAL_INPUT_PROTOCOL_CRSF;
-    }
     ManualInputUpdateSourceDetail(source, input, protocol, 0u, 0u, NULL);
 }
 
@@ -368,7 +364,7 @@ static int TestPinnedSourceTimeoutFallback(void)
                    snapshot.online != 0u &&
                    snapshot.activeSource == MANUAL_INPUT_SRC_ELRS &&
                    snapshot.activeMask == ManualInputSourceMask(MANUAL_INPUT_SRC_ELRS) &&
-                   snapshot.sourceProtocol == MANUAL_INPUT_PROTOCOL_CRSF &&
+                   snapshot.sourceProtocol == MANUAL_INPUT_PROTOCOL_NONE &&
                    snapshot.manual.rc.ch[0] == 200 &&
                    snapshot.publishSeq == publishSeq && snapshot.switchSeq == switchSeq,
                    "固定主来源过期时必须从同一 bank 无空档回退健康来源")) return 0;
@@ -614,6 +610,41 @@ static int TestCrsfMappingRefreshUsesFrozenRaw(void)
                      snapshot.manual.rc.ch[0] == -(int16_t)RC_CH_VALUE_ABS_MAX &&
                      snapshot.sourceSeq == source_seq,
                      "热改 CRSF 映射后无需新帧也必须从同代原始通道重建");
+}
+
+static int TestCrsfFrozenMappingRejectsOldInvalidRaw(void)
+{
+    ManualInputSnapshot snapshot;
+    ManualInputState decoded = {0};
+    uint16_t raw[MANUAL_INPUT_CRSF_CHANNEL_COUNT];
+
+    TestReset(100u, 0u);
+    for (uint8_t i = 0u; i < MANUAL_INPUT_CRSF_CHANNEL_COUNT; i++)
+    {
+        raw[i] = MANUAL_INPUT_CRSF_VALUE_MID;
+    }
+    raw[15] = 0u;
+    if (!TestCheck(ManualInputCrsfDecode(raw, &g_config.input, &decoded) != 0u,
+                   "未映射 CRSF 通道异常不得影响当前合法解码")) return 0;
+    ManualInputUpdateElrsChannels(&decoded, raw);
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u && snapshot.online != 0u,
+                   "CRSF 热改映射测试必须先建立有效来源")) return 0;
+
+    g_config.input.ElrsChMap[0] = 15u;
+    ManualInputRefresh();
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u && snapshot.online == 0u &&
+                       snapshot.activeSource == MANUAL_INPUT_SRC_AUTO,
+                   "冻结映射指向旧帧异常通道时必须在仲裁前排除 ELRS")) return 0;
+
+    g_config.input.ElrsChMap[0] = 0u;
+    ManualInputRefresh();
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u && snapshot.online != 0u,
+                   "恢复合法冻结映射后来源可在原时效内重建")) return 0;
+
+    g_config.input.ElrsChMap[0] = MANUAL_INPUT_CRSF_CHANNEL_COUNT;
+    ManualInputRefresh();
+    return TestCheck(ManualInputSnapshotRead(&snapshot) != 0u && snapshot.online == 0u,
+                     "CRSF 映射索引越界必须失效，不能静默使用默认通道");
 }
 
 static int TestSourceCopyMatchesValidation(void)
@@ -1293,6 +1324,7 @@ int main(void)
     if (!TestDerivedMultiStageAuthorityFallback()) return 1;
     if (!TestMergeAuxiliaryActionDoesNotChangeControlAuthority()) return 1;
     if (!TestCrsfMappingRefreshUsesFrozenRaw()) return 1;
+    if (!TestCrsfFrozenMappingRejectsOldInvalidRaw()) return 1;
     if (!TestSourceCopyMatchesValidation()) return 1;
     if (!TestSameTickLatestSource()) return 1;
     if (!TestDirtyGenerationRejectsOldCandidate()) return 1;

@@ -1,0 +1,4 @@
+#ifndef MANUAL_INPUT_TEST_CMSIS_OS_H
+#define MANUAL_INPUT_TEST_CMSIS_OS_H
+
+#endif

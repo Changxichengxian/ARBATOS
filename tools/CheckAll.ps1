@@ -1220,7 +1220,7 @@ function Test-ProjectOwnedPathNames {
         if ($normPath -match '^tools/build/gcc_support/') {
             continue
         }
-        if ($normPath -match '^tools/tests/(?:[^/]+-)?stubs/cmsis_compiler\.h$') {
+        if ($normPath -match '^tools/tests/(?:[^/]+-)?stubs/cmsis_(?:compiler|os)\.h$') {
             continue
         }
         if ($normPath -match '^shared/components/algorithm/Include/') {
@@ -1744,12 +1744,16 @@ function Test-ManualInputSnapshotBoundaries {
     foreach ($testRepoPath in @(
             "tools\TestManualInputSnapshot.ps1",
             "tools\TestImageRemoteInput.ps1",
+            "tools\TestElrsInput.ps1",
             "tools\tests\ManualInputSnapshotRegression.c",
             "tools\tests\ImageRemoteInputRegression.c",
+            "tools\tests\ElrsInputRegression.c",
             "tools\tests\manual-input-stubs\FreeRTOS.h",
             "tools\tests\manual-input-stubs\BspUsart.h",
+            "tools\tests\manual-input-stubs\cmsis_os.h",
             "tools\tests\manual-input-stubs\task.h",
-            "tools\tests\manual-input-stubs\timers.h"
+            "tools\tests\manual-input-stubs\timers.h",
+            "tools\tests\manual-input-stubs\Watch.h"
         )) {
         if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $testRepoPath) -PathType Leaf)) {
             Add-CheckError "Missing manual input snapshot regression file: $testRepoPath"
@@ -1769,6 +1773,7 @@ function Test-ManualInputSnapshotBoundaries {
                 'TestDerivedMultiStageAuthorityFallback\s*\(',
                 'TestMergeAuxiliaryActionDoesNotChangeControlAuthority\s*\(',
                 'TestCrsfMappingRefreshUsesFrozenRaw\s*\(',
+                'TestCrsfFrozenMappingRejectsOldInvalidRaw\s*\(',
                 'TestIdleTimerDoesNotRepublish\s*\(',
                 'TestTypedWriterNullRevokesSource\s*\(',
                 'ManualInputRefreshBusy\s*=\s*1u',
@@ -1797,7 +1802,6 @@ function Test-ManualInputSnapshotBoundaries {
                 'BSP_AUX_LINK_RXEVENT_IDLE',
                 'TestBuildCustomFrame\s*\(',
                 'TestBuildVt13Frame\s*\(',
-                'MANUAL_INPUT_PROTOCOL_CRSF',
                 'MANUAL_INPUT_PROTOCOL_IMAGE_CUSTOM',
                 'ManualInputStore\.ready\s*=\s*0u',
                 'TestInvalidCustomSwitchInvalidatesVt13\s*\(',
@@ -1809,6 +1813,35 @@ function Test-ManualInputSnapshotBoundaries {
             )) {
             if ($imageRegressionContent -notmatch $requiredPattern) {
                 Add-CheckError "${imageRegressionRepoPath}: real ImageRemote regression is missing '$requiredPattern'."
+            }
+        }
+    }
+
+    $elrsRegressionRepoPath = "tools\tests\ElrsInputRegression.c"
+    $elrsRegressionPath = Join-Path $script:RepoRoot $elrsRegressionRepoPath
+    if (Test-Path -LiteralPath $elrsRegressionPath -PathType Leaf) {
+        $elrsRegressionContent = Get-Content -LiteralPath $elrsRegressionPath -Raw -Encoding UTF8
+        foreach ($requiredPattern in @(
+                '#include\s+"ElrsTask\.c"',
+                'knownStats[\s\S]{0,240}?0x74u',
+                'TestStrictStatsAndOrder\s*\(',
+                'TestLinkDownDominatesBatch\s*\(',
+                'TestStatsTimeoutBoundary\s*\(',
+                'TestTaskStatsDeadlineWait\s*\(',
+                'TestManualInputGuardedCommit\s*\(',
+                'TestMappedChannelValidation\s*\(',
+                'TestParserValidationAndResync\s*\(',
+                'TestInvalidLinkQuality\s*\(',
+                'TestSessionGenerationBarrier\s*\(',
+                'TestStatsSessionWriteBarrier\s*\(',
+                'TestTransportBatchBoundaries\s*\(',
+                'TestTransportEpochBarriers\s*\(',
+                'TestItDrainNormalAppend\s*\(',
+                'TestUartErrorEpochBarrier\s*\(',
+                'TestStatsTickWrap\s*\('
+            )) {
+            if ($elrsRegressionContent -notmatch $requiredPattern) {
+                Add-CheckError "${elrsRegressionRepoPath}: real ELRS reliability regression is missing '$requiredPattern'."
             }
         }
     }
@@ -1859,6 +1892,22 @@ function Test-ManualInputSnapshotBoundaries {
         $elrsContent -notmatch 'ElrsLinkItRxOverflow[\s\S]{0,280}?ManualInputInvalidateSource\s*\(\s*MANUAL_INPUT_SRC_ELRS\s*\)' -or
         $imageInputContent -notmatch 'ImageRemoteItRxOverflow[\s\S]{0,320}?ImageRemoteInvalidate\s*\(\s*\)') {
         Add-CheckError "AUX link startup/overflow failures must invalidate only their source in task context and must never enter the global fatal path."
+    }
+    if ($elrsContent -notmatch '#define\s+CRSF_FRAME_LEN_MAX\s+\(CRSF_FRAME_SIZE_MAX\s+-\s+2u\)' -or
+        $elrsContent -notmatch 'frame\[0\]\s*!=\s*CRSF_ADDRESS_FLIGHT_CONTROLLER' -or
+        $elrsContent -notmatch 'CRSF_FRAMETYPE_LINK_STATISTICS' -or
+        $elrsContent -notmatch 'uplink_lq\s*=\s*payload\[2\]' -or
+        $elrsContent -notmatch 'ELRS_LINK_STATS_TIMEOUT_MS' -or
+        $elrsContent -notmatch 'ElrsLinkBatchForceInvalidate' -or
+        $elrsContent -notmatch 'volatile\s+uint32_t\s+ElrsLinkSessionGen' -or
+        $elrsContent -notmatch 'volatile\s+uint32_t\s+ElrsLinkTransportEpoch' -or
+        $elrsContent -notmatch 'ElrsLinkLastStatsSessionGen' -or
+        $elrsContent -notmatch 'ElrsLinkManualCommitGuard' -or
+        $elrsContent -notmatch 'ManualInputUpdateElrsChannelsGuarded' -or
+        $elrsContent -notmatch 'ManualInputCrsfMappedValuesValid' -or
+        $manualContent -notmatch 'guard\s*!=\s*NULL\s*&&\s*guard\s*\(\s*guard_context\s*\)\s*==\s*0u' -or
+        $manualContent -notmatch 'ManualInputCrsfMappedValuesValid\s*\(\s*crsf->channel\s*,\s*input_cfg\s*\)') {
+        Add-CheckError "ELRS must require fresh 0x14 uplink quality, strict FC addressing, mapped-channel validation and batch/session isolation."
     }
 
     $configParamRepoPath = "shared\application\robot\ConfigParamList.inc"

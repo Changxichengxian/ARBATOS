@@ -15,6 +15,80 @@
 #define MANUAL_INPUT_CRSF_VALUE_MID     992u
 #define MANUAL_INPUT_CRSF_VALUE_MAX     1811u
 
+static inline uint8_t ManualInputCrsfAxisChannel(const input_config_t *config,
+                                                  uint8_t index)
+{
+    uint8_t channel;
+
+    if (config == NULL || index >= 5u)
+    {
+        return MANUAL_INPUT_CRSF_CHANNEL_COUNT;
+    }
+    channel = config->ElrsChMap[index];
+    return channel;
+}
+
+static inline uint8_t ManualInputCrsfSwitchChannel(const input_config_t *config,
+                                                    uint8_t index)
+{
+    uint8_t channel;
+
+    if (config == NULL || index >= 2u)
+    {
+        return MANUAL_INPUT_CRSF_CHANNEL_COUNT;
+    }
+    channel = config->ElrsSwMap[index];
+    return channel;
+}
+
+/*
+ * 项目控制语义只接受 CRSF 标准 +/-100% 范围。只检查实际映射到控制量的通道，
+ * 避免未使用 AUX 的接收机占位值误伤仍然有效的控制帧。
+ */
+static inline uint8_t ManualInputCrsfMappedValuesValid(
+    const uint16_t raw[MANUAL_INPUT_CRSF_CHANNEL_COUNT],
+    const input_config_t *config)
+{
+    if (raw == NULL || config == NULL)
+    {
+        return 0u;
+    }
+
+    for (uint8_t i = 0u; i < 5u; i++)
+    {
+        const uint8_t channel = ManualInputCrsfAxisChannel(config, i);
+        uint16_t value;
+
+        if (channel >= MANUAL_INPUT_CRSF_CHANNEL_COUNT)
+        {
+            return 0u;
+        }
+        value = raw[channel];
+        if (value < MANUAL_INPUT_CRSF_VALUE_MIN ||
+            value > MANUAL_INPUT_CRSF_VALUE_MAX)
+        {
+            return 0u;
+        }
+    }
+    for (uint8_t i = 0u; i < 2u; i++)
+    {
+        const uint8_t channel = ManualInputCrsfSwitchChannel(config, i);
+        uint16_t value;
+
+        if (channel >= MANUAL_INPUT_CRSF_CHANNEL_COUNT)
+        {
+            return 0u;
+        }
+        value = raw[channel];
+        if (value < MANUAL_INPUT_CRSF_VALUE_MIN ||
+            value > MANUAL_INPUT_CRSF_VALUE_MAX)
+        {
+            return 0u;
+        }
+    }
+    return 1u;
+}
+
 static inline int16_t ManualInputCrsfMapAxis(uint16_t value)
 {
     if (value < MANUAL_INPUT_CRSF_VALUE_MIN)
@@ -62,34 +136,28 @@ static inline uint8_t ManualInputCrsfMapSwitch(uint16_t value)
     return RC_SW_MID;
 }
 
-static inline void ManualInputCrsfDecode(
+static inline uint8_t ManualInputCrsfDecode(
     const uint16_t raw[MANUAL_INPUT_CRSF_CHANNEL_COUNT],
     const input_config_t *config,
     ManualInputState *out)
 {
-    if (raw == NULL || config == NULL || out == NULL)
+    if (raw == NULL || config == NULL || out == NULL ||
+        ManualInputCrsfMappedValuesValid(raw, config) == 0u)
     {
-        return;
+        return 0u;
     }
 
     for (uint8_t i = 0u; i < 5u; i++)
     {
-        uint8_t channel = config->ElrsChMap[i];
-        if (channel >= MANUAL_INPUT_CRSF_CHANNEL_COUNT)
-        {
-            channel = (i < 4u) ? i : 6u;
-        }
+        const uint8_t channel = ManualInputCrsfAxisChannel(config, i);
         out->rc.ch[i] = ManualInputCrsfMapAxis(raw[channel]);
     }
     for (uint8_t i = 0u; i < 2u; i++)
     {
-        uint8_t channel = config->ElrsSwMap[i];
-        if (channel >= MANUAL_INPUT_CRSF_CHANNEL_COUNT)
-        {
-            channel = (uint8_t)(4u + i);
-        }
+        const uint8_t channel = ManualInputCrsfSwitchChannel(config, i);
         out->rc.s[i] = (char)ManualInputCrsfMapSwitch(raw[channel]);
     }
+    return 1u;
 }
 
 #endif
