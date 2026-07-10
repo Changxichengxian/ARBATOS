@@ -196,7 +196,7 @@ APP_STATIC_THREAD(startupServiceTask, StartupServiceTask, osPriorityNormal, 512)
 APP_STATIC_THREAD(cali, CalibrateTask, osPriorityNormal, 512);
 #endif
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-APP_STATIC_THREAD(chassisControlTask, ChassisControlTask, osPriorityAboveNormal, 512);
+APP_STATIC_THREAD(chassisControlTask, ChassisControlTask, osPriorityAboveNormal, 768);
 #endif
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
 APP_STATIC_THREAD(wheellegMitTask, WheelLegMitTask, osPriorityAboveNormal, 768);

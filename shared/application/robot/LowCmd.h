@@ -124,6 +124,7 @@ typedef struct
     uint8_t state;     // MIT feedback state when available
     uint8_t driveState; // MotorDriveState
     uint16_t rxId;
+    uint16_t lastEcd;
     uint32_t rxCount;
     uint32_t lastRxTick;
     fp32 q;

@@ -122,7 +122,10 @@ static void ChassisWriteState(const ChassisMove *control)
 
     for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT && i < CHASSIS_STATE_MOTOR_COUNT; i++)
     {
-        ChassisFillMotorMeasureState(&state.motor[i].measure, control->motor_chassis[i].ChassisMotorMeasure);
+        ChassisFillMotorMeasureState(&state.motor[i].measure,
+                                     (control->motor_chassis[i].measureValid != 0u) ?
+                                         &control->motor_chassis[i].measure :
+                                         NULL);
         state.motor[i].accel = control->motor_chassis[i].accel;
         state.motor[i].speed = control->motor_chassis[i].speed;
         state.motor[i].speed_set = control->motor_chassis[i].speed_set;

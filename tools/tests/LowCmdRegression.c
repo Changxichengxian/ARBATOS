@@ -615,6 +615,45 @@ static int TestWriterAuthorityComesFromApi(void)
                      "拒绝非法 writer 时不得改动命令或序号");
 }
 
+static int TestLowStateCopiesLastEcd(void)
+{
+    const MotorId ids[2] = {Motor1, Motor6};
+    MotorState feedback[2] = {{0}, {0}};
+    MotorState single;
+    MotorState many[2];
+    LowState state;
+
+    feedback[0].lastRxTick = 101u;
+    feedback[0].lastEcd = 0x1234u;
+    feedback[0].ecd = 0x2345u;
+    feedback[1].lastRxTick = 102u;
+    feedback[1].lastEcd = 0x5678u;
+    feedback[1].ecd = 0x6789u;
+
+    LowStateClearAll();
+    LowStateUpdateMotor(ids[0], &feedback[0]);
+    LowStateUpdateMotor(ids[1], &feedback[1]);
+
+    if (!TestCheck(LowStateGetMotor(ids[0], &single) != 0u &&
+                       single.lastEcd == feedback[0].lastEcd &&
+                       single.ecd == feedback[0].ecd,
+                   "LowState 单轴快照丢失上一编码器值"))
+    {
+        return 0;
+    }
+    if (!TestCheck(LowStateGetMotorMany(ids, many, 2u) != 0u &&
+                       many[0].lastEcd == feedback[0].lastEcd &&
+                       many[1].lastEcd == feedback[1].lastEcd,
+                   "LowState 批量快照丢失上一编码器值"))
+    {
+        return 0;
+    }
+    return TestCheck(LowStateGet(&state) != 0u &&
+                         state.motorState[ids[0]].lastEcd == feedback[0].lastEcd &&
+                         state.motorState[ids[1]].lastEcd == feedback[1].lastEcd,
+                     "LowState 整体快照丢失上一编码器值");
+}
+
 int main(void)
 {
     if (!TestClearManySuccess()) return 1;
@@ -630,6 +669,7 @@ int main(void)
     if (!TestBestEffortSkipsInhibitedAxis()) return 1;
     if (!TestCanTxRejectsStaleCachedCommand()) return 1;
     if (!TestWriterAuthorityComesFromApi()) return 1;
+    if (!TestLowStateCopiesLastEcd()) return 1;
 
     (void)puts("PASS: LowCmd clear and inhibit host regression");
     return 0;

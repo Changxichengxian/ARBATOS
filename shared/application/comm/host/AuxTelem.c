@@ -741,7 +741,7 @@ static fp32 AuxTelemGetValue(const AuxTelemCtx *ctx, AuxTelemSig sig)
         if (motor < 4u && ctx->chassis)
         {
             const ChassisMotor *m = &ctx->chassis->motor_chassis[motor];
-            const motor_measure_t *mm = m->ChassisMotorMeasure;
+            const motor_measure_t *mm = (m->measureValid != 0u) ? &m->measure : NULL;
             switch (field)
             {
             case 0: return (fp32)(mm ? mm->speed_rpm : 0);

@@ -11,9 +11,10 @@
   * @param[out]     ChassisMoveInit: "ChassisMove" variable point
   * @retval         none
   */
-static void ChassisInit(ChassisMove *ChassisMoveInit)
+static void ChassisInit(ChassisMove *ChassisMoveInit,
+                        ChassisRuntimeSnapshot *snapshot)
 {
-    if (ChassisMoveInit == NULL)
+    if (ChassisMoveInit == NULL || snapshot == NULL)
     {
         return;
     }
@@ -38,17 +39,14 @@ static void ChassisInit(ChassisMove *ChassisMoveInit)
     //get gyro sensor euler angle point
     ChassisMoveInit->ChassisInsAngle = get_INS_angle_point();
     ChassisINTGyroPoint = get_gyro_data_point();
-    // Cache gimbal state once it becomes available.
-    ChassisMoveInit->GimbalStateValid = 0u;
-    ChassisMoveInit->GimbalOnline = 0u;
-    memset(&ChassisMoveInit->ChassisYawMotor, 0, sizeof(ChassisMoveInit->ChassisYawMotor));
-    memset(&ChassisMoveInit->ChassisPitchMotor, 0, sizeof(ChassisMoveInit->ChassisPitchMotor));
-
     //get chassis motor data point,  initialize motor speed PID
     //获取底盘电机数据指针，初始化PID
     for (i = 0; i < 4; i++)
     {
-        ChassisMoveInit->motor_chassis[i].ChassisMotorMeasure = get_chassis_motor_measure_point(i);
+        (void)memset(&ChassisMoveInit->motor_chassis[i].measure,
+                     0,
+                     sizeof(ChassisMoveInit->motor_chassis[i].measure));
+        ChassisMoveInit->motor_chassis[i].measureValid = 0u;
         PID_init(&ChassisMoveInit->motor_speed_pid[i], PID_POSITION, motor_speed_pid, M3505_MOTOR_SPEED_PID_MAX_OUT, M3505_MOTOR_SPEED_PID_MAX_IOUT);
     }
     //initialize angle PID
@@ -66,13 +64,10 @@ static void ChassisInit(ChassisMove *ChassisMoveInit)
     ChassisMoveInit->vy_max_speed = NORMAL_MAX_CHASSIS_SPEED_Y;
     ChassisMoveInit->vy_min_speed = -NORMAL_MAX_CHASSIS_SPEED_Y;
 
-    //update data
-    {
-        ChassisRuntimeSnapshot snapshot;
-        ChassisSnapshotCapture(&snapshot, ChassisMoveInit);
-        ChassisFeedbackUpdate(ChassisMoveInit, &snapshot);
-        ChassisWriteState(ChassisMoveInit);
-    }
+    // 初始化和后续周期复用任务拥有的同一份快照，避免嵌套大栈帧。
+    ChassisSnapshotCapture(snapshot, ChassisMoveInit);
+    ChassisFeedbackUpdate(ChassisMoveInit, snapshot);
+    ChassisWriteState(ChassisMoveInit);
 }
 
 /**
@@ -166,13 +161,24 @@ static void ChassisFeedbackUpdate(ChassisMove *ChassisMoveUpdate, const ChassisR
     {
         //update motor speed, accel is differential of speed PID
         //更新电机速度，加速度是速度的PID微分
-        const motor_measure_t *measure = (snapshot != NULL) ? snapshot->motor_measure[i] : ChassisMoveUpdate->motor_chassis[i].ChassisMotorMeasure;
+        ChassisMotor *motor = &ChassisMoveUpdate->motor_chassis[i];
+        if (snapshot != NULL)
+        {
+            motor->measure = snapshot->motor_measure[i];
+            motor->measureValid = snapshot->motor_health[i].feedbackValid;
+        }
+        else
+        {
+            (void)memset(&motor->measure, 0, sizeof(motor->measure));
+            motor->measureValid = 0u;
+        }
         const int8_t motor_dir = (snapshot != NULL) ? snapshot->motor_dir[i] : g_config.chassis.motor_dir[i];
         const fp32 rpm_to_vector = (snapshot != NULL) ? snapshot->motor_rpm_to_vector : CHASSIS_MOTOR_RPM_TO_VECTOR_SEN;
         const fp32 control_hz = (snapshot != NULL) ? snapshot->control_hz : CHASSIS_CONTROL_FREQUENCE;
-        const int16_t speed_rpm = (measure != NULL &&
-                                   (snapshot == NULL || snapshot->motor_health[i].healthy != 0u)) ?
-                                      measure->speed_rpm :
+        const int16_t speed_rpm = (motor->measureValid != 0u &&
+                                   snapshot != NULL &&
+                                   snapshot->motor_health[i].healthy != 0u) ?
+                                      motor->measure.speed_rpm :
                                       0;
         ChassisMoveUpdate->motor_chassis[i].speed = rpm_to_vector * speed_rpm * (fp32)motor_dir;
         ChassisMoveUpdate->motor_chassis[i].accel = ChassisMoveUpdate->motor_speed_pid[i].Dbuf[0] * control_hz;
@@ -221,17 +227,11 @@ static void ChassisFeedbackUpdate(ChassisMove *ChassisMoveUpdate, const ChassisR
     const GimbalMotorState *yaw_motor = NULL;
     const GimbalMotorState *pitch_motor = NULL;
     uint8_t GimbalOnline = 0u;
-    if (snapshot != NULL && snapshot->GimbalStateValid != 0u)
+    if (snapshot != NULL && snapshot->gimbal.valid != 0u)
     {
-        yaw_motor = &snapshot->yaw_motor;
-        pitch_motor = &snapshot->pitch_motor;
-        GimbalOnline = snapshot->GimbalOnline;
-    }
-    else if (ChassisMoveUpdate->GimbalStateValid != 0u)
-    {
-        yaw_motor = &ChassisMoveUpdate->ChassisYawMotor;
-        pitch_motor = &ChassisMoveUpdate->ChassisPitchMotor;
-        GimbalOnline = ChassisMoveUpdate->GimbalOnline;
+        yaw_motor = &snapshot->gimbal.yaw;
+        pitch_motor = &snapshot->gimbal.pitch;
+        GimbalOnline = snapshot->gimbal.online;
     }
     const fp32 *ins_angle = (snapshot != NULL) ? snapshot->ins_angle : ChassisMoveUpdate->ChassisInsAngle;
     if (CHASSIS_USE_IMU_YAW_FEEDBACK != 0u &&
@@ -372,7 +372,8 @@ void ChassisRcToControlVector(fp32 *vx_set, fp32 *vy_set, ChassisMove *ChassisMo
   * @param[out]     ChassisMoveUpdate: "ChassisMove" variable point
   * @retval         none
   */
-static void ChassisSetControl(ChassisMove *ChassisMoveControl)
+static void ChassisSetControl(ChassisMove *ChassisMoveControl,
+                              const ChassisRuntimeSnapshot *snapshot)
 {
 
     if (ChassisMoveControl == NULL)
@@ -386,10 +387,11 @@ static void ChassisSetControl(ChassisMove *ChassisMoveControl)
     //follow gimbal mode
     if (ChassisMoveControl->mode == CHASSIS_VECTOR_FOLLOW_GIMBAL_YAW)
     {
-        const fp32 yaw_relative_meas = ChassisGetGimbalYawRelativeAngle(&ChassisMoveControl->ChassisYawMotor);
+        const GimbalMotorState *yawMotor = (snapshot != NULL) ? &snapshot->gimbal.yaw : NULL;
+        const fp32 yaw_relative_meas = ChassisGetGimbalYawRelativeAngle(yawMotor);
         fp32 yaw_frame = yaw_relative_meas;
         fp32 sin_yaw = 0.0f, cos_yaw = 0.0f;
-        (void)ChassisGetTurnaroundFrameYaw(&yaw_frame);
+        (void)ChassisGetTurnaroundFrameYaw(snapshot, &yaw_frame);
         //rotate chassis direction, make sure vertial direction follow gimbal
         //旋转控制底盘速度方向，保证前进方向是云台方向，有利于运动平稳
         sin_yaw = arm_sin_f32(-yaw_frame);

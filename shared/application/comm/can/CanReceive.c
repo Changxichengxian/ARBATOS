@@ -16,6 +16,7 @@
 #include "CanMitMotorDriver.h"
 #include "DetectTask.h"
 #include "MotorConfig.h"
+#include "MotorFeedbackEcdPolicy.h"
 #include "MotorInst.h"
 #include "SdLog.h"
 #include "Watch.h"
@@ -285,8 +286,9 @@ static void CanRxUpdateLowStateFromMeasure(MotorId actuator_id,
     fb.transport = (uint8_t)MotorTransportCAN;
     fb.driveState = (uint8_t)MotorDriveStateEnabled;
     fb.rxId = std_id;
-    fb.rxCount = prev_rx_count + 1u;
+    fb.rxCount = MotorFeedbackRxCountNext(prev_rx_count);
     fb.lastRxTick = BspTimeGetTickMs();
+    fb.lastEcd = (uint16_t)measure->last_ecd;
     fb.ecd = measure->ecd;
     fb.speedRpm = measure->speed_rpm;
     fb.current = measure->given_current;
@@ -367,13 +369,14 @@ static uint8_t CanRxProcessMitNodeFrame(motor_measure_t *measure,
         fb.state = mit.state;
         fb.driveState = CanRxMitDriveState(node, mit.state);
         fb.rxId = std_id;
-        fb.rxCount = prev_rx_count + 1u;
+        fb.rxCount = MotorFeedbackRxCountNext(prev_rx_count);
         fb.lastRxTick = mit.last_rx_tick;
         fb.q = mit.position;
         fb.dq = mit.velocity;
         fb.tauEst = mit.torque;
         if (measure != NULL)
         {
+            fb.lastEcd = (uint16_t)measure->last_ecd;
             fb.ecd = measure->ecd;
             fb.speedRpm = measure->speed_rpm;
             fb.current = measure->given_current;

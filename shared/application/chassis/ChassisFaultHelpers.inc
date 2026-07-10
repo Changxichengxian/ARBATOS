@@ -73,7 +73,7 @@ static void ChassisFaultInit(void)
 
 static void ChassisFaultUpdate(const ChassisRuntimeSnapshot *snapshot)
 {
-    const uint32_t nowMs = BspTimeGetTickMs();
+    uint32_t nowMs;
     uint32_t safeMask = 0u;
     uint8_t updateOk = 1u;
 
@@ -88,6 +88,8 @@ static void ChassisFaultUpdate(const ChassisRuntimeSnapshot *snapshot)
         s_chassisFault.blockingMask = s_chassisFault.configuredMask;
         return;
     }
+
+    nowMs = snapshot->tick_ms;
 
     for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT; i++)
     {

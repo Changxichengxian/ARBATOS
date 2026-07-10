@@ -459,8 +459,8 @@ void ChassisPowerControl(ChassisMove *ChassisPowerControl)
     {
         currents[i] = ChassisPowerControl->motor_speed_pid[i].out;
         power_model_currents[i] = currents[i] * (fp32)g_config.chassis.motor_dir[i];
-        wheel_rpm[i] = (ChassisPowerControl->motor_chassis[i].ChassisMotorMeasure != NULL) ?
-                           ChassisPowerControl->motor_chassis[i].ChassisMotorMeasure->speed_rpm :
+        wheel_rpm[i] = (ChassisPowerControl->motor_chassis[i].measureValid != 0u) ?
+                           ChassisPowerControl->motor_chassis[i].measure.speed_rpm :
                            0;
     }
     if (use_total_current_fallback != 0u)

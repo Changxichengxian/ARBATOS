@@ -15,6 +15,7 @@
 #include "BspUsart.h"
 #include "main.h"
 #include "MotorConfig.h"
+#include "MotorFeedbackEcdPolicy.h"
 #include "MotorInst.h"
 #include "RobotSafety.h"
 
@@ -505,7 +506,8 @@ static void UnitreeMotorProcessRxFrame(const uint8_t *frame_bytes)
         g_unitree_motor_state.last_mode = frame.data.mode;
         g_unitree_motor_state.motor_error = frame.data.motor_error;
         g_unitree_motor_state.motor_temp = frame.data.temp;
-        g_unitree_motor_state.rx_frame_count++;
+        g_unitree_motor_state.rx_frame_count =
+            MotorFeedbackRxCountNext(g_unitree_motor_state.rx_frame_count);
         g_unitree_motor_state.last_rx_tick_ms = HAL_GetTick();
         g_unitree_motor_state.torque_nm = ((fp32)frame.data.torque_q8) / UNITREE_MOTOR_TORQUE_SCALE;
         g_unitree_motor_state.joint_speed_rad_s = UnitreeMotorFeedbackSpeed(frame.data.joint_speed_q7, frame.data.joint_speed_low);
@@ -820,7 +822,10 @@ static void UnitreeMotorRefreshFeedback(MotorId actuator_id, const motor_node_pa
     const MotorModelMitLimits *limits = MotorCfgMitLimits(node);
     UnitreeMotorState state;
     motor_measure_t *measure;
+    MotorState previous;
     MotorState fb;
+    const MotorState *previous_feedback = NULL;
+    uint8_t new_sample;
 
     if ((uint32_t)actuator_id >= (uint32_t)MotorCount ||
         UnitreeMotorGetStateCopy(&state) == 0u)
@@ -828,6 +833,10 @@ static void UnitreeMotorRefreshFeedback(MotorId actuator_id, const motor_node_pa
         return;
     }
 
+    if (LowStateGetMotor(actuator_id, &previous) != 0u)
+    {
+        previous_feedback = &previous;
+    }
     (void)memset(&fb, 0, sizeof(fb));
     fb.online = state.online;
     fb.bus = state.rs485_port;
@@ -845,6 +854,10 @@ static void UnitreeMotorRefreshFeedback(MotorId actuator_id, const motor_node_pa
     fb.dq = state.joint_speed_rad_s;
     fb.tauEst = state.torque_nm;
     fb.ecd = UnitreeMotorPositionToEcd(state.joint_position_rad);
+    new_sample = MotorFeedbackEcdResolve(previous_feedback,
+                                         fb.rxCount,
+                                         fb.ecd,
+                                         &fb.lastEcd);
     fb.speedRpm = UnitreeMotorFloatToQ(state.joint_speed_rad_s * UNITREE_MOTOR_RADPS_TO_RPM, 1.0f);
     fb.current = UnitreeMotorTorqueToCurrentLike(limits, state.torque_nm);
     fb.temperature = (uint8_t)state.motor_temp;
@@ -853,8 +866,11 @@ static void UnitreeMotorRefreshFeedback(MotorId actuator_id, const motor_node_pa
     measure = MotorInstMeasure(actuator_id);
     if (measure != NULL)
     {
-        measure->last_ecd = (int16_t)measure->ecd;
-        measure->ecd = fb.ecd;
+        if (new_sample != 0u)
+        {
+            measure->last_ecd = (int16_t)fb.lastEcd;
+            measure->ecd = fb.ecd;
+        }
         measure->speed_rpm = fb.speedRpm;
         measure->given_current = fb.current;
         measure->temperate = fb.temperature;

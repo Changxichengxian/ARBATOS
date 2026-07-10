@@ -16,6 +16,7 @@
 #include "ManualInput.h"
 #include "UserLib.h"
 #include "RobotConfig.h"
+#include "ChassisSnapshotPolicy.h"
 
 #define CHASSIS_TASK_INIT_TIME                 (g_config.chassis.task_init_time_ms)
 
@@ -90,7 +91,8 @@ typedef enum
 
 typedef struct
 {
-    const motor_measure_t *ChassisMotorMeasure;
+    motor_measure_t measure;
+    uint8_t measureValid;
     fp32 accel;
     fp32 speed;
     fp32 speed_set;
@@ -128,15 +130,12 @@ typedef struct
     uint32_t swing_half_period_ms;
     uint32_t swing_center_hold_min_ms;
     uint32_t swing_center_hold_max_ms;
+    ChassisGimbalSnapshot gimbal;
 } ChassisControlSnapshot;
 
 typedef struct
 {
     const ManualInputState *ChassisRc;
-    uint8_t GimbalStateValid;
-    uint8_t GimbalOnline;
-    GimbalMotorState ChassisYawMotor;
-    GimbalMotorState ChassisPitchMotor;
     const fp32 *ChassisInsAngle;
     ChassisMode mode;
     ChassisMode last_mode;

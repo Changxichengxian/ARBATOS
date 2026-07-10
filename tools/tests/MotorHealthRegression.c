@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "LowCmd.h"
+#include "MotorFeedbackEcdPolicy.h"
 
 static MotorState s_feedback[MotorCount];
 static uint8_t s_readAllowed[MotorCount];
@@ -55,11 +56,13 @@ static int TestPureEvaluation(void)
     MotorHealthResult result;
     MotorState feedback = TestFeedback(3u, 100u, MotorDriveStateEnabled, 0u);
 
+    feedback.lastEcd = 0x1234u;
     if (!TestCheck(MotorHealthEval(Motor0, &feedback, 110u, 20u, &result) != 0u,
                    "健康反馈判定失败") ||
         !TestCheck(result.healthy != 0u && result.fresh != 0u && result.ageMs == 10u,
                    "新鲜反馈应健康") ||
-        !TestCheck(result.feedbackValid != 0u && result.feedback.rxCount == 3u,
+        !TestCheck(result.feedbackValid != 0u && result.feedback.rxCount == 3u &&
+                       result.feedback.lastEcd == 0x1234u,
                    "判定结果应保留完整反馈快照"))
     {
         return 0;
@@ -144,13 +147,15 @@ static int TestReadAndBatch(void)
     (void)memset(s_readAllowed, 0, sizeof(s_readAllowed));
 
     s_feedback[Motor2] = TestFeedback(2u, 190u, MotorDriveStateEnabled, 0u);
+    s_feedback[Motor2].lastEcd = 0x5678u;
     s_feedback[Motor5] = TestFeedback(2u, 170u, MotorDriveStateEnabled, 1u);
     s_feedback[Motor7] = TestFeedback(2u, 195u, MotorDriveStateFault, 1u);
     s_readAllowed[Motor2] = 1u;
     s_readAllowed[Motor5] = 1u;
     s_readAllowed[Motor7] = 1u;
 
-    if (!TestCheck(MotorHealthRead(Motor2, 200u, 20u, &result) != 0u && result.healthy != 0u,
+    if (!TestCheck(MotorHealthRead(Motor2, 200u, 20u, &result) != 0u &&
+                       result.healthy != 0u && result.feedback.lastEcd == 0x5678u,
                    "生产单轴读取入口未使用 LowState 快照") ||
         !TestCheck(MotorHealthRead((MotorId)MotorCount, 200u, 20u, &result) == 0u &&
                        (result.reasonMask & MOTOR_HEALTH_REASON_INVALID_ID) != 0u,
@@ -207,9 +212,70 @@ static int TestInjectedBatch(void)
                      "纯批量判定原因不完整");
 }
 
+static int TestFeedbackEcdProgression(void)
+{
+    MotorState previous;
+    uint16_t lastEcd;
+
+    if (!TestCheck(MotorFeedbackRxCountNext(0u) == 1u &&
+                       MotorFeedbackRxCountNext(UINT32_MAX) == 1u,
+                   "接收计数回绕时应跳过无反馈保留值 0"))
+    {
+        return 0;
+    }
+    (void)memset(&previous, 0, sizeof(previous));
+    if (!TestCheck(MotorFeedbackEcdResolve(&previous, 0u, 900u, &lastEcd) == 0u &&
+                       lastEcd == 900u,
+                   "未收到任何样本时不应推进编码器上一值"))
+    {
+        return 0;
+    }
+    if (!TestCheck(MotorFeedbackEcdResolve(&previous, 1u, 1000u, &lastEcd) != 0u &&
+                       lastEcd == 1000u,
+                   "首份编码器样本应用当前值自初始化"))
+    {
+        return 0;
+    }
+
+    previous.rxCount = 1u;
+    previous.ecd = 1000u;
+    previous.lastEcd = 1000u;
+    if (!TestCheck(MotorFeedbackEcdResolve(&previous, 1u, 1000u, &lastEcd) == 0u &&
+                       lastEcd == 1000u,
+                   "同一接收样本重复刷新时不应推进上一编码器值"))
+    {
+        return 0;
+    }
+
+    if (!TestCheck(MotorFeedbackEcdResolve(&previous, 2u, 1200u, &lastEcd) != 0u &&
+                       lastEcd == 1000u,
+                   "新接收样本应恰好推进一次上一编码器值"))
+    {
+        return 0;
+    }
+
+    previous.rxCount = 2u;
+    previous.ecd = 1200u;
+    previous.lastEcd = lastEcd;
+    if (!TestCheck(MotorFeedbackEcdResolve(&previous, 2u, 1200u, &lastEcd) == 0u &&
+                       lastEcd == 1000u,
+                   "新样本后再次刷新不应二次推进上一编码器值"))
+    {
+        return 0;
+    }
+
+    previous.rxCount = UINT32_MAX;
+    previous.ecd = 1100u;
+    previous.lastEcd = 1000u;
+    return TestCheck(MotorFeedbackEcdResolve(&previous, 1u, 1200u, &lastEcd) != 0u &&
+                         lastEcd == 1100u,
+                     "接收计数回绕后仍应把上一样本推进一次");
+}
+
 int main(void)
 {
-    if (!TestPureEvaluation() || !TestReadAndBatch() || !TestInjectedBatch())
+    if (!TestPureEvaluation() || !TestReadAndBatch() || !TestInjectedBatch() ||
+        !TestFeedbackEcdProgression())
     {
         return 1;
     }

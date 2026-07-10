@@ -125,12 +125,13 @@ static void ChassisNoMoveControl(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, Chass
 static void ChassisInfantryFollowGimbalYawControl(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, ChassisMove *ChassisMoveRcToVector);
 
 // Small gyro: keep vx/vy in gimbal frame, while commanding a constant chassis wz (no yaw follow).
-static fp32 ChassisGetGimbalYawRelativeAngle(const GimbalMotorState *yaw_motor);
-static bool_t ChassisGimbalTurnaroundIsActive(void);
-static fp32 ChassisGimbalTurnaroundChassisFollowOffsetRad(void);
-static bool_t ChassisGimbalTurnaroundGetFrameYawRelative(fp32 *out_yaw_relative);
-static bool_t ChassisGimbalCmdToChassisStop(void);
-static bool_t ChassisGimbalFollowAvailable(void);
+static fp32 ChassisGetGimbalYawRelativeAngle(const ChassisMove *control);
+static bool_t ChassisGimbalTurnaroundIsActive(const ChassisMove *control);
+static fp32 ChassisGimbalTurnaroundChassisFollowOffsetRad(const ChassisMove *control);
+static bool_t ChassisGimbalTurnaroundGetFrameYawRelative(const ChassisMove *control,
+                                                         fp32 *out_yaw_relative);
+static bool_t ChassisGimbalCmdToChassisStop(const ChassisMove *control);
+static bool_t ChassisGimbalFollowAvailable(const ChassisMove *control);
 static bool_t ChassisBehaviourNeedsGimbalFollow(ChassisBehaviour mode);
 static void ChassisGyroSpinControl(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, ChassisMove *ChassisMoveRcToVector);
 static void ChassisGyroSpinVarControl(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, ChassisMove *ChassisMoveRcToVector);
@@ -236,57 +237,52 @@ typedef struct
 
 static ChassisAlgorithmMoveSlew s_move_slew = {0};
 
-static bool_t ChassisReadGimbalState(GimbalState *state)
+static bool_t ChassisGimbalTurnaroundIsActive(const ChassisMove *control)
 {
-    if (state == NULL ||
-        GimbalStateReadFresh(state, GIMBAL_STATE_FRESH_TIMEOUT_MS) == 0u ||
-        state->valid == 0u)
-    {
-        return 0;
-    }
-    return 1;
+    return (control != NULL &&
+            control->fast.gimbal.valid != 0u &&
+            control->fast.gimbal.turnaroundActive != 0u) ? 1 : 0;
 }
 
-static bool_t ChassisGimbalTurnaroundIsActive(void)
+static fp32 ChassisGimbalTurnaroundChassisFollowOffsetRad(const ChassisMove *control)
 {
-    GimbalState state;
-    return (ChassisReadGimbalState(&state) != 0 && state.turnaround_active != 0u) ? 1 : 0;
+    return (control != NULL && control->fast.gimbal.valid != 0u) ?
+               control->fast.gimbal.followOffsetRad :
+               0.0f;
 }
 
-static fp32 ChassisGimbalTurnaroundChassisFollowOffsetRad(void)
+static bool_t ChassisGimbalTurnaroundGetFrameYawRelative(const ChassisMove *control,
+                                                         fp32 *out_yaw_relative)
 {
-    GimbalState state;
-    return (ChassisReadGimbalState(&state) != 0) ? state.turnaround_follow_offset_rad : 0.0f;
-}
-
-static bool_t ChassisGimbalTurnaroundGetFrameYawRelative(fp32 *out_yaw_relative)
-{
-    GimbalState state;
-    if (out_yaw_relative == NULL ||
-        ChassisReadGimbalState(&state) == 0 ||
-        state.turnaround_frame_valid == 0u)
+    if (control == NULL ||
+        out_yaw_relative == NULL ||
+        control->fast.gimbal.valid == 0u ||
+        control->fast.gimbal.frameValid == 0u)
     {
         return 0;
     }
 
-    *out_yaw_relative = state.turnaround_frame_yaw_relative;
+    *out_yaw_relative = control->fast.gimbal.frameYawRelative;
     return 1;
 }
 
-static bool_t ChassisGimbalCmdToChassisStop(void)
+static bool_t ChassisGimbalCmdToChassisStop(const ChassisMove *control)
 {
 #if CHASSIS_STOP_ON_GIMBAL_STATE
-    GimbalState state;
-    return (ChassisReadGimbalState(&state) != 0 && state.ChassisStop != 0u) ? 1 : 0;
+    return (control != NULL &&
+            control->fast.gimbal.valid != 0u &&
+            control->fast.gimbal.chassisStop != 0u) ? 1 : 0;
 #else
+    (void)control;
     return 0;
 #endif
 }
 
-static bool_t ChassisGimbalFollowAvailable(void)
+static bool_t ChassisGimbalFollowAvailable(const ChassisMove *control)
 {
-    GimbalState state;
-    return (ChassisReadGimbalState(&state) != 0 && state.follow_available != 0u) ? 1 : 0;
+    return (control != NULL &&
+            control->fast.gimbal.valid != 0u &&
+            control->fast.gimbal.followAvailable != 0u) ? 1 : 0;
 }
 
 static bool_t ChassisBehaviourNeedsGimbalFollow(ChassisBehaviour mode)
@@ -416,8 +412,8 @@ static fp32 ChassisAlgorithmYawFrame(const ChassisMove *ChassisMoveRcToVector)
         return 0.0f;
     }
 
-    fp32 yaw_frame = ChassisGetGimbalYawRelativeAngle(&ChassisMoveRcToVector->ChassisYawMotor);
-    (void)ChassisGimbalTurnaroundGetFrameYawRelative(&yaw_frame);
+    fp32 yaw_frame = ChassisGetGimbalYawRelativeAngle(ChassisMoveRcToVector);
+    (void)ChassisGimbalTurnaroundGetFrameYawRelative(ChassisMoveRcToVector, &yaw_frame);
     return yaw_frame;
 }
 
@@ -780,7 +776,7 @@ void ChassisBehaviourModeSet(ChassisMove *ChassisMoveMode)
 
     //remote control  set chassis behaviour mode
     //遥控器设置模式
-    if (ChassisGimbalTurnaroundIsActive())
+    if (ChassisGimbalTurnaroundIsActive(ChassisMoveMode))
     {
         ChassisBehaviourMode = CHASSIS_INFANTRY_FOLLOW_GIMBAL_YAW;
     }
@@ -815,7 +811,7 @@ void ChassisBehaviourModeSet(ChassisMove *ChassisMoveMode)
 
     //when gimbal in some mode, such as init mode, chassis must's move
     //当云台在某些模式下，像初始化， 底盘不动
-    if (ChassisGimbalCmdToChassisStop())
+    if (ChassisGimbalCmdToChassisStop(ChassisMoveMode))
     {
         ChassisBehaviourMode = CHASSIS_NO_MOVE;
     }
@@ -845,7 +841,7 @@ void ChassisBehaviourModeSet(ChassisMove *ChassisMoveMode)
 
     /* 云台不可用时只放弃角度跟随，底盘平移和手动转向仍可继续。 */
     if (ChassisBehaviourNeedsGimbalFollow(ChassisBehaviourMode) != 0 &&
-        ChassisGimbalFollowAvailable() == 0)
+        ChassisGimbalFollowAvailable(ChassisMoveMode) == 0)
     {
         ChassisBehaviourMode = CHASSIS_NO_FOLLOW_YAW;
     }
@@ -1053,13 +1049,13 @@ static void ChassisInfantryFollowGimbalYawControl(fp32 *vx_set, fp32 *vy_set, fp
     //遥控器的通道值以及键盘按键 得出 一般情况下的速度设定值
     ChassisRcToControlVector(vx_set, vy_set, ChassisMoveRcToVector);
 
-    if (ChassisGimbalTurnaroundIsActive())
+    if (ChassisGimbalTurnaroundIsActive(ChassisMoveRcToVector))
     {
-        *angle_set = ChassisGetGimbalYawRelativeAngle(&ChassisMoveRcToVector->ChassisYawMotor);
+        *angle_set = ChassisGetGimbalYawRelativeAngle(ChassisMoveRcToVector);
     }
     else
     {
-        *angle_set = ChassisGimbalTurnaroundChassisFollowOffsetRad();
+        *angle_set = ChassisGimbalTurnaroundChassisFollowOffsetRad(ChassisMoveRcToVector);
     }
 }
 
@@ -1141,7 +1137,7 @@ static void ChassisSwingControl(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, Cha
     // 摇摆时仍然尽量保持平移参考跟着云台，不然按键方向会发飘。
     const fp32 vx_raw = *vx_set;
     const fp32 vy_raw = *vy_set;
-    const fp32 yaw_relative = ChassisGetGimbalYawRelativeAngle(&ChassisMoveRcToVector->ChassisYawMotor);
+    const fp32 yaw_relative = ChassisGetGimbalYawRelativeAngle(ChassisMoveRcToVector);
     const fp32 sin_yaw = arm_sin_f32(-yaw_relative);
     const fp32 cos_yaw = arm_cos_f32(-yaw_relative);
     *vx_set = cos_yaw * vx_raw + sin_yaw * vy_raw;
@@ -1237,14 +1233,23 @@ static void ChassisSwingControl(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, Cha
     *angle_set = rad_format(centers_rad[st.center_idx] + offset);
 }
 
-static fp32 ChassisGetGimbalYawRelativeAngle(const GimbalMotorState *yaw_motor)
+static fp32 ChassisGetGimbalYawRelativeAngle(const ChassisMove *control)
 {
-    if (yaw_motor == NULL || yaw_motor->valid == 0u || yaw_motor->measure.valid == 0u)
+    const GimbalMotorState *yaw_motor = (control != NULL) ? &control->fast.gimbal.yaw : NULL;
+
+    if (control == NULL ||
+        control->fast.gimbal.valid == 0u ||
+        yaw_motor->valid == 0u ||
+        yaw_motor->measure.valid == 0u)
     {
         return 0.0f;
     }
 
-    const uint32_t ecd_range = MotorCfgEncoderRange(g_config.motor.yaw.model);
+    const uint32_t ecd_range = control->fast.gimbal.yawEcdRange;
+    if (ecd_range < 2u)
+    {
+        return 0.0f;
+    }
     const int32_t half_ecd_range = (int32_t)(ecd_range / 2u);
     const int32_t full_ecd_range = (int32_t)ecd_range;
     int32_t relative_ecd = (int32_t)yaw_motor->measure.ecd - (int32_t)yaw_motor->offset_ecd;
@@ -1258,7 +1263,7 @@ static fp32 ChassisGetGimbalYawRelativeAngle(const GimbalMotorState *yaw_motor)
     }
 
     fp32 angle = (fp32)relative_ecd * (6.28318530718f / (fp32)ecd_range);
-    return CHASSIS_GIMBAL_YAW_RELATIVE_TURN ? -angle : angle;
+    return (control->fast.gimbal.yawRelativeTurn != 0u) ? -angle : angle;
 }
 
 static void ChassisGyroSpinControl(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, ChassisMove *ChassisMoveRcToVector)
@@ -1274,9 +1279,9 @@ static void ChassisGyroSpinControl(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, Cha
     const fp32 vx_raw = *vx_set;
     const fp32 vy_raw = *vy_set;
 
-    const fp32 yaw_relative_meas = ChassisGetGimbalYawRelativeAngle(&ChassisMoveRcToVector->ChassisYawMotor);
+    const fp32 yaw_relative_meas = ChassisGetGimbalYawRelativeAngle(ChassisMoveRcToVector);
     fp32 yaw_frame = yaw_relative_meas;
-    (void)ChassisGimbalTurnaroundGetFrameYawRelative(&yaw_frame);
+    (void)ChassisGimbalTurnaroundGetFrameYawRelative(ChassisMoveRcToVector, &yaw_frame);
     const fp32 sin_yaw = arm_sin_f32(-yaw_frame);
     const fp32 cos_yaw = arm_cos_f32(-yaw_frame);
     *vx_set = cos_yaw * vx_raw + sin_yaw * vy_raw;

@@ -1786,6 +1786,110 @@ function Test-FaultIsolationBoundaries {
     if ($chassisContent -notmatch 'ChassisCurrentCmd\s*\[\s*i\s*\][\s\S]{0,220}?configuredMask') {
         Add-CheckError "${chassisRepoPath}: runtime-disabled chassis axes must be filtered at the final current output."
     }
+    foreach ($required in @("LowStateGetMotorMany", "MotorHealthEval", "snapshot->tick_ms")) {
+        if ($chassisContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${chassisRepoPath}: classic chassis frame snapshot must keep '$required'."
+        }
+    }
+    if (([regex]::Matches($chassisContent, 'LowStateGetMotorMany\s*\(')).Count -ne 1) {
+        Add-CheckError "${chassisRepoPath}: classic chassis must copy all configured wheel feedback in one LowState batch."
+    }
+    foreach ($forbidden in @("MotorHealthRead(", "get_chassis_motor_measure_point")) {
+        if ($chassisContent -match [regex]::Escape($forbidden)) {
+            Add-CheckError "${chassisRepoPath}: classic chassis high-rate path cannot use legacy per-axis source '$forbidden'."
+        }
+    }
+    if ($chassisContent -match '\.\s*ChassisMotorMeasure\b') {
+        Add-CheckError "${chassisRepoPath}: classic chassis high-rate path cannot retain the legacy CAN RX measure pointer."
+    }
+    if (([regex]::Matches($chassisContent, 'GimbalStateReadFresh\s*\(')).Count -ne 1) {
+        Add-CheckError "${chassisRepoPath}: classic chassis must capture GimbalState exactly once per frame."
+    }
+    if ($chassisContent -notmatch 'ChassisGetTurnaroundFrameYaw\s*\(\s*snapshot\s*,') {
+        Add-CheckError "${chassisRepoPath}: core turnaround frame must consume the current chassis snapshot."
+    }
+
+    $chassisBehaviourRepoPath = "shared\application\chassis\ChassisBehaviour.c"
+    $chassisBehaviourContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $chassisBehaviourRepoPath) -Raw -Encoding UTF8
+    if ($chassisBehaviourContent -match 'GimbalStateRead(Fresh)?\s*\(') {
+        Add-CheckError "${chassisBehaviourRepoPath}: behaviour helpers must only consume ChassisMove.fast.gimbal."
+    }
+    foreach ($required in @("fast.gimbal", "ChassisGimbalTurnaroundIsActive(ChassisMoveMode)")) {
+        if ($chassisBehaviourContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${chassisBehaviourRepoPath}: snapshot-only gimbal behaviour must keep '$required'."
+        }
+    }
+
+    $chassisHeaderRepoPath = "shared\application\chassis\ChassisControlTask.h"
+    $chassisHeaderContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $chassisHeaderRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("motor_measure_t measure", "measureValid", "ChassisGimbalSnapshot gimbal")) {
+        if ($chassisHeaderContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${chassisHeaderRepoPath}: persistent frame-owned chassis feedback must keep '$required'."
+        }
+    }
+    if ($chassisHeaderContent -match 'ChassisMotorMeasure') {
+        Add-CheckError "${chassisHeaderRepoPath}: ChassisMotor cannot retain a pointer into the CAN RX storage."
+    }
+    if ($chassisContent -notmatch 'ChassisInit\s*\(\s*&g_chassis\s*,\s*snapshot\s*\)' -or
+        $chassisContent -match 'ChassisInit[\s\S]{0,2200}?ChassisRuntimeSnapshot\s+snapshot\s*;') {
+        Add-CheckError "${chassisRepoPath}: chassis init must reuse the task-owned frame snapshot instead of nesting another large stack object."
+    }
+
+    $chassisTaskFiles = @(
+        Get-ChildItem -Path @(
+            (Join-Path $script:RepoRoot "projects"),
+            (Join-Path $script:RepoRoot "boards")
+        ) -Recurse -File |
+            Where-Object { $_.Name -in @("freertos.c", "BoardFreertos.c") }
+    )
+    foreach ($taskFile in $chassisTaskFiles) {
+        $taskContent = Get-Content -LiteralPath $taskFile.FullName -Raw
+        $stackMatch = [regex]::Match(
+            $taskContent,
+            '(?:APP_STATIC_THREAD|APP_THREAD_ATTR)\s*\(\s*chassisControlTask\s*,[^\r\n]*?,\s*(\d+)\s*\)')
+        if ($stackMatch.Success -and [int]$stackMatch.Groups[1].Value -lt 768) {
+            Add-CheckError "$(Format-RepoPath $taskFile.FullName): classic chassis task needs at least 768 stack words."
+        }
+    }
+
+    $robotModuleRepoPath = "shared\application\robot\RobotModule.h"
+    $robotModuleContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $robotModuleRepoPath) -Raw -Encoding UTF8
+    if ($robotModuleContent -notmatch 'ROBOT_TASK_MODULE_CLASSIC_CHASSIS[\s\S]{0,260}?ROBOT_PROFILE_CHASSIS_CONTROL_BUDGET_US,\s*768u,') {
+        Add-CheckError "${robotModuleRepoPath}: classic chassis descriptor must publish the 768-word minimum stack."
+    }
+    foreach ($source in $sourceFiles) {
+        $legacyContent = Get-Content -LiteralPath $source.FullName -Raw
+        if ($legacyContent -match '\bChassisMotorMeasure\b') {
+            Add-CheckError "$(Format-RepoPath $source.FullName): legacy chassis CAN RX measure pointer must not return."
+        }
+    }
+
+    $motorStateHeaderRepoPath = "shared\application\robot\LowCmd.h"
+    $motorStateHeaderContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $motorStateHeaderRepoPath) -Raw -Encoding UTF8
+    if ($motorStateHeaderContent -notmatch '\buint16_t\s+lastEcd\s*;') {
+        Add-CheckError "${motorStateHeaderRepoPath}: MotorState must preserve the previous received encoder value."
+    }
+    $ecdPolicyRepoPath = "shared\application\motors\MotorFeedbackEcdPolicy.h"
+    $ecdPolicyContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $ecdPolicyRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("MotorFeedbackRxCountNext", "MotorFeedbackEcdResolve", "rxCount != previous->rxCount", "previous->lastEcd")) {
+        if ($ecdPolicyContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${ecdPolicyRepoPath}: repeated RS485 refreshes must preserve '$required'."
+        }
+    }
+    $canRxRepoPath = "shared\application\comm\can\CanReceive.c"
+    $canRxContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $canRxRepoPath) -Raw -Encoding UTF8
+    if (([regex]::Matches($canRxContent, 'MotorFeedbackRxCountNext\s*\(')).Count -lt 2) {
+        Add-CheckError "${canRxRepoPath}: CAN feedback rxCount must skip the reserved zero value after wraparound."
+    }
+    foreach ($driverRepoPath in @(
+            "shared\application\motors\UnitreeMotorDriver.c",
+            "shared\application\motors\N6014bMotorDriver.c"
+        )) {
+        $driverContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $driverRepoPath) -Raw -Encoding UTF8
+        if ($driverContent -notmatch 'MotorFeedbackEcdResolve\s*\(') {
+            Add-CheckError "${driverRepoPath}: RS485 feedback must advance lastEcd only on a new receive sample."
+        }
+    }
 
     $gimbalRepoPath = "shared\application\gimbal\GimbalControlTask.c"
     $gimbalContent = Get-SourceContentWithPrivateIncludes -Path (Join-Path $script:RepoRoot $gimbalRepoPath)

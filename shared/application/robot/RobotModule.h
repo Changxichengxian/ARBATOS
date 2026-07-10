@@ -465,7 +465,7 @@ static inline const RobotModuleDesc *RobotModuleKnownModules(uint8_t *count)
          RobotModuleKindControl,
          ROBOT_PROFILE_CHASSIS_CONTROL_DEFAULT_PERIOD_MS,
          ROBOT_PROFILE_CHASSIS_CONTROL_BUDGET_US,
-         512u,
+         768u,
          (uint8_t)RobotModulePriorityAboveNormal,
          (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK | ROBOT_MODULE_FLAG_FAST_PATH | ROBOT_MODULE_FLAG_SAFETY_RELATED),
          sRobotModuleReqClassicChassis,

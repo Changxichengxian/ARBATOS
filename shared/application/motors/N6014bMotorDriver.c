@@ -9,6 +9,7 @@
 
 #include "BspUsart.h"
 #include "MotorConfig.h"
+#include "MotorFeedbackEcdPolicy.h"
 #include "MotorInst.h"
 #include "RobotSafety.h"
 #include "UnitreeMotorDriver.h"
@@ -564,7 +565,7 @@ static void N6014bCopyStateFromIsr(MotorId id,
     state->torque_nm = torque;
     state->speed_rad_s = velocity;
     state->position_rad = position;
-    state->rx_frame_count++;
+    state->rx_frame_count = MotorFeedbackRxCountNext(state->rx_frame_count);
     state->last_rx_tick_ms = (uint32_t)(xTaskGetTickCountFromISR() * portTICK_PERIOD_MS);
     taskEXIT_CRITICAL_FROM_ISR(saved);
 }
@@ -888,10 +889,13 @@ static void N6014bRefreshFeedback(MotorId id, const motor_node_param_t *node)
     const MotorModelMitLimits *limits = MotorCfgMitLimits(node);
     N6014bAxisSlot *slot;
     N6014bMotorState state;
+    MotorState previous;
     MotorState fb;
+    const MotorState *previous_feedback = NULL;
     motor_measure_t *measure;
     uint16_t timeout_ms;
     uint32_t now_ms;
+    uint8_t new_sample;
 
     if (N6014bActuatorIdValid(id) == 0u)
     {
@@ -923,6 +927,10 @@ static void N6014bRefreshFeedback(MotorId id, const motor_node_param_t *node)
         taskEXIT_CRITICAL();
     }
 
+    if (LowStateGetMotor(id, &previous) != 0u)
+    {
+        previous_feedback = &previous;
+    }
     (void)memset(&fb, 0, sizeof(fb));
     fb.online = state.online;
     fb.bus = state.rs485_port;
@@ -938,6 +946,10 @@ static void N6014bRefreshFeedback(MotorId id, const motor_node_param_t *node)
     fb.dq = state.speed_rad_s;
     fb.tauEst = state.torque_nm;
     fb.ecd = N6014bPositionToEcd(state.position_rad);
+    new_sample = MotorFeedbackEcdResolve(previous_feedback,
+                                         fb.rxCount,
+                                         fb.ecd,
+                                         &fb.lastEcd);
     fb.speedRpm = N6014bFloatToI16(state.speed_rad_s * N6014B_RADPS_TO_RPM);
     fb.current = N6014bTorqueToCurrentLike(limits, state.torque_nm);
     fb.temperature = (uint8_t)state.motor_temp;
@@ -946,8 +958,11 @@ static void N6014bRefreshFeedback(MotorId id, const motor_node_param_t *node)
     measure = MotorInstMeasure(id);
     if (measure != NULL)
     {
-        measure->last_ecd = (int16_t)measure->ecd;
-        measure->ecd = fb.ecd;
+        if (new_sample != 0u)
+        {
+            measure->last_ecd = (int16_t)fb.lastEcd;
+            measure->ecd = fb.ecd;
+        }
         measure->speed_rpm = fb.speedRpm;
         measure->given_current = fb.current;
         measure->temperate = fb.temperature;

@@ -72,6 +72,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestArmFaultPolicy
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestShootFaultPolicy.ps1
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestMotorAxisFaultPolicy.ps1
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestUnitreeMotorPolicy.ps1
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestChassisSnapshotPolicy.ps1
 ```
 
 Shoot 控制域进入、更新、强制安全、停止和重新启用的生命周期回归：

@@ -145,7 +145,7 @@ APP_THREAD_ATTR(canCommandTxTask, osPriorityAboveNormal, 256);
 APP_THREAD_ATTR(canFeedbackRxTask, osPriorityHigh, 256);
 #endif
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-APP_THREAD_ATTR(chassisControlTask, osPriorityAboveNormal, 512);
+APP_THREAD_ATTR(chassisControlTask, osPriorityAboveNormal, 768);
 #endif
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
 APP_THREAD_ATTR(wheellegMitTask, osPriorityAboveNormal, 768);

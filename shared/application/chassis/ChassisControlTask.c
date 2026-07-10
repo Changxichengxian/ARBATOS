@@ -112,16 +112,14 @@ typedef struct
     ControlInputState ControlInputCopy;
     InsSnapshot ImuSnapshot;
     const ManualInputState *manual_input;
-    uint8_t GimbalStateValid;
-    uint8_t GimbalOnline;
-    GimbalMotorState yaw_motor;
-    GimbalMotorState pitch_motor;
+    ChassisGimbalSnapshot gimbal;
     const fp32 *ins_angle;
     const fp32 *gyro;
-    const motor_measure_t *motor_measure[CHASSIS_MOTOR_COUNT];
+    motor_measure_t motor_measure[CHASSIS_MOTOR_COUNT];
     const motor_node_param_t *motor_cfg[CHASSIS_MOTOR_COUNT];
     uint8_t ChassisOnlyMode;
     uint16_t period_ms;
+    uint32_t tick_ms;
     uint32_t period_us;
     fp32 period_s;
     fp32 control_hz;
@@ -138,6 +136,8 @@ typedef struct
     int8_t motor_dir[CHASSIS_MOTOR_COUNT];
     MotorHealthResult motor_health[CHASSIS_MOTOR_COUNT];
 } ChassisRuntimeSnapshot;
+
+static MotorState s_chassisMotorReadFeedback[CHASSIS_MOTOR_COUNT];
 
 static const fp32 *ChassisINTGyroPoint = NULL;
 static kalman_2x1_t ChassisWzKf;
@@ -164,7 +164,8 @@ static bool_t ChassisWzKfInited = 0;
   * @param[out]     ChassisMoveInit: "ChassisMove" variable point
   * @retval         none
   */
-static void ChassisInit(ChassisMove *ChassisMoveInit);
+static void ChassisInit(ChassisMove *ChassisMoveInit,
+                        ChassisRuntimeSnapshot *snapshot);
 
 /**
   * @brief          set chassis control mode, mainly call 'ChassisBehaviourModeSet' function
@@ -200,7 +201,8 @@ static void ChassisFeedbackUpdate(ChassisMove *ChassisMoveUpdate, const ChassisR
   * @param[out]     ChassisMoveUpdate:"ChassisMove"变量指针.
   * @retval         none
   */
-static void ChassisSetControl(ChassisMove *ChassisMoveControl);
+static void ChassisSetControl(ChassisMove *ChassisMoveControl,
+                              const ChassisRuntimeSnapshot *snapshot);
 /**
   * @brief          control loop, according to control set-point, calculate motor current,
   *                 motor current will be sent to motor
@@ -268,19 +270,19 @@ static ChassisSdLogBaseStreamState s_chassis_sdlog_base_stream = {0};
 void ChassisControlTask(void const *pvParameters)
 {
     TickType_t last_wake = 0;
+    ChassisRuntimeSnapshot snapshotStorage;
+    ChassisRuntimeSnapshot *const snapshot = &snapshotStorage;
 
     // 函数地图：初始化并等遥控在线；循环里取快照、选模式、算电流、做保护、写日志和延时。
     //wait a time
     vTaskDelay(CHASSIS_TASK_INIT_TIME);
     //chassis init
-    ChassisInit(&g_chassis);
+    ChassisInit(&g_chassis, snapshot);
     ChassisFaultInit();
     while (toe_is_error(DBUS_TOE))
     {
-        ChassisRuntimeSnapshot snapshot;
-
-        ChassisSnapshotCapture(&snapshot, &g_chassis);
-        ChassisFaultUpdate(&snapshot);
+        ChassisSnapshotCapture(snapshot, &g_chassis);
+        ChassisFaultUpdate(snapshot);
         ChassisFaultSyncInhibit(&g_chassis);
         ChassisControlStopOutputs(&g_chassis);
         ChassisWriteState(&g_chassis);
@@ -292,9 +294,8 @@ void ChassisControlTask(void const *pvParameters)
     while (1)
     {
         const uint64_t loop_start_us = RtProfBegin();
-        ChassisRuntimeSnapshot snapshot;
-        ChassisSnapshotCapture(&snapshot, &g_chassis);
-        ChassisFaultUpdate(&snapshot);
+        ChassisSnapshotCapture(snapshot, &g_chassis);
+        ChassisFaultUpdate(snapshot);
         ChassisFaultSyncInhibit(&g_chassis);
         WatchTaskBeat(WATCH_TASK_CHASSIS_CONTROL);
         //set chassis control mode
@@ -305,15 +306,15 @@ void ChassisControlTask(void const *pvParameters)
         ChassisModeChangeControlTransit(&g_chassis);
         //chassis data update
         //底盘数据更新
-        ChassisFeedbackUpdate(&g_chassis, &snapshot);
+        ChassisFeedbackUpdate(&g_chassis, snapshot);
 
         // test mode: only none/ChassisOnly allow normal chassis control
-        if (!operation_mode_allow_chassis(&snapshot))
+        if (!operation_mode_allow_chassis(snapshot))
         {
             ChassisControlStopOutputs(&g_chassis);
             ChassisWriteState(&g_chassis);
             RtProfEnd(RtProfChassisLoop, loop_start_us);
-            ChassisControlDelay(&last_wake, snapshot.period_ms);
+            ChassisControlDelay(&last_wake, snapshot->period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
             ChassisStackSampleMaybe();
@@ -321,12 +322,12 @@ void ChassisControlTask(void const *pvParameters)
             continue;
         }
 
-        if (!ChassisControlMgrAllows(&snapshot))
+        if (!ChassisControlMgrAllows(snapshot))
         {
             ChassisControlStopOutputs(&g_chassis);
             ChassisWriteState(&g_chassis);
             RtProfEnd(RtProfChassisLoop, loop_start_us);
-            ChassisControlDelay(&last_wake, snapshot.period_ms);
+            ChassisControlDelay(&last_wake, snapshot->period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
             ChassisStackSampleMaybe();
@@ -335,10 +336,10 @@ void ChassisControlTask(void const *pvParameters)
         }
 
         //set chassis control set-point
-        ChassisSetControl(&g_chassis);
+        ChassisSetControl(&g_chassis, snapshot);
         //chassis control pid calculate
         int16_t ChassisPrePowerCmd[CHASSIS_MOTOR_COUNT] = {0};
-        ChassisControlLoop(&g_chassis, &snapshot, ChassisPrePowerCmd);
+        ChassisControlLoop(&g_chassis, snapshot, ChassisPrePowerCmd);
 
         ChassisFaultApplyControl(&g_chassis);
 
@@ -353,7 +354,7 @@ void ChassisControlTask(void const *pvParameters)
                 ChassisCurrentCmd[i] = ((s_chassisFault.configuredMask & bit) == 0u ||
                                         (s_chassisFault.holdZeroMask & bit) != 0u) ?
                                            0 :
-                                           MotorCfgLimitCurrentNode(snapshot.motor_cfg[i], current);
+                                           MotorCfgLimitCurrentNode(snapshot->motor_cfg[i], current);
             }
         }
 
@@ -370,20 +371,20 @@ void ChassisControlTask(void const *pvParameters)
             sample.last_chassis_mode = (uint8_t)g_chassis.last_mode;
             for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
             {
-                sample.wheel_rpm[i] = (g_chassis.motor_chassis[i].ChassisMotorMeasure != NULL) ?
-                                          g_chassis.motor_chassis[i].ChassisMotorMeasure->speed_rpm :
+                sample.wheel_rpm[i] = (g_chassis.motor_chassis[i].measureValid != 0u) ?
+                                          g_chassis.motor_chassis[i].measure.speed_rpm :
                                           0;
                 sample.current_request[i] = ChassisPrePowerCmd[i];
                 sample.current_output[i] = ChassisCurrentCmd[i];
             }
 
-            ChassisSdLogAppendBaseSample(&sample, now_ms, snapshot.period_us);
+            ChassisSdLogAppendBaseSample(&sample, now_ms, snapshot->period_us);
         }
         ChassisWriteState(&g_chassis);
         //os delay
         //系统延时
         RtProfEnd(RtProfChassisLoop, loop_start_us);
-        ChassisControlDelay(&last_wake, snapshot.period_ms);
+        ChassisControlDelay(&last_wake, snapshot->period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
         ChassisStackSampleMaybe();

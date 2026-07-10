@@ -40,18 +40,18 @@ static fp32 ChassisGetGimbalYawRelativeRate(const GimbalMotorState *yaw_motor)
     return CHASSIS_GIMBAL_YAW_RELATIVE_TURN ? -w : w;
 }
 
-static bool_t ChassisGetTurnaroundFrameYaw(fp32 *out_yaw_relative)
+static bool_t ChassisGetTurnaroundFrameYaw(const ChassisRuntimeSnapshot *snapshot,
+                                           fp32 *out_yaw_relative)
 {
-    GimbalState state;
-    if (out_yaw_relative == NULL ||
-        GimbalStateReadFresh(&state, GIMBAL_STATE_FRESH_TIMEOUT_MS) == 0u ||
-        state.valid == 0u ||
-        state.turnaround_frame_valid == 0u)
+    if (snapshot == NULL ||
+        out_yaw_relative == NULL ||
+        snapshot->gimbal.valid == 0u ||
+        snapshot->gimbal.frameValid == 0u)
     {
         return 0;
     }
 
-    *out_yaw_relative = state.turnaround_frame_yaw_relative;
+    *out_yaw_relative = snapshot->gimbal.frameYawRelative;
     return 1;
 }
 
@@ -120,6 +120,22 @@ static fp32 ChassisWzKfStep(fp32 wz_wheel, bool_t imu_valid, fp32 wz_imu)
 }
 
 static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove *control);
+
+static void ChassisMotorHealthUnavailable(MotorId id,
+                                          uint16_t reason,
+                                          MotorHealthResult *out)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    (void)memset(out, 0, sizeof(*out));
+    out->motorId = id;
+    out->ageMs = MOTOR_HEALTH_AGE_UNKNOWN;
+    out->reasonMask = reason;
+}
+
 static uint32_t ChassisMotorFeedbackTimeoutMs(uint8_t index)
 {
     const uint8_t toe = (uint8_t)(CHASSIS_MOTOR1_TOE + index);
@@ -142,7 +158,11 @@ static bool_t operation_mode_allow_chassis(const ChassisRuntimeSnapshot *snapsho
 
 static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove *control)
 {
-    uint32_t now_ms;
+    ChassisMotorReadPlan readPlan;
+    MotorId axisId[CHASSIS_MOTOR_COUNT];
+    uint8_t configured[CHASSIS_MOTOR_COUNT];
+    uint8_t bound[CHASSIS_MOTOR_COUNT];
+    uint8_t feedbackReadOk;
 
     if (snapshot == NULL)
     {
@@ -150,6 +170,7 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove
     }
 
     memset(snapshot, 0, sizeof(*snapshot));
+    snapshot->tick_ms = BspTimeGetTickMs();
     if (ManualInputGetCurrentCopy(&snapshot->ManualInputCopy) != 0u)
     {
         snapshot->manual_input = &snapshot->ManualInputCopy;
@@ -164,15 +185,11 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove
             g_config.manual_input.semantics.ChassisSafePos);
     }
     {
-        GimbalState state;
-        if (GimbalStateReadFresh(&state, GIMBAL_STATE_FRESH_TIMEOUT_MS) != 0u &&
-            state.valid != 0u)
-        {
-            snapshot->GimbalStateValid = 1u;
-            snapshot->GimbalOnline = state.online;
-            snapshot->yaw_motor = state.yaw;
-            snapshot->pitch_motor = state.pitch;
-        }
+        GimbalState state = {0};
+        const uint8_t readFreshOk = GimbalStateReadFresh(&state, GIMBAL_STATE_FRESH_TIMEOUT_MS);
+        ChassisGimbalSnapshotBuild(&snapshot->gimbal, &state, readFreshOk);
+        snapshot->gimbal.yawEcdRange = MotorCfgEncoderRange(g_config.motor.yaw.model);
+        snapshot->gimbal.yawRelativeTurn = CHASSIS_GIMBAL_YAW_RELATIVE_TURN ? 1u : 0u;
     }
     snapshot->period_ms = RobotProfileChassisControlPeriodMs();
     snapshot->period_us = (uint32_t)snapshot->period_ms * 1000u;
@@ -192,28 +209,69 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove
     snapshot->motor_distance_to_center = MOTOR_DISTANCE_TO_CENTER;
     snapshot->max_wheel_speed = MAX_WHEEL_SPEED;
     snapshot->wheel_type = g_config.chassis.wheel_type;
-    now_ms = BspTimeGetTickMs();
+    for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT; i++)
+    {
+        snapshot->motor_cfg[i] = &g_config.motor.chassis[i];
+        snapshot->motor_dir[i] = g_config.chassis.motor_dir[i];
+        axisId[i] = ChassisMotorCurrentBindings[i].actuator_id;
+        configured[i] = (MotorCfgNodeId(snapshot->motor_cfg[i]) != 0u) ? 1u : 0u;
+        bound[i] = ChassisMotorCurrentBindings[i].enabled;
+    }
+
+    ChassisMotorReadPlanBuild(axisId, configured, bound, &readPlan);
+    (void)memset(s_chassisMotorReadFeedback, 0, sizeof(s_chassisMotorReadFeedback));
+    feedbackReadOk = (readPlan.count == 0u) ?
+                         1u :
+                         LowStateGetMotorMany(readPlan.id,
+                                              s_chassisMotorReadFeedback,
+                                              readPlan.count);
 
     for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT; i++)
     {
-        const MotorId id = ChassisMotorCurrentBindings[i].actuator_id;
+        const uint8_t bit = (uint8_t)(1u << i);
+        const MotorId id = axisId[i];
 
-        snapshot->motor_measure[i] = (control != NULL) ? control->motor_chassis[i].ChassisMotorMeasure : get_chassis_motor_measure_point(i);
-        snapshot->motor_cfg[i] = &g_config.motor.chassis[i];
-        snapshot->motor_dir[i] = g_config.chassis.motor_dir[i];
-        if (MotorCfgNodeId(snapshot->motor_cfg[i]) != 0u)
+        (void)memset(&snapshot->motor_measure[i], 0, sizeof(snapshot->motor_measure[i]));
+        if ((readPlan.unconfiguredMask & bit) != 0u)
         {
-            (void)MotorHealthRead(id,
-                                  now_ms,
-                                  ChassisMotorFeedbackTimeoutMs(i),
-                                  &snapshot->motor_health[i]);
+            ChassisMotorHealthUnavailable(id,
+                                          (uint16_t)MOTOR_HEALTH_REASON_NO_FEEDBACK,
+                                          &snapshot->motor_health[i]);
         }
-        else
+        else if ((readPlan.invalidMask & bit) != 0u)
         {
-            (void)memset(&snapshot->motor_health[i], 0, sizeof(snapshot->motor_health[i]));
-            snapshot->motor_health[i].motorId = id;
-            snapshot->motor_health[i].ageMs = MOTOR_HEALTH_AGE_UNKNOWN;
+            ChassisMotorHealthUnavailable(id,
+                                          (uint16_t)MOTOR_HEALTH_REASON_INVALID_ID,
+                                          &snapshot->motor_health[i]);
         }
+    }
+
+    for (uint8_t i = 0u; i < readPlan.count; i++)
+    {
+        const uint8_t axis = readPlan.axis[i];
+        const MotorId id = readPlan.id[i];
+
+        if (feedbackReadOk == 0u)
+        {
+            ChassisMotorHealthUnavailable(id,
+                                          (uint16_t)(MOTOR_HEALTH_REASON_NO_FEEDBACK |
+                                                     MOTOR_HEALTH_REASON_READ_FAILED),
+                                          &snapshot->motor_health[axis]);
+            continue;
+        }
+
+        if (MotorHealthEval(id,
+                            &s_chassisMotorReadFeedback[i],
+                            snapshot->tick_ms,
+                            ChassisMotorFeedbackTimeoutMs(axis),
+                            &snapshot->motor_health[axis]) == 0u)
+        {
+            snapshot->motor_health[axis].reasonMask |=
+                (uint16_t)MOTOR_HEALTH_REASON_INVALID_ID;
+        }
+        ChassisMotorMeasureFromState(&snapshot->motor_measure[axis],
+                                     &snapshot->motor_health[axis].feedback,
+                                     snapshot->motor_health[axis].feedbackValid);
     }
 
     if (control != NULL)
@@ -224,21 +282,7 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove
                                                      &snapshot->ControlInputCopy :
                                                      NULL;
 
-        if (snapshot->GimbalStateValid != 0u)
-        {
-            control->GimbalStateValid = 1u;
-            control->GimbalOnline = snapshot->GimbalOnline;
-            control->ChassisYawMotor = snapshot->yaw_motor;
-            control->ChassisPitchMotor = snapshot->pitch_motor;
-        }
-        else
-        {
-            control->GimbalStateValid = 0u;
-            control->GimbalOnline = 0u;
-            (void)memset(&control->ChassisYawMotor, 0, sizeof(control->ChassisYawMotor));
-            (void)memset(&control->ChassisPitchMotor, 0, sizeof(control->ChassisPitchMotor));
-        }
-
+        fast.gimbal = snapshot->gimbal;
         fast.manual_online = snapshot->manual_online;
         fast.ChassisOnlyMode = snapshot->ChassisOnlyMode;
         fast.mode_sw = (control_input != NULL) ?
