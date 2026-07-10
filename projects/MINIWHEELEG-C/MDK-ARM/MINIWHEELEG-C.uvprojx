@@ -685,6 +685,11 @@
               <FilePath>..\\..\\..\\shared\\application\\shoot\\Shoot.c</FilePath>
             </File>
             <File>
+              <FileName>ShootCtrl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\shoot\\ShootCtrl.c</FilePath>
+            </File>
+            <File>
               <FileName>StartupServiceTask.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\application\\services\\startup\\StartupServiceTask.c</FilePath>

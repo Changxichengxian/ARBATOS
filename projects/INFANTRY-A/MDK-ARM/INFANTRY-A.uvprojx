@@ -1173,6 +1173,11 @@
               <FilePath>../../../shared/application/shoot/Shoot.c</FilePath>
             </File>
             <File>
+              <FileName>ShootCtrl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../../../shared/application/shoot/ShootCtrl.c</FilePath>
+            </File>
+            <File>
               <FileName>BspImuPwm.c</FileName>
               <FileType>1</FileType>
               <FilePath>../../../shared/hal/BspImuPwm.c</FilePath>

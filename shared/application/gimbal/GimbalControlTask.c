@@ -42,7 +42,7 @@
 #include "GimbalFaultPolicy.h"
 #include "GimbalBehaviour.h"
 #include "InsTask.h"
-#include "Shoot.h"
+#include "ShootCtrl.h"
 #include "Pid.h"
 #include "HostLinkTask.h"
 #include "Watch.h"
@@ -79,19 +79,6 @@ static const char *const DualYawGimbalOutputMotorNames[DUAL_YAW_GIMBAL_OUTPUT_MO
     "motor.pitch",
 };
 static MotorCurrentBind DualYawGimbalOutputCurrentBindings[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT];
-
-__weak void ShootInit(void)
-{
-}
-
-__weak int16_t ShootControlLoop(void)
-{
-    return 0;
-}
-
-__weak void ShootStopOutputs(void)
-{
-}
 
 typedef struct
 {
@@ -408,7 +395,7 @@ void GimbalControlTask(void const *pvParameters)
     GimbalFaultInit();
     GimbalWriteState(NULL);
     //shoot init
-    ShootInit();
+    ShootCtrlPrepare();
     PitchCaliBootLoad();
     last_wake = xTaskGetTickCount();
     while (1)
@@ -422,6 +409,7 @@ void GimbalControlTask(void const *pvParameters)
         GimbalLoopCounter++;
         if (!GimbalControlMgrAllows(ControlIdSingleGimbal, &snapshot))
         {
+            (void)GimbalRunShootControl(&snapshot, 1u);
             GimbalStopOutputs(GimbalOutputCurrentBindings, GIMBAL_OUTPUT_MOTOR_COUNT, &snapshot);
             RtProfEnd(RtProfGimbalLoop, loop_start_us);
             GimbalControlDelay(&last_wake, snapshot.period_ms);
@@ -442,7 +430,7 @@ void GimbalControlTask(void const *pvParameters)
         GimbalApplyHealthToControl(&g_gimbal, &snapshot);
         GimbalFaultApplyControl(&g_gimbal, &snapshot);
         GimbalWriteState(&snapshot);
-        ShootCanSetCurrent = GimbalRunShootControl(&snapshot); // 拨盘电流
+        ShootCanSetCurrent = GimbalRunShootControl(&snapshot, 0u); // 拨盘电流
         yaw_can_set_current = GimbalApplyOutputTurn(g_gimbal.GimbalYawMotor.given_current, snapshot.yaw_turn);
         pitch_can_set_current = GimbalApplyOutputTurn(g_gimbal.GimbalPitchMotor.given_current, snapshot.pitch_turn);
 
@@ -521,7 +509,7 @@ void DualYawGimbalControlTask(void const *pvParameters)
     GimbalInit(&g_gimbal);
     GimbalFaultInit();
     GimbalWriteState(NULL);
-    ShootInit();
+    ShootCtrlPrepare();
 
     last_wake = xTaskGetTickCount();
     while (1)
@@ -537,6 +525,7 @@ void DualYawGimbalControlTask(void const *pvParameters)
         GimbalLoopCounter++;
         if (!GimbalControlMgrAllows(ControlIdDualYawGimbal, &snapshot))
         {
+            (void)GimbalRunShootControl(&snapshot, 1u);
             if (output_allowed == 0u)
             {
                 GimbalDualYawImuCenterUpdateOnOutput(&g_gimbal, &snapshot, 0u);
@@ -563,7 +552,7 @@ void DualYawGimbalControlTask(void const *pvParameters)
         GimbalFaultApplyControl(&g_gimbal, &snapshot);
         GimbalWriteState(&snapshot);
 
-        ShootCanSetCurrent = GimbalRunShootControl(&snapshot);
+        ShootCanSetCurrent = GimbalRunShootControl(&snapshot, 0u);
         yaw_can_set_current = GimbalApplyOutputTurn(g_gimbal.GimbalYawMotor.given_current, snapshot.yaw_turn);
         pitch_can_set_current = GimbalApplyOutputTurn(g_gimbal.GimbalPitchMotor.given_current, snapshot.pitch_turn);
 

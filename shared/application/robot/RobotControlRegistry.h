@@ -14,6 +14,9 @@
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
 #include "CanTxTask.h"
 #endif
+#if ROBOT_TASK_BUILD_SHOOT_RM
+#include "ShootCtrl.h"
+#endif
 
 static inline void RobotControlRegisterIfEnabled(const ControlController *controller,
                                                      RobotTaskModule module)
@@ -51,15 +54,6 @@ static inline void RobotControlRegisterProfileDefaults(void)
         "motor.yaw",
         "motor.yaw_upper",
         "motor.pitch",
-    };
-#endif
-#if ROBOT_TASK_BUILD_SHOOT_RM
-    static const char *const ShootOutputs[] = {
-        "motor.trigger",
-        "motor.friction0",
-        "motor.friction1",
-        "motor.friction2",
-        "motor.friction3",
     };
 #endif
 #if ROBOT_TASK_BUILD_ARM
@@ -122,19 +116,6 @@ static inline void RobotControlRegisterProfileDefaults(void)
         },
     };
 #endif
-#if ROBOT_TASK_BUILD_SHOOT_RM
-    static const ControlController shoot = {
-        .id = ControlIdShoot,
-        .domain = ControlDomainShoot,
-        .claim_mask = ControlResShootTrigger | ControlResShootFriction,
-        .name = "controller.ShootRm",
-        .meta = {
-            .period_ms = ROBOT_PROFILE_GIMBAL_CONTROL_DEFAULT_PERIOD_MS,
-            .output_count = 5u,
-            .outputs = ShootOutputs,
-        },
-    };
-#endif
 #if ROBOT_TASK_BUILD_ARM
     static const ControlController arm = {
         .id = ControlIdArmMotion,
@@ -178,7 +159,7 @@ static inline void RobotControlRegisterProfileDefaults(void)
     if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
         RobotProfileModuleEnabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
     {
-        (void)ControlMgrRegister(&shoot);
+        (void)ControlMgrRegister(ShootCtrlDesc());
     }
 #endif
 #if ROBOT_TASK_BUILD_ARM
@@ -232,14 +213,11 @@ static inline void RobotControlStartProfileDefaults(void)
 
 static inline void RobotControlBootstrapProfileDefaults(void)
 {
-    ControlCtx context = {0};
-
     MotorInstRefresh();
     CAN_rx_prepare_motor_measure_points();
     ControlMgrInit();
     RobotControlRegisterProfileDefaults();
     RobotControlStartProfileDefaults();
-    (void)ControlMgrUpdateAll(&context);
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
     CanTxEmergencyPrepare();
 #endif

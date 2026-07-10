@@ -430,32 +430,23 @@ static bool_t GimbalControlMgrAllows(uint16_t expected_controller_id,
     return (ControlMgrActiveId(ControlDomainGimbal) == expected_controller_id) ? 1 : 0;
 }
 
-static bool_t ShootControlMgrAllows(const GimbalRuntimeSnapshot *snapshot)
+static int16_t GimbalRunShootControl(const GimbalRuntimeSnapshot *snapshot, uint8_t force_safe)
 {
-    ControlCtx context = {0};
-    const uint16_t period_ms =
-        (snapshot != NULL && snapshot->period_ms != 0u) ? snapshot->period_ms : RobotProfileGimbalControlPeriodMs();
+    ShootCtrlInput input = {0};
+    ShootCtrlOutput output = {0};
 
-    context.tick_ms = BspTimeGetTickMs();
-    context.dt_s = (fp32)period_ms * 0.001f;
+    input.tickMs = BspTimeGetTickMs();
+    input.periodMs = (snapshot != NULL && snapshot->period_ms != 0u) ?
+                         snapshot->period_ms :
+                         RobotProfileGimbalControlPeriodMs();
+    input.forceSafe = (force_safe != 0u) ? 1u : 0u;
 
-    if (ControlMgrUpdateDomain(ControlDomainShoot, &context) != ControlResultOk)
+    if (ShootCtrlStep(&input, &output) != ControlResultOk)
     {
         return 0;
     }
 
-    return (ControlMgrActiveId(ControlDomainShoot) == ControlIdShoot) ? 1 : 0;
-}
-
-static int16_t GimbalRunShootControl(const GimbalRuntimeSnapshot *snapshot)
-{
-    if (!ShootControlMgrAllows(snapshot))
-    {
-        ShootStopOutputs();
-        return 0;
-    }
-
-    return ShootControlLoop();
+    return output.triggerCurrent;
 }
 
 static void GimbalStopOutputs(const MotorCurrentBind *bindings,
@@ -481,7 +472,6 @@ static void GimbalStopOutputs(const MotorCurrentBind *bindings,
         count = DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT;
     }
     (void)MotorInstSetCurrentBindsBestEffort(bindings, zero_current, count);
-    ShootStopOutputs();
     GimbalWriteState(snapshot);
 }
 

@@ -74,6 +74,12 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestMotorAxisFault
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestUnitreeMotorPolicy.ps1
 ```
 
+Shoot 控制域进入、更新、强制安全、停止和重新启用的生命周期回归：
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestShootCtrl.ps1
+```
+
 Zig 目前只是这些本地主机测试的可选依赖，常规
 `CheckAll.ps1` 和 GitHub 检查不会静默增加这个要求；未安装时脚本会明确报错。
 

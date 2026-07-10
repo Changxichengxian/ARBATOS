@@ -615,6 +615,11 @@
               <FilePath>..\\..\\..\\shared\\application\\shoot\\Shoot.c</FilePath>
             </File>
             <File>
+              <FileName>ShootCtrl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\shoot\\ShootCtrl.c</FilePath>
+            </File>
+            <File>
               <FileName>PitchCali.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\application\\services\\calibration\\PitchCali.c</FilePath>

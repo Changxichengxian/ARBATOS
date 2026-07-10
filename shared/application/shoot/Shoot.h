@@ -123,10 +123,6 @@ typedef struct
     uint16_t heat;
 } ShootControl;
 
-// shoot runs together with gimbal because they share CAN IDs
-extern void ShootInit(void);
-extern void ShootStopOutputs(void);
-extern int16_t ShootControlLoop(void);
 extern const ShootControl *get_shoot_control_point(void);
 extern void ShootTuneApplyFricSpeedPid(void);
 extern void ShootTuneApplyTriggerPid(void);

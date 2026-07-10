@@ -9,7 +9,7 @@
 /*
  * 阅读地图：
  * - 前段：拨杆/图传输入解释、娱乐模式蜂鸣器音乐、摩擦轮/拨弹输出清零。
- * - 中段：ShootControlLoop() 串起状态机、反馈更新、PID 电流输出。
+ * - 中段：ShootRuntimeStep() 串起状态机、反馈更新、PID 电流输出。
  * - 后段：ShootSetMode() 决定射击状态，feedback_update() 维护编码器圈数和堵转信息。
  * - 输出：拨弹电流作为返回值，摩擦轮电流写入 LowCmd。
  */
@@ -20,6 +20,7 @@
 #if ROBOT_TASK_BUILD_SHOOT_RM
 
 #include "Shoot.h"
+#include "ShootRuntime.h"
 
 #include <math.h>
 #include <string.h>
@@ -702,7 +703,7 @@ static void ShootFaultSyncInhibit(void)
     }
 }
 
-void ShootStopOutputs(void)
+void ShootRuntimeStop(void)
 {
     g_shoot.mode = SHOOT_STOP;
     ShootClearTriggerOutput();
@@ -747,7 +748,7 @@ static bool_t ShootFricSpeedReady(void)
   * @param[in]      void
   * @retval         返回空
   */
-void ShootInit(void)
+void ShootRuntimeInit(void)
 {
 
     const fp32 Trigger_speed_pid[3] = {TRIGGER_ANGLE_PID_KP, TRIGGER_ANGLE_PID_KI, TRIGGER_ANGLE_PID_KD};
@@ -792,7 +793,7 @@ void ShootInit(void)
   * @param[in]      void
   * @retval         返回can控制值
   */
-int16_t ShootControlLoop(void)
+int16_t ShootRuntimeStep(void)
 {
     static uint8_t entertain_entered = 0u;
     const uint16_t rawSwitch = ShootGetRawSwitch();

@@ -1281,6 +1281,7 @@ function Test-HighRateApiBoundaries {
         "shared\application\chassis\ChassisControlTask.c",
         "shared\application\gimbal\GimbalControlTask.c",
         "shared\application\shoot\Shoot.c",
+        "shared\application\shoot\ShootCtrl.c",
         "shared\application\comm\can\CanTxTask.c",
         "shared\application\wheelleg\WheelLegMitTask.c"
     )
@@ -1417,15 +1418,72 @@ function Test-ControlRegistryBoundaries {
     }
 
     $content = Get-Content -LiteralPath $fullPath -Raw
-    foreach ($required in @("RobotControlBootstrapProfileDefaults", "RobotControlStartProfileDefaults")) {
+    foreach ($required in @("RobotControlBootstrapProfileDefaults", "RobotControlStartProfileDefaults", "ShootCtrlDesc")) {
         if ($content -notmatch [regex]::Escape($required)) {
             Add-CheckError "${repoPath}: control registry must expose '$required'."
         }
     }
 
-    foreach ($forbidden in @("ControlMgrSwitchByName", "ControlMgrUpdateDueAll")) {
+    foreach ($forbidden in @("ControlMgrSwitchByName", "ControlMgrUpdateDueAll", "ControlMgrUpdateAll")) {
         if ($content -match [regex]::Escape($forbidden)) {
             Add-CheckError "${repoPath}: default controller bootstrap must not use low-rate name lookup or due scheduling via '$forbidden'."
+        }
+    }
+
+    $shootCtrlRepoPath = "shared\application\shoot\ShootCtrl.c"
+    $shootCtrlContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $shootCtrlRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("ShootCtrlDesc", "ShootCtrlPrepare", "ShootCtrlStep", "ControlMgrUpdateDomain", "ShootCtrlRuntimeStop", "s_shootRuntimeSafe")) {
+        if ($shootCtrlContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${shootCtrlRepoPath}: Shoot lifecycle facade must keep '$required'."
+        }
+    }
+
+    $gimbalRepoPath = "shared\application\gimbal\GimbalControlTask.c"
+    $gimbalContent = Get-SourceContentWithPrivateIncludes -Path (Join-Path $script:RepoRoot $gimbalRepoPath)
+    $shootPrepareCount = ([regex]::Matches($gimbalContent, 'ShootCtrlPrepare\s*\(')).Count
+    $shootForceSafeCount = ([regex]::Matches($gimbalContent, 'GimbalRunShootControl\s*\(\s*&snapshot\s*,\s*1u\s*\)')).Count
+    $shootNormalCount = ([regex]::Matches($gimbalContent, 'GimbalRunShootControl\s*\(\s*&snapshot\s*,\s*0u\s*\)')).Count
+    $shootFacadeStepCount = ([regex]::Matches($gimbalContent, 'ShootCtrlStep\s*\(')).Count
+    if ($shootPrepareCount -ne 2 -or
+        $shootForceSafeCount -ne 2 -or
+        $shootNormalCount -ne 2 -or
+        $shootFacadeStepCount -ne 1) {
+        Add-CheckError "${gimbalRepoPath}: both gimbal owners must prepare Shoot and run exactly one normal or forced-safe ShootCtrl step per frame."
+    }
+
+    $sharedSources = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "shared") -Recurse -File |
+        Where-Object { $_.Extension -in @(".c", ".h", ".inc") })
+    $runtimeAllowed = @(
+        "shared/application/shoot/Shoot.c",
+        "shared/application/shoot/ShootCtrl.c",
+        "shared/application/shoot/ShootRuntime.h"
+    )
+    foreach ($source in $sharedSources) {
+        $sourceContent = Get-Content -LiteralPath $source.FullName -Raw
+        $sourceRepoPath = (Format-RepoPath $source.FullName) -replace '\\', '/'
+
+        if ($sourceContent -match 'ControlMgrUpdateDomain\s*\(\s*ControlDomainShoot' -and
+            $sourceRepoPath -ne 'shared/application/shoot/ShootCtrl.c') {
+            Add-CheckError "${sourceRepoPath}: Shoot domain may only be updated through ShootCtrlStep."
+        }
+        foreach ($runtimeName in @("ShootRuntimeInit", "ShootRuntimeStep", "ShootRuntimeStop")) {
+            if ($sourceContent -match ("\b" + $runtimeName + "\s*\(") -and
+                $runtimeAllowed -notcontains $sourceRepoPath) {
+                Add-CheckError "${sourceRepoPath}: '$runtimeName' is private to ShootCtrl and Shoot runtime."
+            }
+        }
+        foreach ($legacyName in @("ShootInit", "ShootControlLoop", "ShootStopOutputs", "ShootControlMgrAllows")) {
+            if ($sourceContent -match ("\b" + $legacyName + "\s*\(")) {
+                Add-CheckError "${sourceRepoPath}: legacy Shoot lifecycle entry '$legacyName' must be removed."
+            }
+        }
+    }
+
+    $projectFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "projects") -Recurse -Filter "*.uvprojx")
+    foreach ($projectFile in $projectFiles) {
+        $projectContent = Get-Content -LiteralPath $projectFile.FullName -Raw
+        if ($projectContent -notmatch '<FileName>ShootCtrl\.c</FileName>') {
+            Add-CheckError "$(Format-RepoPath $projectFile.FullName): every target must compile ShootCtrl.c."
         }
     }
 }
