@@ -27,7 +27,10 @@
 #include "arm_math.h"
 #include "CanReceive.h"
 #include "LowCmd.h"
+#include "FaultMgr.h"
 #include "MotorInst.h"
+#include "MotorAxisFaultPolicy.h"
+#include "MotorHealth.h"
 #include "MotorConfig.h"
 #include "UserLib.h"
 #include "AxisCurrentConditioner.h"
@@ -36,6 +39,7 @@
 #include "ControlInput.h"
 #include "ChassisState.h"
 #include "GimbalState.h"
+#include "GimbalFaultPolicy.h"
 #include "GimbalBehaviour.h"
 #include "InsTask.h"
 #include "Shoot.h"
@@ -56,6 +60,10 @@
 #define GIMBAL_OUTPUT_MOTOR_COUNT 3u
 #define DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT 4u
 #define GIMBAL_STACK_SAMPLE_PERIOD_MS 1000u
+/* 与现有 Detect 默认值一致；高频控制循环不再反复读取诊断配置表。 */
+#define GIMBAL_MOTOR_FEEDBACK_TIMEOUT_MS 50u
+#define GIMBAL_IMU_SNAPSHOT_TIMEOUT_MS 10u
+#define GIMBAL_FAULT_RECOVERY_MS 200u
 
 static const char *const GimbalOutputMotorNames[GIMBAL_OUTPUT_MOTOR_COUNT] = {
     "motor.trigger",
@@ -88,6 +96,7 @@ __weak void ShootStopOutputs(void)
 typedef struct
 {
     ManualInputState ManualInputCopy;
+    ControlInputState ControlInputCopy;
     InsSnapshot ImuSnapshot;
     const ManualInputState *manual_input;
     const fp32 *gyro;
@@ -104,6 +113,17 @@ typedef struct
     uint8_t yaw_turn;
     uint8_t pitch_turn;
     uint8_t yaw_control_is_upper;
+    uint8_t imu_online;
+    uint8_t yaw_configured;
+    uint8_t yaw_upper_configured;
+    uint8_t pitch_configured;
+    uint8_t control_input_valid;
+    uint8_t manual_online;
+    uint8_t recovery_input_safe;
+    uint32_t imu_required_mask;
+    MotorHealthResult yaw_health;
+    MotorHealthResult yaw_upper_health;
+    MotorHealthResult pitch_health;
 } GimbalRuntimeSnapshot;
 
 //motor encoder value format, range[0, ECD_RANGE - 1]
@@ -257,7 +277,7 @@ static void GimbalSetControl(GimbalControl *set_control);
 static void GimbalAngleLimit(GimbalMotor *GimbalMotor, fp32 add);
 static fp32 GimbalYawChassisSpinFfCurrent(const GimbalMotor *yaw_motor);
 static fp32 GimbalYawKickCurrent(const GimbalMotor *yaw_motor);
-static void GimbalWriteState(void);
+static void GimbalWriteState(const GimbalRuntimeSnapshot *snapshot);
 
 /**
   * @brief          gimbal control mode :GIMBAL_MOTOR_ENCODER, use the encoder angle to control.
@@ -362,9 +382,11 @@ typedef struct
 
 static GimbalSdLogBaseStreamState s_gimbal_sdlog_base_stream = {0};
 
-#include "GimbalSdlogHelpers.inc"
-
 #include "GimbalRuntimeHelpers.inc"
+
+#include "GimbalFaultHelpers.inc"
+
+#include "GimbalSdlogHelpers.inc"
 
 #include "GimbalDualYawHelpers.inc"
 
@@ -383,7 +405,8 @@ void GimbalControlTask(void const *pvParameters)
     vTaskDelay(GIMBAL_TASK_INIT_TIME);
     //gimbal init
     GimbalInit(&g_gimbal);
-    GimbalWriteState();
+    GimbalFaultInit();
+    GimbalWriteState(NULL);
     //shoot init
     ShootInit();
     PitchCaliBootLoad();
@@ -394,10 +417,12 @@ void GimbalControlTask(void const *pvParameters)
         GimbalRuntimeSnapshot snapshot;
         WatchTaskBeat(WATCH_TASK_GIMBAL_CONTROL);
         GimbalSnapshotCapture(&snapshot, &g_gimbal);
+        GimbalFaultUpdate(&snapshot);
+        GimbalFaultSyncInhibit(&g_gimbal, &snapshot);
         GimbalLoopCounter++;
         if (!GimbalControlMgrAllows(ControlIdSingleGimbal, &snapshot))
         {
-            GimbalStopOutputs(GimbalOutputCurrentBindings, GIMBAL_OUTPUT_MOTOR_COUNT);
+            GimbalStopOutputs(GimbalOutputCurrentBindings, GIMBAL_OUTPUT_MOTOR_COUNT, &snapshot);
             RtProfEnd(RtProfGimbalLoop, loop_start_us);
             GimbalControlDelay(&last_wake, snapshot.period_ms);
 
@@ -414,7 +439,9 @@ void GimbalControlTask(void const *pvParameters)
         GimbalSetControl(&g_gimbal);
         GimbalControlLoop(&g_gimbal);
         PitchCaliTickPost(&g_gimbal, GimbalBehaviourWatch, snapshot.PitchCaliMode);
-        GimbalWriteState();
+        GimbalApplyHealthToControl(&g_gimbal, &snapshot);
+        GimbalFaultApplyControl(&g_gimbal, &snapshot);
+        GimbalWriteState(&snapshot);
         ShootCanSetCurrent = GimbalRunShootControl(&snapshot); // 拨盘电流
         yaw_can_set_current = GimbalApplyOutputTurn(g_gimbal.GimbalYawMotor.given_current, snapshot.yaw_turn);
         pitch_can_set_current = GimbalApplyOutputTurn(g_gimbal.GimbalPitchMotor.given_current, snapshot.pitch_turn);
@@ -423,6 +450,8 @@ void GimbalControlTask(void const *pvParameters)
         const int16_t pitch_current_request = pitch_can_set_current;
 
         GimbalApplyOperationMode(&snapshot, &yaw_can_set_current, &pitch_can_set_current);
+        GimbalApplyOutputHealth(&snapshot, &yaw_can_set_current, NULL, &pitch_can_set_current);
+        GimbalFaultApplyOutput(&yaw_can_set_current, NULL, &pitch_can_set_current);
 
         yaw_can_set_current = MotorCfgLimitCurrentNode(snapshot.yaw_motor_cfg, yaw_can_set_current);
         pitch_can_set_current = MotorCfgLimitCurrentNode(snapshot.pitch_motor_cfg, pitch_can_set_current);
@@ -490,7 +519,8 @@ void DualYawGimbalControlTask(void const *pvParameters)
 
     vTaskDelay(GIMBAL_TASK_INIT_TIME);
     GimbalInit(&g_gimbal);
-    GimbalWriteState();
+    GimbalFaultInit();
+    GimbalWriteState(NULL);
     ShootInit();
 
     last_wake = xTaskGetTickCount();
@@ -501,6 +531,8 @@ void DualYawGimbalControlTask(void const *pvParameters)
 
         WatchTaskBeat(WATCH_TASK_GIMBAL_CONTROL);
         GimbalSnapshotCapture(&snapshot, &g_gimbal);
+        GimbalFaultUpdate(&snapshot);
+        GimbalFaultSyncInhibit(&g_gimbal, &snapshot);
         const uint8_t output_allowed = RobotLifecycleOutputAllowed();
         GimbalLoopCounter++;
         if (!GimbalControlMgrAllows(ControlIdDualYawGimbal, &snapshot))
@@ -509,7 +541,9 @@ void DualYawGimbalControlTask(void const *pvParameters)
             {
                 GimbalDualYawImuCenterUpdateOnOutput(&g_gimbal, &snapshot, 0u);
             }
-            GimbalStopOutputs(DualYawGimbalOutputCurrentBindings, DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT);
+            GimbalStopOutputs(DualYawGimbalOutputCurrentBindings,
+                              DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT,
+                              &snapshot);
             RtProfEnd(RtProfGimbalLoop, loop_start_us);
             GimbalControlDelay(&last_wake, snapshot.period_ms);
 
@@ -525,7 +559,9 @@ void DualYawGimbalControlTask(void const *pvParameters)
         GimbalDualYawImuCenterUpdateOnOutput(&g_gimbal, &snapshot, output_allowed);
         GimbalSetControl(&g_gimbal);
         GimbalControlLoop(&g_gimbal);
-        GimbalWriteState();
+        GimbalApplyHealthToControl(&g_gimbal, &snapshot);
+        GimbalFaultApplyControl(&g_gimbal, &snapshot);
+        GimbalWriteState(&snapshot);
 
         ShootCanSetCurrent = GimbalRunShootControl(&snapshot);
         yaw_can_set_current = GimbalApplyOutputTurn(g_gimbal.GimbalYawMotor.given_current, snapshot.yaw_turn);
@@ -544,6 +580,14 @@ void DualYawGimbalControlTask(void const *pvParameters)
             yaw_upper_can_set_current = yaw_can_set_current;
             yaw_can_set_current = 0;
         }
+
+        GimbalApplyOutputHealth(&snapshot,
+                                &yaw_can_set_current,
+                                &yaw_upper_can_set_current,
+                                &pitch_can_set_current);
+        GimbalFaultApplyOutput(&yaw_can_set_current,
+                               &yaw_upper_can_set_current,
+                               &pitch_can_set_current);
 
         yaw_can_set_current = MotorCfgLimitCurrentNode(&g_config.motor.yaw, yaw_can_set_current);
         yaw_upper_can_set_current = MotorCfgLimitCurrentNode(&g_config.motor.yaw_upper, yaw_upper_can_set_current);

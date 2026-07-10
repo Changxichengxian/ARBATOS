@@ -100,7 +100,12 @@ static uint8_t WheelLegSendCoreOutput(const WheelLegCoreOutput *out)
         return 0u;
     }
 
-    return MotorInstSetStateTorqueIds(ids, cmds, written);
+    if (MotorInstSetStateTorqueIds(ids, cmds, written) == 0u)
+    {
+        return 0u;
+    }
+    s_wheelleg.domain_outputs_active = 1u;
+    return 1u;
 }
 
 static void WheelLegSendWheelTorques(const fp32 wheel_torque[WHEELLEG_SIDE_COUNT])
@@ -134,16 +139,7 @@ static void WheelLegSendVmcJointTorques(void)
 
 static void WheelLegClearJointTestCmds(void)
 {
-    const WheelLegActuatorMap *left_map = &s_wheelleg.actuator[WHEELLEG_SIDE_LEFT];
-    const WheelLegActuatorMap *right_map = &s_wheelleg.actuator[WHEELLEG_SIDE_RIGHT];
-
-    WheelLegClearStateCmd(left_map->front);
-    WheelLegClearStateCmd(left_map->back);
-    WheelLegClearStateCmd(left_map->wheel);
-    WheelLegClearStateCmd(right_map->front);
-    WheelLegClearStateCmd(right_map->back);
-    WheelLegClearStateCmd(right_map->wheel);
-    WheelLegClearStateCmd(WheelLegSingleTestActuator());
+    (void)WheelLegStopDomainOutputs();
 }
 
 static void WheelLegBenchHoldPrepareDefault(void)

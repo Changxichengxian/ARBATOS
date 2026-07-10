@@ -42,6 +42,18 @@ typedef struct
     uint8_t valid;
     uint8_t mode;
     uint8_t last_mode;
+    uint8_t fault_configured_mask;
+    uint8_t fault_active_mask;
+    uint8_t fault_blocking_mask;
+    uint8_t fault_recovery_mask;
+    uint8_t fault_inhibit_mask;
+    uint8_t fault_hold_zero_mask;
+    uint8_t fault_recovery_input_safe;
+    uint8_t reserved0;
+    uint16_t motor_reason_mask[CHASSIS_STATE_MOTOR_COUNT];
+    uint32_t motor_feedback_age_ms[CHASSIS_STATE_MOTOR_COUNT];
+    uint32_t fault_inhibit_fail_count;
+    uint32_t fault_release_fail_count;
     fp32 vx;
     fp32 vy;
     fp32 wz;

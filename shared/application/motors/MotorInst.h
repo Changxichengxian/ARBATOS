@@ -122,6 +122,12 @@ uint8_t MotorInstCapsId(MotorId id);
 uint8_t MotorInstModeSupportedId(MotorId id, MotorMode mode);
 
 uint8_t MotorInstClearId(MotorId id);
+uint8_t MotorInstClearIds(const MotorId *ids, uint8_t count);
+/* 默认由 SAFETY 获取/释放；From 版本供更高优先级故障路径显式指定 writer。 */
+uint8_t MotorInstInhibitIds(const MotorId *ids, uint8_t count);
+uint8_t MotorInstInhibitIdsFrom(const MotorId *ids, uint8_t count, uint16_t writer);
+uint8_t MotorInstReleaseInhibitIds(const MotorId *ids, uint8_t count);
+uint8_t MotorInstReleaseInhibitIdsFrom(const MotorId *ids, uint8_t count, uint16_t writer);
 uint8_t MotorInstSetIds(const MotorId *ids, const MotorCmd *cmds, uint8_t count);
 uint8_t MotorInstSetIdsBestEffort(const MotorId *ids, const MotorCmd *cmds, uint8_t count);
 uint8_t MotorInstSetCurrentId(MotorId id, int16_t current);

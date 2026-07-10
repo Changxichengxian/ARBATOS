@@ -2,9 +2,9 @@
 
 #include <stdint.h>
 
-#include "LowCmd.h"
 #include "RobotConfigTypes.h"
 #include "Types.h"
+#include "UnitreeMotorPolicy.h"
 
 #define UNITREE_MOTOR_RS485_PORT0 0u
 #define UNITREE_MOTOR_RS485_PORT1 1u
@@ -17,15 +17,6 @@ typedef struct
     uint32_t baudrate;
     uint16_t rx_timeout_ms;
 } UnitreeMotorConfig;
-
-typedef struct
-{
-    fp32 torque_nm;
-    fp32 speed_rad_s;
-    fp32 position_rad;
-    fp32 kp;
-    fp32 kd;
-} UnitreeMotorCmd;
 
 typedef struct
 {
@@ -50,11 +41,10 @@ typedef struct
     fp32 joint_position_rad;
 } UnitreeMotorState;
 
-void UnitreeMotorDriverInit(void);
-void UnitreeMotorRefresh(const UnitreeMotorConfig *cfg);
-uint8_t UnitreeMotorConfigure(const UnitreeMotorConfig *cfg);
-int UnitreeMotorSendCmd(const UnitreeMotorConfig *cfg, const UnitreeMotorCmd *cmd);
 uint8_t UnitreeMotorNodeSupported(const motor_node_param_t *node);
-int UnitreeMotorSendActuator(uint8_t port, MotorId actuator_id, const motor_node_param_t *node, int16_t current);
-void UnitreeMotorStop(void);
-const UnitreeMotorState *UnitreeMotorGetState(void);
+int UnitreeMotorSendActuator(uint8_t port,
+                            MotorId actuator_id,
+                            const motor_node_param_t *node,
+                            int16_t current,
+                            const MotorCmd *can_tx_cmd);
+uint8_t UnitreeMotorGetStateCopy(UnitreeMotorState *out);

@@ -6,8 +6,6 @@
  */
 
 static GimbalDualYawDebugState s_dual_yaw_debug = {0};
-static MotorId s_dual_yaw_upper_id = MotorCount;
-static uint8_t s_dual_yaw_upper_id_ready = 0u;
 
 uint8_t GimbalDualYawDebugRead(GimbalDualYawDebugState *out)
 {
@@ -20,23 +18,11 @@ uint8_t GimbalDualYawDebugRead(GimbalDualYawDebugState *out)
     return s_dual_yaw_debug.active;
 }
 
-static MotorId GimbalDualYawUpperMotorId(void)
+static uint8_t GimbalDualYawUpperOnline(const GimbalRuntimeSnapshot *snapshot)
 {
-    if (s_dual_yaw_upper_id_ready == 0u)
-    {
-        s_dual_yaw_upper_id = MotorInstIdByName("motor.yaw_upper");
-        s_dual_yaw_upper_id_ready = 1u;
-    }
-
-    return s_dual_yaw_upper_id;
-}
-
-static uint8_t GimbalDualYawUpperOnline(void)
-{
-    const MotorId id = GimbalDualYawUpperMotorId();
-    const MotorInst *inst = MotorInstFindByMotor(id);
-
-    return (uint8_t)((id != MotorCount && inst != NULL && MotorInstEnabled(inst) != 0u) ? 1u : 0u);
+    return (uint8_t)(snapshot != NULL &&
+                     snapshot->yaw_upper_configured != 0u &&
+                     snapshot->yaw_upper_health.healthy != 0u);
 }
 
 static void GimbalDualYawUpperSoftLimit(fp32 *min_out, fp32 *max_out)
@@ -124,7 +110,7 @@ static int16_t GimbalDualYawUpperControlCurrent(const GimbalRuntimeSnapshot *sna
                                                         int16_t yaw_current_output)
 {
     const motor_measure_t *upper_measure = get_yaw_upper_gimbal_motor_measure_point();
-    const uint8_t upper_online = GimbalDualYawUpperOnline();
+    const uint8_t upper_online = GimbalDualYawUpperOnline(snapshot);
     fp32 upper_gyro = 0.0f;
     const fp32 upper_angle = GimbalDualYawUpperAngle(upper_measure, &upper_gyro);
     fp32 upper_min = 0.0f;

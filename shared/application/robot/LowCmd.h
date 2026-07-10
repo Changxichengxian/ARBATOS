@@ -174,6 +174,9 @@ typedef struct
     uint32_t seq;
     uint32_t rejected_count;
     uint32_t emergency_stop_count;
+    uint32_t inhibit_acquire_count;
+    uint32_t inhibit_release_count;
+    uint32_t inhibit_mask;
     uint32_t snapshot_retry_count;
     uint32_t snapshot_fallback_count;
     uint32_t last_reject_tick;
@@ -204,8 +207,22 @@ static inline uint8_t MotorModeKnown(uint8_t mode)
 
 void LowCmdClearAll(void);
 void LowCmdClear(MotorId id);
+uint8_t LowCmdClearManyFrom(const MotorId *ids, uint8_t count, uint16_t writer);
+/*
+ * 原子清空新获取或升级禁写的命令，并持续阻止更低优先级 writer。
+ * 同 writer 重复获取是无副作用成功；更高 writer 可升级 owner；更低 writer 整批失败。
+ * 禁写 owner 及更高 writer 仍可写命令，写命令不会自动释放禁写。
+ */
+uint8_t LowCmdInhibitManyFrom(const MotorId *ids, uint8_t count, uint16_t writer);
+/*
+ * 同级或更高 writer 可释放；未禁写的电机视为已经释放。
+ * 任一电机由更高 writer 禁写时整批不变，释放不改当前命令及命令序号。
+ */
+uint8_t LowCmdReleaseInhibitManyFrom(const MotorId *ids, uint8_t count, uint16_t writer);
+uint8_t LowCmdGetInhibitWriter(MotorId id, uint16_t *out);
 uint8_t LowCmdSetMotor(MotorId id, const MotorCmd *cmd);
 uint8_t LowCmdSetMotorMany(const MotorId *ids, const MotorCmd *cmds, uint8_t count);
+/* writer 以 API 参数为准；MotorCmd.writer 是发布后的只读归属信息，不能由载荷提权。 */
 uint8_t LowCmdSetMotorFrom(MotorId id, const MotorCmd *cmd, uint16_t writer);
 uint8_t LowCmdSetMotorManyFrom(const MotorId *ids, const MotorCmd *cmds, uint8_t count, uint16_t writer);
 const char *MotorModeName(MotorMode mode);

@@ -337,10 +337,33 @@ static void WheelLegEvalLqr(fp32 leg_length, fp32 out[12])
     }
 }
 
-static uint8_t WheelLegManualEnabledBySwitch(void)
+static uint8_t WheelLegManualEnabledFromSnapshot(uint8_t input_valid, uint8_t chassis_switch)
 {
-    return (uint8_t)(ControlInputSwitchIsPos(input_switch(INPUT_SW_CHASSIS_MODE),
-                                                 g_config.manual_input.semantics.ChassisSafePos) == 0u);
+    return (uint8_t)(input_valid != 0u &&
+                     ControlInputSwitchIsPos(chassis_switch,
+                                             g_config.manual_input.semantics.ChassisSafePos) == 0u);
+}
+
+static uint8_t WheelLegRecoveryInputSafeFromSnapshot(uint8_t input_valid,
+                                                     uint8_t chassis_switch,
+                                                     int16_t vx_axis,
+                                                     int16_t leg_axis,
+                                                     int16_t yaw_axis,
+                                                     int16_t single_test_axis)
+{
+    const uint16_t deadband = g_config.WheelLegMit.rc_deadband;
+
+    if (input_valid == 0u ||
+        ControlInputSwitchIsPos(chassis_switch,
+                                g_config.manual_input.semantics.ChassisSafePos) == 0u)
+    {
+        return 0u;
+    }
+
+    return (uint8_t)(WheelLegAxisInDeadband(vx_axis, deadband) != 0u &&
+                     WheelLegAxisInDeadband(leg_axis, deadband) != 0u &&
+                     WheelLegAxisInDeadband(yaw_axis, deadband) != 0u &&
+                     WheelLegAxisInDeadband(single_test_axis, deadband) != 0u);
 }
 
 static fp32 WheelLegImuAngle(const fp32 *angle, uint8_t offset, fp32 sign)

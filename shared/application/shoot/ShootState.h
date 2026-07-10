@@ -18,6 +18,7 @@ extern "C" {
 #endif
 
 #define SHOOT_STATE_FRIC_MOTOR_COUNT 4u
+#define SHOOT_STATE_FAULT_DEVICE_COUNT (1u + SHOOT_STATE_FRIC_MOTOR_COUNT)
 
 typedef struct
 {
@@ -46,6 +47,17 @@ typedef struct
     uint16_t key_time;
     uint16_t heat_limit;
     uint16_t heat;
+    uint8_t fault_configured_mask;
+    uint8_t fault_active_mask;
+    uint8_t fault_blocking_mask;
+    uint8_t fault_recovery_mask;
+    uint8_t fault_inhibit_mask;
+    uint8_t fault_hold_zero_mask;
+    uint8_t fault_domain_action;
+    uint8_t trigger_fault_action;
+    uint32_t fault_inhibit_fail_count;
+    uint32_t fault_release_fail_count;
+    uint16_t fault_reason[SHOOT_STATE_FAULT_DEVICE_COUNT];
     PidTypeDef trigger_motor_pid;
     PidTypeDef fric_speed_pid[SHOOT_STATE_FRIC_MOTOR_COUNT];
     int16_t fric_current_set[SHOOT_STATE_FRIC_MOTOR_COUNT];

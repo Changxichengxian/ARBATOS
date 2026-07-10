@@ -170,7 +170,10 @@ static void ChassisFeedbackUpdate(ChassisMove *ChassisMoveUpdate, const ChassisR
         const int8_t motor_dir = (snapshot != NULL) ? snapshot->motor_dir[i] : g_config.chassis.motor_dir[i];
         const fp32 rpm_to_vector = (snapshot != NULL) ? snapshot->motor_rpm_to_vector : CHASSIS_MOTOR_RPM_TO_VECTOR_SEN;
         const fp32 control_hz = (snapshot != NULL) ? snapshot->control_hz : CHASSIS_CONTROL_FREQUENCE;
-        const int16_t speed_rpm = (measure != NULL) ? measure->speed_rpm : 0;
+        const int16_t speed_rpm = (measure != NULL &&
+                                   (snapshot == NULL || snapshot->motor_health[i].healthy != 0u)) ?
+                                      measure->speed_rpm :
+                                      0;
         ChassisMoveUpdate->motor_chassis[i].speed = rpm_to_vector * speed_rpm * (fp32)motor_dir;
         ChassisMoveUpdate->motor_chassis[i].accel = ChassisMoveUpdate->motor_speed_pid[i].Dbuf[0] * control_hz;
     }

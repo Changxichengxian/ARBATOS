@@ -75,6 +75,34 @@ static uint8_t CanTxMitGetFeedbackState(MotorId actuator_id,
     return 1u;
 }
 
+static uint8_t CanTxMitCommandAuthorizedNow(MotorId actuator_id, const MotorCmd *cached)
+{
+    MotorCmd latest;
+    uint16_t inhibitWriter = (uint16_t)LOWCMD_WRITER_NONE;
+
+    (void)memset(&latest, 0, sizeof(latest));
+    if (cached == NULL ||
+        LowCmdGetMotor(actuator_id, &latest) == 0u ||
+        LowCmdGetInhibitWriter(actuator_id, &inhibitWriter) == 0u)
+    {
+        return 0u;
+    }
+    return CanTxCachedCmdAuthorized(cached, &latest, inhibitWriter);
+}
+
+static void CanTxMitMarkAuthorityReject(MotorId actuator_id, uint8_t *flags)
+{
+    if (flags != NULL)
+    {
+        *flags |= (uint8_t)MotorAppliedFlagForceDisabled |
+                  (uint8_t)MotorAppliedFlagSkipped;
+    }
+    if (CanTxActuatorIdValid(actuator_id) != 0u)
+    {
+        s_can_tx_authority_reject_count[actuator_id]++;
+    }
+}
+
 static void CanTxMitSyncModeState(MotorId actuator_id,
                                        const motor_node_param_t *node,
                                        uint8_t *enabled,
@@ -315,6 +343,12 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
         cmd.current = current;
         active_cmd = 1u;
     }
+    if (active_cmd != 0u && CanTxMitCommandAuthorizedNow(actuator_id, &cmd) == 0u)
+    {
+        active_cmd = 0u;
+        current = 0;
+        CanTxMitMarkAuthorityReject(actuator_id, flags);
+    }
 
     std_id = MotorCfgCanId(node);
     if (std_id == 0u)
@@ -368,6 +402,11 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
             {
                 if (CanTxMitTakeFrameBudget(now) != 0u)
                 {
+                    if (CanTxMitCommandAuthorizedNow(actuator_id, &cmd) == 0u)
+                    {
+                        CanTxMitMarkAuthorityReject(actuator_id, flags);
+                        return 1u;
+                    }
                     const int ret = CanMitMotorSendEnable(bus, std_id);
                     if (ret == 0)
                     {
@@ -403,6 +442,11 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
         }
 
         CanTxBuildMitCmdFromActuator(node, &cmd, current, limits, &mit_cmd);
+        if (CanTxMitCommandAuthorizedNow(actuator_id, &cmd) == 0u)
+        {
+            CanTxMitMarkAuthorityReject(actuator_id, flags);
+            return 1u;
+        }
         {
             const int ret = CanMitMotorSendCmd(bus, std_id, limits, &mit_cmd);
             if (ret == 0)
@@ -424,6 +468,11 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
     }
 
     CanTxBuildMitCmdFromActuator(node, &cmd, current, limits, &mit_cmd);
+    if (CanTxMitCommandAuthorizedNow(actuator_id, &cmd) == 0u)
+    {
+        CanTxMitMarkAuthorityReject(actuator_id, flags);
+        return 1u;
+    }
     {
         const int ret = CanMitMotorSendCmd(bus, std_id, limits, &mit_cmd);
         if (ret == 0)

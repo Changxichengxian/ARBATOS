@@ -1099,11 +1099,12 @@ const N6014bMotorState *N6014bMotorGetState(MotorId actuator_id)
 uint8_t CanTxProcessExtraItem(uint8_t bus,
                                   MotorId actuator_id,
                                   const motor_node_param_t *node,
-                                  int16_t current)
+                                  int16_t current,
+                                  const MotorCmd *cmd)
 {
     if (UnitreeMotorNodeSupported(node) != 0u)
     {
-        return (UnitreeMotorSendActuator(bus, actuator_id, node, current) == 0) ? 1u : 0u;
+        return (UnitreeMotorSendActuator(bus, actuator_id, node, current, cmd) == 0) ? 1u : 0u;
     }
 
     if (N6014bNodeSupported(node) == 0u)
@@ -1111,5 +1112,6 @@ uint8_t CanTxProcessExtraItem(uint8_t bus,
         return 0u;
     }
 
+    (void)cmd;
     return (N6014bMotorSendActuator(bus, actuator_id, node, current) == 0) ? 1u : 0u;
 }

@@ -130,6 +130,8 @@ static bool_t ChassisGimbalTurnaroundIsActive(void);
 static fp32 ChassisGimbalTurnaroundChassisFollowOffsetRad(void);
 static bool_t ChassisGimbalTurnaroundGetFrameYawRelative(fp32 *out_yaw_relative);
 static bool_t ChassisGimbalCmdToChassisStop(void);
+static bool_t ChassisGimbalFollowAvailable(void);
+static bool_t ChassisBehaviourNeedsGimbalFollow(ChassisBehaviour mode);
 static void ChassisGyroSpinControl(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, ChassisMove *ChassisMoveRcToVector);
 static void ChassisGyroSpinVarControl(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, ChassisMove *ChassisMoveRcToVector);
 static void ChassisSwingControl(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, ChassisMove *ChassisMoveRcToVector);
@@ -236,7 +238,9 @@ static ChassisAlgorithmMoveSlew s_move_slew = {0};
 
 static bool_t ChassisReadGimbalState(GimbalState *state)
 {
-    if (state == NULL || GimbalStateRead(state) == 0u || state->valid == 0u)
+    if (state == NULL ||
+        GimbalStateReadFresh(state, GIMBAL_STATE_FRESH_TIMEOUT_MS) == 0u ||
+        state->valid == 0u)
     {
         return 0;
     }
@@ -273,13 +277,21 @@ static bool_t ChassisGimbalCmdToChassisStop(void)
 {
 #if CHASSIS_STOP_ON_GIMBAL_STATE
     GimbalState state;
-    return (ChassisReadGimbalState(&state) != 0 &&
-            (state.ChassisStop != 0u || state.controllable == 0u))
-               ? 1
-               : 0;
+    return (ChassisReadGimbalState(&state) != 0 && state.ChassisStop != 0u) ? 1 : 0;
 #else
     return 0;
 #endif
+}
+
+static bool_t ChassisGimbalFollowAvailable(void)
+{
+    GimbalState state;
+    return (ChassisReadGimbalState(&state) != 0 && state.follow_available != 0u) ? 1 : 0;
+}
+
+static bool_t ChassisBehaviourNeedsGimbalFollow(ChassisBehaviour mode)
+{
+    return (mode == CHASSIS_INFANTRY_FOLLOW_GIMBAL_YAW || mode == CHASSIS_SWING) ? 1 : 0;
 }
 
 static uint16_t ChassisGetEffectiveSwitch(uint16_t raw_sw,
@@ -829,6 +841,13 @@ void ChassisBehaviourModeSet(ChassisMove *ChassisMoveMode)
                 ChassisBehaviourMode = CHASSIS_NO_MOVE;
             }
         }
+    }
+
+    /* 云台不可用时只放弃角度跟随，底盘平移和手动转向仍可继续。 */
+    if (ChassisBehaviourNeedsGimbalFollow(ChassisBehaviourMode) != 0 &&
+        ChassisGimbalFollowAvailable() == 0)
+    {
+        ChassisBehaviourMode = CHASSIS_NO_FOLLOW_YAW;
     }
 
 

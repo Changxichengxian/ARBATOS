@@ -33,8 +33,11 @@
 #include "ControlInput.h"
 #include "CanReceive.h"
 #include "LowCmd.h"
+#include "FaultMgr.h"
 #include "ChassisState.h"
 #include "MotorInst.h"
+#include "MotorAxisFaultPolicy.h"
+#include "MotorHealth.h"
 #include "MotorConfig.h"
 #include "Watch.h"
 #include "DetectTask.h"
@@ -52,6 +55,8 @@
 
 #define CHASSIS_MOTOR_COUNT 4U
 #define CHASSIS_STACK_SAMPLE_PERIOD_MS 1000u
+#define CHASSIS_MOTOR_FEEDBACK_TIMEOUT_MS 50u
+#define CHASSIS_FAULT_RECOVERY_MS 200u
 
 static const char *const ChassisMotorInstNames[CHASSIS_MOTOR_COUNT] = {
     "motor.chassis0",
@@ -104,6 +109,7 @@ static const int16_t ChassisZeroCurrentCmd[CHASSIS_MOTOR_COUNT] = {0};
 typedef struct
 {
     ManualInputState ManualInputCopy;
+    ControlInputState ControlInputCopy;
     InsSnapshot ImuSnapshot;
     const ManualInputState *manual_input;
     uint8_t GimbalStateValid;
@@ -126,7 +132,11 @@ typedef struct
     fp32 motor_distance_to_center;
     fp32 max_wheel_speed;
     uint8_t wheel_type;
+    uint8_t control_input_valid;
+    uint8_t manual_online;
+    uint8_t recovery_input_safe;
     int8_t motor_dir[CHASSIS_MOTOR_COUNT];
+    MotorHealthResult motor_health[CHASSIS_MOTOR_COUNT];
 } ChassisRuntimeSnapshot;
 
 static const fp32 *ChassisINTGyroPoint = NULL;
@@ -243,6 +253,8 @@ typedef struct
 
 static ChassisSdLogBaseStreamState s_chassis_sdlog_base_stream = {0};
 
+#include "ChassisFaultHelpers.inc"
+
 #include "ChassisSdlogHelpers.inc"
 
 #include "ChassisTuneState.inc"
@@ -262,8 +274,16 @@ void ChassisControlTask(void const *pvParameters)
     vTaskDelay(CHASSIS_TASK_INIT_TIME);
     //chassis init
     ChassisInit(&g_chassis);
+    ChassisFaultInit();
     while (toe_is_error(DBUS_TOE))
     {
+        ChassisRuntimeSnapshot snapshot;
+
+        ChassisSnapshotCapture(&snapshot, &g_chassis);
+        ChassisFaultUpdate(&snapshot);
+        ChassisFaultSyncInhibit(&g_chassis);
+        ChassisControlStopOutputs(&g_chassis);
+        ChassisWriteState(&g_chassis);
         WatchTaskWait(WATCH_TASK_CHASSIS_CONTROL);
         vTaskDelay(pdMS_TO_TICKS(RobotProfileChassisControlPeriodMs()));
     }
@@ -274,6 +294,8 @@ void ChassisControlTask(void const *pvParameters)
         const uint64_t loop_start_us = RtProfBegin();
         ChassisRuntimeSnapshot snapshot;
         ChassisSnapshotCapture(&snapshot, &g_chassis);
+        ChassisFaultUpdate(&snapshot);
+        ChassisFaultSyncInhibit(&g_chassis);
         WatchTaskBeat(WATCH_TASK_CHASSIS_CONTROL);
         //set chassis control mode
         //设置底盘控制模式
@@ -318,16 +340,7 @@ void ChassisControlTask(void const *pvParameters)
         int16_t ChassisPrePowerCmd[CHASSIS_MOTOR_COUNT] = {0};
         ChassisControlLoop(&g_chassis, &snapshot, ChassisPrePowerCmd);
 
-        // motor offline guard: if feedback is offline, clear PID and outputs to avoid runaway
-        for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
-        {
-            if (toe_is_error(CHASSIS_MOTOR1_TOE + i))
-            {
-                PID_clear(&g_chassis.motor_speed_pid[i]);
-                g_chassis.motor_chassis[i].speed_set = 0.0f;
-                g_chassis.motor_chassis[i].give_current = 0;
-            }
-        }
+        ChassisFaultApplyControl(&g_chassis);
 
         // Update CAN1 chassis motor currents for CAN TX task
         int16_t ChassisCurrentCmd[CHASSIS_MOTOR_COUNT] = {0};
@@ -335,8 +348,12 @@ void ChassisControlTask(void const *pvParameters)
         {
             for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
             {
+                const uint32_t bit = 1u << i;
                 const int16_t current = g_chassis.motor_chassis[i].give_current;
-                ChassisCurrentCmd[i] = MotorCfgLimitCurrentNode(snapshot.motor_cfg[i], current);
+                ChassisCurrentCmd[i] = ((s_chassisFault.configuredMask & bit) == 0u ||
+                                        (s_chassisFault.holdZeroMask & bit) != 0u) ?
+                                           0 :
+                                           MotorCfgLimitCurrentNode(snapshot.motor_cfg[i], current);
             }
         }
 

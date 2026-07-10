@@ -7,6 +7,7 @@
  */
 
 #include "MotorInst.h"
+#include "MotorInstBestEffort.h"
 
 #include "ControlMgr.h"
 #include "DetectTask.h"
@@ -727,6 +728,72 @@ uint8_t MotorInstClearId(MotorId id)
     return 1u;
 }
 
+static uint8_t MotorInstControlIdsValid(const MotorId *ids, uint8_t count)
+{
+    if (count > (uint8_t)MotorCount || (count != 0u && ids == NULL))
+    {
+        return 0u;
+    }
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if ((uint32_t)ids[i] >= (uint32_t)MotorCount ||
+            MotorInstFindByMotor(ids[i]) == NULL)
+        {
+            return 0u;
+        }
+        for (uint8_t j = 0u; j < i; j++)
+        {
+            if (ids[i] == ids[j])
+            {
+                return 0u;
+            }
+        }
+    }
+
+    return 1u;
+}
+
+uint8_t MotorInstClearIds(const MotorId *ids, uint8_t count)
+{
+    if (MotorInstControlIdsValid(ids, count) == 0u)
+    {
+        return 0u;
+    }
+
+    return LowCmdClearManyFrom(ids, count, (uint16_t)LOWCMD_WRITER_SAFETY);
+}
+
+uint8_t MotorInstInhibitIdsFrom(const MotorId *ids, uint8_t count, uint16_t writer)
+{
+    if (MotorInstControlIdsValid(ids, count) == 0u)
+    {
+        return 0u;
+    }
+
+    return LowCmdInhibitManyFrom(ids, count, writer);
+}
+
+uint8_t MotorInstInhibitIds(const MotorId *ids, uint8_t count)
+{
+    return MotorInstInhibitIdsFrom(ids, count, (uint16_t)LOWCMD_WRITER_SAFETY);
+}
+
+uint8_t MotorInstReleaseInhibitIdsFrom(const MotorId *ids, uint8_t count, uint16_t writer)
+{
+    if (MotorInstControlIdsValid(ids, count) == 0u)
+    {
+        return 0u;
+    }
+
+    return LowCmdReleaseInhibitManyFrom(ids, count, writer);
+}
+
+uint8_t MotorInstReleaseInhibitIds(const MotorId *ids, uint8_t count)
+{
+    return MotorInstReleaseInhibitIdsFrom(ids, count, (uint16_t)LOWCMD_WRITER_SAFETY);
+}
+
 uint8_t MotorInstSetIds(const MotorId *ids, const MotorCmd *cmds, uint8_t count)
 {
     if (count > (uint8_t)MotorCount)
@@ -774,12 +841,7 @@ uint8_t MotorInstSetIdsBestEffort(const MotorId *ids, const MotorCmd *cmds, uint
         written++;
     }
 
-    if (LowCmdSetMotorMany(writable_ids, writable_cmds, written) == 0u)
-    {
-        return 0u;
-    }
-
-    return written;
+    return MotorInstLowCmdSetBestEffort(writable_ids, writable_cmds, written);
 }
 
 uint8_t MotorInstSetCurrentId(MotorId id, int16_t current)
@@ -1038,12 +1100,7 @@ uint8_t MotorInstSetCurrentIdsBestEffort(const MotorId *ids, const int16_t *curr
         written++;
     }
 
-    if (LowCmdSetCurrentMany(writable_ids, writable_currents, written) == 0u)
-    {
-        return 0u;
-    }
-
-    return written;
+    return MotorInstLowCmdSetCurrentBestEffort(writable_ids, writable_currents, written);
 }
 
 uint8_t MotorInstSetCurrentManyBestEffort(const char *const *names, const int16_t *currents, uint8_t count)
@@ -1071,12 +1128,7 @@ uint8_t MotorInstSetCurrentManyBestEffort(const char *const *names, const int16_
         written++;
     }
 
-    if (LowCmdSetCurrentMany(writable_ids, writable_currents, written) == 0u)
-    {
-        return 0u;
-    }
-
-    return written;
+    return MotorInstLowCmdSetCurrentBestEffort(writable_ids, writable_currents, written);
 }
 
 uint8_t MotorInstSetCurrentBindsBestEffort(const MotorCurrentBind *bindings,
@@ -1105,12 +1157,7 @@ uint8_t MotorInstSetCurrentBindsBestEffort(const MotorCurrentBind *bindings,
         written++;
     }
 
-    if (LowCmdSetCurrentMany(writable_ids, writable_currents, written) == 0u)
-    {
-        return 0u;
-    }
-
-    return written;
+    return MotorInstLowCmdSetCurrentBestEffort(writable_ids, writable_currents, written);
 }
 
 uint8_t MotorInstGetFeedbackIds(const MotorId *ids, MotorState *out, uint8_t count)

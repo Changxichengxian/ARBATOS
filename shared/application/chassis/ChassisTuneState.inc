@@ -97,6 +97,15 @@ static void ChassisWriteState(const ChassisMove *control)
     state.valid = 1u;
     state.mode = (uint8_t)control->mode;
     state.last_mode = (uint8_t)control->last_mode;
+    state.fault_configured_mask = (uint8_t)s_chassisFault.configuredMask;
+    state.fault_active_mask = (uint8_t)s_chassisFault.activeMask;
+    state.fault_blocking_mask = (uint8_t)s_chassisFault.blockingMask;
+    state.fault_recovery_mask = (uint8_t)s_chassisFault.recoveryMask;
+    state.fault_inhibit_mask = (uint8_t)s_chassisFault.inhibitMask;
+    state.fault_hold_zero_mask = (uint8_t)s_chassisFault.holdZeroMask;
+    state.fault_recovery_input_safe = s_chassisFault.recoveryInputSafe;
+    state.fault_inhibit_fail_count = s_chassisFault.inhibitFailCount;
+    state.fault_release_fail_count = s_chassisFault.releaseFailCount;
     state.vx = control->vx;
     state.vy = control->vy;
     state.wz = control->wz;
@@ -118,6 +127,8 @@ static void ChassisWriteState(const ChassisMove *control)
         state.motor[i].speed = control->motor_chassis[i].speed;
         state.motor[i].speed_set = control->motor_chassis[i].speed_set;
         state.motor[i].give_current = control->motor_chassis[i].give_current;
+        state.motor_reason_mask[i] = s_chassisFault.reasonMask[i];
+        state.motor_feedback_age_ms[i] = s_chassisFault.feedbackAgeMs[i];
     }
 
     (void)ChassisStateWrite(&state);

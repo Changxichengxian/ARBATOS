@@ -57,6 +57,23 @@ StateStore 双缓冲与快照时间信息的主机回归：
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestStateStore.ps1
 ```
 
+LowCmd 批量清除、持续局部禁写、优先级和急停锁边界的主机回归：
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestLowCmd.ps1
+```
+
+故障范围、稳定恢复和电机反馈新鲜度的主机回归：
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestFaultMgr.ps1
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestMotorHealth.ps1
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestArmFaultPolicy.ps1
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestShootFaultPolicy.ps1
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestMotorAxisFaultPolicy.ps1
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestUnitreeMotorPolicy.ps1
+```
+
 Zig 目前只是这些本地主机测试的可选依赖，常规
 `CheckAll.ps1` 和 GitHub 检查不会静默增加这个要求；未安装时脚本会明确报错。
 

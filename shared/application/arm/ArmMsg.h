@@ -81,6 +81,17 @@ typedef struct
     uint16_t key_mask;
     uint8_t deadman_hold_ctrl;
     uint8_t reserved[3];
+    uint32_t fault_configured_mask;
+    uint32_t fault_active_mask;
+    uint32_t fault_blocking_mask;
+    uint32_t fault_recovery_mask;
+    uint32_t fault_inhibit_mask;
+    uint32_t fault_hold_zero_mask;
+    uint32_t fault_inhibit_fail_count;
+    uint32_t fault_release_fail_count;
+    uint8_t fault_initialized;
+    uint8_t fault_reserved[3];
+    uint16_t fault_reason[ARM_JOINT_COUNT];
     fp32 key_speed_scale;
     fp32 key_kd;
     int16_t j0_current;

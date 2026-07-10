@@ -5,6 +5,267 @@
  * Private implementation chunk included by WheelLegMitTask.c.
  */
 
+static uint8_t WheelLegInputSnapshotConfigValid(void)
+{
+    return (uint8_t)(g_config.input.axis[INPUT_AXIS_CHASSIS_X].rc_ch < 5u &&
+                     g_config.input.axis[INPUT_AXIS_CHASSIS_Y].rc_ch < 5u &&
+                     g_config.input.axis[INPUT_AXIS_CHASSIS_WZ].rc_ch < 5u &&
+                     g_config.input.axis[INPUT_AXIS_CALIB_3].rc_ch < 5u &&
+                     g_config.input.sw[INPUT_SW_CHASSIS_MODE].rc_sw < 2u);
+}
+
+static int16_t WheelLegInputAxisFromSnapshot(const ManualInputState *input, input_axis_e axis)
+{
+    const input_axis_map_t *map;
+    int16_t value;
+
+    if (input == NULL || (uint32_t)axis >= (uint32_t)INPUT_AXIS_COUNT)
+    {
+        return 0;
+    }
+    map = &g_config.input.axis[axis];
+    if (map->rc_ch >= 5u)
+    {
+        return 0;
+    }
+
+    value = input->rc.ch[map->rc_ch];
+    return (map->invert != 0u) ? (int16_t)-value : value;
+}
+
+static uint8_t WheelLegInputSwitchFromSnapshot(const ManualInputState *input, input_switch_e sw)
+{
+    const input_switch_map_t *map;
+    uint8_t value;
+
+    if (input == NULL || (uint32_t)sw >= (uint32_t)INPUT_SW_COUNT)
+    {
+        return RC_SW_UP;
+    }
+    map = &g_config.input.sw[sw];
+    if (map->rc_sw >= 2u)
+    {
+        return RC_SW_UP;
+    }
+
+    value = (uint8_t)input->rc.s[map->rc_sw];
+    if (map->invert != 0u)
+    {
+        if (value == RC_SW_UP)
+        {
+            value = RC_SW_DOWN;
+        }
+        else if (value == RC_SW_DOWN)
+        {
+            value = RC_SW_UP;
+        }
+    }
+    return value;
+}
+
+static void WheelLegInputSnapshotCapture(WheelLegTaskFrame *frame)
+{
+    uint8_t input_valid;
+
+    if (frame == NULL)
+    {
+        return;
+    }
+
+    input_valid = ManualInputGetCurrentCopy(&frame->manual_input);
+    input_valid = (uint8_t)(input_valid != 0u &&
+                            toe_is_error(DBUS_TOE) == 0u &&
+                            WheelLegInputSnapshotConfigValid() != 0u);
+    frame->manual_input_valid = input_valid;
+    frame->vx_axis = WheelLegInputAxisFromSnapshot(&frame->manual_input, INPUT_AXIS_CHASSIS_X);
+    frame->leg_axis = WheelLegInputAxisFromSnapshot(&frame->manual_input, INPUT_AXIS_CHASSIS_Y);
+    frame->yaw_axis = WheelLegInputAxisFromSnapshot(&frame->manual_input, INPUT_AXIS_CHASSIS_WZ);
+    frame->single_test_axis = WheelLegInputAxisFromSnapshot(&frame->manual_input, INPUT_AXIS_CALIB_3);
+    frame->chassis_switch = WheelLegInputSwitchFromSnapshot(&frame->manual_input, INPUT_SW_CHASSIS_MODE);
+    frame->manual_on = WheelLegManualEnabledFromSnapshot(input_valid, frame->chassis_switch);
+    frame->recovery_input_safe = WheelLegRecoveryInputSafeFromSnapshot(input_valid,
+                                                                       frame->chassis_switch,
+                                                                       frame->vx_axis,
+                                                                       frame->leg_axis,
+                                                                       frame->yaw_axis,
+                                                                       frame->single_test_axis);
+}
+
+static void WheelLegSingleTestScopeUpdate(WheelLegTaskFrame *frame)
+{
+    if (frame == NULL)
+    {
+        return;
+    }
+
+    frame->single_test_target = MotorCount;
+    frame->single_test_member = (uint8_t)WheelLegMemberCount;
+    if (frame->single_test == 0u)
+    {
+        return;
+    }
+
+    frame->single_test_target = WheelLegSingleTestActuator();
+    frame->single_test_target_valid =
+        WheelLegDomainMemberResolve(frame->single_test_target, &frame->single_test_member);
+    if (frame->single_test_target_valid == 0u)
+    {
+        frame->domain_faults |= WHEELLEG_FAULT_CONTROLLER;
+        return;
+    }
+
+    frame->single_test_target_online =
+        (uint8_t)((s_wheelleg.domain_online_mask &
+                   (uint8_t)(1u << frame->single_test_member)) != 0u);
+    if (frame->single_test_target_online == 0u)
+    {
+        frame->domain_faults |= s_wheelleg.domain_member[frame->single_test_member].offline_fault;
+    }
+}
+
+static void WheelLegFaultDomainUpdate(WheelLegTaskFrame *frame)
+{
+    FaultMgrResult result = FaultMgrResultOk;
+    uint32_t domain_safe_mask = 0u;
+    uint8_t single_test_transition;
+    uint8_t config_fault_active;
+    FaultAction previous_action;
+    FaultAction requested_action;
+    uint8_t device_id;
+
+    if (frame == NULL)
+    {
+        return;
+    }
+
+    single_test_transition =
+        (uint8_t)(s_wheelleg.single_test_last != frame->single_test ||
+                  (frame->single_test != 0u &&
+                   s_wheelleg.single_test_target_last != frame->single_test_target));
+    config_fault_active = (frame->single_test != 0u) ?
+                              (uint8_t)(frame->single_test_target_valid == 0u) :
+                              (uint8_t)(s_wheelleg.domain_binding_valid == 0u);
+    previous_action = s_wheelleg.domain_last_action;
+
+    if (s_wheelleg.fault_mgr_ready != 0u)
+    {
+        for (device_id = 0u; device_id < (uint8_t)WheelLegMemberCount; device_id++)
+        {
+            uint8_t fault_active =
+                (uint8_t)((s_wheelleg.domain_online_mask & (uint8_t)(1u << device_id)) == 0u);
+
+            if (frame->single_test != 0u &&
+                (frame->single_test_target_valid == 0u || device_id != frame->single_test_member))
+            {
+                fault_active = 0u;
+            }
+
+            if (FaultMgrSetDeviceFault(&s_wheelleg.fault_mgr,
+                                       device_id,
+                                       WHEELLEG_DOMAIN_REASON_MOTOR_OFFLINE,
+                                       fault_active,
+                                       frame->now_ms) != FaultMgrResultOk)
+            {
+                result = FaultMgrResultNotReady;
+            }
+        }
+        if (FaultMgrSetDeviceFault(&s_wheelleg.fault_mgr,
+                                   (uint8_t)WheelLegFaultDeviceImu,
+                                   WHEELLEG_DOMAIN_REASON_IMU_OFFLINE,
+                                   (uint8_t)(frame->imu_ok == 0u),
+                                   frame->now_ms) != FaultMgrResultOk)
+        {
+            result = FaultMgrResultNotReady;
+        }
+        if (FaultMgrSetDeviceFault(&s_wheelleg.fault_mgr,
+                                   (uint8_t)WheelLegFaultDeviceGuard,
+                                   WHEELLEG_DOMAIN_REASON_CONFIG,
+                                   config_fault_active,
+                                   frame->now_ms) != FaultMgrResultOk)
+        {
+            result = FaultMgrResultNotReady;
+        }
+        if (FaultMgrSetDeviceFault(&s_wheelleg.fault_mgr,
+                                   (uint8_t)WheelLegFaultDeviceGuard,
+                                   WHEELLEG_DOMAIN_REASON_TEST_TRANSITION,
+                                   single_test_transition,
+                                   frame->now_ms) != FaultMgrResultOk)
+        {
+            result = FaultMgrResultNotReady;
+        }
+
+        if (frame->recovery_input_safe != 0u)
+        {
+            domain_safe_mask = 1u << WheelLegFaultDomainDrive;
+        }
+        if (result == FaultMgrResultOk)
+        {
+            result = FaultMgrUpdate(&s_wheelleg.fault_mgr,
+                                    frame->now_ms,
+                                    0u,
+                                    domain_safe_mask,
+                                    1u);
+        }
+        if (result == FaultMgrResultOk)
+        {
+            result = FaultMgrGetDomainStatus(&s_wheelleg.fault_mgr,
+                                             (uint8_t)WheelLegFaultDomainDrive,
+                                             &s_wheelleg.fault_domain_status);
+        }
+    }
+    else
+    {
+        result = FaultMgrResultNotReady;
+    }
+
+    if (result != FaultMgrResultOk)
+    {
+        (void)memset(&s_wheelleg.fault_domain_status, 0, sizeof(s_wheelleg.fault_domain_status));
+        s_wheelleg.fault_domain_status.action = FaultActionStopDomain;
+        s_wheelleg.fault_domain_status.blockingMemberMask = WHEELLEG_FAULT_DOMAIN_MEMBER_MASK;
+        s_wheelleg.fault_mgr_ready = 0u;
+    }
+
+    requested_action = s_wheelleg.fault_domain_status.action;
+    if (requested_action != FaultActionRun)
+    {
+        if (previous_action == FaultActionRun)
+        {
+            s_wheelleg.domain_stop_clear_complete = 0u;
+        }
+        (void)WheelLegDomainInhibitHold();
+    }
+    else if (previous_action != FaultActionRun ||
+             s_wheelleg.domain_inhibit_complete != 0u ||
+             s_wheelleg.domain_stop_clear_complete != 0u)
+    {
+        if (WheelLegDomainInhibitRelease() == 0u)
+        {
+            /* 清零和整批释放没有全部成功前，故障管理器即使已恢复也不能放行。 */
+            s_wheelleg.fault_domain_status.action = FaultActionStopDomain;
+            s_wheelleg.fault_domain_status.recoveryPending = 1u;
+        }
+    }
+
+    frame->domain_action = s_wheelleg.fault_domain_status.action;
+    frame->domain_recovery_pending = s_wheelleg.fault_domain_status.recoveryPending;
+    frame->domain_recovered_now =
+        (uint8_t)(previous_action != FaultActionRun && frame->domain_action == FaultActionRun);
+    if (frame->domain_action != FaultActionRun)
+    {
+        WheelLegResetDomainControlState();
+    }
+    else if (frame->domain_recovered_now != 0u)
+    {
+        /* 释放前已经用 SAFETY 清零；解锁当帧只清控制状态，不允许再写测试或控制命令。 */
+        WheelLegResetDomainControlState();
+    }
+    s_wheelleg.domain_last_action = frame->domain_action;
+    s_wheelleg.single_test_last = frame->single_test;
+    s_wheelleg.single_test_target_last =
+        (frame->single_test != 0u) ? frame->single_test_target : MotorCount;
+}
+
 static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
 {
     InsSnapshot imu_snapshot = {0};
@@ -36,16 +297,12 @@ static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
     frame->roll = WheelLegImuAngle(angle, WHEELLEG_IMU_BODY_ROLL_OFFSET, WHEELLEG_IMU_ROLL_SIGN);
     frame->yaw = WheelLegImuAngle(angle, WHEELLEG_IMU_BODY_YAW_OFFSET, WHEELLEG_IMU_YAW_SIGN);
 
-    frame->vx_axis = input_axis(INPUT_AXIS_CHASSIS_X);
-    frame->yaw_axis = input_axis(INPUT_AXIS_CHASSIS_WZ);
-    frame->single_test_axis = input_axis(INPUT_AXIS_CALIB_3);
-    frame->leg_axis = input_axis(INPUT_AXIS_CHASSIS_Y);
+    WheelLegInputSnapshotCapture(frame);
     frame->control_stage = WheelLegControlStageFromConfig();
 
     frame->target_leg = 0.100f;
     frame->target_foot_y = 0.100f;
     frame->profile_on = RobotProfileIsWheelLegMit();
-    frame->manual_on = WheelLegManualEnabledBySwitch();
     frame->imu_ok = (uint8_t)(imu_snapshot_ok != 0u &&
                               imu_snapshot.age_ms <= (uint32_t)frame->period_ms * 3u + 2u &&
                               toe_is_error(BOARD_GYRO_TOE) == 0u &&
@@ -56,7 +313,6 @@ static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
     frame->operation_test_active =
         (frame->single_test != 0u || frame->left_leg_test != 0u || frame->foot_test != 0u) ? 1u : 0u;
 
-    WheelLegConfigureActuators();
     WheelLegPidApply(&s_wheelleg.leg_pid[WHEELLEG_SIDE_LEFT], &g_config.WheelLegMit.leg_length_pid);
     WheelLegPidApply(&s_wheelleg.leg_pid[WHEELLEG_SIDE_RIGHT], &g_config.WheelLegMit.leg_length_pid);
     WheelLegPidApply(&s_wheelleg.split_pid, &g_config.WheelLegMit.leg_split_pid);
@@ -64,13 +320,28 @@ static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
 
     frame->feedback_faults = WheelLegUpdateFeedback(frame->now_ms);
     s_wheelleg.feedback_faults = frame->feedback_faults;
+    frame->domain_faults = (frame->single_test != 0u) ? WHEELLEG_FAULT_NONE : frame->feedback_faults;
+    WheelLegSingleTestScopeUpdate(frame);
+    s_wheelleg.manual_on = frame->manual_on;
+    s_wheelleg.recovery_input_safe = frame->recovery_input_safe;
+    if (frame->imu_ok == 0u)
+    {
+        frame->domain_faults |= WHEELLEG_FAULT_IMU_OFFLINE;
+    }
+    s_wheelleg.domain_faults = frame->domain_faults;
+    WheelLegFaultDomainUpdate(frame);
 
-    if (toe_is_error(DBUS_TOE))
+    if (frame->manual_input_valid == 0u)
     {
         frame->faults |= WHEELLEG_FAULT_MANUAL_OFFLINE;
     }
-    if (frame->operation_test_active == 0u)
+    if (frame->single_test != 0u)
     {
+        frame->faults |= frame->domain_faults;
+    }
+    else
+    {
+        frame->faults |= frame->feedback_faults;
         if (frame->imu_ok == 0u)
         {
             frame->faults |= WHEELLEG_FAULT_IMU_OFFLINE;
@@ -81,9 +352,14 @@ static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
             frame->faults |= WHEELLEG_FAULT_ATTITUDE_LIMIT;
         }
     }
+    if (frame->domain_action != FaultActionRun || frame->domain_recovered_now != 0u)
+    {
+        frame->faults |= WHEELLEG_FAULT_DOMAIN_RECOVERY;
+    }
 
     if (frame->profile_on != 0u &&
-        frame->feedback_faults == WHEELLEG_FAULT_NONE)
+        frame->feedback_faults == WHEELLEG_FAULT_NONE &&
+        frame->domain_action == FaultActionRun)
     {
         frame->kinematics_ok = WheelLegUpdateLegKinematics((frame->imu_ok != 0u) ? frame->pitch : 0.0f,
                                                               (frame->imu_ok != 0u) ? frame->gyro_wheelleg : NULL,
@@ -92,6 +368,7 @@ static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
 
     frame->enabled = (uint8_t)(frame->profile_on != 0u &&
                                frame->manual_on != 0u &&
+                               frame->domain_recovered_now == 0u &&
                                frame->faults == WHEELLEG_FAULT_NONE);
     s_wheelleg.last_mode = s_wheelleg.mode;
 }
@@ -129,6 +406,28 @@ static void WheelLegTaskFinishFrame(const WheelLegTaskFrame *frame,
     vTaskDelayUntil(last_wake, pdMS_TO_TICKS(frame->period_ms));
 }
 
+static void WheelLegResetDomainControlState(void)
+{
+    uint8_t side;
+
+    WheelLegPidClear(&s_wheelleg.leg_pid[WHEELLEG_SIDE_LEFT]);
+    WheelLegPidClear(&s_wheelleg.leg_pid[WHEELLEG_SIDE_RIGHT]);
+    WheelLegPidClear(&s_wheelleg.split_pid);
+    WheelLegBalanceStateReset();
+    WheelLegClearLegVirtualOutputs();
+    WheelLegClearTestRuntimeFlags();
+    WheelLegFootTestResetWheelZero();
+    s_wheelleg.yaw_set = 0.0f;
+    s_wheelleg.last_yaw = 0.0f;
+    s_wheelleg.yaw_inited = 0u;
+    s_wheelleg.ever_commanded = 0u;
+
+    for (side = 0u; side < WHEELLEG_SIDE_COUNT; side++)
+    {
+        (void)memset(&s_wheelleg.foot_test_target[side], 0, sizeof(s_wheelleg.foot_test_target[side]));
+    }
+}
+
 static void WheelLegHandleDisabledFrame(WheelLegTaskFrame *frame)
 {
     if (frame == NULL)
@@ -136,17 +435,21 @@ static void WheelLegHandleDisabledFrame(WheelLegTaskFrame *frame)
         return;
     }
 
-    s_wheelleg.mode = (frame->faults == WHEELLEG_FAULT_NONE) ? WHEELLEG_MODE_DISABLED : WHEELLEG_MODE_FAULT;
+    if (frame->domain_recovered_now != 0u ||
+        (frame->domain_action != FaultActionRun && frame->domain_recovery_pending != 0u))
+    {
+        s_wheelleg.mode = WHEELLEG_MODE_RECOVERY;
+    }
+    else
+    {
+        s_wheelleg.mode =
+            (frame->faults == WHEELLEG_FAULT_NONE) ? WHEELLEG_MODE_DISABLED : WHEELLEG_MODE_FAULT;
+    }
     if (frame->profile_on != 0u)
     {
-        WheelLegClearAllControlCmds();
+        (void)WheelLegStopDomainOutputs();
     }
-    WheelLegPidClear(&s_wheelleg.leg_pid[WHEELLEG_SIDE_LEFT]);
-    WheelLegPidClear(&s_wheelleg.leg_pid[WHEELLEG_SIDE_RIGHT]);
-    WheelLegPidClear(&s_wheelleg.split_pid);
-    WheelLegBalanceStateReset();
-    s_wheelleg.yaw_inited = 0u;
-    WheelLegClearTestRuntimeFlags();
+    WheelLegResetDomainControlState();
     frame->target_leg = s_wheelleg.bench_hold_target_leg_m;
     frame->target_foot_x = s_wheelleg.bench_hold_target_foot_x_m;
     frame->controller_active = 0u;
@@ -182,11 +485,6 @@ static uint8_t WheelLegRunOperationTest(WheelLegTaskFrame *frame)
     if (frame == NULL)
     {
         return 0u;
-    }
-
-    if (frame->single_test == 0u)
-    {
-        WheelLegClearStateCmd(WheelLegSingleTestActuator());
     }
 
     if (frame->single_test != 0u)
@@ -470,8 +768,8 @@ static void WheelLegRunBalanceFrame(WheelLegTaskFrame *frame)
     if (frame->faults != WHEELLEG_FAULT_NONE)
     {
         s_wheelleg.mode = WHEELLEG_MODE_FAULT;
-        WheelLegTargetSmoothReset();
-        WheelLegClearAllControlCmds();
+        (void)WheelLegStopDomainOutputs();
+        WheelLegResetDomainControlState();
         frame->controller_active = 0u;
     }
     else if (frame->controller_active != 0u)

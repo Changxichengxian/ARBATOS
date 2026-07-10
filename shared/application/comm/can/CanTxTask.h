@@ -15,6 +15,7 @@
 void CanTxTask(void const *pvParameters);
 uint32_t CanTxMitEnableTxCount(uint8_t actuator_id);
 uint32_t CanTxMitCmdTxCount(uint8_t actuator_id);
+uint32_t CanTxAuthorityRejectCount(uint8_t actuator_id);
 
 /* 任务创建前准备紧急发送表；可重复调用，表完整时不会重建。 */
 void CanTxEmergencyPrepare(void);

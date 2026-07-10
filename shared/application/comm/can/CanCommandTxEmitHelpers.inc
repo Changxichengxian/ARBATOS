@@ -27,21 +27,82 @@ static uint8_t CanTxRmGroupHasConfig(uint8_t bus, uint16_t group_id)
     return s_can_tx_rm_group_configured[bus_index][group_index];
 }
 
-static void CanTxEmitRmGroupIfNeeded(uint8_t bus, uint16_t group_id, const int16_t frame[4])
+static void CanTxRecheckRmFrame(uint8_t bus,
+                                uint16_t group_id,
+                                int16_t frame[4],
+                                sdlog_actuator_current_t *log)
 {
-    if (CanTxRmFrameHasOutput(frame) == 0u &&
-        CanTxRmGroupHasConfig(bus, group_id) == 0u)
+    uint8_t bus_index = 0u;
+    uint8_t group_index = 0u;
+
+    if (frame == NULL ||
+        CanTxBusIndex(bus, &bus_index) == 0u ||
+        CanTxRmGroupIndex(group_id, &group_index) == 0u)
     {
         return;
     }
 
-    CAN_cmd_rm_group(bus, group_id, frame[0], frame[1], frame[2], frame[3]);
+    for (uint8_t slot = 0u; slot < 4u; slot++)
+    {
+        const MotorId actuator_id = s_can_tx_rm_motor[bus_index][group_index][slot];
+        MotorCmd latest;
+        uint16_t inhibit_writer = (uint16_t)LOWCMD_WRITER_NONE;
+
+        if (frame[slot] == 0)
+        {
+            continue;
+        }
+        (void)memset(&latest, 0, sizeof(latest));
+        if (CanTxActuatorIdValid(actuator_id) == 0u ||
+            s_can_tx_cmd_cache_valid[actuator_id] == 0u ||
+            LowCmdGetMotor(actuator_id, &latest) == 0u ||
+            LowCmdGetInhibitWriter(actuator_id, &inhibit_writer) == 0u ||
+            CanTxCachedCmdAuthorized(&s_can_tx_cmd_cache[actuator_id],
+                                     &latest,
+                                     inhibit_writer) == 0u)
+        {
+            frame[slot] = 0;
+            if (CanTxActuatorIdValid(actuator_id) != 0u)
+            {
+                const MotorRoute *route = MotorRouteFindByMotor(actuator_id);
+
+                s_can_tx_authority_reject_count[actuator_id]++;
+                CanTxUpdateApplied(route,
+                                   NULL,
+                                   0,
+                                   (uint8_t)MotorAppliedFlagForceDisabled);
+                CanTxLogMotorCmd(log, route, 0);
+            }
+        }
+    }
 }
 
-static void CanTxEmitRmFrames(void)
+static void CanTxEmitRmGroupIfNeeded(uint8_t bus,
+                                     uint16_t group_id,
+                                     int16_t frame[4],
+                                     sdlog_actuator_current_t *log)
 {
-    CanTxEmitRmGroupIfNeeded(1u, (uint16_t)CAN_RM_GROUP_0X200_ID, s_can_tx_can1_200);
-    CanTxEmitRmGroupIfNeeded(1u, (uint16_t)CAN_RM_GROUP_0X1FF_ID, s_can_tx_can1_1ff);
-    CanTxEmitRmGroupIfNeeded(2u, (uint16_t)CAN_RM_GROUP_0X200_ID, s_can_tx_can2_200);
-    CanTxEmitRmGroupIfNeeded(2u, (uint16_t)CAN_RM_GROUP_0X1FF_ID, s_can_tx_can2_1ff);
+    /*
+     * 与 LowCmd 的禁写获取使用同一任务临界区，把“最终复核→非阻塞入队”
+     * 线性化：故障要么先取得禁写并让本帧归零，要么发生在本帧已经入队之后。
+     */
+    taskENTER_CRITICAL();
+    CanTxRecheckRmFrame(bus, group_id, frame, log);
+    if (CanTxRmFrameHasOutput(frame) == 0u &&
+        CanTxRmGroupHasConfig(bus, group_id) == 0u)
+    {
+        taskEXIT_CRITICAL();
+        return;
+    }
+
+    CAN_cmd_rm_group(bus, group_id, frame[0], frame[1], frame[2], frame[3]);
+    taskEXIT_CRITICAL();
+}
+
+static void CanTxEmitRmFrames(sdlog_actuator_current_t *log)
+{
+    CanTxEmitRmGroupIfNeeded(1u, (uint16_t)CAN_RM_GROUP_0X200_ID, s_can_tx_can1_200, log);
+    CanTxEmitRmGroupIfNeeded(1u, (uint16_t)CAN_RM_GROUP_0X1FF_ID, s_can_tx_can1_1ff, log);
+    CanTxEmitRmGroupIfNeeded(2u, (uint16_t)CAN_RM_GROUP_0X200_ID, s_can_tx_can2_200, log);
+    CanTxEmitRmGroupIfNeeded(2u, (uint16_t)CAN_RM_GROUP_0X1FF_ID, s_can_tx_can2_1ff, log);
 }

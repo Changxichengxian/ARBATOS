@@ -70,6 +70,15 @@ static void WatchCopyChassis(void)
     g_watch.chassis.vy = chassis.vy;
     g_watch.chassis.wz = chassis.wz;
     g_watch.chassis.yaw_deg = chassis.ChassisYaw * rad2deg;
+    g_watch.chassis.fault_configured_mask = chassis.fault_configured_mask;
+    g_watch.chassis.fault_active_mask = chassis.fault_active_mask;
+    g_watch.chassis.fault_blocking_mask = chassis.fault_blocking_mask;
+    g_watch.chassis.fault_recovery_mask = chassis.fault_recovery_mask;
+    g_watch.chassis.fault_inhibit_mask = chassis.fault_inhibit_mask;
+    g_watch.chassis.fault_hold_zero_mask = chassis.fault_hold_zero_mask;
+    g_watch.chassis.fault_recovery_input_safe = chassis.fault_recovery_input_safe;
+    g_watch.chassis.fault_inhibit_fail_count = chassis.fault_inhibit_fail_count;
+    g_watch.chassis.fault_release_fail_count = chassis.fault_release_fail_count;
 
     for (uint8_t i = 0; i < 4u && i < CHASSIS_STATE_MOTOR_COUNT; i++)
     {
@@ -79,6 +88,8 @@ static void WatchCopyChassis(void)
         g_watch.chassis.motor_speed_set[i] = m->speed_set;
         g_watch.chassis.motor_ecd[i] = (m->measure.valid != 0u) ? m->measure.ecd : 0;
         g_watch.chassis.motor_temp[i] = (m->measure.valid != 0u) ? m->measure.temperature : 0;
+        g_watch.chassis.motor_reason_mask[i] = chassis.motor_reason_mask[i];
+        g_watch.chassis.motor_feedback_age_ms[i] = chassis.motor_feedback_age_ms[i];
     }
 }
 #endif
@@ -101,6 +112,28 @@ static void WatchCopyGimbal(void)
 
     const GimbalMotorState *yaw = &gimbal.yaw;
     const GimbalMotorState *pitch = &gimbal.pitch;
+
+    g_watch.gimbal.yaw_online = gimbal.yaw_online;
+    g_watch.gimbal.pitch_online = gimbal.pitch_online;
+    g_watch.gimbal.imu_online = gimbal.imu_online;
+    g_watch.gimbal.follow_available = gimbal.follow_available;
+    g_watch.gimbal.fault_configured_mask = gimbal.fault_configured_mask;
+    g_watch.gimbal.fault_active_mask = gimbal.fault_active_mask;
+    g_watch.gimbal.fault_blocking_mask = gimbal.fault_blocking_mask;
+    g_watch.gimbal.fault_recovery_mask = gimbal.fault_recovery_mask;
+    g_watch.gimbal.fault_inhibit_mask = gimbal.fault_inhibit_mask;
+    g_watch.gimbal.fault_hold_zero_mask = gimbal.fault_hold_zero_mask;
+    g_watch.gimbal.fault_imu_required_mask = gimbal.fault_imu_required_mask;
+    g_watch.gimbal.fault_recovery_input_safe = gimbal.fault_recovery_input_safe;
+    g_watch.gimbal.offline_mask = gimbal.offline_mask;
+    g_watch.gimbal.required_offline_mask = gimbal.required_offline_mask;
+    g_watch.gimbal.yaw_reason_mask = gimbal.yaw_reason_mask;
+    g_watch.gimbal.pitch_reason_mask = gimbal.pitch_reason_mask;
+    g_watch.gimbal.yaw_feedback_age_ms = gimbal.yaw_feedback_age_ms;
+    g_watch.gimbal.pitch_feedback_age_ms = gimbal.pitch_feedback_age_ms;
+    g_watch.gimbal.imu_age_ms = gimbal.imu_age_ms;
+    g_watch.gimbal.fault_inhibit_fail_count = gimbal.fault_inhibit_fail_count;
+    g_watch.gimbal.fault_release_fail_count = gimbal.fault_release_fail_count;
 
     if (yaw->valid != 0u)
     {
@@ -164,6 +197,9 @@ static void WatchCopyGimbal(void)
 static void WatchCopyDualGimbal(void)
 {
     GimbalDualYawDebugState debug;
+    GimbalState state = {0};
+    const uint8_t state_valid =
+        (GimbalStateRead(&state) != 0u && state.valid != 0u) ? 1u : 0u;
 
     if (!WatchBlockActiveGimbalDual())
     {
@@ -177,8 +213,31 @@ static void WatchCopyDualGimbal(void)
 #endif
 
     g_watch.dual_gimbal.active = debug.active;
-    g_watch.dual_gimbal.upper_online = debug.upper_online;
+    g_watch.dual_gimbal.upper_online = (state_valid != 0u) ? state.yaw_upper_online : debug.upper_online;
     g_watch.dual_gimbal.upper_limited = debug.upper_limited;
+    g_watch.dual_gimbal.yaw_online = state.yaw_online;
+    g_watch.dual_gimbal.pitch_online = state.pitch_online;
+    g_watch.dual_gimbal.imu_online = state.imu_online;
+    g_watch.dual_gimbal.follow_available = state.follow_available;
+    g_watch.dual_gimbal.fault_configured_mask = state.fault_configured_mask;
+    g_watch.dual_gimbal.fault_active_mask = state.fault_active_mask;
+    g_watch.dual_gimbal.fault_blocking_mask = state.fault_blocking_mask;
+    g_watch.dual_gimbal.fault_recovery_mask = state.fault_recovery_mask;
+    g_watch.dual_gimbal.fault_inhibit_mask = state.fault_inhibit_mask;
+    g_watch.dual_gimbal.fault_hold_zero_mask = state.fault_hold_zero_mask;
+    g_watch.dual_gimbal.fault_imu_required_mask = state.fault_imu_required_mask;
+    g_watch.dual_gimbal.fault_recovery_input_safe = state.fault_recovery_input_safe;
+    g_watch.dual_gimbal.offline_mask = state.offline_mask;
+    g_watch.dual_gimbal.required_offline_mask = state.required_offline_mask;
+    g_watch.dual_gimbal.yaw_reason_mask = state.yaw_reason_mask;
+    g_watch.dual_gimbal.yaw_upper_reason_mask = state.yaw_upper_reason_mask;
+    g_watch.dual_gimbal.pitch_reason_mask = state.pitch_reason_mask;
+    g_watch.dual_gimbal.yaw_feedback_age_ms = state.yaw_feedback_age_ms;
+    g_watch.dual_gimbal.yaw_upper_feedback_age_ms = state.yaw_upper_feedback_age_ms;
+    g_watch.dual_gimbal.pitch_feedback_age_ms = state.pitch_feedback_age_ms;
+    g_watch.dual_gimbal.imu_age_ms = state.imu_age_ms;
+    g_watch.dual_gimbal.fault_inhibit_fail_count = state.fault_inhibit_fail_count;
+    g_watch.dual_gimbal.fault_release_fail_count = state.fault_release_fail_count;
     g_watch.dual_gimbal.total_set_deg = WatchRadToDeg(debug.total_set_rad);
     g_watch.dual_gimbal.big_angle_deg = WatchRadToDeg(debug.big_angle_rad);
     g_watch.dual_gimbal.big_set_deg = WatchRadToDeg(debug.big_set_rad);

@@ -44,7 +44,7 @@ static bool_t ChassisGetTurnaroundFrameYaw(fp32 *out_yaw_relative)
 {
     GimbalState state;
     if (out_yaw_relative == NULL ||
-        GimbalStateRead(&state) == 0u ||
+        GimbalStateReadFresh(&state, GIMBAL_STATE_FRESH_TIMEOUT_MS) == 0u ||
         state.valid == 0u ||
         state.turnaround_frame_valid == 0u)
     {
@@ -120,6 +120,20 @@ static fp32 ChassisWzKfStep(fp32 wz_wheel, bool_t imu_valid, fp32 wz_imu)
 }
 
 static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove *control);
+static uint32_t ChassisMotorFeedbackTimeoutMs(uint8_t index)
+{
+    const uint8_t toe = (uint8_t)(CHASSIS_MOTOR1_TOE + index);
+    const uint16_t configured = (toe < (uint8_t)DETECT_ERROR_COUNT) ?
+                                    g_config.detect.items[toe].offline_time_ms :
+                                    0u;
+
+    if (configured >= 10u && configured <= 200u)
+    {
+        return configured;
+    }
+    return CHASSIS_MOTOR_FEEDBACK_TIMEOUT_MS;
+}
+
 static bool_t operation_mode_allow_chassis(const ChassisRuntimeSnapshot *snapshot)
 {
     (void)snapshot;
@@ -128,6 +142,8 @@ static bool_t operation_mode_allow_chassis(const ChassisRuntimeSnapshot *snapsho
 
 static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove *control)
 {
+    uint32_t now_ms;
+
     if (snapshot == NULL)
     {
         return;
@@ -138,21 +154,24 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove
     {
         snapshot->manual_input = &snapshot->ManualInputCopy;
     }
+    snapshot->control_input_valid = ControlInputGetCopy(&snapshot->ControlInputCopy);
+    snapshot->manual_online = (uint8_t)(snapshot->manual_input != NULL &&
+                                        toe_is_error(DBUS_TOE) == 0u);
+    if (snapshot->control_input_valid != 0u && snapshot->manual_online != 0u)
+    {
+        snapshot->recovery_input_safe = ControlInputSwitchIsPos(
+            snapshot->ControlInputCopy.sw[INPUT_SW_CHASSIS_MODE],
+            g_config.manual_input.semantics.ChassisSafePos);
+    }
     {
         GimbalState state;
-        if (GimbalStateRead(&state) != 0u && state.valid != 0u)
+        if (GimbalStateReadFresh(&state, GIMBAL_STATE_FRESH_TIMEOUT_MS) != 0u &&
+            state.valid != 0u)
         {
             snapshot->GimbalStateValid = 1u;
             snapshot->GimbalOnline = state.online;
             snapshot->yaw_motor = state.yaw;
             snapshot->pitch_motor = state.pitch;
-        }
-        else if (control != NULL && control->GimbalStateValid != 0u)
-        {
-            snapshot->GimbalStateValid = 1u;
-            snapshot->GimbalOnline = control->GimbalOnline;
-            snapshot->yaw_motor = control->ChassisYawMotor;
-            snapshot->pitch_motor = control->ChassisPitchMotor;
         }
     }
     snapshot->period_ms = RobotProfileChassisControlPeriodMs();
@@ -173,18 +192,37 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove
     snapshot->motor_distance_to_center = MOTOR_DISTANCE_TO_CENTER;
     snapshot->max_wheel_speed = MAX_WHEEL_SPEED;
     snapshot->wheel_type = g_config.chassis.wheel_type;
+    now_ms = BspTimeGetTickMs();
 
     for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT; i++)
     {
+        const MotorId id = ChassisMotorCurrentBindings[i].actuator_id;
+
         snapshot->motor_measure[i] = (control != NULL) ? control->motor_chassis[i].ChassisMotorMeasure : get_chassis_motor_measure_point(i);
         snapshot->motor_cfg[i] = &g_config.motor.chassis[i];
         snapshot->motor_dir[i] = g_config.chassis.motor_dir[i];
+        if (MotorCfgNodeId(snapshot->motor_cfg[i]) != 0u)
+        {
+            (void)MotorHealthRead(id,
+                                  now_ms,
+                                  ChassisMotorFeedbackTimeoutMs(i),
+                                  &snapshot->motor_health[i]);
+        }
+        else
+        {
+            (void)memset(&snapshot->motor_health[i], 0, sizeof(snapshot->motor_health[i]));
+            snapshot->motor_health[i].motorId = id;
+            snapshot->motor_health[i].ageMs = MOTOR_HEALTH_AGE_UNKNOWN;
+        }
     }
 
     if (control != NULL)
     {
         ChassisControlSnapshot fast = {0};
         const ManualInputState *manual_input = snapshot->manual_input;
+        const ControlInputState *control_input = (snapshot->control_input_valid != 0u) ?
+                                                     &snapshot->ControlInputCopy :
+                                                     NULL;
 
         if (snapshot->GimbalStateValid != 0u)
         {
@@ -193,16 +231,25 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove
             control->ChassisYawMotor = snapshot->yaw_motor;
             control->ChassisPitchMotor = snapshot->pitch_motor;
         }
+        else
+        {
+            control->GimbalStateValid = 0u;
+            control->GimbalOnline = 0u;
+            (void)memset(&control->ChassisYawMotor, 0, sizeof(control->ChassisYawMotor));
+            (void)memset(&control->ChassisPitchMotor, 0, sizeof(control->ChassisPitchMotor));
+        }
 
-        fast.manual_online = toe_is_error(DBUS_TOE) ? 0u : 1u;
+        fast.manual_online = snapshot->manual_online;
         fast.ChassisOnlyMode = snapshot->ChassisOnlyMode;
-        fast.mode_sw = ControlInputSwitch(INPUT_SW_CHASSIS_MODE);
+        fast.mode_sw = (control_input != NULL) ?
+                           control_input->sw[INPUT_SW_CHASSIS_MODE] :
+                           ControlInputSwitchPosToRaw(g_config.manual_input.semantics.ChassisSafePos);
         fast.safe_pos = g_config.manual_input.semantics.ChassisSafePos;
         fast.follow_pos = g_config.manual_input.semantics.ChassisFollowPos;
         fast.spin_pos = g_config.manual_input.semantics.ChassisSpinPos;
-        fast.axis_x = input_axis(INPUT_AXIS_CHASSIS_X);
-        fast.axis_y = input_axis(INPUT_AXIS_CHASSIS_Y);
-        fast.axis_wz = input_axis(INPUT_AXIS_CHASSIS_WZ);
+        fast.axis_x = (control_input != NULL) ? control_input->axis[INPUT_AXIS_CHASSIS_X] : 0;
+        fast.axis_y = (control_input != NULL) ? control_input->axis[INPUT_AXIS_CHASSIS_Y] : 0;
+        fast.axis_wz = (control_input != NULL) ? control_input->axis[INPUT_AXIS_CHASSIS_WZ] : 0;
         fast.rc_deadband = CHASSIS_RC_DEADLINE;
         fast.key_mask = (manual_input != NULL) ? manual_input->key.v : 0u;
         fast.front_key_mask = CHASSIS_FRONT_KEY;

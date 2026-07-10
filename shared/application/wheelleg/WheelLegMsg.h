@@ -56,6 +56,7 @@ typedef enum
     WHEELLEG_FAULT_RIGHT_WHEEL_OFFLINE = (1u << 5),
     WHEELLEG_FAULT_ATTITUDE_LIMIT = (1u << 6),
     WHEELLEG_FAULT_CONTROLLER = (1u << 7),
+    WHEELLEG_FAULT_DOMAIN_RECOVERY = (1u << 8),
 } WheelLegFaultFlag;
 
 typedef struct
@@ -125,6 +126,31 @@ typedef struct
     fp32 leg_alpha_rad[WHEELLEG_SIDE_COUNT];
     fp32 support_force_n[WHEELLEG_SIDE_COUNT];
     fp32 wheel_torque_nm[WHEELLEG_SIDE_COUNT];
+    uint16_t domain_fault_flags;
+    uint8_t domain_member_count;
+    uint8_t domain_online_mask;
+    uint8_t domain_binding_valid;
+    uint8_t recovery_input_safe;
+    uint8_t domain_outputs_active;
+    uint8_t domain_inhibit_complete;
+    uint8_t domain_action;
+    uint8_t domain_recovery_pending;
+    uint8_t domain_fault_active;
+    uint8_t domain_ever_faulted;
+    uint8_t domain_device_count;
+    uint32_t domain_active_member_mask;
+    uint32_t domain_blocking_member_mask;
+    uint32_t domain_active_reason_mask;
+    uint32_t domain_blocking_reason_mask;
+    uint32_t domain_history_reason_mask;
+    uint32_t domain_first_fault_ms;
+    uint32_t domain_last_fault_ms;
+    uint32_t domain_healthy_since_ms;
+    uint32_t domain_stop_count;
+    uint32_t domain_stop_fail_count;
+    uint32_t domain_inhibit_fail_count;
+    uint32_t domain_inhibit_release_fail_count;
+    uint32_t domain_last_stop_tick_ms;
 } WheelLegStatus;
 
 typedef struct

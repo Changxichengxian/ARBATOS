@@ -1529,6 +1529,279 @@ function Test-FaultGuardBoundaries {
     }
 }
 
+function Test-FaultIsolationBoundaries {
+    Write-Host "[check] fault isolation boundaries"
+
+    $roots = @("shared", "boards", "projects", "Robotconfig") |
+        ForEach-Object { Join-Path $script:RepoRoot $_ }
+    $sourceFiles = @(Get-ChildItem -Path $roots -Recurse -File |
+        Where-Object {
+            $_.Extension -in @(".c", ".h", ".inc") -and
+            $_.FullName -notmatch '\\(Drivers|Middlewares|USB_DEVICE)\\'
+        })
+
+    $globalEntries = @(
+        [pscustomobject]@{
+            Token = "CanTxEmergencyStopNow"
+            Allowed = @("shared/application/comm/can/CanTxTask.c",
+                        "shared/application/comm/can/CanTxTask.h",
+                        "shared/application/services/diagnostics/RobotFaultGuard.h")
+            AllowedRegex = '/Core/Src/stm32[^/]*xx_it\.c$'
+        },
+        [pscustomobject]@{
+            Token = "LowCmdEnterEmergencyStop"
+            Allowed = @("shared/application/robot/LowCmd.c",
+                        "shared/application/robot/LowCmd.h",
+                        "shared/application/services/diagnostics/RobotFaultGuard.h")
+            AllowedRegex = '$a'
+        },
+        [pscustomobject]@{
+            Token = "RobotLifecycleEnterFault"
+            Allowed = @("shared/application/robot/RobotLifecycle.c",
+                        "shared/application/robot/RobotLifecycle.h",
+                        "shared/application/services/diagnostics/RobotFaultGuard.h")
+            AllowedRegex = '$a'
+        },
+        [pscustomobject]@{
+            Token = "ControlMgrStopAll"
+            Allowed = @("shared/application/robot/ControlMgr.c",
+                        "shared/application/robot/ControlMgr.h")
+            AllowedRegex = '$a'
+        }
+    )
+
+    foreach ($entry in $globalEntries) {
+        foreach ($file in $sourceFiles) {
+            $content = Get-Content -LiteralPath $file.FullName -Raw
+            if ($content -notmatch ("\b" + [regex]::Escape($entry.Token) + "\s*\(")) {
+                continue
+            }
+
+            $repoPath = (Format-RepoPath $file.FullName) -replace '\\', '/'
+            if ($entry.Allowed -contains $repoPath -or $repoPath -match $entry.AllowedRegex) {
+                continue
+            }
+            Add-CheckError "${repoPath}: $($entry.Token) is reserved for explicit system-fatal paths; device/domain faults must use FaultMgr isolation."
+        }
+    }
+
+    $guardRepoPath = "shared\application\services\diagnostics\RobotFaultGuard.h"
+    $guardContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $guardRepoPath) -Raw
+    if ($guardContent -notmatch '普通设备掉线[\s\S]{0,160}?FaultMgr') {
+        Add-CheckError "${guardRepoPath}: document that ordinary device and domain faults cannot enter the global fatal path."
+    }
+
+    $faultMgrHeaderRepoPath = "shared\application\robot\FaultMgr.h"
+    $faultMgrHeaderContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $faultMgrHeaderRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("#define FAULT_MGR_DEVICE_MAX 8u", "#define FAULT_MGR_DOMAIN_MAX 2u")) {
+        if ($faultMgrHeaderContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${faultMgrHeaderRepoPath}: per-task fault storage must keep bounded default '$required'."
+        }
+    }
+
+    $faultMgrRepoPath = "shared\application\robot\FaultMgr.c"
+    $faultMgrContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $faultMgrRepoPath) -Raw
+    foreach ($required in @("FaultMgrSetDeviceFault", "FaultMgrDomainAction", "FaultMgrRecoveryReady")) {
+        if ($faultMgrContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${faultMgrRepoPath}: fault policy core must expose '$required'."
+        }
+    }
+    foreach ($forbidden in @("FreeRTOS.h", "task.h", "cmsis_os.h", "RobotConfig.h", "malloc(")) {
+        if ($faultMgrContent -match [regex]::Escape($forbidden)) {
+            Add-CheckError "${faultMgrRepoPath}: fault policy core must stay independent from '$forbidden'."
+        }
+    }
+
+    $motorHealthRepoPath = "shared\application\motors\MotorHealth.c"
+    $motorHealthContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $motorHealthRepoPath) -Raw
+    foreach ($required in @("rxCount", "lastRxTick", "driveState", "MotorHealthRead")) {
+        if ($motorHealthContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${motorHealthRepoPath}: motor health must use '$required'."
+        }
+    }
+    if ($motorHealthContent -match 'feedback->online') {
+        Add-CheckError "${motorHealthRepoPath}: the sticky MotorState.online bit cannot be the health source."
+    }
+    if ($motorHealthContent -notmatch 'ageMs\s*==\s*UINT32_MAX') {
+        Add-CheckError "${motorHealthRepoPath}: tolerate only the one-millisecond sample/read race."
+    }
+    if ($motorHealthContent -match 'ageMs\s*&\s*0x80000000') {
+        Add-CheckError "${motorHealthRepoPath}: do not turn every high-bit age into a healthy future timestamp."
+    }
+
+    $lowCmdRepoPath = "shared\application\robot\LowCmd.c"
+    $lowCmdContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $lowCmdRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("LowCmdWriterValid", "resolved_writer")) {
+        if ($lowCmdContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${lowCmdRepoPath}: LowCmd authority must keep '$required'."
+        }
+    }
+    if ($lowCmdContent -match 'cmds\s*\[\s*i\s*\]\s*\.\s*writer') {
+        Add-CheckError "${lowCmdRepoPath}: MotorCmd payload must not override the writer supplied by the API."
+    }
+
+    $armMotionRepoPath = "shared\application\arm\ArmMotion.c"
+    $armMotionContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $armMotionRepoPath) -Raw -Encoding UTF8
+    foreach ($forbidden in @("CanMitMotorSendCmd", "CanMitMotorSendEnable", "CanMitMotorSendStop", "UnitreeMotorSendActuator", "UnitreeMotorRefresh")) {
+        if ($armMotionContent -match ("\b" + [regex]::Escape($forbidden) + "\s*\(")) {
+            Add-CheckError "${armMotionRepoPath}: Arm may only publish LowCmd; physical MIT sender '$forbidden' belongs to CanTx."
+        }
+    }
+    foreach ($required in @("LowCmdInhibitManyFrom", "LowCmdReleaseInhibitManyFrom", "ArmFaultSyncInhibit")) {
+        if ($armMotionContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${armMotionRepoPath}: Arm fault isolation must use '$required'."
+        }
+    }
+    $armClearMatch = [regex]::Match(
+        $armMotionContent,
+        'static\s+void\s+ArmClearMitLowCmd\s*\(uint8_t\s+index\)\s*\{[\s\S]*?(?=\r?\nstatic\s+fp32\s+ArmJ0UnitreeRatioSafe)')
+    if (-not $armClearMatch.Success -or $armClearMatch.Value -notmatch 'MotorInstClearId\s*\(') {
+        Add-CheckError "${armMotionRepoPath}: ArmClearMitLowCmd must make the axis inactive with MotorInstClearId."
+    }
+    elseif ($armClearMatch.Value -match 'MotorInstSetSpeedId\s*\(') {
+        Add-CheckError "${armMotionRepoPath}: ArmClearMitLowCmd cannot publish active zero speed because that may re-enable MIT."
+    }
+
+    $shootRepoPath = "shared\application\shoot\Shoot.c"
+    $shootContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $shootRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("ShootFaultSyncInhibit", "LowCmdInhibitManyFrom", "LowCmdReleaseInhibitManyFrom", "GimbalStateReadFresh", "ShootGimbalStateBlocksFire")) {
+        if ($shootContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${shootRepoPath}: shoot fault isolation must use '$required'."
+        }
+    }
+
+    $axisPolicyRepoPath = "shared\application\motors\MotorAxisFaultPolicy.h"
+    $axisPolicyContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $axisPolicyRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("MotorAxisFaultInhibitPlanMake", "releaseMask", "holdZeroMask")) {
+        if ($axisPolicyContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${axisPolicyRepoPath}: shared per-axis recovery policy must keep '$required'."
+        }
+    }
+    foreach ($forbidden in @("FreeRTOS.h", "task.h", "cmsis_os.h", "LowCmd.h")) {
+        if ($axisPolicyContent -match [regex]::Escape($forbidden)) {
+            Add-CheckError "${axisPolicyRepoPath}: pure per-axis policy cannot depend on '$forbidden'."
+        }
+    }
+
+    foreach ($faultHelper in @(
+            [pscustomobject]@{
+                Path = "shared\application\gimbal\GimbalFaultHelpers.inc"
+                Sync = "GimbalFaultSyncInhibit"
+            },
+            [pscustomobject]@{
+                Path = "shared\application\chassis\ChassisFaultHelpers.inc"
+                Sync = "ChassisFaultSyncInhibit"
+            }
+        )) {
+        $faultContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $faultHelper.Path) -Raw -Encoding UTF8
+        foreach ($required in @(
+                "FaultMgrSetDeviceFault",
+                "LowCmdInhibitManyFrom",
+                "LowCmdClearManyFrom",
+                "LowCmdReleaseInhibitManyFrom",
+                $faultHelper.Sync
+            )) {
+            if ($faultContent -notmatch [regex]::Escape($required)) {
+                Add-CheckError "$($faultHelper.Path): per-axis isolation must keep '$required'."
+            }
+        }
+        if ($faultContent -match 'mask\s*&\s*bit\)\s*==\s*0u\s*\|\|[\s\S]{0,120}?configuredMask') {
+            Add-CheckError "$($faultHelper.Path): release collection must not filter old held axes by the current configured mask."
+        }
+    }
+
+    $gimbalPolicyRepoPath = "shared\application\gimbal\GimbalFaultPolicy.h"
+    $gimbalPolicyContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $gimbalPolicyRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("GimbalFaultImuAxisMask", "GimbalFaultAimAxisMask", "ROBOT_RUN_VARIANT_GIMBAL_YAW_ONLY", "ROBOT_RUN_VARIANT_GIMBAL_PITCH_ONLY")) {
+        if ($gimbalPolicyContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${gimbalPolicyRepoPath}: IMU isolation scope must keep '$required'."
+        }
+    }
+
+    $chassisRepoPath = "shared\application\chassis\ChassisControlTask.c"
+    $chassisContent = Get-SourceContentWithPrivateIncludes -Path (Join-Path $script:RepoRoot $chassisRepoPath)
+    foreach ($required in @("ChassisFaultUpdate", "ChassisFaultSyncInhibit", "MotorInstSetCurrentBindsBestEffort")) {
+        if ($chassisContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${chassisRepoPath}: classic chassis per-axis isolation must keep '$required'."
+        }
+    }
+    if ($chassisContent -notmatch 'ChassisCurrentCmd\s*\[\s*i\s*\][\s\S]{0,220}?configuredMask') {
+        Add-CheckError "${chassisRepoPath}: runtime-disabled chassis axes must be filtered at the final current output."
+    }
+
+    $gimbalRepoPath = "shared\application\gimbal\GimbalControlTask.c"
+    $gimbalContent = Get-SourceContentWithPrivateIncludes -Path (Join-Path $script:RepoRoot $gimbalRepoPath)
+    foreach ($required in @("GimbalFaultUpdate", "GimbalFaultSyncInhibit", "MotorInstSetCurrentBindsBestEffort")) {
+        if ($gimbalContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${gimbalRepoPath}: gimbal per-axis isolation must keep '$required'."
+        }
+    }
+
+    $routeRepoPath = "shared\application\comm\can\CanCommandTxRouteHelpers.inc"
+    $routeContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $routeRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("CanTxApplyInhibitGate", "CanTxCachedCmdAuthorized", "CanTxRs485DriverOwnsApplied", "CanTxMergeDriverAppliedFlags")) {
+        if ($routeContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${routeRepoPath}: generic CanTx safety closure must keep '$required'."
+        }
+    }
+
+    $emitRepoPath = "shared\application\comm\can\CanCommandTxEmitHelpers.inc"
+    $emitContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $emitRepoPath) -Raw -Encoding UTF8
+    if ($emitContent -notmatch 'taskENTER_CRITICAL\s*\(\s*\)[\s\S]*?CanTxRecheckRmFrame\s*\([\s\S]*?CAN_cmd_rm_group\s*\([\s\S]*?taskEXIT_CRITICAL\s*\(\s*\)') {
+        Add-CheckError "${emitRepoPath}: RM final authorization and non-blocking enqueue must share the LowCmd task critical section."
+    }
+    foreach ($required in @("CanTxUpdateApplied", "CanTxLogMotorCmd")) {
+        if ($emitContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${emitRepoPath}: an RM authority rejection must also correct '$required'."
+        }
+    }
+
+    $unitreePolicyRepoPath = "shared\application\motors\UnitreeMotorPolicy.h"
+    $unitreePolicyContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $unitreePolicyRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("UNITREE_MOTOR_DEFAULT_RX_TIMEOUT_MS", "UnitreeMotorCmdSnapshotAllowed", "UnitreeMotorBrakeRequired", "UnitreeMotorMapAppliedOutput", "UnitreeMotorTxDue")) {
+        if ($unitreePolicyContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${unitreePolicyRepoPath}: Unitree single-sender policy must keep '$required'."
+        }
+    }
+
+    $mitRepoPath = "shared\application\comm\can\CanCommandTxMitHelpers.inc"
+    $mitContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $mitRepoPath) -Raw -Encoding UTF8
+    if ($mitContent -notmatch 'CanTxMitCommandAuthorizedNow[\s\S]{0,260}CanMitMotorSendEnable\s*\(') {
+        Add-CheckError "${mitRepoPath}: MIT Enable must re-read and authorize the latest LowCmd immediately before send."
+    }
+    if (([regex]::Matches($mitContent, 'CanTxMitCommandAuthorizedNow[\s\S]{0,260}CanMitMotorSendCmd\s*\(')).Count -lt 2) {
+        Add-CheckError "${mitRepoPath}: every MIT command send branch must re-read and authorize the latest LowCmd."
+    }
+
+    $bestEffortRepoPath = "shared\application\motors\MotorInstBestEffort.h"
+    $bestEffortContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $bestEffortRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("LowCmdSetMotorMany", "LowCmdSetMotor", "LowCmdSetCurrentMany")) {
+        if ($bestEffortContent -notmatch ([regex]::Escape($required) + '\s*\(')) {
+            Add-CheckError "${bestEffortRepoPath}: best-effort batch fallback must use '$required'."
+        }
+    }
+    if (([regex]::Matches($bestEffortContent, 'LowCmdSetCurrentMany\s*\(')).Count -lt 2) {
+        Add-CheckError "${bestEffortRepoPath}: current fallback must retry LowCmdSetCurrentMany one axis at a time after the normal batch is rejected."
+    }
+
+    $watchRuntimeRepoPath = "shared\application\services\diagnostics\WatchRuntimeCopy.inc"
+    $watchRuntimeContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $watchRuntimeRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("lowcmd_inhibit_acquire_count", "lowcmd_inhibit_release_count", "lowcmd_inhibit_mask")) {
+        if ($watchRuntimeContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${watchRuntimeRepoPath}: common Watch runtime must copy '$required'."
+        }
+    }
+
+    foreach ($project in $script:projects) {
+        $projectContent = Get-Content -LiteralPath $project.UvprojxPath -Raw
+        foreach ($sourceName in @("FaultMgr.c", "MotorHealth.c")) {
+            if ($projectContent -notmatch ("<FileName>" + [regex]::Escape($sourceName) + "</FileName>")) {
+                Add-CheckError "$($project.Name): Keil project must compile shared fault source $sourceName."
+            }
+        }
+    }
+}
+
 function Test-ControlCoreBoundaries {
     Write-Host "[check] control core boundaries"
 
@@ -1733,6 +2006,7 @@ Test-CanRxAndStackSamplingBoundaries
 Test-CanTxDeviceConfigBoundaries
 Test-ControlRegistryBoundaries
 Test-FaultGuardBoundaries
+Test-FaultIsolationBoundaries
 Test-ControlCoreBoundaries
 Test-RobotDeviceSchema
 Test-SharedConfigTypes

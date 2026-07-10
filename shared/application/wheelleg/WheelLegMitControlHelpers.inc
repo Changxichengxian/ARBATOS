@@ -235,12 +235,7 @@ static void WheelLegControlStageUpdate(uint8_t stage)
         return;
     }
 
-    WheelLegClearAllControlCmds();
-    WheelLegPidClear(&s_wheelleg.leg_pid[WHEELLEG_SIDE_LEFT]);
-    WheelLegPidClear(&s_wheelleg.leg_pid[WHEELLEG_SIDE_RIGHT]);
-    WheelLegPidClear(&s_wheelleg.split_pid);
-    WheelLegBalanceStateReset();
-    WheelLegClearLegVirtualOutputs();
-    s_wheelleg.yaw_inited = 0u;
+    (void)WheelLegStopDomainOutputs();
+    WheelLegResetDomainControlState();
     s_wheelleg.control_stage = stage;
 }

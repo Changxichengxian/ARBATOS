@@ -9,6 +9,8 @@
 #ifndef GIMBAL_STATE_H
 #define GIMBAL_STATE_H
 
+#include <stddef.h>
+
 #include "RobotMsg.h"
 #include "StateStore.h"
 #include "GimbalPid.h"
@@ -24,6 +26,8 @@ extern "C" {
 #define GIMBAL_STATE_OFFLINE_YAW_UPPER (1u << 2)
 #define GIMBAL_STATE_OFFLINE_PITCH     (1u << 3)
 #define GIMBAL_STATE_OFFLINE_IMU       (1u << 4)
+#define GIMBAL_STATE_AGE_UNKNOWN       0xFFFFFFFFu
+#define GIMBAL_STATE_FRESH_TIMEOUT_MS  20u
 
 typedef struct
 {
@@ -63,9 +67,28 @@ typedef struct
     uint8_t yaw_upper_online;
     uint8_t pitch_required;
     uint8_t pitch_online;
-    uint8_t reserved0;
+    uint8_t follow_available;
+    uint8_t yaw_control_is_upper;
+    uint8_t fault_configured_mask;
+    uint8_t fault_active_mask;
+    uint8_t fault_blocking_mask;
+    uint8_t fault_recovery_mask;
+    uint8_t fault_inhibit_mask;
+    uint8_t fault_hold_zero_mask;
+    uint8_t fault_imu_required_mask;
+    uint8_t fault_recovery_input_safe;
     uint16_t offline_mask;
     uint16_t required_offline_mask;
+    uint16_t yaw_reason_mask;
+    uint16_t yaw_upper_reason_mask;
+    uint16_t pitch_reason_mask;
+    uint16_t reserved0;
+    uint32_t yaw_feedback_age_ms;
+    uint32_t yaw_upper_feedback_age_ms;
+    uint32_t pitch_feedback_age_ms;
+    uint32_t imu_age_ms;
+    uint32_t fault_inhibit_fail_count;
+    uint32_t fault_release_fail_count;
     uint8_t turnaround_active;
     uint8_t turnaround_frame_valid;
     fp32 turnaround_frame_yaw_relative;
@@ -84,6 +107,21 @@ static inline uint8_t GimbalStateWrite(const GimbalState *state)
 static inline uint8_t GimbalStateRead(GimbalState *out)
 {
     return StateStoreRead(STATE_GIMBAL, out, (uint16_t)sizeof(*out));
+}
+
+static inline uint8_t GimbalStateReadFresh(GimbalState *out, uint32_t max_age_ms)
+{
+    state_info_t info = {0};
+
+    if (out == NULL ||
+        StateStoreReadSnapshot(STATE_GIMBAL,
+                               out,
+                               (uint16_t)sizeof(*out),
+                               &info) == 0u)
+    {
+        return 0u;
+    }
+    return (info.age_ms <= max_age_ms) ? 1u : 0u;
 }
 
 #ifdef __cplusplus

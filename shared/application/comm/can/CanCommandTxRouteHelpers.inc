@@ -137,47 +137,119 @@ static void CanTxClearRmFrames(void)
     (void)memset(s_can_tx_can1_1ff, 0, sizeof(s_can_tx_can1_1ff));
     (void)memset(s_can_tx_can2_200, 0, sizeof(s_can_tx_can2_200));
     (void)memset(s_can_tx_can2_1ff, 0, sizeof(s_can_tx_can2_1ff));
+    for (uint8_t bus = 0u; bus < 2u; bus++)
+    {
+        for (uint8_t group = 0u; group < 2u; group++)
+        {
+            for (uint8_t slot = 0u; slot < 4u; slot++)
+            {
+                s_can_tx_rm_motor[bus][group][slot] = MotorCount;
+            }
+        }
+    }
 }
 
 static inline void CanTxStoreRmCurrent(uint8_t bus,
-                                           uint16_t can_id,
-                                           int16_t current)
+                                            uint16_t can_id,
+                                            int16_t current,
+                                            MotorId actuator_id)
 {
-    int16_t *frame_200 = (bus == 1u) ? s_can_tx_can1_200 : s_can_tx_can2_200;
-    int16_t *frame_1ff = (bus == 1u) ? s_can_tx_can1_1ff : s_can_tx_can2_1ff;
+    int16_t *frame_200;
+    int16_t *frame_1ff;
+    uint8_t bus_index;
+
+    if ((bus != 1u && bus != 2u) || CanTxActuatorIdValid(actuator_id) == 0u)
+    {
+        return;
+    }
+
+    bus_index = (uint8_t)(bus - 1u);
+    frame_200 = (bus == 1u) ? s_can_tx_can1_200 : s_can_tx_can2_200;
+    frame_1ff = (bus == 1u) ? s_can_tx_can1_1ff : s_can_tx_can2_1ff;
 
     if (can_id >= 0x201u && can_id <= 0x204u)
     {
-        frame_200[can_id - 0x201u] = current;
+        const uint8_t slot = (uint8_t)(can_id - 0x201u);
+        frame_200[slot] = current;
+        s_can_tx_rm_motor[bus_index][0u][slot] = actuator_id;
     }
     else if (can_id >= 0x205u && can_id <= 0x208u)
     {
-        frame_1ff[can_id - 0x205u] = current;
+        const uint8_t slot = (uint8_t)(can_id - 0x205u);
+        frame_1ff[slot] = current;
+        s_can_tx_rm_motor[bus_index][1u][slot] = actuator_id;
     }
 }
 
-static inline void CanTxProcessRs485Axis(MotorId actuator_id,
-                                             const motor_node_param_t *node,
-                                             int16_t current)
+static inline uint8_t CanTxProcessRs485Axis(MotorId actuator_id,
+                                              const motor_node_param_t *node,
+                                              int16_t current,
+                                              const MotorCmd *cmd,
+                                              uint8_t *flags)
 {
     const uint8_t port = (node != NULL) ? node->rs485_port : 0u;
 
-    if (CanTxProcessExtraItem(port, actuator_id, node, current) == 0u)
+    if (CanTxProcessExtraItem(port, actuator_id, node, current, cmd) == 0u)
     {
+        if (flags != NULL)
+        {
+            *flags |= (uint8_t)MotorAppliedFlagSkipped;
+        }
         WatchTaskError(WATCH_TASK_CAN_COMMAND_TX);
+        return 0u;
     }
+    return 1u;
+}
+
+static uint8_t CanTxRs485DriverOwnsApplied(const motor_node_param_t *node)
+{
+    const motor_protocol_e protocol = MotorCfgProtocol(node);
+
+    return (uint8_t)(protocol == MOTOR_PROTOCOL_UNITREE_RS485 ||
+                     protocol == MOTOR_PROTOCOL_N6014B_RS485);
+}
+
+static uint8_t CanTxIsUnitreeRoute(const MotorRoute *route)
+{
+    return (uint8_t)(route != NULL &&
+                     route->transport == (uint8_t)MotorTransportRS485 &&
+                     MotorCfgProtocol(route->node) == MOTOR_PROTOCOL_UNITREE_RS485);
+}
+
+static uint16_t CanTxUnitreePeriodMs(const MotorRoute *route)
+{
+    if (route != NULL && route->role == MotorRoleArm && route->roleIndex == 0u)
+    {
+        return (g_config.ArmJ0Unitree.control_period_ms != 0u) ?
+            g_config.ArmJ0Unitree.control_period_ms : 5u;
+    }
+    return RobotProfileCanCommandTxPeriodMs();
+}
+
+static void CanTxMergeDriverAppliedFlags(MotorId actuator_id, uint8_t flags)
+{
+    MotorApplied applied;
+
+    if (flags == 0u || LowStateGetApplied(actuator_id, &applied) == 0u)
+    {
+        return;
+    }
+
+    applied.flags |= flags;
+    LowStateUpdateApplied(actuator_id, &applied);
 }
 
 static inline void CanTxProcessMitOrExtraAxis(uint8_t fallback_bus,
                                                     MotorId actuator_id,
                                                     const motor_node_param_t *node,
                                                     int16_t current,
+                                                    const MotorCmd *cmd,
                                                     uint8_t *flags)
 {
     const uint8_t node_bus = CanTxNodeBus(fallback_bus, node);
 
     if (CanTxProcessCanMitItem(node_bus, actuator_id, node, current, flags) == 0u &&
-        CanTxProcessExtraItem(node_bus, actuator_id, node, current) == 0u)
+        CanTxProcessExtraItem(node_bus, actuator_id, node, current, cmd) == 0u)
     {
         if (flags != NULL)
         {
@@ -203,7 +275,7 @@ static inline void CanTxProcessRmAxis(uint8_t fallback_bus,
     {
         *flags |= (uint8_t)MotorAppliedFlagLimited;
     }
-    CanTxStoreRmCurrent(node_bus, can_id, limited_current);
+    CanTxStoreRmCurrent(node_bus, can_id, limited_current, actuator_id);
     if (out_current != NULL)
     {
         *out_current = limited_current;
@@ -216,16 +288,26 @@ static inline int16_t CanTxProcessAxis(uint8_t fallback_bus,
                                           uint8_t is_rm_group,
                                           uint16_t can_id,
                                           int16_t current,
-                                          uint8_t *flags)
+                                          const MotorCmd *cmd,
+                                          uint8_t *flags,
+                                          uint8_t *tx_succeeded)
 {
+    if (tx_succeeded != NULL)
+    {
+        *tx_succeeded = 0u;
+    }
     if (MotorCfgTransport(node) == MOTOR_TRANSPORT_RS485)
     {
-        CanTxProcessRs485Axis(actuator_id, node, current);
+        const uint8_t success = CanTxProcessRs485Axis(actuator_id, node, current, cmd, flags);
+        if (tx_succeeded != NULL)
+        {
+            *tx_succeeded = success;
+        }
         return current;
     }
     else if (is_rm_group == 0u)
     {
-        CanTxProcessMitOrExtraAxis(fallback_bus, actuator_id, node, current, flags);
+        CanTxProcessMitOrExtraAxis(fallback_bus, actuator_id, node, current, cmd, flags);
         return current;
     }
     else
@@ -342,6 +424,68 @@ static void CanTxUpdateApplied(const MotorRoute *route,
     LowStateUpdateApplied(route->motorId, &applied);
 }
 
+static void CanTxApplyInhibitGate(MotorId actuator_id,
+                                  MotorCmd *cmd,
+                                  uint8_t *have_cmd,
+                                  uint8_t *flags)
+{
+    MotorCmd latest;
+    uint16_t inhibitWriter = (uint16_t)LOWCMD_WRITER_NONE;
+
+    if (cmd == NULL || have_cmd == NULL || flags == NULL ||
+        LowCmdGetInhibitWriter(actuator_id, &inhibitWriter) == 0u ||
+        inhibitWriter == (uint16_t)LOWCMD_WRITER_NONE)
+    {
+        return;
+    }
+
+    (void)memset(&latest, 0, sizeof(latest));
+    if (*have_cmd != 0u &&
+        LowCmdGetMotor(actuator_id, &latest) != 0u &&
+        CanTxCachedCmdAuthorized(cmd, &latest, inhibitWriter) != 0u)
+    {
+        return;
+    }
+
+    /* 覆盖本轮缓存，让 RM/MIT/扩展驱动都不能继续消费故障前的旧 current。 */
+    CanTxForceDisabledCmd(actuator_id);
+    *cmd = s_can_tx_cmd_cache[actuator_id];
+    *have_cmd = 1u;
+    *flags |= (uint8_t)MotorAppliedFlagForceDisabled;
+    s_can_tx_authority_reject_count[actuator_id]++;
+}
+
+static void CanTxRecheckUnitreeAuthority(MotorId actuator_id,
+                                         MotorCmd *cmd,
+                                         uint8_t *have_cmd,
+                                         uint8_t *flags)
+{
+    MotorCmd latest;
+    uint16_t inhibit_writer = (uint16_t)LOWCMD_WRITER_NONE;
+
+    if (cmd == NULL || have_cmd == NULL || flags == NULL ||
+        (*have_cmd != 0u && cmd->mode == (uint8_t)MotorModeDisable))
+    {
+        return;
+    }
+
+    (void)memset(&latest, 0, sizeof(latest));
+    if (*have_cmd != 0u &&
+        LowCmdGetMotor(actuator_id, &latest) != 0u &&
+        LowCmdGetInhibitWriter(actuator_id, &inhibit_writer) != 0u &&
+        UnitreeMotorCmdSnapshotAllowed(cmd, &latest, inhibit_writer) != 0u)
+    {
+        return;
+    }
+
+    /* 节流前再判一次，故障后必须先把旧缓存变成会立即发送的 BRAKE。 */
+    CanTxForceDisabledCmd(actuator_id);
+    *cmd = s_can_tx_cmd_cache[actuator_id];
+    *have_cmd = 1u;
+    *flags |= (uint8_t)MotorAppliedFlagForceDisabled;
+    s_can_tx_authority_reject_count[actuator_id]++;
+}
+
 static void CanTxProcessInstance(const MotorRoute *route,
                                     uint8_t allowed,
                                     sdlog_actuator_current_t *log)
@@ -351,6 +495,7 @@ static void CanTxProcessInstance(const MotorRoute *route,
     MotorCmd cmd;
     uint8_t have_cmd;
     uint8_t flags = 0u;
+    uint8_t tx_succeeded = 0u;
     int16_t current = 0;
     int16_t applied_current = 0;
 
@@ -378,6 +523,14 @@ static void CanTxProcessInstance(const MotorRoute *route,
     {
         flags |= (uint8_t)MotorAppliedFlagCmdExpired;
     }
+    if (allowed != 0u)
+    {
+        CanTxApplyInhibitGate(actuator_id, &cmd, &have_cmd, &flags);
+    }
+    if (CanTxIsUnitreeRoute(route) != 0u)
+    {
+        CanTxRecheckUnitreeAuthority(actuator_id, &cmd, &have_cmd, &flags);
+    }
     if (allowed != 0u &&
         have_cmd != 0u &&
         cmd.active != 0u &&
@@ -395,14 +548,41 @@ static void CanTxProcessInstance(const MotorRoute *route,
         return;
     }
 
+    if (CanTxIsUnitreeRoute(route) != 0u &&
+        UnitreeMotorTxDue(&s_can_tx_unitree_schedule[actuator_id],
+                          (have_cmd != 0u) ? &cmd : NULL,
+                          CanTxNowMs(),
+                          CanTxUnitreePeriodMs(route)) == 0u)
+    {
+        CanTxMergeDriverAppliedFlags(actuator_id, flags);
+        return;
+    }
+
     applied_current = CanTxProcessAxis(route->bus,
                                           actuator_id,
                                           node,
                                           route->isRmGroup,
                                           route->canId,
                                           current,
-                                          &flags);
-    CanTxUpdateApplied(route, (have_cmd != 0u) ? &cmd : NULL, applied_current, flags);
+                                          (have_cmd != 0u) ? &cmd : NULL,
+                                          &flags,
+                                          &tx_succeeded);
+    if (CanTxIsUnitreeRoute(route) != 0u && tx_succeeded != 0u)
+    {
+        UnitreeMotorTxMark(&s_can_tx_unitree_schedule[actuator_id],
+                           (have_cmd != 0u) ? &cmd : NULL,
+                           CanTxNowMs());
+    }
+    if (route->transport == (uint8_t)MotorTransportRS485 &&
+        CanTxRs485DriverOwnsApplied(node) != 0u)
+    {
+        /* RS485 驱动已发布协议限幅和真实发送结果，这里只合并通用门控原因。 */
+        CanTxMergeDriverAppliedFlags(actuator_id, flags);
+    }
+    else
+    {
+        CanTxUpdateApplied(route, (have_cmd != 0u) ? &cmd : NULL, applied_current, flags);
+    }
 }
 
 static void CanTxExecInstances(uint8_t online, uint8_t output_locked)
@@ -439,5 +619,6 @@ static void CanTxExecInstances(uint8_t online, uint8_t output_locked)
         CanTxProcessInstance(route, allowed, &log);
     }
 
+    CanTxEmitRmFrames(&log);
     CanTxLogActuatorCurrent(&log);
 }

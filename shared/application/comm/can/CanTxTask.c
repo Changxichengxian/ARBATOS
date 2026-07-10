@@ -36,6 +36,8 @@
 #include "RobotTaskProfile.h"
 #include "RobotMode.h"
 #include "RobotSafety.h"
+#include "CanTxCommandPolicy.h"
+#include "UnitreeMotorPolicy.h"
 
 #include <string.h>
 
@@ -51,7 +53,8 @@
 __weak uint8_t CanTxProcessExtraItem(uint8_t bus,
                                          MotorId actuator_id,
                                          const motor_node_param_t *node,
-                                         int16_t current);
+                                         int16_t current,
+                                         const MotorCmd *cmd);
 
 static MotorCmd s_can_tx_cmd_cache[MotorCount];
 static MotorId s_can_tx_cmd_cache_ids[MotorCount];
@@ -62,12 +65,15 @@ static int16_t s_can_tx_can1_200[4];
 static int16_t s_can_tx_can1_1ff[4];
 static int16_t s_can_tx_can2_200[4];
 static int16_t s_can_tx_can2_1ff[4];
+static MotorId s_can_tx_rm_motor[2][2][4];
 static uint32_t s_can_tx_mit_budget_tick_ms;
 static uint8_t s_can_tx_mit_budget_used;
 static uint8_t s_can_tx_rm_group_configured[2][2];
 static uint8_t s_can_tx_route_start_index;
 static uint32_t s_can_tx_mit_enable_tx_count[MotorCount];
 static uint32_t s_can_tx_mit_cmd_tx_count[MotorCount];
+static uint32_t s_can_tx_authority_reject_count[MotorCount];
+static UnitreeMotorTxSchedule s_can_tx_unitree_schedule[MotorCount];
 
 typedef struct
 {
@@ -82,6 +88,8 @@ static volatile uint32_t s_can_tx_emergency_hash;
 static volatile uint32_t s_can_tx_emergency_magic;
 static volatile uint32_t s_can_tx_emergency_magic_inv;
 
+static void CanTxEmitRmFrames(sdlog_actuator_current_t *log);
+
 #include "CanCommandTxCommonHelpers.inc"
 
 #include "CanCommandTxMitHelpers.inc"
@@ -94,12 +102,14 @@ static volatile uint32_t s_can_tx_emergency_magic_inv;
 __weak uint8_t CanTxProcessExtraItem(uint8_t bus,
                                          MotorId actuator_id,
                                          const motor_node_param_t *node,
-                                         int16_t current)
+                                         int16_t current,
+                                         const MotorCmd *cmd)
 {
     (void)bus;
     (void)actuator_id;
     (void)node;
     (void)current;
+    (void)cmd;
     return 0u;
 }
 
@@ -163,6 +173,11 @@ uint32_t CanTxMitEnableTxCount(uint8_t actuator_id)
 uint32_t CanTxMitCmdTxCount(uint8_t actuator_id)
 {
     return (actuator_id < (uint8_t)MotorCount) ? s_can_tx_mit_cmd_tx_count[actuator_id] : 0u;
+}
+
+uint32_t CanTxAuthorityRejectCount(uint8_t actuator_id)
+{
+    return (actuator_id < (uint8_t)MotorCount) ? s_can_tx_authority_reject_count[actuator_id] : 0u;
 }
 
 static uint32_t CanTxEmergencyHashByte(uint32_t hash, uint8_t value)
@@ -377,7 +392,6 @@ void CanTxTask(void const *pvParameters)
         const uint8_t output_locked = RobotSafetyOutputLocked();
 
         CanTxExecInstances(dbus_offline ? 0u : 1u, output_locked);
-        CanTxEmitRmFrames();
 
         RtProfEnd(RtProfCanTxLoop, loop_start_us);
         {

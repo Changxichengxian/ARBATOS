@@ -30,6 +30,7 @@ static uint32_t s_arm_status_seq = 0u;
 static void ArmWriteStatus(uint16_t key_mask)
 {
     ArmStatus status;
+    ArmMotionFaultStatus fault = {0};
     const ArmJ0UnitreeState *j0 = NULL;
 
     memset(&status, 0, sizeof(status));
@@ -45,6 +46,23 @@ static void ArmWriteStatus(uint16_t key_mask)
     status.key_kd = g_arm_key_kd;
     status.j0_current = g_arm_j0_current;
 
+    if (ArmMotionGetFaultStatus(&fault) != 0u)
+    {
+        status.fault_configured_mask = fault.configuredMask;
+        status.fault_active_mask = fault.activeMask;
+        status.fault_blocking_mask = fault.blockingMask;
+        status.fault_recovery_mask = fault.recoveryMask;
+        status.fault_inhibit_mask = fault.inhibitMask;
+        status.fault_hold_zero_mask = fault.holdZeroMask;
+        status.fault_inhibit_fail_count = fault.inhibitFailCount;
+        status.fault_release_fail_count = fault.releaseFailCount;
+        status.fault_initialized = fault.initialized;
+        for (uint8_t i = 0u; i < ARM_JOINT_COUNT; i++)
+        {
+            status.fault_reason[i] = fault.reason[i];
+        }
+    }
+
     for (uint8_t i = 0u; i < ARM_JOINT_COUNT; i++)
     {
         const ArmMotorFeedback *feedback = ArmMotionGetFeedback(i);
@@ -54,7 +72,16 @@ static void ArmWriteStatus(uint16_t key_mask)
         }
 
         status.motor[i] = *feedback;
-        if (feedback->online != 0u)
+    }
+
+    for (uint8_t i = 0u; i < ARM_JOINT_COUNT; i++)
+    {
+        const uint32_t bit = 1u << i;
+
+        if (fault.initialized != 0u &&
+            (fault.configuredMask & bit) != 0u &&
+            (fault.activeMask & bit) == 0u &&
+            (fault.blockingMask & bit) == 0u)
         {
             status.active_joint_count++;
         }

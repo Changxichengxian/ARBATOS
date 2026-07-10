@@ -88,7 +88,18 @@ static void WheelLegPublish(uint16_t faults,
     status.mode = (uint8_t)mode;
     status.last_mode = (uint8_t)s_wheelleg.last_mode;
     status.fault_flags = faults;
-    status.health = (faults == WHEELLEG_FAULT_NONE) ? (uint8_t)MSG_HEALTH_OK : (uint8_t)MSG_HEALTH_FAULT;
+    if (faults != WHEELLEG_FAULT_NONE)
+    {
+        status.health = (uint8_t)MSG_HEALTH_FAULT;
+    }
+    else if (s_wheelleg.fault_domain_status.action != FaultActionRun)
+    {
+        status.health = (uint8_t)MSG_HEALTH_DEGRADED;
+    }
+    else
+    {
+        status.health = (uint8_t)MSG_HEALTH_OK;
+    }
     status.controller_active = controller_active;
     status.active_controller_id = s_wheelleg.control_stage;
     status.target_v_mps = target_v;
@@ -99,6 +110,31 @@ static void WheelLegPublish(uint16_t faults,
     status.target_leg_theta_rad = target_theta;
     status.pitch_rad = pitch;
     status.x_dot_mps = s_wheelleg.v_mps;
+    status.domain_fault_flags = s_wheelleg.domain_faults;
+    status.domain_member_count = (uint8_t)WheelLegMemberCount;
+    status.domain_online_mask = s_wheelleg.domain_online_mask;
+    status.domain_binding_valid = s_wheelleg.domain_binding_valid;
+    status.recovery_input_safe = s_wheelleg.recovery_input_safe;
+    status.domain_outputs_active = s_wheelleg.domain_outputs_active;
+    status.domain_inhibit_complete = s_wheelleg.domain_inhibit_complete;
+    status.domain_action = (uint8_t)s_wheelleg.fault_domain_status.action;
+    status.domain_recovery_pending = s_wheelleg.fault_domain_status.recoveryPending;
+    status.domain_fault_active = s_wheelleg.fault_domain_status.faultActive;
+    status.domain_ever_faulted = s_wheelleg.fault_domain_status.everFaulted;
+    status.domain_device_count = (uint8_t)WheelLegFaultDeviceCount;
+    status.domain_active_member_mask = s_wheelleg.fault_domain_status.activeMemberMask;
+    status.domain_blocking_member_mask = s_wheelleg.fault_domain_status.blockingMemberMask;
+    status.domain_active_reason_mask = s_wheelleg.fault_domain_status.activeReasonMask;
+    status.domain_blocking_reason_mask = s_wheelleg.fault_domain_status.blockingReasonMask;
+    status.domain_history_reason_mask = s_wheelleg.fault_domain_status.historyReasonMask;
+    status.domain_first_fault_ms = s_wheelleg.fault_domain_status.firstFaultMs;
+    status.domain_last_fault_ms = s_wheelleg.fault_domain_status.lastFaultMs;
+    status.domain_healthy_since_ms = s_wheelleg.fault_domain_status.healthySinceMs;
+    status.domain_stop_count = s_wheelleg.domain_stop_count;
+    status.domain_stop_fail_count = s_wheelleg.domain_stop_fail_count;
+    status.domain_inhibit_fail_count = s_wheelleg.domain_inhibit_fail_count;
+    status.domain_inhibit_release_fail_count = s_wheelleg.domain_inhibit_release_fail_count;
+    status.domain_last_stop_tick_ms = s_wheelleg.domain_last_stop_tick_ms;
 
     for (side = 0u; side < WHEELLEG_SIDE_COUNT; side++)
     {

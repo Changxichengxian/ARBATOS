@@ -22,6 +22,8 @@
 #include "RobotConfig.h"
 #include "ControlInput.h"
 #include "DetectTask.h"
+#include "FaultMgr.h"
+#include "MotorHealth.h"
 #include "MotorInst.h"
 #include "RobotMsg.h"
 #include "RobotTaskProfile.h"
@@ -62,6 +64,12 @@
 #define WHEELLEG_CONTROL_STAGE_VMC_HEIGHT_LQR 2u
 #define WHEELLEG_CONTROL_STAGE_VMC_FULL_LQR 3u
 #define WHEELLEG_CONTROL_STAGE_MAX WHEELLEG_CONTROL_STAGE_VMC_FULL_LQR
+#define WHEELLEG_DOMAIN_MEMBER_COUNT 6u
+#define WHEELLEG_DOMAIN_RECOVERY_STABLE_MS 500u
+#define WHEELLEG_DOMAIN_REASON_MOTOR_OFFLINE (1u << 0)
+#define WHEELLEG_DOMAIN_REASON_IMU_OFFLINE (1u << 1)
+#define WHEELLEG_DOMAIN_REASON_CONFIG (1u << 2)
+#define WHEELLEG_DOMAIN_REASON_TEST_TRANSITION (1u << 3)
 
 #ifndef WHEELLEG_BENCH_TARGET_FOOT_X_M
 #define WHEELLEG_BENCH_TARGET_FOOT_X_M 0.0f
@@ -126,6 +134,59 @@ typedef struct
     MotorId wheel;
 } WheelLegActuatorMap;
 
+typedef enum
+{
+    WheelLegMemberLeftFront = 0u,
+    WheelLegMemberLeftBack,
+    WheelLegMemberLeftWheel,
+    WheelLegMemberRightFront,
+    WheelLegMemberRightBack,
+    WheelLegMemberRightWheel,
+    WheelLegMemberCount = WHEELLEG_DOMAIN_MEMBER_COUNT,
+} WheelLegDomainMember;
+
+typedef enum
+{
+    WheelLegFaultDeviceLeftFront = WheelLegMemberLeftFront,
+    WheelLegFaultDeviceLeftBack = WheelLegMemberLeftBack,
+    WheelLegFaultDeviceLeftWheel = WheelLegMemberLeftWheel,
+    WheelLegFaultDeviceRightFront = WheelLegMemberRightFront,
+    WheelLegFaultDeviceRightBack = WheelLegMemberRightBack,
+    WheelLegFaultDeviceRightWheel = WheelLegMemberRightWheel,
+    WheelLegFaultDeviceImu,
+    WheelLegFaultDeviceGuard,
+    WheelLegFaultDeviceCount,
+} WheelLegFaultDevice;
+
+typedef enum
+{
+    WheelLegFaultDomainDrive = 0u,
+    WheelLegFaultDomainCount,
+} WheelLegFaultDomain;
+
+#define WHEELLEG_FAULT_DOMAIN_MEMBER_MASK ((1u << WheelLegFaultDeviceCount) - 1u)
+
+static const FaultMgrConfig s_wheelleg_fault_config = {
+    .deviceCount = (uint8_t)WheelLegFaultDeviceCount,
+    .domainCount = (uint8_t)WheelLegFaultDomainCount,
+    .domain = {
+        {
+            .memberMask = WHEELLEG_FAULT_DOMAIN_MEMBER_MASK,
+            .criticalMask = WHEELLEG_FAULT_DOMAIN_MEMBER_MASK,
+            .recovery = {
+                .stableMs = WHEELLEG_DOMAIN_RECOVERY_STABLE_MS,
+                .requireSafeInput = 1u,
+            },
+        },
+    },
+};
+
+typedef struct
+{
+    MotorId actuator;
+    uint16_t offline_fault;
+} WheelLegDomainBinding;
+
 typedef WheelLegCorePid WheelLegPid;
 typedef WheelLegCoreLegCalc WheelLegLegCalc;
 
@@ -164,6 +225,9 @@ static void WheelLegCorePointFromLocal(const WheelLegFootPoint *src, WheelLegCor
 typedef struct
 {
     WheelLegActuatorMap actuator[WHEELLEG_SIDE_COUNT];
+    WheelLegDomainBinding domain_member[WHEELLEG_DOMAIN_MEMBER_COUNT];
+    FaultMgr fault_mgr;
+    FaultDomainStatus fault_domain_status;
     MotorState front_fb[WHEELLEG_SIDE_COUNT];
     MotorState back_fb[WHEELLEG_SIDE_COUNT];
     MotorState wheel_fb[WHEELLEG_SIDE_COUNT];
@@ -211,6 +275,23 @@ typedef struct
     fp32 foot_test_wheel_comp_rad[WHEELLEG_SIDE_COUNT];
     fp32 foot_test_wheel_target_rad[WHEELLEG_SIDE_COUNT];
     uint16_t feedback_faults;
+    uint16_t domain_faults;
+    uint8_t domain_online_mask;
+    uint8_t domain_binding_valid;
+    uint8_t manual_on;
+    uint8_t recovery_input_safe;
+    uint8_t domain_outputs_active;
+    uint8_t domain_inhibit_complete;
+    uint8_t domain_stop_clear_complete;
+    uint8_t fault_mgr_ready;
+    uint8_t single_test_last;
+    MotorId single_test_target_last;
+    FaultAction domain_last_action;
+    uint32_t domain_stop_count;
+    uint32_t domain_stop_fail_count;
+    uint32_t domain_inhibit_fail_count;
+    uint32_t domain_inhibit_release_fail_count;
+    uint32_t domain_last_stop_tick_ms;
 } WheelLegMitCtrl;
 
 typedef struct
@@ -228,19 +309,31 @@ typedef struct
     int16_t yaw_axis;
     int16_t single_test_axis;
     int16_t leg_axis;
+    MotorId single_test_target;
+    ManualInputState manual_input;
     uint8_t control_stage;
     uint8_t profile_on;
+    uint8_t manual_input_valid;
+    uint8_t chassis_switch;
     uint8_t manual_on;
     uint8_t imu_ok;
     uint8_t single_test;
+    uint8_t single_test_member;
+    uint8_t single_test_target_valid;
+    uint8_t single_test_target_online;
     uint8_t left_leg_test;
     uint8_t foot_test;
     uint8_t operation_test_active;
     uint8_t enabled;
     uint8_t controller_active;
     uint8_t kinematics_ok;
+    uint8_t recovery_input_safe;
+    uint8_t domain_recovery_pending;
+    uint8_t domain_recovered_now;
+    FaultAction domain_action;
     uint16_t faults;
     uint16_t feedback_faults;
+    uint16_t domain_faults;
     fp32 target_v;
     fp32 target_yaw_rate;
     fp32 target_leg;
@@ -263,7 +356,7 @@ static WheelLegMitCtrl s_wheelleg;
 static uint8_t s_wheelleg_sdlog_config_logged = 0u;
 static uint32_t s_wheelleg_sdlog_last_status_ms = 0u;
 
-static uint8_t WheelLegFeedbackFresh(const MotorState *fb, uint32_t now_ms);
+static uint8_t WheelLegFeedbackFresh(MotorId id, const MotorState *fb, uint32_t now_ms);
 static void WheelLegSdLogWriteMotorDiag(uint32_t now_ms);
 
 static fp32 WheelLegAxisToFp32(int16_t axis, fp32 max_abs, uint16_t deadband);
@@ -275,6 +368,7 @@ static void WheelLegPitchTrimUpdate(fp32 dt,
                                        fp32 target_v,
                                        fp32 target_yaw_rate);
 static MotorId WheelLegSingleTestActuator(void);
+static void WheelLegResetDomainControlState(void);
 
 uint8_t WheelLegMitGetFootTestPhase(void)
 {
@@ -379,8 +473,13 @@ void WheelLegMitTask(void const *pvParameters)
 
     (void)pvParameters;
     memset(&s_wheelleg, 0, sizeof(s_wheelleg));
+    s_wheelleg.single_test_target_last = MotorCount;
     WheelLegTargetSmoothReset();
     osDelay(g_config.WheelLegMit.task_init_time_ms);
+    WheelLegConfigureActuators();
+    s_wheelleg.fault_mgr_ready =
+        (uint8_t)(FaultMgrInit(&s_wheelleg.fault_mgr, &s_wheelleg_fault_config) == FaultMgrResultOk);
+    s_wheelleg.domain_last_action = FaultActionRun;
     last_wake = xTaskGetTickCount();
 
     while (1)

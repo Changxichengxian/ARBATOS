@@ -16,6 +16,7 @@
 #include <string.h>
 
 static MotorCmd gMotorCmd[MotorCount];
+static uint16_t gLowCmdInhibitWriter[MotorCount];
 static MotorState gMotorState[MotorCount];
 static MotorApplied gMotorApplied[MotorCount];
 static MotorCmd gMotorCmdSnapshot[MotorCount];
@@ -146,6 +147,21 @@ static uint16_t LowCmdWriterOrDefault(uint16_t writer)
     return (writer == (uint16_t)LOWCMD_WRITER_NONE) ? (uint16_t)LOWCMD_WRITER_CONTROL : writer;
 }
 
+static uint8_t LowCmdWriterValid(uint16_t writer)
+{
+    switch (writer)
+    {
+    case (uint16_t)LOWCMD_WRITER_CONTROL:
+    case (uint16_t)LOWCMD_WRITER_MANUAL:
+    case (uint16_t)LOWCMD_WRITER_HOST:
+    case (uint16_t)LOWCMD_WRITER_SAFETY:
+    case (uint16_t)LOWCMD_WRITER_FAULT:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+
 static uint8_t LowCmdModeSafe(uint8_t mode)
 {
     return (uint8_t)(mode == (uint8_t)MotorModeDisable ||
@@ -194,12 +210,19 @@ static void LowCmdRecordReject(uint16_t writer, uint16_t owner, uint32_t tick)
 static uint8_t LowCmdCanWriteLocked(MotorId id, uint16_t writer, const MotorCmd *cmd, uint32_t tick)
 {
     const MotorCmd *owner = &gMotorCmd[id];
+    const uint16_t inhibit_writer = gLowCmdInhibitWriter[id];
 
     if (gLowCmdDiag.emergency_active != 0u &&
         writer < gLowCmdDiag.emergency_writer &&
         (cmd == NULL || LowCmdModeSafe(cmd->mode) == 0u))
     {
         LowCmdRecordReject(writer, gLowCmdDiag.emergency_writer, tick);
+        return 0u;
+    }
+
+    if (inhibit_writer != (uint16_t)LOWCMD_WRITER_NONE && writer < inhibit_writer)
+    {
+        LowCmdRecordReject(writer, inhibit_writer, tick);
         return 0u;
     }
 
@@ -220,13 +243,16 @@ static uint8_t LowCmdSetMotorMany_checked(const MotorId *ids, const MotorCmd *cm
     const uint32_t tick = LowCmdNowMs();
     const uint16_t resolved_writer = LowCmdWriterOrDefault(writer);
 
+    if (LowCmdWriterValid(resolved_writer) == 0u)
+    {
+        return 0u;
+    }
+
     LowCmdCriticalState critical = LowCmdEnterCritical();
     for (uint8_t i = 0u; i < count; i++)
     {
-        const uint16_t cmd_writer = (cmds[i].writer != (uint16_t)LOWCMD_WRITER_NONE) ?
-                                        cmds[i].writer :
-                                        resolved_writer;
-        if (LowCmdCanWriteLocked(ids[i], cmd_writer, &cmds[i], tick) == 0u)
+        /* writer 只由可信 API 参数决定，MotorCmd 载荷不能自行提权。 */
+        if (LowCmdCanWriteLocked(ids[i], resolved_writer, &cmds[i], tick) == 0u)
         {
             LowCmdExitCritical(critical);
             return 0u;
@@ -236,11 +262,8 @@ static uint8_t LowCmdSetMotorMany_checked(const MotorId *ids, const MotorCmd *cm
     gLowCmdSeq++;
     for (uint8_t i = 0u; i < count; i++)
     {
-        const uint16_t cmd_writer = (cmds[i].writer != (uint16_t)LOWCMD_WRITER_NONE) ?
-                                        cmds[i].writer :
-                                        resolved_writer;
         gMotorCmd[ids[i]] = cmds[i];
-        gMotorCmd[ids[i]].writer = cmd_writer;
+        gMotorCmd[ids[i]].writer = resolved_writer;
         LowCmdStamp(&gMotorCmd[ids[i]], gLowCmdSeq, tick);
     }
     gLowCmdDiag.seq = gLowCmdSeq;
@@ -252,6 +275,7 @@ void LowCmdClearAll(void)
 {
     LowCmdCriticalState critical = LowCmdEnterCritical();
     (void)memset(gMotorCmd, 0, sizeof(gMotorCmd));
+    (void)memset(gLowCmdInhibitWriter, 0, sizeof(gLowCmdInhibitWriter));
     (void)memset(&gLowCmdDiag, 0, sizeof(gLowCmdDiag));
     gLowCmdSeq++;
     gLowCmdDiag.seq = gLowCmdSeq;
@@ -278,6 +302,201 @@ void LowCmdClear(MotorId id)
         }
     }
     LowCmdExitCritical(critical);
+}
+
+uint8_t LowCmdClearManyFrom(const MotorId *ids, uint8_t count, uint16_t writer)
+{
+    const uint32_t tick = LowCmdNowMs();
+    const uint16_t resolved_writer = LowCmdWriterOrDefault(writer);
+
+    if (LowCmdWriterValid(resolved_writer) == 0u ||
+        count > (uint8_t)MotorCount || (count != 0u && ids == NULL))
+    {
+        return 0u;
+    }
+    if (count == 0u)
+    {
+        return 1u;
+    }
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (MotorIdValid(ids[i]) == 0u)
+        {
+            return 0u;
+        }
+        for (uint8_t j = 0u; j < i; j++)
+        {
+            if (ids[i] == ids[j])
+            {
+                return 0u;
+            }
+        }
+    }
+
+    LowCmdCriticalState critical = LowCmdEnterCritical();
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (LowCmdCanWriteLocked(ids[i], resolved_writer, NULL, tick) == 0u)
+        {
+            LowCmdExitCritical(critical);
+            return 0u;
+        }
+    }
+
+    gLowCmdSeq++;
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        (void)memset(&gMotorCmd[ids[i]], 0, sizeof(gMotorCmd[ids[i]]));
+        gMotorCmd[ids[i]].writer = resolved_writer;
+        LowCmdStamp(&gMotorCmd[ids[i]], gLowCmdSeq, tick);
+    }
+    gLowCmdDiag.seq = gLowCmdSeq;
+    LowCmdExitCritical(critical);
+    return 1u;
+}
+
+uint8_t LowCmdInhibitManyFrom(const MotorId *ids, uint8_t count, uint16_t writer)
+{
+    const uint32_t tick = LowCmdNowMs();
+    const uint16_t resolved_writer = LowCmdWriterOrDefault(writer);
+    uint8_t changed = 0u;
+
+    if (LowCmdWriterValid(resolved_writer) == 0u ||
+        count > (uint8_t)MotorCount || (count != 0u && ids == NULL))
+    {
+        return 0u;
+    }
+    if (count == 0u)
+    {
+        return 1u;
+    }
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (MotorIdValid(ids[i]) == 0u)
+        {
+            return 0u;
+        }
+        for (uint8_t j = 0u; j < i; j++)
+        {
+            if (ids[i] == ids[j])
+            {
+                return 0u;
+            }
+        }
+    }
+
+    LowCmdCriticalState critical = LowCmdEnterCritical();
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (gLowCmdInhibitWriter[ids[i]] == resolved_writer)
+        {
+            continue;
+        }
+        if (LowCmdCanWriteLocked(ids[i], resolved_writer, NULL, tick) == 0u)
+        {
+            LowCmdExitCritical(critical);
+            return 0u;
+        }
+        changed = 1u;
+    }
+
+    if (changed == 0u)
+    {
+        LowCmdExitCritical(critical);
+        return 1u;
+    }
+
+    gLowCmdSeq++;
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (gLowCmdInhibitWriter[ids[i]] == resolved_writer)
+        {
+            continue;
+        }
+        gLowCmdInhibitWriter[ids[i]] = resolved_writer;
+        gLowCmdDiag.inhibit_mask |= 1ul << (uint32_t)ids[i];
+        (void)memset(&gMotorCmd[ids[i]], 0, sizeof(gMotorCmd[ids[i]]));
+        gMotorCmd[ids[i]].writer = resolved_writer;
+        LowCmdStamp(&gMotorCmd[ids[i]], gLowCmdSeq, tick);
+    }
+    gLowCmdDiag.inhibit_acquire_count++;
+    gLowCmdDiag.seq = gLowCmdSeq;
+    LowCmdExitCritical(critical);
+    return 1u;
+}
+
+uint8_t LowCmdReleaseInhibitManyFrom(const MotorId *ids, uint8_t count, uint16_t writer)
+{
+    const uint32_t tick = LowCmdNowMs();
+    const uint16_t resolved_writer = LowCmdWriterOrDefault(writer);
+    uint8_t changed = 0u;
+
+    if (LowCmdWriterValid(resolved_writer) == 0u ||
+        count > (uint8_t)MotorCount || (count != 0u && ids == NULL))
+    {
+        return 0u;
+    }
+    if (count == 0u)
+    {
+        return 1u;
+    }
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (MotorIdValid(ids[i]) == 0u)
+        {
+            return 0u;
+        }
+        for (uint8_t j = 0u; j < i; j++)
+        {
+            if (ids[i] == ids[j])
+            {
+                return 0u;
+            }
+        }
+    }
+
+    LowCmdCriticalState critical = LowCmdEnterCritical();
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        const uint16_t inhibit_writer = gLowCmdInhibitWriter[ids[i]];
+
+        if (inhibit_writer != (uint16_t)LOWCMD_WRITER_NONE &&
+            resolved_writer < inhibit_writer)
+        {
+            LowCmdRecordReject(resolved_writer, inhibit_writer, tick);
+            LowCmdExitCritical(critical);
+            return 0u;
+        }
+        if (inhibit_writer != (uint16_t)LOWCMD_WRITER_NONE)
+        {
+            changed = 1u;
+        }
+    }
+
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        gLowCmdInhibitWriter[ids[i]] = (uint16_t)LOWCMD_WRITER_NONE;
+        gLowCmdDiag.inhibit_mask &= ~(1ul << (uint32_t)ids[i]);
+    }
+    if (changed != 0u)
+    {
+        gLowCmdDiag.inhibit_release_count++;
+    }
+    LowCmdExitCritical(critical);
+    return 1u;
+}
+
+uint8_t LowCmdGetInhibitWriter(MotorId id, uint16_t *out)
+{
+    if (MotorIdValid(id) == 0u || out == NULL)
+    {
+        return 0u;
+    }
+
+    LowCmdCriticalState critical = LowCmdEnterCritical();
+    *out = gLowCmdInhibitWriter[id];
+    LowCmdExitCritical(critical);
+    return 1u;
 }
 
 uint8_t LowCmdSetMotorMany(const MotorId *ids, const MotorCmd *cmds, uint8_t count)
@@ -411,10 +630,11 @@ uint8_t LowCmdSetCurrentMany(const MotorId *ids, const int16_t *currents, uint8_
 
 uint8_t LowCmdSetCurrentManyFrom(const MotorId *ids, const int16_t *currents, uint8_t count, uint16_t writer)
 {
-    MotorCmd cmds[MotorCount];
     const uint16_t resolved_writer = LowCmdWriterOrDefault(writer);
+    const uint32_t tick = LowCmdNowMs();
+    MotorCmd current_cmd;
 
-    if (count > (uint8_t)MotorCount)
+    if (LowCmdWriterValid(resolved_writer) == 0u || count > (uint8_t)MotorCount)
     {
         return 0u;
     }
@@ -423,21 +643,47 @@ uint8_t LowCmdSetCurrentManyFrom(const MotorId *ids, const int16_t *currents, ui
         return 0u;
     }
 
+    (void)memset(&current_cmd, 0, sizeof(current_cmd));
+    current_cmd.active = 1u;
+    current_cmd.mode = (uint8_t)MotorModeCurrent;
+    current_cmd.writer = resolved_writer;
+
     for (uint8_t i = 0u; i < count; i++)
     {
         if (MotorIdValid(ids[i]) == 0u)
         {
             return 0u;
         }
-
-        (void)memset(&cmds[i], 0, sizeof(cmds[i]));
-        cmds[i].active = 1u;
-        cmds[i].mode = (uint8_t)MotorModeCurrent;
-        cmds[i].current = currents[i];
-        cmds[i].writer = resolved_writer;
     }
 
-    return LowCmdSetMotorMany_checked(ids, cmds, count, resolved_writer);
+    {
+        LowCmdCriticalState critical = LowCmdEnterCritical();
+
+        for (uint8_t i = 0u; i < count; i++)
+        {
+            if (LowCmdCanWriteLocked(ids[i], resolved_writer, &current_cmd, tick) == 0u)
+            {
+                LowCmdExitCritical(critical);
+                return 0u;
+            }
+        }
+
+        if (count != 0u)
+        {
+            gLowCmdSeq++;
+            for (uint8_t i = 0u; i < count; i++)
+            {
+                MotorCmd *dst = &gMotorCmd[ids[i]];
+
+                *dst = current_cmd;
+                dst->current = currents[i];
+                LowCmdStamp(dst, gLowCmdSeq, tick);
+            }
+            gLowCmdDiag.seq = gLowCmdSeq;
+        }
+        LowCmdExitCritical(critical);
+    }
+    return 1u;
 }
 
 int16_t LowCmdGetCurrent(MotorId id)
@@ -555,6 +801,11 @@ uint8_t LowCmdEnterEmergencyStop(uint16_t writer)
     const uint32_t tick = LowCmdNowMs();
     const uint16_t resolved_writer = LowCmdWriterOrDefault(writer);
 
+    if (LowCmdWriterValid(resolved_writer) == 0u)
+    {
+        return 0u;
+    }
+
     LowCmdCriticalState critical = LowCmdEnterCritical();
     gLowCmdSeq++;
     gLowCmdDiag.emergency_active = 1u;
@@ -576,6 +827,11 @@ uint8_t LowCmdEnterEmergencyStop(uint16_t writer)
 uint8_t LowCmdClearEmergencyStop(uint16_t writer)
 {
     const uint16_t resolved_writer = LowCmdWriterOrDefault(writer);
+
+    if (LowCmdWriterValid(resolved_writer) == 0u)
+    {
+        return 0u;
+    }
 
     LowCmdCriticalState critical = LowCmdEnterCritical();
     if (gLowCmdDiag.emergency_active != 0u &&

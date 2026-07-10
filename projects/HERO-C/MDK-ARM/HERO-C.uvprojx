@@ -555,6 +555,11 @@
               <FilePath>..\\..\\..\\shared\\application\\robot\\StateStore.c</FilePath>
             </File>
             <File>
+              <FileName>FaultMgr.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\robot\\FaultMgr.c</FilePath>
+            </File>
+            <File>
               <FileName>ExternalMotionIntent.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\application\\robot\\ExternalMotionIntent.c</FilePath>
@@ -573,6 +578,11 @@
               <FileName>MotorInst.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\application\\motors\\MotorInst.c</FilePath>
+            </File>
+            <File>
+              <FileName>MotorHealth.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\motors\\MotorHealth.c</FilePath>
             </File>
             <File>
               <FileName>CanTxTask.c</FileName>

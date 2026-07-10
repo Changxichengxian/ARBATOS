@@ -21,6 +21,152 @@ static fp32 GimbalPitchKickScale(fp32 angle_err)
     return (err_abs - PITCH_KICK_ERR_OFF_RAD) / (PITCH_KICK_ERR_ON_RAD - PITCH_KICK_ERR_OFF_RAD);
 }
 
+static MotorId s_gimbal_yaw_id = MotorCount;
+static MotorId s_gimbal_yaw_upper_id = MotorCount;
+static MotorId s_gimbal_pitch_id = MotorCount;
+static uint8_t s_gimbal_motor_ids_ready = 0u;
+
+static void GimbalMotorIdsEnsure(void)
+{
+    if (s_gimbal_motor_ids_ready != 0u)
+    {
+        return;
+    }
+
+    s_gimbal_yaw_id = MotorInstIdByName("motor.yaw");
+    s_gimbal_yaw_upper_id = MotorInstIdByName("motor.yaw_upper");
+    s_gimbal_pitch_id = MotorInstIdByName("motor.pitch");
+    s_gimbal_motor_ids_ready = 1u;
+}
+
+static void GimbalMotorHealthRead(uint8_t configured,
+                                  MotorId id,
+                                  uint32_t now_ms,
+                                  MotorHealthResult *out)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    memset(out, 0, sizeof(*out));
+    out->motorId = id;
+    out->ageMs = MOTOR_HEALTH_AGE_UNKNOWN;
+    if (configured == 0u || id == MotorCount)
+    {
+        return;
+    }
+
+    (void)MotorHealthRead(id, now_ms, GIMBAL_MOTOR_FEEDBACK_TIMEOUT_MS, out);
+}
+
+static uint8_t GimbalImuFeedbackReady(const GimbalRuntimeSnapshot *snapshot)
+{
+#if GIMBAL_USE_ENCODER_FEEDBACK
+    (void)snapshot;
+    return 1u;
+#else
+    return (snapshot != NULL && snapshot->imu_online != 0u) ? 1u : 0u;
+#endif
+}
+
+static uint8_t GimbalYawControlHealthy(const GimbalRuntimeSnapshot *snapshot)
+{
+    if (snapshot == NULL)
+    {
+        return 0u;
+    }
+    if (snapshot->yaw_control_is_upper != 0u)
+    {
+        return (uint8_t)(snapshot->yaw_upper_configured != 0u &&
+                         snapshot->yaw_upper_health.healthy != 0u);
+    }
+    return (uint8_t)(snapshot->yaw_configured != 0u && snapshot->yaw_health.healthy != 0u);
+}
+
+static void GimbalAxisClear(GimbalMotor *motor)
+{
+    if (motor == NULL)
+    {
+        return;
+    }
+
+    GimbalPidClear(&motor->GimbalMotorAnglePid);
+    PID_clear(&motor->GimbalMotorGyroPid);
+    motor->angle_set = motor->angle;
+    motor->motor_gyro_set = motor->motor_gyro;
+    motor->raw_cmd_current = 0.0f;
+    motor->current_set = 0.0f;
+    motor->given_current = 0;
+}
+
+static void GimbalApplyHealthToControl(GimbalControl *control, const GimbalRuntimeSnapshot *snapshot)
+{
+    uint32_t yaw_mask;
+    uint8_t yaw_imu_ready;
+    uint8_t pitch_imu_ready;
+
+    if (control == NULL || snapshot == NULL)
+    {
+        return;
+    }
+
+    yaw_mask = (snapshot->yaw_control_is_upper != 0u) ?
+                   GIMBAL_FAULT_MASK_YAW_UPPER :
+                   GIMBAL_FAULT_MASK_YAW;
+    yaw_imu_ready = (uint8_t)(((snapshot->imu_required_mask & yaw_mask) == 0u ||
+                               snapshot->imu_online != 0u) ? 1u : 0u);
+    pitch_imu_ready = (uint8_t)(((snapshot->imu_required_mask & GIMBAL_FAULT_MASK_PITCH) == 0u ||
+                                 snapshot->imu_online != 0u) ? 1u : 0u);
+
+    if (yaw_imu_ready == 0u || GimbalYawControlHealthy(snapshot) == 0u)
+    {
+        GimbalAxisClear(&control->GimbalYawMotor);
+    }
+    if (pitch_imu_ready == 0u ||
+        snapshot->pitch_configured == 0u ||
+        snapshot->pitch_health.healthy == 0u)
+    {
+        GimbalAxisClear(&control->GimbalPitchMotor);
+    }
+}
+
+static void GimbalApplyOutputHealth(const GimbalRuntimeSnapshot *snapshot,
+                                    int16_t *yaw_current,
+                                    int16_t *yaw_upper_current,
+                                    int16_t *pitch_current)
+{
+    if (snapshot == NULL)
+    {
+        return;
+    }
+
+    if (yaw_current != NULL &&
+        (((snapshot->imu_required_mask & GIMBAL_FAULT_MASK_YAW) != 0u &&
+          snapshot->imu_online == 0u) ||
+         snapshot->yaw_configured == 0u ||
+         snapshot->yaw_health.healthy == 0u))
+    {
+        *yaw_current = 0;
+    }
+    if (yaw_upper_current != NULL &&
+        (((snapshot->imu_required_mask & GIMBAL_FAULT_MASK_YAW_UPPER) != 0u &&
+          snapshot->imu_online == 0u) ||
+         snapshot->yaw_upper_configured == 0u ||
+         snapshot->yaw_upper_health.healthy == 0u))
+    {
+        *yaw_upper_current = 0;
+    }
+    if (pitch_current != NULL &&
+        (((snapshot->imu_required_mask & GIMBAL_FAULT_MASK_PITCH) != 0u &&
+          snapshot->imu_online == 0u) ||
+         snapshot->pitch_configured == 0u ||
+         snapshot->pitch_health.healthy == 0u))
+    {
+        *pitch_current = 0;
+    }
+}
+
 static int16_t GimbalApplyOutputTurn(int16_t current, uint8_t turn)
 {
     return (turn != 0u) ? (int16_t)-current : current;
@@ -121,31 +267,66 @@ static uint8_t GimbalYawSoftLimitEnabled(void)
 
 static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot, GimbalControl *control)
 {
+    uint32_t now_ms;
+
     if (snapshot == NULL)
     {
         return;
     }
 
     memset(snapshot, 0, sizeof(*snapshot));
+    snapshot->ImuSnapshot.age_ms = GIMBAL_STATE_AGE_UNKNOWN;
     if (ManualInputGetCurrentCopy(&snapshot->ManualInputCopy) != 0u)
     {
         snapshot->manual_input = &snapshot->ManualInputCopy;
     }
+    snapshot->control_input_valid = ControlInputGetCopy(&snapshot->ControlInputCopy);
+    snapshot->manual_online = (uint8_t)(snapshot->manual_input != NULL &&
+                                        toe_is_error(DBUS_TOE) == 0u);
+    if (snapshot->control_input_valid != 0u && snapshot->manual_online != 0u)
+    {
+        snapshot->recovery_input_safe = ControlInputSwitchIsPos(
+            snapshot->ControlInputCopy.sw[INPUT_SW_GIMBAL_MODE],
+            g_config.manual_input.semantics.GimbalSafePos);
+    }
     snapshot->period_ms = RobotProfileGimbalControlPeriodMs();
     snapshot->period_us = (uint32_t)snapshot->period_ms * 1000u;
     if (InsSnapshotRead(&snapshot->ImuSnapshot) != 0 &&
-        snapshot->ImuSnapshot.age_ms <= (uint32_t)snapshot->period_ms * 3u + 2u)
+        snapshot->ImuSnapshot.age_ms <= GIMBAL_IMU_SNAPSHOT_TIMEOUT_MS)
     {
+        snapshot->imu_online = 1u;
         snapshot->gyro = snapshot->ImuSnapshot.gyro;
         snapshot->ins_angle = snapshot->ImuSnapshot.angle;
     }
     snapshot->yaw_control_is_upper = GimbalDualYawUseUpperControl();
+    snapshot->yaw_configured = (MotorCfgNodeId(&g_config.motor.yaw) != 0u) ? 1u : 0u;
+    snapshot->yaw_upper_configured = (MotorCfgNodeId(&g_config.motor.yaw_upper) != 0u) ? 1u : 0u;
+    snapshot->pitch_configured = (MotorCfgNodeId(&g_config.motor.pitch) != 0u) ? 1u : 0u;
+    GimbalMotorIdsEnsure();
+    now_ms = BspTimeGetTickMs();
+    GimbalMotorHealthRead(snapshot->yaw_configured, s_gimbal_yaw_id, now_ms, &snapshot->yaw_health);
+    GimbalMotorHealthRead(snapshot->yaw_upper_configured,
+                          s_gimbal_yaw_upper_id,
+                          now_ms,
+                          &snapshot->yaw_upper_health);
+    GimbalMotorHealthRead(snapshot->pitch_configured, s_gimbal_pitch_id, now_ms, &snapshot->pitch_health);
     snapshot->yaw_measure = (control != NULL) ? control->GimbalYawMotor.GimbalMotorMeasure : GimbalYawControlMeasurePoint();
     snapshot->pitch_measure = (control != NULL) ? control->GimbalPitchMotor.GimbalMotorMeasure : get_pitch_gimbal_motor_measure_point();
     snapshot->yaw_motor_cfg = GimbalYawControlMotorCfg();
     snapshot->pitch_motor_cfg = &g_config.motor.pitch;
     snapshot->trigger_motor_cfg = &g_config.motor.trigger;
     snapshot->run_variant = robot_mode_variant();
+    snapshot->imu_required_mask = GimbalFaultImuAxisMask(
+        snapshot->run_variant,
+        (snapshot->yaw_configured != 0u ? GIMBAL_FAULT_MASK_YAW : 0u) |
+            (snapshot->yaw_upper_configured != 0u ? GIMBAL_FAULT_MASK_YAW_UPPER : 0u) |
+            (snapshot->pitch_configured != 0u ? GIMBAL_FAULT_MASK_PITCH : 0u),
+        snapshot->yaw_control_is_upper,
+        (uint8_t)(RobotProfileNeedDualGimbalControlTask() != 0u &&
+                  g_config.dual_gimbal.enable != 0u));
+#if GIMBAL_USE_ENCODER_FEEDBACK
+    snapshot->imu_required_mask = 0u;
+#endif
     snapshot->PitchCaliMode = robot_mode_gimbal_pitch_cali();
     snapshot->yaw_turn = YAW_TURN ? 1u : 0u;
     snapshot->pitch_turn = PITCH_TURN ? 1u : 0u;
@@ -155,15 +336,21 @@ static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot, GimbalControl
         GimbalControlSnapshot fast = {0};
         const ManualInputState *manual_input = snapshot->manual_input;
 
-        fast.dbus_offline = toe_is_error(DBUS_TOE);
+        const ControlInputState *control_input = (snapshot->control_input_valid != 0u) ?
+                                                     &snapshot->ControlInputCopy :
+                                                     NULL;
+
+        fast.dbus_offline = (snapshot->manual_online != 0u) ? 0u : 1u;
         fast.run_variant = snapshot->run_variant;
         fast.PitchCaliMode = snapshot->PitchCaliMode;
-        fast.mode_sw = ControlInputSwitch(INPUT_SW_GIMBAL_MODE);
+        fast.mode_sw = (control_input != NULL) ?
+                           control_input->sw[INPUT_SW_GIMBAL_MODE] :
+                           ControlInputSwitchPosToRaw(g_config.manual_input.semantics.GimbalSafePos);
         fast.safe_pos = g_config.manual_input.semantics.GimbalSafePos;
         fast.active_source = remote_control_get_active_source();
         fast.image_auto_aim_requested = ImageRemoteAutoAimRequested() ? 1u : 0u;
-        fast.yaw_axis = input_axis(INPUT_AXIS_GIMBAL_YAW);
-        fast.pitch_axis = input_axis(INPUT_AXIS_GIMBAL_PITCH);
+        fast.yaw_axis = (control_input != NULL) ? control_input->axis[INPUT_AXIS_GIMBAL_YAW] : 0;
+        fast.pitch_axis = (control_input != NULL) ? control_input->axis[INPUT_AXIS_GIMBAL_PITCH] : 0;
         fast.mouse_x = (manual_input != NULL) ? manual_input->mouse.x : 0;
         fast.mouse_y = (manual_input != NULL) ? manual_input->mouse.y : 0;
         fast.rc_deadband = RC_DEADBAND;
@@ -271,7 +458,9 @@ static int16_t GimbalRunShootControl(const GimbalRuntimeSnapshot *snapshot)
     return ShootControlLoop();
 }
 
-static void GimbalStopOutputs(const MotorCurrentBind *bindings, uint8_t count)
+static void GimbalStopOutputs(const MotorCurrentBind *bindings,
+                              uint8_t count,
+                              const GimbalRuntimeSnapshot *snapshot)
 {
     int16_t zero_current[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT] = {0};
 
@@ -293,7 +482,7 @@ static void GimbalStopOutputs(const MotorCurrentBind *bindings, uint8_t count)
     }
     (void)MotorInstSetCurrentBindsBestEffort(bindings, zero_current, count);
     ShootStopOutputs();
-    GimbalWriteState();
+    GimbalWriteState(snapshot);
 }
 
 static void GimbalControlDelay(TickType_t *last_wake, uint16_t period_ms)

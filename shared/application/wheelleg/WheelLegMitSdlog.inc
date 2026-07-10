@@ -148,7 +148,7 @@ static void WheelLegSdLogWriteStatus(uint16_t faults,
     log.feedback_faults = s_wheelleg.feedback_faults;
     log.test_mode = (uint8_t)robot_mode_variant();
     log.profile_on = RobotProfileIsWheelLegMit();
-    log.manual_on = WheelLegManualEnabledBySwitch();
+    log.manual_on = s_wheelleg.manual_on;
 
     log.pitch_rad = pitch;
     log.roll_rad = roll;
@@ -220,13 +220,19 @@ static MotorId WheelLegActuatorFromU8(uint8_t id)
     return (MotorId)id;
 }
 
-static uint8_t WheelLegFeedbackFresh(const MotorState *fb, uint32_t now_ms)
+static uint8_t WheelLegFeedbackFresh(MotorId id, const MotorState *fb, uint32_t now_ms)
 {
-    if (fb == NULL || fb->online == 0u)
+    MotorHealthResult health;
+
+    if (MotorHealthEval(id,
+                        fb,
+                        now_ms,
+                        WHEELLEG_FEEDBACK_TIMEOUT_MS,
+                        &health) == 0u)
     {
         return 0u;
     }
-    return ((uint32_t)(now_ms - fb->lastRxTick) <= WHEELLEG_FEEDBACK_TIMEOUT_MS) ? 1u : 0u;
+    return health.healthy;
 }
 
 static void WheelLegSdLogFillMotorDiag(sdlog_wheelleg_mit_motor_diag_entry_t *entry,
@@ -253,7 +259,7 @@ static void WheelLegSdLogFillMotorDiag(sdlog_wheelleg_mit_motor_diag_entry_t *en
 
     if (fb != NULL)
     {
-        entry->fresh = WheelLegFeedbackFresh(fb, now_ms);
+        entry->fresh = WheelLegFeedbackFresh(id, fb, now_ms);
         entry->fb_online = fb->online;
         entry->fb_bus = fb->bus;
         entry->fb_rx_dlc = fb->rxDlc;
