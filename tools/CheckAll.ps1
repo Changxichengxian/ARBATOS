@@ -1220,7 +1220,7 @@ function Test-ProjectOwnedPathNames {
         if ($normPath -match '^tools/build/gcc_support/') {
             continue
         }
-        if ($normPath -eq 'tools/tests/stubs/cmsis_compiler.h') {
+        if ($normPath -match '^tools/tests/(?:[^/]+-)?stubs/cmsis_compiler\.h$') {
             continue
         }
         if ($normPath -match '^shared/components/algorithm/Include/') {
@@ -2881,6 +2881,22 @@ function Test-FaultIsolationBoundaries {
             Add-CheckError "${chassisRepoPath}: classic chassis per-axis isolation must keep '$required'."
         }
     }
+    $normalPowerFlowPattern =
+        'PID_calc\s*\([\s\S]{0,500}?' +
+        'ChassisFaultApplyControl\s*\(\s*ChassisMoveControlLoop\s*\)[\s\S]{0,700}?' +
+        'pre_power_current\s*\[\s*i\s*\]\s*=[\s\S]{0,500}?' +
+        'ChassisPowerControl\s*\(\s*ChassisMoveControlLoop\s*,\s*ChassisFaultPowerEligibleMask\s*\(\s*\)\s*\)'
+    if ($chassisContent -notmatch $normalPowerFlowPattern) {
+        Add-CheckError "${chassisRepoPath}: normal chassis flow must clear fault-held axes before pre-power sampling and shared power limiting."
+    }
+    $rawPowerFlowPattern =
+        'if\s*\(\s*ChassisMoveControlLoop->mode\s*==\s*CHASSIS_VECTOR_RAW\s*\)[\s\S]{0,900}?' +
+        'give_current\s*=[\s\S]{0,400}?' +
+        'ChassisFaultApplyControl\s*\(\s*ChassisMoveControlLoop\s*\)[\s\S]{0,400}?' +
+        'pre_power_current\s*\[\s*i\s*\]\s*=[\s\S]{0,300}?return\s*;'
+    if ($chassisContent -notmatch $rawPowerFlowPattern) {
+        Add-CheckError "${chassisRepoPath}: raw chassis flow must clear fault-held axes before pre-power sampling and return."
+    }
     if ($chassisContent -notmatch 'ChassisCurrentCmd\s*\[\s*i\s*\][\s\S]{0,220}?configuredMask') {
         Add-CheckError "${chassisRepoPath}: runtime-disabled chassis axes must be filtered at the final current output."
     }
@@ -2905,6 +2921,21 @@ function Test-FaultIsolationBoundaries {
     }
     if ($chassisContent -notmatch 'ChassisGetTurnaroundFrameYaw\s*\(\s*snapshot\s*,') {
         Add-CheckError "${chassisRepoPath}: core turnaround frame must consume the current chassis snapshot."
+    }
+
+    $chassisPowerRepoPath = "shared\application\chassis\ChassisPowerControl.c"
+    $chassisPowerContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $chassisPowerRepoPath) -Raw -Encoding UTF8
+    $demandBody = [regex]::Match(
+        $chassisPowerContent,
+        'static\s+uint8_t\s+ChassisPowerLimitCurrentsByDemand\s*\([\s\S]*?(?=\r?\nvoid\s+ChassisPowerControlApplySpeedLimit\s*\()').Value
+    if ([string]::IsNullOrWhiteSpace($demandBody) -or
+        $demandBody -notmatch '\(activeMotorMask\s*&\s*\(1u\s*<<\s*i\)\)\s*==\s*0u\s*\|\|\s*node->can_id\s*==\s*0u') {
+        Add-CheckError "${chassisPowerRepoPath}: demand allocation must exclude both masked and unconfigured axes."
+    }
+    foreach ($required in @("currents[i] = 0.0f", "power_model_currents[i] = 0.0f")) {
+        if ($demandBody -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${chassisPowerRepoPath}: inactive demand axes must clear '$required'."
+        }
     }
 
     $chassisBehaviourRepoPath = "shared\application\chassis\ChassisBehaviour.c"

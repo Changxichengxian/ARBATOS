@@ -496,7 +496,11 @@ static void ChassisControlLoop(ChassisMove *ChassisMoveControlLoop,
         {
             const int8_t motor_dir = (snapshot != NULL) ? snapshot->motor_dir[i] : g_config.chassis.motor_dir[i];
             ChassisMoveControlLoop->motor_chassis[i].give_current = (int16_t)(core_output.wheel_speed_set[i] * (fp32)motor_dir);
-            if (pre_power_current != NULL)
+        }
+        ChassisFaultApplyControl(ChassisMoveControlLoop);
+        if (pre_power_current != NULL)
+        {
+            for (i = 0; i < 4; i++)
             {
                 pre_power_current[i] = ChassisMoveControlLoop->motor_chassis[i].give_current;
             }
@@ -518,7 +522,13 @@ static void ChassisControlLoop(ChassisMove *ChassisMoveControlLoop,
     for (i = 0; i < 4; i++)
     {
         PID_calc(&ChassisMoveControlLoop->motor_speed_pid[i], ChassisMoveControlLoop->motor_chassis[i].speed, ChassisMoveControlLoop->motor_chassis[i].speed_set);
-        if (pre_power_current != NULL)
+    }
+
+    /* 故障轴不能先占用四轮共享功率额度，再在发送前才被清零。 */
+    ChassisFaultApplyControl(ChassisMoveControlLoop);
+    if (pre_power_current != NULL)
+    {
+        for (i = 0; i < 4; i++)
         {
             pre_power_current[i] = ChassisSdLogClampCurrent(ChassisMoveControlLoop->motor_speed_pid[i].out *
                                                                (fp32)((snapshot != NULL) ? snapshot->motor_dir[i] : g_config.chassis.motor_dir[i]));
@@ -526,7 +536,7 @@ static void ChassisControlLoop(ChassisMove *ChassisMoveControlLoop,
     }
 
     //功率控制
-    ChassisPowerControl(ChassisMoveControlLoop);
+    ChassisPowerControl(ChassisMoveControlLoop, ChassisFaultPowerEligibleMask());
 
     for (i = 0; i < 4; i++)
     {

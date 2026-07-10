@@ -101,7 +101,8 @@ fp32 ChassisPowerLimiterCalcPowerBudget(const ChassisPowerLimiterConfig *cfg,
     return cfg->power_limit * budget_scale;
 }
 
-uint8_t ChassisPowerLimiterIsPowerModelReady(const motor_node_param_t motor_nodes[4])
+uint8_t ChassisPowerLimiterIsPowerModelReady(const motor_node_param_t motor_nodes[4],
+                                                   uint32_t activeMotorMask)
 {
     uint8_t active_count = 0u;
 
@@ -116,7 +117,7 @@ uint8_t ChassisPowerLimiterIsPowerModelReady(const motor_node_param_t motor_node
         const MotorModelDbEntry *entry = NULL;
         ChassisPowerLimiterMotorPowerModel model = {0};
 
-        if (node->can_id == 0u)
+        if ((activeMotorMask & (1u << i)) == 0u || node->can_id == 0u)
         {
             continue;
         }
@@ -256,6 +257,7 @@ fp32 ChassisPowerLimiterScaleCurrents(fp32 currents[4],
 fp32 ChassisPowerLimiterScaleCurrentsByPowerModel(fp32 currents[4],
                                                          const motor_node_param_t motor_nodes[4],
                                                          const int16_t wheel_rpm[4],
+                                                         uint32_t activeMotorMask,
                                                          fp32 power_limit,
                                                          fp32 *out_total_power)
 {
@@ -277,8 +279,15 @@ fp32 ChassisPowerLimiterScaleCurrentsByPowerModel(fp32 currents[4],
         fp32 current_a = 0.0f;
         const fp32 omega = (fp32)wheel_rpm[i] * CHASSIS_POWER_LIMITER_RADPS_PER_RPM;
 
+        if ((activeMotorMask & (1u << i)) == 0u)
+        {
+            currents[i] = 0.0f;
+            continue;
+        }
+
         if (node->can_id == 0u)
         {
+            currents[i] = 0.0f;
             continue;
         }
 

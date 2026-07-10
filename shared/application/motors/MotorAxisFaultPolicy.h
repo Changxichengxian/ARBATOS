@@ -30,4 +30,13 @@ static inline MotorAxisFaultInhibitPlan MotorAxisFaultInhibitPlanMake(uint32_t c
     return plan;
 }
 
+static inline uint8_t MotorAxisFaultMustHoldZero(uint32_t holdZeroMask, uint8_t axis)
+{
+    if (axis >= 32u)
+    {
+        return 0u;
+    }
+    return ((holdZeroMask & (1u << axis)) != 0u) ? 1u : 0u;
+}
+
 #endif

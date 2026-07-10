@@ -186,7 +186,7 @@ static void ChassisFaultResetControl(ChassisMove *control, uint32_t mask)
 
     for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT; i++)
     {
-        if ((mask & (1u << i)) == 0u)
+        if (MotorAxisFaultMustHoldZero(mask, i) == 0u)
         {
             continue;
         }
@@ -286,4 +286,9 @@ static void ChassisFaultSyncInhibit(ChassisMove *control)
 static void ChassisFaultApplyControl(ChassisMove *control)
 {
     ChassisFaultResetControl(control, s_chassisFault.holdZeroMask);
+}
+
+static uint32_t ChassisFaultPowerEligibleMask(void)
+{
+    return s_chassisFault.configuredMask & ~s_chassisFault.holdZeroMask;
 }

@@ -15,14 +15,16 @@
 /**
   * @brief          limit the power, mainly limit motor current
   * @param[in]      ChassisPowerControl: chassis data
+  * @param[in]      activeMotorMask: axes allowed to share the power budget
   * @retval         none
   */
 /**
   * @brief          限制功率，主要限制电机电流
   * @param[in]      ChassisPowerControl: 底盘数据
- * @retval         none
+  * @param[in]      activeMotorMask: 允许参与共享功率预算的电机轴
+  * @retval         none
   */
-extern void ChassisPowerControl(ChassisMove *ChassisPowerControl);
+extern void ChassisPowerControl(ChassisMove *ChassisPowerControl, uint32_t activeMotorMask);
 extern void ChassisPowerControlApplySpeedLimit(ChassisMove *ChassisPowerControl);
 
 #endif

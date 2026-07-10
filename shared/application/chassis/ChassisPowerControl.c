@@ -286,6 +286,7 @@ static void ChassisPowerAllocateRemainingBudget(const fp32 demand[4],
 static uint8_t ChassisPowerLimitCurrentsByDemand(fp32 currents[4],
                                                       fp32 power_model_currents[4],
                                                       const int16_t wheel_rpm[4],
+                                                      uint32_t activeMotorMask,
                                                       const ChassisMove *ChassisPowerControl,
                                                       const ChassisPowerLimiterConfig *limiter_cfg,
                                                       fp32 power_budget)
@@ -309,8 +310,10 @@ static uint8_t ChassisPowerLimitCurrentsByDemand(fp32 currents[4],
     {
         const motor_node_param_t *const node = &g_config.motor.chassis[i];
 
-        if (node->can_id == 0u)
+        if ((activeMotorMask & (1u << i)) == 0u || node->can_id == 0u)
         {
+            currents[i] = 0.0f;
+            power_model_currents[i] = 0.0f;
             continue;
         }
 
@@ -378,18 +381,21 @@ static uint8_t ChassisPowerLimitCurrentsByDemand(fp32 currents[4],
     for (uint8_t i = 0u; i < 4u; i++)
     {
         fp32 limited_model_current = 0.0f;
-        const fp32 scale =
-            ChassisPowerLimiterLimitSingleCurrentByPowerModel(&g_config.motor.chassis[i],
-                                                                      wheel_rpm[i],
-                                                                      power_model_currents[i],
-                                                                      wheel_limit_power[i],
-                                                                      &limited_model_current,
-                                                                      NULL);
+        fp32 scale;
 
         if (active[i] == 0u)
         {
+            currents[i] = 0.0f;
+            power_model_currents[i] = 0.0f;
             continue;
         }
+
+        scale = ChassisPowerLimiterLimitSingleCurrentByPowerModel(&g_config.motor.chassis[i],
+                                                                   wheel_rpm[i],
+                                                                   power_model_currents[i],
+                                                                   wheel_limit_power[i],
+                                                                   &limited_model_current,
+                                                                   NULL);
 
         if (scale < 0.999f)
         {
@@ -430,14 +436,16 @@ void ChassisPowerControlApplySpeedLimit(ChassisMove *ChassisPowerControl)
 /**
   * @brief          limit the power, mainly limit motor current
   * @param[in]      ChassisPowerControl: chassis data
+  * @param[in]      activeMotorMask: axes allowed to share the power budget
   * @retval         none
   */
 /**
   * @brief          限制功率，主要限制电机电流
   * @param[in]      ChassisPowerControl: 底盘数据
+  * @param[in]      activeMotorMask: 允许参与共享功率预算的电机轴
   * @retval         none
   */
-void ChassisPowerControl(ChassisMove *ChassisPowerControl)
+void ChassisPowerControl(ChassisMove *ChassisPowerControl, uint32_t activeMotorMask)
 {
     fp32 ChassisPower = 0.0f;
     fp32 ChassisPowerBuffer = 0.0f;
@@ -457,9 +465,11 @@ void ChassisPowerControl(ChassisMove *ChassisPowerControl)
 
     for (uint8_t i = 0u; i < 4u; i++)
     {
-        currents[i] = ChassisPowerControl->motor_speed_pid[i].out;
+        const uint8_t active = ((activeMotorMask & (1u << i)) != 0u) ? 1u : 0u;
+
+        currents[i] = (active != 0u) ? ChassisPowerControl->motor_speed_pid[i].out : 0.0f;
         power_model_currents[i] = currents[i] * (fp32)g_config.chassis.motor_dir[i];
-        wheel_rpm[i] = (ChassisPowerControl->motor_chassis[i].measureValid != 0u) ?
+        wheel_rpm[i] = (active != 0u && ChassisPowerControl->motor_chassis[i].measureValid != 0u) ?
                            ChassisPowerControl->motor_chassis[i].measure.speed_rpm :
                            0;
     }
@@ -472,7 +482,8 @@ void ChassisPowerControl(ChassisMove *ChassisPowerControl)
     }
     else
     {
-        const uint8_t power_model_ready = ChassisPowerLimiterIsPowerModelReady(g_config.motor.chassis);
+        const uint8_t power_model_ready =
+            ChassisPowerLimiterIsPowerModelReady(g_config.motor.chassis, activeMotorMask);
 
         get_chassis_power_and_buffer((fp32 *)0, &ChassisPowerBuffer);
         runtime_power_limit = (fp32)get_chassis_power_limit();
@@ -489,6 +500,7 @@ void ChassisPowerControl(ChassisMove *ChassisPowerControl)
             (void)ChassisPowerLimiterScaleCurrentsByPowerModel(power_model_currents,
                                                                       g_config.motor.chassis,
                                                                       wheel_rpm,
+                                                                      activeMotorMask,
                                                                       FLT_MAX,
                                                                       &ChassisPower);
 
@@ -507,12 +519,14 @@ void ChassisPowerControl(ChassisMove *ChassisPowerControl)
             (void)ChassisPowerLimitCurrentsByDemand(currents,
                                                          power_model_currents,
                                                          wheel_rpm,
+                                                         activeMotorMask,
                                                          ChassisPowerControl,
                                                          &limiter_cfg,
                                                          power_budget);
             power_scale = ChassisPowerLimiterScaleCurrentsByPowerModel(power_model_currents,
                                                                               g_config.motor.chassis,
                                                                               wheel_rpm,
+                                                                              activeMotorMask,
                                                                               power_budget,
                                                                               NULL);
             if (power_scale < 1.0f)

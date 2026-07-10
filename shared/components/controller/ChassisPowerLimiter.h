@@ -32,7 +32,8 @@ extern fp32 ChassisPowerLimiterCalcPowerBudget(const ChassisPowerLimiterConfig *
                                                     fp32 ChassisPowerBuffer,
                                                     uint8_t buffer_limit_active);
 
-extern uint8_t ChassisPowerLimiterIsPowerModelReady(const motor_node_param_t motor_nodes[4]);
+extern uint8_t ChassisPowerLimiterIsPowerModelReady(const motor_node_param_t motor_nodes[4],
+                                                          uint32_t activeMotorMask);
 
 extern fp32 ChassisPowerLimiterScaleCurrents(fp32 currents[4],
                                                  fp32 total_current_limit,
@@ -41,6 +42,7 @@ extern fp32 ChassisPowerLimiterScaleCurrents(fp32 currents[4],
 extern fp32 ChassisPowerLimiterScaleCurrentsByPowerModel(fp32 currents[4],
                                                                 const motor_node_param_t motor_nodes[4],
                                                                 const int16_t wheel_rpm[4],
+                                                                uint32_t activeMotorMask,
                                                                 fp32 power_limit,
                                                                 fp32 *out_total_power);
 
