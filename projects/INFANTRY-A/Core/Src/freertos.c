@@ -495,14 +495,14 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 
 void vApplicationMallocFailedHook(void)
 {
-  const TaskHandle_t current_task = xTaskGetCurrentTaskHandle();
+  const TaskHandle_t current_task = RobotFaultCurrentTaskHandle();
 
   RobotFaultEnterSafeStateEx((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
                                   0u,
                                   0u,
-                                  (uint32_t)current_task,
+                                  (uint32_t)(uintptr_t)current_task,
                                   WatchRtosTaskNameFromHandle(current_task,
-                                                                    pcTaskGetTaskName(NULL)));
+                                                                    RobotFaultTaskNameOrUnknown(current_task)));
   RobotFaultHaltForever();
 }
 

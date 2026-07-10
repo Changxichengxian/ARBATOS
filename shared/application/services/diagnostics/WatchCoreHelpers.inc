@@ -32,13 +32,6 @@ static fp32 WatchEcdToDeg(MotorModel model, uint16_t ecd)
 }
 #endif
 
-#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
-static fp32 WatchAbsFp32(fp32 value)
-{
-    return (value >= 0.0f) ? value : -value;
-}
-#endif
-
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
 static uint8_t WatchBlockActiveLocomotionClassic(void)
 {

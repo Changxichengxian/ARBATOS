@@ -8,6 +8,8 @@
 
 #include <stdint.h>
 
+#include "BspCan.h"
+#include "CanTxTask.h"
 #include "LowCmd.h"
 #include "main.h"
 #include "RobotLifecycle.h"
@@ -23,7 +25,26 @@ typedef enum
     ROBOT_FAULT_REASON_MEMMANAGE = 5u,
     ROBOT_FAULT_REASON_BUSFAULT = 6u,
     ROBOT_FAULT_REASON_USAGEFAULT = 7u,
+    ROBOT_FAULT_REASON_NMI = 8u,
 } RobotFaultReason;
+
+static inline TaskHandle_t RobotFaultCurrentTaskHandle(void)
+{
+    if (xTaskGetSchedulerState() != taskSCHEDULER_RUNNING)
+    {
+        return NULL;
+    }
+    return xTaskGetCurrentTaskHandle();
+}
+
+static inline const char *RobotFaultTaskNameOrUnknown(TaskHandle_t task)
+{
+    if (xTaskGetSchedulerState() != taskSCHEDULER_RUNNING || task == NULL)
+    {
+        return "?";
+    }
+    return pcTaskGetName(task);
+}
 
 static inline void RobotFaultEnterSafeStateEx(uint32_t reason,
                                                    uint32_t arg0,
@@ -31,11 +52,18 @@ static inline void RobotFaultEnterSafeStateEx(uint32_t reason,
                                                    uint32_t task_handle,
                                                    const char *task_name)
 {
+    /* 先直发安全帧，后面的诊断即使再次出错，也不会留下旧输出。 */
+    CanTxEmergencyStopNow();
     WatchDiagSetErrorArgs(arg0, arg1);
     WatchDiagMarkErrorHandler(HAL_GetTick(), __get_IPSR());
     WatchDiagMarkFatal(reason, task_handle, task_name);
-    RobotLifecycleEnterFault(ROBOT_LIFECYCLE_REASON_FATAL_FAULT);
-    (void)LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_FAULT);
+
+    /* 中断和 CPU 异常上下文不能进入依赖 FreeRTOS 临界区的状态链。 */
+    if (__get_IPSR() == 0u && xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
+    {
+        RobotLifecycleEnterFault(ROBOT_LIFECYCLE_REASON_FATAL_FAULT);
+        (void)LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_FAULT);
+    }
 }
 
 static inline void RobotFaultEnterSafeState(uint32_t reason,
@@ -46,26 +74,58 @@ static inline void RobotFaultEnterSafeState(uint32_t reason,
     RobotFaultEnterSafeStateEx(reason, arg0, arg1, 0u, task_name);
 }
 
-static inline void RobotFaultHaltForever(void)
+static inline void RobotFaultResetNow(void)
 {
+    __disable_irq();
+    BspCanFaultWaitTxIdle();
+
     if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)
     {
         __BKPT(0);
     }
 
-    __disable_irq();
-    for (;;)
-    {
-        __NOP();
-    }
+    NVIC_SystemReset();
 }
 
-static inline void RobotFaultRecordAndHalt(uint32_t reason,
+/* 兼容现有工程入口；行为已经改为有界发送后系统复位。 */
+static inline void RobotFaultHaltForever(void)
+{
+    RobotFaultResetNow();
+}
+
+static inline void RobotFaultResetFromException(uint32_t reason,
+                                                uint32_t arg0,
+                                                uint32_t arg1)
+{
+    (void)reason;
+    (void)arg0;
+    (void)arg1;
+
+    __disable_irq();
+    CanTxEmergencyStopNow();
+    RobotFaultResetNow();
+}
+
+static inline void RobotFaultRecordAndReset(uint32_t reason,
                                                uint32_t arg0,
                                                uint32_t arg1)
 {
+    if (__get_IPSR() != 0u)
+    {
+        RobotFaultResetFromException(reason, arg0, arg1);
+        return;
+    }
+
     RobotFaultEnterSafeState(reason, arg0, arg1, 0);
-    RobotFaultHaltForever();
+    RobotFaultResetNow();
+}
+
+/* 旧名字保留给尚未迁移的 CubeMX USER CODE 区。 */
+static inline void RobotFaultRecordAndHalt(uint32_t reason,
+                                           uint32_t arg0,
+                                           uint32_t arg1)
+{
+    RobotFaultRecordAndReset(reason, arg0, arg1);
 }
 
 #endif

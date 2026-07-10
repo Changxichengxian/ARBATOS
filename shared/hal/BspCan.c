@@ -25,6 +25,9 @@ extern CAN_HandleTypeDef hcan2;
 // ===== RX ring buffers =====
 #define BSP_CAN_RX_RING_SIZE 128u
 #define BSP_CAN_STD_ID_DIAG_COUNT 16u
+#define BSP_CAN_FAULT_ABORT_SPIN_LIMIT 100000u
+#define BSP_CAN_FAULT_TX_SPIN_LIMIT 400000u
+#define BSP_CAN_FAULT_FLUSH_SPIN_LIMIT 2000000u
 typedef char _check_can_rx_ring_pow2[(BSP_CAN_RX_RING_SIZE & (BSP_CAN_RX_RING_SIZE - 1u)) == 0u ? 1 : -1];
 
 static volatile uint16_t can1_rx_head = 0u;
@@ -76,6 +79,7 @@ static volatile uint32_t can3_tx_std_id_count[BSP_CAN_STD_ID_DIAG_COUNT];
 #endif
 
 static TaskHandle_t CanRxTask_handle = NULL;
+static volatile uint8_t can_fault_locked = 0u;
 
 static volatile uint32_t can1_last_error = BSP_CAN_ERR_NONE;
 static volatile uint32_t can2_last_error = BSP_CAN_ERR_NONE;
@@ -89,6 +93,7 @@ static volatile uint8_t can3_last_tx_status = 0u;
 
 static void BspCanResetState(void)
 {
+    can_fault_locked = 0u;
     can1_rx_head = 0u;
     can1_rx_tail = 0u;
     can2_rx_head = 0u;
@@ -770,7 +775,7 @@ int BspCanTxFlags(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_t d
     volatile uint8_t *last_tx_dlc = NULL;
     HAL_StatusTypeDef ret = HAL_ERROR;
 
-    if (data == NULL || dlc > 8u)
+    if (can_fault_locked != 0u || data == NULL || dlc > 8u)
     {
         return (int)HAL_ERROR;
     }
@@ -892,6 +897,186 @@ int BspCanTxFlags(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_t d
 int BspCanTx(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_t dlc)
 {
     return BspCanTxFlags(bus, std_id, data, dlc, 0u);
+}
+
+static uint8_t BspCanFaultBusIdle(uint8_t bus)
+{
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    FDCAN_HandleTypeDef *hfdcan = BspCanFdcanHandle(bus);
+
+    if (hfdcan == NULL || hfdcan->State != HAL_FDCAN_STATE_BUSY ||
+        hfdcan->Init.TxFifoQueueElmtsNbr == 0u)
+    {
+        return 1u;
+    }
+    return (HAL_FDCAN_GetTxFifoFreeLevel(hfdcan) >= hfdcan->Init.TxFifoQueueElmtsNbr) ? 1u : 0u;
+#elif defined(HAL_CAN_MODULE_ENABLED)
+    CAN_HandleTypeDef *hcan;
+
+    if (bus == 1u)
+    {
+        hcan = &hcan1;
+    }
+    else if (bus == 2u)
+    {
+        hcan = &hcan2;
+    }
+    else
+    {
+        return 1u;
+    }
+    if (hcan->State != HAL_CAN_STATE_READY && hcan->State != HAL_CAN_STATE_LISTENING)
+    {
+        return 1u;
+    }
+    return (HAL_CAN_GetTxMailboxesFreeLevel(hcan) >= 3u) ? 1u : 0u;
+#endif
+}
+
+static uint8_t BspCanFaultAllBusesIdle(void)
+{
+    if (BspCanFaultBusIdle(1u) == 0u || BspCanFaultBusIdle(2u) == 0u)
+    {
+        return 0u;
+    }
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    if (BspCanFaultBusIdle(3u) == 0u)
+    {
+        return 0u;
+    }
+#endif
+    return 1u;
+}
+
+static void BspCanFaultWaitTxIdleBounded(uint32_t spin_limit)
+{
+    while (spin_limit > 0u && BspCanFaultAllBusesIdle() == 0u)
+    {
+        spin_limit--;
+        __NOP();
+    }
+}
+
+static void BspCanFaultAbortPending(void)
+{
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    (void)HAL_FDCAN_AbortTxRequest(&hfdcan1, 0xFFFFFFFFu);
+    (void)HAL_FDCAN_AbortTxRequest(&hfdcan2, 0xFFFFFFFFu);
+    (void)HAL_FDCAN_AbortTxRequest(&hfdcan3, 0xFFFFFFFFu);
+#elif defined(HAL_CAN_MODULE_ENABLED)
+    const uint32_t mailboxes = CAN_TX_MAILBOX0 | CAN_TX_MAILBOX1 | CAN_TX_MAILBOX2;
+
+    (void)HAL_CAN_AbortTxRequest(&hcan1, mailboxes);
+    (void)HAL_CAN_AbortTxRequest(&hcan2, mailboxes);
+#endif
+}
+
+void BspCanFaultLock(void)
+{
+    const uint32_t primask = __get_PRIMASK();
+
+    __disable_irq();
+    if (can_fault_locked == 0u)
+    {
+        can_fault_locked = 1u;
+        __DMB();
+        BspCanFaultAbortPending();
+        BspCanFaultWaitTxIdleBounded(BSP_CAN_FAULT_ABORT_SPIN_LIMIT);
+    }
+    if (primask == 0u)
+    {
+        __enable_irq();
+    }
+}
+
+uint8_t BspCanFaultLocked(void)
+{
+    return can_fault_locked;
+}
+
+int BspCanFaultTx(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_t dlc)
+{
+    uint32_t spin = BSP_CAN_FAULT_TX_SPIN_LIMIT;
+
+    if (can_fault_locked == 0u || data == NULL || dlc > 8u || std_id > 0x7FFu)
+    {
+        return (int)HAL_ERROR;
+    }
+
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    {
+        FDCAN_HandleTypeDef *hfdcan = BspCanFdcanHandle(bus);
+        FDCAN_TxHeaderTypeDef header = {0};
+
+        if (hfdcan == NULL || hfdcan->State != HAL_FDCAN_STATE_BUSY)
+        {
+            return (int)HAL_ERROR;
+        }
+        header.Identifier = std_id;
+        header.IdType = FDCAN_STANDARD_ID;
+        header.TxFrameType = FDCAN_DATA_FRAME;
+        header.DataLength = BspCanFdcanEncodeDlc(dlc);
+        header.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+        header.BitRateSwitch = FDCAN_BRS_OFF;
+        header.FDFormat = FDCAN_CLASSIC_CAN;
+        header.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+        header.MessageMarker = 0u;
+
+        while (spin > 0u)
+        {
+            if (HAL_FDCAN_GetTxFifoFreeLevel(hfdcan) > 0u)
+            {
+                return (int)HAL_FDCAN_AddMessageToTxFifoQ(hfdcan, &header, (uint8_t *)data);
+            }
+            spin--;
+            __NOP();
+        }
+    }
+#elif defined(HAL_CAN_MODULE_ENABLED)
+    {
+        CAN_HandleTypeDef *hcan;
+        CAN_TxHeaderTypeDef header = {0};
+        uint32_t mailbox = 0u;
+
+        if (bus == 1u)
+        {
+            hcan = &hcan1;
+        }
+        else if (bus == 2u)
+        {
+            hcan = &hcan2;
+        }
+        else
+        {
+            return (int)HAL_ERROR;
+        }
+        if (hcan->State != HAL_CAN_STATE_READY && hcan->State != HAL_CAN_STATE_LISTENING)
+        {
+            return (int)HAL_ERROR;
+        }
+        header.StdId = std_id;
+        header.IDE = CAN_ID_STD;
+        header.RTR = CAN_RTR_DATA;
+        header.DLC = dlc;
+
+        while (spin > 0u)
+        {
+            if (HAL_CAN_GetTxMailboxesFreeLevel(hcan) > 0u)
+            {
+                return (int)HAL_CAN_AddTxMessage(hcan, &header, (uint8_t *)data, &mailbox);
+            }
+            spin--;
+            __NOP();
+        }
+    }
+#endif
+
+    return (int)HAL_TIMEOUT;
+}
+
+void BspCanFaultWaitTxIdle(void)
+{
+    BspCanFaultWaitTxIdleBounded(BSP_CAN_FAULT_FLUSH_SPIN_LIMIT);
 }
 
 int BspCanFdSetDataBitrate(uint8_t bus, uint32_t data_bitrate)

@@ -26,7 +26,7 @@
 #pragma push
 #pragma diag_suppress 188
 #endif
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__CC_ARM)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-braces"
 #endif
@@ -37,7 +37,7 @@ Config g_config = {
 #include "ConfigInput.inc"
 #include "ConfigDiagnostics.inc"
 };
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__CC_ARM)
 #pragma GCC diagnostic pop
 #endif
 #if defined(__CC_ARM) || defined(__ARMCC_VERSION)

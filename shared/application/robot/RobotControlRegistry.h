@@ -11,6 +11,9 @@
 #include "MotorInst.h"
 #include "RobotTaskBuildConfig.h"
 #include "RobotTaskProfile.h"
+#if ROBOT_TASK_BUILD_CAN_COMMAND_TX
+#include "CanTxTask.h"
+#endif
 
 static inline void RobotControlRegisterIfEnabled(const ControlController *controller,
                                                      RobotTaskModule module)
@@ -237,6 +240,9 @@ static inline void RobotControlBootstrapProfileDefaults(void)
     RobotControlRegisterProfileDefaults();
     RobotControlStartProfileDefaults();
     (void)ControlMgrUpdateAll(&context);
+#if ROBOT_TASK_BUILD_CAN_COMMAND_TX
+    CanTxEmergencyPrepare();
+#endif
 }
 
 #endif

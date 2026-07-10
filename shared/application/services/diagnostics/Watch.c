@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "RobotConfig.h"
+#include "RobotTaskBuildConfig.h"
 #include "main.h"
 
 #include "FreeRTOS.h"
@@ -110,49 +111,6 @@ static MotorId WatchFrictionMotorId(uint8_t index)
 
     return s_watch_friction_motor_ids[index];
 }
-#endif
-
-#if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
-typedef struct
-{
-    uint8_t active;
-    uint8_t valid;
-    uint16_t reserved0;
-    uint32_t sample_count;
-    fp32 target_v_sum;
-    fp32 target_v_abs_max;
-    fp32 target_yaw_rate_sum;
-    fp32 target_yaw_rate_abs_max;
-    fp32 x_dot_sum;
-    fp32 x_dot_min;
-    fp32 x_dot_max;
-    fp32 pitch_sum;
-    fp32 pitch_min;
-    fp32 pitch_max;
-    fp32 lqr_pitch_gyro_sum;
-    fp32 lqr_pitch_gyro_min;
-    fp32 lqr_pitch_gyro_max;
-    fp32 yaw_gyro_sum;
-    fp32 yaw_gyro_abs_max;
-    fp32 wheel_sum_sum;
-    fp32 wheel_sum_abs_max;
-    fp32 wheel_diff_sum;
-    fp32 wheel_diff_abs_max;
-    fp32 lqr_v_err_sum;
-    fp32 lqr_v_err_min;
-    fp32 lqr_v_err_max;
-    fp32 lqr_x_sum;
-    fp32 lqr_x_min;
-    fp32 lqr_x_max;
-    fp32 lqr_pitch_err_sum;
-    fp32 lqr_pitch_err_min;
-    fp32 lqr_pitch_err_max;
-    fp32 lqr_left_pitch_err_sum;
-    fp32 lqr_left_pitch_err_min;
-    fp32 lqr_left_pitch_err_max;
-} WatchWheelLegRunCapture;
-
-static WatchWheelLegRunCapture s_wheelleg_run_capture;
 #endif
 
 // Some targets do not compile ArmTask.c at all. Keep watch linkable there and

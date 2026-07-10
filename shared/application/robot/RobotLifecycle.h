@@ -24,6 +24,7 @@ typedef enum
     ROBOT_LIFECYCLE_REASON_MANUAL_SAFE_SWITCH,
     ROBOT_LIFECYCLE_REASON_FAULT_LATCHED,
     ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
+    ROBOT_LIFECYCLE_REASON_STARTUP_SAFE_REQUIRED,
 } RobotLifecycleReason;
 
 typedef struct
@@ -37,6 +38,7 @@ typedef struct
     uint8_t manual_online;
     uint8_t manual_safe;
     uint8_t fault_latched;
+    uint8_t startup_safe_seen;
 } RobotLifecycleSnapshot;
 
 void RobotLifecycleInit(void);

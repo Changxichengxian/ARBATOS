@@ -294,7 +294,7 @@ extern ext_projectile_allowance_t bullet_remaining_t;
 
 
 extern void init_referee_struct_data(void);
-extern void RefereeDataSolve(uint8_t *frame);
+extern uint8_t RefereeDataSolve(const uint8_t *frame);
 
 extern void get_chassis_power_and_buffer(fp32 *power, fp32 *buffer);
 extern uint16_t get_chassis_power_limit(void);

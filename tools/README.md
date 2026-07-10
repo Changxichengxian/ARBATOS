@@ -40,6 +40,18 @@ GitHub 上的 `.github/workflows/check-all.yml` 也会跑同一个脚本。也�
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\CheckAll.ps1 -AllText
 ```
 
+## 输入与裁判协议回归
+
+改 DBUS 内容校验或裁判系统拆帧后，可在仓库根目录运行轻量主机测试：
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestInputReferee.ps1
+```
+
+它会用 Zig 自带的 C 编译器直接编译生产用的 DBUS 解码、裁判 CRC/拆帧和数据更新代码，覆盖坏拨杆、越界通道、
+CRC8/CRC16 错误、分段收包、未知新命令和 1 字节 payload。Zig 目前只是这项本地测试的可选依赖，常规
+`CheckAll.ps1` 和 GitHub 检查不会静默增加这个要求；未安装时脚本会明确报错。
+
 ## 构建入口
 
 统一入口是：

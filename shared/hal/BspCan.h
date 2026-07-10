@@ -45,6 +45,15 @@ int BspCanTx(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_t dlc);
 int BspCanTxFlags(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_t dlc, uint8_t flags);
 int BspCanFdSetDataBitrate(uint8_t bus, uint32_t data_bitrate);
 
+/*
+ * 致命故障专用：锁住普通发送并撤销尚未发出的旧帧。
+ * BspCanFaultTx() 可在锁住后直发安全帧，不依赖任务调度；等待接口始终有界。
+ */
+void BspCanFaultLock(void);
+int BspCanFaultTx(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_t dlc);
+void BspCanFaultWaitTxIdle(void);
+uint8_t BspCanFaultLocked(void);
+
 uint32_t BspCanGetLastError(uint8_t bus);
 uint8_t BspCanGetLastTxStatus(uint8_t bus);
 uint16_t BspCanGetLastTxStdId(uint8_t bus);

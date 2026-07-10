@@ -1206,7 +1206,7 @@ static DWORD get_fat (		/* 0xFFFFFFFF:Disk error, 1:Internal error, 2..0x7FFFFFF
 				}
 			}
 			/* fall through */
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__CC_ARM)
 			__attribute__((fallthrough));
 #endif
 #endif

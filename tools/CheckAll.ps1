@@ -1372,6 +1372,53 @@ function Test-ControlRegistryBoundaries {
 function Test-FaultGuardBoundaries {
     Write-Host "[check] fault guard boundaries"
 
+    $guardRepoPath = "shared\application\services\diagnostics\RobotFaultGuard.h"
+    $guardPath = Join-Path $script:RepoRoot $guardRepoPath
+    $guardContent = Get-Content -LiteralPath $guardPath -Raw
+    foreach ($required in @("CanTxEmergencyStopNow", "BspCanFaultWaitTxIdle", "NVIC_SystemReset", "RobotFaultResetFromException")) {
+        if ($guardContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${guardRepoPath}: shared fatal path must use '$required'."
+        }
+    }
+    if ($guardContent -notmatch 'RobotFaultEnterSafeStateEx[\s\S]{0,500}?CanTxEmergencyStopNow[\s\S]{0,500}?WatchDiagMarkFatal') {
+        Add-CheckError "${guardRepoPath}: fatal path must lock and emit safe output before diagnostic work."
+    }
+    if ($guardContent -match 'for\s*\(\s*;\s*;\s*\)') {
+        Add-CheckError "${guardRepoPath}: fatal path must end in bounded reset, not a permanent loop."
+    }
+
+    $canTxRepoPath = "shared\application\comm\can\CanTxTask.c"
+    $canTxContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $canTxRepoPath) -Raw
+    foreach ($required in @(
+            "CanTxEmergencyPrepare",
+            "CanTxEmergencyTableValid",
+            "CAN_TX_EMERGENCY_MAGIC",
+            "s_can_tx_emergency_hash",
+            "BspCanFaultLock",
+            "BspCanFaultTx"
+        )) {
+        if ($canTxContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${canTxRepoPath}: emergency output path must use '$required'."
+        }
+    }
+    if ($canTxContent -notmatch 'mit_count\s*>\s*\(uint8_t\)MotorCount' -or
+        $canTxContent -notmatch 'route->bus\s*<\s*1u[\s\S]{0,200}?route->std_id\s*>\s*0x7FFu') {
+        Add-CheckError "${canTxRepoPath}: fault consumer must bound the cached route count, bus and standard CAN ID."
+    }
+
+    $registryRepoPath = "shared\application\robot\RobotControlRegistry.h"
+    $registryContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $registryRepoPath) -Raw
+    if ($registryContent -notmatch 'RobotControlBootstrapProfileDefaults[\s\S]{0,1000}?CanTxEmergencyPrepare\s*\(') {
+        Add-CheckError "${registryRepoPath}: emergency routes must be prepared before RTOS task creation."
+    }
+
+    $lifecycleRepoPath = "shared\application\robot\RobotLifecycle.c"
+    $lifecycleContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $lifecycleRepoPath) -Raw
+    if ($lifecycleContent -notmatch 'startup_safe_seen' -or
+        $lifecycleContent -notmatch 'ROBOT_LIFECYCLE_REASON_STARTUP_SAFE_REQUIRED') {
+        Add-CheckError "${lifecycleRepoPath}: every MCU start must see a valid manual safe position before ACTIVE."
+    }
+
     $mainFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "projects") -Recurse -Filter "main.c" |
         Where-Object { $_.FullName -match '\\Core\\Src\\main\.c$' } |
         Sort-Object FullName)
@@ -1387,12 +1434,13 @@ function Test-FaultGuardBoundaries {
         }
     }
 
-    $h7ItFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "projects") -Recurse -Filter "stm32h7xx_it.c" |
+    $faultItFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "projects") -Recurse -Filter "stm32*xx_it.c" |
         Sort-Object FullName)
-    foreach ($itFile in $h7ItFiles) {
+    foreach ($itFile in $faultItFiles) {
         $content = Get-Content -LiteralPath $itFile.FullName -Raw
         $repoPath = Format-RepoPath $itFile.FullName
         foreach ($reason in @(
+                "ROBOT_FAULT_REASON_NMI",
                 "ROBOT_FAULT_REASON_HARDFAULT",
                 "ROBOT_FAULT_REASON_MEMMANAGE",
                 "ROBOT_FAULT_REASON_BUSFAULT",
@@ -1401,6 +1449,9 @@ function Test-FaultGuardBoundaries {
             if ($content -notmatch $reason) {
                 Add-CheckError "${repoPath}: Cortex fault handler must record $reason."
             }
+        }
+        if ($content -notmatch 'RobotFaultResetFromException\s*\(') {
+            Add-CheckError "${repoPath}: Cortex fault handlers must use the scheduler-independent bounded reset path."
         }
     }
 

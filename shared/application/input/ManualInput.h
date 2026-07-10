@@ -176,7 +176,7 @@ typedef char ManualInputKeyOffsetCheck[(offsetof(ManualInputState, key) == MANUA
  * - `ControlInput.c`: remaps the merged `ManualInputState` into game-facing axes/switches via `g_config.input`.
  *
  * If you want to:
- * - change SBUS/DBUS decode: edit `ManualInputOnSbusFrame()` / `sbus_to_rc()` in `ManualInput.c`
+ * - change SBUS/DBUS decode: edit `ManualInputDbus.h` and `ManualInputOnSbusFrame()` in `ManualInput.c`
  * - change which source wins: edit `ManualInputUpdateSource()` and the `ManualInput*` merge helpers
  * - change axis/switch mapping: edit `ControlInput.c` and the `input` block in `Robotconfig/<TARGET>/RobotConfig.c`
  */
@@ -190,6 +190,7 @@ extern void ManualInputUpdateSource(uint8_t source, const ManualInputState *rc);
 extern uint8_t ManualInputGetActiveSource(void);
 extern void ManualInputRefresh(void);
 extern uint32_t ManualInputGetSbusFrameCount(void);
+extern uint32_t ManualInputGetSbusRejectCount(void);
 extern uint32_t ManualInputGetSetSourceCount(void);
 
 extern void remote_control_init(void);
@@ -207,6 +208,7 @@ extern void remote_control_log_raw_source(uint8_t source,
 extern uint8_t remote_control_get_active_source(void);
 extern void remote_control_refresh(void);
 extern uint32_t remote_control_get_sbus_frame_count(void);
+extern uint32_t remote_control_get_sbus_reject_count(void);
 extern uint32_t remote_control_get_set_source_count(void);
 extern uint8_t RC_data_is_error(void);
 extern void slove_RC_lost(void);

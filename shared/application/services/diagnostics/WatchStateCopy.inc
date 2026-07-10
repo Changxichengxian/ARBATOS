@@ -172,7 +172,9 @@ static void WatchCopyDualGimbal(void)
     }
 
     memset(&debug, 0, sizeof(debug));
+#if ROBOT_TASK_BUILD_ANY_GIMBAL
     (void)GimbalDualYawDebugRead(&debug);
+#endif
 
     g_watch.dual_gimbal.active = debug.active;
     g_watch.dual_gimbal.upper_online = debug.upper_online;

@@ -92,6 +92,11 @@ static RobotLifecycleState RobotLifecycleResolve(uint8_t manual_online,
         *reason = ROBOT_LIFECYCLE_REASON_MANUAL_SAFE_SWITCH;
         return ROBOT_LIFECYCLE_SAFE;
     }
+    if (snapshot->startup_safe_seen == 0u)
+    {
+        *reason = ROBOT_LIFECYCLE_REASON_STARTUP_SAFE_REQUIRED;
+        return ROBOT_LIFECYCLE_SAFE;
+    }
 
     *reason = ROBOT_LIFECYCLE_REASON_NONE;
     return ROBOT_LIFECYCLE_ACTIVE;
@@ -162,6 +167,11 @@ void RobotLifecycleUpdate(void)
         g_robot_lifecycle.reason = ROBOT_LIFECYCLE_REASON_BOOT;
         g_robot_lifecycle.enter_tick = HAL_GetTick();
         g_robot_lifecycle_inited = 1u;
+    }
+    if (manual_online != 0u && manual_safe != 0u)
+    {
+        /* 每次 MCU 启动后必须真实见过一次安全档，复位时保持运行档不会自动重新上力。 */
+        g_robot_lifecycle.startup_safe_seen = 1u;
     }
     snapshot = g_robot_lifecycle;
 

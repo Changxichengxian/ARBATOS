@@ -57,9 +57,9 @@ static uint16_t student_interactive_data_len = 0u;
 static uint8_t RefereeTxSeq = 0u;
 static uint8_t RefereeTxFrameBuf[REF_PROTOCOL_FRAME_MAX_SIZE];
 
-static void RefereeParseStudentInteractive(const uint8_t *payload, uint16_t payload_len);
+static uint8_t RefereeParseStudentInteractive(const uint8_t *payload, uint16_t payload_len);
 static int RefereeSendFrame(uint16_t cmd_id, const uint8_t *payload, uint16_t payload_len);
-static void RefereeCopyPayload(void *dst, uint16_t dst_size, const uint8_t *payload, uint16_t payload_len);
+static uint8_t RefereeCopyPayload(void *dst, uint16_t dst_size, const uint8_t *payload, uint16_t payload_len);
 static void RefereeUiStoreU32Le(uint8_t *dst, uint32_t value);
 static void RefereeUiPackGraphic(const RefereeUiGraphic *graphic, uint8_t out[REFEREE_UI_GRAPHIC_RAW_LEN]);
 static uint16_t RefereeUiCountToDataCmdId(uint8_t count);
@@ -718,13 +718,19 @@ void init_referee_struct_data(void)
 
 }
 
-void RefereeDataSolve(uint8_t *frame)
+uint8_t RefereeDataSolve(const uint8_t *frame)
 {
     // 函数地图：拆帧头和 cmd_id；按 cmd_id 拷贝到对应全局结构；重要数据顺手写日志。
     uint16_t cmd_id = 0;
     uint16_t payload_len = 0u;
+    uint8_t solved = 0u;
 
     uint8_t index = 0;
+
+    if (frame == NULL)
+    {
+        return 0u;
+    }
 
     memcpy(&RefereeReceiveHeader, frame, sizeof(frame_header_struct_t));
 
@@ -732,138 +738,220 @@ void RefereeDataSolve(uint8_t *frame)
 
     memcpy(&cmd_id, frame + index, sizeof(uint16_t));
     index += sizeof(uint16_t);
-    if (RefereeReceiveHeader.data_length >= (uint16_t)sizeof(uint16_t))
-    {
-        payload_len = (uint16_t)(RefereeReceiveHeader.data_length - sizeof(uint16_t));
-    }
+    // 协议帧头的 data_length 只表示 payload，cmd_id 不包含在其中。
+    payload_len = RefereeReceiveHeader.data_length;
 
     switch (cmd_id)
     {
         case GAME_STATE_CMD_ID:
         {
-            RefereeCopyPayload(&game_state, (uint16_t)sizeof(ext_game_state_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_GAME_STATE, &game_state, (uint16_t)sizeof(game_state));
+            solved = RefereeCopyPayload(&game_state, (uint16_t)sizeof(ext_game_state_t), frame + index, payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_GAME_STATE, &game_state, (uint16_t)sizeof(game_state));
+            }
         }
         break;
         case GAME_RESULT_CMD_ID:
         {
-            RefereeCopyPayload(&game_result, (uint16_t)sizeof(ext_game_result_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_GAME_RESULT, &game_result, (uint16_t)sizeof(game_result));
+            solved = RefereeCopyPayload(&game_result, (uint16_t)sizeof(ext_game_result_t), frame + index, payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_GAME_RESULT, &game_result, (uint16_t)sizeof(game_result));
+            }
         }
         break;
         case GAME_ROBOT_HP_CMD_ID:
         {
-            RefereeCopyPayload(&game_robot_HP_t, (uint16_t)sizeof(ext_game_robot_HP_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_GAME_ROBOT_HP, &game_robot_HP_t, (uint16_t)sizeof(game_robot_HP_t));
+            solved = RefereeCopyPayload(&game_robot_HP_t,
+                                        (uint16_t)sizeof(ext_game_robot_HP_t),
+                                        frame + index,
+                                        payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_GAME_ROBOT_HP, &game_robot_HP_t, (uint16_t)sizeof(game_robot_HP_t));
+            }
         }
         break;
 
 
         case EVENT_DATA_CMD_ID:
         {
-            RefereeCopyPayload(&field_event, (uint16_t)sizeof(ext_event_data_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_EVENT, &field_event, (uint16_t)sizeof(field_event));
+            solved = RefereeCopyPayload(&field_event, (uint16_t)sizeof(ext_event_data_t), frame + index, payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_EVENT, &field_event, (uint16_t)sizeof(field_event));
+            }
         }
         break;
         case REFEREE_WARNING_CMD_ID:
         {
-            RefereeCopyPayload(&RefereeWarning, (uint16_t)sizeof(ext_referee_warning_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_WARNING, &RefereeWarning, (uint16_t)sizeof(RefereeWarning));
+            solved = RefereeCopyPayload(&RefereeWarning,
+                                        (uint16_t)sizeof(ext_referee_warning_t),
+                                        frame + index,
+                                        payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_WARNING, &RefereeWarning, (uint16_t)sizeof(RefereeWarning));
+            }
         }
         break;
         case DART_INFO_CMD_ID:
         {
-            RefereeCopyPayload(&dart_info_t, (uint16_t)sizeof(ext_dart_info_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_SUPPLY_ACTION, &dart_info_t, (uint16_t)sizeof(dart_info_t));
+            solved = RefereeCopyPayload(&dart_info_t, (uint16_t)sizeof(ext_dart_info_t), frame + index, payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_SUPPLY_ACTION, &dart_info_t, (uint16_t)sizeof(dart_info_t));
+            }
         }
         break;
         case ROBOT_STATUS_CMD_ID:
         {
-            RefereeCopyPayload(&robot_state, (uint16_t)sizeof(ext_robot_status_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_ROBOT_STATE, &robot_state, (uint16_t)sizeof(robot_state));
+            solved = RefereeCopyPayload(&robot_state, (uint16_t)sizeof(ext_robot_status_t), frame + index, payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_ROBOT_STATE, &robot_state, (uint16_t)sizeof(robot_state));
+            }
         }
         break;
         case POWER_HEAT_DATA_CMD_ID:
         {
-            RefereeCopyPayload(&power_heat_data_t, (uint16_t)sizeof(ext_power_heat_data_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_POWER_HEAT, &power_heat_data_t, (uint16_t)sizeof(power_heat_data_t));
+            solved = RefereeCopyPayload(&power_heat_data_t,
+                                        (uint16_t)sizeof(ext_power_heat_data_t),
+                                        frame + index,
+                                        payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_POWER_HEAT, &power_heat_data_t, (uint16_t)sizeof(power_heat_data_t));
+            }
         }
         break;
         case ROBOT_POS_CMD_ID:
         {
-            RefereeCopyPayload(&game_robot_pos_t, (uint16_t)sizeof(ext_robot_pos_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_ROBOT_POS, &game_robot_pos_t, (uint16_t)sizeof(game_robot_pos_t));
+            solved = RefereeCopyPayload(&game_robot_pos_t,
+                                        (uint16_t)sizeof(ext_robot_pos_t),
+                                        frame + index,
+                                        payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_ROBOT_POS, &game_robot_pos_t, (uint16_t)sizeof(game_robot_pos_t));
+            }
         }
         break;
         case BUFF_DATA_CMD_ID:
         {
-            RefereeCopyPayload(&buff_musk_t, (uint16_t)sizeof(ext_buff_data_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_BUFF, &buff_musk_t, (uint16_t)sizeof(buff_musk_t));
+            solved = RefereeCopyPayload(&buff_musk_t, (uint16_t)sizeof(ext_buff_data_t), frame + index, payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_BUFF, &buff_musk_t, (uint16_t)sizeof(buff_musk_t));
+            }
         }
         break;
         case RFID_STATUS_CMD_ID:
         {
-            RefereeCopyPayload(&rfid_status_t, (uint16_t)sizeof(ext_rfid_status_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_RFID_STATUS, &rfid_status_t, (uint16_t)sizeof(rfid_status_t));
+            solved = RefereeCopyPayload(&rfid_status_t,
+                                        (uint16_t)sizeof(ext_rfid_status_t),
+                                        frame + index,
+                                        payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_RFID_STATUS, &rfid_status_t, (uint16_t)sizeof(rfid_status_t));
+            }
         }
         break;
         case ROBOT_HURT_CMD_ID:
         {
-            RefereeCopyPayload(&robot_hurt_t, (uint16_t)sizeof(ext_robot_hurt_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_ROBOT_HURT, &robot_hurt_t, (uint16_t)sizeof(robot_hurt_t));
+            solved = RefereeCopyPayload(&robot_hurt_t, (uint16_t)sizeof(ext_robot_hurt_t), frame + index, payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_ROBOT_HURT, &robot_hurt_t, (uint16_t)sizeof(robot_hurt_t));
+            }
         }
         break;
         case SHOOT_DATA_CMD_ID:
         {
-            RefereeCopyPayload(&ShootData, (uint16_t)sizeof(ext_shoot_data_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_SHOOT_DATA, &ShootData, (uint16_t)sizeof(ShootData));
+            solved = RefereeCopyPayload(&ShootData, (uint16_t)sizeof(ext_shoot_data_t), frame + index, payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_SHOOT_DATA, &ShootData, (uint16_t)sizeof(ShootData));
+            }
         }
         break;
         case PROJECTILE_ALLOWANCE_CMD_ID:
         {
-            RefereeCopyPayload(&bullet_remaining_t, (uint16_t)sizeof(ext_projectile_allowance_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_BULLET_REMAINING, &bullet_remaining_t, (uint16_t)sizeof(bullet_remaining_t));
+            solved = RefereeCopyPayload(&bullet_remaining_t,
+                                        (uint16_t)sizeof(ext_projectile_allowance_t),
+                                        frame + index,
+                                        payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_BULLET_REMAINING, &bullet_remaining_t, (uint16_t)sizeof(bullet_remaining_t));
+            }
         }
         break;
         case DART_CLIENT_CMD_ID:
         {
-            RefereeCopyPayload(&dart_client_cmd_t, (uint16_t)sizeof(ext_dart_client_cmd_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_AERIAL_ENERGY, &dart_client_cmd_t, (uint16_t)sizeof(dart_client_cmd_t));
+            solved = RefereeCopyPayload(&dart_client_cmd_t,
+                                        (uint16_t)sizeof(ext_dart_client_cmd_t),
+                                        frame + index,
+                                        payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_AERIAL_ENERGY, &dart_client_cmd_t, (uint16_t)sizeof(dart_client_cmd_t));
+            }
         }
         break;
         case GROUND_ROBOT_POSITION_CMD_ID:
         {
-            RefereeCopyPayload(&ground_robot_position_t,
-                                 (uint16_t)sizeof(ext_ground_robot_position_t),
-                                 frame + index,
-                                 payload_len);
-            SdLogWrite(SDLOG_TAG_REF_GROUND_ROBOT_POSITION,
-                        &ground_robot_position_t,
-                        (uint16_t)sizeof(ground_robot_position_t));
+            solved = RefereeCopyPayload(&ground_robot_position_t,
+                                        (uint16_t)sizeof(ext_ground_robot_position_t),
+                                        frame + index,
+                                        payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_GROUND_ROBOT_POSITION,
+                           &ground_robot_position_t,
+                           (uint16_t)sizeof(ground_robot_position_t));
+            }
         }
         break;
         case RADAR_MARK_DATA_CMD_ID:
         {
-            RefereeCopyPayload(&radar_mark_data_t, (uint16_t)sizeof(ext_radar_mark_data_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_RADAR_MARK, &radar_mark_data_t, (uint16_t)sizeof(radar_mark_data_t));
+            solved = RefereeCopyPayload(&radar_mark_data_t,
+                                        (uint16_t)sizeof(ext_radar_mark_data_t),
+                                        frame + index,
+                                        payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_RADAR_MARK, &radar_mark_data_t, (uint16_t)sizeof(radar_mark_data_t));
+            }
         }
         break;
         case SENTRY_INFO_CMD_ID:
         {
-            RefereeCopyPayload(&sentry_info_t, (uint16_t)sizeof(ext_sentry_info_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_SENTRY_INFO, &sentry_info_t, (uint16_t)sizeof(sentry_info_t));
+            solved = RefereeCopyPayload(&sentry_info_t, (uint16_t)sizeof(ext_sentry_info_t), frame + index, payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_SENTRY_INFO, &sentry_info_t, (uint16_t)sizeof(sentry_info_t));
+            }
         }
         break;
         case RADAR_INFO_CMD_ID:
         {
-            RefereeCopyPayload(&radar_info_t, (uint16_t)sizeof(ext_radar_info_t), frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_RADAR_INFO, &radar_info_t, (uint16_t)sizeof(radar_info_t));
+            solved = RefereeCopyPayload(&radar_info_t, (uint16_t)sizeof(ext_radar_info_t), frame + index, payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_RADAR_INFO, &radar_info_t, (uint16_t)sizeof(radar_info_t));
+            }
         }
         break;
         case ROBOT_INTERACTIVE_DATA_CMD_ID:
         {
-            RefereeParseStudentInteractive(frame + index, payload_len);
-            SdLogWrite(SDLOG_TAG_REF_ROBOT_INTERACTIVE, frame + index, payload_len);
+            solved = RefereeParseStudentInteractive(frame + index, payload_len);
+            if (solved != 0u)
+            {
+                SdLogWrite(SDLOG_TAG_REF_ROBOT_INTERACTIVE, frame + index, payload_len);
+            }
         }
         break;
         default:
@@ -871,6 +959,7 @@ void RefereeDataSolve(uint8_t *frame)
             break;
         }
     }
+    return solved;
 }
 
 void get_chassis_power_and_buffer(fp32 *power, fp32 *buffer)
@@ -946,14 +1035,14 @@ int RefereeSendStudentInteractive(uint16_t data_cmd_id,
     return RefereeSendFrame(STUDENT_INTERACTIVE_DATA_CMD_ID, payload, payload_len);
 }
 
-static void RefereeParseStudentInteractive(const uint8_t *payload, uint16_t payload_len)
+static uint8_t RefereeParseStudentInteractive(const uint8_t *payload, uint16_t payload_len)
 {
     student_interactive_data_len = 0u;
     memset(&student_interactive_data_t, 0, sizeof(student_interactive_data_t));
 
     if (payload == NULL || payload_len < 6u)
     {
-        return;
+        return 0u;
     }
 
     student_interactive_data_t.data_cmd_id = (uint16_t)payload[0] | ((uint16_t)payload[1] << 8);
@@ -968,25 +1057,18 @@ static void RefereeParseStudentInteractive(const uint8_t *payload, uint16_t payl
     {
         memcpy(student_interactive_data_t.user_data, payload, student_interactive_data_len);
     }
+    return 1u;
 }
 
-static void RefereeCopyPayload(void *dst, uint16_t dst_size, const uint8_t *payload, uint16_t payload_len)
+static uint8_t RefereeCopyPayload(void *dst, uint16_t dst_size, const uint8_t *payload, uint16_t payload_len)
 {
-    uint16_t copy_len = 0u;
-
-    if (dst == NULL || dst_size == 0u)
+    if (dst == NULL || dst_size == 0u || payload == NULL || payload_len < dst_size)
     {
-        return;
+        return 0u;
     }
 
-    memset(dst, 0, dst_size);
-    if (payload == NULL || payload_len == 0u)
-    {
-        return;
-    }
-
-    copy_len = (payload_len < dst_size) ? payload_len : dst_size;
-    memcpy(dst, payload, copy_len);
+    memcpy(dst, payload, dst_size);
+    return 1u;
 }
 
 static int RefereeSendFrame(uint16_t cmd_id, const uint8_t *payload, uint16_t payload_len)

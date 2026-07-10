@@ -16,6 +16,7 @@
 #include "BspDelay.h"
 #include "ManualInput.h"
 #include "RobotConfig.h"
+#include "RobotFaultGuard.h"
 #include "Watch.h"
 
 void SystemClock_Config(void);
@@ -139,10 +140,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 void Error_Handler(void)
 {
-    __disable_irq();
-    while (1)
-    {
-    }
+    RobotFaultRecordAndReset((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
 }
 
 #ifdef USE_FULL_ASSERT

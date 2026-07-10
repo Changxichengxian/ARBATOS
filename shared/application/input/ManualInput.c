@@ -7,6 +7,7 @@
  */
 
 #include "ManualInput.h"
+#include "ManualInputDbus.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -26,6 +27,14 @@
 #ifndef RC_CHANNEL_ERROR_VALUE
 #define RC_CHANNEL_ERROR_VALUE ((int16_t)(RC_CH_VALUE_ABS_MAX + 64u))
 #endif
+typedef char ManualInputDbusFrameLengthCheck[
+    (RC_FRAME_LENGTH == MANUAL_INPUT_DBUS_FRAME_LENGTH) ? 1 : -1];
+typedef char ManualInputDbusChannelOffsetCheck[
+    (RC_CH_VALUE_OFFSET == MANUAL_INPUT_DBUS_CHANNEL_OFFSET) ? 1 : -1];
+typedef char ManualInputDbusSwitchValueCheck[
+    (RC_SW_UP == MANUAL_INPUT_DBUS_SWITCH_UP &&
+     RC_SW_MID == MANUAL_INPUT_DBUS_SWITCH_MID &&
+     RC_SW_DOWN == MANUAL_INPUT_DBUS_SWITCH_DOWN) ? 1 : -1];
 static int16_t RC_abs(int16_t value);
 /**
   * @brief          remote control protocol resolution
@@ -33,7 +42,7 @@ static int16_t RC_abs(int16_t value);
   * @param[out]     rc_ctrl: remote control data struct point
   * @retval         none
   */
-static void sbus_to_rc(volatile const uint8_t *sbus_buf, ManualInputState *rc_ctrl);
+static void ManualInputDbusToRc(const ManualInputDbusData *dbus, ManualInputState *rc);
 
 //remote control data
 static ManualInputState rc_ctrl;
@@ -53,6 +62,7 @@ static uint8_t ManualInputRefreshDirty = 1u;
 static uint32_t ManualInputDirtySeq = 1u;
 static uint32_t ManualInputRefreshSeq = 0u;
 static uint32_t g_remote_control_sbus_frame_cnt = 0u;
+static uint32_t g_remote_control_sbus_reject_cnt = 0u;
 static uint32_t g_remote_control_set_source_cnt = 0u;
 static TimerHandle_t ManualInputRefreshTimer = NULL;
 static StaticTimer_t ManualInputRefreshTimerBuffer;
@@ -64,6 +74,7 @@ typedef struct
 } ManualInputCriticalState;
 
 static void ManualInputResetRc(ManualInputState *rc);
+static uint8_t ManualInputStateValid(const ManualInputState *rc);
 static void ManualInputSanitizeSwitch(ManualInputState *rc);
 static void ManualInputApplyBoardKey(ManualInputState *rc);
 static uint8_t ManualInputSrcIsActive(const ManualInputSrcState *src_state,
@@ -133,6 +144,7 @@ void ManualInputInit(void)
     ManualInputDirtySeq = 1u;
     ManualInputRefreshSeq = 0u;
     g_remote_control_sbus_frame_cnt = 0u;
+    g_remote_control_sbus_reject_cnt = 0u;
     g_remote_control_set_source_cnt = 0u;
     if (refresh_period_tick == 0u)
     {
@@ -204,7 +216,6 @@ void ManualInputUpdateSource(uint8_t source, const ManualInputState *rc)
     {
         return;
     }
-
     ManualInputCriticalState critical = ManualInputEnterCritical();
     manual_src[source].rc = *rc;
     manual_src[source].last_update_tick = now_tick;
@@ -224,13 +235,23 @@ void remote_control_set_rc_source(uint8_t source, const ManualInputState *rc)
 
 void ManualInputOnSbusFrame(const uint8_t frame[RC_FRAME_LENGTH])
 {
+    ManualInputDbusData dbus;
+
     if (frame == NULL)
     {
         return;
     }
 
+    if (ManualInputDbusDecode(frame, &dbus) == 0u || ManualInputDbusValid(&dbus) == 0u)
+    {
+        ManualInputCriticalState critical = ManualInputEnterCritical();
+        g_remote_control_sbus_reject_cnt++;
+        ManualInputExitCritical(critical);
+        return;
+    }
+
     ManualInputState rc = {0};
-    sbus_to_rc(frame, &rc);
+    ManualInputDbusToRc(&dbus, &rc);
     remote_control_log_sbus_raw_frame(frame);
     ManualInputCriticalState critical = ManualInputEnterCritical();
     g_remote_control_sbus_frame_cnt++;
@@ -339,9 +360,24 @@ uint32_t ManualInputGetSbusFrameCount(void)
     return count;
 }
 
+uint32_t ManualInputGetSbusRejectCount(void)
+{
+    uint32_t count;
+
+    ManualInputCriticalState critical = ManualInputEnterCritical();
+    count = g_remote_control_sbus_reject_cnt;
+    ManualInputExitCritical(critical);
+    return count;
+}
+
 uint32_t remote_control_get_sbus_frame_count(void)
 {
     return ManualInputGetSbusFrameCount();
+}
+
+uint32_t remote_control_get_sbus_reject_count(void)
+{
+    return ManualInputGetSbusRejectCount();
 }
 
 uint32_t ManualInputGetSetSourceCount(void)
@@ -367,8 +403,43 @@ static void ManualInputResetRc(ManualInputState *rc)
     }
 
     memset(rc, 0, sizeof(*rc));
-    rc->rc.s[0] = (char)RC_SW_DOWN;
-    rc->rc.s[1] = (char)RC_SW_DOWN;
+    // 无有效来源时固定使用原始上档；当前所有目标都把它配置为安全、停火档。
+    rc->rc.s[0] = (char)RC_SW_UP;
+    rc->rc.s[1] = (char)RC_SW_UP;
+}
+
+static uint8_t ManualInputStateValid(const ManualInputState *rc)
+{
+    uint8_t i;
+
+    if (rc == NULL)
+    {
+        return 0u;
+    }
+
+    for (i = 0u; i < 5u; i++)
+    {
+        if (rc->rc.ch[i] < -RC_CHANNEL_ERROR_VALUE || rc->rc.ch[i] > RC_CHANNEL_ERROR_VALUE)
+        {
+            return 0u;
+        }
+    }
+
+    for (i = 0u; i < 2u; i++)
+    {
+        const uint8_t sw = (uint8_t)rc->rc.s[i];
+        if (!(sw == RC_SW_UP || sw == RC_SW_MID || sw == RC_SW_DOWN))
+        {
+            return 0u;
+        }
+    }
+
+    if (rc->mouse.press_l > 1u || rc->mouse.press_r > 1u)
+    {
+        return 0u;
+    }
+
+    return 1u;
 }
 
 static void ManualInputSanitizeSwitch(ManualInputState *rc)
@@ -382,11 +453,11 @@ static void ManualInputSanitizeSwitch(ManualInputState *rc)
     const uint8_t s1 = (uint8_t)rc->rc.s[1];
     if (!(s0 == RC_SW_UP || s0 == RC_SW_MID || s0 == RC_SW_DOWN))
     {
-        rc->rc.s[0] = (char)RC_SW_DOWN;
+        rc->rc.s[0] = (char)RC_SW_UP;
     }
     if (!(s1 == RC_SW_UP || s1 == RC_SW_MID || s1 == RC_SW_DOWN))
     {
-        rc->rc.s[1] = (char)RC_SW_DOWN;
+        rc->rc.s[1] = (char)RC_SW_UP;
     }
 }
 
@@ -632,13 +703,7 @@ uint8_t RC_data_is_error(void)
     rc_snapshot = rc_ctrl;
     ManualInputExitCritical(critical);
 
-    if (RC_abs(rc_snapshot.rc.ch[0]) > RC_CHANNEL_ERROR_VALUE) return 1;
-    if (RC_abs(rc_snapshot.rc.ch[1]) > RC_CHANNEL_ERROR_VALUE) return 1;
-    if (RC_abs(rc_snapshot.rc.ch[2]) > RC_CHANNEL_ERROR_VALUE) return 1;
-    if (RC_abs(rc_snapshot.rc.ch[3]) > RC_CHANNEL_ERROR_VALUE) return 1;
-    if (rc_snapshot.rc.s[0] == 0) return 1;
-    if (rc_snapshot.rc.s[1] == 0) return 1;
-    return 0;
+    return (uint8_t)(ManualInputStateValid(&rc_snapshot) == 0u);
 }
 
 void slove_RC_lost(void)
@@ -726,38 +791,29 @@ static void remote_control_log_sbus_raw_frame(const uint8_t frame[RC_FRAME_LENGT
   * @param[out]     rc_ctrl: remote control data struct point
   * @retval         none
   */
-static void sbus_to_rc(volatile const uint8_t *sbus_buf, ManualInputState *rc_ctrl)
+static void ManualInputDbusToRc(const ManualInputDbusData *dbus, ManualInputState *rc)
 {
-    if (sbus_buf == NULL || rc_ctrl == NULL)
+    uint8_t i;
+
+    if (dbus == NULL || rc == NULL)
     {
         return;
     }
 
-    rc_ctrl->rc.ch[0] = (sbus_buf[0] | (sbus_buf[1] << 8)) & 0x07ff;        //!< Channel 0
-    rc_ctrl->rc.ch[1] = ((sbus_buf[1] >> 3) | (sbus_buf[2] << 5)) & 0x07ff; //!< Channel 1
-    rc_ctrl->rc.ch[2] = ((sbus_buf[2] >> 6) | (sbus_buf[3] << 2) |          //!< Channel 2
-                         (sbus_buf[4] << 10)) &0x07ff;
-    rc_ctrl->rc.ch[3] = ((sbus_buf[4] >> 1) | (sbus_buf[5] << 7)) & 0x07ff; //!< Channel 3
-    rc_ctrl->rc.s[0] = ((sbus_buf[5] >> 4) & 0x0003);                  //!< Switch left
-    rc_ctrl->rc.s[1] = ((sbus_buf[5] >> 4) & 0x000C) >> 2;                       //!< Switch right
-    rc_ctrl->mouse.x = sbus_buf[6] | (sbus_buf[7] << 8);                    //!< Mouse X axis
-    rc_ctrl->mouse.y = sbus_buf[8] | (sbus_buf[9] << 8);                    //!< Mouse Y axis
-    rc_ctrl->mouse.z = sbus_buf[10] | (sbus_buf[11] << 8);                  //!< Mouse Z axis
-    rc_ctrl->mouse.press_l = sbus_buf[12];                                  //!< Mouse Left Is Press ?
-    rc_ctrl->mouse.press_r = sbus_buf[13];                                  //!< Mouse Right Is Press ?
-    rc_ctrl->key.v = sbus_buf[14] | (sbus_buf[15] << 8);                    //!< KeyBoard value
-    rc_ctrl->rc.ch[4] = sbus_buf[16] | (sbus_buf[17] << 8);                 //NULL
-
-    rc_ctrl->rc.ch[0] -= RC_CH_VALUE_OFFSET;
-    rc_ctrl->rc.ch[1] -= RC_CH_VALUE_OFFSET;
-    rc_ctrl->rc.ch[2] -= RC_CH_VALUE_OFFSET;
-    rc_ctrl->rc.ch[3] -= RC_CH_VALUE_OFFSET;
-    rc_ctrl->rc.ch[4] -= RC_CH_VALUE_OFFSET;
-
-    for (uint8_t i = 0u; i < 5u; i++)
+    for (i = 0u; i < 5u; i++)
     {
-        rc_ctrl->rc.ch[i] = rc_scale_axis_by_abs(rc_ctrl->rc.ch[i],
-                                                 (int16_t)RC_CH_VALUE_ABS_LEGACY,
-                                                 (int16_t)RC_CH_VALUE_ABS_MAX);
+        const int16_t centered = (int16_t)((int32_t)dbus->channel[i] - (int32_t)RC_CH_VALUE_OFFSET);
+        rc->rc.ch[i] = rc_scale_axis_by_abs(centered,
+                                            (int16_t)RC_CH_VALUE_ABS_LEGACY,
+                                            (int16_t)RC_CH_VALUE_ABS_MAX);
     }
+
+    rc->rc.s[0] = (char)dbus->sw[0];
+    rc->rc.s[1] = (char)dbus->sw[1];
+    rc->mouse.x = dbus->mouse[0];
+    rc->mouse.y = dbus->mouse[1];
+    rc->mouse.z = dbus->mouse[2];
+    rc->mouse.press_l = dbus->mouseButton[0];
+    rc->mouse.press_r = dbus->mouseButton[1];
+    rc->key.v = dbus->key;
 }

@@ -47,6 +47,7 @@
 #endif
 #include "AppTaskBootstrap.h"
 #include "ControlMgr.h"
+#include "RobotFaultGuard.h"
 #include "RobotControlRegistry.h"
 #include "Watch.h"
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
@@ -425,34 +426,22 @@ static const char *AppTaskNameFromHandle(TaskHandle_t task, const char *fallback
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
     const char *task_name = AppTaskNameFromHandle(xTask, pcTaskName);
-    WatchDiagMarkFatal(1u, (uint32_t)(uintptr_t)xTask, task_name);
-
-    if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)
-    {
-        __BKPT(0);
-    }
-
-    taskDISABLE_INTERRUPTS();
-    for (;;)
-    {
-        __NOP();
-    }
+    RobotFaultEnterSafeStateEx((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
+                               0u,
+                               0u,
+                               (uint32_t)(uintptr_t)xTask,
+                               task_name);
+    RobotFaultResetNow();
 }
 
 void vApplicationMallocFailedHook(void)
 {
-    TaskHandle_t task = xTaskGetCurrentTaskHandle();
-    const char *task_name = AppTaskNameFromHandle(task, pcTaskGetName(task));
-    WatchDiagMarkFatal(2u, (uint32_t)(uintptr_t)task, task_name);
-
-    if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)
-    {
-        __BKPT(0);
-    }
-
-    taskDISABLE_INTERRUPTS();
-    for (;;)
-    {
-        __NOP();
-    }
+    TaskHandle_t task = RobotFaultCurrentTaskHandle();
+    const char *task_name = AppTaskNameFromHandle(task, RobotFaultTaskNameOrUnknown(task));
+    RobotFaultEnterSafeStateEx((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
+                               0u,
+                               0u,
+                               (uint32_t)(uintptr_t)task,
+                               task_name);
+    RobotFaultResetNow();
 }

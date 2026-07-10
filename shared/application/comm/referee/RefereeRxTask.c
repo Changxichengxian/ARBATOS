@@ -66,8 +66,8 @@ void RefereeRxTask(void const * argument)
     while (BspRefereeRxPop(RefereeRxChunkBuf, &rx_len))
     {
         fifo_s_puts(&RefereeFifo, (char *)RefereeRxChunkBuf, rx_len);
-        DetectHook(REFEREE_TOE);
     }
+    RefereeUnpackFifoData();
 
     while (1)
     {
@@ -75,7 +75,6 @@ void RefereeRxTask(void const * argument)
         while (BspRefereeRxPop(RefereeRxChunkBuf, &rx_len))
         {
             fifo_s_puts(&RefereeFifo, (char *)RefereeRxChunkBuf, rx_len);
-            DetectHook(REFEREE_TOE);
         }
         RefereeUnpackFifoData();
     }
@@ -175,7 +174,9 @@ static void RefereeUnpackFifoData(void)
 
           if ( verify_CRC16_check_sum(p_obj->protocol_packet, REF_HEADER_CRC_CMDID_LEN + p_obj->data_len) )
           {
-            RefereeDataSolve(p_obj->protocol_packet);
+            // 未知的新命令也能证明物理链路正常；业务结构只由 RefereeDataSolve() 的已知命令分支更新。
+            DetectHook(REFEREE_TOE);
+            (void)RefereeDataSolve(p_obj->protocol_packet);
           }
         }
       }break;

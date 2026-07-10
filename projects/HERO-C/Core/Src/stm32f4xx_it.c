@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "spi.h"
+#include "RobotFaultGuard.h"
 #include "Watch.h"
 /* USER CODE END Includes */
 
@@ -117,7 +118,7 @@ extern DMA_HandleTypeDef hdma_spi1_tx;
 void NMI_Handler(void)
 {
   /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
-
+  RobotFaultResetFromException((uint32_t)ROBOT_FAULT_REASON_NMI, SCB->ICSR, SCB->HFSR);
   /* USER CODE END NonMaskableInt_IRQn 0 */
   /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
 
@@ -161,6 +162,16 @@ __attribute__((naked)) void HardFault_Handler(void)
 void HardFault_HandlerC(uint32_t *stack, uint32_t exc_return)
 {
   __disable_irq();
+  CanTxEmergencyStopNow();
+
+  const uint32_t fault_sp = (uint32_t)stack;
+  const uint8_t fault_sp_aligned = ((fault_sp & 0x3U) == 0U);
+  const uint8_t fault_sp_in_sram = (fault_sp >= 0x20000000U) && (fault_sp <= (0x20040000U - 104U));
+  const uint8_t fault_sp_in_ccm = (fault_sp >= 0x10000000U) && (fault_sp <= (0x10020000U - 104U));
+  if (!fault_sp_aligned || (!fault_sp_in_sram && !fault_sp_in_ccm))
+  {
+    RobotFaultResetFromException((uint32_t)ROBOT_FAULT_REASON_HARDFAULT, SCB->HFSR, SCB->CFSR);
+  }
 
   // On Cortex-M4F, EXC_RETURN bit4 indicates whether FP context is stacked.
   // Depending on lazy stacking/toolchain, the passed SP can point either to:
@@ -283,15 +294,9 @@ void HardFault_HandlerC(uint32_t *stack, uint32_t exc_return)
     g_watch.fault.hardfault_stack_dump[i] = g_hardfault_info.stack_dump[i];
   }
 
-  if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U)
-  {
-    __BKPT(0);
-  }
-
-  while (1)
-  {
-    __NOP();
-  }
+  RobotFaultResetFromException((uint32_t)ROBOT_FAULT_REASON_HARDFAULT,
+                               g_hardfault_info.hfsr,
+                               g_hardfault_info.cfsr);
 }
 
 /**
@@ -300,13 +305,8 @@ void HardFault_HandlerC(uint32_t *stack, uint32_t exc_return)
 void MemManage_Handler(void)
 {
   /* USER CODE BEGIN MemoryManagement_IRQn 0 */
-
+  RobotFaultResetFromException((uint32_t)ROBOT_FAULT_REASON_MEMMANAGE, SCB->CFSR, SCB->MMFAR);
   /* USER CODE END MemoryManagement_IRQn 0 */
-  while (1)
-  {
-    /* USER CODE BEGIN W1_MemoryManagement_IRQn 0 */
-    /* USER CODE END W1_MemoryManagement_IRQn 0 */
-  }
 }
 
 /**
@@ -315,13 +315,8 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
   /* USER CODE BEGIN BusFault_IRQn 0 */
-
+  RobotFaultResetFromException((uint32_t)ROBOT_FAULT_REASON_BUSFAULT, SCB->CFSR, SCB->BFAR);
   /* USER CODE END BusFault_IRQn 0 */
-  while (1)
-  {
-    /* USER CODE BEGIN W1_BusFault_IRQn 0 */
-    /* USER CODE END W1_BusFault_IRQn 0 */
-  }
 }
 
 /**
@@ -330,13 +325,8 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
   /* USER CODE BEGIN UsageFault_IRQn 0 */
-
+  RobotFaultResetFromException((uint32_t)ROBOT_FAULT_REASON_USAGEFAULT, SCB->CFSR, SCB->HFSR);
   /* USER CODE END UsageFault_IRQn 0 */
-  while (1)
-  {
-    /* USER CODE BEGIN W1_UsageFault_IRQn 0 */
-    /* USER CODE END W1_UsageFault_IRQn 0 */
-  }
 }
 
 /**
