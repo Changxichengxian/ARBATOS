@@ -450,6 +450,7 @@ static void WatchCopyRuntime(void)
 
     g_watch.runtime.controller_count = controller_count;
     g_watch.runtime.controller_visible_count = controller_visible_count;
+    (void)ControlMgrGetDiag(&g_watch.runtime.control_mgr);
     g_watch.runtime.active_claim_mask = ControlMgrActiveClaimMask();
     for (uint8_t i = 0u; i < controller_visible_count; i++)
     {

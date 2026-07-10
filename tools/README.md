@@ -75,9 +75,10 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestUnitreeMotorPo
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestChassisSnapshotPolicy.ps1
 ```
 
-底盘和 Shoot 控制域进入、更新、强制安全、停止和重新启用的生命周期回归：
+控制管理器的资源预留、更新重入、保护停机、诊断和调试结构布局回归，以及底盘和 Shoot 控制域生命周期回归：
 
 ```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestControlMgr.ps1
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestChassisCtrl.ps1
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestShootCtrl.ps1
 ```

@@ -1429,6 +1429,46 @@ function Test-ControlRegistryBoundaries {
             Add-CheckError "${repoPath}: default controller bootstrap must not use low-rate name lookup or due scheduling via '$forbidden'."
         }
     }
+    if ($content -match 'controller\s*==\s*NULL') {
+        Add-CheckError "${repoPath}: enabled modules must pass missing descriptors to ControlMgrRegister so registration diagnostics remain visible."
+    }
+
+    $controlMgrRepoPath = "shared\application\robot\ControlMgr.c"
+    $controlMgrContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $controlMgrRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @(
+            "reserved_claim_mask",
+            "update_in_progress",
+            "protected_stop_reason",
+            "control_reserved_claim_mask_locked",
+            "ControlMgrGetDiag"
+        )) {
+        if ($controlMgrContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${controlMgrRepoPath}: hardened lifecycle arbitration must keep '$required'."
+        }
+    }
+
+    $controlMgrHeaderRepoPath = "shared\application\robot\ControlMgr.h"
+    $controlMgrHeaderContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $controlMgrHeaderRepoPath) -Raw -Encoding UTF8
+    if ($controlMgrHeaderContent -notmatch 'uint8_t\s+lastRegisterError\s*;\s*uint8_t\s+lastSwitchError\s*;\s*uint8_t\s+reserved\[2\]\s*;') {
+        Add-CheckError "${controlMgrHeaderRepoPath}: ControlMgrDiag error fields must use fixed-width storage for ARMCC/clang Watch ABI parity."
+    }
+
+    $watchHeaderRepoPath = "shared\application\services\diagnostics\Watch.h"
+    $watchHeaderContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $watchHeaderRepoPath) -Raw -Encoding UTF8
+    if ($watchHeaderContent -notmatch 'WatchRuntimeDomain\s+domain\[ControlDomainCount\];\s*ControlMgrDiag\s+control_mgr;\s*}\s*WatchRuntime;') {
+        Add-CheckError "${watchHeaderRepoPath}: ControlMgrDiag must remain after the WatchRuntime domain array as an append-only ABI field."
+    }
+
+    foreach ($testRepoPath in @(
+            "tools\TestControlMgr.ps1",
+            "tools\tests\ControlMgrRegression.c",
+            "tools\tests\ControlMgrAbiRegression.c",
+            "tools\tests\ControlMgrTestCritical.h"
+        )) {
+        if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $testRepoPath) -PathType Leaf)) {
+            Add-CheckError "Missing ControlMgr regression file: $testRepoPath"
+        }
+    }
 
     $shootCtrlRepoPath = "shared\application\shoot\ShootCtrl.c"
     $shootCtrlContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $shootCtrlRepoPath) -Raw -Encoding UTF8

@@ -1002,6 +1002,7 @@ typedef struct
     WatchRuntimeMotor motor[WATCH_RUNTIME_MAX_MOTORS];
     WatchRuntimeController controller[WATCH_RUNTIME_MAX_CONTROLLERS];
     WatchRuntimeDomain domain[ControlDomainCount];
+    ControlMgrDiag control_mgr;
 } WatchRuntime;
 
 typedef enum

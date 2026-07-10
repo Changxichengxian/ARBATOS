@@ -29,6 +29,12 @@ extern "C" {
  * During the migration, existing real-time loops still live in their task
  * modules. They must enter through ControlMgrUpdate*() so controller
  * activation, stop requests, and resource ownership stay in one place.
+ *
+ * All public APIs in this file are task-context only. Interrupt handlers must
+ * notify a task instead of entering ControlMgr directly. Controller callbacks
+ * always run outside the manager critical section and must not recursively
+ * update their own domain. ControlMgrReset() is only valid before scheduling
+ * starts or after every control task has stopped.
  */
 
 typedef enum
@@ -173,6 +179,23 @@ typedef struct
     uint32_t reject_count;
 } ControlStatus;
 
+typedef struct
+{
+    uint32_t registerAttemptCount;
+    uint32_t registerFailCount;
+    uint32_t switchAttemptCount;
+    uint32_t switchFailCount;
+    uint32_t claimConflictCount;
+    uint32_t updateReentryCount;
+    uint32_t protectedRequestRejectCount;
+    uint32_t reservedClaimMask;
+    uint16_t lastRegisterErrorId;
+    uint16_t lastSwitchErrorId;
+    uint8_t lastRegisterError;
+    uint8_t lastSwitchError;
+    uint8_t reserved[2];
+} ControlMgrDiag;
+
 void ControlMgrInit(void);
 void ControlMgrReset(void);
 
@@ -196,6 +219,7 @@ ControlResult ControlMgrSwitch(uint16_t controller_id, ControlReason reason);
 ControlResult ControlMgrSwitchByName(const char *name, ControlReason reason);
 ControlResult ControlMgrStop(ControlDomain domain, ControlReason reason);
 void ControlMgrStopAll(ControlReason reason);
+/* A queued fault or emergency stop cannot be cleared through this helper. */
 void ControlMgrClearPending(ControlDomain domain);
 
 ControlResult ControlMgrUpdateDomain(ControlDomain domain, ControlCtx *context);
@@ -209,6 +233,7 @@ uint16_t ControlMgrActiveId(ControlDomain domain);
 const char *ControlMgrActiveName(ControlDomain domain);
 ControlResult ControlMgrGetStatus(ControlDomain domain, ControlStatus *out);
 uint32_t ControlMgrActiveClaimMask(void);
+ControlResult ControlMgrGetDiag(ControlMgrDiag *out);
 
 #ifdef __cplusplus
 }

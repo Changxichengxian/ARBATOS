@@ -22,13 +22,14 @@
 #endif
 
 static inline void RobotControlRegisterIfEnabled(const ControlController *controller,
-                                                     RobotTaskModule module)
+                                                 RobotTaskModule module)
 {
-    if (controller == NULL || RobotProfileModuleEnabled(module) == 0u)
+    if (RobotProfileModuleEnabled(module) == 0u)
     {
         return;
     }
 
+    /* 启用模块的空描述也交给 ControlMgr 记录，启动失败不能静默消失。 */
     (void)ControlMgrRegister(controller);
 }
 

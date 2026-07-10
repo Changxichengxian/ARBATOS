@@ -42,16 +42,200 @@ typedef struct
     uint32_t update_count;
     uint32_t transition_count;
     uint32_t reject_count;
+    uint32_t reserved_claim_mask;
+    uint8_t update_in_progress;
+    uint8_t protected_stop_reason;
 } control_domain_state_t;
 
 static control_registry_t s_registry;
 static control_domain_state_t s_domain[ControlDomainCount];
+static ControlMgrDiag s_diag;
 static uint32_t s_active_claim_mask;
 static uint8_t s_inited;
 
 static uint8_t control_domain_valid(ControlDomain domain)
 {
     return ((uint32_t)domain < (uint32_t)ControlDomainCount) ? 1u : 0u;
+}
+
+static void control_pending_clear_locked(control_domain_state_t *domain_state)
+{
+    if (domain_state == NULL)
+    {
+        return;
+    }
+
+    domain_state->pending_request = ControlRequestNone;
+    domain_state->pending_id = ControlIdNone;
+    domain_state->pending_reason = ControlReasonNone;
+}
+
+static uint8_t control_stop_priority(ControlReason reason)
+{
+    if (reason == ControlReasonEmergencyStop)
+    {
+        return 2u;
+    }
+    if (reason == ControlReasonFault)
+    {
+        return 1u;
+    }
+    return 0u;
+}
+
+static uint8_t control_request_priority(ControlRequest request, ControlReason reason)
+{
+    return (request == ControlRequestStop) ? control_stop_priority(reason) : 0u;
+}
+
+static uint32_t control_reserved_claim_mask_locked(void)
+{
+    uint32_t mask = 0u;
+
+    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
+    {
+        mask |= s_domain[i].reserved_claim_mask;
+    }
+    return mask;
+}
+
+static void control_diag_register_locked(uint16_t controller_id, ControlResult result)
+{
+    s_diag.registerAttemptCount++;
+    if (result == ControlResultOk)
+    {
+        return;
+    }
+
+    s_diag.registerFailCount++;
+    s_diag.lastRegisterErrorId = controller_id;
+    s_diag.lastRegisterError = result;
+}
+
+static void control_diag_switch_locked(uint16_t controller_id, ControlResult result)
+{
+    s_diag.switchAttemptCount++;
+    if (result == ControlResultOk)
+    {
+        return;
+    }
+
+    s_diag.switchFailCount++;
+    s_diag.lastSwitchErrorId = controller_id;
+    s_diag.lastSwitchError = result;
+}
+
+static ControlResult control_queue_request_locked(control_domain_state_t *domain_state,
+                                                  ControlRequest request,
+                                                  uint16_t controller_id,
+                                                  ControlReason reason)
+{
+    const uint8_t pending_priority = control_request_priority(domain_state->pending_request,
+                                                              domain_state->pending_reason);
+    const uint8_t running_priority = control_stop_priority(
+        (ControlReason)domain_state->protected_stop_reason);
+    const uint8_t incoming_priority = control_request_priority(request, reason);
+
+    if (running_priority != 0u)
+    {
+        if (incoming_priority > running_priority)
+        {
+            domain_state->protected_stop_reason = (uint8_t)reason;
+            return ControlResultOk;
+        }
+
+        domain_state->last_result = ControlResultResourceBusy;
+        domain_state->reject_count++;
+        s_diag.protectedRequestRejectCount++;
+        return ControlResultResourceBusy;
+    }
+
+    if (pending_priority != 0u && incoming_priority < pending_priority)
+    {
+        domain_state->last_result = ControlResultResourceBusy;
+        domain_state->reject_count++;
+        s_diag.protectedRequestRejectCount++;
+        return ControlResultResourceBusy;
+    }
+
+    domain_state->pending_id = controller_id;
+    domain_state->pending_reason = reason;
+    domain_state->pending_request = request;
+    return ControlResultOk;
+}
+
+static ControlReason control_protected_stop_begin(ControlDomain domain, ControlReason reason)
+{
+    control_domain_state_t *domain_state;
+    uint8_t protected_priority;
+    uint8_t pending_priority;
+    const uint8_t incoming_priority = control_stop_priority(reason);
+
+    if (incoming_priority == 0u || control_domain_valid(domain) == 0u)
+    {
+        return reason;
+    }
+
+    domain_state = &s_domain[domain];
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    protected_priority = control_stop_priority((ControlReason)domain_state->protected_stop_reason);
+    if (protected_priority > incoming_priority)
+    {
+        reason = (ControlReason)domain_state->protected_stop_reason;
+    }
+    else
+    {
+        protected_priority = incoming_priority;
+    }
+
+    pending_priority = control_request_priority(domain_state->pending_request,
+                                                domain_state->pending_reason);
+    if (pending_priority > protected_priority)
+    {
+        reason = domain_state->pending_reason;
+        protected_priority = pending_priority;
+    }
+
+    if (domain_state->pending_request != ControlRequestNone)
+    {
+        control_pending_clear_locked(domain_state);
+        if (pending_priority == 0u)
+        {
+            domain_state->reject_count++;
+            s_diag.protectedRequestRejectCount++;
+        }
+    }
+    domain_state->protected_stop_reason = (uint8_t)reason;
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return reason;
+}
+
+static ControlResult control_update_enter(ControlDomain domain)
+{
+    control_domain_state_t *domain_state = &s_domain[domain];
+    ControlResult result = ControlResultOk;
+
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    if (domain_state->update_in_progress != 0u)
+    {
+        domain_state->last_result = ControlResultResourceBusy;
+        domain_state->reject_count++;
+        s_diag.updateReentryCount++;
+        result = ControlResultResourceBusy;
+    }
+    else
+    {
+        domain_state->update_in_progress = 1u;
+    }
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return result;
+}
+
+static void control_update_leave(ControlDomain domain)
+{
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    s_domain[domain].update_in_progress = 0u;
+    CONTROL_MANAGER_EXIT_CRITICAL();
 }
 
 static ControlCtx *control_context_or_local(ControlCtx *context, ControlCtx *local)
@@ -124,8 +308,8 @@ static ControlResult control_call_callback(ControlCallback callback,
 }
 
 static ControlResult control_stop_active(ControlDomain domain,
-                                            ControlReason reason,
-                                            ControlCtx *context)
+                                         ControlReason reason,
+                                         ControlCtx *context)
 {
     control_domain_state_t *domain_state;
     const ControlController *controller;
@@ -138,11 +322,19 @@ static ControlResult control_stop_active(ControlDomain domain,
     }
 
     domain_state = &s_domain[domain];
+    reason = control_protected_stop_begin(domain, reason);
     controller = domain_state->active;
     if (controller == NULL)
     {
-        domain_state->state = ControlStateStopped;
-        domain_state->last_result = ControlResultNotActive;
+        CONTROL_MANAGER_ENTER_CRITICAL();
+        if (domain_state->state != ControlStateFault)
+        {
+            domain_state->state = ControlStateStopped;
+            domain_state->last_result = ControlResultNotActive;
+        }
+        domain_state->last_reason = reason;
+        domain_state->protected_stop_reason = (uint8_t)ControlReasonNone;
+        CONTROL_MANAGER_EXIT_CRITICAL();
         return ControlResultNotActive;
     }
 
@@ -150,23 +342,30 @@ static ControlResult control_stop_active(ControlDomain domain,
     result = control_call_callback(callback, controller, context, reason);
 
     CONTROL_MANAGER_ENTER_CRITICAL();
+    if (control_stop_priority((ControlReason)domain_state->protected_stop_reason) >
+        control_stop_priority(reason))
+    {
+        reason = (ControlReason)domain_state->protected_stop_reason;
+    }
     s_active_claim_mask &= ~controller->claim_mask;
     domain_state->active = NULL;
     domain_state->state = (result == ControlResultOk) ? ControlStateStopped : ControlStateFault;
     domain_state->last_reason = reason;
     domain_state->last_result = result;
     domain_state->transition_count++;
+    domain_state->protected_stop_reason = (uint8_t)ControlReasonNone;
     CONTROL_MANAGER_EXIT_CRITICAL();
 
     return result;
 }
 
 static ControlResult control_start_controller(const ControlController *next,
-                                                 ControlReason reason,
-                                                 ControlCtx *context)
+                                              ControlReason reason,
+                                              ControlCtx *context)
 {
     control_domain_state_t *domain_state;
     uint32_t claims_without_domain;
+    uint32_t reserved_claims;
     ControlResult result;
 
     if (next == NULL)
@@ -179,55 +378,85 @@ static ControlResult control_start_controller(const ControlController *next,
     }
 
     domain_state = &s_domain[next->domain];
+    CONTROL_MANAGER_ENTER_CRITICAL();
     if (domain_state->active != NULL && domain_state->active->id == next->id)
     {
         domain_state->last_result = ControlResultOk;
+        CONTROL_MANAGER_EXIT_CRITICAL();
         return ControlResultOk;
     }
-
     claims_without_domain = s_active_claim_mask;
     if (domain_state->active != NULL)
     {
         claims_without_domain &= ~domain_state->active->claim_mask;
     }
-
-    if ((claims_without_domain & next->claim_mask) != 0u)
+    reserved_claims = control_reserved_claim_mask_locked();
+    if (domain_state->reserved_claim_mask != 0u ||
+        ((claims_without_domain | reserved_claims) & next->claim_mask) != 0u)
     {
         domain_state->last_result = ControlResultResourceBusy;
         domain_state->reject_count++;
+        s_diag.claimConflictCount++;
+        CONTROL_MANAGER_EXIT_CRITICAL();
         return ControlResultResourceBusy;
     }
+    domain_state->reserved_claim_mask = next->claim_mask;
+    CONTROL_MANAGER_EXIT_CRITICAL();
 
     if (domain_state->active != NULL)
     {
         result = control_stop_active(next->domain, reason, context);
         if (result != ControlResultOk)
         {
+            CONTROL_MANAGER_ENTER_CRITICAL();
+            if (control_request_priority(domain_state->pending_request,
+                                         domain_state->pending_reason) != 0u)
+            {
+                domain_state->last_reason = domain_state->pending_reason;
+                control_pending_clear_locked(domain_state);
+            }
+            domain_state->reserved_claim_mask = 0u;
             domain_state->reject_count++;
+            CONTROL_MANAGER_EXIT_CRITICAL();
             return result;
         }
     }
 
     CONTROL_MANAGER_ENTER_CRITICAL();
+    if (control_request_priority(domain_state->pending_request,
+                                 domain_state->pending_reason) != 0u)
+    {
+        domain_state->reserved_claim_mask = 0u;
+        domain_state->last_result = ControlResultResourceBusy;
+        domain_state->reject_count++;
+        s_diag.protectedRequestRejectCount++;
+        CONTROL_MANAGER_EXIT_CRITICAL();
+        return ControlResultResourceBusy;
+    }
+    domain_state->reserved_claim_mask = 0u;
     domain_state->active = next;
     domain_state->state = ControlStateRunning;
     domain_state->last_reason = reason;
     domain_state->last_result = ControlResultOk;
-    s_active_claim_mask = claims_without_domain | next->claim_mask;
+    s_active_claim_mask |= next->claim_mask;
     CONTROL_MANAGER_EXIT_CRITICAL();
 
     result = control_call_callback(next->enter, next, context, reason);
     if (result != ControlResultOk)
     {
+        const ControlResult enter_result = result;
+
+        /*
+         * enter 可能已经初始化并写过输出，也可能在失败前排入急停。
+         * 统一走 Fault stop 做残留清理，并保留 enter 的原始错误供诊断。
+         */
+        (void)control_stop_active(next->domain, ControlReasonFault, context);
         CONTROL_MANAGER_ENTER_CRITICAL();
-        s_active_claim_mask &= ~next->claim_mask;
-        domain_state->active = NULL;
         domain_state->state = ControlStateFault;
-        domain_state->last_result = result;
-        domain_state->transition_count++;
+        domain_state->last_result = enter_result;
         domain_state->reject_count++;
         CONTROL_MANAGER_EXIT_CRITICAL();
-        return result;
+        return enter_result;
     }
 
     CONTROL_MANAGER_ENTER_CRITICAL();
@@ -255,9 +484,12 @@ static ControlResult control_apply_pending(ControlDomain domain, ControlCtx *con
     request = domain_state->pending_request;
     pending_id = domain_state->pending_id;
     reason = domain_state->pending_reason;
-    domain_state->pending_request = ControlRequestNone;
-    domain_state->pending_id = ControlIdNone;
-    domain_state->pending_reason = ControlReasonNone;
+    next = (request == ControlRequestSwitch) ? control_find(pending_id) : NULL;
+    if (request == ControlRequestStop && control_stop_priority(reason) != 0u)
+    {
+        domain_state->protected_stop_reason = (uint8_t)reason;
+    }
+    control_pending_clear_locked(domain_state);
     CONTROL_MANAGER_EXIT_CRITICAL();
 
     switch (request)
@@ -267,23 +499,28 @@ static ControlResult control_apply_pending(ControlDomain domain, ControlCtx *con
     case ControlRequestStop:
         return control_stop_active(domain, reason, context);
     case ControlRequestSwitch:
-        next = control_find(pending_id);
         if (next == NULL)
         {
+            CONTROL_MANAGER_ENTER_CRITICAL();
             domain_state->last_result = ControlResultNotFound;
             domain_state->reject_count++;
+            CONTROL_MANAGER_EXIT_CRITICAL();
             return ControlResultNotFound;
         }
         if (next->domain != domain)
         {
+            CONTROL_MANAGER_ENTER_CRITICAL();
             domain_state->last_result = ControlResultDomainMismatch;
             domain_state->reject_count++;
+            CONTROL_MANAGER_EXIT_CRITICAL();
             return ControlResultDomainMismatch;
         }
         return control_start_controller(next, reason, context);
     default:
+        CONTROL_MANAGER_ENTER_CRITICAL();
         domain_state->last_result = ControlResultBadArgument;
         domain_state->reject_count++;
+        CONTROL_MANAGER_EXIT_CRITICAL();
         return ControlResultBadArgument;
     }
 }
@@ -292,6 +529,7 @@ static void control_reset_state_unlocked(void)
 {
     memset(&s_registry, 0, sizeof(s_registry));
     memset(&s_domain, 0, sizeof(s_domain));
+    memset(&s_diag, 0, sizeof(s_diag));
     s_active_claim_mask = 0u;
     s_inited = 1u;
 }
@@ -337,6 +575,7 @@ const char *ControlDomainName(ControlDomain domain)
 ControlResult ControlMgrRegister(const ControlController *controller)
 {
     ControlResult result = ControlResultOk;
+    const uint16_t controller_id = (controller != NULL) ? controller->id : ControlIdNone;
 
     ControlMgrInit();
 
@@ -344,6 +583,9 @@ ControlResult ControlMgrRegister(const ControlController *controller)
         controller->id == ControlIdNone ||
         control_domain_valid(controller->domain) == 0u)
     {
+        CONTROL_MANAGER_ENTER_CRITICAL();
+        control_diag_register_locked(controller_id, ControlResultBadArgument);
+        CONTROL_MANAGER_EXIT_CRITICAL();
         return ControlResultBadArgument;
     }
 
@@ -361,6 +603,7 @@ ControlResult ControlMgrRegister(const ControlController *controller)
         s_registry.controller[s_registry.count] = *controller;
         s_registry.count++;
     }
+    control_diag_register_locked(controller_id, result);
     CONTROL_MANAGER_EXIT_CRITICAL();
 
     return result;
@@ -476,27 +719,32 @@ uint8_t ControlOutputCount(const ControlController *controller)
 ControlResult ControlMgrSwitch(uint16_t controller_id, ControlReason reason)
 {
     const ControlController *controller;
-    control_domain_state_t *domain_state;
+    ControlResult result;
 
     ControlMgrInit();
+    CONTROL_MANAGER_ENTER_CRITICAL();
     controller = control_find(controller_id);
     if (controller == NULL)
     {
+        control_diag_switch_locked(controller_id, ControlResultNotFound);
+        CONTROL_MANAGER_EXIT_CRITICAL();
         return ControlResultNotFound;
     }
     if (control_domain_valid(controller->domain) == 0u)
     {
+        control_diag_switch_locked(controller_id, ControlResultBadArgument);
+        CONTROL_MANAGER_EXIT_CRITICAL();
         return ControlResultBadArgument;
     }
 
-    domain_state = &s_domain[controller->domain];
-    CONTROL_MANAGER_ENTER_CRITICAL();
-    domain_state->pending_id = controller_id;
-    domain_state->pending_reason = reason;
-    domain_state->pending_request = ControlRequestSwitch;
+    result = control_queue_request_locked(&s_domain[controller->domain],
+                                          ControlRequestSwitch,
+                                          controller_id,
+                                          reason);
+    control_diag_switch_locked(controller_id, result);
     CONTROL_MANAGER_EXIT_CRITICAL();
 
-    return ControlResultOk;
+    return result;
 }
 
 ControlResult ControlMgrSwitchByName(const char *name, ControlReason reason)
@@ -505,6 +753,10 @@ ControlResult ControlMgrSwitchByName(const char *name, ControlReason reason)
 
     if (id == ControlIdNone)
     {
+        ControlMgrInit();
+        CONTROL_MANAGER_ENTER_CRITICAL();
+        control_diag_switch_locked(ControlIdNone, ControlResultNotFound);
+        CONTROL_MANAGER_EXIT_CRITICAL();
         return ControlResultNotFound;
     }
 
@@ -514,6 +766,7 @@ ControlResult ControlMgrSwitchByName(const char *name, ControlReason reason)
 ControlResult ControlMgrStop(ControlDomain domain, ControlReason reason)
 {
     control_domain_state_t *domain_state;
+    ControlResult result;
 
     ControlMgrInit();
     if (control_domain_valid(domain) == 0u)
@@ -523,12 +776,13 @@ ControlResult ControlMgrStop(ControlDomain domain, ControlReason reason)
 
     domain_state = &s_domain[domain];
     CONTROL_MANAGER_ENTER_CRITICAL();
-    domain_state->pending_id = ControlIdNone;
-    domain_state->pending_reason = reason;
-    domain_state->pending_request = ControlRequestStop;
+    result = control_queue_request_locked(domain_state,
+                                          ControlRequestStop,
+                                          ControlIdNone,
+                                          reason);
     CONTROL_MANAGER_EXIT_CRITICAL();
 
-    return ControlResultOk;
+    return result;
 }
 
 void ControlMgrStopAll(ControlReason reason)
@@ -542,25 +796,41 @@ void ControlMgrStopAll(ControlReason reason)
 
 void ControlMgrClearPending(ControlDomain domain)
 {
+    control_domain_state_t *domain_state;
+
     if (control_domain_valid(domain) == 0u)
     {
         return;
     }
 
     ControlMgrInit();
+    domain_state = &s_domain[domain];
     CONTROL_MANAGER_ENTER_CRITICAL();
-    s_domain[domain].pending_request = ControlRequestNone;
-    s_domain[domain].pending_id = ControlIdNone;
-    s_domain[domain].pending_reason = ControlReasonNone;
+    if (control_request_priority(domain_state->pending_request,
+                                 domain_state->pending_reason) != 0u)
+    {
+        domain_state->last_result = ControlResultResourceBusy;
+        domain_state->reject_count++;
+        s_diag.protectedRequestRejectCount++;
+    }
+    else
+    {
+        control_pending_clear_locked(domain_state);
+    }
     CONTROL_MANAGER_EXIT_CRITICAL();
 }
 
-ControlResult ControlMgrUpdateDomain(ControlDomain domain, ControlCtx *context)
+static ControlResult control_update_domain(ControlDomain domain,
+                                           uint32_t tick_ms,
+                                           uint8_t check_due,
+                                           ControlCtx *context)
 {
     control_domain_state_t *domain_state;
     const ControlController *active;
     ControlCtx local_context;
     ControlResult result;
+    ControlResult callback_result;
+    uint8_t protected_pending;
 
     ControlMgrInit();
     if (control_domain_valid(domain) == 0u)
@@ -569,32 +839,90 @@ ControlResult ControlMgrUpdateDomain(ControlDomain domain, ControlCtx *context)
     }
 
     context = control_context_or_local(context, &local_context);
+    if (check_due != 0u)
+    {
+        context->tick_ms = tick_ms;
+    }
     domain_state = &s_domain[domain];
+
+    result = control_update_enter(domain);
+    if (result != ControlResultOk)
+    {
+        return result;
+    }
 
     result = control_apply_pending(domain, context);
     if (result != ControlResultOk && result != ControlResultNotActive)
     {
-        return result;
+        goto update_done;
+    }
+
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    protected_pending = control_request_priority(domain_state->pending_request,
+                                                 domain_state->pending_reason);
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    if (protected_pending != 0u)
+    {
+        result = control_apply_pending(domain, context);
+        if (result == ControlResultOk)
+        {
+            result = ControlResultNotActive;
+        }
+        goto update_done;
     }
 
     active = domain_state->active;
     if (active == NULL)
     {
-        return ControlResultNotActive;
+        result = ControlResultNotActive;
+        goto update_done;
+    }
+    if (check_due != 0u && ControlDue(active, tick_ms) == 0u)
+    {
+        result = ControlResultNotDue;
+        goto update_done;
     }
 
-    result = control_call_callback(active->update, active, context, ControlReasonNone);
+    callback_result = control_call_callback(active->update, active, context, ControlReasonNone);
+    CONTROL_MANAGER_ENTER_CRITICAL();
     domain_state->update_count++;
-    domain_state->last_result = result;
-    if (result != ControlResultOk)
+    domain_state->last_result = callback_result;
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    if (callback_result != ControlResultOk)
     {
         (void)control_stop_active(domain, ControlReasonFault, context);
+        CONTROL_MANAGER_ENTER_CRITICAL();
         domain_state->state = ControlStateFault;
-        domain_state->last_result = result;
-        return ControlResultCallbackFailed;
+        domain_state->last_result = callback_result;
+        CONTROL_MANAGER_EXIT_CRITICAL();
+        result = ControlResultCallbackFailed;
+        goto update_done;
     }
 
-    return ControlResultOk;
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    protected_pending = control_request_priority(domain_state->pending_request,
+                                                 domain_state->pending_reason);
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    if (protected_pending != 0u)
+    {
+        result = control_apply_pending(domain, context);
+        if (result == ControlResultOk)
+        {
+            result = ControlResultNotActive;
+        }
+        goto update_done;
+    }
+
+    result = ControlResultOk;
+
+update_done:
+    control_update_leave(domain);
+    return result;
+}
+
+ControlResult ControlMgrUpdateDomain(ControlDomain domain, ControlCtx *context)
+{
+    return control_update_domain(domain, 0u, 0u, context);
 }
 
 ControlResult ControlMgrUpdateAll(ControlCtx *context)
@@ -617,49 +945,7 @@ ControlResult ControlMgrUpdateAll(ControlCtx *context)
 
 ControlResult ControlMgrUpdateDomainDue(ControlDomain domain, uint32_t tick_ms, ControlCtx *context)
 {
-    control_domain_state_t *domain_state;
-    const ControlController *active;
-    ControlCtx local_context;
-    ControlResult result;
-
-    ControlMgrInit();
-    if (control_domain_valid(domain) == 0u)
-    {
-        return ControlResultBadArgument;
-    }
-
-    context = control_context_or_local(context, &local_context);
-    context->tick_ms = tick_ms;
-    domain_state = &s_domain[domain];
-
-    result = control_apply_pending(domain, context);
-    if (result != ControlResultOk && result != ControlResultNotActive)
-    {
-        return result;
-    }
-
-    active = domain_state->active;
-    if (active == NULL)
-    {
-        return ControlResultNotActive;
-    }
-    if (ControlDue(active, tick_ms) == 0u)
-    {
-        return ControlResultNotDue;
-    }
-
-    result = control_call_callback(active->update, active, context, ControlReasonNone);
-    domain_state->update_count++;
-    domain_state->last_result = result;
-    if (result != ControlResultOk)
-    {
-        (void)control_stop_active(domain, ControlReasonFault, context);
-        domain_state->state = ControlStateFault;
-        domain_state->last_result = result;
-        return ControlResultCallbackFailed;
-    }
-
-    return ControlResultOk;
+    return control_update_domain(domain, tick_ms, 1u, context);
 }
 
 ControlResult ControlMgrUpdateDueAll(uint32_t tick_ms, ControlCtx *context)
@@ -793,4 +1079,19 @@ uint32_t ControlMgrActiveClaimMask(void)
     claim_mask = s_active_claim_mask;
     CONTROL_MANAGER_EXIT_CRITICAL();
     return claim_mask;
+}
+
+ControlResult ControlMgrGetDiag(ControlMgrDiag *out)
+{
+    ControlMgrInit();
+    if (out == NULL)
+    {
+        return ControlResultBadArgument;
+    }
+
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    *out = s_diag;
+    out->reservedClaimMask = control_reserved_claim_mask_locked();
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return ControlResultOk;
 }
