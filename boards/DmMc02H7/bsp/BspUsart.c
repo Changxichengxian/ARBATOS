@@ -4,6 +4,12 @@
 #include "BspUartDispatch.h"
 #include "usart.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include "task.h"
+
+#include <string.h>
+
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
@@ -24,16 +30,90 @@ static BspUsartErrorCb usart2_error_cb = NULL;
 static volatile uint8_t usart2_it_rx_active = 0u;
 static uint8_t usart2_it_rx_byte = 0u;
 static uint8_t usart2_dispatch_registered = 0u;
+static SemaphoreHandle_t usart2_tx_sem = NULL;
+static StaticSemaphore_t usart2_tx_sem_buf;
+static uint8_t usart2_tx_buf[BSP_RS485_TX_IT_MAX_LEN];
 
 static BspUsartRxByteCb usart3_rx_byte_cb = NULL;
 static BspUsartErrorCb usart3_error_cb = NULL;
 static volatile uint8_t usart3_it_rx_active = 0u;
 static uint8_t usart3_it_rx_byte = 0u;
 static uint8_t usart3_dispatch_registered = 0u;
+static SemaphoreHandle_t usart3_tx_sem = NULL;
+static StaticSemaphore_t usart3_tx_sem_buf;
+static uint8_t usart3_tx_buf[BSP_RS485_TX_IT_MAX_LEN];
 
-static uint32_t BspUsartBlockingTimeout(uint32_t timeout_ms)
+static int BspRs485TxSemPrepare(SemaphoreHandle_t *sem, StaticSemaphore_t *storage)
 {
-    return (timeout_ms == 0u) ? 10u : timeout_ms;
+    if (sem == NULL || storage == NULL)
+    {
+        return (int)HAL_ERROR;
+    }
+
+    taskENTER_CRITICAL();
+    if (*sem == NULL)
+    {
+        *sem = xSemaphoreCreateBinaryStatic(storage);
+    }
+    taskEXIT_CRITICAL();
+    return (*sem != NULL) ? (int)HAL_OK : (int)HAL_ERROR;
+}
+
+static int BspRs485TxItStart(UART_HandleTypeDef *huart,
+                             SemaphoreHandle_t sem,
+                             uint8_t *storage,
+                             const uint8_t *data,
+                             uint16_t len)
+{
+    if (huart == NULL || sem == NULL || storage == NULL || data == NULL ||
+        len == 0u || len > (uint16_t)BSP_RS485_TX_IT_MAX_LEN)
+    {
+        return (int)HAL_ERROR;
+    }
+    if (huart->gState != HAL_UART_STATE_READY)
+    {
+        return (int)HAL_BUSY;
+    }
+
+    (void)xSemaphoreTake(sem, 0u);
+    (void)memcpy(storage, data, len);
+    __DMB();
+    return (int)HAL_UART_Transmit_IT(huart, storage, len);
+}
+
+static int BspRs485TxItWait(UART_HandleTypeDef *huart,
+                            SemaphoreHandle_t sem,
+                            uint32_t timeout_ms)
+{
+    TickType_t timeout = pdMS_TO_TICKS((timeout_ms == 0u) ? 10u : timeout_ms);
+
+    if (huart == NULL || sem == NULL)
+    {
+        return (int)HAL_ERROR;
+    }
+    if (timeout == 0u)
+    {
+        timeout = 1u;
+    }
+    if (xSemaphoreTake(sem, timeout) != pdTRUE)
+    {
+        (void)HAL_UART_AbortTransmit(huart);
+        return (int)HAL_TIMEOUT;
+    }
+    /* 收到 TC 即表示最后停止位已经完成；并行 RX 的错误码不应污染 TX 结果。 */
+    return (int)HAL_OK;
+}
+
+static void BspRs485TxSignalFromIsr(SemaphoreHandle_t sem)
+{
+    BaseType_t higher_priority_task_woken = pdFALSE;
+
+    if (sem == NULL)
+    {
+        return;
+    }
+    (void)xSemaphoreGiveFromISR(sem, &higher_priority_task_woken);
+    portYIELD_FROM_ISR(higher_priority_task_woken);
 }
 
 static int BspRs485SetBaudrate(UART_HandleTypeDef *huart, volatile uint8_t *it_rx_active, uint32_t baudrate)
@@ -48,6 +128,12 @@ static int BspRs485SetBaudrate(UART_HandleTypeDef *huart, volatile uint8_t *it_r
     if (huart->Init.BaudRate == baudrate)
     {
         return (int)HAL_OK;
+    }
+
+    /* 不能用改波特率的 HAL_Abort 截断已经完成安全裁决并启动的帧。 */
+    if (huart->gState != HAL_UART_STATE_READY)
+    {
+        return (int)HAL_BUSY;
     }
 
     *it_rx_active = 0u;
@@ -273,19 +359,23 @@ int BspUsart2SetBaudrate(uint32_t baudrate)
     return BspRs485SetBaudrate(&BSP_RS485_PORT0_UART_HANDLE, &usart2_it_rx_active, baudrate);
 }
 
-int BspUsart2Tx(const uint8_t *data, uint16_t len, uint32_t timeout_ms)
+int BspUsart2TxItPrepare(void)
 {
-    if (data == NULL || len == 0u)
-    {
-        return (int)HAL_ERROR;
-    }
+    return BspRs485TxSemPrepare(&usart2_tx_sem, &usart2_tx_sem_buf);
+}
 
-    if (BSP_RS485_PORT0_UART_HANDLE.gState != HAL_UART_STATE_READY)
-    {
-        return (int)HAL_BUSY;
-    }
+int BspUsart2TxItStart(const uint8_t *data, uint16_t len)
+{
+    return BspRs485TxItStart(&BSP_RS485_PORT0_UART_HANDLE,
+                             usart2_tx_sem,
+                             usart2_tx_buf,
+                             data,
+                             len);
+}
 
-    return (int)HAL_UART_Transmit(&BSP_RS485_PORT0_UART_HANDLE, (uint8_t *)data, len, BspUsartBlockingTimeout(timeout_ms));
+int BspUsart2TxItWait(uint32_t timeout_ms)
+{
+    return BspRs485TxItWait(&BSP_RS485_PORT0_UART_HANDLE, usart2_tx_sem, timeout_ms);
 }
 
 int BspUsart2RxItStart(void)
@@ -329,19 +419,23 @@ int BspUsart3SetBaudrate(uint32_t baudrate)
     return BspRs485SetBaudrate(&BSP_RS485_PORT1_UART_HANDLE, &usart3_it_rx_active, baudrate);
 }
 
-int BspUsart3Tx(const uint8_t *data, uint16_t len, uint32_t timeout_ms)
+int BspUsart3TxItPrepare(void)
 {
-    if (data == NULL || len == 0u)
-    {
-        return (int)HAL_ERROR;
-    }
+    return BspRs485TxSemPrepare(&usart3_tx_sem, &usart3_tx_sem_buf);
+}
 
-    if (BSP_RS485_PORT1_UART_HANDLE.gState != HAL_UART_STATE_READY)
-    {
-        return (int)HAL_BUSY;
-    }
+int BspUsart3TxItStart(const uint8_t *data, uint16_t len)
+{
+    return BspRs485TxItStart(&BSP_RS485_PORT1_UART_HANDLE,
+                             usart3_tx_sem,
+                             usart3_tx_buf,
+                             data,
+                             len);
+}
 
-    return (int)HAL_UART_Transmit(&BSP_RS485_PORT1_UART_HANDLE, (uint8_t *)data, len, BspUsartBlockingTimeout(timeout_ms));
+int BspUsart3TxItWait(uint32_t timeout_ms)
+{
+    return BspRs485TxItWait(&BSP_RS485_PORT1_UART_HANDLE, usart3_tx_sem, timeout_ms);
 }
 
 int BspUsart3RxItStart(void)
@@ -434,5 +528,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         {
             (void)HAL_UART_Receive_IT(&BSP_RS485_PORT1_UART_HANDLE, &usart3_it_rx_byte, 1u);
         }
+    }
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart == &BSP_RS485_PORT0_UART_HANDLE)
+    {
+        BspRs485TxSignalFromIsr(usart2_tx_sem);
+    }
+    else if (huart == &BSP_RS485_PORT1_UART_HANDLE)
+    {
+        BspRs485TxSignalFromIsr(usart3_tx_sem);
     }
 }

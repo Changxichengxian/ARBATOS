@@ -39,27 +39,52 @@
 #include "GimbalState.h"
 #include "ShootState.h"
 #include "ShootFaultPolicy.h"
+#include "ShootInputPolicy.h"
+#include "ManualInputSnapshot.h"
 #include "ControlInput.h"
 #include "DetectTask.h"
 #include "RobotMode.h"
 #include "Pid.h"
-#include "HostLinkTask.h"
 #include "BspTime.h"
 
 // 微动开关 GPIO 是板相关差异，通过 BSP 读取。
+
+typedef struct
+{
+    uint16_t rawSwitch;
+    uint16_t effectiveSwitch;
+    ManualInputSemanticsConfig semantics;
+    uint32_t semanticsSeq;
+    uint8_t manualOnline;
+    uint8_t mousePressL;
+    uint8_t mousePressR;
+} ShootFrameInput;
+
+static ShootInputGateState s_shootInputGate;
+
+static const ManualInputSemanticsConfig ShootDefaultSemantics = {
+    .GimbalSafePos = MANUAL_INPUT_SWITCH_POS_UP,
+    .ChassisSafePos = MANUAL_INPUT_SWITCH_POS_UP,
+    .ChassisFollowPos = MANUAL_INPUT_SWITCH_POS_MID,
+    .ChassisSpinPos = MANUAL_INPUT_SWITCH_POS_DOWN,
+    .ShootStopPos = MANUAL_INPUT_SWITCH_POS_UP,
+    .ShootReadyPos = MANUAL_INPUT_SWITCH_POS_MID,
+    .ShootFirePos = MANUAL_INPUT_SWITCH_POS_DOWN,
+    .image_vt13_shoot_switch_input = MANUAL_INPUT_IMAGE_SWITCH_CHASSIS,
+};
 
 /**
   * @brief          射击状态机设置，遥控器上拨一次开启，再上拨关闭，下拨1次发射1颗，一直处在下，则持续发射，用于3min准备时间清理子弹
   * @param[in]      void
   * @retval         void
   */
-static void ShootSetMode(void);
+static void ShootSetMode(const ShootFrameInput *frame);
 /**
   * @brief          update shoot feedback data.
   * @param[in]      void
   * @retval         void
   */
-static void ShootFeedbackUpdate(void);
+static void ShootFeedbackUpdate(const ShootFrameInput *frame);
 
 /**
   * @brief          清空摩擦轮输出（速度环 PID / 目标转速 / 电流指令）
@@ -151,19 +176,31 @@ static uint16_t ShootSwitchRawFromPos(uint8_t pos)
     return (uint16_t)ControlInputSwitchPosToRaw(pos);
 }
 
-static uint8_t ShootSwitchIsStop(uint16_t raw_sw)
+static const ManualInputSemanticsConfig *ShootSemanticsOrDefault(
+    const ManualInputSemanticsConfig *semantics)
 {
-    return ControlInputSwitchIsPos(raw_sw, g_config.manual_input.semantics.ShootStopPos);
+    return (semantics != NULL) ? semantics : &ShootDefaultSemantics;
 }
 
-static uint8_t ShootSwitchIsReady(uint16_t raw_sw)
+static uint8_t ShootSwitchIsStop(uint16_t raw_sw,
+                                 const ManualInputSemanticsConfig *semantics)
 {
-    return ControlInputSwitchIsPos(raw_sw, g_config.manual_input.semantics.ShootReadyPos);
+    semantics = ShootSemanticsOrDefault(semantics);
+    return ControlInputSwitchIsPos(raw_sw, semantics->ShootStopPos);
 }
 
-static uint8_t ShootSwitchIsFire(uint16_t raw_sw)
+static uint8_t ShootSwitchIsReady(uint16_t raw_sw,
+                                  const ManualInputSemanticsConfig *semantics)
 {
-    return ControlInputSwitchIsPos(raw_sw, g_config.manual_input.semantics.ShootFirePos);
+    semantics = ShootSemanticsOrDefault(semantics);
+    return ControlInputSwitchIsPos(raw_sw, semantics->ShootReadyPos);
+}
+
+static uint8_t ShootSwitchIsFire(uint16_t raw_sw,
+                                 const ManualInputSemanticsConfig *semantics)
+{
+    semantics = ShootSemanticsOrDefault(semantics);
+    return ControlInputSwitchIsPos(raw_sw, semantics->ShootFirePos);
 }
 
 static uint32_t ShootFaultTimeoutMs(uint8_t deviceId)
@@ -379,9 +416,11 @@ static uint8_t ShootFaultTriggerUsable(void)
     return (configured != 0u && ShootFaultStopsTrigger() == 0u) ? 1u : 0u;
 }
 
-static input_switch_e ShootGetImageSwitchInput(void)
+static input_switch_e ShootGetImageSwitchInput(
+    const ManualInputSemanticsConfig *semantics)
 {
-    switch (g_config.manual_input.semantics.image_vt13_shoot_switch_input)
+    semantics = ShootSemanticsOrDefault(semantics);
+    switch (semantics->image_vt13_shoot_switch_input)
     {
     case MANUAL_INPUT_IMAGE_SWITCH_CHASSIS:
         return INPUT_SW_CHASSIS_MODE;
@@ -393,70 +432,140 @@ static input_switch_e ShootGetImageSwitchInput(void)
     }
 }
 
-static uint16_t ShootGetRawSwitch(void)
+static uint16_t ShootGetRawSwitch(const ManualInputSnapshot *manualInput,
+                                  uint8_t manualOnline,
+                                  const ManualInputSemanticsConfig *semantics)
 {
-    uint16_t raw_sw = (uint16_t)input_switch(INPUT_SW_SHOOT_MODE);
+    uint16_t raw_sw;
 
-    if (remote_control_get_active_source() != MANUAL_INPUT_SRC_IMAGE)
+    semantics = ShootSemanticsOrDefault(semantics);
+    raw_sw = ShootSwitchRawFromPos(semantics->ShootStopPos);
+
+    if (manualInput == NULL || manualOnline == 0u)
     {
         return raw_sw;
     }
 
-    ImageRemoteState image_state;
-    if (!ImageRemoteGetState(&image_state) ||
-        image_state.proto != SDLOG_MANUAL_INPUT_PROTO_IMAGE_VT13)
+    raw_sw = (uint16_t)manualInput->control.sw[INPUT_SW_SHOOT_MODE];
+
+    if (manualInput->activeSource != MANUAL_INPUT_SRC_IMAGE)
     {
         return raw_sw;
     }
 
-    raw_sw = (uint16_t)ControlInputSwitch(ShootGetImageSwitchInput());
-    return ShootSwitchIsStop(raw_sw) ? ShootSwitchRawFromPos(g_config.manual_input.semantics.ShootStopPos) :
-                                          ShootSwitchRawFromPos(g_config.manual_input.semantics.ShootFirePos);
+    if (manualInput->sourceProtocol != MANUAL_INPUT_PROTOCOL_IMAGE_VT13)
+    {
+        return raw_sw;
+    }
+
+    raw_sw = (uint16_t)manualInput->control.sw[ShootGetImageSwitchInput(semantics)];
+    return ShootSwitchIsStop(raw_sw, semantics) ? ShootSwitchRawFromPos(semantics->ShootStopPos) :
+                                                  ShootSwitchRawFromPos(semantics->ShootFirePos);
 }
 
-static uint16_t ShootGetEffectiveSwitch(void)
+static uint16_t ShootGetEffectiveSwitch(uint16_t raw_sw,
+                                        uint8_t manualOnline,
+                                        const ManualInputSemanticsConfig *semantics)
 {
-    static uint8_t gate_inited = 0u;
-    static uint8_t down_engaged = 0u;
-    static uint16_t last_sw_raw = RC_SW_UP;
+    uint16_t ShootStopRaw;
+    uint16_t ShootReadyRaw;
+    uint16_t ShootFireRaw;
 
-    const uint16_t raw_sw = ShootGetRawSwitch();
-    const uint8_t manual_online = toe_is_error(DBUS_TOE) ? 0u : 1u;
-    const uint16_t ShootStopRaw = ShootSwitchRawFromPos(g_config.manual_input.semantics.ShootStopPos);
-    const uint16_t ShootReadyRaw = ShootSwitchRawFromPos(g_config.manual_input.semantics.ShootReadyPos);
-    uint16_t effective_sw = raw_sw;
+    semantics = ShootSemanticsOrDefault(semantics);
+    ShootStopRaw = ShootSwitchRawFromPos(semantics->ShootStopPos);
+    ShootReadyRaw = ShootSwitchRawFromPos(semantics->ShootReadyPos);
+    ShootFireRaw = ShootSwitchRawFromPos(semantics->ShootFirePos);
 
-    if (manual_online == 0u)
+    return ShootInputGateSwitch(&s_shootInputGate,
+                                raw_sw,
+                                manualOnline,
+                                ShootStopRaw,
+                                ShootReadyRaw,
+                                ShootFireRaw);
+}
+
+static void ShootResetInputGate(const ManualInputSemanticsConfig *semantics)
+{
+    semantics = ShootSemanticsOrDefault(semantics);
+    ShootInputGateReset(&s_shootInputGate,
+                        ShootSwitchRawFromPos(semantics->ShootStopPos));
+}
+
+static void ShootMouseRearmSyncSafe(const ShootFrameInput *observed)
+{
+    const uint8_t manualOnline = (observed != NULL) ? observed->manualOnline : 0u;
+    const uint8_t pressLeft = (observed != NULL) ? observed->mousePressL : 0u;
+    const uint8_t pressRight = (observed != NULL) ? observed->mousePressR : 0u;
+
+    ShootInputGateSyncSafeMouse(&s_shootInputGate,
+                                manualOnline,
+                                pressLeft,
+                                pressRight);
+}
+
+static void ShootMouseRearmApply(ShootFrameInput *frame)
+{
+    if (frame == NULL)
     {
-        gate_inited = 0u;
-        down_engaged = 0u;
-        last_sw_raw = ShootStopRaw;
-        return raw_sw;
+        return;
     }
 
-    if (gate_inited == 0u)
+    ShootInputGateApplyFrameMouse(&s_shootInputGate,
+                                  frame->manualOnline,
+                                  &frame->mousePressL,
+                                  &frame->mousePressR);
+}
+
+static void ShootFrameInputCapture(const ManualInputSnapshot *manualInput,
+                                   ShootFrameInput *frame)
+{
+    if (frame == NULL)
     {
-        gate_inited = 1u;
-        down_engaged = 0u;
-        last_sw_raw = raw_sw;
+        return;
     }
 
-    if (!ShootSwitchIsFire(raw_sw))
+    memset(frame, 0, sizeof(*frame));
+    frame->semantics = (manualInput != NULL) ?
+                           manualInput->semantics :
+                           ShootDefaultSemantics;
+    frame->semanticsSeq = (manualInput != NULL) ? manualInput->semanticsSeq : 0u;
+    frame->manualOnline = (uint8_t)(manualInput != NULL && manualInput->online != 0u);
+    if (frame->manualOnline != 0u)
     {
-        down_engaged = 0u;
-    }
-    else if (!ShootSwitchIsFire(last_sw_raw))
-    {
-        down_engaged = 1u;
-    }
-
-    if (ShootSwitchIsFire(raw_sw) && down_engaged == 0u)
-    {
-        effective_sw = ShootReadyRaw;
+        frame->mousePressL = manualInput->manual.mouse.press_l;
+        frame->mousePressR = manualInput->manual.mouse.press_r;
     }
 
-    last_sw_raw = raw_sw;
-    return effective_sw;
+    if (frame->manualOnline != 0u &&
+        manualInput->activeSource == MANUAL_INPUT_SRC_IMAGE &&
+        (manualInput->sourceFlags & MANUAL_INPUT_SOURCE_FLAG_AUX_FIRE) != 0u)
+    {
+        frame->mousePressL = 1u;
+    }
+
+    frame->rawSwitch = ShootGetRawSwitch(manualInput,
+                                         frame->manualOnline,
+                                         &frame->semantics);
+    frame->effectiveSwitch = frame->rawSwitch;
+}
+
+static void ShootFrameInputBuild(const ManualInputSnapshot *manualInput,
+                                 ShootFrameInput *frame)
+{
+    ShootFrameInputCapture(manualInput, frame);
+    if (frame == NULL)
+    {
+        return;
+    }
+
+    (void)ShootInputGateSyncSemantics(
+        &s_shootInputGate,
+        frame->semanticsSeq,
+        ShootSwitchRawFromPos(frame->semantics.ShootStopPos));
+    frame->effectiveSwitch = ShootGetEffectiveSwitch(frame->rawSwitch,
+                                                     frame->manualOnline,
+                                                     &frame->semantics);
+    ShootMouseRearmApply(frame);
 }
 
 
@@ -705,6 +814,8 @@ static void ShootFaultSyncInhibit(void)
 
 void ShootRuntimeStop(void)
 {
+    ShootResetInputGate(NULL);
+    ShootInputGateBlockMouse(&s_shootInputGate);
     g_shoot.mode = SHOOT_STOP;
     ShootClearTriggerOutput();
     ShootClearFricOutput();
@@ -744,7 +855,7 @@ static bool_t ShootFricSpeedReady(void)
 
 
 /**
-  * @brief          射击初始化，初始化PID，遥控器指针，电机指针
+  * @brief          射击初始化，初始化PID和电机指针
   * @param[in]      void
   * @retval         返回空
   */
@@ -758,9 +869,9 @@ void ShootRuntimeInit(void)
                                               ShootFrictionCurrentBindings,
                                               FRIC_MOTOR_NUM);
     ShootFaultInit();
+    ShootResetInputGate(NULL);
+    ShootInputGateBlockMouse(&s_shootInputGate);
     g_shoot.mode = SHOOT_STOP;
-    //遥控器指针
-    g_shoot.ShootRc = get_remote_control_point();
     // motor feedback pointer
     g_shoot.ShootMotorMeasure = get_trigger_motor_measure_point();
     //初始化PID
@@ -770,8 +881,6 @@ void ShootRuntimeInit(void)
         PID_init(&g_shoot.fric_speed_pid[i], PID_POSITION, Fric_speed_pid, g_config.shoot.fric_speed_pid.max_out, g_config.shoot.fric_speed_pid.max_iout);
         g_shoot.fric_current_set[i] = 0;
     }
-    // update feedback data
-    ShootFeedbackUpdate();
     ramp_init(&g_shoot.fric_speed_ramp, SHOOT_CONTROL_TIME * 0.001f, SHOOT_FRIC_SPEED_RPM, SHOOT_FRIC_SPEED_OFF_RPM);
     g_shoot.fric_speed_ramp.out = SHOOT_FRIC_SPEED_OFF_RPM;
     g_shoot.fric_speed_set = SHOOT_FRIC_SPEED_OFF_RPM;
@@ -788,17 +897,51 @@ void ShootRuntimeInit(void)
     ShootWriteState();
 }
 
+void ShootRuntimeSafeStep(const struct ManualInputSnapshot *manualInput)
+{
+    ShootFrameInput observed;
+    ShootFrameInput safeFrame = {0};
+    uint8_t switchSafe;
+
+    ShootFrameInputCapture(manualInput, &observed);
+    switchSafe = (uint8_t)(observed.manualOnline != 0u &&
+                           ShootSwitchIsStop(observed.rawSwitch,
+                                             &observed.semantics) != 0u);
+    ShootFaultUpdate(switchSafe);
+    ShootFaultSyncInhibit();
+
+    (void)ShootInputGateSyncSemantics(
+        &s_shootInputGate,
+        observed.semanticsSeq,
+        ShootSwitchRawFromPos(observed.semantics.ShootStopPos));
+    ShootResetInputGate(&observed.semantics);
+    ShootMouseRearmSyncSafe(&observed);
+    safeFrame.semantics = observed.semantics;
+    safeFrame.semanticsSeq = observed.semanticsSeq;
+    safeFrame.rawSwitch = ShootSwitchRawFromPos(safeFrame.semantics.ShootStopPos);
+    safeFrame.effectiveSwitch = safeFrame.rawSwitch;
+    g_shoot.mode = SHOOT_STOP;
+    ShootFeedbackUpdate(&safeFrame);
+    ShootClearTriggerOutput();
+    ShootClearFricOutput();
+    ShootWriteState();
+}
+
 /**
   * @brief          射击循环
   * @param[in]      void
   * @retval         返回can控制值
   */
-int16_t ShootRuntimeStep(void)
+int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput)
 {
     static uint8_t entertain_entered = 0u;
-    const uint16_t rawSwitch = ShootGetRawSwitch();
+    ShootFrameInput frame;
+
+    ShootFrameInputBuild(manualInput, &frame);
+    const uint16_t rawSwitch = frame.rawSwitch;
     const uint8_t switchSafe =
-        (toe_is_error(DBUS_TOE) == 0u && ShootSwitchIsStop(rawSwitch) != 0u) ? 1u : 0u;
+        (frame.manualOnline != 0u &&
+         ShootSwitchIsStop(rawSwitch, &frame.semantics) != 0u) ? 1u : 0u;
 
     ShootFaultUpdate(switchSafe);
     ShootFaultSyncInhibit();
@@ -832,13 +975,13 @@ int16_t ShootRuntimeStep(void)
         return 0;
     }
 
-    ShootSetMode();        //设置状态机
-    ShootFeedbackUpdate(); // update feedback data
+    ShootSetMode(&frame);        //设置状态机
+    ShootFeedbackUpdate(&frame); // update feedback data
     const bool_t allow_fric = (robot_mode_allow_shoot_fric() != 0u) ? 1 : 0;
     const bool_t allow_trigger = (robot_mode_allow_shoot_trigger() != 0u) ? 1 : 0;
-    const uint16_t ShootSw = ShootGetEffectiveSwitch();
-    const bool_t sw_ready = ShootSwitchIsReady(ShootSw);
-    const bool_t sw_fire = ShootSwitchIsFire(ShootSw);
+    const uint16_t ShootSw = frame.effectiveSwitch;
+    const bool_t sw_ready = ShootSwitchIsReady(ShootSw, &frame.semantics);
+    const bool_t sw_fire = ShootSwitchIsFire(ShootSw, &frame.semantics);
 
 
     if (g_shoot.mode == SHOOT_STOP)
@@ -972,25 +1115,29 @@ int16_t ShootRuntimeStep(void)
   * @param[in]      void
   * @retval         void
   */
-static void ShootSetMode(void)
+static void ShootSetMode(const ShootFrameInput *frame)
 {
     // 函数地图：先按拨杆定大状态，再叠加运行模式、鼠标/微动开关和完成/堵转条件。
+    const ManualInputSemanticsConfig *semantics =
+        ShootSemanticsOrDefault((frame != NULL) ? &frame->semantics : NULL);
     const bool_t allow_fric = (robot_mode_allow_shoot_fric() != 0u) ? 1 : 0;
     const bool_t allow_trigger = (robot_mode_allow_shoot_trigger() != 0u) ? 1 : 0;
-    const uint16_t ShootSw = ShootGetRawSwitch();
-    const bool_t sw_fire = ShootSwitchIsFire(ShootSw);
+    const uint16_t ShootSw = (frame != NULL) ?
+                                 frame->rawSwitch :
+                                 ShootSwitchRawFromPos(semantics->ShootStopPos);
+    const bool_t sw_fire = ShootSwitchIsFire(ShootSw, semantics);
 
     // 拨杆位置优先控制：上=停火；中=预热摩擦轮（拨盘不动）；下=允许拨盘进入 READY_BULLET/READY 等逻辑
-    if (ShootSwitchIsStop(ShootSw))
+    if (ShootSwitchIsStop(ShootSw, semantics))
     {
         g_shoot.mode = SHOOT_STOP;
     }
-    else if (ShootSwitchIsReady(ShootSw))
+    else if (ShootSwitchIsReady(ShootSw, semantics))
     {
         // 进入预热：摩擦轮加速至目标，等待 READY_BULLET
         g_shoot.mode = SHOOT_READY_FRIC;
     }
-    else if (ShootSwitchIsFire(ShootSw))
+    else if (ShootSwitchIsFire(ShootSw, semantics))
     {
         // 启动射击：摩擦轮提速，准备好后持续拨盘
         g_shoot.mode = SHOOT_READY_FRIC;
@@ -1014,7 +1161,9 @@ static void ShootSetMode(void)
     else if(g_shoot.mode == SHOOT_READY)
     {
         // 仅鼠标按键边沿启动射击（下档不再自动连发/触发）
-        if ((g_shoot.press_l && g_shoot.last_press_l == 0) || (g_shoot.press_r && g_shoot.last_press_r == 0))
+        if (frame != NULL &&
+            ((frame->mousePressL != 0u && g_shoot.press_l == 0) ||
+             (frame->mousePressR != 0u && g_shoot.press_r == 0)))
         {
             g_shoot.mode = SHOOT_BULLET;
         }
@@ -1084,16 +1233,16 @@ static void ShootSetMode(void)
   * @param[in]      void
   * @retval         void
   */
-static void ShootFeedbackUpdate(void)
+static void ShootFeedbackUpdate(const ShootFrameInput *frame)
 {
     // 函数地图：滤波拨弹速度；维护编码器圈数/输出角；读取微动开关；更新长按和发射完成状态。
+    const ManualInputSemanticsConfig *semantics =
+        ShootSemanticsOrDefault((frame != NULL) ? &frame->semantics : NULL);
     static const fp32 fliter_num[3] = {1.725709860247969f, -0.75594777109163436f, 0.030237910843665373f};
     static second_order_filter_type_t speed_filter;
     static bool_t speed_filter_inited = 0;
     const uint16_t tick_ms = ShootTickMs();
     const uint8_t trigger_online = ShootFaultTriggerUsable();
-    ManualInputState rc_snapshot = {0};
-    const uint8_t rc_valid = ManualInputGetCurrentCopy(&rc_snapshot);
 
     //拨弹轮电机速度滤波一下（二阶低通）
     if (!speed_filter_inited)
@@ -1164,12 +1313,8 @@ static void ShootFeedbackUpdate(void)
     //榧犳爣鎸夐敭
     g_shoot.last_press_l = g_shoot.press_l;
     g_shoot.last_press_r = g_shoot.press_r;
-    g_shoot.press_l = (rc_valid != 0u) ? rc_snapshot.mouse.press_l : 0u;
-    if (ImageRemoteAuxFireRequested())
-    {
-        g_shoot.press_l = 1u;
-    }
-    g_shoot.press_r = (rc_valid != 0u) ? rc_snapshot.mouse.press_r : 0u;
+    g_shoot.press_l = (frame != NULL) ? frame->mousePressL : 0u;
+    g_shoot.press_r = (frame != NULL) ? frame->mousePressR : 0u;
     //长按计时
     if (g_shoot.press_l)
     {
@@ -1196,8 +1341,10 @@ static void ShootFeedbackUpdate(void)
     }
 
     //射击开关下档时间计时
-    const uint16_t effective_sw = ShootGetEffectiveSwitch();
-    if (g_shoot.mode != SHOOT_STOP && ShootSwitchIsFire(effective_sw))
+    const uint16_t effective_sw = (frame != NULL) ?
+                                      frame->effectiveSwitch :
+                                      ShootSwitchRawFromPos(semantics->ShootStopPos);
+    if (g_shoot.mode != SHOOT_STOP && ShootSwitchIsFire(effective_sw, semantics))
     {
         if (g_shoot.rc_s_time < RC_S_LONG_TIME)
         {

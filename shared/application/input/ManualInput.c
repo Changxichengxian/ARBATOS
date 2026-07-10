@@ -58,12 +58,17 @@ typedef struct
     ManualInputState rc;
     TickType_t last_update_tick;
     uint32_t update_seq;
+    uint8_t protocol;
+    uint8_t raw_flags;
+    uint8_t raw_switch1;
     uint8_t valid;
 } ManualInputSrcState;
 
 typedef struct
 {
     ManualInputSnapshot bank[MANUAL_INPUT_SNAPSHOT_BANK_COUNT];
+    ManualInputConfig manual_config[MANUAL_INPUT_SNAPSHOT_BANK_COUNT];
+    input_config_t input_config[MANUAL_INPUT_SNAPSHOT_BANK_COUNT];
     uint16_t readers[MANUAL_INPUT_SNAPSHOT_BANK_COUNT];
     uint8_t expired[MANUAL_INPUT_SNAPSHOT_BANK_COUNT];
     uint8_t active_bank;
@@ -121,6 +126,11 @@ static uint32_t ManualInputAgeMs(TickType_t now_tick, TickType_t source_tick);
 static uint32_t ManualInputTimeoutMs(const ManualInputConfig *cfg);
 static uint8_t ManualInputMixMode(const ManualInputConfig *cfg);
 static uint32_t ManualInputSourceMask(uint8_t source);
+static uint8_t ManualInputSourceFlags(const ManualInputSrcState *source,
+                                      const ManualInputConfig *config);
+static void ManualInputApplySourceMapping(ManualInputState *rc,
+                                          const ManualInputSrcState *source,
+                                          const ManualInputConfig *config);
 static void ManualInputStoreInit(void);
 static void ManualInputCopySources(ManualInputSrcState *out);
 static void ManualInputCopyConfig(ManualInputConfig *manual_cfg, input_config_t *input_cfg);
@@ -262,6 +272,25 @@ void remote_control_set_rc(const ManualInputState *rc)
 
 void ManualInputUpdateSource(uint8_t source, const ManualInputState *rc)
 {
+    uint8_t protocol = MANUAL_INPUT_PROTOCOL_NONE;
+
+    if (source == MANUAL_INPUT_SRC_DBUS)
+    {
+        protocol = MANUAL_INPUT_PROTOCOL_DBUS;
+    }
+    else if (source == MANUAL_INPUT_SRC_ELRS)
+    {
+        protocol = MANUAL_INPUT_PROTOCOL_CRSF;
+    }
+    ManualInputUpdateSourceMeta(source, rc, protocol, 0u, 0u);
+}
+
+void ManualInputUpdateSourceMeta(uint8_t source,
+                                 const ManualInputState *rc,
+                                 uint8_t protocol,
+                                 uint8_t rawFlags,
+                                 uint8_t rawSwitch1)
+{
     const TickType_t now_tick = xTaskGetTickCount();
 
     if (rc == NULL)
@@ -277,6 +306,9 @@ void ManualInputUpdateSource(uint8_t source, const ManualInputState *rc)
     manual_src[source].rc = *rc;
     manual_src[source].last_update_tick = now_tick;
     manual_src[source].update_seq = ManualInputSourceSeq;
+    manual_src[source].protocol = protocol;
+    manual_src[source].raw_flags = rawFlags;
+    manual_src[source].raw_switch1 = rawSwitch1;
     manual_src[source].valid = 1u;
     g_remote_control_set_source_cnt++;
     ManualInputRefreshDirty = 1u;
@@ -595,6 +627,90 @@ static uint32_t ManualInputSourceMask(uint8_t source)
     return (uint32_t)1u << (source - 1u);
 }
 
+static uint8_t ManualInputSourceFlags(const ManualInputSrcState *source,
+                                      const ManualInputConfig *config)
+{
+    uint8_t flags = 0u;
+
+    if (source == NULL || config == NULL)
+    {
+        return 0u;
+    }
+    if (((config->vt13.auto_aim_pause_enable != 0u) &&
+         ((source->raw_flags & MANUAL_INPUT_SOURCE_RAW_PAUSE) != 0u)) ||
+        ((config->vt13.auto_aim_mouse_r_enable != 0u) &&
+         ((source->raw_flags & MANUAL_INPUT_SOURCE_RAW_MOUSE_R) != 0u)))
+    {
+        flags |= MANUAL_INPUT_SOURCE_FLAG_AUTO_AIM;
+    }
+    if (((config->vt13.AuxFireBtnLEnable != 0u) &&
+         ((source->raw_flags & MANUAL_INPUT_SOURCE_RAW_BTN_L) != 0u)) ||
+        ((config->vt13.AuxFireMouseLEnable != 0u) &&
+         ((source->raw_flags & MANUAL_INPUT_SOURCE_RAW_MOUSE_L) != 0u)))
+    {
+        flags |= MANUAL_INPUT_SOURCE_FLAG_AUX_FIRE;
+    }
+    return flags;
+}
+
+static uint8_t ManualInputMapVt13Switch1(uint8_t value,
+                                         const ManualInputConfig *config)
+{
+    if (config == NULL)
+    {
+        return RC_SW_UP;
+    }
+    if (value == config->vt13.switch1_safe_value)
+    {
+        return ControlInputSwitchPosToRaw(config->semantics.GimbalSafePos);
+    }
+    if (value == config->vt13.switch1_normal_value || value == 3u)
+    {
+        return ControlInputSwitchPosToRaw(config->semantics.ChassisFollowPos);
+    }
+    if (value == config->vt13.switch1_spin_value)
+    {
+        return ControlInputSwitchPosToRaw(config->semantics.ChassisSpinPos);
+    }
+    return ControlInputSwitchPosToRaw(config->semantics.ChassisSpinPos);
+}
+
+static uint8_t ManualInputMapVt13Switch2(uint8_t raw_flags,
+                                         const ManualInputConfig *config)
+{
+    if (config == NULL)
+    {
+        return RC_SW_UP;
+    }
+    if ((raw_flags & MANUAL_INPUT_SOURCE_RAW_PAUSE) != 0u)
+    {
+        return ControlInputSwitchPosToRaw(config->vt13.switch2_pause_pos);
+    }
+    if ((raw_flags & MANUAL_INPUT_SOURCE_RAW_BTN_L) != 0u)
+    {
+        return ControlInputSwitchPosToRaw(config->vt13.switch2_btn_l_pos);
+    }
+    if ((raw_flags & MANUAL_INPUT_SOURCE_RAW_BTN_R) != 0u)
+    {
+        return ControlInputSwitchPosToRaw(config->vt13.switch2_btn_r_pos);
+    }
+    return ControlInputSwitchPosToRaw(config->vt13.switch2_btn_r_pos);
+}
+
+static void ManualInputApplySourceMapping(ManualInputState *rc,
+                                          const ManualInputSrcState *source,
+                                          const ManualInputConfig *config)
+{
+    if (rc == NULL || source == NULL || config == NULL ||
+        source->protocol != (uint8_t)MANUAL_INPUT_PROTOCOL_IMAGE_VT13)
+    {
+        return;
+    }
+
+    rc->rc.s[0] = (char)ManualInputMapVt13Switch1(source->raw_switch1, config);
+    rc->rc.s[1] = (char)ManualInputMapVt13Switch2(source->raw_flags, config);
+}
+
 static uint8_t ManualInputSrcIsActive(const ManualInputSrcState *src_state,
                                       uint8_t src,
                                       TickType_t now_tick,
@@ -653,9 +769,14 @@ static void ManualInputStoreInit(void)
     ManualInputPublishSeq = ManualInputSeqNext(ManualInputPublishSeq);
     ManualInputWorkspace.candidate.publishSeq = ManualInputPublishSeq;
     ManualInputWorkspace.candidate.switchSeq = ManualInputSwitchSeq;
+    ManualInputWorkspace.candidate.semanticsSeq = 1u;
 
     ManualInputStore.bank[0] = ManualInputWorkspace.candidate;
     ManualInputStore.bank[1] = ManualInputWorkspace.candidate;
+    ManualInputStore.manual_config[0] = ManualInputWorkspace.manualConfig;
+    ManualInputStore.manual_config[1] = ManualInputWorkspace.manualConfig;
+    ManualInputStore.input_config[0] = ManualInputWorkspace.inputConfig;
+    ManualInputStore.input_config[1] = ManualInputWorkspace.inputConfig;
     ManualInputStore.readers[0] = 0u;
     ManualInputStore.readers[1] = 0u;
     ManualInputStore.expired[0] = 0u;
@@ -748,6 +869,10 @@ static void ManualInputBuildSnapshot(const ManualInputSrcState *src_state,
     out->publishTickMs = ManualInputTickMs(now_tick);
     out->readTickMs = out->publishTickMs;
     out->mixMode = mix_mode;
+    if (manual_cfg != NULL)
+    {
+        out->semantics = manual_cfg->semantics;
+    }
 
     for (uint8_t source = (uint8_t)MANUAL_INPUT_SRC_DBUS;
          source <= (uint8_t)MANUAL_INPUT_SRC_MAX;
@@ -818,6 +943,11 @@ static void ManualInputBuildSnapshot(const ManualInputSrcState *src_state,
         }
     }
 
+    if (selected != 0u)
+    {
+        /* 协议原始拨杆和业务位都用本次候选冻结的同一份配置解释。 */
+        ManualInputApplySourceMapping(&out->manual, &src_state[selected], manual_cfg);
+    }
     ManualInputSanitizeSwitch(&out->manual);
     ManualInputApplyBoardKey(&out->manual,
                              (manual_cfg != NULL) ? manual_cfg->BoardKeyKeyMask : 0u);
@@ -836,6 +966,8 @@ static void ManualInputBuildSnapshot(const ManualInputSrcState *src_state,
         out->sourceTickMs = ManualInputTickMs(src_state[selected].last_update_tick);
         out->sourceAgeMs = ManualInputAgeMs(now_tick, src_state[selected].last_update_tick);
         out->sourceSeq = src_state[selected].update_seq;
+        out->sourceProtocol = src_state[selected].protocol;
+        out->sourceFlags = ManualInputSourceFlags(&src_state[selected], manual_cfg);
         out->online = (out->sourceAgeMs <= timeout_ms) ? 1u : 0u;
     }
     else
@@ -844,6 +976,8 @@ static void ManualInputBuildSnapshot(const ManualInputSrcState *src_state,
         out->sourceTickMs = 0u;
         out->sourceAgeMs = MANUAL_INPUT_AGE_INVALID;
         out->sourceSeq = 0u;
+        out->sourceProtocol = 0u;
+        out->sourceFlags = 0u;
         out->online = 0u;
     }
 }
@@ -924,6 +1058,8 @@ uint8_t ManualInputSnapshotRead(ManualInputSnapshot *out)
         out->sourceTickMs = 0u;
         out->sourceAgeMs = MANUAL_INPUT_AGE_INVALID;
         out->sourceSeq = 0u;
+        out->sourceProtocol = 0u;
+        out->sourceFlags = 0u;
         out->activeSource = MANUAL_INPUT_SRC_AUTO;
         out->online = 0u;
     }
@@ -974,6 +1110,8 @@ static void ManualInputRefreshIfNeeded(uint8_t force)
         uint32_t dirty_seq;
         uint32_t publish_seq;
         uint32_t switch_seq;
+        uint32_t semantics_seq;
+        uint8_t current_bank;
         uint8_t current_source;
 
         now_tick = xTaskGetTickCount();
@@ -981,7 +1119,9 @@ static void ManualInputRefreshIfNeeded(uint8_t force)
         dirty_seq = ManualInputDirtySeq;
         publish_seq = ManualInputPublishSeq;
         switch_seq = ManualInputSwitchSeq;
-        current_source = ManualInputStore.bank[ManualInputStore.active_bank].activeSource;
+        current_bank = ManualInputStore.active_bank;
+        current_source = ManualInputStore.bank[current_bank].activeSource;
+        semantics_seq = ManualInputStore.bank[current_bank].semanticsSeq;
         ManualInputExitCritical(critical);
 
         ManualInputCopySources(ManualInputWorkspace.source);
@@ -997,9 +1137,20 @@ static void ManualInputRefreshIfNeeded(uint8_t force)
             (ManualInputWorkspace.candidate.activeSource != current_source) ?
                 ManualInputSeqNext(switch_seq) :
                 switch_seq;
+        ManualInputWorkspace.candidate.semanticsSeq =
+            (memcmp(&ManualInputWorkspace.manualConfig,
+                    &ManualInputStore.manual_config[current_bank],
+                    sizeof(ManualInputWorkspace.manualConfig)) != 0 ||
+             memcmp(&ManualInputWorkspace.inputConfig,
+                    &ManualInputStore.input_config[current_bank],
+                    sizeof(ManualInputWorkspace.inputConfig)) != 0) ?
+                ManualInputSeqNext(semantics_seq) :
+                semantics_seq;
 
         /* 非活动 bank 没有读者，整块候选在临界区外写入。 */
         ManualInputStore.bank[inactive_bank] = ManualInputWorkspace.candidate;
+        ManualInputStore.manual_config[inactive_bank] = ManualInputWorkspace.manualConfig;
+        ManualInputStore.input_config[inactive_bank] = ManualInputWorkspace.inputConfig;
         __DMB();
 
         critical = ManualInputEnterCritical();

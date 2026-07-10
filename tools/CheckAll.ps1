@@ -1395,6 +1395,8 @@ function Test-CanTxDeviceConfigBoundaries {
 
     $repoPath = "shared\application\comm\can\CanTxTask.c"
     $n6014bRepoPath = "shared\application\motors\N6014bMotorDriver.c"
+    $unitreeRepoPath = "shared\application\motors\UnitreeMotorDriver.c"
+    $rs485BspRepoPath = "boards\DmMc02H7\bsp\BspUsart.c"
     $fullPath = Join-Path $script:RepoRoot $repoPath
     if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
         Add-CheckError "Missing CAN TX source: $repoPath"
@@ -1407,18 +1409,26 @@ function Test-CanTxDeviceConfigBoundaries {
         Add-CheckError "${repoPath}: RM group send path must use the resolved node CAN bus, not the fixed fallback bus."
     }
 
-    if ($content -match '\bDBUS_TOE\b|toe_is_error\s*\(|RobotSafetyManual(?:Disconnected|SafeActive)\s*\(|RobotLifecycle\w*\s*\(|ManualInput\w*\s*\(|ControlInput\w*\s*\(') {
+    if ($content -match '\bDBUS_TOE\b|toe_is_error\s*\(|RobotSafetyManual(?:Disconnected|SafeActive)\s*\(|RobotLifecycle(?!Update\b)\w*\s*\(|ManualInput\w*\s*\(|ControlInput\w*\s*\(') {
         Add-CheckError "${repoPath}: transport must not own source-specific manual-input fault policy."
+    }
+    $canTxTaskBody = [regex]::Match(
+        $content,
+        'void\s+CanTxTask\s*\([^;]*\)\s*\{[\s\S]*$'
+    ).Value
+    if ([string]::IsNullOrWhiteSpace($canTxTaskBody) -or
+        ([regex]::Matches($canTxTaskBody, 'RobotLifecycleUpdate\s*\(')).Count -ne 1 -or
+        $canTxTaskBody -notmatch 'CanTxOutputGateSync\s*\(\s*RobotSafetyOutputLocked\s*\(\s*\)\s*\)\s*;[\s\S]{0,160}?RobotLifecycleUpdate\s*\(\s*\)\s*;[\s\S]{0,200}?output_locked\s*=\s*RobotSafetyOutputLocked[\s\S]{0,200}?CanTxOutputGateSync\s*\(\s*output_locked\s*\)[\s\S]{0,120}?CanTxExecInstances') {
+        Add-CheckError "${repoPath}: CanTx must observe the previous safety state before its sole Lifecycle update, then gate the current frame."
     }
     if ($content -match 'CanTxRouteAllowedOffline|CanTxRouteAllowedOnline|CanTxExecInstances\s*\(\s*uint8_t\s+online' -or
         $content -notmatch 'CanTxExecInstances\s*\(\s*uint8_t\s+output_locked\s*\)') {
         Add-CheckError "${repoPath}: CAN TX may gate by output lock and per-axis command policy, not by an online/offline role table."
     }
-    if ([regex]::Matches($content, 'RobotSafetyOutputLocked\s*\(').Count -ne 1 -or
-        $content -notmatch 'const\s+uint8_t\s+output_locked\s*=\s*RobotSafetyOutputLocked\s*\(\s*\)\s*;' -or
+    if ($content -notmatch 'const\s+uint8_t\s+output_locked\s*=\s*RobotSafetyOutputLocked\s*\(\s*\)\s*;' -or
         $content -notmatch 'static\s+uint8_t\s+CanTxRouteAllowed\s*\(\s*const\s+MotorRoute\s*\*\s*route\s*\)' -or
-        $content -notmatch 'allowed\s*=\s*\(\s*output_locked\s*!=\s*0u\s*\)\s*\?\s*0u\s*:\s*CanTxRouteAllowed\s*\(\s*route\s*\)\s*;') {
-        Add-CheckError "${repoPath}: the sole global gate must flow from RobotSafetyOutputLocked directly into each route decision."
+        $content -notmatch 'allowed\s*=\s*\(\s*output_locked\s*!=\s*0u\s*\|\|\s*RobotSafetyOutputLocked\s*\(\s*\)\s*!=\s*0u\s*\)\s*\?') {
+        Add-CheckError "${repoPath}: the frame lock and a fresh Lifecycle read must flow into every route decision."
     }
     if ($content -notmatch 'static\s+uint8_t\s+CanTxRecheckCommandAuthority\s*\([\s\S]*?LowCmdGetMotor\s*\([\s\S]*?LowCmdGetInhibitWriter\s*\([\s\S]*?CanTxCachedCmdAuthorized\s*\([\s\S]*?CanTxForceDisabledCmd\s*\(' -or
         $content -notmatch 'CanTxRecheckCommandAuthority\s*\(\s*actuator_id\s*,\s*&cmd\s*,\s*&have_cmd\s*,\s*&flags\s*\)[\s\S]{0,300}?CanTxProcessAxis\s*\(') {
@@ -1426,12 +1436,18 @@ function Test-CanTxDeviceConfigBoundaries {
     }
     $cacheClearBody = [regex]::Match(
         $content,
-        'static\s+void\s+CanTxClearCmdCache\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nstatic\s+void\s+CanTxPrepareCmdCacheIds)'
+        'static\s+void\s+CanTxClearCmdCache\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nstatic\s+void\s+CanTxOutputGateSync)'
     ).Value
     if ($content -notmatch 'static\s+CanTxCmdExpiryLatch\s+s_can_tx_cmd_expiry_latch\s*\[\s*MotorCount\s*\]' -or
         [regex]::Matches($content, 'CanTxCmdExpiryLatchCheck\s*\(').Count -lt 2 -or
         $cacheClearBody -match 'cmd_expiry_latch') {
         Add-CheckError "${repoPath}: expired command generations must stay latched across full millisecond-tick wrap."
+    }
+    if ($content -notmatch 'static\s+CanTxCmdUnlockBarrier\s+s_can_tx_cmd_unlock_barrier\s*\[\s*MotorCount\s*\]' -or
+        $content -notmatch 'CanTxCmdUnlockBarrierCapture\s*\(' -or
+        $content -notmatch 'CanTxCmdPublishedAfterUnlock\s*\(' -or
+        $content -notmatch 's_can_tx_unlock_barrier_pending\s*=\s*1u') {
+        Add-CheckError "${repoPath}: unlocking must reject every command generation that existed before Lifecycle became active."
     }
 
     $n6014bPath = Join-Path $script:RepoRoot $n6014bRepoPath
@@ -1440,15 +1456,49 @@ function Test-CanTxDeviceConfigBoundaries {
     }
     else {
         $n6014bContent = Get-Content -LiteralPath $n6014bPath -Raw -Encoding UTF8
-        if ($n6014bContent -match 'LowCmdGetMotor\s*\(|RobotSafetyOutputLocked\s*\(') {
-            Add-CheckError "${n6014bRepoPath}: protocol driver must consume the command already adjudicated by CanTx."
-        }
         if ($n6014bContent -notmatch 'N6014bMotorSendActuator\s*\([^;{]*const\s+MotorCmd\s*\*\s*cmd' -or
             $n6014bContent -notmatch 'N6014bBuildCmdFromActuator\s*\([^;{]*const\s+MotorCmd\s*\*\s*cmd') {
             Add-CheckError "${n6014bRepoPath}: CanTx command snapshot must flow unchanged into the N6014b encoder."
         }
+        if ($n6014bContent -notmatch 'static\s+uint8_t\s+N6014bActiveFrameAllowed[\s\S]*?RobotSafetyOutputLocked\s*\([\s\S]*?LowCmdGetMotor\s*\([\s\S]*?LowCmdGetInhibitWriter\s*\([\s\S]*?LowCmdSnapshotAuthorized\s*\(' -or
+            $n6014bContent -notmatch 'taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,500}?N6014bActiveFrameAllowed[\s\S]{0,500}?N6014bTxStart[\s\S]{0,120}?taskEXIT_CRITICAL\s*\(\s*\)[\s\S]{0,180}?N6014bTxWait') {
+            Add-CheckError "${n6014bRepoPath}: final authority, active/LOCK selection and non-blocking UART start must be linearized before waiting."
+        }
         if ($n6014bContent -notmatch 'if\s*\(\s*cmd_mode\s*==\s*MotorModeDisable\s*\)\s*\{\s*return\s+1u\s*;\s*\}[\s\S]{0,250}?\*mode\s*=\s*N6014B_MODE_FOC\s*;') {
             Add-CheckError "${n6014bRepoPath}: Disable must remain in protocol LOCK mode and may not enter FOC."
+        }
+    }
+
+    $unitreePath = Join-Path $script:RepoRoot $unitreeRepoPath
+    if (-not (Test-Path -LiteralPath $unitreePath -PathType Leaf)) {
+        Add-CheckError "Missing Unitree transport source: $unitreeRepoPath"
+    }
+    else {
+        $unitreeContent = Get-Content -LiteralPath $unitreePath -Raw -Encoding UTF8
+        if ($unitreeContent -notmatch 'UnitreeMotorBuildTxFrame\s*\(\s*&safe_frame[\s\S]{0,180}?UNITREE_MOTOR_MODE_BRAKE' -or
+            $unitreeContent -notmatch 'static\s+uint8_t\s+UnitreeMotorActiveFrameAllowed[\s\S]*?RobotSafetyOutputLocked\s*\([\s\S]*?LowCmdGetMotor\s*\([\s\S]*?LowCmdGetInhibitWriter\s*\([\s\S]*?UnitreeMotorCmdSnapshotAllowed\s*\(' -or
+            $unitreeContent -notmatch 'taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,500}?UnitreeMotorActiveFrameAllowed[\s\S]{0,500}?UnitreeMotorStartFrame[\s\S]{0,120}?taskEXIT_CRITICAL\s*\(\s*\)[\s\S]{0,180}?UnitreeMotorWaitFrame') {
+            Add-CheckError "${unitreeRepoPath}: final authority must select a prebuilt BRAKE frame or start the active frame before waiting outside the critical section."
+        }
+    }
+
+    $rs485BspPath = Join-Path $script:RepoRoot $rs485BspRepoPath
+    if (-not (Test-Path -LiteralPath $rs485BspPath -PathType Leaf)) {
+        Add-CheckError "Missing H7 RS485 BSP source: $rs485BspRepoPath"
+    }
+    else {
+        $rs485BspContent = Get-Content -LiteralPath $rs485BspPath -Raw -Encoding UTF8
+        $usart2ErrorBody = [regex]::Match($rs485BspContent, 'static\s+void\s+BspUsart2DispatchError[\s\S]*?(?=\r?\nstatic\s+void)').Value
+        $usart3ErrorBody = [regex]::Match($rs485BspContent, 'static\s+void\s+BspUsart3DispatchError[\s\S]*?(?=\r?\nstatic\s+void)').Value
+        if ($rs485BspContent -match 'int\s+BspUsart[23]Tx\s*\(' -or
+            $rs485BspContent -notmatch 'HAL_UART_Transmit_IT\s*\(' -or
+            $rs485BspContent -notmatch 'HAL_UART_TxCpltCallback[\s\S]*?BspRs485TxSignalFromIsr' -or
+            $usart2ErrorBody -match 'BspRs485TxSignalFromIsr' -or
+            $usart3ErrorBody -match 'BspRs485TxSignalFromIsr') {
+            Add-CheckError "${rs485BspRepoPath}: RS485 TX must complete by UART TC; blocking TX and RX-error false completion may not return."
+        }
+        if ($rs485BspContent -notmatch 'BspRs485SetBaudrate[\s\S]{0,600}?gState\s*!=\s*HAL_UART_STATE_READY[\s\S]{0,180}?return\s+\(int\)HAL_BUSY[\s\S]{0,180}?HAL_UART_Abort\s*\(') {
+            Add-CheckError "${rs485BspRepoPath}: baud changes must reject TX-busy ports before HAL abort can truncate a committed frame."
         }
     }
 }
@@ -1483,9 +1533,9 @@ function Test-ManualInputSnapshotBoundaries {
         Add-CheckError "ManualInput.h and ControlInput.h must not include ManualInputSnapshot.h back and form a header cycle."
     }
     foreach ($field in @(
-            "manual", "control", "activeMask", "sourceTickMs", "publishTickMs", "readTickMs",
+            "manual", "control", "semantics", "activeMask", "sourceTickMs", "publishTickMs", "readTickMs",
             "sourceAgeMs", "sourceTimeoutMs", "publishSeq", "sourceSeq", "switchSeq",
-            "activeSource", "online", "mixMode"
+            "semanticsSeq", "activeSource", "online", "mixMode", "sourceProtocol", "sourceFlags"
         )) {
         if ($snapshotHeader -notmatch "\b$field\b") {
             Add-CheckError "${snapshotRepoPath}: snapshot is missing '$field'."
@@ -1525,6 +1575,8 @@ function Test-ManualInputSnapshotBoundaries {
                 'sourceTickMs\s*=\s*0u',
                 'sourceAgeMs\s*=\s*MANUAL_INPUT_AGE_INVALID',
                 'sourceSeq\s*=\s*0u',
+                'sourceProtocol\s*=\s*0u',
+                'sourceFlags\s*=\s*0u',
                 'activeSource\s*=\s*MANUAL_INPUT_SRC_AUTO'
             )) {
             if ($readBody -notmatch $safeField) {
@@ -1549,6 +1601,13 @@ function Test-ManualInputSnapshotBoundaries {
             $refreshBody -notmatch 'ManualInputDirtySeq\s*==\s*dirty_seq[\s\S]*?ManualInputStore\.active_bank\s*=\s*inactive_bank') {
             Add-CheckError "${manualRepoPath}: dirty generation and both config blocks must be validated immediately before bank flip."
         }
+        if ($manualContent -notmatch 'out->semantics\s*=\s*manual_cfg->semantics' -or
+            $manualContent -notmatch 'ManualInputWorkspace\.candidate\.semanticsSeq\s*=\s*1u' -or
+            $manualContent -notmatch 'ManualInputConfig\s+manual_config\s*\[\s*MANUAL_INPUT_SNAPSHOT_BANK_COUNT\s*\]' -or
+            $manualContent -notmatch 'input_config_t\s+input_config\s*\[\s*MANUAL_INPUT_SNAPSHOT_BANK_COUNT\s*\]' -or
+            $refreshBody -notmatch 'ManualInputWorkspace\.candidate\.semanticsSeq\s*=[\s\S]{0,700}?memcmp\s*\(\s*&ManualInputWorkspace\.manualConfig[\s\S]{0,250}?ManualInputStore\.manual_config\[current_bank\][\s\S]{0,300}?memcmp\s*\(\s*&ManualInputWorkspace\.inputConfig[\s\S]{0,250}?ManualInputStore\.input_config\[current_bank\][\s\S]{0,300}?ManualInputSeqNext\s*\(\s*semantics_seq\s*\)[\s\S]{0,100}?semantics_seq') {
+            Add-CheckError "${manualRepoPath}: input interpretation generation must start at 1 and advance when either frozen input config block changes."
+        }
         if ($refreshBody -notmatch 'ManualInputExpireSourcesLocked' -or
             $manualContent -notmatch 'manual_src\[source\]\.update_seq\s*==\s*src_state\[source\]\.update_seq[\s\S]*?manual_src\[source\]\.valid\s*=\s*0u') {
             Add-CheckError "${manualRepoPath}: confirmed stale sources must be invalidated by matching source generation."
@@ -1569,16 +1628,98 @@ function Test-ManualInputSnapshotBoundaries {
     if ($updateSourceBody -notmatch 'DetectHook\s*\(\s*DBUS_TOE\s*\)') {
         Add-CheckError "${manualRepoPath}: first migration commit must retain generic DBUS_TOE compatibility until old control consumers move."
     }
+    $imageInputRepoPath = "shared\application\input\ImageRemoteLink.c"
+    $imageInputContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $imageInputRepoPath) -Raw -Encoding UTF8
+    if ([regex]::Matches($imageInputContent, 'ManualInputUpdateSourceMeta\s*\(\s*MANUAL_INPUT_SRC_IMAGE').Count -ne 2 -or
+        $manualContent -notmatch 'out->sourceProtocol\s*=\s*src_state\[selected\]\.protocol' -or
+        $manualContent -notmatch 'out->sourceFlags\s*=\s*ManualInputSourceFlags\s*\(') {
+        Add-CheckError "Manual input must publish Image protocol/business metadata in the same generation as raw and mapped input."
+    }
+    if ($manualHeader -notmatch 'MANUAL_INPUT_SOURCE_RAW_BTN_R' -or
+        $manualHeader -notmatch 'uint8_t\s+rawSwitch1' -or
+        $manualContent -notmatch 'uint8_t\s+raw_switch1\s*;' -or
+        $manualContent -notmatch 'ManualInputApplySourceMapping\s*\(\s*&out->manual\s*,\s*&src_state\[selected\]\s*,\s*manual_cfg\s*\)' -or
+        $manualContent -notmatch 'ManualInputMapVt13Switch1\s*\(\s*source->raw_switch1\s*,\s*config\s*\)' -or
+        $manualContent -notmatch 'ManualInputMapVt13Switch2\s*\(\s*source->raw_flags\s*,\s*config\s*\)') {
+        Add-CheckError "${manualRepoPath}: VT13 raw switches must be stored with the source and remapped from the frozen snapshot config."
+    }
+
+    $vt13ParserBody = [regex]::Match(
+        $imageInputContent,
+        'static\s+void\s+ImageRemoteLinkHandleVt13Frame\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nstatic\s+bool_t\s+ImageRemoteLinkTryDecodeCustomRc\s*\()'
+    ).Value
+    $customParserBody = [regex]::Match(
+        $imageInputContent,
+        'static\s+bool_t\s+ImageRemoteLinkTryDecodeCustomRc\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nstatic\s+int16_t\s+ImageRemoteLinkScaleAxis\s*\()'
+    ).Value
+    if ([string]::IsNullOrWhiteSpace($vt13ParserBody) -or
+        $vt13ParserBody -match '\bg_config\b|ImageRemoteLinkMapVt13Switch' -or
+        $vt13ParserBody -notmatch 'rc\.rc\.s\[0\]\s*=\s*\(char\)RC_SW_UP' -or
+        $vt13ParserBody -notmatch 'rc\.rc\.s\[1\]\s*=\s*\(char\)RC_SW_UP' -or
+        $vt13ParserBody -notmatch 'ImageRemoteRawFlags\s*\(\s*&state\s*\)\s*,\s*vt13_switch1') {
+        Add-CheckError "${imageInputRepoPath}: VT13 parser must forward raw switches without reading live config."
+    }
+    if ([string]::IsNullOrWhiteSpace($customParserBody) -or
+        $customParserBody -notmatch 'SDLOG_MANUAL_INPUT_PROTO_IMAGE_CUSTOM' -or
+        $customParserBody -notmatch 'ImageRemoteRawFlags\s*\(\s*&state\s*\)\s*,\s*0u') {
+        Add-CheckError "${imageInputRepoPath}: custom Image protocol must forward IMAGE_CUSTOM metadata through the same source update."
+    }
+    if ($imageInputContent -notmatch 'state->btn_r[\s\S]{0,100}MANUAL_INPUT_SOURCE_RAW_BTN_R') {
+        Add-CheckError "${imageInputRepoPath}: VT13 right button must remain part of the frozen raw source metadata."
+    }
 
     foreach ($testRepoPath in @(
             "tools\TestManualInputSnapshot.ps1",
+            "tools\TestImageRemoteInput.ps1",
             "tools\tests\ManualInputSnapshotRegression.c",
+            "tools\tests\ImageRemoteInputRegression.c",
             "tools\tests\manual-input-stubs\FreeRTOS.h",
+            "tools\tests\manual-input-stubs\BspUsart.h",
             "tools\tests\manual-input-stubs\task.h",
             "tools\tests\manual-input-stubs\timers.h"
         )) {
         if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $testRepoPath) -PathType Leaf)) {
             Add-CheckError "Missing manual input snapshot regression file: $testRepoPath"
+        }
+    }
+
+    $manualRegressionRepoPath = "tools\tests\ManualInputSnapshotRegression.c"
+    $manualRegressionPath = Join-Path $script:RepoRoot $manualRegressionRepoPath
+    if (Test-Path -LiteralPath $manualRegressionPath -PathType Leaf) {
+        $manualRegressionContent = Get-Content -LiteralPath $manualRegressionPath -Raw -Encoding UTF8
+        foreach ($requiredPattern in @(
+                'TestSemanticsSameGeneration\s*\(',
+                'snapshot\.semanticsSeq\s*==\s*1u',
+                'g_config\.manual_input\.semantics\s*=\s*updated_semantics',
+                'g_config\.input\.sw\[INPUT_SW_GIMBAL_MODE\]\.invert\s*=\s*1u',
+                'semanticsSeq\s*=\s*UINT32_MAX',
+                'snapshot\.semanticsSeq\s*==\s*ManualInputSeqNext\s*\(\s*semantics_seq\s*\)'
+            )) {
+            if ($manualRegressionContent -notmatch $requiredPattern) {
+                Add-CheckError "${manualRegressionRepoPath}: frozen semantics generation regression is missing '$requiredPattern'."
+            }
+        }
+    }
+
+    $imageRegressionRepoPath = "tools\tests\ImageRemoteInputRegression.c"
+    $imageRegressionPath = Join-Path $script:RepoRoot $imageRegressionRepoPath
+    if (Test-Path -LiteralPath $imageRegressionPath -PathType Leaf) {
+        $imageRegressionContent = Get-Content -LiteralPath $imageRegressionPath -Raw -Encoding UTF8
+        foreach ($requiredPattern in @(
+                '#include\s+"ImageRemoteLink\.c"',
+                'BSP_AUX_LINK_RXEVENT_IDLE',
+                'TestBuildCustomFrame\s*\(',
+                'TestBuildVt13Frame\s*\(',
+                'MANUAL_INPUT_PROTOCOL_CRSF',
+                'MANUAL_INPUT_PROTOCOL_IMAGE_CUSTOM',
+                'ManualInputStore\.ready\s*=\s*0u',
+                'stats\.crc_error_count\s*==\s*1u',
+                'snapshot\.sourceProtocol\s*==\s*MANUAL_INPUT_PROTOCOL_NONE',
+                'TestParserArrivalDuringPublish\s*\('
+            )) {
+            if ($imageRegressionContent -notmatch $requiredPattern) {
+                Add-CheckError "${imageRegressionRepoPath}: real ImageRemote regression is missing '$requiredPattern'."
+            }
         }
     }
 }
@@ -1770,7 +1911,9 @@ function Test-ControlRegistryBoundaries {
     }
 
     $gimbalRepoPath = "shared\application\gimbal\GimbalControlTask.c"
-    $gimbalContent = Get-SourceContentWithPrivateIncludes -Path (Join-Path $script:RepoRoot $gimbalRepoPath)
+    $gimbalPath = Join-Path $script:RepoRoot $gimbalRepoPath
+    $gimbalRaw = Get-Content -LiteralPath $gimbalPath -Raw -Encoding UTF8
+    $gimbalContent = Get-SourceContentWithPrivateIncludes -Path $gimbalPath
     $shootPrepareCount = ([regex]::Matches($gimbalContent, 'ShootCtrlPrepare\s*\(')).Count
     $shootForceSafeCount = ([regex]::Matches($gimbalContent, 'GimbalRunShootControl\s*\(\s*&snapshot\s*,\s*1u\s*\)')).Count
     $shootNormalCount = ([regex]::Matches($gimbalContent, 'GimbalRunShootControl\s*\(\s*&snapshot\s*,\s*0u\s*\)')).Count
@@ -1780,6 +1923,249 @@ function Test-ControlRegistryBoundaries {
         $shootNormalCount -ne 2 -or
         $shootFacadeStepCount -ne 1) {
         Add-CheckError "${gimbalRepoPath}: both gimbal owners must prepare Shoot and run exactly one normal or forced-safe ShootCtrl step per frame."
+    }
+
+    $singleGimbalTaskBody = [regex]::Match(
+        $gimbalRaw,
+        'void\s+GimbalControlTask\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nvoid\s+DualYawGimbalControlTask\s*\()'
+    ).Value
+    $dualGimbalTaskBody = [regex]::Match(
+        $gimbalRaw,
+        'void\s+DualYawGimbalControlTask\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\n#include\s+"GimbalCaliHelpers\.inc")'
+    ).Value
+    foreach ($gimbalTask in @(
+            [pscustomobject]@{ Name = "GimbalControlTask"; Body = $singleGimbalTaskBody },
+            [pscustomobject]@{ Name = "DualYawGimbalControlTask"; Body = $dualGimbalTaskBody }
+        )) {
+        if ([string]::IsNullOrWhiteSpace($gimbalTask.Body) -or
+            ([regex]::Matches($gimbalTask.Body, 'ManualInputSnapshotRead\s*\(')).Count -ne 1 -or
+            ([regex]::Matches($gimbalTask.Body, 'GimbalSnapshotCapture\s*\(\s*&snapshot\s*,\s*&g_gimbal\s*,\s*frame_input\s*\)')).Count -ne 1) {
+            Add-CheckError "${gimbalRepoPath}: $($gimbalTask.Name) must read once and pass that exact frame_input into its sole snapshot capture."
+        }
+    }
+
+    $gimbalSourceRoot = Join-Path $script:RepoRoot "shared\application\gimbal"
+    $gimbalInputReadCount = 0
+    foreach ($source in (Get-ChildItem -LiteralPath $gimbalSourceRoot -Recurse -File |
+            Where-Object { $_.Extension -in @(".c", ".h", ".inc") })) {
+        $sourceText = Get-Content -LiteralPath $source.FullName -Raw -Encoding UTF8
+        $sourceReadCount = ([regex]::Matches($sourceText, 'ManualInputSnapshotRead\s*\(')).Count
+        $gimbalInputReadCount += $sourceReadCount
+        if ($sourceReadCount -ne 0 -and $source.FullName -ne $gimbalPath) {
+            Add-CheckError "$(Format-RepoPath $source.FullName): only the two Gimbal task loops may read manual-input snapshots."
+        }
+        if ($sourceText -match 'static\s+(?:const\s+)?ManualInputSnapshot\s*\*') {
+            Add-CheckError "$(Format-RepoPath $source.FullName): Gimbal must not persist a task-stack manual-input pointer."
+        }
+    }
+    if ($gimbalInputReadCount -ne 2) {
+        Add-CheckError "shared\application\gimbal: aggregate manual input must have exactly two lexical read owners, one in each alternative task."
+    }
+
+    $shootSourceRoot = Join-Path $script:RepoRoot "shared\application\shoot"
+    $shootSourceTexts = @()
+    $shootInputReadCount = 0
+    foreach ($source in (Get-ChildItem -LiteralPath $shootSourceRoot -Recurse -File |
+            Where-Object { $_.Extension -in @(".c", ".h", ".inc") })) {
+        $sourceText = Get-Content -LiteralPath $source.FullName -Raw -Encoding UTF8
+        $shootSourceTexts += $sourceText
+        $shootInputReadCount += ([regex]::Matches($sourceText, 'ManualInputSnapshotRead\s*\(')).Count
+        if ($sourceText -match 'static\s+(?:const\s+)?ManualInputSnapshot\s*\*') {
+            Add-CheckError "$(Format-RepoPath $source.FullName): Shoot must not persist a task-stack manual-input pointer."
+        }
+    }
+    if ($shootInputReadCount -ne 0) {
+        Add-CheckError "shared\application\shoot: Shoot must reuse the owning Gimbal frame and perform zero aggregate-input reads."
+    }
+    $gimbalShootInputContent = $gimbalContent + "`n" + ($shootSourceTexts -join "`n")
+    foreach ($forbiddenPattern in @(
+            '\bDBUS_TOE\b',
+            'toe_is_error\s*\(\s*DBUS_TOE',
+            'ManualInputGet\w*\s*\(',
+            'get_remote_control_point\s*\(',
+            'remote_control_get_active_source\s*\(',
+            'ControlInputGet(?:Copy|State)\s*\(',
+            'ControlInput(?:Axis|Switch)\s*\(',
+            '\binput_(?:get|axis|switch)\s*\(',
+            'ImageRemote(?:GetState|AutoAimRequested|AuxFireRequested)\s*\('
+        )) {
+        if ($gimbalShootInputContent -match $forbiddenPattern) {
+            Add-CheckError "shared\application\gimbal + shoot: control frames must not use legacy or hidden input API '$forbiddenPattern'."
+        }
+    }
+    if ($gimbalContent -notmatch 'sourceFlags\s*&\s*MANUAL_INPUT_SOURCE_FLAG_AUTO_AIM') {
+        Add-CheckError "${gimbalRepoPath}: Gimbal auto aim must consume the frame-owned sourceFlags field."
+    }
+    $shootInputContent = $shootSourceTexts -join "`n"
+    if ($shootInputContent -notmatch 'sourceProtocol\s*!=\s*MANUAL_INPUT_PROTOCOL_IMAGE_VT13' -or
+        $shootInputContent -notmatch 'sourceFlags\s*&\s*MANUAL_INPUT_SOURCE_FLAG_AUX_FIRE') {
+        Add-CheckError "shared\application\shoot: Shoot must consume frame-owned VT13 protocol and AUX_FIRE metadata."
+    }
+    if ($gimbalContent -notmatch 'snapshot->manual_input\s*=\s*manual_input' -or
+        $gimbalContent -notmatch 'input\.manualInput\s*=\s*\(snapshot\s*!=\s*NULL\)\s*\?\s*snapshot->manual_input\s*:\s*NULL') {
+        Add-CheckError "${gimbalRepoPath}: Gimbal capture and Shoot facade must preserve the same frame-owned input pointer."
+    }
+    $gimbalHeaderContent = Get-Content -LiteralPath (Join-Path $gimbalSourceRoot "GimbalControlTask.h") -Raw -Encoding UTF8
+    $shootHeaderContent = Get-Content -LiteralPath (Join-Path $shootSourceRoot "Shoot.h") -Raw -Encoding UTF8
+    if ($gimbalHeaderContent -match '\bGimbalRcCtrl\b' -or $shootHeaderContent -match '\bShootRc\b') {
+        Add-CheckError "Gimbal/Shoot persistent state must not retain legacy manual-input pointers."
+    }
+
+    $shootRuntimePath = Join-Path $shootSourceRoot "Shoot.c"
+    $shootRuntimeContent = Get-Content -LiteralPath $shootRuntimePath -Raw -Encoding UTF8
+    $shootCtrlPath = Join-Path $shootSourceRoot "ShootCtrl.c"
+    $shootCtrlContent = Get-Content -LiteralPath $shootCtrlPath -Raw -Encoding UTF8
+    $shootRuntimeInitBody = [regex]::Match(
+        $shootRuntimeContent,
+        'void\s+ShootRuntimeInit\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nvoid\s+ShootRuntimeSafeStep\s*\()'
+    ).Value
+    $shootRuntimeSafeBody = [regex]::Match(
+        $shootRuntimeContent,
+        'void\s+ShootRuntimeSafeStep\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\n/\*\*)'
+    ).Value
+    $shootForceSafeBody = [regex]::Match(
+        $shootCtrlContent,
+        'if\s*\(\s*input->forceSafe\s*!=\s*0u\s*\)\s*\{[\s\S]*?return\s+ControlResultOk\s*;\s*\}'
+    ).Value
+    if ([string]::IsNullOrWhiteSpace($shootRuntimeInitBody) -or
+        $shootRuntimeInitBody -match 'ManualInput|ShootFeedbackUpdate\s*\(') {
+        Add-CheckError "shared\application\shoot\Shoot.c: Runtime init must defer input and physical feedback capture to the first frame."
+    }
+    foreach ($requiredCall in @("ShootFaultUpdate", "ShootFaultSyncInhibit", "ShootFeedbackUpdate", "ShootWriteState")) {
+        if ([string]::IsNullOrWhiteSpace($shootRuntimeSafeBody) -or
+            $shootRuntimeSafeBody -notmatch ([regex]::Escape($requiredCall) + '\s*\(')) {
+            Add-CheckError "shared\application\shoot\Shoot.c: SafeStep must keep '$requiredCall' active every forced-safe frame."
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($shootForceSafeBody) -or
+        $shootForceSafeBody -notmatch 'ShootRuntimeSafeStep\s*\(\s*input->manualInput\s*\)' -or
+        $shootForceSafeBody -match 'ShootRuntimeStop\s*\(' -or
+        $shootCtrlContent -notmatch 'ShootRuntimeStep\s*\(\s*input->manualInput\s*\)') {
+        Add-CheckError "shared\application\shoot\ShootCtrl.c: normal and safe updates must pass the same input pointer without stopping the active domain."
+    }
+
+    $shootCtrlTestRepoPath = "tools\tests\ShootCtrlRegression.c"
+    $shootCtrlTestContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $shootCtrlTestRepoPath) -Raw -Encoding UTF8
+    if ($shootCtrlTestContent -notmatch 's_runtimeStepInputs\[0\]\s*==\s*&firstInput' -or
+        $shootCtrlTestContent -notmatch 's_runtimeStepInputs\[2\]\s*==\s*NULL' -or
+        $shootCtrlTestContent -notmatch 's_runtimeSafeStepInputs\[0\]\s*==\s*&safeInput' -or
+        $shootCtrlTestContent -notmatch 's_runtimeStopCount\s*==\s*1u[\s\S]{0,300}?forceSafe') {
+        Add-CheckError "${shootCtrlTestRepoPath}: regression must prove normal/safe/NULL pointer identity and that forceSafe does not stop Shoot."
+    }
+    foreach ($requiredTestPath in @(
+            "tools\TestShootCtrl.ps1",
+            "tools\TestShootInputPolicy.ps1",
+            "tools\tests\ShootInputPolicyRegression.c",
+            "shared\application\shoot\ShootInputPolicy.h"
+        )) {
+        if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $requiredTestPath) -PathType Leaf)) {
+            Add-CheckError "Missing Shoot input/lifecycle regression asset: $requiredTestPath"
+        }
+    }
+    foreach ($requiredGateCall in @(
+            "ShootInputGateSwitch",
+            "ShootInputGateSyncSemantics",
+            "ShootInputGateSyncSafeMouse",
+            "ShootInputGateApplyFrameMouse"
+        )) {
+        if ($shootRuntimeContent -notmatch ([regex]::Escape($requiredGateCall) + '\s*\(')) {
+            Add-CheckError "shared\application\shoot\Shoot.c: frame input must keep the tested '$requiredGateCall' policy."
+        }
+    }
+
+    $lifecycleRepoPath = "shared\application\robot\RobotLifecycle.c"
+    $lifecyclePath = Join-Path $script:RepoRoot $lifecycleRepoPath
+    $lifecycleContent = Get-Content -LiteralPath $lifecyclePath -Raw -Encoding UTF8
+    $lifecycleHeaderContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "shared\application\robot\RobotLifecycle.h") -Raw -Encoding UTF8
+    $lifecycleUpdateBody = [regex]::Match(
+        $lifecycleContent,
+        'void\s+RobotLifecycleUpdate\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nRobotLifecycleState\s+RobotLifecycleCurrent\s*\()'
+    ).Value
+    $lifecycleReaderBodies = [regex]::Match(
+        $lifecycleContent,
+        'RobotLifecycleState\s+RobotLifecycleCurrent\s*\([^;]*\)[\s\S]*?(?=\r?\nvoid\s+RobotLifecycleEnterFault\s*\()'
+    ).Value
+    $lifecycleCommitBody = [regex]::Match(
+        $lifecycleContent,
+        'static\s+void\s+RobotLifecycleCommit\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nvoid\s+RobotLifecycleInit\s*\()'
+    ).Value
+    if (([regex]::Matches($lifecycleContent, 'ManualInputSnapshotRead\s*\(')).Count -ne 1 -or
+        ([regex]::Matches($lifecycleUpdateBody, 'ManualInputSnapshotRead\s*\(')).Count -ne 1 -or
+        $lifecycleContent -match '\bDBUS_TOE\b|toe_is_error\s*\(|ManualInputGet\w*\s*\(|ControlInput(?:Get|Axis|Switch)\s*\(') {
+        Add-CheckError "${lifecycleRepoPath}: lifecycle policy must consume one aggregate snapshot only in its explicit writer update."
+    }
+    if ([string]::IsNullOrWhiteSpace($lifecycleReaderBodies) -or
+        $lifecycleReaderBodies -match 'RobotLifecycleUpdate\s*\(|ManualInput\w*\s*\(|ControlInput(?:Get|Axis|Switch)\s*\(') {
+        Add-CheckError "${lifecycleRepoPath}: Current, OutputAllowed and GetSnapshot must remain pure cached readers."
+    }
+    if ($lifecycleHeaderContent -notmatch 'uint32_t\s+update_tick\s*;' -or
+        $lifecycleContent -notmatch 'ROBOT_LIFECYCLE_UPDATE_TIMEOUT_MS' -or
+        $lifecycleContent -notmatch 'HAL_GetTick\s*\(\s*\)\s*-\s*out->update_tick[\s\S]{0,200}?ROBOT_LIFECYCLE_REASON_UPDATE_STALE') {
+        Add-CheckError "${lifecycleRepoPath}: cached readers must fail closed when the sole lifecycle writer stops updating."
+    }
+    if ($lifecycleHeaderContent -notmatch 'uint32_t\s+manual_semantics_seq\s*;' -or
+        $lifecycleContent -notmatch 'manualInput->semanticsSeq\s*!=\s*0u' -or
+        $lifecycleContent -notmatch 'manual_semantics_seq\s*!=\s*manualInput->semanticsSeq' -or
+        $lifecycleContent -notmatch 'manual_semantics_seq\s*=\s*manualInput->semanticsSeq' -or
+        $lifecycleContent -notmatch 'startup_safe_seen\s*=\s*0u') {
+        Add-CheckError "${lifecycleRepoPath}: a new input-semantics generation must revoke the previous startup-safe qualification."
+    }
+    $liveInputSemanticsPattern = '\bg_config\s*\.\s*manual_input\s*\.\s*semantics\b'
+    if ($lifecycleContent -match $liveInputSemanticsPattern) {
+        Add-CheckError "${lifecycleRepoPath}: lifecycle must interpret a frame with snapshot.semantics, never live g_config semantics."
+    }
+    foreach ($domainRepoRoot in @(
+            "shared\application\gimbal",
+            "shared\application\chassis",
+            "shared\application\shoot"
+        )) {
+        $domainRoot = Join-Path $script:RepoRoot $domainRepoRoot
+        foreach ($source in (Get-ChildItem -LiteralPath $domainRoot -Recurse -File |
+                Where-Object { $_.Extension -in @(".c", ".h", ".inc") })) {
+            $sourceText = Get-Content -LiteralPath $source.FullName -Raw -Encoding UTF8
+            if ($sourceText -match $liveInputSemanticsPattern) {
+                Add-CheckError "$(Format-RepoPath $source.FullName): control domains must interpret frame input with snapshot.semantics, never live g_config semantics."
+            }
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($lifecycleCommitBody) -or
+        $lifecycleCommitBody -notmatch 'g_robot_lifecycle\.fault_latched\s*!=\s*0u[\s\S]{0,300}?next_state\s*=\s*ROBOT_LIFECYCLE_FAULT') {
+        Add-CheckError "${lifecycleRepoPath}: commit must recheck a concurrently latched fault before allowing output."
+    }
+    $lifecycleUpdateOwners = @{}
+    foreach ($source in (Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot "shared") -Recurse -File |
+            Where-Object { $_.Extension -in @(".c", ".inc") })) {
+        $sourceText = Get-Content -LiteralPath $source.FullName -Raw -Encoding UTF8
+        $callCount = ([regex]::Matches($sourceText, 'RobotLifecycleUpdate\s*\(')).Count
+        if ($callCount -ne 0) {
+            $lifecycleUpdateOwners[(Format-RepoPath $source.FullName)] = $callCount
+        }
+    }
+    if ($lifecycleUpdateOwners.Count -ne 2 -or
+        $lifecycleUpdateOwners[$lifecycleRepoPath] -ne 1 -or
+        $lifecycleUpdateOwners["shared\application\comm\can\CanTxTask.c"] -ne 1) {
+        Add-CheckError "RobotLifecycleUpdate must have one definition and one scheduling owner in CanTxTask."
+    }
+    foreach ($requiredTestPath in @(
+            "tools\TestRobotLifecycle.ps1",
+            "tools\tests\RobotLifecycleRegression.c"
+        )) {
+        if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $requiredTestPath) -PathType Leaf)) {
+            Add-CheckError "Missing RobotLifecycle aggregate-input regression asset: $requiredTestPath"
+        }
+    }
+    $lifecycleRegressionRepoPath = "tools\tests\RobotLifecycleRegression.c"
+    $lifecycleRegressionContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $lifecycleRegressionRepoPath) -Raw -Encoding UTF8
+    foreach ($requiredPattern in @(
+            'g_config\.input\.gimbalModeInvert\s*=\s*1u',
+            'TEST_SEMANTICS_OLD_SEQ',
+            'TEST_SEMANTICS_NEW_SEQ',
+            'snapshot\.manual_semantics_seq\s*==\s*expectedSeq',
+            'ROBOT_LIFECYCLE_REASON_STARTUP_SAFE_REQUIRED[\s\S]{0,200}?新输入解释代到达时必须撤销旧代解锁资格'
+        )) {
+        if ($lifecycleRegressionContent -notmatch $requiredPattern) {
+            Add-CheckError "${lifecycleRegressionRepoPath}: semantics-refresh lifecycle regression is missing '$requiredPattern'."
+        }
     }
 
     $sharedSources = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "shared") -Recurse -File |
@@ -1806,7 +2192,7 @@ function Test-ControlRegistryBoundaries {
             $sourceRepoPath -ne 'shared/application/chassis/ChassisCtrl.c') {
             Add-CheckError "${sourceRepoPath}: Chassis domain may only be updated through ChassisCtrlStep."
         }
-        foreach ($runtimeName in @("ShootRuntimeInit", "ShootRuntimeStep", "ShootRuntimeStop")) {
+        foreach ($runtimeName in @("ShootRuntimeInit", "ShootRuntimeStep", "ShootRuntimeSafeStep", "ShootRuntimeStop")) {
             if ($sourceContent -match ("\b" + $runtimeName + "\s*\(") -and
                 $runtimeAllowed -notcontains $sourceRepoPath) {
                 Add-CheckError "${sourceRepoPath}: '$runtimeName' is private to ShootCtrl and Shoot runtime."
@@ -2288,11 +2674,12 @@ function Test-FaultIsolationBoundaries {
 
     $mitRepoPath = "shared\application\comm\can\CanCommandTxMitHelpers.inc"
     $mitContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $mitRepoPath) -Raw -Encoding UTF8
-    if ($mitContent -notmatch 'CanTxMitCommandAuthorizedNow[\s\S]{0,260}CanMitMotorSendEnable\s*\(') {
-        Add-CheckError "${mitRepoPath}: MIT Enable must re-read and authorize the latest LowCmd immediately before send."
+    if ($mitContent -notmatch 'static\s+uint8_t\s+CanTxMitSendEnableAuthorized[\s\S]*?taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,260}?CanTxMitCommandAuthorizedNow[\s\S]{0,180}?CanMitMotorSendEnable\s*\([\s\S]{0,120}?taskEXIT_CRITICAL\s*\(\s*\)') {
+        Add-CheckError "${mitRepoPath}: MIT Enable final authorization and CAN enqueue must share one short critical section."
     }
-    if (([regex]::Matches($mitContent, 'CanTxMitCommandAuthorizedNow[\s\S]{0,260}CanMitMotorSendCmd\s*\(')).Count -lt 2) {
-        Add-CheckError "${mitRepoPath}: every MIT command send branch must re-read and authorize the latest LowCmd."
+    if ($mitContent -notmatch 'static\s+uint8_t\s+CanTxMitSendCmdAuthorized[\s\S]*?taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,260}?CanTxMitCommandAuthorizedNow[\s\S]{0,220}?CanMitMotorSendCmd\s*\([\s\S]{0,120}?taskEXIT_CRITICAL\s*\(\s*\)' -or
+        ([regex]::Matches($mitContent, 'CanTxMitSendCmdAuthorized\s*\(')).Count -lt 3) {
+        Add-CheckError "${mitRepoPath}: every MIT command branch must use the linearized final-authority sender."
     }
 
     $bestEffortRepoPath = "shared\application\motors\MotorInstBestEffort.h"

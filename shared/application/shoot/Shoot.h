@@ -13,7 +13,6 @@
 
 #include "CanReceive.h"
 #include "Pid.h"
-#include "ManualInput.h"
 #include "UserLib.h"
 #include "RobotConfig.h"
 
@@ -88,7 +87,6 @@ typedef enum
 typedef struct
 {
     ShootMode mode;
-    const ManualInputState *ShootRc;
     const motor_measure_t *ShootMotorMeasure;
     ramp_function_source_t fric_speed_ramp;
     fp32 fric_speed_set;

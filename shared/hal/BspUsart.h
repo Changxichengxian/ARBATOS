@@ -99,11 +99,16 @@ int BspAuxLinkRxToIdleDmaStart(uint8_t *buf, uint16_t len);
 #define BspUsart1RxToIdleDmaStart BspAuxLinkRxToIdleDmaStart
 
 // ===== RS485 ports (USART2 / USART3 on MC02 H7) =====
+#define BSP_RS485_TX_IT_MAX_LEN 40u
+
 void BspUsart2SetRxByteCb(BspUsartRxByteCb cb);
 void BspUsart2SetErrorCb(BspUsartErrorCb cb);
 uint32_t BspUsart2GetBaudrate(void);
 int BspUsart2SetBaudrate(uint32_t baudrate);
-int BspUsart2Tx(const uint8_t *data, uint16_t len, uint32_t timeout_ms);
+int BspUsart2TxItPrepare(void);
+/* Start 只复制并启动中断发送，须与最终安全裁决放在同一任务临界区；Wait 必须在退出临界区后调用。 */
+int BspUsart2TxItStart(const uint8_t *data, uint16_t len);
+int BspUsart2TxItWait(uint32_t timeout_ms);
 int BspUsart2RxItStart(void);
 void BspUsart2RxItStop(void);
 
@@ -111,7 +116,10 @@ void BspUsart3SetRxByteCb(BspUsartRxByteCb cb);
 void BspUsart3SetErrorCb(BspUsartErrorCb cb);
 uint32_t BspUsart3GetBaudrate(void);
 int BspUsart3SetBaudrate(uint32_t baudrate);
-int BspUsart3Tx(const uint8_t *data, uint16_t len, uint32_t timeout_ms);
+int BspUsart3TxItPrepare(void);
+/* 与 USART2 相同：Start 在短临界区内提交，Wait 在临界区外等待物理发送完成。 */
+int BspUsart3TxItStart(const uint8_t *data, uint16_t len);
+int BspUsart3TxItWait(uint32_t timeout_ms);
 int BspUsart3RxItStart(void);
 void BspUsart3RxItStop(void);
 #endif

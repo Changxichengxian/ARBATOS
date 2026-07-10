@@ -90,6 +90,59 @@ static uint8_t CanTxMitCommandAuthorizedNow(MotorId actuator_id, const MotorCmd 
     return CanTxCachedCmdAuthorized(cached, &latest, inhibitWriter);
 }
 
+static uint8_t CanTxMitSendEnableAuthorized(MotorId actuator_id,
+                                            const MotorCmd *cached,
+                                            uint8_t bus,
+                                            uint16_t std_id,
+                                            int *out_ret)
+{
+    uint8_t authorized;
+    int ret = -1;
+
+    taskENTER_CRITICAL();
+    authorized = (uint8_t)(RobotSafetyOutputLocked() == 0u &&
+                           CanTxMitCommandAuthorizedNow(actuator_id, cached) != 0u);
+    if (authorized != 0u)
+    {
+        ret = CanMitMotorSendEnable(bus, std_id);
+    }
+    taskEXIT_CRITICAL();
+
+    if (out_ret != NULL)
+    {
+        *out_ret = ret;
+    }
+    return authorized;
+}
+
+static uint8_t CanTxMitSendCmdAuthorized(MotorId actuator_id,
+                                         const MotorCmd *cached,
+                                         uint8_t bus,
+                                         uint16_t std_id,
+                                         const CanMitMotorLimits *limits,
+                                         const CanMitMotorCmd *mit_cmd,
+                                         int *out_ret)
+{
+    uint8_t authorized;
+    int ret = -1;
+
+    taskENTER_CRITICAL();
+    authorized = (uint8_t)(RobotSafetyOutputLocked() == 0u &&
+                           CanTxMitCommandAuthorizedNow(actuator_id, cached) != 0u);
+    if (authorized != 0u)
+    {
+        /* CAN 入队是非阻塞操作，和最终复核放在同一短临界区。 */
+        ret = CanMitMotorSendCmd(bus, std_id, limits, mit_cmd);
+    }
+    taskEXIT_CRITICAL();
+
+    if (out_ret != NULL)
+    {
+        *out_ret = ret;
+    }
+    return authorized;
+}
+
 static void CanTxMitMarkAuthorityReject(MotorId actuator_id, uint8_t *flags)
 {
     if (flags != NULL)
@@ -402,12 +455,17 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
             {
                 if (CanTxMitTakeFrameBudget(now) != 0u)
                 {
-                    if (CanTxMitCommandAuthorizedNow(actuator_id, &cmd) == 0u)
+                    int ret;
+
+                    if (CanTxMitSendEnableAuthorized(actuator_id,
+                                                     &cmd,
+                                                     bus,
+                                                     std_id,
+                                                     &ret) == 0u)
                     {
                         CanTxMitMarkAuthorityReject(actuator_id, flags);
                         return 1u;
                     }
-                    const int ret = CanMitMotorSendEnable(bus, std_id);
                     if (ret == 0)
                     {
                         mit_last_enable_tick[actuator_id] = now;
@@ -442,13 +500,20 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
         }
 
         CanTxBuildMitCmdFromActuator(node, &cmd, current, limits, &mit_cmd);
-        if (CanTxMitCommandAuthorizedNow(actuator_id, &cmd) == 0u)
         {
-            CanTxMitMarkAuthorityReject(actuator_id, flags);
-            return 1u;
-        }
-        {
-            const int ret = CanMitMotorSendCmd(bus, std_id, limits, &mit_cmd);
+            int ret;
+
+            if (CanTxMitSendCmdAuthorized(actuator_id,
+                                          &cmd,
+                                          bus,
+                                          std_id,
+                                          limits,
+                                          &mit_cmd,
+                                          &ret) == 0u)
+            {
+                CanTxMitMarkAuthorityReject(actuator_id, flags);
+                return 1u;
+            }
             if (ret == 0)
             {
                 mit_last_cmd_tick[actuator_id] = now;
@@ -468,13 +533,20 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
     }
 
     CanTxBuildMitCmdFromActuator(node, &cmd, current, limits, &mit_cmd);
-    if (CanTxMitCommandAuthorizedNow(actuator_id, &cmd) == 0u)
     {
-        CanTxMitMarkAuthorityReject(actuator_id, flags);
-        return 1u;
-    }
-    {
-        const int ret = CanMitMotorSendCmd(bus, std_id, limits, &mit_cmd);
+        int ret;
+
+        if (CanTxMitSendCmdAuthorized(actuator_id,
+                                      &cmd,
+                                      bus,
+                                      std_id,
+                                      limits,
+                                      &mit_cmd,
+                                      &ret) == 0u)
+        {
+            CanTxMitMarkAuthorityReject(actuator_id, flags);
+            return 1u;
+        }
         if (ret == 0)
         {
             s_can_tx_mit_cmd_tx_count[actuator_id]++;

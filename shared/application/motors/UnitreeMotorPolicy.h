@@ -33,12 +33,6 @@ static inline fp32 UnitreeMotorRatioSafe(fp32 reduction_ratio)
     return (reduction_ratio > 0.0f) ? reduction_ratio : 1.0f;
 }
 
-static inline uint16_t UnitreeMotorWriterOrControl(uint16_t writer)
-{
-    return (writer != (uint16_t)LOWCMD_WRITER_NONE) ?
-        writer : (uint16_t)LOWCMD_WRITER_CONTROL;
-}
-
 /*
  * CanTx 缓存之后，故障任务可能已经清命令或提高禁写优先级。
  * 只有缓存与最新快照仍是同一条、且 writer 仍有权限时，才允许物理发送。
@@ -47,28 +41,15 @@ static inline uint8_t UnitreeMotorCmdSnapshotAllowed(const MotorCmd *cached,
                                                      const MotorCmd *latest,
                                                      uint16_t inhibit_writer)
 {
-    uint16_t cached_writer;
-    uint16_t latest_writer;
-
     if (cached == 0 || latest == 0 ||
         cached->active == 0u || latest->active == 0u ||
         cached->mode == (uint8_t)MotorModeNone ||
         cached->mode == (uint8_t)MotorModeDisable ||
-        latest->seq != cached->seq ||
         latest->mode != cached->mode)
     {
         return 0u;
     }
-
-    cached_writer = UnitreeMotorWriterOrControl(cached->writer);
-    latest_writer = UnitreeMotorWriterOrControl(latest->writer);
-    if (latest_writer != cached_writer ||
-        (inhibit_writer != (uint16_t)LOWCMD_WRITER_NONE &&
-         cached_writer < inhibit_writer))
-    {
-        return 0u;
-    }
-    return 1u;
+    return LowCmdSnapshotAuthorized(cached, latest, inhibit_writer);
 }
 
 /* MotorApplied 延续 LowCmd 的输出侧单位，不能暴露协议内部的转子侧量。 */

@@ -13,7 +13,6 @@
 #include "CanReceive.h"
 #include "GimbalPid.h"
 #include "Pid.h"
-#include "ManualInput.h"
 #include "RobotConfig.h"
 
 // pitch speed close-loop PID params, max out and max iout
@@ -173,7 +172,7 @@ typedef struct
 
 typedef struct
 {
-    bool_t dbus_offline;
+    bool_t manual_offline;
     robot_run_variant_e run_variant;
     uint8_t PitchCaliMode;
     uint8_t mode_sw;
@@ -196,7 +195,6 @@ typedef struct
 
 typedef struct
 {
-    const ManualInputState *GimbalRcCtrl;
     const fp32 *GimbalINTGyroPoint;
     const fp32 *GimbalInsAnglePoint;
     GimbalMotor GimbalYawMotor;

@@ -180,7 +180,7 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
     {
         snapshot->recovery_input_safe = ControlInputSwitchIsPos(
             snapshot->manual_input->control.sw[INPUT_SW_CHASSIS_MODE],
-            g_config.manual_input.semantics.ChassisSafePos);
+            snapshot->manual_input->semantics.ChassisSafePos);
     }
     {
         GimbalState state = {0};
@@ -275,22 +275,28 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
     if (control != NULL)
     {
         ChassisControlSnapshot fast = {0};
-        const ManualInputState *manual_state = (snapshot->manual_input != NULL) ?
+        const ManualInputState *manual_state = (snapshot->manual_online != 0u) ?
                                                          &snapshot->manual_input->manual :
                                                          NULL;
-        const ControlInputState *control_input = (snapshot->manual_input != NULL) ?
+        const ControlInputState *control_input = (snapshot->manual_online != 0u) ?
                                                          &snapshot->manual_input->control :
                                                          NULL;
 
         fast.gimbal = snapshot->gimbal;
         fast.manual_online = snapshot->manual_online;
         fast.ChassisOnlyMode = snapshot->ChassisOnlyMode;
+        fast.safe_pos = (snapshot->manual_input != NULL) ?
+                            snapshot->manual_input->semantics.ChassisSafePos :
+                            MANUAL_INPUT_SWITCH_POS_UP;
+        fast.follow_pos = (snapshot->manual_input != NULL) ?
+                              snapshot->manual_input->semantics.ChassisFollowPos :
+                              MANUAL_INPUT_SWITCH_POS_MID;
+        fast.spin_pos = (snapshot->manual_input != NULL) ?
+                            snapshot->manual_input->semantics.ChassisSpinPos :
+                            MANUAL_INPUT_SWITCH_POS_DOWN;
         fast.mode_sw = (control_input != NULL) ?
                            control_input->sw[INPUT_SW_CHASSIS_MODE] :
-                           ControlInputSwitchPosToRaw(g_config.manual_input.semantics.ChassisSafePos);
-        fast.safe_pos = g_config.manual_input.semantics.ChassisSafePos;
-        fast.follow_pos = g_config.manual_input.semantics.ChassisFollowPos;
-        fast.spin_pos = g_config.manual_input.semantics.ChassisSpinPos;
+                           ControlInputSwitchPosToRaw(fast.safe_pos);
         fast.axis_x = (control_input != NULL) ? control_input->axis[INPUT_AXIS_CHASSIS_X] : 0;
         fast.axis_y = (control_input != NULL) ? control_input->axis[INPUT_AXIS_CHASSIS_Y] : 0;
         fast.axis_wz = (control_input != NULL) ? control_input->axis[INPUT_AXIS_CHASSIS_WZ] : 0;

@@ -175,7 +175,7 @@ static void GimbalWriteState(const GimbalRuntimeSnapshot *snapshot)
     const uint8_t yaw_configured = (MotorCfgNodeId(&g_config.motor.yaw) != 0u) ? 1u : 0u;
     const uint8_t yaw_upper_configured = (MotorCfgNodeId(&g_config.motor.yaw_upper) != 0u) ? 1u : 0u;
     const uint8_t pitch_configured = (MotorCfgNodeId(&g_config.motor.pitch) != 0u) ? 1u : 0u;
-    const uint8_t manual_offline = toe_is_error(DBUS_TOE) ? 1u : 0u;
+    const uint8_t manual_offline = (snapshot == NULL || snapshot->manual_online == 0u) ? 1u : 0u;
     const uint8_t imu_required = (snapshot != NULL && snapshot->imu_required_mask != 0u) ? 1u : 0u;
     const uint8_t imu_offline = (snapshot == NULL || snapshot->imu_online == 0u) ? 1u : 0u;
     const uint8_t yaw_offline = (yaw_configured != 0u &&
@@ -247,7 +247,7 @@ static void GimbalWriteState(const GimbalRuntimeSnapshot *snapshot)
     state.imu_age_ms = (snapshot != NULL) ? snapshot->ImuSnapshot.age_ms : GIMBAL_STATE_AGE_UNKNOWN;
     if (manual_offline != 0u)
     {
-        state.offline_mask |= GIMBAL_STATE_OFFLINE_DBUS;
+        state.offline_mask |= GIMBAL_STATE_OFFLINE_MANUAL;
     }
     if (yaw_configured != 0u && yaw_offline != 0u)
     {

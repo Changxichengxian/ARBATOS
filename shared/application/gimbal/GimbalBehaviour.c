@@ -24,7 +24,6 @@
 #include "BspBuzzer.h"
 #include "RobotConfig.h"
 #include "ControlInput.h"
-#include "DetectTask.h"
 #include "MotorConfig.h"
 #include "PitchCali.h"
 #include "FreeRTOS.h"
@@ -457,7 +456,7 @@ static void GimbalBehavourSet(GimbalControl *GimbalModeSet)
 
     // 函数地图：安全/运行模式优先；再处理校准和初始化；最后把拨杆状态写成行为模式。
     const GimbalControlSnapshot *fast = &GimbalModeSet->fast;
-    const bool_t dbus_offline = fast->dbus_offline;
+    const bool_t manual_offline = fast->manual_offline;
     const uint8_t GimbalSw = fast->mode_sw;
     const bool_t switch_safe = ControlInputSwitchIsPos(GimbalSw, fast->safe_pos);
     const bool_t yaw_only_mode = fast->run_variant == ROBOT_RUN_VARIANT_GIMBAL_YAW_ONLY;
@@ -465,7 +464,7 @@ static void GimbalBehavourSet(GimbalControl *GimbalModeSet)
     const bool_t PitchCaliMode = fast->PitchCaliMode != 0u;
 
     // 安全模式最高优先级：遥控上档或离线直接降为零力矩
-    if (dbus_offline || switch_safe)
+    if (manual_offline || switch_safe)
     {
         s_gimbal_behaviour = GIMBAL_ZERO_FORCE;
         return;
@@ -494,7 +493,7 @@ static void GimbalBehavourSet(GimbalControl *GimbalModeSet)
 
     //if other operate make step change to start, means enter cali mode
     //如果外部使得校准步骤从0 变成 start，则进入校准模式
-    if (GimbalModeSet->GimbalCali.step == GIMBAL_CALI_START_STEP && !dbus_offline)
+    if (GimbalModeSet->GimbalCali.step == GIMBAL_CALI_START_STEP && !manual_offline)
     {
         s_gimbal_behaviour = GIMBAL_CALI;
         return;
@@ -528,7 +527,7 @@ static void GimbalBehavourSet(GimbalControl *GimbalModeSet)
 
         //超过初始化最大时间，或者已经稳定到中值一段时间，退出初始化状态：开关打上档，或者掉线
         if (init_time < GIMBAL_INIT_TIME && init_stop_time < GIMBAL_INIT_STOP_TIME &&
-            !switch_safe && !dbus_offline)
+            !switch_safe && !manual_offline)
         {
             return;
         }

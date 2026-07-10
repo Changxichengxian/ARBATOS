@@ -16,6 +16,40 @@ typedef struct
     uint8_t valid;
 } CanTxCmdExpiryLatch;
 
+typedef struct
+{
+    uint32_t seq;
+    uint16_t writer;
+    uint8_t valid;
+} CanTxCmdUnlockBarrier;
+
+static inline void CanTxCmdUnlockBarrierCapture(CanTxCmdUnlockBarrier *barrier,
+                                                 const MotorCmd *cmd)
+{
+    if (barrier == NULL)
+    {
+        return;
+    }
+    barrier->valid = (uint8_t)(cmd != NULL && cmd->active != 0u);
+    barrier->seq = (cmd != NULL) ? cmd->seq : 0u;
+    barrier->writer = (cmd != NULL) ? cmd->writer : (uint16_t)LOWCMD_WRITER_NONE;
+}
+
+/* 解锁前已存在的命令必须由控制任务重新发布一代，不能在解锁瞬间直接复活。 */
+static inline uint8_t CanTxCmdPublishedAfterUnlock(const CanTxCmdUnlockBarrier *barrier,
+                                                   const MotorCmd *cmd)
+{
+    if (cmd == NULL || cmd->active == 0u)
+    {
+        return 0u;
+    }
+    if (barrier == NULL || barrier->valid == 0u)
+    {
+        return 1u;
+    }
+    return (uint8_t)(cmd->seq != barrier->seq || cmd->writer != barrier->writer);
+}
+
 static inline uint8_t CanTxCmdIsLocalDisable(const MotorCmd *cmd)
 {
     return (uint8_t)(cmd != NULL &&
@@ -88,24 +122,7 @@ static inline uint8_t CanTxCachedCmdAuthorized(const MotorCmd *cached,
                                                const MotorCmd *latest,
                                                uint16_t inhibitWriter)
 {
-    uint16_t cachedWriter;
-
-    if (cached == NULL || latest == NULL || latest->active == 0u)
-    {
-        return 0u;
-    }
-    if (cached->seq != latest->seq || cached->writer != latest->writer)
-    {
-        return 0u;
-    }
-
-    cachedWriter = (cached->writer == (uint16_t)LOWCMD_WRITER_NONE) ?
-                       (uint16_t)LOWCMD_WRITER_CONTROL : cached->writer;
-    if (inhibitWriter != (uint16_t)LOWCMD_WRITER_NONE && cachedWriter < inhibitWriter)
-    {
-        return 0u;
-    }
-    return 1u;
+    return LowCmdSnapshotAuthorized(cached, latest, inhibitWriter);
 }
 
 #endif

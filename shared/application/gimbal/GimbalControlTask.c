@@ -34,8 +34,7 @@
 #include "MotorConfig.h"
 #include "UserLib.h"
 #include "AxisCurrentConditioner.h"
-#include "DetectTask.h"
-#include "ManualInput.h"
+#include "ManualInputSnapshot.h"
 #include "ControlInput.h"
 #include "ChassisState.h"
 #include "GimbalState.h"
@@ -82,10 +81,8 @@ static MotorCurrentBind DualYawGimbalOutputCurrentBindings[DUAL_YAW_GIMBAL_OUTPU
 
 typedef struct
 {
-    ManualInputState ManualInputCopy;
-    ControlInputState ControlInputCopy;
     InsSnapshot ImuSnapshot;
-    const ManualInputState *manual_input;
+    const ManualInputSnapshot *manual_input;
     const fp32 *gyro;
     const fp32 *ins_angle;
     const motor_measure_t *yaw_measure;
@@ -104,7 +101,6 @@ typedef struct
     uint8_t yaw_configured;
     uint8_t yaw_upper_configured;
     uint8_t pitch_configured;
-    uint8_t control_input_valid;
     uint8_t manual_online;
     uint8_t recovery_input_safe;
     uint32_t imu_required_mask;
@@ -224,7 +220,9 @@ static void GimbalSetMode(GimbalControl *set_mode);
   * @param[out]     GimbalFeedbackUpdate:"GimbalControl"变量指针.
   * @retval         none
   */
-static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot, GimbalControl *control);
+static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot,
+                                  GimbalControl *control,
+                                  const ManualInputSnapshot *manual_input);
 static void GimbalFeedbackUpdate(GimbalControl *feedback_update, const GimbalRuntimeSnapshot *snapshot);
 static void GimbalDualYawImuCenterUpdateOnOutput(GimbalControl *control,
                                                     const GimbalRuntimeSnapshot *snapshot,
@@ -401,9 +399,12 @@ void GimbalControlTask(void const *pvParameters)
     while (1)
     {
         const uint64_t loop_start_us = RtProfBegin();
+        ManualInputSnapshot manual_input;
+        const ManualInputSnapshot *frame_input =
+            (ManualInputSnapshotRead(&manual_input) != 0u) ? &manual_input : NULL;
         GimbalRuntimeSnapshot snapshot;
         WatchTaskBeat(WATCH_TASK_GIMBAL_CONTROL);
-        GimbalSnapshotCapture(&snapshot, &g_gimbal);
+        GimbalSnapshotCapture(&snapshot, &g_gimbal, frame_input);
         GimbalFaultUpdate(&snapshot);
         GimbalFaultSyncInhibit(&g_gimbal, &snapshot);
         GimbalLoopCounter++;
@@ -515,10 +516,13 @@ void DualYawGimbalControlTask(void const *pvParameters)
     while (1)
     {
         const uint64_t loop_start_us = RtProfBegin();
+        ManualInputSnapshot manual_input;
+        const ManualInputSnapshot *frame_input =
+            (ManualInputSnapshotRead(&manual_input) != 0u) ? &manual_input : NULL;
         GimbalRuntimeSnapshot snapshot;
 
         WatchTaskBeat(WATCH_TASK_GIMBAL_CONTROL);
-        GimbalSnapshotCapture(&snapshot, &g_gimbal);
+        GimbalSnapshotCapture(&snapshot, &g_gimbal, frame_input);
         GimbalFaultUpdate(&snapshot);
         GimbalFaultSyncInhibit(&g_gimbal, &snapshot);
         const uint8_t output_allowed = RobotLifecycleOutputAllowed();

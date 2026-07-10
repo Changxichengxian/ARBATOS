@@ -15,12 +15,15 @@
 extern "C" {
 #endif
 
+struct ManualInputSnapshot;
+
 /*
  * 这些入口只供 ShootCtrl 适配层使用。任务和注册表不得绕过
  * ControlMgr 直接调用，避免出现两套生命周期。
  */
 void ShootRuntimeInit(void);
-int16_t ShootRuntimeStep(void);
+int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput);
+void ShootRuntimeSafeStep(const struct ManualInputSnapshot *manualInput);
 void ShootRuntimeStop(void);
 
 #ifdef __cplusplus

@@ -21,7 +21,8 @@
 extern "C" {
 #endif
 
-#define GIMBAL_STATE_OFFLINE_DBUS      (1u << 0)
+#define GIMBAL_STATE_OFFLINE_MANUAL    (1u << 0)
+#define GIMBAL_STATE_OFFLINE_DBUS      GIMBAL_STATE_OFFLINE_MANUAL
 #define GIMBAL_STATE_OFFLINE_YAW       (1u << 1)
 #define GIMBAL_STATE_OFFLINE_YAW_UPPER (1u << 2)
 #define GIMBAL_STATE_OFFLINE_PITCH     (1u << 3)

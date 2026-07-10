@@ -66,10 +66,38 @@ typedef struct
 
 typedef struct
 {
+    uint8_t GimbalSafePos;
+    uint8_t ChassisSafePos;
+    uint8_t ChassisFollowPos;
+    uint8_t ChassisSpinPos;
+    uint8_t ShootStopPos;
+    uint8_t ShootReadyPos;
+    uint8_t ShootFirePos;
+    uint8_t image_vt13_shoot_switch_input;
+} ManualInputSemanticsConfig;
+
+typedef struct
+{
+    uint8_t switch1_safe_value;
+    uint8_t switch1_normal_value;
+    uint8_t switch1_spin_value;
+    uint8_t switch2_pause_pos;
+    uint8_t switch2_btn_l_pos;
+    uint8_t switch2_btn_r_pos;
+    uint8_t auto_aim_pause_enable;
+    uint8_t auto_aim_mouse_r_enable;
+    uint8_t AuxFireBtnLEnable;
+    uint8_t AuxFireMouseLEnable;
+} ManualInputVt13Config;
+
+typedef struct
+{
     uint8_t active_source;
     uint8_t mix_mode;
     uint16_t source_timeout_ms;
+    ManualInputSemanticsConfig semantics;
     uint16_t BoardKeyKeyMask;
+    ManualInputVt13Config vt13;
 } ManualInputConfig;
 
 typedef struct

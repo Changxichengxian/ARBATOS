@@ -470,6 +470,15 @@ static uint8_t CanTxRecheckCommandAuthority(MotorId actuator_id,
     {
         return 0u;
     }
+    if (RobotSafetyOutputLocked() != 0u)
+    {
+        CanTxForceDisabledCmd(actuator_id);
+        *cmd = s_can_tx_cmd_cache[actuator_id];
+        *have_cmd = 1u;
+        *flags |= (uint8_t)MotorAppliedFlagForceDisabled;
+        s_can_tx_authority_reject_count[actuator_id]++;
+        return 0u;
+    }
     if (*have_cmd == 0u || cmd->active == 0u ||
         cmd->mode == (uint8_t)MotorModeNone ||
         cmd->mode == (uint8_t)MotorModeDisable)
@@ -530,6 +539,10 @@ static void CanTxProcessInstance(const MotorRoute *route,
     if (s_can_tx_cmd_expired[actuator_id] != 0u)
     {
         flags |= (uint8_t)MotorAppliedFlagCmdExpired;
+    }
+    if (s_can_tx_cmd_unlock_blocked[actuator_id] != 0u)
+    {
+        flags |= (uint8_t)MotorAppliedFlagForceDisabled;
     }
     if (allowed != 0u)
     {
@@ -628,7 +641,10 @@ static void CanTxExecInstances(uint8_t output_locked)
             continue;
         }
 
-        allowed = (output_locked != 0u) ? 0u : CanTxRouteAllowed(route);
+        /* 长串口发送可能跨过生命周期新鲜度上限；每个路由都重新看一次锁。 */
+        allowed = (output_locked != 0u || RobotSafetyOutputLocked() != 0u) ?
+                      0u :
+                      CanTxRouteAllowed(route);
         CanTxProcessInstance(route, allowed, &log);
     }
 

@@ -8,6 +8,8 @@
 
 #include <stdint.h>
 
+#define ROBOT_LIFECYCLE_UPDATE_TIMEOUT_MS 20u
+
 typedef enum
 {
     ROBOT_LIFECYCLE_BOOT = 0u,
@@ -25,6 +27,7 @@ typedef enum
     ROBOT_LIFECYCLE_REASON_FAULT_LATCHED,
     ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
     ROBOT_LIFECYCLE_REASON_STARTUP_SAFE_REQUIRED,
+    ROBOT_LIFECYCLE_REASON_UPDATE_STALE,
 } RobotLifecycleReason;
 
 typedef struct
@@ -39,6 +42,8 @@ typedef struct
     uint8_t manual_safe;
     uint8_t fault_latched;
     uint8_t startup_safe_seen;
+    uint32_t update_tick;
+    uint32_t manual_semantics_seq;
 } RobotLifecycleSnapshot;
 
 void RobotLifecycleInit(void);

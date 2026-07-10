@@ -198,7 +198,11 @@ static uint8_t GimbalSingleMitYawTestActive(const GimbalRuntimeSnapshot *snapsho
 
 static fp32 GimbalSingleMitYawTestTorque(const GimbalRuntimeSnapshot *snapshot)
 {
-    int16_t axis = input_axis(INPUT_AXIS_GIMBAL_YAW);
+    int16_t axis = (snapshot != NULL &&
+                    snapshot->manual_input != NULL &&
+                    snapshot->manual_online != 0u) ?
+                       snapshot->manual_input->control.axis[INPUT_AXIS_GIMBAL_YAW] :
+                       0;
     const int16_t deadband = (int16_t)RC_DEADBAND;
     const int16_t max_axis = (int16_t)RC_CH_VALUE_ABS_MAX;
     fp32 torque;
@@ -265,7 +269,9 @@ static uint8_t GimbalYawSoftLimitEnabled(void)
                      (fabsf(YAW_SOFT_LIMIT_MIN) < 100.0f));
 }
 
-static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot, GimbalControl *control)
+static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot,
+                                  GimbalControl *control,
+                                  const ManualInputSnapshot *manual_input)
 {
     uint32_t now_ms;
 
@@ -276,18 +282,14 @@ static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot, GimbalControl
 
     memset(snapshot, 0, sizeof(*snapshot));
     snapshot->ImuSnapshot.age_ms = GIMBAL_STATE_AGE_UNKNOWN;
-    if (ManualInputGetCurrentCopy(&snapshot->ManualInputCopy) != 0u)
-    {
-        snapshot->manual_input = &snapshot->ManualInputCopy;
-    }
-    snapshot->control_input_valid = ControlInputGetCopy(&snapshot->ControlInputCopy);
+    snapshot->manual_input = manual_input;
     snapshot->manual_online = (uint8_t)(snapshot->manual_input != NULL &&
-                                        toe_is_error(DBUS_TOE) == 0u);
-    if (snapshot->control_input_valid != 0u && snapshot->manual_online != 0u)
+                                        snapshot->manual_input->online != 0u);
+    if (snapshot->manual_online != 0u)
     {
         snapshot->recovery_input_safe = ControlInputSwitchIsPos(
-            snapshot->ControlInputCopy.sw[INPUT_SW_GIMBAL_MODE],
-            g_config.manual_input.semantics.GimbalSafePos);
+            snapshot->manual_input->control.sw[INPUT_SW_GIMBAL_MODE],
+            snapshot->manual_input->semantics.GimbalSafePos);
     }
     snapshot->period_ms = RobotProfileGimbalControlPeriodMs();
     snapshot->period_us = (uint32_t)snapshot->period_ms * 1000u;
@@ -334,27 +336,35 @@ static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot, GimbalControl
     if (control != NULL)
     {
         GimbalControlSnapshot fast = {0};
-        const ManualInputState *manual_input = snapshot->manual_input;
-
-        const ControlInputState *control_input = (snapshot->control_input_valid != 0u) ?
-                                                     &snapshot->ControlInputCopy :
+        const ManualInputState *manual_state = (snapshot->manual_online != 0u) ?
+                                                   &snapshot->manual_input->manual :
+                                                   NULL;
+        const ControlInputState *control_input = (snapshot->manual_online != 0u) ?
+                                                     &snapshot->manual_input->control :
                                                      NULL;
 
-        fast.dbus_offline = (snapshot->manual_online != 0u) ? 0u : 1u;
+        fast.manual_offline = (snapshot->manual_online != 0u) ? 0u : 1u;
         fast.run_variant = snapshot->run_variant;
         fast.PitchCaliMode = snapshot->PitchCaliMode;
+        fast.safe_pos = (snapshot->manual_input != NULL) ?
+                            snapshot->manual_input->semantics.GimbalSafePos :
+                            MANUAL_INPUT_SWITCH_POS_UP;
         fast.mode_sw = (control_input != NULL) ?
                            control_input->sw[INPUT_SW_GIMBAL_MODE] :
-                           ControlInputSwitchPosToRaw(g_config.manual_input.semantics.GimbalSafePos);
-        fast.safe_pos = g_config.manual_input.semantics.GimbalSafePos;
-        fast.active_source = remote_control_get_active_source();
-        fast.image_auto_aim_requested = ImageRemoteAutoAimRequested() ? 1u : 0u;
+                           ControlInputSwitchPosToRaw(fast.safe_pos);
+        fast.active_source = (snapshot->manual_online != 0u) ?
+                                 snapshot->manual_input->activeSource :
+                                 MANUAL_INPUT_SRC_AUTO;
+        fast.image_auto_aim_requested =
+            (snapshot->manual_online != 0u &&
+             snapshot->manual_input->activeSource == MANUAL_INPUT_SRC_IMAGE &&
+             (snapshot->manual_input->sourceFlags & MANUAL_INPUT_SOURCE_FLAG_AUTO_AIM) != 0u) ? 1u : 0u;
         fast.yaw_axis = (control_input != NULL) ? control_input->axis[INPUT_AXIS_GIMBAL_YAW] : 0;
         fast.pitch_axis = (control_input != NULL) ? control_input->axis[INPUT_AXIS_GIMBAL_PITCH] : 0;
-        fast.mouse_x = (manual_input != NULL) ? manual_input->mouse.x : 0;
-        fast.mouse_y = (manual_input != NULL) ? manual_input->mouse.y : 0;
+        fast.mouse_x = (manual_state != NULL) ? manual_state->mouse.x : 0;
+        fast.mouse_y = (manual_state != NULL) ? manual_state->mouse.y : 0;
         fast.rc_deadband = RC_DEADBAND;
-        fast.key_mask = (manual_input != NULL) ? manual_input->key.v : 0u;
+        fast.key_mask = (manual_state != NULL) ? manual_state->key.v : 0u;
         fast.turn_key_mask = TURN_KEYBOARD;
         fast.turn_speed = TURN_SPEED;
         fast.yaw_rc_sen = YAW_RC_SEN;
@@ -435,6 +445,7 @@ static int16_t GimbalRunShootControl(const GimbalRuntimeSnapshot *snapshot, uint
     ShootCtrlInput input = {0};
     ShootCtrlOutput output = {0};
 
+    input.manualInput = (snapshot != NULL) ? snapshot->manual_input : NULL;
     input.tickMs = BspTimeGetTickMs();
     input.periodMs = (snapshot != NULL && snapshot->period_ms != 0u) ?
                          snapshot->period_ms :

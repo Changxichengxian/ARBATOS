@@ -11,6 +11,7 @@
 #include "MotorConfig.h"
 #include "MotorFeedbackEcdPolicy.h"
 #include "MotorInst.h"
+#include "RobotSafety.h"
 #include "UnitreeMotorDriver.h"
 
 #include <string.h>
@@ -29,6 +30,9 @@
 #define N6014B_RATIO (38.0f / 3.0f)
 #define N6014B_RADPS_TO_RPM 9.54929659f
 #define N6014B_ECD_RANGE_F 8191.0f
+
+typedef char N6014bTxFrameFitsBsp[
+    (N6014B_TX_FRAME_SIZE <= BSP_RS485_TX_IT_MAX_LEN) ? 1 : -1];
 
 typedef enum
 {
@@ -747,24 +751,23 @@ static uint8_t N6014bSetupPort(uint8_t port, uint32_t baudrate)
     }
 
     p = &g_n6014b_port[port];
-    if (p->ready != 0u && p->baudrate == baudrate)
+    /* 回调只归属实际端口；每次确认所有者，避免被另一协议曾经覆盖后不恢复。 */
+    if (port == N6014B_MOTOR_RS485_PORT0)
+    {
+        BspUsart2SetRxByteCb(N6014bUsart2RxByte);
+        BspUsart2SetErrorCb(N6014bUsart2Error);
+    }
+    else
+    {
+        BspUsart3SetRxByteCb(N6014bUsart3RxByte);
+        BspUsart3SetErrorCb(N6014bUsart3Error);
+    }
+    p->registered = 1u;
+    if (p->ready != 0u && p->baudrate == baudrate &&
+        ((port == N6014B_MOTOR_RS485_PORT0 && BspUsart2GetBaudrate() == baudrate) ||
+         (port == N6014B_MOTOR_RS485_PORT1 && BspUsart3GetBaudrate() == baudrate)))
     {
         return 1u;
-    }
-
-    if (p->registered == 0u)
-    {
-        if (port == N6014B_MOTOR_RS485_PORT0)
-        {
-            BspUsart2SetRxByteCb(N6014bUsart2RxByte);
-            BspUsart2SetErrorCb(N6014bUsart2Error);
-        }
-        else
-        {
-            BspUsart3SetRxByteCb(N6014bUsart3RxByte);
-            BspUsart3SetErrorCb(N6014bUsart3Error);
-        }
-        p->registered = 1u;
     }
 
     p->rx_pos = 0u;
@@ -775,6 +778,10 @@ static uint8_t N6014bSetupPort(uint8_t port, uint32_t baudrate)
         {
             ret = BspUsart2RxItStart();
         }
+        if (ret == 0)
+        {
+            ret = BspUsart2TxItPrepare();
+        }
     }
     else
     {
@@ -782,6 +789,10 @@ static uint8_t N6014bSetupPort(uint8_t port, uint32_t baudrate)
         if (ret == 0)
         {
             ret = BspUsart3RxItStart();
+        }
+        if (ret == 0)
+        {
+            ret = BspUsart3TxItPrepare();
         }
     }
 
@@ -796,7 +807,23 @@ static uint8_t N6014bSetupPort(uint8_t port, uint32_t baudrate)
     return 1u;
 }
 
-static int N6014bTx(uint8_t port, const uint8_t frame[N6014B_TX_FRAME_SIZE])
+static uint8_t N6014bActiveFrameAllowed(MotorId actuator_id, const MotorCmd *cached_cmd)
+{
+    MotorCmd latest;
+    uint16_t inhibit_writer = (uint16_t)LOWCMD_WRITER_NONE;
+
+    (void)memset(&latest, 0, sizeof(latest));
+    return (uint8_t)(RobotSafetyOutputLocked() == 0u &&
+                     cached_cmd != NULL &&
+                     cached_cmd->active != 0u &&
+                     cached_cmd->mode != (uint8_t)MotorModeNone &&
+                     cached_cmd->mode != (uint8_t)MotorModeDisable &&
+                     LowCmdGetMotor(actuator_id, &latest) != 0u &&
+                     LowCmdGetInhibitWriter(actuator_id, &inhibit_writer) != 0u &&
+                     LowCmdSnapshotAuthorized(cached_cmd, &latest, inhibit_writer) != 0u);
+}
+
+static int N6014bTxStart(uint8_t port, const uint8_t frame[N6014B_TX_FRAME_SIZE])
 {
     if (frame == NULL)
     {
@@ -805,13 +832,77 @@ static int N6014bTx(uint8_t port, const uint8_t frame[N6014B_TX_FRAME_SIZE])
 
     if (port == N6014B_MOTOR_RS485_PORT0)
     {
-        return BspUsart2Tx(frame, N6014B_TX_FRAME_SIZE, 5u);
+        return BspUsart2TxItStart(frame, N6014B_TX_FRAME_SIZE);
     }
     if (port == N6014B_MOTOR_RS485_PORT1)
     {
-        return BspUsart3Tx(frame, N6014B_TX_FRAME_SIZE, 5u);
+        return BspUsart3TxItStart(frame, N6014B_TX_FRAME_SIZE);
     }
     return 1;
+}
+
+static int N6014bTxWait(uint8_t port)
+{
+    if (port == N6014B_MOTOR_RS485_PORT0)
+    {
+        return BspUsart2TxItWait(5u);
+    }
+    if (port == N6014B_MOTOR_RS485_PORT1)
+    {
+        return BspUsart3TxItWait(5u);
+    }
+    return 1;
+}
+
+static int N6014bTx(uint8_t port,
+                    MotorId actuator_id,
+                    const MotorCmd *cached_cmd,
+                    const uint8_t active_frame[N6014B_TX_FRAME_SIZE],
+                    const uint8_t safe_frame[N6014B_TX_FRAME_SIZE],
+                    uint8_t require_authority,
+                    uint8_t *used_safe_frame,
+                    uint8_t *authority_rejected)
+{
+    const uint8_t *selected_frame;
+    uint8_t use_safe = 1u;
+    int ret;
+
+    if (used_safe_frame != NULL)
+    {
+        *used_safe_frame = 1u;
+    }
+    if (authority_rejected != NULL)
+    {
+        *authority_rejected = 0u;
+    }
+    if (active_frame == NULL || safe_frame == NULL)
+    {
+        return 1;
+    }
+
+    taskENTER_CRITICAL();
+    if (require_authority != 0u &&
+        N6014bActiveFrameAllowed(actuator_id, cached_cmd) != 0u)
+    {
+        use_safe = 0u;
+    }
+    else if (require_authority != 0u && authority_rejected != NULL)
+    {
+        *authority_rejected = 1u;
+    }
+    selected_frame = (use_safe != 0u) ? safe_frame : active_frame;
+    ret = N6014bTxStart(port, selected_frame);
+    taskEXIT_CRITICAL();
+
+    if (ret == 0)
+    {
+        ret = N6014bTxWait(port);
+    }
+    if (used_safe_frame != NULL)
+    {
+        *used_safe_frame = use_safe;
+    }
+    return ret;
 }
 
 static uint8_t N6014bUpdateAxisConfig(MotorId id,
@@ -970,7 +1061,8 @@ static void N6014bUpdateApplied(MotorId id,
                                    fp32 torque,
                                    const MotorCmd *cmd,
                                    int16_t current,
-                                   int ret)
+                                   int ret,
+                                   uint8_t safe_substituted)
 {
     MotorApplied applied;
 
@@ -1008,6 +1100,10 @@ static void N6014bUpdateApplied(MotorId id,
     {
         applied.flags |= (uint8_t)MotorAppliedFlagSkipped;
     }
+    if (safe_substituted != 0u)
+    {
+        applied.flags |= (uint8_t)MotorAppliedFlagForceDisabled;
+    }
 
     LowStateUpdateApplied(id, &applied);
 }
@@ -1028,6 +1124,9 @@ int N6014bMotorSendActuator(uint8_t port,
 {
     uint8_t motor_id;
     uint8_t frame[N6014B_TX_FRAME_SIZE];
+    uint8_t safe_frame[N6014B_TX_FRAME_SIZE];
+    uint8_t used_safe_frame = 1u;
+    uint8_t authority_rejected = 0u;
     N6014bMode mode;
     fp32 position;
     fp32 velocity;
@@ -1081,7 +1180,32 @@ int N6014bMotorSendActuator(uint8_t port,
     }
 
     N6014bBuildTxFrame(frame, motor_id, mode, position, velocity, kp, kd, torque);
-    ret = N6014bTx(port, frame);
+    N6014bBuildTxFrame(safe_frame,
+                       motor_id,
+                       N6014B_MODE_LOCK,
+                       0.0f,
+                       0.0f,
+                       0.0f,
+                       0.0f,
+                       0.0f);
+    ret = N6014bTx(port,
+                   actuator_id,
+                   cmd,
+                   frame,
+                   safe_frame,
+                   (uint8_t)(mode != N6014B_MODE_LOCK),
+                   &used_safe_frame,
+                   &authority_rejected);
+    if (used_safe_frame != 0u)
+    {
+        mode = N6014B_MODE_LOCK;
+        position = 0.0f;
+        velocity = 0.0f;
+        kp = 0.0f;
+        kd = 0.0f;
+        torque = 0.0f;
+        current = 0;
+    }
     N6014bUpdateApplied(actuator_id,
                        port,
                        motor_id,
@@ -1094,7 +1218,8 @@ int N6014bMotorSendActuator(uint8_t port,
                        torque,
                        cmd,
                        current,
-                       ret);
+                       ret,
+                       authority_rejected);
     N6014bRecordTxResult(actuator_id, ret);
     N6014bRefreshFeedback(actuator_id, node);
     return ret;

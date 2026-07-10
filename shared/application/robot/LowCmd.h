@@ -9,6 +9,7 @@
 #ifndef LOWCMD_H
 #define LOWCMD_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "Types.h"
@@ -112,6 +113,32 @@ typedef struct
     fp32 kd;
     fp32 tau;
 } MotorCmd;
+
+/*
+ * 发送层缓存只有仍指向当前发布代、且 writer 没被更高优先级禁写时才有效。
+ * 调用者若要把检查和物理入队连成一个不可分割动作，必须在同一临界区内
+ * 读取最新命令、禁写 owner、调用本函数并启动非阻塞发送。
+ */
+static inline uint8_t LowCmdSnapshotAuthorized(const MotorCmd *cached,
+                                               const MotorCmd *latest,
+                                               uint16_t inhibitWriter)
+{
+    uint16_t cachedWriter;
+
+    if (cached == NULL || latest == NULL || latest->active == 0u ||
+        cached->seq != latest->seq || cached->writer != latest->writer)
+    {
+        return 0u;
+    }
+
+    cachedWriter = (cached->writer == (uint16_t)LOWCMD_WRITER_NONE) ?
+                       (uint16_t)LOWCMD_WRITER_CONTROL : cached->writer;
+    if (inhibitWriter != (uint16_t)LOWCMD_WRITER_NONE && cachedWriter < inhibitWriter)
+    {
+        return 0u;
+    }
+    return 1u;
+}
 
 typedef struct
 {

@@ -636,6 +636,38 @@ static int TestCanTxCommandExpiryBoundaries(void)
                      "inactive 命令不需要标记超时");
 }
 
+static int TestCanTxUnlockGenerationBarrier(void)
+{
+    CanTxCmdUnlockBarrier barrier = {0};
+    MotorCmd beforeUnlock = TestCurrentCmd(100);
+    MotorCmd afterUnlock;
+
+    beforeUnlock.active = 1u;
+    beforeUnlock.seq = 41u;
+    beforeUnlock.writer = (uint16_t)LOWCMD_WRITER_CONTROL;
+    CanTxCmdUnlockBarrierCapture(&barrier, &beforeUnlock);
+    if (!TestCheck(CanTxCmdPublishedAfterUnlock(&barrier, &beforeUnlock) == 0u,
+                   "解锁前已存在的同代命令不得立即复活")) return 0;
+
+    afterUnlock = beforeUnlock;
+    afterUnlock.seq++;
+    if (!TestCheck(CanTxCmdPublishedAfterUnlock(&barrier, &afterUnlock) != 0u,
+                   "控制任务重新发布一代后才允许越过解锁屏障")) return 0;
+
+    afterUnlock = beforeUnlock;
+    afterUnlock.writer = (uint16_t)LOWCMD_WRITER_SAFETY;
+    if (!TestCheck(CanTxCmdPublishedAfterUnlock(&barrier, &afterUnlock) != 0u,
+                   "写者切换产生的新命令也应视为解锁后的发布")) return 0;
+
+    beforeUnlock.active = 0u;
+    CanTxCmdUnlockBarrierCapture(&barrier, &beforeUnlock);
+    afterUnlock = beforeUnlock;
+    afterUnlock.active = 1u;
+    afterUnlock.seq = 1u;
+    return TestCheck(CanTxCmdPublishedAfterUnlock(&barrier, &afterUnlock) != 0u,
+                     "解锁时没有活动命令的轴应接受之后首次发布");
+}
+
 static int TestWriterAuthorityComesFromApi(void)
 {
     MotorCmd cmd = TestCurrentCmd(1234);
@@ -755,6 +787,7 @@ int main(void)
     if (!TestBestEffortSkipsInhibitedAxis()) return 1;
     if (!TestCanTxRejectsStaleCachedCommand()) return 1;
     if (!TestCanTxCommandExpiryBoundaries()) return 1;
+    if (!TestCanTxUnlockGenerationBarrier()) return 1;
     if (!TestWriterAuthorityComesFromApi()) return 1;
     if (!TestLowStateCopiesLastEcd()) return 1;
 

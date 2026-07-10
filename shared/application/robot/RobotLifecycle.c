@@ -11,10 +11,8 @@
 #include "task.h"
 #include "main.h"
 
-#include "RobotConfig.h"
 #include "ControlInput.h"
-#include "DetectTask.h"
-#include "ManualInput.h"
+#include "ManualInputSnapshot.h"
 
 typedef struct
 {
@@ -54,21 +52,22 @@ static void RobotLifecycleExitCritical(RobotLifecycleCriticalState state)
     }
 }
 
-static uint8_t RobotLifecycleManualOnlineNow(void)
+static uint8_t RobotLifecycleManualOnline(const ManualInputSnapshot *manualInput)
 {
-    return (uint8_t)((ManualInputGetActiveSource() != MANUAL_INPUT_SRC_AUTO &&
-                      toe_is_error(DBUS_TOE) == 0u) ? 1u : 0u);
+    return (uint8_t)(manualInput != NULL && manualInput->online != 0u);
 }
 
-static uint8_t RobotLifecycleManualSafeNow(uint8_t manual_online)
+static uint8_t RobotLifecycleManualSafe(const ManualInputSnapshot *manualInput,
+                                        uint8_t manualOnline)
 {
-    if (manual_online == 0u)
+    if (manualOnline == 0u || manualInput == NULL)
     {
         return 0u;
     }
 
-    return ControlInputSwitchIsPos((uint16_t)ControlInputSwitch(INPUT_SW_GIMBAL_MODE),
-                                       g_config.manual_input.semantics.GimbalSafePos);
+    return ControlInputSwitchIsPos(
+        manualInput->control.sw[INPUT_SW_GIMBAL_MODE],
+        manualInput->semantics.GimbalSafePos);
 }
 
 static RobotLifecycleState RobotLifecycleResolve(uint8_t manual_online,
@@ -120,6 +119,15 @@ static void RobotLifecycleCommit(RobotLifecycleState next_state,
         g_robot_lifecycle_inited = 1u;
     }
 
+    /* 解析与提交之间可能被异常入口抢占；锁存故障绝不能被旧输入结论重新放行。 */
+    if (g_robot_lifecycle.fault_latched != 0u)
+    {
+        next_state = ROBOT_LIFECYCLE_FAULT;
+        reason = (g_robot_lifecycle.reason == ROBOT_LIFECYCLE_REASON_FATAL_FAULT) ?
+                     ROBOT_LIFECYCLE_REASON_FATAL_FAULT :
+                     ROBOT_LIFECYCLE_REASON_FAULT_LATCHED;
+    }
+
     if (g_robot_lifecycle.state != next_state)
     {
         g_robot_lifecycle.prev_state = g_robot_lifecycle.state;
@@ -132,6 +140,7 @@ static void RobotLifecycleCommit(RobotLifecycleState next_state,
     g_robot_lifecycle.manual_online = manual_online;
     g_robot_lifecycle.manual_safe = manual_safe;
     g_robot_lifecycle.output_allowed = (next_state == ROBOT_LIFECYCLE_ACTIVE) ? 1u : 0u;
+    g_robot_lifecycle.update_tick = now;
 
     RobotLifecycleExitCritical(critical);
 }
@@ -145,18 +154,19 @@ void RobotLifecycleInit(void)
     g_robot_lifecycle.prev_state = ROBOT_LIFECYCLE_BOOT;
     g_robot_lifecycle.reason = ROBOT_LIFECYCLE_REASON_BOOT;
     g_robot_lifecycle.enter_tick = HAL_GetTick();
+    g_robot_lifecycle.update_tick = g_robot_lifecycle.enter_tick;
     g_robot_lifecycle_inited = 1u;
 
     RobotLifecycleExitCritical(critical);
 }
 
-void RobotLifecycleUpdate(void)
+static void RobotLifecycleUpdateFromInput(const ManualInputSnapshot *manualInput)
 {
     RobotLifecycleSnapshot snapshot;
     RobotLifecycleReason reason;
     RobotLifecycleState next_state;
-    const uint8_t manual_online = RobotLifecycleManualOnlineNow();
-    const uint8_t manual_safe = RobotLifecycleManualSafeNow(manual_online);
+    const uint8_t manual_online = RobotLifecycleManualOnline(manualInput);
+    const uint8_t manual_safe = RobotLifecycleManualSafe(manualInput, manual_online);
     RobotLifecycleCriticalState critical = RobotLifecycleEnterCritical();
 
     if (g_robot_lifecycle_inited == 0u)
@@ -167,6 +177,13 @@ void RobotLifecycleUpdate(void)
         g_robot_lifecycle.reason = ROBOT_LIFECYCLE_REASON_BOOT;
         g_robot_lifecycle.enter_tick = HAL_GetTick();
         g_robot_lifecycle_inited = 1u;
+    }
+    if (manualInput != NULL && manualInput->semanticsSeq != 0u &&
+        g_robot_lifecycle.manual_semantics_seq != manualInput->semanticsSeq)
+    {
+        /* 安全档定义一旦变化，旧的解锁资格立即失效。 */
+        g_robot_lifecycle.manual_semantics_seq = manualInput->semanticsSeq;
+        g_robot_lifecycle.startup_safe_seen = 0u;
     }
     if (manual_online != 0u && manual_safe != 0u)
     {
@@ -182,6 +199,15 @@ void RobotLifecycleUpdate(void)
                                          &snapshot,
                                          &reason);
     RobotLifecycleCommit(next_state, reason, manual_online, manual_safe);
+}
+
+void RobotLifecycleUpdate(void)
+{
+    ManualInputSnapshot manualInput;
+    const ManualInputSnapshot *frameInput =
+        (ManualInputSnapshotRead(&manualInput) != 0u) ? &manualInput : NULL;
+
+    RobotLifecycleUpdateFromInput(frameInput);
 }
 
 RobotLifecycleState RobotLifecycleCurrent(void)
@@ -209,11 +235,20 @@ uint8_t RobotLifecycleGetSnapshot(RobotLifecycleSnapshot *out)
         return 0u;
     }
 
-    RobotLifecycleUpdate();
-
     critical = RobotLifecycleEnterCritical();
     *out = g_robot_lifecycle;
     RobotLifecycleExitCritical(critical);
+
+    if (out->output_allowed != 0u &&
+        (HAL_GetTick() - out->update_tick) > ROBOT_LIFECYCLE_UPDATE_TIMEOUT_MS)
+    {
+        /* 唯一推进者停滞时，任何独立输出任务读取到的都必须是锁定结论。 */
+        out->state = ROBOT_LIFECYCLE_SAFE;
+        out->reason = ROBOT_LIFECYCLE_REASON_UPDATE_STALE;
+        out->output_allowed = 0u;
+        out->manual_online = 0u;
+        out->manual_safe = 0u;
+    }
 
     return 1u;
 }
@@ -240,6 +275,7 @@ void RobotLifecycleEnterFault(RobotLifecycleReason reason)
     g_robot_lifecycle.reason = (reason == ROBOT_LIFECYCLE_REASON_NONE) ?
                                ROBOT_LIFECYCLE_REASON_FATAL_FAULT : reason;
     g_robot_lifecycle.enter_tick = now;
+    g_robot_lifecycle.update_tick = now;
     g_robot_lifecycle.output_allowed = 0u;
     g_robot_lifecycle.fault_latched = 1u;
 
@@ -261,9 +297,8 @@ void RobotLifecycleClearFault(void)
     }
 
     g_robot_lifecycle.fault_latched = 0u;
+    g_robot_lifecycle.update_tick = HAL_GetTick();
     RobotLifecycleExitCritical(critical);
-
-    RobotLifecycleUpdate();
 }
 
 uint8_t RobotLifecycleFaultLatched(void)

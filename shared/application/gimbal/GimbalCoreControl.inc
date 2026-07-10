@@ -114,7 +114,6 @@ static void GimbalInit(GimbalControl *init)
     init->GimbalPitchMotor.GimbalMotorMeasure = get_pitch_gimbal_motor_measure_point();
     init->GimbalINTGyroPoint = get_gyro_data_point();
     init->GimbalInsAnglePoint = get_INS_angle_point();
-    init->GimbalRcCtrl = get_remote_control_point();
     init->GimbalPitchMotor.mode = init->GimbalPitchMotor.last_mode = GIMBAL_MOTOR_RAW;
     init->GimbalYawMotor.mode = init->GimbalYawMotor.last_mode = GIMBAL_MOTOR_RAW;
     //初始化yaw电机pid
@@ -148,7 +147,7 @@ static void GimbalInit(GimbalControl *init)
 
     {
         GimbalRuntimeSnapshot snapshot;
-        GimbalSnapshotCapture(&snapshot, init);
+        GimbalSnapshotCapture(&snapshot, init, NULL);
         GimbalFeedbackUpdate(init, &snapshot);
     }
 

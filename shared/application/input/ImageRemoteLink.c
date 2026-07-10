@@ -13,9 +13,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "RobotConfig.h"
-#include "ControlInput.h"
-#include "ManualInput.h"
+#include "ManualInputSnapshot.h"
 #include "Crc8Crc16.h"
 
 #define IMAGE_REMOTE_FRAME_SOF          0xA5u
@@ -86,6 +84,7 @@ static volatile uint8_t ImageRemoteLastRangeMode = 0u;
 static ImageRemoteState s_image_remote_state = {0};
 
 static void ImageRemoteStore(const ImageRemoteState *state);
+static uint8_t ImageRemoteRawFlags(const ImageRemoteState *state);
 static void ImageRemoteLinkProcessTo(uint16_t pos);
 static void ImageRemoteLinkResetParser(void);
 static void ImageRemoteLinkFeedByte(uint8_t b);
@@ -94,8 +93,6 @@ static void ImageRemoteLinkHandleVt13Frame(const uint8_t *frame, uint16_t frame_
 static bool_t ImageRemoteLinkTryDecodeCustomRc(const uint8_t *data);
 static int16_t ImageRemoteLinkScaleAxis(int16_t raw, int16_t raw_abs_max);
 static uint8_t ImageRemoteLinkSanitizeSwitch(uint8_t value);
-static uint8_t ImageRemoteLinkMapVt13Switch1(uint8_t value);
-static uint8_t ImageRemoteLinkMapVt13Switch2(uint8_t stop, uint8_t left, uint8_t right);
 
 bool ImageRemoteGetState(ImageRemoteState *out)
 {
@@ -112,32 +109,22 @@ bool ImageRemoteGetState(ImageRemoteState *out)
 
 bool ImageRemoteAutoAimRequested(void)
 {
-    ImageRemoteState state;
-    if (!ImageRemoteGetState(&state))
-    {
-        return false;
-    }
-    if (ManualInputGetActiveSource() != MANUAL_INPUT_SRC_IMAGE)
-    {
-        return false;
-    }
-    return ((g_config.manual_input.vt13.auto_aim_pause_enable != 0u) && (state.pause != 0u)) ||
-           ((g_config.manual_input.vt13.auto_aim_mouse_r_enable != 0u) && (state.mouse_r != 0u));
+    ManualInputSnapshot snapshot;
+
+    return ManualInputSnapshotRead(&snapshot) != 0u &&
+           snapshot.online != 0u &&
+           snapshot.activeSource == MANUAL_INPUT_SRC_IMAGE &&
+           (snapshot.sourceFlags & MANUAL_INPUT_SOURCE_FLAG_AUTO_AIM) != 0u;
 }
 
 bool ImageRemoteAuxFireRequested(void)
 {
-    ImageRemoteState state;
-    if (!ImageRemoteGetState(&state))
-    {
-        return false;
-    }
-    if (ManualInputGetActiveSource() != MANUAL_INPUT_SRC_IMAGE)
-    {
-        return false;
-    }
-    return ((g_config.manual_input.vt13.AuxFireBtnLEnable != 0u) && (state.btn_l != 0u)) ||
-           ((g_config.manual_input.vt13.AuxFireMouseLEnable != 0u) && (state.mouse_l != 0u));
+    ManualInputSnapshot snapshot;
+
+    return ManualInputSnapshotRead(&snapshot) != 0u &&
+           snapshot.online != 0u &&
+           snapshot.activeSource == MANUAL_INPUT_SRC_IMAGE &&
+           (snapshot.sourceFlags & MANUAL_INPUT_SOURCE_FLAG_AUX_FIRE) != 0u;
 }
 
 void ImageRemoteLinkGetStats(sdlog_image_link_stats_t *out)
@@ -277,6 +264,37 @@ static void ImageRemoteStore(const ImageRemoteState *state)
     taskENTER_CRITICAL();
     s_image_remote_state = *state;
     taskEXIT_CRITICAL();
+}
+
+static uint8_t ImageRemoteRawFlags(const ImageRemoteState *state)
+{
+    uint8_t flags = 0u;
+
+    if (state == NULL)
+    {
+        return 0u;
+    }
+    if (state->pause != 0u)
+    {
+        flags |= MANUAL_INPUT_SOURCE_RAW_PAUSE;
+    }
+    if (state->mouse_r != 0u)
+    {
+        flags |= MANUAL_INPUT_SOURCE_RAW_MOUSE_R;
+    }
+    if (state->btn_l != 0u)
+    {
+        flags |= MANUAL_INPUT_SOURCE_RAW_BTN_L;
+    }
+    if (state->mouse_l != 0u)
+    {
+        flags |= MANUAL_INPUT_SOURCE_RAW_MOUSE_L;
+    }
+    if (state->btn_r != 0u)
+    {
+        flags |= MANUAL_INPUT_SOURCE_RAW_BTN_R;
+    }
+    return flags;
 }
 
 static void ImageRemoteLinkProcessTo(uint16_t pos)
@@ -481,6 +499,12 @@ static void ImageRemoteLinkHandleVt13Frame(const uint8_t *frame, uint16_t frame_
     const uint8_t vt13_mouse_l = (uint8_t)(frame[16] & 0x01u);
     const uint8_t vt13_mouse_r = (uint8_t)((frame[16] >> 1) & 0x01u);
     const uint8_t vt13_mouse_mid = (uint8_t)((frame[16] >> 2) & 0x01u);
+    const uint8_t vt13_switch1 = (uint8_t)((frame[7] >> 4) & 0x03u);
+    /* 诊断保留协议原值：sw[0] 是两位拨杆，sw[1] 的 bit0..2 依次是 pause、btn_l、btn_r。 */
+    const uint8_t vt13_raw_sw[2] = {
+        vt13_switch1,
+        (uint8_t)(vt13_pause | (uint8_t)(vt13_btn_l << 1) | (uint8_t)(vt13_btn_r << 2)),
+    };
 
     ManualInputState rc = {0};
     rc.rc.ch[0] = ImageRemoteLinkScaleAxis((int16_t)(ch_raw[0] - RC_CH_VALUE_OFFSET), IMAGE_REMOTE_RC_ABS_MAX_VT13);
@@ -489,8 +513,9 @@ static void ImageRemoteLinkHandleVt13Frame(const uint8_t *frame, uint16_t frame_
     rc.rc.ch[3] = ImageRemoteLinkScaleAxis((int16_t)(ch_raw[3] - RC_CH_VALUE_OFFSET), IMAGE_REMOTE_RC_ABS_MAX_VT13);
     rc.rc.ch[4] = ImageRemoteLinkScaleAxis((int16_t)(ch_raw[4] - RC_CH_VALUE_OFFSET), IMAGE_REMOTE_RC_ABS_MAX_VT13);
 
-    rc.rc.s[0] = (char)ImageRemoteLinkMapVt13Switch1((uint8_t)((frame[7] >> 4) & 0x03u));
-    rc.rc.s[1] = (char)ImageRemoteLinkMapVt13Switch2(vt13_pause, vt13_btn_l, vt13_btn_r);
+    /* VT13 原始拨杆稍后在 ManualInput 快照里用冻结配置统一解释。 */
+    rc.rc.s[0] = (char)RC_SW_UP;
+    rc.rc.s[1] = (char)RC_SW_UP;
 
     rc.mouse.x = (int16_t)((uint16_t)frame[10] | ((uint16_t)frame[11] << 8));
     rc.mouse.y = (int16_t)((uint16_t)frame[12] | ((uint16_t)frame[13] << 8));
@@ -509,7 +534,7 @@ static void ImageRemoteLinkHandleVt13Frame(const uint8_t *frame, uint16_t frame_
                                   SDLOG_MANUAL_INPUT_RANGE_RAW_11BIT,
                                   5u,
                                   ch_raw,
-                                  NULL,
+                                  vt13_raw_sw,
                                   &rc);
     ImageRemoteState state = {
         .valid = 1u,
@@ -517,7 +542,7 @@ static void ImageRemoteLinkHandleVt13Frame(const uint8_t *frame, uint16_t frame_
         .range_mode = SDLOG_MANUAL_INPUT_RANGE_RAW_11BIT,
         .raw_ch = { ch_raw[0], ch_raw[1], ch_raw[2], ch_raw[3], ch_raw[4] },
         .ch = { rc.rc.ch[0], rc.rc.ch[1], rc.rc.ch[2], rc.rc.ch[3], rc.rc.ch[4] },
-        .s = { rc.rc.s[0], rc.rc.s[1] },
+        .s = { (char)vt13_raw_sw[0], (char)vt13_raw_sw[1] },
         .mouse_x = rc.mouse.x,
         .mouse_y = rc.mouse.y,
         .mouse_z = rc.mouse.z,
@@ -549,7 +574,11 @@ static void ImageRemoteLinkHandleVt13Frame(const uint8_t *frame, uint16_t frame_
         .last_rx_tick_ms = ImageRemoteLastRxTickMs,
     };
     ImageRemoteStore(&state);
-    ManualInputUpdateSource(MANUAL_INPUT_SRC_IMAGE, &rc);
+    ManualInputUpdateSourceMeta(MANUAL_INPUT_SRC_IMAGE,
+                                &rc,
+                                state.proto,
+                                ImageRemoteRawFlags(&state),
+                                vt13_switch1);
 }
 
 static bool_t ImageRemoteLinkTryDecodeCustomRc(const uint8_t *data)
@@ -649,7 +678,11 @@ static bool_t ImageRemoteLinkTryDecodeCustomRc(const uint8_t *data)
         .last_rx_tick_ms = ImageRemoteLastRxTickMs,
     };
     ImageRemoteStore(&state);
-    ManualInputUpdateSource(MANUAL_INPUT_SRC_IMAGE, &rc);
+    ManualInputUpdateSourceMeta(MANUAL_INPUT_SRC_IMAGE,
+                                &rc,
+                                state.proto,
+                                ImageRemoteRawFlags(&state),
+                                0u);
     return 1;
 }
 
@@ -669,38 +702,4 @@ static uint8_t ImageRemoteLinkSanitizeSwitch(uint8_t value)
         return value;
     }
     return RC_SW_DOWN;
-}
-
-static uint8_t ImageRemoteLinkMapVt13Switch1(uint8_t value)
-{
-    if (value == g_config.manual_input.vt13.switch1_safe_value)
-    {
-        return ControlInputSwitchPosToRaw(g_config.manual_input.semantics.GimbalSafePos);
-    }
-    if (value == g_config.manual_input.vt13.switch1_normal_value || value == 3u)
-    {
-        return ControlInputSwitchPosToRaw(g_config.manual_input.semantics.ChassisFollowPos);
-    }
-    if (value == g_config.manual_input.vt13.switch1_spin_value)
-    {
-        return ControlInputSwitchPosToRaw(g_config.manual_input.semantics.ChassisSpinPos);
-    }
-    return ControlInputSwitchPosToRaw(g_config.manual_input.semantics.ChassisSpinPos);
-}
-
-static uint8_t ImageRemoteLinkMapVt13Switch2(uint8_t stop, uint8_t left, uint8_t right)
-{
-    if (stop != 0u)
-    {
-        return ControlInputSwitchPosToRaw(g_config.manual_input.vt13.switch2_pause_pos);
-    }
-    if (left != 0u)
-    {
-        return ControlInputSwitchPosToRaw(g_config.manual_input.vt13.switch2_btn_l_pos);
-    }
-    if (right != 0u)
-    {
-        return ControlInputSwitchPosToRaw(g_config.manual_input.vt13.switch2_btn_r_pos);
-    }
-    return ControlInputSwitchPosToRaw(g_config.manual_input.vt13.switch2_btn_r_pos);
 }

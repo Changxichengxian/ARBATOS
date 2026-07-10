@@ -87,7 +87,14 @@ static void CanTxEmitRmGroupIfNeeded(uint8_t bus,
      * 线性化：故障要么先取得禁写并让本帧归零，要么发生在本帧已经入队之后。
      */
     taskENTER_CRITICAL();
-    CanTxRecheckRmFrame(bus, group_id, frame, log);
+    if (RobotSafetyOutputLocked() != 0u)
+    {
+        (void)memset(frame, 0, sizeof(int16_t) * 4u);
+    }
+    else
+    {
+        CanTxRecheckRmFrame(bus, group_id, frame, log);
+    }
     if (CanTxRmFrameHasOutput(frame) == 0u &&
         CanTxRmGroupHasConfig(bus, group_id) == 0u)
     {

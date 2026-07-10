@@ -128,8 +128,8 @@ static int TestNoSourceSafe(void)
                    snapshot.sourceTimeoutMs == MANUAL_INPUT_DEFAULT_TIMEOUT_MS,
                    "无来源时间字段和零超时默认值必须安全")) return 0;
     if (!TestCheck(snapshot.publishSeq != 0u && snapshot.sourceSeq == 0u &&
-                   snapshot.switchSeq == 0u,
-                   "初始发布序号有效且尚未发生真实切源")) return 0;
+                   snapshot.switchSeq == 0u && snapshot.semanticsSeq == 1u,
+                   "初始发布序号和语义代有效，且尚未发生真实切源")) return 0;
     if (!TestCheck(snapshot.manual.rc.s[0] == RC_SW_UP &&
                    snapshot.manual.rc.s[1] == RC_SW_UP,
                    "无来源原始开关必须是安全上档")) return 0;
@@ -419,10 +419,17 @@ static int TestSequenceWrapSkipsZero(void)
                    snapshot.activeSource == MANUAL_INPUT_SRC_ELRS &&
                    snapshot.sourceSeq == 1u,
                    "来源序号跨回绕时同 tick 后到者仍须胜出")) return 0;
-    return TestCheck(snapshot.publishSeq != 0u && snapshot.switchSeq != 0u &&
-                     ManualInputDirtySeq != 0u && ManualInputRefreshSeq != 0u &&
-                     ManualInputSeqNewer(1u, UINT32_MAX) != 0u,
-                     "所有已启用序号回绕必须跳过 0");
+    if (!TestCheck(snapshot.publishSeq != 0u && snapshot.switchSeq != 0u &&
+                   ManualInputDirtySeq != 0u && ManualInputRefreshSeq != 0u &&
+                   ManualInputSeqNewer(1u, UINT32_MAX) != 0u,
+                   "来源、发布、切源和内部序号回绕必须跳过 0")) return 0;
+
+    ManualInputStore.bank[ManualInputStore.active_bank].semanticsSeq = UINT32_MAX;
+    g_config.input.sw[INPUT_SW_GIMBAL_MODE].invert = 1u;
+    ManualInputRefresh();
+    return TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                         snapshot.semanticsSeq == 1u,
+                     "输入解释代跨回绕时也必须跳过 0");
 }
 
 static int TestExpirySurvivesTickWrap(void)
@@ -506,6 +513,74 @@ static int TestPinnedBankAndConfigRefresh(void)
                      "bank 可用后只应接受一次新发布");
 }
 
+static int TestSemanticsSameGeneration(void)
+{
+    ManualInputSnapshot snapshot;
+    ManualInputState input;
+    ManualInputSemanticsConfig frozen_semantics;
+    const ManualInputSemanticsConfig updated_semantics = {
+        .GimbalSafePos = MANUAL_INPUT_SWITCH_POS_MID,
+        .ChassisSafePos = MANUAL_INPUT_SWITCH_POS_DOWN,
+        .ChassisFollowPos = MANUAL_INPUT_SWITCH_POS_UP,
+        .ChassisSpinPos = MANUAL_INPUT_SWITCH_POS_DOWN,
+        .ShootStopPos = MANUAL_INPUT_SWITCH_POS_MID,
+        .ShootReadyPos = MANUAL_INPUT_SWITCH_POS_DOWN,
+        .ShootFirePos = MANUAL_INPUT_SWITCH_POS_UP,
+        .image_vt13_shoot_switch_input = 1u,
+    };
+    uint32_t publish_seq;
+    uint32_t semantics_seq;
+
+    TestReset(100u, 0u);
+    input = TestInput(246, 0, RC_SW_DOWN, RC_SW_MID, 0u);
+    ManualInputUpdateSource(MANUAL_INPUT_SRC_DBUS, &input);
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                   snapshot.online != 0u && snapshot.semanticsSeq == 1u,
+                   "首代输入必须携带初始语义代")) return 0;
+    frozen_semantics = snapshot.semantics;
+    publish_seq = snapshot.publishSeq;
+    semantics_seq = snapshot.semanticsSeq;
+
+    /* 模拟 AuxParam 已改实时配置，但刷新调用尚未获得运行机会的抢占窗口。 */
+    g_config.manual_input.semantics = updated_semantics;
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                   memcmp(&snapshot.semantics,
+                          &frozen_semantics,
+                          sizeof(frozen_semantics)) == 0 &&
+                   snapshot.semanticsSeq == semantics_seq &&
+                   snapshot.publishSeq == publish_seq,
+                   "刷新前的读者必须继续使用旧帧冻结语义")) return 0;
+
+    ManualInputRefresh();
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                   memcmp(&snapshot.semantics,
+                          &updated_semantics,
+                          sizeof(updated_semantics)) == 0 &&
+                   snapshot.semanticsSeq == ManualInputSeqNext(semantics_seq) &&
+                   snapshot.publishSeq == ManualInputSeqNext(publish_seq) &&
+                   snapshot.manual.rc.ch[0] == 246 &&
+                   snapshot.control.axis[0] == 246,
+                   "刷新后新语义必须和同一帧原始/映射输入一起发布")) return 0;
+    semantics_seq = snapshot.semanticsSeq;
+    publish_seq = snapshot.publishSeq;
+
+    ManualInputRefresh();
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                   snapshot.semanticsSeq == semantics_seq &&
+                   snapshot.publishSeq == ManualInputSeqNext(publish_seq),
+                   "未改变语义的普通刷新不得推进语义代")) return 0;
+
+    g_config.input.sw[INPUT_SW_GIMBAL_MODE].invert = 1u;
+    ManualInputRefresh();
+    return TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                         snapshot.control.sw[INPUT_SW_GIMBAL_MODE] == RC_SW_UP &&
+                         snapshot.semanticsSeq == ManualInputSeqNext(semantics_seq) &&
+                         memcmp(&snapshot.semantics,
+                                &updated_semantics,
+                                sizeof(updated_semantics)) == 0,
+                     "安全开关映射变化必须推进解释代并保持冻结业务语义");
+}
+
 static int TestBoardKeyWithoutRemoteSource(void)
 {
     ManualInputSnapshot snapshot;
@@ -553,6 +628,72 @@ static int TestInvalidArguments(void)
                    "非法输入不得发布")) return 0;
     return TestCheck(s_criticalErrorCount == 0u,
                      "临界区进入退出必须平衡");
+}
+
+static int TestSourceMetadataSameGeneration(void)
+{
+    ManualInputSnapshot snapshot;
+    ManualInputState image = TestInput(321, -123, RC_SW_DOWN, RC_SW_MID, 0u);
+    ManualInputState dbus = TestInput(11, 22, RC_SW_UP, RC_SW_UP, 0u);
+    const uint8_t rawFlags = MANUAL_INPUT_SOURCE_RAW_PAUSE |
+                             MANUAL_INPUT_SOURCE_RAW_MOUSE_R |
+                             MANUAL_INPUT_SOURCE_RAW_BTN_L |
+                             MANUAL_INPUT_SOURCE_RAW_MOUSE_L;
+    const uint8_t flags = MANUAL_INPUT_SOURCE_FLAG_AUTO_AIM |
+                          MANUAL_INPUT_SOURCE_FLAG_AUX_FIRE;
+
+    TestReset(20u, 0u);
+    g_config.manual_input.vt13.auto_aim_pause_enable = 1u;
+    g_config.manual_input.vt13.auto_aim_mouse_r_enable = 1u;
+    g_config.manual_input.vt13.AuxFireBtnLEnable = 1u;
+    g_config.manual_input.vt13.AuxFireMouseLEnable = 1u;
+    ManualInputUpdateSourceMeta(MANUAL_INPUT_SRC_IMAGE,
+                                &image,
+                                MANUAL_INPUT_PROTOCOL_IMAGE_VT13,
+                                rawFlags,
+                                0u);
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                   snapshot.online != 0u &&
+                   snapshot.activeSource == MANUAL_INPUT_SRC_IMAGE &&
+                   snapshot.sourceProtocol == MANUAL_INPUT_PROTOCOL_IMAGE_VT13 &&
+                   snapshot.sourceFlags == flags &&
+                   snapshot.manual.rc.ch[0] == image.rc.ch[0],
+                   "图传协议与业务标志必须和原始/映射输入同代发布")) return 0;
+
+    g_config.manual_input.vt13.auto_aim_pause_enable = 0u;
+    g_config.manual_input.vt13.auto_aim_mouse_r_enable = 0u;
+    g_config.manual_input.vt13.AuxFireBtnLEnable = 0u;
+    g_config.manual_input.vt13.AuxFireMouseLEnable = 0u;
+    ManualInputRefresh();
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                   snapshot.sourceProtocol == MANUAL_INPUT_PROTOCOL_IMAGE_VT13 &&
+                   snapshot.sourceFlags == 0u,
+                   "热更新语义开关后必须从同代原始业务位重新构建标志")) return 0;
+
+    s_tick = 21u;
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                   snapshot.online == 0u &&
+                   snapshot.activeSource == MANUAL_INPUT_SRC_AUTO &&
+                   snapshot.sourceProtocol == MANUAL_INPUT_PROTOCOL_NONE &&
+                   snapshot.sourceFlags == 0u,
+                   "来源过期时协议与业务标志必须和输入一起清零")) return 0;
+
+    TestReset(20u, 0u);
+    g_config.manual_input.vt13.auto_aim_pause_enable = 1u;
+    g_config.manual_input.vt13.auto_aim_mouse_r_enable = 1u;
+    g_config.manual_input.vt13.AuxFireBtnLEnable = 1u;
+    g_config.manual_input.vt13.AuxFireMouseLEnable = 1u;
+    ManualInputUpdateSourceMeta(MANUAL_INPUT_SRC_IMAGE,
+                                &image,
+                                MANUAL_INPUT_PROTOCOL_IMAGE_VT13,
+                                rawFlags,
+                                0u);
+    ManualInputUpdateSource(MANUAL_INPUT_SRC_DBUS, &dbus);
+    return TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                         snapshot.activeSource == MANUAL_INPUT_SRC_DBUS &&
+                         snapshot.sourceProtocol == MANUAL_INPUT_PROTOCOL_DBUS &&
+                         snapshot.sourceFlags == 0u,
+                     "切到 DBUS 时协议应随来源更新，且不得残留图传业务标志");
 }
 
 TickType_t xTaskGetTickCount(void)
@@ -697,8 +838,10 @@ int main(void)
     if (!TestSequenceWrapSkipsZero()) return 1;
     if (!TestExpirySurvivesTickWrap()) return 1;
     if (!TestPinnedBankAndConfigRefresh()) return 1;
+    if (!TestSemanticsSameGeneration()) return 1;
     if (!TestBoardKeyWithoutRemoteSource()) return 1;
     if (!TestInvalidArguments()) return 1;
+    if (!TestSourceMetadataSameGeneration()) return 1;
     puts("ManualInputSnapshot regression: PASS");
     return 0;
 }

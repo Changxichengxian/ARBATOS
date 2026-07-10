@@ -11,6 +11,7 @@
 #define MANUAL_INPUT_H
 #include <stddef.h>
 
+#include "ManualInputProtocol.h"
 #include "Types.h"
 #include "BspRc.h"
 #include "RobotConfig.h"
@@ -169,6 +170,14 @@ typedef char ManualInputRcOffsetCheck[(offsetof(ManualInputState, rc) == MANUAL_
 typedef char ManualInputMouseOffsetCheck[(offsetof(ManualInputState, mouse) == MANUAL_INPUT_MOUSE_OFFSET_BYTES) ? 1 : -1];
 typedef char ManualInputKeyOffsetCheck[(offsetof(ManualInputState, key) == MANUAL_INPUT_KEY_OFFSET_BYTES) ? 1 : -1];
 
+#define MANUAL_INPUT_SOURCE_FLAG_AUTO_AIM (1u << 0)
+#define MANUAL_INPUT_SOURCE_FLAG_AUX_FIRE (1u << 1)
+#define MANUAL_INPUT_SOURCE_RAW_PAUSE      (1u << 0)
+#define MANUAL_INPUT_SOURCE_RAW_MOUSE_R    (1u << 1)
+#define MANUAL_INPUT_SOURCE_RAW_BTN_L      (1u << 2)
+#define MANUAL_INPUT_SOURCE_RAW_MOUSE_L    (1u << 3)
+#define MANUAL_INPUT_SOURCE_RAW_BTN_R      (1u << 4)
+
 /*
  * Manual input layers:
  * - `RcSbusTask.c`: only drains board-level SBUS/DBUS frames and forwards them here.
@@ -187,6 +196,12 @@ extern void ManualInputOnSbusFrame(const uint8_t frame[RC_FRAME_LENGTH]);
 extern const ManualInputState *ManualInputGetCurrentRc(void);
 extern uint8_t ManualInputGetCurrentCopy(ManualInputState *out);
 extern void ManualInputUpdateSource(uint8_t source, const ManualInputState *rc);
+/* 带来源协议原始业务位的原子更新；语义开关在统一快照构建时按同代配置解释。 */
+extern void ManualInputUpdateSourceMeta(uint8_t source,
+                                        const ManualInputState *rc,
+                                        uint8_t protocol,
+                                        uint8_t rawFlags,
+                                        uint8_t rawSwitch1);
 extern uint8_t ManualInputGetActiveSource(void);
 extern void ManualInputRefresh(void);
 extern uint32_t ManualInputGetSbusFrameCount(void);

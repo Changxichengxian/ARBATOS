@@ -34,6 +34,7 @@
 #include "RtProf.h"
 #include "RobotTaskProfile.h"
 #include "RobotMode.h"
+#include "RobotLifecycle.h"
 #include "RobotSafety.h"
 #include "CanTxCommandPolicy.h"
 #include "UnitreeMotorPolicy.h"
@@ -59,7 +60,12 @@ static MotorCmd s_can_tx_cmd_cache[MotorCount];
 static MotorId s_can_tx_cmd_cache_ids[MotorCount];
 static uint8_t s_can_tx_cmd_cache_valid[MotorCount];
 static uint8_t s_can_tx_cmd_expired[MotorCount];
+static uint8_t s_can_tx_cmd_unlock_blocked[MotorCount];
 static CanTxCmdExpiryLatch s_can_tx_cmd_expiry_latch[MotorCount];
+static CanTxCmdUnlockBarrier s_can_tx_cmd_unlock_barrier[MotorCount];
+static uint8_t s_can_tx_unlock_barrier_pending;
+static uint8_t s_can_tx_unlock_barrier_active;
+static uint8_t s_can_tx_output_was_locked = 1u;
 
 static int16_t s_can_tx_can1_200[4];
 static int16_t s_can_tx_can1_1ff[4];
@@ -89,6 +95,7 @@ static volatile uint32_t s_can_tx_emergency_magic;
 static volatile uint32_t s_can_tx_emergency_magic_inv;
 
 static void CanTxEmitRmFrames(sdlog_actuator_current_t *log);
+static void CanTxForceDisabledCmd(MotorId id);
 
 #include "CanCommandTxCommonHelpers.inc"
 
@@ -388,8 +395,17 @@ void CanTxTask(void const *pvParameters)
         const uint64_t loop_start_us = RtProfBegin();
         WatchTaskBeat(WATCH_TASK_CAN_COMMAND_TX);
         const uint16_t period_ms = RobotProfileCanCommandTxPeriodMs();
+
+        /*
+         * 先观察上个周期留下的结论，再推进本周期。这样即使故障进入和清除
+         * 都夹在两次调度之间，或发送任务停顿到快照过期，也一定先让发送门
+         * 看见一次锁定，并为重新 ACTIVE 建立新的命令代次屏障。
+         */
+        CanTxOutputGateSync(RobotSafetyOutputLocked());
+        RobotLifecycleUpdate();
         const uint8_t output_locked = RobotSafetyOutputLocked();
 
+        CanTxOutputGateSync(output_locked);
         CanTxExecInstances(output_locked);
 
         RtProfEnd(RtProfCanTxLoop, loop_start_us);

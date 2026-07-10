@@ -94,7 +94,8 @@ static ControlResult ShootCtrlUpdate(const ControlController *controller,
 #if ROBOT_TASK_BUILD_SHOOT_RM
     if (input->forceSafe != 0u)
     {
-        ShootCtrlRuntimeStop();
+        ShootRuntimeSafeStep(input->manualInput);
+        s_shootRuntimeSafe = 1u;
         return ControlResultOk;
     }
 
@@ -103,7 +104,7 @@ static ControlResult ShootCtrlUpdate(const ControlController *controller,
         return ControlResultNotActive;
     }
 
-    output->triggerCurrent = ShootRuntimeStep();
+    output->triggerCurrent = ShootRuntimeStep(input->manualInput);
     s_shootRuntimeSafe = 0u;
     return ControlResultOk;
 #else

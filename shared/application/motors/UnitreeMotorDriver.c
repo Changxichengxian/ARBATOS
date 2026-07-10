@@ -96,6 +96,9 @@ typedef struct
 } UnitreeMotorRxFrame;
 #pragma pack(pop)
 
+typedef char UnitreeMotorTxFrameFitsBsp[
+    (sizeof(UnitreeMotorTxFrame) <= BSP_RS485_TX_IT_MAX_LEN) ? 1 : -1];
+
 #define UNITREE_MOTOR_PI_F                3.1415926f
 #define UNITREE_MOTOR_TWO_PI_F            (2.0f * UNITREE_MOTOR_PI_F)
 #define UNITREE_MOTOR_TORQUE_SCALE        256.0f
@@ -132,7 +135,14 @@ static void UnitreeMotorUsart3RxByte(uint8_t b);
 static uint8_t UnitreeMotorUsart2Error(void);
 static uint8_t UnitreeMotorUsart3Error(void);
 static uint8_t UnitreeMotorSetupRs485(const UnitreeMotorConfig *cfg);
-static int UnitreeMotorSendFrame(const UnitreeMotorConfig *cfg, const UnitreeMotorTxFrame *frame);
+static int UnitreeMotorSendFrame(const UnitreeMotorConfig *cfg,
+                                 const UnitreeMotorTxFrame *active_frame,
+                                 const UnitreeMotorTxFrame *safe_frame,
+                                 MotorId actuator_id,
+                                 const MotorCmd *cached_cmd,
+                                 uint8_t require_authority,
+                                 uint8_t *used_safe_frame,
+                                 uint8_t *authority_rejected);
 static fp32 UnitreeMotorClampFp32(fp32 value, fp32 min_value, fp32 max_value);
 static fp32 UnitreeMotorCurrentToTorque(const motor_node_param_t *node,
                                             int16_t current,
@@ -153,9 +163,10 @@ static void UnitreeMotorUpdateApplied(MotorId actuator_id,
                                          uint8_t port,
                                          const motor_node_param_t *node,
                                          const UnitreeMotorCmd *cmd,
-                                         MotorMode mode,
-                                         int16_t current,
-                                         int ret);
+                                          MotorMode mode,
+                                          int16_t current,
+                                          int ret,
+                                          uint8_t safe_substituted);
 
 static uint32_t UnitreeMotorCrc32Words(const uint8_t *data, uint32_t word_count)
 {
@@ -644,18 +655,6 @@ static uint8_t UnitreeMotorSetupRs485(const UnitreeMotorConfig *cfg)
         return 0u;
     }
 
-    if (g_unitree_motor_rs485_ready != 0u &&
-        g_unitree_motor_active_port == cfg->rs485_port &&
-        g_unitree_motor_active_baudrate == cfg->baudrate)
-    {
-        return 1u;
-    }
-
-    BspUsart2SetRxByteCb(UnitreeMotorUsart2RxByte);
-    BspUsart2SetErrorCb(UnitreeMotorUsart2Error);
-    BspUsart3SetRxByteCb(UnitreeMotorUsart3RxByte);
-    BspUsart3SetErrorCb(UnitreeMotorUsart3Error);
-
     if (g_unitree_motor_active_port == UNITREE_MOTOR_RS485_PORT0 && cfg->rs485_port != UNITREE_MOTOR_RS485_PORT0)
     {
         BspUsart2RxItStop();
@@ -665,22 +664,48 @@ static uint8_t UnitreeMotorSetupRs485(const UnitreeMotorConfig *cfg)
         BspUsart3RxItStop();
     }
 
-    g_unitree_motor_rx_pos = 0u;
-
     if (cfg->rs485_port == UNITREE_MOTOR_RS485_PORT0)
     {
+        BspUsart2SetRxByteCb(UnitreeMotorUsart2RxByte);
+        BspUsart2SetErrorCb(UnitreeMotorUsart2Error);
+        if (g_unitree_motor_rs485_ready != 0u &&
+            g_unitree_motor_active_port == cfg->rs485_port &&
+            g_unitree_motor_active_baudrate == cfg->baudrate &&
+            BspUsart2GetBaudrate() == cfg->baudrate)
+        {
+            return 1u;
+        }
+        g_unitree_motor_rx_pos = 0u;
         ret = BspUsart2SetBaudrate(cfg->baudrate);
         if (ret == 0)
         {
             ret = BspUsart2RxItStart();
         }
+        if (ret == 0)
+        {
+            ret = BspUsart2TxItPrepare();
+        }
     }
     else
     {
+        BspUsart3SetRxByteCb(UnitreeMotorUsart3RxByte);
+        BspUsart3SetErrorCb(UnitreeMotorUsart3Error);
+        if (g_unitree_motor_rs485_ready != 0u &&
+            g_unitree_motor_active_port == cfg->rs485_port &&
+            g_unitree_motor_active_baudrate == cfg->baudrate &&
+            BspUsart3GetBaudrate() == cfg->baudrate)
+        {
+            return 1u;
+        }
+        g_unitree_motor_rx_pos = 0u;
         ret = BspUsart3SetBaudrate(cfg->baudrate);
         if (ret == 0)
         {
             ret = BspUsart3RxItStart();
+        }
+        if (ret == 0)
+        {
+            ret = BspUsart3TxItPrepare();
         }
     }
 
@@ -697,22 +722,99 @@ static uint8_t UnitreeMotorSetupRs485(const UnitreeMotorConfig *cfg)
     return 1u;
 }
 
-static int UnitreeMotorSendFrame(const UnitreeMotorConfig *cfg, const UnitreeMotorTxFrame *frame)
+static uint8_t UnitreeMotorActiveFrameAllowed(MotorId actuator_id,
+                                              const MotorCmd *cached_cmd)
 {
+    MotorCmd latest;
+    uint16_t inhibit_writer = (uint16_t)LOWCMD_WRITER_NONE;
+
+    (void)memset(&latest, 0, sizeof(latest));
+    return (uint8_t)(RobotSafetyOutputLocked() == 0u &&
+                     cached_cmd != NULL &&
+                     LowCmdGetMotor(actuator_id, &latest) != 0u &&
+                     LowCmdGetInhibitWriter(actuator_id, &inhibit_writer) != 0u &&
+                     UnitreeMotorCmdSnapshotAllowed(cached_cmd,
+                                                    &latest,
+                                                    inhibit_writer) != 0u);
+}
+
+static int UnitreeMotorStartFrame(uint8_t port, const UnitreeMotorTxFrame *frame)
+{
+    if (port == UNITREE_MOTOR_RS485_PORT0)
+    {
+        return BspUsart2TxItStart((const uint8_t *)frame, (uint16_t)sizeof(*frame));
+    }
+    if (port == UNITREE_MOTOR_RS485_PORT1)
+    {
+        return BspUsart3TxItStart((const uint8_t *)frame, (uint16_t)sizeof(*frame));
+    }
+    return 1;
+}
+
+static int UnitreeMotorWaitFrame(uint8_t port)
+{
+    if (port == UNITREE_MOTOR_RS485_PORT0)
+    {
+        return BspUsart2TxItWait(5u);
+    }
+    if (port == UNITREE_MOTOR_RS485_PORT1)
+    {
+        return BspUsart3TxItWait(5u);
+    }
+    return 1;
+}
+
+static int UnitreeMotorSendFrame(const UnitreeMotorConfig *cfg,
+                                 const UnitreeMotorTxFrame *active_frame,
+                                 const UnitreeMotorTxFrame *safe_frame,
+                                 MotorId actuator_id,
+                                 const MotorCmd *cached_cmd,
+                                 uint8_t require_authority,
+                                 uint8_t *used_safe_frame,
+                                 uint8_t *authority_rejected)
+{
+    const UnitreeMotorTxFrame *selected_frame;
+    uint8_t use_safe = 1u;
     int ret = 1;
 
-    if (cfg == NULL || frame == NULL || cfg->enable == 0u)
+    if (used_safe_frame != NULL)
+    {
+        *used_safe_frame = 1u;
+    }
+    if (authority_rejected != NULL)
+    {
+        *authority_rejected = 0u;
+    }
+    if (cfg == NULL || active_frame == NULL || safe_frame == NULL || cfg->enable == 0u)
     {
         return 1;
     }
 
-    if (cfg->rs485_port == UNITREE_MOTOR_RS485_PORT0)
+    /*
+     * 最终权限复核和 HAL 中断发送启动处于同一短临界区。失败时也启动
+     * 已预构造的 BRAKE 帧；真正的串口完成等待在退出临界区之后进行。
+     */
+    taskENTER_CRITICAL();
+    if (require_authority != 0u &&
+        UnitreeMotorActiveFrameAllowed(actuator_id, cached_cmd) != 0u)
     {
-        ret = BspUsart2Tx((const uint8_t *)frame, (uint16_t)sizeof(*frame), 5u);
+        use_safe = 0u;
     }
-    else if (cfg->rs485_port == UNITREE_MOTOR_RS485_PORT1)
+    else if (require_authority != 0u && authority_rejected != NULL)
     {
-        ret = BspUsart3Tx((const uint8_t *)frame, (uint16_t)sizeof(*frame), 5u);
+        *authority_rejected = 1u;
+    }
+    selected_frame = (use_safe != 0u) ? safe_frame : active_frame;
+    ret = UnitreeMotorStartFrame(cfg->rs485_port, selected_frame);
+    taskEXIT_CRITICAL();
+
+    if (ret == 0)
+    {
+        ret = UnitreeMotorWaitFrame(cfg->rs485_port);
+    }
+    if (used_safe_frame != NULL)
+    {
+        *used_safe_frame = use_safe;
     }
 
     g_unitree_motor_state.tx_count++;
@@ -767,11 +869,16 @@ static uint8_t UnitreeMotorConfigure(const UnitreeMotorConfig *cfg)
 }
 
 static int UnitreeMotorSendCmd(const UnitreeMotorConfig *cfg,
-                              const UnitreeMotorCmd *cmd,
-                              MotorMode applied_mode)
+                               const UnitreeMotorCmd *cmd,
+                               MotorMode applied_mode,
+                               MotorId actuator_id,
+                               const MotorCmd *cached_cmd,
+                               uint8_t *used_safe_frame,
+                               uint8_t *authority_rejected)
 {
     UnitreeMotorCmd safe_cmd = {0};
-    UnitreeMotorTxFrame frame;
+    UnitreeMotorTxFrame active_frame;
+    UnitreeMotorTxFrame safe_frame;
     int ret;
 
     if (cfg == NULL || cfg->enable == 0u)
@@ -789,17 +896,30 @@ static int UnitreeMotorSendCmd(const UnitreeMotorConfig *cfg,
         return 1;
     }
 
-    UnitreeMotorBuildTxFrame(&frame,
+    UnitreeMotorBuildTxFrame(&active_frame,
                             cfg->motor_id,
                             (UnitreeMotorBrakeRequired(applied_mode) != 0u) ?
                                 UNITREE_MOTOR_MODE_BRAKE : UNITREE_MOTOR_MODE_FOC,
                             &safe_cmd);
-    ret = UnitreeMotorSendFrame(cfg, &frame);
+    UnitreeMotorBuildTxFrame(&safe_frame,
+                             cfg->motor_id,
+                             UNITREE_MOTOR_MODE_BRAKE,
+                             NULL);
+    ret = UnitreeMotorSendFrame(cfg,
+                                &active_frame,
+                                &safe_frame,
+                                actuator_id,
+                                cached_cmd,
+                                (uint8_t)(applied_mode != MotorModeDisable),
+                                used_safe_frame,
+                                authority_rejected);
     if (ret == 0)
     {
         /* 这里只记录真正进入总线的值，发送失败时保留上一条已执行命令。 */
-        g_unitree_motor_state.cmd_speed_rad_s = safe_cmd.speed_rad_s;
-        g_unitree_motor_state.cmd_kd = safe_cmd.kd;
+        g_unitree_motor_state.cmd_speed_rad_s =
+            (used_safe_frame != NULL && *used_safe_frame != 0u) ? 0.0f : safe_cmd.speed_rad_s;
+        g_unitree_motor_state.cmd_kd =
+            (used_safe_frame != NULL && *used_safe_frame != 0u) ? 0.0f : safe_cmd.kd;
     }
     return ret;
 }
@@ -881,9 +1001,10 @@ static void UnitreeMotorUpdateApplied(MotorId actuator_id,
                                          uint8_t port,
                                          const motor_node_param_t *node,
                                          const UnitreeMotorCmd *cmd,
-                                         MotorMode mode,
-                                         int16_t current,
-                                         int ret)
+                                          MotorMode mode,
+                                          int16_t current,
+                                          int ret,
+                                          uint8_t safe_substituted)
 {
     MotorApplied applied;
     UnitreeMotorCmd output_cmd;
@@ -916,6 +1037,10 @@ static void UnitreeMotorUpdateApplied(MotorId actuator_id,
     {
         applied.flags |= (uint8_t)MotorAppliedFlagSkipped;
     }
+    if (safe_substituted != 0u)
+    {
+        applied.flags |= (uint8_t)MotorAppliedFlagForceDisabled;
+    }
 
     LowStateUpdateApplied(actuator_id, &applied);
 }
@@ -929,6 +1054,8 @@ int UnitreeMotorSendActuator(uint8_t port,
     UnitreeMotorConfig cfg;
     UnitreeMotorCmd cmd;
     MotorMode applied_mode;
+    uint8_t used_safe_frame = 1u;
+    uint8_t authority_rejected = 0u;
     int ret;
 
     if (UnitreeMotorNodeSupported(node) == 0u)
@@ -950,15 +1077,27 @@ int UnitreeMotorSendActuator(uint8_t port,
         return 1;
     }
 
-    ret = UnitreeMotorSendCmd(&cfg, &cmd, applied_mode);
+    ret = UnitreeMotorSendCmd(&cfg,
+                              &cmd,
+                              applied_mode,
+                              actuator_id,
+                              can_tx_cmd,
+                              &used_safe_frame,
+                              &authority_rejected);
+    if (used_safe_frame != 0u)
+    {
+        (void)memset(&cmd, 0, sizeof(cmd));
+        applied_mode = MotorModeDisable;
+    }
     UnitreeMotorUpdateApplied(actuator_id,
                              cfg.rs485_port,
                              node,
                              &cmd,
                              applied_mode,
                              (applied_mode == MotorModeCurrent && can_tx_cmd != NULL) ?
-                                 can_tx_cmd->current : 0,
-                             ret);
+                                  can_tx_cmd->current : 0,
+                             ret,
+                             authority_rejected);
     UnitreeMotorRefreshFeedback(actuator_id, node);
     return ret;
 }

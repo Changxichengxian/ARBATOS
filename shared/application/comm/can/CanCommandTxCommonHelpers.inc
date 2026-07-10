@@ -66,6 +66,33 @@ static MotorDriveState CanTxDriveStateFromFeedback(MotorId id)
     return MotorDriveStateEnabled;
 }
 
+static void CanTxApplyUnlockBarrierToCmd(MotorId id, MotorCmd *cmd)
+{
+    uint8_t published_after_unlock;
+
+    if (cmd == NULL || CanTxActuatorIdValid(id) == 0u)
+    {
+        return;
+    }
+    published_after_unlock = CanTxCmdPublishedAfterUnlock(
+        &s_can_tx_cmd_unlock_barrier[id],
+        cmd);
+    if (s_can_tx_unlock_barrier_pending == 0u &&
+        (s_can_tx_unlock_barrier_active == 0u || published_after_unlock != 0u))
+    {
+        if (s_can_tx_unlock_barrier_active != 0u && published_after_unlock != 0u)
+        {
+            /* 首个解锁后新代已经接管，该轴不再保留会在完整序号回绕时误命中的基线。 */
+            s_can_tx_cmd_unlock_barrier[id].valid = 0u;
+        }
+        return;
+    }
+
+    CanTxForceDisabledCmd(id);
+    *cmd = s_can_tx_cmd_cache[id];
+    s_can_tx_cmd_unlock_blocked[id] = 1u;
+}
+
 static uint8_t CanTxGetCmdCopy(MotorId id, MotorCmd *out)
 {
     if (out == NULL || CanTxActuatorIdValid(id) == 0u)
@@ -84,6 +111,7 @@ static uint8_t CanTxGetCmdCopy(MotorId id, MotorCmd *out)
             out->mode = (uint8_t)MotorModeDisable;
             s_can_tx_cmd_expired[id] = 1u;
         }
+        CanTxApplyUnlockBarrierToCmd(id, out);
         return 1u;
     }
 
@@ -99,6 +127,7 @@ static uint8_t CanTxGetCmdCopy(MotorId id, MotorCmd *out)
         out->mode = (uint8_t)MotorModeDisable;
         s_can_tx_cmd_expired[id] = 1u;
     }
+    CanTxApplyUnlockBarrierToCmd(id, out);
     return 1u;
 }
 
@@ -106,6 +135,24 @@ static void CanTxClearCmdCache(void)
 {
     (void)memset(s_can_tx_cmd_cache_valid, 0, sizeof(s_can_tx_cmd_cache_valid));
     (void)memset(s_can_tx_cmd_expired, 0, sizeof(s_can_tx_cmd_expired));
+    (void)memset(s_can_tx_cmd_unlock_blocked, 0, sizeof(s_can_tx_cmd_unlock_blocked));
+}
+
+static void CanTxOutputGateSync(uint8_t output_locked)
+{
+    if (output_locked != 0u)
+    {
+        s_can_tx_output_was_locked = 1u;
+        s_can_tx_unlock_barrier_pending = 0u;
+        s_can_tx_unlock_barrier_active = 0u;
+        return;
+    }
+    if (s_can_tx_output_was_locked != 0u)
+    {
+        s_can_tx_output_was_locked = 0u;
+        s_can_tx_unlock_barrier_pending = 1u;
+        s_can_tx_unlock_barrier_active = 1u;
+    }
 }
 
 static void CanTxPrepareCmdCacheIds(void)
@@ -135,6 +182,32 @@ static void CanTxCacheLowcmd(void)
     }
 
     (void)memset(s_can_tx_cmd_cache_valid, 1, sizeof(s_can_tx_cmd_cache_valid));
+    if (s_can_tx_unlock_barrier_pending != 0u)
+    {
+        for (uint8_t i = 0u; i < (uint8_t)MotorCount; i++)
+        {
+            CanTxCmdUnlockBarrierCapture(&s_can_tx_cmd_unlock_barrier[i],
+                                         &s_can_tx_cmd_cache[i]);
+        }
+        s_can_tx_unlock_barrier_pending = 0u;
+    }
+    if (s_can_tx_unlock_barrier_active != 0u)
+    {
+        for (uint8_t i = 0u; i < (uint8_t)MotorCount; i++)
+        {
+            if (CanTxCmdPublishedAfterUnlock(&s_can_tx_cmd_unlock_barrier[i],
+                                             &s_can_tx_cmd_cache[i]) == 0u)
+            {
+                CanTxForceDisabledCmd((MotorId)i);
+                s_can_tx_cmd_unlock_blocked[i] = 1u;
+            }
+            else
+            {
+                /* 每轴只需跨过一次解锁边界，随后立即丢弃旧基线。 */
+                s_can_tx_cmd_unlock_barrier[i].valid = 0u;
+            }
+        }
+    }
 }
 
 static void CanTxForceDisabledCmd(MotorId id)

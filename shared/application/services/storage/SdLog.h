@@ -11,6 +11,8 @@
 
 #include <stdint.h>
 
+#include "ManualInputProtocol.h"
+
 // ===== File format =====
 //
 // Current sdlog files use:
@@ -276,10 +278,10 @@ typedef struct __attribute__((packed))
 
 typedef enum
 {
-    SDLOG_MANUAL_INPUT_PROTO_DBUS = 1u,
-    SDLOG_MANUAL_INPUT_PROTO_CRSF = 2u,
-    SDLOG_MANUAL_INPUT_PROTO_IMAGE_CUSTOM = 3u,
-    SDLOG_MANUAL_INPUT_PROTO_IMAGE_VT13 = 4u,
+    SDLOG_MANUAL_INPUT_PROTO_DBUS = MANUAL_INPUT_PROTOCOL_DBUS,
+    SDLOG_MANUAL_INPUT_PROTO_CRSF = MANUAL_INPUT_PROTOCOL_CRSF,
+    SDLOG_MANUAL_INPUT_PROTO_IMAGE_CUSTOM = MANUAL_INPUT_PROTOCOL_IMAGE_CUSTOM,
+    SDLOG_MANUAL_INPUT_PROTO_IMAGE_VT13 = MANUAL_INPUT_PROTOCOL_IMAGE_VT13,
 } sdlog_manual_input_proto_e;
 
 typedef enum
