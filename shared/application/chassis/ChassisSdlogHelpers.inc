@@ -51,22 +51,7 @@ static void ChassisSdLogFlushBaseStream(void)
     s_chassis_sdlog_base_stream.sample_count = 0u;
 }
 
-static bool_t ChassisControlMgrAllows(const ChassisRuntimeSnapshot *snapshot)
-{
-    ControlCtx context = {0};
-
-    context.tick_ms = BspTimeGetTickMs();
-    context.dt_s = (snapshot != NULL) ? snapshot->period_s : (fp32)RobotProfileChassisControlPeriodS();
-
-    if (ControlMgrUpdateDomain(ControlDomainChassis, &context) != ControlResultOk)
-    {
-        return 0;
-    }
-
-    return (ControlMgrActiveId(ControlDomainChassis) == ControlIdClassicChassis) ? 1 : 0;
-}
-
-static void ChassisControlStopOutputs(ChassisMove *control)
+static void ChassisControlClearOutputs(ChassisMove *control)
 {
     if (control == NULL)
     {
@@ -83,10 +68,15 @@ static void ChassisControlStopOutputs(ChassisMove *control)
     control->vx_set = 0.0f;
     control->vy_set = 0.0f;
     control->wz_set = 0.0f;
+}
+
+static void ChassisControlStopOutputs(ChassisMove *control)
+{
+    ChassisControlClearOutputs(control);
 
     (void)MotorInstSetCurrentBindsBestEffort(ChassisMotorCurrentBindings,
-                                                              ChassisZeroCurrentCmd,
-                                                              CHASSIS_MOTOR_COUNT);
+                                             ChassisZeroCurrentCmd,
+                                             CHASSIS_MOTOR_COUNT);
 }
 
 static void ChassisControlDelay(TickType_t *last_wake, uint16_t period_ms)

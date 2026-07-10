@@ -11,10 +11,9 @@
   * @param[out]     ChassisMoveInit: "ChassisMove" variable point
   * @retval         none
   */
-static void ChassisInit(ChassisMove *ChassisMoveInit,
-                        ChassisRuntimeSnapshot *snapshot)
+static void ChassisInit(ChassisMove *ChassisMoveInit)
 {
-    if (ChassisMoveInit == NULL || snapshot == NULL)
+    if (ChassisMoveInit == NULL)
     {
         return;
     }
@@ -64,9 +63,7 @@ static void ChassisInit(ChassisMove *ChassisMoveInit,
     ChassisMoveInit->vy_max_speed = NORMAL_MAX_CHASSIS_SPEED_Y;
     ChassisMoveInit->vy_min_speed = -NORMAL_MAX_CHASSIS_SPEED_Y;
 
-    // 初始化和后续周期复用任务拥有的同一份快照，避免嵌套大栈帧。
-    ChassisSnapshotCapture(snapshot, ChassisMoveInit);
-    ChassisFeedbackUpdate(ChassisMoveInit, snapshot);
+    /* 首次反馈只在 enter 后同帧 update 抓取，初始化阶段不重复读共享状态。 */
     ChassisWriteState(ChassisMoveInit);
 }
 

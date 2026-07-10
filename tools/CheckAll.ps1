@@ -1418,7 +1418,7 @@ function Test-ControlRegistryBoundaries {
     }
 
     $content = Get-Content -LiteralPath $fullPath -Raw
-    foreach ($required in @("RobotControlBootstrapProfileDefaults", "RobotControlStartProfileDefaults", "ShootCtrlDesc")) {
+    foreach ($required in @("RobotControlBootstrapProfileDefaults", "RobotControlStartProfileDefaults", "ChassisCtrlDesc", "ShootCtrlDesc")) {
         if ($content -notmatch [regex]::Escape($required)) {
             Add-CheckError "${repoPath}: control registry must expose '$required'."
         }
@@ -1436,6 +1436,50 @@ function Test-ControlRegistryBoundaries {
         if ($shootCtrlContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${shootCtrlRepoPath}: Shoot lifecycle facade must keep '$required'."
         }
+    }
+
+    $chassisCtrlRepoPath = "shared\application\chassis\ChassisCtrl.c"
+    $chassisCtrlContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $chassisCtrlRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("ChassisCtrlDesc", "ChassisCtrlPrepare", "ChassisCtrlStep", "ControlMgrUpdateDomain", "ChassisCtrlRuntimeStop", "s_chassisRuntimeSafe", "sensor.imu")) {
+        if ($chassisCtrlContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${chassisCtrlRepoPath}: Chassis lifecycle facade must keep '$required'."
+        }
+    }
+    if ($chassisCtrlContent -match 'state\.ins') {
+        Add-CheckError "${chassisCtrlRepoPath}: Chassis descriptor must use the canonical sensor.imu resource name."
+    }
+
+    $chassisTaskRepoPath = "shared\application\chassis\ChassisControlTask.c"
+    $chassisTaskContent = Get-SourceContentWithPrivateIncludes -Path (Join-Path $script:RepoRoot $chassisTaskRepoPath)
+    $chassisPrepareCount = ([regex]::Matches($chassisTaskContent, 'ChassisCtrlPrepare\s*\(')).Count
+    $chassisFacadeStepCount = ([regex]::Matches($chassisTaskContent, 'ChassisCtrlStep\s*\(')).Count
+    if ($chassisPrepareCount -ne 1 -or $chassisFacadeStepCount -ne 1 -or
+        $chassisTaskContent -notmatch 'static\s+ControlResult\s+ChassisTaskRunFrame\s*\(') {
+        Add-CheckError "${chassisTaskRepoPath}: Chassis task must prepare once and run exactly one ChassisCtrlStep call point per frame."
+    }
+    if ($chassisTaskContent -match 'while\s*\(\s*toe_is_error\s*\(\s*DBUS_TOE\s*\)\s*\)') {
+        Add-CheckError "${chassisTaskRepoPath}: DBUS offline wait must keep consuming the pending Chassis controller through forced-safe frames."
+    }
+    if ($chassisTaskContent -notmatch 'forceSafe\s*=\s*\(uint8_t\)\(manualOffline[\s\S]{0,120}?robot_mode_allow_chassis') {
+        Add-CheckError "${chassisTaskRepoPath}: DBUS offline and forbidden run modes must use forceSafe without stopping the Chassis domain."
+    }
+    $chassisRunFrame = [regex]::Match($chassisTaskContent, 'static\s+ControlResult\s+ChassisTaskRunFrame[\s\S]*?(?=/\*\*\s*\r?\n\s*\*\s*@brief)').Value
+    if ($chassisRunFrame -notmatch 'ChassisCtrlStep\s*\([\s\S]*?MotorInstSetCurrentBindsBestEffort\s*\(') {
+        Add-CheckError "${chassisTaskRepoPath}: ChassisTaskRunFrame must publish the ChassisCtrlOutput after its single facade step."
+    }
+    $chassisRuntimeStep = [regex]::Match($chassisTaskContent, 'void\s+ChassisRuntimeStep\s*\([\s\S]*?(?=void\s+ChassisRuntimeStop\s*\()').Value
+    if ([string]::IsNullOrWhiteSpace($chassisRuntimeStep) -or
+        $chassisRuntimeStep -match 'MotorInstSetCurrentBindsBestEffort\s*\(') {
+        Add-CheckError "${chassisTaskRepoPath}: normal Chassis Runtime may only fill ChassisCtrlOutput; the task owns the LowCmd write."
+    }
+    $chassisRuntimeInit = [regex]::Match($chassisTaskContent, 'void\s+ChassisRuntimeInit\s*\([\s\S]*?(?=void\s+ChassisRuntimeSafeStep\s*\()').Value
+    if ([string]::IsNullOrWhiteSpace($chassisRuntimeInit) -or
+        $chassisRuntimeInit -match 'ChassisSnapshotCapture\s*\(') {
+        Add-CheckError "${chassisTaskRepoPath}: Chassis Runtime init must defer the first feedback snapshot to the same-frame update."
+    }
+    if ($chassisTaskContent -notmatch 'ChassisSnapshotCapture\s*\(\s*snapshot\s*,\s*&g_chassis\s*,\s*tickMs\s*,\s*periodMs\s*\)' -or
+        $chassisTaskContent -notmatch 'ChassisSdLogAppendBaseSample\s*\(\s*&sample\s*,\s*snapshot\.tick_ms') {
+        Add-CheckError "${chassisTaskRepoPath}: Chassis Runtime must carry facade tick/period through snapshot and logging."
     }
 
     $gimbalRepoPath = "shared\application\gimbal\GimbalControlTask.c"
@@ -1458,6 +1502,11 @@ function Test-ControlRegistryBoundaries {
         "shared/application/shoot/ShootCtrl.c",
         "shared/application/shoot/ShootRuntime.h"
     )
+    $chassisRuntimeAllowed = @(
+        "shared/application/chassis/ChassisControlTask.c",
+        "shared/application/chassis/ChassisCtrl.c",
+        "shared/application/chassis/ChassisRuntime.h"
+    )
     foreach ($source in $sharedSources) {
         $sourceContent = Get-Content -LiteralPath $source.FullName -Raw
         $sourceRepoPath = (Format-RepoPath $source.FullName) -replace '\\', '/'
@@ -1465,6 +1514,10 @@ function Test-ControlRegistryBoundaries {
         if ($sourceContent -match 'ControlMgrUpdateDomain\s*\(\s*ControlDomainShoot' -and
             $sourceRepoPath -ne 'shared/application/shoot/ShootCtrl.c') {
             Add-CheckError "${sourceRepoPath}: Shoot domain may only be updated through ShootCtrlStep."
+        }
+        if ($sourceContent -match 'ControlMgrUpdateDomain\s*\(\s*ControlDomainChassis' -and
+            $sourceRepoPath -ne 'shared/application/chassis/ChassisCtrl.c') {
+            Add-CheckError "${sourceRepoPath}: Chassis domain may only be updated through ChassisCtrlStep."
         }
         foreach ($runtimeName in @("ShootRuntimeInit", "ShootRuntimeStep", "ShootRuntimeStop")) {
             if ($sourceContent -match ("\b" + $runtimeName + "\s*\(") -and
@@ -1477,6 +1530,15 @@ function Test-ControlRegistryBoundaries {
                 Add-CheckError "${sourceRepoPath}: legacy Shoot lifecycle entry '$legacyName' must be removed."
             }
         }
+        foreach ($runtimeName in @("ChassisRuntimeInit", "ChassisRuntimeStep", "ChassisRuntimeSafeStep", "ChassisRuntimeStop")) {
+            if ($sourceContent -match ("\b" + $runtimeName + "\s*\(") -and
+                $chassisRuntimeAllowed -notcontains $sourceRepoPath) {
+                Add-CheckError "${sourceRepoPath}: '$runtimeName' is private to ChassisCtrl and Chassis runtime."
+            }
+        }
+        if ($sourceContent -match '\bChassisControlMgrAllows\s*\(') {
+            Add-CheckError "${sourceRepoPath}: legacy Chassis lifecycle entry 'ChassisControlMgrAllows' must be removed."
+        }
     }
 
     $projectFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "projects") -Recurse -Filter "*.uvprojx")
@@ -1484,6 +1546,9 @@ function Test-ControlRegistryBoundaries {
         $projectContent = Get-Content -LiteralPath $projectFile.FullName -Raw
         if ($projectContent -notmatch '<FileName>ShootCtrl\.c</FileName>') {
             Add-CheckError "$(Format-RepoPath $projectFile.FullName): every target must compile ShootCtrl.c."
+        }
+        if ($projectContent -notmatch '<FileName>ChassisCtrl\.c</FileName>') {
+            Add-CheckError "$(Format-RepoPath $projectFile.FullName): every target must compile ChassisCtrl.c."
         }
     }
 }
@@ -1830,9 +1895,13 @@ function Test-FaultIsolationBoundaries {
     if ($chassisHeaderContent -match 'ChassisMotorMeasure') {
         Add-CheckError "${chassisHeaderRepoPath}: ChassisMotor cannot retain a pointer into the CAN RX storage."
     }
-    if ($chassisContent -notmatch 'ChassisInit\s*\(\s*&g_chassis\s*,\s*snapshot\s*\)' -or
-        $chassisContent -match 'ChassisInit[\s\S]{0,2200}?ChassisRuntimeSnapshot\s+snapshot\s*;') {
-        Add-CheckError "${chassisRepoPath}: chassis init must reuse the task-owned frame snapshot instead of nesting another large stack object."
+    $runtimeInitBody = [regex]::Match(
+        $chassisContent,
+        'void\s+ChassisRuntimeInit\s*\([^)]*\)[\s\S]*?(?=void\s+ChassisRuntimeSafeStep\s*\()').Value
+    if ($chassisContent -notmatch 'ChassisInit\s*\(\s*&g_chassis\s*\)' -or
+        [string]::IsNullOrWhiteSpace($runtimeInitBody) -or
+        $runtimeInitBody -match 'ChassisRuntimeSnapshot') {
+        Add-CheckError "${chassisRepoPath}: chassis init must not allocate or capture a feedback snapshot before the first same-frame update."
     }
 
     $chassisTaskFiles = @(

@@ -119,7 +119,10 @@ static fp32 ChassisWzKfStep(fp32 wz_wheel, bool_t imu_valid, fp32 wz_imu)
     return ChassisWzKf.x0;
 }
 
-static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove *control);
+static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
+                                   ChassisMove *control,
+                                   uint32_t tick_ms,
+                                   uint16_t period_ms);
 
 static void ChassisMotorHealthUnavailable(MotorId id,
                                           uint16_t reason,
@@ -150,13 +153,10 @@ static uint32_t ChassisMotorFeedbackTimeoutMs(uint8_t index)
     return CHASSIS_MOTOR_FEEDBACK_TIMEOUT_MS;
 }
 
-static bool_t operation_mode_allow_chassis(const ChassisRuntimeSnapshot *snapshot)
-{
-    (void)snapshot;
-    return (robot_mode_allow_chassis() != 0u) ? 1 : 0;
-}
-
-static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove *control)
+static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
+                                   ChassisMove *control,
+                                   uint32_t tick_ms,
+                                   uint16_t period_ms)
 {
     ChassisMotorReadPlan readPlan;
     MotorId axisId[CHASSIS_MOTOR_COUNT];
@@ -170,7 +170,7 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove
     }
 
     memset(snapshot, 0, sizeof(*snapshot));
-    snapshot->tick_ms = BspTimeGetTickMs();
+    snapshot->tick_ms = tick_ms;
     if (ManualInputGetCurrentCopy(&snapshot->ManualInputCopy) != 0u)
     {
         snapshot->manual_input = &snapshot->ManualInputCopy;
@@ -191,9 +191,9 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove
         snapshot->gimbal.yawEcdRange = MotorCfgEncoderRange(g_config.motor.yaw.model);
         snapshot->gimbal.yawRelativeTurn = CHASSIS_GIMBAL_YAW_RELATIVE_TURN ? 1u : 0u;
     }
-    snapshot->period_ms = RobotProfileChassisControlPeriodMs();
+    snapshot->period_ms = (period_ms != 0u) ? period_ms : RobotProfileChassisControlPeriodMs();
     snapshot->period_us = (uint32_t)snapshot->period_ms * 1000u;
-    snapshot->period_s = (fp32)RobotProfileChassisControlPeriodS();
+    snapshot->period_s = (fp32)snapshot->period_ms * 0.001f;
     if (InsSnapshotRead(&snapshot->ImuSnapshot) != 0 &&
         snapshot->ImuSnapshot.age_ms <= (uint32_t)snapshot->period_ms * 3u + 2u)
     {

@@ -49,7 +49,8 @@
 #include "RtProf.h"
 #include "RobotTaskProfile.h"
 #include "RobotMode.h"
-#include "ControlMgr.h"
+#include "ChassisCtrl.h"
+#include "ChassisRuntime.h"
 
 #include <string.h>
 
@@ -164,8 +165,7 @@ static bool_t ChassisWzKfInited = 0;
   * @param[out]     ChassisMoveInit: "ChassisMove" variable point
   * @retval         none
   */
-static void ChassisInit(ChassisMove *ChassisMoveInit,
-                        ChassisRuntimeSnapshot *snapshot);
+static void ChassisInit(ChassisMove *ChassisMoveInit);
 
 /**
   * @brief          set chassis control mode, mainly call 'ChassisBehaviourModeSet' function
@@ -262,6 +262,128 @@ static ChassisSdLogBaseStreamState s_chassis_sdlog_base_stream = {0};
 #include "ChassisTuneState.inc"
 
 
+static void ChassisRuntimeReadFrame(ChassisRuntimeSnapshot *snapshot,
+                                    uint32_t tickMs,
+                                    uint16_t periodMs)
+{
+    ChassisSnapshotCapture(snapshot, &g_chassis, tickMs, periodMs);
+    ChassisFaultUpdate(snapshot);
+    ChassisFaultSyncInhibit(&g_chassis);
+    ChassisSetMode(&g_chassis);
+    ChassisModeChangeControlTransit(&g_chassis);
+    ChassisFeedbackUpdate(&g_chassis, snapshot);
+}
+
+static void ChassisRuntimePublishSafeFrame(void)
+{
+    ChassisControlClearOutputs(&g_chassis);
+    ChassisWriteState(&g_chassis);
+}
+
+void ChassisRuntimeInit(void)
+{
+    ChassisInit(&g_chassis);
+    ChassisFaultInit();
+}
+
+void ChassisRuntimeSafeStep(uint32_t tickMs, uint16_t periodMs)
+{
+    ChassisRuntimeSnapshot snapshot;
+
+    /* 安全帧仍刷新反馈、故障分组和逐轴禁写，只跳过控制量及功率计算。 */
+    ChassisRuntimeReadFrame(&snapshot, tickMs, periodMs);
+    ChassisRuntimePublishSafeFrame();
+}
+
+void ChassisRuntimeStep(uint32_t tickMs,
+                        uint16_t periodMs,
+                        int16_t motorCurrent[CHASSIS_MOTOR_COUNT])
+{
+    ChassisRuntimeSnapshot snapshot;
+    int16_t ChassisPrePowerCmd[CHASSIS_MOTOR_COUNT] = {0};
+    int16_t ChassisCurrentCmd[CHASSIS_MOTOR_COUNT] = {0};
+
+    if (motorCurrent == NULL)
+    {
+        ChassisRuntimeStop();
+        return;
+    }
+
+    ChassisRuntimeReadFrame(&snapshot, tickMs, periodMs);
+    if (snapshot.manual_online == 0u || robot_mode_allow_chassis() == 0u)
+    {
+        ChassisRuntimePublishSafeFrame();
+        for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT; i++)
+        {
+            motorCurrent[i] = 0;
+        }
+        return;
+    }
+
+    ChassisSetControl(&g_chassis, &snapshot);
+    ChassisControlLoop(&g_chassis, &snapshot, ChassisPrePowerCmd);
+    ChassisFaultApplyControl(&g_chassis);
+
+    if (g_chassis.fast.manual_online != 0u)
+    {
+        for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT; i++)
+        {
+            const uint32_t bit = 1u << i;
+            const int16_t current = g_chassis.motor_chassis[i].give_current;
+            ChassisCurrentCmd[i] = ((s_chassisFault.configuredMask & bit) == 0u ||
+                                    (s_chassisFault.holdZeroMask & bit) != 0u) ?
+                                       0 :
+                                       MotorCfgLimitCurrentNode(snapshot.motor_cfg[i], current);
+        }
+    }
+
+    for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT; i++)
+    {
+        motorCurrent[i] = ChassisCurrentCmd[i];
+    }
+
+    ChassisLoopCounter++;
+    {
+        sdlog_chassis_base_sample_t sample = {0};
+        sample.ChassisMode = (uint8_t)g_chassis.mode;
+        sample.last_chassis_mode = (uint8_t)g_chassis.last_mode;
+        for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT; i++)
+        {
+            sample.wheel_rpm[i] = (g_chassis.motor_chassis[i].measureValid != 0u) ?
+                                      g_chassis.motor_chassis[i].measure.speed_rpm :
+                                      0;
+            sample.current_request[i] = ChassisPrePowerCmd[i];
+            sample.current_output[i] = ChassisCurrentCmd[i];
+        }
+
+        ChassisSdLogAppendBaseSample(&sample, snapshot.tick_ms, snapshot.period_us);
+    }
+    ChassisWriteState(&g_chassis);
+}
+
+void ChassisRuntimeStop(void)
+{
+    ChassisControlStopOutputs(&g_chassis);
+    ChassisWriteState(&g_chassis);
+}
+
+static ControlResult ChassisTaskRunFrame(uint8_t forceSafe)
+{
+    ChassisCtrlInput input = {
+        .tickMs = BspTimeGetTickMs(),
+        .periodMs = RobotProfileChassisControlPeriodMs(),
+        .forceSafe = forceSafe,
+    };
+    ChassisCtrlOutput output = {0};
+    const ControlResult result = ChassisCtrlStep(&input, &output);
+
+    /* ChassisCtrlOutput 是唯一正常输出边界；Runtime 只负责计算。 */
+    (void)MotorInstSetCurrentBindsBestEffort(ChassisMotorCurrentBindings,
+                                             output.motorCurrent,
+                                             CHASSIS_MOTOR_COUNT);
+    return result;
+}
+
 /**
   * @brief          chassis task, osDelay CHASSIS_CONTROL_TIME_MS (2ms)
   * @param[in]      pvParameters: null
@@ -269,122 +391,33 @@ static ChassisSdLogBaseStreamState s_chassis_sdlog_base_stream = {0};
   */
 void ChassisControlTask(void const *pvParameters)
 {
-    TickType_t last_wake = 0;
-    ChassisRuntimeSnapshot snapshotStorage;
-    ChassisRuntimeSnapshot *const snapshot = &snapshotStorage;
+    TickType_t last_wake;
 
-    // 函数地图：初始化并等遥控在线；循环里取快照、选模式、算电流、做保护、写日志和延时。
-    //wait a time
+    (void)pvParameters;
+
+    // 函数地图：每帧只经过 ChassisCtrl；掉线和运行模式限制走安全帧，不退出控制域。
     vTaskDelay(CHASSIS_TASK_INIT_TIME);
-    //chassis init
-    ChassisInit(&g_chassis, snapshot);
-    ChassisFaultInit();
-    while (toe_is_error(DBUS_TOE))
-    {
-        ChassisSnapshotCapture(snapshot, &g_chassis);
-        ChassisFaultUpdate(snapshot);
-        ChassisFaultSyncInhibit(&g_chassis);
-        ChassisControlStopOutputs(&g_chassis);
-        ChassisWriteState(&g_chassis);
-        WatchTaskWait(WATCH_TASK_CHASSIS_CONTROL);
-        vTaskDelay(pdMS_TO_TICKS(RobotProfileChassisControlPeriodMs()));
-    }
-
+    ChassisCtrlPrepare();
     last_wake = xTaskGetTickCount();
     while (1)
     {
         const uint64_t loop_start_us = RtProfBegin();
-        ChassisSnapshotCapture(snapshot, &g_chassis);
-        ChassisFaultUpdate(snapshot);
-        ChassisFaultSyncInhibit(&g_chassis);
-        WatchTaskBeat(WATCH_TASK_CHASSIS_CONTROL);
-        //set chassis control mode
-        //设置底盘控制模式
-        ChassisSetMode(&g_chassis);
-        //when mode changes, some data save
-        //模式切换数据保存
-        ChassisModeChangeControlTransit(&g_chassis);
-        //chassis data update
-        //底盘数据更新
-        ChassisFeedbackUpdate(&g_chassis, snapshot);
+        const uint8_t manualOffline = (toe_is_error(DBUS_TOE) != 0u) ? 1u : 0u;
+        const uint8_t forceSafe = (uint8_t)(manualOffline != 0u ||
+                                            robot_mode_allow_chassis() == 0u);
 
-        // test mode: only none/ChassisOnly allow normal chassis control
-        if (!operation_mode_allow_chassis(snapshot))
+        if (manualOffline != 0u)
         {
-            ChassisControlStopOutputs(&g_chassis);
-            ChassisWriteState(&g_chassis);
-            RtProfEnd(RtProfChassisLoop, loop_start_us);
-            ChassisControlDelay(&last_wake, snapshot->period_ms);
-
-#if INCLUDE_uxTaskGetStackHighWaterMark
-            ChassisStackSampleMaybe();
-#endif
-            continue;
+            WatchTaskWait(WATCH_TASK_CHASSIS_CONTROL);
+        }
+        else
+        {
+            WatchTaskBeat(WATCH_TASK_CHASSIS_CONTROL);
         }
 
-        if (!ChassisControlMgrAllows(snapshot))
-        {
-            ChassisControlStopOutputs(&g_chassis);
-            ChassisWriteState(&g_chassis);
-            RtProfEnd(RtProfChassisLoop, loop_start_us);
-            ChassisControlDelay(&last_wake, snapshot->period_ms);
-
-#if INCLUDE_uxTaskGetStackHighWaterMark
-            ChassisStackSampleMaybe();
-#endif
-            continue;
-        }
-
-        //set chassis control set-point
-        ChassisSetControl(&g_chassis, snapshot);
-        //chassis control pid calculate
-        int16_t ChassisPrePowerCmd[CHASSIS_MOTOR_COUNT] = {0};
-        ChassisControlLoop(&g_chassis, snapshot, ChassisPrePowerCmd);
-
-        ChassisFaultApplyControl(&g_chassis);
-
-        // Update CAN1 chassis motor currents for CAN TX task
-        int16_t ChassisCurrentCmd[CHASSIS_MOTOR_COUNT] = {0};
-        if (g_chassis.fast.manual_online != 0u)
-        {
-            for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
-            {
-                const uint32_t bit = 1u << i;
-                const int16_t current = g_chassis.motor_chassis[i].give_current;
-                ChassisCurrentCmd[i] = ((s_chassisFault.configuredMask & bit) == 0u ||
-                                        (s_chassisFault.holdZeroMask & bit) != 0u) ?
-                                           0 :
-                                           MotorCfgLimitCurrentNode(snapshot->motor_cfg[i], current);
-            }
-        }
-
-        (void)MotorInstSetCurrentBindsBestEffort(ChassisMotorCurrentBindings,
-                                                                  ChassisCurrentCmd,
-                                                                  CHASSIS_MOTOR_COUNT);
-
-        ChassisLoopCounter++;
-        {
-            sdlog_chassis_base_sample_t sample = {0};
-            const uint32_t now_ms = BspTimeGetTickMs();
-
-            sample.ChassisMode = (uint8_t)g_chassis.mode;
-            sample.last_chassis_mode = (uint8_t)g_chassis.last_mode;
-            for (uint8_t i = 0; i < CHASSIS_MOTOR_COUNT; i++)
-            {
-                sample.wheel_rpm[i] = (g_chassis.motor_chassis[i].measureValid != 0u) ?
-                                          g_chassis.motor_chassis[i].measure.speed_rpm :
-                                          0;
-                sample.current_request[i] = ChassisPrePowerCmd[i];
-                sample.current_output[i] = ChassisCurrentCmd[i];
-            }
-
-            ChassisSdLogAppendBaseSample(&sample, now_ms, snapshot->period_us);
-        }
-        ChassisWriteState(&g_chassis);
-        //os delay
-        //系统延时
+        (void)ChassisTaskRunFrame(forceSafe);
         RtProfEnd(RtProfChassisLoop, loop_start_us);
-        ChassisControlDelay(&last_wake, snapshot->period_ms);
+        ChassisControlDelay(&last_wake, RobotProfileChassisControlPeriodMs());
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
         ChassisStackSampleMaybe();

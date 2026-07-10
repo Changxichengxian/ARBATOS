@@ -620,6 +620,11 @@
               <FilePath>..\\..\\..\\shared\\application\\chassis\\ChassisControlTask.c</FilePath>
             </File>
             <File>
+              <FileName>ChassisCtrl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\chassis\\ChassisCtrl.c</FilePath>
+            </File>
+            <File>
               <FileName>DetectTask.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\Robotconfig\\HERO-C\\DetectTask.c</FilePath>

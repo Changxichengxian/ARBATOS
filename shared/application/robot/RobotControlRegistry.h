@@ -14,6 +14,9 @@
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
 #include "CanTxTask.h"
 #endif
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
+#include "ChassisCtrl.h"
+#endif
 #if ROBOT_TASK_BUILD_SHOOT_RM
 #include "ShootCtrl.h"
 #endif
@@ -35,14 +38,6 @@ static inline void RobotControlRegisterProfileDefaults(void)
      * Registration only declares resources for diagnostics/arbitration.
      * Boot activation is handled by RobotControlStartProfileDefaults().
      */
-#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-    static const char *const ChassisOutputs[] = {
-        "motor.chassis0",
-        "motor.chassis1",
-        "motor.chassis2",
-        "motor.chassis3",
-    };
-#endif
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
     static const char *const single_gimbal_outputs[] = {
         "motor.yaw",
@@ -77,19 +72,6 @@ static inline void RobotControlRegisterProfileDefaults(void)
     };
 #endif
 
-#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-    static const ControlController classic_chassis = {
-        .id = ControlIdClassicChassis,
-        .domain = ControlDomainChassis,
-        .claim_mask = ControlResChassisWheels,
-        .name = "controller.classic_chassis",
-        .meta = {
-            .period_ms = ROBOT_PROFILE_CHASSIS_CONTROL_DEFAULT_PERIOD_MS,
-            .output_count = 4u,
-            .outputs = ChassisOutputs,
-        },
-    };
-#endif
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
     static const ControlController single_gimbal = {
         .id = ControlIdSingleGimbal,
@@ -147,7 +129,7 @@ static inline void RobotControlRegisterProfileDefaults(void)
 #endif
 
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-    RobotControlRegisterIfEnabled(&classic_chassis, ROBOT_TASK_MODULE_CLASSIC_CHASSIS);
+    RobotControlRegisterIfEnabled(ChassisCtrlDesc(), ROBOT_TASK_MODULE_CLASSIC_CHASSIS);
 #endif
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
     RobotControlRegisterIfEnabled(&single_gimbal, ROBOT_TASK_MODULE_SINGLE_GIMBAL);
