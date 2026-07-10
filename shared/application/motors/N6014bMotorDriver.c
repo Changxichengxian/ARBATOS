@@ -11,7 +11,6 @@
 #include "MotorConfig.h"
 #include "MotorFeedbackEcdPolicy.h"
 #include "MotorInst.h"
-#include "RobotSafety.h"
 #include "UnitreeMotorDriver.h"
 
 #include <string.h>
@@ -397,9 +396,9 @@ static fp32 N6014bCurrentToTorque(const motor_node_param_t *node,
 }
 
 static uint8_t N6014bBuildCmdFromActuator(const motor_node_param_t *node,
-                                              MotorId actuator_id,
-                                              int16_t current,
-                                              N6014bMode *mode,
+                                               int16_t current,
+                                               const MotorCmd *cmd,
+                                               N6014bMode *mode,
                                               fp32 *position,
                                               fp32 *velocity,
                                               fp32 *kp,
@@ -407,8 +406,6 @@ static uint8_t N6014bBuildCmdFromActuator(const motor_node_param_t *node,
                                               fp32 *torque)
 {
     const MotorModelMitLimits *limits = MotorCfgMitLimits(node);
-    MotorCmd src;
-    uint8_t have_cmd;
     uint8_t active_cmd;
     MotorMode cmd_mode = MotorModeCurrent;
 
@@ -430,46 +427,38 @@ static uint8_t N6014bBuildCmdFromActuator(const motor_node_param_t *node,
         return 0u;
     }
 
-    if (RobotSafetyOutputLocked() != 0u)
+    active_cmd = (uint8_t)(cmd != NULL &&
+                           cmd->active != 0u &&
+                           cmd->mode != (uint8_t)MotorModeNone);
+
+    if (active_cmd != 0u)
+    {
+        cmd_mode = (MotorMode)cmd->mode;
+    }
+    if (cmd_mode == MotorModeDisable)
     {
         return 1u;
     }
-
-    (void)memset(&src, 0, sizeof(src));
-    have_cmd = LowCmdGetMotor(actuator_id, &src);
-    active_cmd = (uint8_t)(have_cmd != 0u &&
-                           src.active != 0u &&
-                           src.mode != (uint8_t)MotorModeNone);
-
     if (active_cmd == 0u && current == 0)
     {
         return 1u;
     }
 
     *mode = N6014B_MODE_FOC;
-    if (active_cmd != 0u)
-    {
-        cmd_mode = (MotorMode)src.mode;
-    }
-
-    if (cmd_mode == MotorModeDisable)
-    {
-        return 1u;
-    }
 
     if (active_cmd != 0u && N6014bCmdModeUsesPosition(cmd_mode) != 0u)
     {
-        *position = src.q;
-        *velocity = src.dq;
-        *kp = src.kp;
-        *kd = src.kd;
-        *torque = src.tau;
+        *position = cmd->q;
+        *velocity = cmd->dq;
+        *kp = cmd->kp;
+        *kd = cmd->kd;
+        *torque = cmd->tau;
     }
     else if (active_cmd != 0u && N6014bCmdModeUsesVelocity(cmd_mode) != 0u)
     {
-        *velocity = src.dq;
-        *kd = src.kd;
-        *torque = src.tau;
+        *velocity = cmd->dq;
+        *kd = cmd->kd;
+        *torque = cmd->tau;
     }
     else
     {
@@ -976,14 +965,14 @@ static void N6014bUpdateApplied(MotorId id,
                                   N6014bMode mode,
                                   fp32 position,
                                   fp32 velocity,
-                                  fp32 kp,
-                                  fp32 kd,
-                                  fp32 torque,
-                                  int16_t current,
-                                  int ret)
+                                   fp32 kp,
+                                   fp32 kd,
+                                   fp32 torque,
+                                   const MotorCmd *cmd,
+                                   int16_t current,
+                                   int ret)
 {
     MotorApplied applied;
-    MotorCmd cmd;
 
     if (N6014bActuatorIdValid(id) == 0u)
     {
@@ -1011,9 +1000,9 @@ static void N6014bUpdateApplied(MotorId id,
     {
         applied.mode = (uint8_t)MotorModeDisable;
     }
-    else if (LowCmdGetMotor(id, &cmd) != 0u && cmd.active != 0u && cmd.mode != (uint8_t)MotorModeNone)
+    else if (cmd != NULL && cmd->active != 0u && cmd->mode != (uint8_t)MotorModeNone)
     {
-        applied.mode = cmd.mode;
+        applied.mode = cmd->mode;
     }
     if (ret != 0)
     {
@@ -1034,7 +1023,8 @@ void N6014bMotorDriverInit(void)
 int N6014bMotorSendActuator(uint8_t port,
                                MotorId actuator_id,
                                const motor_node_param_t *node,
-                               int16_t current)
+                               int16_t current,
+                               const MotorCmd *cmd)
 {
     uint8_t motor_id;
     uint8_t frame[N6014B_TX_FRAME_SIZE];
@@ -1077,8 +1067,8 @@ int N6014bMotorSendActuator(uint8_t port,
     }
 
     if (N6014bBuildCmdFromActuator(node,
-                                       actuator_id,
                                        current,
+                                       cmd,
                                        &mode,
                                        &position,
                                        &velocity,
@@ -1092,7 +1082,19 @@ int N6014bMotorSendActuator(uint8_t port,
 
     N6014bBuildTxFrame(frame, motor_id, mode, position, velocity, kp, kd, torque);
     ret = N6014bTx(port, frame);
-    N6014bUpdateApplied(actuator_id, port, motor_id, node, mode, position, velocity, kp, kd, torque, current, ret);
+    N6014bUpdateApplied(actuator_id,
+                       port,
+                       motor_id,
+                       node,
+                       mode,
+                       position,
+                       velocity,
+                       kp,
+                       kd,
+                       torque,
+                       cmd,
+                       current,
+                       ret);
     N6014bRecordTxResult(actuator_id, ret);
     N6014bRefreshFeedback(actuator_id, node);
     return ret;
@@ -1127,6 +1129,5 @@ uint8_t CanTxProcessExtraItem(uint8_t bus,
         return 0u;
     }
 
-    (void)cmd;
-    return (N6014bMotorSendActuator(bus, actuator_id, node, current) == 0) ? 1u : 0u;
+    return (N6014bMotorSendActuator(bus, actuator_id, node, current, cmd) == 0) ? 1u : 0u;
 }

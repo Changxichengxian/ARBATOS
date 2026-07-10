@@ -51,24 +51,6 @@ static uint32_t CanTxNowMs(void)
     return BspTimeGetTickMs();
 }
 
-static uint8_t CanTxCmdExpired(const MotorCmd *cmd, uint32_t now_ms)
-{
-    uint32_t age_ms;
-
-    if (cmd == NULL || cmd->active == 0u || cmd->timeoutMs == 0u || cmd->tick == 0u)
-    {
-        return 0u;
-    }
-
-    if ((int32_t)(now_ms - cmd->tick) < 0)
-    {
-        return 0u;
-    }
-
-    age_ms = (uint32_t)(now_ms - cmd->tick);
-    return (age_ms > (uint32_t)cmd->timeoutMs) ? 1u : 0u;
-}
-
 static MotorDriveState CanTxDriveStateFromFeedback(MotorId id)
 {
     MotorState fb;
@@ -94,7 +76,9 @@ static uint8_t CanTxGetCmdCopy(MotorId id, MotorCmd *out)
     if (s_can_tx_cmd_cache_valid[id] != 0u)
     {
         *out = s_can_tx_cmd_cache[id];
-        if (CanTxCmdExpired(out, CanTxNowMs()) != 0u)
+        if (CanTxCmdExpiryLatchCheck(&s_can_tx_cmd_expiry_latch[id],
+                                     out,
+                                     CanTxNowMs()) != 0u)
         {
             (void)memset(out, 0, sizeof(*out));
             out->mode = (uint8_t)MotorModeDisable;
@@ -107,7 +91,9 @@ static uint8_t CanTxGetCmdCopy(MotorId id, MotorCmd *out)
     {
         return 0u;
     }
-    if (CanTxCmdExpired(out, CanTxNowMs()) != 0u)
+    if (CanTxCmdExpiryLatchCheck(&s_can_tx_cmd_expiry_latch[id],
+                                 out,
+                                 CanTxNowMs()) != 0u)
     {
         (void)memset(out, 0, sizeof(*out));
         out->mode = (uint8_t)MotorModeDisable;

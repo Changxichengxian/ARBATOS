@@ -550,6 +550,92 @@ static int TestCanTxRejectsStaleCachedCommand(void)
                      "发送前 latest seq 改变时必须拒绝旧缓存");
 }
 
+static int TestCanTxCommandExpiryBoundaries(void)
+{
+    MotorCmd cmd = TestCurrentCmd(100);
+    CanTxCmdExpiryLatch latch = {0};
+
+    cmd.timeoutMs = 100u;
+    cmd.tick = 0u;
+    if (!TestCheck(CanTxCmdExpired(&cmd, 100u) == 0u,
+                   "tick=0 发布的命令在超时边界上不应提前过期") ||
+        !TestCheck(CanTxCmdExpired(&cmd, 101u) != 0u,
+                   "tick=0 是合法发布时刻，超时后必须过期"))
+    {
+        return 0;
+    }
+
+    cmd.tick = UINT32_MAX - 5u;
+    cmd.timeoutMs = 10u;
+    if (!TestCheck(CanTxCmdExpired(&cmd, 3u) == 0u,
+                   "计数回绕后的新鲜命令不应被误判过期") ||
+        !TestCheck(CanTxCmdExpired(&cmd, 6u) != 0u,
+                   "计数回绕后仍应按实际年龄超时"))
+    {
+        return 0;
+    }
+
+    cmd.tick = 101u;
+    cmd.timeoutMs = 10u;
+    if (!TestCheck(CanTxCmdExpired(&cmd, 100u) == 0u,
+                   "读取与发布的一毫秒竞态应被容忍"))
+    {
+        return 0;
+    }
+    cmd.tick = 102u;
+    if (!TestCheck(CanTxCmdExpired(&cmd, 100u) != 0u,
+                   "不得把超出竞态窗口的异常时间永久当成新命令"))
+    {
+        return 0;
+    }
+
+    cmd.seq = 7u;
+    cmd.tick = 0u;
+    cmd.timeoutMs = 10u;
+    if (!TestCheck(CanTxCmdExpiryLatchCheck(&latch, &cmd, 11u) != 0u && latch.valid != 0u,
+                   "命令首次过期时应锁定发布代") ||
+        !TestCheck(CanTxCmdExpired(&cmd, 5u) == 0u &&
+                       CanTxCmdExpiryLatchCheck(&latch, &cmd, 5u) != 0u,
+                   "完整 tick 回绕不得复活已过期的同代命令"))
+    {
+        return 0;
+    }
+    {
+        MotorCmd local_disable;
+
+        (void)memset(&local_disable, 0, sizeof(local_disable));
+        local_disable.active = 1u;
+        local_disable.mode = (uint8_t)MotorModeDisable;
+        local_disable.tick = 12u;
+        if (!TestCheck(CanTxCmdExpiryLatchCheck(&latch, &local_disable, 12u) == 0u &&
+                           latch.valid != 0u && latch.seq == 7u,
+                       "CanTx 本地 Disable 不得清掉原命令的过期锁定") ||
+            !TestCheck(CanTxCmdExpiryLatchCheck(&latch, &cmd, 5u) != 0u,
+                       "经过本地 Disable 后完整 tick 回绕仍不得复活旧命令"))
+        {
+            return 0;
+        }
+    }
+    cmd.seq = 8u;
+    cmd.tick = 5u;
+    if (!TestCheck(CanTxCmdExpiryLatchCheck(&latch, &cmd, 5u) == 0u && latch.valid == 0u,
+                   "新发布代应清除旧命令的过期锁定"))
+    {
+        return 0;
+    }
+
+    cmd.timeoutMs = 0u;
+    if (!TestCheck(CanTxCmdExpired(&cmd, 1000u) == 0u,
+                   "timeout=0 的显式持续命令不应自动过期"))
+    {
+        return 0;
+    }
+    cmd.active = 0u;
+    cmd.timeoutMs = 1u;
+    return TestCheck(CanTxCmdExpired(&cmd, 1000u) == 0u,
+                     "inactive 命令不需要标记超时");
+}
+
 static int TestWriterAuthorityComesFromApi(void)
 {
     MotorCmd cmd = TestCurrentCmd(1234);
@@ -668,6 +754,7 @@ int main(void)
     if (!TestEmergencyAndLocalInhibitStack()) return 1;
     if (!TestBestEffortSkipsInhibitedAxis()) return 1;
     if (!TestCanTxRejectsStaleCachedCommand()) return 1;
+    if (!TestCanTxCommandExpiryBoundaries()) return 1;
     if (!TestWriterAuthorityComesFromApi()) return 1;
     if (!TestLowStateCopiesLastEcd()) return 1;
 

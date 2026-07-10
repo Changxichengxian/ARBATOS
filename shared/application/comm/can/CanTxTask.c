@@ -9,7 +9,7 @@
 /*
  * 阅读地图：
  * - 前段：命令限幅、RM/MIT 命令换算、单轴协议处理。
- * - 中段：在线/离线收集各轴电流命令，并记录 CAN 电流日志。
+ * - 中段：收集各轴有效命令，并记录 CAN 电流日志。
  * - 后段：按轴装配表执行发送，RM 组帧缓存最后统一发出。
  * - 入口：CanTxTask() 每周期收集 LowCmd，再按电机配置发到 CAN/RS485。
  */
@@ -28,7 +28,6 @@
 #include "CanMitMotorDriver.h"
 #include "RobotConfig.h"
 #include "Watch.h"
-#include "DetectTask.h"
 #include "MotorConfig.h"
 #include "MotorInst.h"
 #include "SdLog.h"
@@ -60,6 +59,7 @@ static MotorCmd s_can_tx_cmd_cache[MotorCount];
 static MotorId s_can_tx_cmd_cache_ids[MotorCount];
 static uint8_t s_can_tx_cmd_cache_valid[MotorCount];
 static uint8_t s_can_tx_cmd_expired[MotorCount];
+static CanTxCmdExpiryLatch s_can_tx_cmd_expiry_latch[MotorCount];
 
 static int16_t s_can_tx_can1_200[4];
 static int16_t s_can_tx_can1_1ff[4];
@@ -388,10 +388,9 @@ void CanTxTask(void const *pvParameters)
         const uint64_t loop_start_us = RtProfBegin();
         WatchTaskBeat(WATCH_TASK_CAN_COMMAND_TX);
         const uint16_t period_ms = RobotProfileCanCommandTxPeriodMs();
-        const bool_t dbus_offline = toe_is_error(DBUS_TOE);
         const uint8_t output_locked = RobotSafetyOutputLocked();
 
-        CanTxExecInstances(dbus_offline ? 0u : 1u, output_locked);
+        CanTxExecInstances(output_locked);
 
         RtProfEnd(RtProfCanTxLoop, loop_start_us);
         {

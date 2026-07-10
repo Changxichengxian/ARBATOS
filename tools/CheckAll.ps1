@@ -1394,6 +1394,7 @@ function Test-CanTxDeviceConfigBoundaries {
     Write-Host "[check] CAN TX device config boundaries"
 
     $repoPath = "shared\application\comm\can\CanTxTask.c"
+    $n6014bRepoPath = "shared\application\motors\N6014bMotorDriver.c"
     $fullPath = Join-Path $script:RepoRoot $repoPath
     if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
         Add-CheckError "Missing CAN TX source: $repoPath"
@@ -1404,6 +1405,51 @@ function Test-CanTxDeviceConfigBoundaries {
     $rmUsesResolvedBus = $content -match 'static\s+inline\s+void\s+CanTxProcessRmAxis[\s\S]*?const\s+uint8_t\s+node_bus\s*=\s*CanTxNodeBus\s*\(\s*fallback_bus\s*,\s*node\s*\)\s*;[\s\S]*?CanTxStoreRmCurrent\s*\(\s*node_bus\s*,'
     if (-not $rmUsesResolvedBus) {
         Add-CheckError "${repoPath}: RM group send path must use the resolved node CAN bus, not the fixed fallback bus."
+    }
+
+    if ($content -match '\bDBUS_TOE\b|toe_is_error\s*\(|RobotSafetyManual(?:Disconnected|SafeActive)\s*\(|RobotLifecycle\w*\s*\(|ManualInput\w*\s*\(|ControlInput\w*\s*\(') {
+        Add-CheckError "${repoPath}: transport must not own source-specific manual-input fault policy."
+    }
+    if ($content -match 'CanTxRouteAllowedOffline|CanTxRouteAllowedOnline|CanTxExecInstances\s*\(\s*uint8_t\s+online' -or
+        $content -notmatch 'CanTxExecInstances\s*\(\s*uint8_t\s+output_locked\s*\)') {
+        Add-CheckError "${repoPath}: CAN TX may gate by output lock and per-axis command policy, not by an online/offline role table."
+    }
+    if ([regex]::Matches($content, 'RobotSafetyOutputLocked\s*\(').Count -ne 1 -or
+        $content -notmatch 'const\s+uint8_t\s+output_locked\s*=\s*RobotSafetyOutputLocked\s*\(\s*\)\s*;' -or
+        $content -notmatch 'static\s+uint8_t\s+CanTxRouteAllowed\s*\(\s*const\s+MotorRoute\s*\*\s*route\s*\)' -or
+        $content -notmatch 'allowed\s*=\s*\(\s*output_locked\s*!=\s*0u\s*\)\s*\?\s*0u\s*:\s*CanTxRouteAllowed\s*\(\s*route\s*\)\s*;') {
+        Add-CheckError "${repoPath}: the sole global gate must flow from RobotSafetyOutputLocked directly into each route decision."
+    }
+    if ($content -notmatch 'static\s+uint8_t\s+CanTxRecheckCommandAuthority\s*\([\s\S]*?LowCmdGetMotor\s*\([\s\S]*?LowCmdGetInhibitWriter\s*\([\s\S]*?CanTxCachedCmdAuthorized\s*\([\s\S]*?CanTxForceDisabledCmd\s*\(' -or
+        $content -notmatch 'CanTxRecheckCommandAuthority\s*\(\s*actuator_id\s*,\s*&cmd\s*,\s*&have_cmd\s*,\s*&flags\s*\)[\s\S]{0,300}?CanTxProcessAxis\s*\(') {
+        Add-CheckError "${repoPath}: every protocol path must recheck command generation and inhibit authority immediately before dispatch."
+    }
+    $cacheClearBody = [regex]::Match(
+        $content,
+        'static\s+void\s+CanTxClearCmdCache\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nstatic\s+void\s+CanTxPrepareCmdCacheIds)'
+    ).Value
+    if ($content -notmatch 'static\s+CanTxCmdExpiryLatch\s+s_can_tx_cmd_expiry_latch\s*\[\s*MotorCount\s*\]' -or
+        [regex]::Matches($content, 'CanTxCmdExpiryLatchCheck\s*\(').Count -lt 2 -or
+        $cacheClearBody -match 'cmd_expiry_latch') {
+        Add-CheckError "${repoPath}: expired command generations must stay latched across full millisecond-tick wrap."
+    }
+
+    $n6014bPath = Join-Path $script:RepoRoot $n6014bRepoPath
+    if (-not (Test-Path -LiteralPath $n6014bPath -PathType Leaf)) {
+        Add-CheckError "Missing N6014b transport source: $n6014bRepoPath"
+    }
+    else {
+        $n6014bContent = Get-Content -LiteralPath $n6014bPath -Raw -Encoding UTF8
+        if ($n6014bContent -match 'LowCmdGetMotor\s*\(|RobotSafetyOutputLocked\s*\(') {
+            Add-CheckError "${n6014bRepoPath}: protocol driver must consume the command already adjudicated by CanTx."
+        }
+        if ($n6014bContent -notmatch 'N6014bMotorSendActuator\s*\([^;{]*const\s+MotorCmd\s*\*\s*cmd' -or
+            $n6014bContent -notmatch 'N6014bBuildCmdFromActuator\s*\([^;{]*const\s+MotorCmd\s*\*\s*cmd') {
+            Add-CheckError "${n6014bRepoPath}: CanTx command snapshot must flow unchanged into the N6014b encoder."
+        }
+        if ($n6014bContent -notmatch 'if\s*\(\s*cmd_mode\s*==\s*MotorModeDisable\s*\)\s*\{\s*return\s+1u\s*;\s*\}[\s\S]{0,250}?\*mode\s*=\s*N6014B_MODE_FOC\s*;') {
+            Add-CheckError "${n6014bRepoPath}: Disable must remain in protocol LOCK mode and may not enter FOC."
+        }
     }
 }
 

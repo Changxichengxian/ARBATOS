@@ -44,7 +44,7 @@ static uint8_t CanTxFrictionEnabled(const MotorRoute *route)
     return (g_config.shoot.fric_motor_dir[route->roleIndex] != 0) ? 1u : 0u;
 }
 
-static uint8_t CanTxRouteAllowedOnline(const MotorRoute *route)
+static uint8_t CanTxRouteAllowed(const MotorRoute *route)
 {
     if (route == NULL)
     {
@@ -63,34 +63,6 @@ static uint8_t CanTxRouteAllowedOnline(const MotorRoute *route)
         return 0u;
     }
     return 1u;
-}
-
-static uint8_t CanTxRouteAllowedOffline(const MotorRoute *route)
-{
-    if (route == NULL)
-    {
-        return 0u;
-    }
-    if (robot_mode_allow_motor(route->motorId) == 0u)
-    {
-        return 0u;
-    }
-
-    switch (route->role)
-    {
-    case MotorRoleYaw:
-    case MotorRoleArm:
-        return 1u;
-    case MotorRoleFriction:
-        return (uint8_t)((robot_mode_is_entertain() != 0u && CanTxFrictionEnabled(route) != 0u) ? 1u : 0u);
-    default:
-        return 0u;
-    }
-}
-
-static uint8_t CanTxRouteAllowed(const MotorRoute *route, uint8_t online)
-{
-    return (online != 0u) ? CanTxRouteAllowedOnline(route) : CanTxRouteAllowedOffline(route);
 }
 
 static void CanTxLogMotorCmd(sdlog_actuator_current_t *log,
@@ -486,6 +458,42 @@ static void CanTxRecheckUnitreeAuthority(MotorId actuator_id,
     s_can_tx_authority_reject_count[actuator_id]++;
 }
 
+static uint8_t CanTxRecheckCommandAuthority(MotorId actuator_id,
+                                            MotorCmd *cmd,
+                                            uint8_t *have_cmd,
+                                            uint8_t *flags)
+{
+    MotorCmd latest;
+    uint16_t inhibit_writer = (uint16_t)LOWCMD_WRITER_NONE;
+
+    if (cmd == NULL || have_cmd == NULL || flags == NULL)
+    {
+        return 0u;
+    }
+    if (*have_cmd == 0u || cmd->active == 0u ||
+        cmd->mode == (uint8_t)MotorModeNone ||
+        cmd->mode == (uint8_t)MotorModeDisable)
+    {
+        return 1u;
+    }
+
+    (void)memset(&latest, 0, sizeof(latest));
+    if (LowCmdGetMotor(actuator_id, &latest) != 0u &&
+        LowCmdGetInhibitWriter(actuator_id, &inhibit_writer) != 0u &&
+        CanTxCachedCmdAuthorized(cmd, &latest, inhibit_writer) != 0u)
+    {
+        return 1u;
+    }
+
+    /* 扩展驱动调用前最后复核，不允许 N6014b 等协议重用故障前快照。 */
+    CanTxForceDisabledCmd(actuator_id);
+    *cmd = s_can_tx_cmd_cache[actuator_id];
+    *have_cmd = 1u;
+    *flags |= (uint8_t)MotorAppliedFlagForceDisabled;
+    s_can_tx_authority_reject_count[actuator_id]++;
+    return 0u;
+}
+
 static void CanTxProcessInstance(const MotorRoute *route,
                                     uint8_t allowed,
                                     sdlog_actuator_current_t *log)
@@ -539,11 +547,10 @@ static void CanTxProcessInstance(const MotorRoute *route,
     {
         current = cmd.current;
     }
-    CanTxLogMotorCmd(log, route, current);
-
     if (route->transport == (uint8_t)MotorTransportCAN && route->canId == 0u)
     {
         flags |= (uint8_t)MotorAppliedFlagSkipped;
+        CanTxLogMotorCmd(log, route, 0);
         CanTxUpdateApplied(route, (have_cmd != 0u) ? &cmd : NULL, 0, flags);
         return;
     }
@@ -557,6 +564,12 @@ static void CanTxProcessInstance(const MotorRoute *route,
         CanTxMergeDriverAppliedFlags(actuator_id, flags);
         return;
     }
+
+    if (CanTxRecheckCommandAuthority(actuator_id, &cmd, &have_cmd, &flags) == 0u)
+    {
+        current = 0;
+    }
+    CanTxLogMotorCmd(log, route, current);
 
     applied_current = CanTxProcessAxis(route->bus,
                                           actuator_id,
@@ -585,7 +598,7 @@ static void CanTxProcessInstance(const MotorRoute *route,
     }
 }
 
-static void CanTxExecInstances(uint8_t online, uint8_t output_locked)
+static void CanTxExecInstances(uint8_t output_locked)
 {
     sdlog_actuator_current_t log = {0};
     const uint8_t count = MotorRouteCount();
@@ -615,7 +628,7 @@ static void CanTxExecInstances(uint8_t online, uint8_t output_locked)
             continue;
         }
 
-        allowed = (output_locked != 0u) ? 0u : CanTxRouteAllowed(route, online);
+        allowed = (output_locked != 0u) ? 0u : CanTxRouteAllowed(route);
         CanTxProcessInstance(route, allowed, &log);
     }
 
