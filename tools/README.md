@@ -49,7 +49,15 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestInputReferee.p
 ```
 
 它会用 Zig 自带的 C 编译器直接编译生产用的 DBUS 解码、裁判 CRC/拆帧和数据更新代码，覆盖坏拨杆、越界通道、
-CRC8/CRC16 错误、分段收包、未知新命令和 1 字节 payload。Zig 目前只是这项本地测试的可选依赖，常规
+CRC8/CRC16 错误、分段收包、未知新命令和 1 字节 payload。
+
+StateStore 双缓冲与快照时间信息的主机回归：
+
+```powershell
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestStateStore.ps1
+```
+
+Zig 目前只是这些本地主机测试的可选依赖，常规
 `CheckAll.ps1` 和 GitHub 检查不会静默增加这个要求；未安装时脚本会明确报错。
 
 ## 构建入口

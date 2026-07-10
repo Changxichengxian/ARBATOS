@@ -144,6 +144,8 @@ static fp32 INS_mag[3] = {0.0f, 0.0f, 0.0f};
 static fp32 INS_quat[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 fp32 INS_angle[3] = {0.0f, 0.0f, 0.0f};      // euler angle, unit rad
 
+#include "InsSnapshotStore.inc"
+
 // Mahony attitude state.
 static mahony_imu_t imu_mahony;
 static enum {IMU_ST_DISARMED, IMU_ST_QUIET, IMU_ST_RESET} imu_gain_state = IMU_ST_DISARMED;
@@ -611,6 +613,8 @@ void InsTask(void const *pvParameters)
                 INS_quat[3] = imu_mahony.quat[3];
                 imu_update_euler_from_quat(INS_quat, INS_angle);
             }
+
+            InsSnapshotPublishCurrent(now_ms, temp_c);
 
             sdlog_imu_base_sample_t pkt = {0};
             SdLogImuBaseSampleSet(&pkt, INS_quat, INS_gyro, INS_accel, temp_c);

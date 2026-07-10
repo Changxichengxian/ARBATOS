@@ -19,6 +19,7 @@
 | 说明 SD 发布纪律、CAN 硬件边界和评分口径 | [评分边界](evaluation-boundaries.md) |
 | 写代码、补注释、处理旧风格 | [代码风格](coding-style.md) |
 | 了解后续通用机器人运行层方向 | [运行层演进方向](runtime-architecture.md) |
+| 跟踪架构收束阶段和每版验收要求 | [架构收束与分阶段验收](architecture-convergence.md) |
 
 ## 文档分层
 

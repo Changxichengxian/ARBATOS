@@ -55,6 +55,7 @@
 
 #define GIMBAL_OUTPUT_MOTOR_COUNT 3u
 #define DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT 4u
+#define GIMBAL_STACK_SAMPLE_PERIOD_MS 1000u
 
 static const char *const GimbalOutputMotorNames[GIMBAL_OUTPUT_MOTOR_COUNT] = {
     "motor.trigger",
@@ -87,6 +88,7 @@ __weak void ShootStopOutputs(void)
 typedef struct
 {
     ManualInputState ManualInputCopy;
+    InsSnapshot ImuSnapshot;
     const ManualInputState *manual_input;
     const fp32 *gyro;
     const fp32 *ins_angle;
@@ -172,6 +174,23 @@ typedef struct
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
 uint32_t GimbalHighWater;
+
+static void GimbalStackSampleMaybe(void)
+{
+    static TickType_t last_sample_tick = 0u;
+    static uint8_t sampled = 0u;
+    const TickType_t now = xTaskGetTickCount();
+    const TickType_t period = pdMS_TO_TICKS(GIMBAL_STACK_SAMPLE_PERIOD_MS);
+
+    if (sampled != 0u && (TickType_t)(now - last_sample_tick) < period)
+    {
+        return;
+    }
+
+    GimbalHighWater = uxTaskGetStackHighWaterMark(NULL);
+    last_sample_tick = now;
+    sampled = 1u;
+}
 #endif
 
 /**
@@ -383,7 +402,7 @@ void GimbalControlTask(void const *pvParameters)
             GimbalControlDelay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
-            GimbalHighWater = uxTaskGetStackHighWaterMark(NULL);
+            GimbalStackSampleMaybe();
 #endif
             continue;
         }
@@ -459,7 +478,7 @@ void GimbalControlTask(void const *pvParameters)
         GimbalControlDelay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
-        GimbalHighWater = uxTaskGetStackHighWaterMark(NULL);
+        GimbalStackSampleMaybe();
 #endif
     }
 }
@@ -495,7 +514,7 @@ void DualYawGimbalControlTask(void const *pvParameters)
             GimbalControlDelay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
-            GimbalHighWater = uxTaskGetStackHighWaterMark(NULL);
+            GimbalStackSampleMaybe();
 #endif
             continue;
         }
@@ -580,7 +599,7 @@ void DualYawGimbalControlTask(void const *pvParameters)
         GimbalControlDelay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
-        GimbalHighWater = uxTaskGetStackHighWaterMark(NULL);
+        GimbalStackSampleMaybe();
 #endif
     }
 }

@@ -51,6 +51,7 @@
 #include <string.h>
 
 #define CHASSIS_MOTOR_COUNT 4U
+#define CHASSIS_STACK_SAMPLE_PERIOD_MS 1000u
 
 static const char *const ChassisMotorInstNames[CHASSIS_MOTOR_COUNT] = {
     "motor.chassis0",
@@ -103,6 +104,7 @@ static const int16_t ChassisZeroCurrentCmd[CHASSIS_MOTOR_COUNT] = {0};
 typedef struct
 {
     ManualInputState ManualInputCopy;
+    InsSnapshot ImuSnapshot;
     const ManualInputState *manual_input;
     uint8_t GimbalStateValid;
     uint8_t GimbalOnline;
@@ -206,6 +208,23 @@ static void ChassisControlLoop(ChassisMove *ChassisMoveControlLoop,
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
 uint32_t ChassisHighWater;
+
+static void ChassisStackSampleMaybe(void)
+{
+    static TickType_t last_sample_tick = 0u;
+    static uint8_t sampled = 0u;
+    const TickType_t now = xTaskGetTickCount();
+    const TickType_t period = pdMS_TO_TICKS(CHASSIS_STACK_SAMPLE_PERIOD_MS);
+
+    if (sampled != 0u && (TickType_t)(now - last_sample_tick) < period)
+    {
+        return;
+    }
+
+    ChassisHighWater = uxTaskGetStackHighWaterMark(NULL);
+    last_sample_tick = now;
+    sampled = 1u;
+}
 #endif
 
 //底盘运动数据
@@ -275,7 +294,7 @@ void ChassisControlTask(void const *pvParameters)
             ChassisControlDelay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
-            ChassisHighWater = uxTaskGetStackHighWaterMark(NULL);
+            ChassisStackSampleMaybe();
 #endif
             continue;
         }
@@ -288,7 +307,7 @@ void ChassisControlTask(void const *pvParameters)
             ChassisControlDelay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
-            ChassisHighWater = uxTaskGetStackHighWaterMark(NULL);
+            ChassisStackSampleMaybe();
 #endif
             continue;
         }
@@ -350,7 +369,7 @@ void ChassisControlTask(void const *pvParameters)
         ChassisControlDelay(&last_wake, snapshot.period_ms);
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
-        ChassisHighWater = uxTaskGetStackHighWaterMark(NULL);
+        ChassisStackSampleMaybe();
 #endif
     }
 }

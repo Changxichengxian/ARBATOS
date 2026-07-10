@@ -896,6 +896,8 @@ typedef struct
     uint32_t lowcmd_seq;
     uint32_t lowcmd_rejected_count;
     uint32_t lowcmd_emergency_stop_count;
+    uint32_t lowcmd_snapshot_retry_count;
+    uint32_t lowcmd_snapshot_fallback_count;
     uint32_t lowcmd_last_reject_tick_ms;
     uint16_t lowcmd_last_reject_writer;
     uint16_t lowcmd_last_reject_owner;

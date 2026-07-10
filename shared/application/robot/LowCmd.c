@@ -25,6 +25,8 @@ static uint32_t gLowCmdSeq;
 static uint32_t gLowStateTick;
 static LowCmdDiag gLowCmdDiag;
 
+#define LOWCMD_SNAPSHOT_RETRY_COUNT 3u
+
 typedef struct
 {
     uint8_t from_isr;
@@ -73,6 +75,70 @@ static uint8_t MotorIdValid(MotorId id)
 static uint8_t MotorCmdValid(const MotorCmd *cmd)
 {
     return (uint8_t)(cmd != NULL && MotorModeKnown(cmd->mode));
+}
+
+/*
+ * 每次只在临界区内复制一个电机命令，把连续关中断时间限制在一个
+ * MotorCmd 的大小。批量写每次都会更新 gLowCmdSeq；读完后序号不变，
+ * 才说明这一批命令来自同一个一致快照。持续竞争时保留整批锁内兜底，
+ * 避免高频写入让发送任务长期拿不到命令。
+ */
+static uint32_t LowCmdCopyMotorSnapshot(const MotorId *ids, MotorCmd *out, uint8_t count)
+{
+    uint32_t seq_begin = 0u;
+    uint32_t seq_end = 0u;
+
+    if (count == 0u)
+    {
+        LowCmdCriticalState critical = LowCmdEnterCritical();
+        seq_end = gLowCmdSeq;
+        LowCmdExitCritical(critical);
+        return seq_end;
+    }
+
+    for (uint8_t attempt = 0u; attempt < LOWCMD_SNAPSHOT_RETRY_COUNT; attempt++)
+    {
+        for (uint8_t i = 0u; i < count; i++)
+        {
+            const MotorId id = (ids != NULL) ? ids[i] : (MotorId)i;
+            LowCmdCriticalState critical = LowCmdEnterCritical();
+
+            if (i == 0u)
+            {
+                seq_begin = gLowCmdSeq;
+            }
+            out[i] = gMotorCmd[id];
+            if (i == (uint8_t)(count - 1u))
+            {
+                seq_end = gLowCmdSeq;
+            }
+            LowCmdExitCritical(critical);
+        }
+
+        if (seq_begin == seq_end)
+        {
+            return seq_end;
+        }
+
+        {
+            LowCmdCriticalState critical = LowCmdEnterCritical();
+            gLowCmdDiag.snapshot_retry_count++;
+            LowCmdExitCritical(critical);
+        }
+    }
+
+    {
+        LowCmdCriticalState critical = LowCmdEnterCritical();
+        gLowCmdDiag.snapshot_fallback_count++;
+        seq_end = gLowCmdSeq;
+        for (uint8_t i = 0u; i < count; i++)
+        {
+            const MotorId id = (ids != NULL) ? ids[i] : (MotorId)i;
+            out[i] = gMotorCmd[id];
+        }
+        LowCmdExitCritical(critical);
+    }
+    return seq_end;
 }
 
 static uint16_t LowCmdWriterOrDefault(uint16_t writer)
@@ -293,11 +359,8 @@ uint8_t LowCmdGet(LowCmd *out)
         return 0u;
     }
 
-    LowCmdCriticalState critical = LowCmdEnterCritical();
-    out->seq = gLowCmdSeq;
+    out->seq = LowCmdCopyMotorSnapshot(NULL, out->motorCmd, (uint8_t)MotorCount);
     out->tick = LowCmdNowMs();
-    (void)memcpy(out->motorCmd, gMotorCmd, sizeof(gMotorCmd));
-    LowCmdExitCritical(critical);
     return 1u;
 }
 
@@ -472,12 +535,7 @@ uint8_t LowCmdGetMotorMany(const MotorId *ids, MotorCmd *out, uint8_t count)
         }
     }
 
-    LowCmdCriticalState critical = LowCmdEnterCritical();
-    for (uint8_t i = 0u; i < count; i++)
-    {
-        out[i] = gMotorCmd[ids[i]];
-    }
-    LowCmdExitCritical(critical);
+    (void)LowCmdCopyMotorSnapshot(ids, out, count);
     return 1u;
 }
 

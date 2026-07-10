@@ -131,8 +131,14 @@ static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot, GimbalControl
     {
         snapshot->manual_input = &snapshot->ManualInputCopy;
     }
-    snapshot->gyro = (control != NULL) ? control->GimbalINTGyroPoint : get_gyro_data_point();
-    snapshot->ins_angle = (control != NULL) ? control->GimbalInsAnglePoint : get_INS_angle_point();
+    snapshot->period_ms = RobotProfileGimbalControlPeriodMs();
+    snapshot->period_us = (uint32_t)snapshot->period_ms * 1000u;
+    if (InsSnapshotRead(&snapshot->ImuSnapshot) != 0 &&
+        snapshot->ImuSnapshot.age_ms <= (uint32_t)snapshot->period_ms * 3u + 2u)
+    {
+        snapshot->gyro = snapshot->ImuSnapshot.gyro;
+        snapshot->ins_angle = snapshot->ImuSnapshot.angle;
+    }
     snapshot->yaw_control_is_upper = GimbalDualYawUseUpperControl();
     snapshot->yaw_measure = (control != NULL) ? control->GimbalYawMotor.GimbalMotorMeasure : GimbalYawControlMeasurePoint();
     snapshot->pitch_measure = (control != NULL) ? control->GimbalPitchMotor.GimbalMotorMeasure : get_pitch_gimbal_motor_measure_point();
@@ -141,8 +147,6 @@ static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot, GimbalControl
     snapshot->trigger_motor_cfg = &g_config.motor.trigger;
     snapshot->run_variant = robot_mode_variant();
     snapshot->PitchCaliMode = robot_mode_gimbal_pitch_cali();
-    snapshot->period_ms = RobotProfileGimbalControlPeriodMs();
-    snapshot->period_us = (uint32_t)snapshot->period_ms * 1000u;
     snapshot->yaw_turn = YAW_TURN ? 1u : 0u;
     snapshot->pitch_turn = PITCH_TURN ? 1u : 0u;
 

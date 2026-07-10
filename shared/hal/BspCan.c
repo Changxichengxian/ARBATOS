@@ -25,6 +25,11 @@ extern CAN_HandleTypeDef hcan2;
 // ===== RX ring buffers =====
 #define BSP_CAN_RX_RING_SIZE 128u
 #define BSP_CAN_STD_ID_DIAG_COUNT 16u
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+#define BSP_CAN_BUS_COUNT 3u
+#else
+#define BSP_CAN_BUS_COUNT 2u
+#endif
 #define BSP_CAN_FAULT_ABORT_SPIN_LIMIT 100000u
 #define BSP_CAN_FAULT_TX_SPIN_LIMIT 400000u
 #define BSP_CAN_FAULT_FLUSH_SPIN_LIMIT 2000000u
@@ -37,6 +42,7 @@ static BspCanFrame can1_rx_ring[BSP_CAN_RX_RING_SIZE];
 static volatile uint16_t can2_rx_head = 0u;
 static volatile uint16_t can2_rx_tail = 0u;
 static BspCanFrame can2_rx_ring[BSP_CAN_RX_RING_SIZE];
+static uint8_t can_rx_next_bus = 1u;
 
 #if defined(HAL_FDCAN_MODULE_ENABLED)
 static volatile uint16_t can3_rx_head = 0u;
@@ -98,6 +104,7 @@ static void BspCanResetState(void)
     can1_rx_tail = 0u;
     can2_rx_head = 0u;
     can2_rx_tail = 0u;
+    can_rx_next_bus = 1u;
 #if defined(HAL_FDCAN_MODULE_ENABLED)
     can3_rx_head = 0u;
     can3_rx_tail = 0u;
@@ -621,36 +628,74 @@ void BspCanRxAttachTask(TaskHandle_t task)
     CanRxTask_handle = task;
 }
 
+static int BspCanRxTryPopBus(uint8_t bus, BspCanFrame *out)
+{
+    volatile uint16_t *head = NULL;
+    volatile uint16_t *tail = NULL;
+    BspCanFrame *ring = NULL;
+
+    if (bus == 1u)
+    {
+        head = &can1_rx_head;
+        tail = &can1_rx_tail;
+        ring = can1_rx_ring;
+    }
+    else if (bus == 2u)
+    {
+        head = &can2_rx_head;
+        tail = &can2_rx_tail;
+        ring = can2_rx_ring;
+    }
+#if defined(HAL_FDCAN_MODULE_ENABLED)
+    else if (bus == 3u)
+    {
+        head = &can3_rx_head;
+        tail = &can3_rx_tail;
+        ring = can3_rx_ring;
+    }
+#endif
+    else
+    {
+        return 0;
+    }
+
+    if (*head != *tail)
+    {
+        const uint16_t current_tail = *tail;
+        *out = ring[current_tail];
+        *tail = (uint16_t)((current_tail + 1u) & (BSP_CAN_RX_RING_SIZE - 1u));
+        return 1;
+    }
+
+    return 0;
+}
+
 int BspCanRxPop(BspCanFrame *out)
 {
+    uint8_t bus;
+
     if (out == NULL)
     {
         return 0;
     }
 
-    if (can1_rx_head != can1_rx_tail)
+    bus = can_rx_next_bus;
+    for (uint8_t checked = 0u; checked < BSP_CAN_BUS_COUNT; checked++)
     {
-        const uint16_t t = can1_rx_tail;
-        *out = can1_rx_ring[t];
-        can1_rx_tail = (uint16_t)((t + 1u) & (BSP_CAN_RX_RING_SIZE - 1u));
-        return 1;
+        if (BspCanRxTryPopBus(bus, out) != 0)
+        {
+            bus++;
+            can_rx_next_bus = (bus > BSP_CAN_BUS_COUNT) ? 1u : bus;
+            return 1;
+        }
+
+        bus++;
+        if (bus > BSP_CAN_BUS_COUNT)
+        {
+            bus = 1u;
+        }
     }
-    if (can2_rx_head != can2_rx_tail)
-    {
-        const uint16_t t = can2_rx_tail;
-        *out = can2_rx_ring[t];
-        can2_rx_tail = (uint16_t)((t + 1u) & (BSP_CAN_RX_RING_SIZE - 1u));
-        return 1;
-    }
-#if defined(HAL_FDCAN_MODULE_ENABLED)
-    if (can3_rx_head != can3_rx_tail)
-    {
-        const uint16_t t = can3_rx_tail;
-        *out = can3_rx_ring[t];
-        can3_rx_tail = (uint16_t)((t + 1u) & (BSP_CAN_RX_RING_SIZE - 1u));
-        return 1;
-    }
-#endif
+
     return 0;
 }
 

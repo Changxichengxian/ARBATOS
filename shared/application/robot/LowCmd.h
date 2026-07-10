@@ -174,6 +174,8 @@ typedef struct
     uint32_t seq;
     uint32_t rejected_count;
     uint32_t emergency_stop_count;
+    uint32_t snapshot_retry_count;
+    uint32_t snapshot_fallback_count;
     uint32_t last_reject_tick;
     uint16_t last_reject_writer;
     uint16_t last_reject_owner;

@@ -94,6 +94,8 @@ static fp32 INS_mag[3] = {0.0f, 0.0f, 0.0f};
 static fp32 INS_quat[4] = {1.0f, 0.0f, 0.0f, 0.0f};
 fp32 INS_angle[3] = {0.0f, 0.0f, 0.0f};
 
+#include "InsSnapshotStore.inc"
+
 static mahony_imu_t imu_mahony;
 static enum {IMU_ST_DISARMED, IMU_ST_QUIET, IMU_ST_RESET} imu_gain_state = IMU_ST_DISARMED;
 static uint32_t imu_state_timeout_ms = 0u;
@@ -394,6 +396,8 @@ void InsTask(void const *pvParameters)
         INS_quat[2] = imu_mahony.quat[2];
         INS_quat[3] = imu_mahony.quat[3];
         imu_update_euler_from_quat(INS_quat, INS_angle);
+
+        InsSnapshotPublishCurrent(now_ms, raw.temp);
 
         sdlog_imu_base_sample_t pkt = {0};
         SdLogImuBaseSampleSet(&pkt, INS_quat, INS_gyro, INS_accel, raw.temp);

@@ -5,6 +5,7 @@
 
 static inline void __disable_irq(void) {}
 static inline void __enable_irq(void) {}
+static inline void __DMB(void) {}
 static inline uint32_t __get_PRIMASK(void) { return 0u; }
 static inline void __set_PRIMASK(uint32_t value) { (void)value; }
 

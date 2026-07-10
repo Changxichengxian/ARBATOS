@@ -285,6 +285,8 @@ static void WatchCopyRuntime(void)
     g_watch.runtime.lowcmd_seq = lowcmd_diag.seq;
     g_watch.runtime.lowcmd_rejected_count = lowcmd_diag.rejected_count;
     g_watch.runtime.lowcmd_emergency_stop_count = lowcmd_diag.emergency_stop_count;
+    g_watch.runtime.lowcmd_snapshot_retry_count = lowcmd_diag.snapshot_retry_count;
+    g_watch.runtime.lowcmd_snapshot_fallback_count = lowcmd_diag.snapshot_fallback_count;
     g_watch.runtime.lowcmd_last_reject_tick_ms = lowcmd_diag.last_reject_tick;
     g_watch.runtime.lowcmd_last_reject_writer = lowcmd_diag.last_reject_writer;
     g_watch.runtime.lowcmd_last_reject_owner = lowcmd_diag.last_reject_owner;

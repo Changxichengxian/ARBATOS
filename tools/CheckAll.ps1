@@ -1220,6 +1220,9 @@ function Test-ProjectOwnedPathNames {
         if ($normPath -match '^tools/build/gcc_support/') {
             continue
         }
+        if ($normPath -eq 'tools/tests/stubs/cmsis_compiler.h') {
+            continue
+        }
         if ($normPath -match '^shared/components/algorithm/Include/') {
             continue
         }
@@ -1324,6 +1327,64 @@ function Test-HighRateApiBoundaries {
             if ($content -match $forbidden.Pattern) {
                 Add-CheckError "${repoPath}: $($forbidden.Message)"
             }
+        }
+    }
+}
+
+function Test-CanRxAndStackSamplingBoundaries {
+    Write-Host "[check] CAN RX fairness and stack sampling boundaries"
+
+    $canRepoPath = "shared\hal\BspCan.c"
+    $canPath = Join-Path $script:RepoRoot $canRepoPath
+    if (-not (Test-Path -LiteralPath $canPath -PathType Leaf)) {
+        Add-CheckError "Missing CAN BSP source: $canRepoPath"
+    }
+    else {
+        $canContent = Get-Content -LiteralPath $canPath -Raw
+        foreach ($required in @(
+                "BSP_CAN_BUS_COUNT",
+                "can_rx_next_bus",
+                "BspCanRxTryPopBus",
+                "checked < BSP_CAN_BUS_COUNT"
+            )) {
+            if ($canContent -notmatch [regex]::Escape($required)) {
+                Add-CheckError "${canRepoPath}: CAN RX dequeue must rotate fairly between enabled buses using '$required'."
+            }
+        }
+        if ($canContent -notmatch 'BspCanRxTryPopBus\s*\(\s*bus\s*,\s*out\s*\)[\s\S]{0,300}?can_rx_next_bus\s*=') {
+            Add-CheckError "${canRepoPath}: advance the CAN RX start bus only after a frame is dequeued."
+        }
+    }
+
+    $stackSources = @(
+        [pscustomobject]@{
+            Path = "shared\application\gimbal\GimbalControlTask.c"
+            Period = "GIMBAL_STACK_SAMPLE_PERIOD_MS"
+            Helper = "GimbalStackSampleMaybe"
+        },
+        [pscustomobject]@{
+            Path = "shared\application\chassis\ChassisControlTask.c"
+            Period = "CHASSIS_STACK_SAMPLE_PERIOD_MS"
+            Helper = "ChassisStackSampleMaybe"
+        }
+    )
+
+    foreach ($source in $stackSources) {
+        $fullPath = Join-Path $script:RepoRoot $source.Path
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+            Add-CheckError "Missing control source: $($source.Path)"
+            continue
+        }
+
+        $content = Get-Content -LiteralPath $fullPath -Raw
+        $scanCount = [regex]::Matches($content, 'uxTaskGetStackHighWaterMark\s*\(').Count
+        if ($scanCount -ne 1) {
+            Add-CheckError "$($source.Path): stack watermark scanning must exist only in its rate-limited helper."
+        }
+        if ($content -notmatch "#define\s+$($source.Period)\s+1000u" -or
+            $content -notmatch "static\s+void\s+$($source.Helper)\s*\(" -or
+            $content -notmatch "\(now\s*-\s*last_sample_tick\)\s*<\s*period") {
+            Add-CheckError "$($source.Path): stack watermark sampling must remain rate-limited to about 1 Hz."
         }
     }
 }
@@ -1668,6 +1729,7 @@ Test-StaleText
 Test-IncludeFilenameCase
 Test-ProjectOwnedPathNames
 Test-HighRateApiBoundaries
+Test-CanRxAndStackSamplingBoundaries
 Test-CanTxDeviceConfigBoundaries
 Test-ControlRegistryBoundaries
 Test-FaultGuardBoundaries

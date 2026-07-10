@@ -21,6 +21,7 @@ typedef enum
     STATE_WHEELLEG_STATUS,
     STATE_WHEELLEG_DEBUG,
     STATE_ARM_STATUS,
+    STATE_IMU,
     STATE_COUNT,
 } state_id_e;
 
@@ -31,10 +32,14 @@ typedef struct
     uint8_t valid;
     uint16_t size;
     uint32_t seq;
+    uint32_t write_tick_ms;
+    uint32_t age_ms;
+    uint32_t write_drop_count;
 } state_info_t;
 
 uint8_t StateStoreWrite(state_id_e id, const void *payload, uint16_t size);
 uint8_t StateStoreRead(state_id_e id, void *out, uint16_t size);
+uint8_t StateStoreReadSnapshot(state_id_e id, void *out, uint16_t size, state_info_t *info);
 state_info_t StateStoreInfo(state_id_e id);
 
 #endif

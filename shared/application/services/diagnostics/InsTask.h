@@ -65,6 +65,20 @@ typedef enum
     INS_GYRO_BOOT_INIT_FAILED = 2,
 } ins_gyro_boot_init_result_e;
 
+typedef struct
+{
+    uint32_t seq;
+    uint32_t sample_tick_ms;
+    uint32_t age_ms;
+    uint32_t publish_drop_count;
+    fp32 quat[4];
+    fp32 angle[3];
+    fp32 gyro[3];
+    fp32 accel[3];
+    fp32 mag[3];
+    fp32 temperature_c;
+} InsSnapshot;
+
 /**
   * @brief          imu task, init bmi088, ist8310, calculate the euler angle
   * @param[in]      pvParameters: NULL
@@ -77,6 +91,13 @@ typedef enum
   */
 extern void InsTask(void const *pvParameters);
 extern void ImuFusionTask(void const *pvParameters);
+
+/**
+  * @brief          读取同一采样周期的完整 IMU 数据，并返回发布序号和数据年龄
+  * @param[out]     out: 快照输出
+  * @retval         1 成功，0 尚未发布有效样本或读取时连续发生更新
+  */
+extern bool_t InsSnapshotRead(InsSnapshot *out);
 
 /**
   * @brief          calculate gyro zero drift

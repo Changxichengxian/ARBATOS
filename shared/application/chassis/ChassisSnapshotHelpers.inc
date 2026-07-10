@@ -155,12 +155,16 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot, ChassisMove
             snapshot->pitch_motor = control->ChassisPitchMotor;
         }
     }
-    snapshot->ins_angle = (control != NULL) ? control->ChassisInsAngle : get_INS_angle_point();
-    snapshot->gyro = ChassisINTGyroPoint;
-    snapshot->ChassisOnlyMode = robot_mode_force_chassis_only();
     snapshot->period_ms = RobotProfileChassisControlPeriodMs();
     snapshot->period_us = (uint32_t)snapshot->period_ms * 1000u;
     snapshot->period_s = (fp32)RobotProfileChassisControlPeriodS();
+    if (InsSnapshotRead(&snapshot->ImuSnapshot) != 0 &&
+        snapshot->ImuSnapshot.age_ms <= (uint32_t)snapshot->period_ms * 3u + 2u)
+    {
+        snapshot->ins_angle = snapshot->ImuSnapshot.angle;
+        snapshot->gyro = snapshot->ImuSnapshot.gyro;
+    }
+    snapshot->ChassisOnlyMode = robot_mode_force_chassis_only();
     snapshot->control_hz = (snapshot->period_s > 0.0f) ? (1.0f / snapshot->period_s) : CHASSIS_CONTROL_FREQUENCE;
     snapshot->motor_rpm_to_vector = M3508_MOTOR_RPM_TO_VECTOR;
     snapshot->motor_speed_to_vx = MOTOR_SPEED_TO_CHASSIS_SPEED_VX;

@@ -7,8 +7,10 @@
 
 static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
 {
-    const fp32 *angle;
-    const fp32 *gyro;
+    InsSnapshot imu_snapshot = {0};
+    const fp32 *angle = NULL;
+    const fp32 *gyro = NULL;
+    uint8_t imu_snapshot_ok;
 
     if (frame == NULL)
     {
@@ -23,8 +25,12 @@ static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
     frame->dt = WheelLegPeriodS();
     frame->now_ms = WheelLegTickMs();
 
-    angle = get_INS_angle_point();
-    gyro = get_gyro_data_point();
+    imu_snapshot_ok = (uint8_t)InsSnapshotRead(&imu_snapshot);
+    if (imu_snapshot_ok != 0u)
+    {
+        angle = imu_snapshot.angle;
+        gyro = imu_snapshot.gyro;
+    }
     frame->gyro_wheelleg = WheelLegImuGyroAligned(gyro, frame->gyro_aligned);
     frame->pitch = WheelLegImuAngle(angle, WHEELLEG_IMU_BODY_PITCH_OFFSET, WHEELLEG_IMU_PITCH_SIGN);
     frame->roll = WheelLegImuAngle(angle, WHEELLEG_IMU_BODY_ROLL_OFFSET, WHEELLEG_IMU_ROLL_SIGN);
@@ -40,8 +46,10 @@ static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
     frame->target_foot_y = 0.100f;
     frame->profile_on = RobotProfileIsWheelLegMit();
     frame->manual_on = WheelLegManualEnabledBySwitch();
-    frame->imu_ok =
-        (toe_is_error(BOARD_GYRO_TOE) == 0u && toe_is_error(BOARD_ACCEL_TOE) == 0u) ? 1u : 0u;
+    frame->imu_ok = (uint8_t)(imu_snapshot_ok != 0u &&
+                              imu_snapshot.age_ms <= (uint32_t)frame->period_ms * 3u + 2u &&
+                              toe_is_error(BOARD_GYRO_TOE) == 0u &&
+                              toe_is_error(BOARD_ACCEL_TOE) == 0u);
     frame->single_test = WheelLegSingleTestEnabled();
     frame->left_leg_test = robot_mode_wheelleg_left_leg_swing();
     frame->foot_test = robot_mode_wheelleg_foot_trajectory();
