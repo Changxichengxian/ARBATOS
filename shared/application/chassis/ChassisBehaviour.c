@@ -26,7 +26,6 @@
 
 #include "BspTime.h"
 #include "ControlInput.h"
-#include "DetectTask.h"
 #include "ExternalMotionIntent.h"
 #include "MotorConfig.h"
 

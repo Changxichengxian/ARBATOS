@@ -15,13 +15,20 @@
 extern "C" {
 #endif
 
+struct ManualInputSnapshot;
+
 /*
  * 这些入口只供 ChassisCtrl 适配层使用。任务和注册表不得绕过
  * ControlMgr 直接调用，避免底盘同时存在两套生命周期。
  */
 void ChassisRuntimeInit(void);
-void ChassisRuntimeStep(uint32_t tickMs, uint16_t periodMs, int16_t motorCurrent[4]);
-void ChassisRuntimeSafeStep(uint32_t tickMs, uint16_t periodMs);
+void ChassisRuntimeStep(const struct ManualInputSnapshot *manualInput,
+                        uint32_t tickMs,
+                        uint16_t periodMs,
+                        int16_t motorCurrent[4]);
+void ChassisRuntimeSafeStep(const struct ManualInputSnapshot *manualInput,
+                            uint32_t tickMs,
+                            uint16_t periodMs);
 void ChassisRuntimeStop(void);
 
 #ifdef __cplusplus

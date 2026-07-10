@@ -13,7 +13,6 @@
 #include "CanReceive.h"
 #include "GimbalState.h"
 #include "Pid.h"
-#include "ManualInput.h"
 #include "UserLib.h"
 #include "RobotConfig.h"
 #include "ChassisSnapshotPolicy.h"
@@ -135,7 +134,6 @@ typedef struct
 
 typedef struct
 {
-    const ManualInputState *ChassisRc;
     const fp32 *ChassisInsAngle;
     ChassisMode mode;
     ChassisMode last_mode;

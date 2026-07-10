@@ -33,8 +33,6 @@ static void ChassisInit(ChassisMove *ChassisMoveInit)
                                               CHASSIS_MOTOR_COUNT,
                                               ChassisMotorCurrentBindings,
                                               CHASSIS_MOTOR_COUNT);
-    //get remote control point
-    ChassisMoveInit->ChassisRc = get_remote_control_point();
     //get gyro sensor euler angle point
     ChassisMoveInit->ChassisInsAngle = get_INS_angle_point();
     ChassisINTGyroPoint = get_gyro_data_point();

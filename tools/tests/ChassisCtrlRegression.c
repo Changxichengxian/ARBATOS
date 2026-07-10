@@ -4,6 +4,11 @@
 #include <stdio.h>
 #include <string.h>
 
+struct ManualInputSnapshot
+{
+    uint32_t token;
+};
+
 #include "ChassisCtrl.h"
 #include "ControlMgr.h"
 
@@ -13,6 +18,7 @@ static uint32_t s_runtimeSafeStepCount;
 static uint32_t s_runtimeStopCount;
 static uint32_t s_lastTickMs;
 static uint16_t s_lastPeriodMs;
+static const struct ManualInputSnapshot *s_lastManualInput;
 static char s_runtimeEvents[24];
 static uint8_t s_runtimeEventCount;
 
@@ -44,11 +50,15 @@ void ChassisRuntimeInit(void)
     RuntimeRecord('I');
 }
 
-void ChassisRuntimeStep(uint32_t tickMs, uint16_t periodMs, int16_t motorCurrent[4])
+void ChassisRuntimeStep(const struct ManualInputSnapshot *manualInput,
+                        uint32_t tickMs,
+                        uint16_t periodMs,
+                        int16_t motorCurrent[4])
 {
     s_runtimeStepCount++;
     s_lastTickMs = tickMs;
     s_lastPeriodMs = periodMs;
+    s_lastManualInput = manualInput;
     RuntimeRecord('U');
     for (uint8_t i = 0u; i < 4u; i++)
     {
@@ -56,11 +66,14 @@ void ChassisRuntimeStep(uint32_t tickMs, uint16_t periodMs, int16_t motorCurrent
     }
 }
 
-void ChassisRuntimeSafeStep(uint32_t tickMs, uint16_t periodMs)
+void ChassisRuntimeSafeStep(const struct ManualInputSnapshot *manualInput,
+                            uint32_t tickMs,
+                            uint16_t periodMs)
 {
     s_runtimeSafeStepCount++;
     s_lastTickMs = tickMs;
     s_lastPeriodMs = periodMs;
+    s_lastManualInput = manualInput;
     RuntimeRecord('F');
 }
 
@@ -102,7 +115,15 @@ static int TestStatus(ControlStatus *status)
 int main(void)
 {
     const ControlController *descriptor;
-    ChassisCtrlInput input = {100u, 2u, 0u};
+    struct ManualInputSnapshot manualInputNormal = {0x12345678u};
+    struct ManualInputSnapshot manualInputSafe = {0x87654321u};
+    struct ManualInputSnapshot manualInputResume = {0x55AA55AAu};
+    ChassisCtrlInput input = {
+        .manualInput = &manualInputNormal,
+        .tickMs = 100u,
+        .periodMs = 2u,
+        .forceSafe = 0u,
+    };
     ChassisCtrlOutput output = {{11, 22, 33, 44}};
     ControlCtx managerContext = {0};
     ControlStatus status;
@@ -161,6 +182,7 @@ int main(void)
                    s_runtimeSafeStepCount == 0u &&
                    s_runtimeStopCount == 0u,
                    "Prepare 不能提前运行执行体")) return 1;
+    s_lastManualInput = NULL;
     if (!TestCheck(ChassisCtrlStep(&input, &output) == ControlResultOk &&
                    s_runtimeInitCount == 1u &&
                    s_runtimeStepCount == 1u &&
@@ -170,6 +192,7 @@ int main(void)
                    s_runtimeEvents[1] == 'U' &&
                    output.motorCurrent[0] == 100 &&
                    output.motorCurrent[3] == 103 &&
+                   s_lastManualInput == input.manualInput &&
                    s_lastTickMs == input.tickMs &&
                    s_lastPeriodMs == input.periodMs,
                    "首次有效 Step 应依次 Init、Update，并返回四路输出")) return 1;
@@ -182,21 +205,29 @@ int main(void)
 
     input.tickMs += input.periodMs;
     input.forceSafe = 1u;
+    input.manualInput = &manualInputSafe;
+    s_lastManualInput = &manualInputNormal;
     if (!TestCheck(ChassisCtrlStep(&input, &output) == ControlResultOk &&
                    s_runtimeInitCount == 1u &&
                    s_runtimeStepCount == 1u &&
                    s_runtimeSafeStepCount == 1u &&
                    s_runtimeStopCount == 0u &&
+                   s_lastManualInput == input.manualInput &&
                    s_lastTickMs == input.tickMs &&
                    s_lastPeriodMs == input.periodMs &&
                    TestOutputZero(&output),
                    "forceSafe 应执行 SafeStep、清零输出且不退出控制域")) return 1;
     input.tickMs += input.periodMs;
+    input.manualInput = NULL;
+    s_lastManualInput = &manualInputSafe;
     if (!TestCheck(ChassisCtrlStep(&input, &output) == ControlResultOk &&
                    s_runtimeSafeStepCount == 2u &&
                    s_runtimeStepCount == 1u &&
+                   s_lastManualInput == NULL &&
+                   s_lastTickMs == input.tickMs &&
+                   s_lastPeriodMs == input.periodMs &&
                    TestOutputZero(&output),
-                   "连续 forceSafe 帧必须逐帧刷新安全执行体")) return 1;
+                   "连续 forceSafe 帧必须逐帧刷新安全执行体，并原样传递读取失败的 NULL")) return 1;
     if (!TestStatus(&status)) return 1;
     if (!TestCheck(status.active != 0u &&
                    status.active_id == ControlIdClassicChassis &&
@@ -205,10 +236,13 @@ int main(void)
 
     input.tickMs += input.periodMs;
     input.forceSafe = 0u;
+    input.manualInput = &manualInputResume;
+    s_lastManualInput = &manualInputSafe;
     if (!TestCheck(ChassisCtrlStep(&input, &output) == ControlResultOk &&
                    s_runtimeInitCount == 1u &&
                    s_runtimeStepCount == 2u &&
                    s_runtimeSafeStepCount == 2u &&
+                   s_lastManualInput == input.manualInput &&
                    output.motorCurrent[0] == 200,
                    "forceSafe 恢复后应直接 Update，不能重复 Init")) return 1;
 

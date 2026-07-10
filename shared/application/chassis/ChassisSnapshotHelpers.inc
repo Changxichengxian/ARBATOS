@@ -121,6 +121,7 @@ static fp32 ChassisWzKfStep(fp32 wz_wheel, bool_t imu_valid, fp32 wz_imu)
 
 static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
                                    ChassisMove *control,
+                                   const ManualInputSnapshot *manual_input,
                                    uint32_t tick_ms,
                                    uint16_t period_ms);
 
@@ -155,6 +156,7 @@ static uint32_t ChassisMotorFeedbackTimeoutMs(uint8_t index)
 
 static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
                                    ChassisMove *control,
+                                   const ManualInputSnapshot *manual_input,
                                    uint32_t tick_ms,
                                    uint16_t period_ms)
 {
@@ -171,17 +173,13 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
 
     memset(snapshot, 0, sizeof(*snapshot));
     snapshot->tick_ms = tick_ms;
-    if (ManualInputGetCurrentCopy(&snapshot->ManualInputCopy) != 0u)
-    {
-        snapshot->manual_input = &snapshot->ManualInputCopy;
-    }
-    snapshot->control_input_valid = ControlInputGetCopy(&snapshot->ControlInputCopy);
+    snapshot->manual_input = manual_input;
     snapshot->manual_online = (uint8_t)(snapshot->manual_input != NULL &&
-                                        toe_is_error(DBUS_TOE) == 0u);
-    if (snapshot->control_input_valid != 0u && snapshot->manual_online != 0u)
+                                        snapshot->manual_input->online != 0u);
+    if (snapshot->manual_online != 0u)
     {
         snapshot->recovery_input_safe = ControlInputSwitchIsPos(
-            snapshot->ControlInputCopy.sw[INPUT_SW_CHASSIS_MODE],
+            snapshot->manual_input->control.sw[INPUT_SW_CHASSIS_MODE],
             g_config.manual_input.semantics.ChassisSafePos);
     }
     {
@@ -277,10 +275,12 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
     if (control != NULL)
     {
         ChassisControlSnapshot fast = {0};
-        const ManualInputState *manual_input = snapshot->manual_input;
-        const ControlInputState *control_input = (snapshot->control_input_valid != 0u) ?
-                                                     &snapshot->ControlInputCopy :
-                                                     NULL;
+        const ManualInputState *manual_state = (snapshot->manual_input != NULL) ?
+                                                         &snapshot->manual_input->manual :
+                                                         NULL;
+        const ControlInputState *control_input = (snapshot->manual_input != NULL) ?
+                                                         &snapshot->manual_input->control :
+                                                         NULL;
 
         fast.gimbal = snapshot->gimbal;
         fast.manual_online = snapshot->manual_online;
@@ -295,7 +295,7 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
         fast.axis_y = (control_input != NULL) ? control_input->axis[INPUT_AXIS_CHASSIS_Y] : 0;
         fast.axis_wz = (control_input != NULL) ? control_input->axis[INPUT_AXIS_CHASSIS_WZ] : 0;
         fast.rc_deadband = CHASSIS_RC_DEADLINE;
-        fast.key_mask = (manual_input != NULL) ? manual_input->key.v : 0u;
+        fast.key_mask = (manual_state != NULL) ? manual_state->key.v : 0u;
         fast.front_key_mask = CHASSIS_FRONT_KEY;
         fast.back_key_mask = CHASSIS_BACK_KEY;
         fast.left_key_mask = CHASSIS_LEFT_KEY;

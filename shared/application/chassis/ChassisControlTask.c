@@ -29,7 +29,7 @@
 
 #include "arm_math.h"
 #include "Pid.h"
-#include "ManualInput.h"
+#include "ManualInputSnapshot.h"
 #include "ControlInput.h"
 #include "CanReceive.h"
 #include "LowCmd.h"
@@ -109,10 +109,8 @@ static const int16_t ChassisZeroCurrentCmd[CHASSIS_MOTOR_COUNT] = {0};
 
 typedef struct
 {
-    ManualInputState ManualInputCopy;
-    ControlInputState ControlInputCopy;
     InsSnapshot ImuSnapshot;
-    const ManualInputState *manual_input;
+    const ManualInputSnapshot *manual_input;
     ChassisGimbalSnapshot gimbal;
     const fp32 *ins_angle;
     const fp32 *gyro;
@@ -131,7 +129,6 @@ typedef struct
     fp32 motor_distance_to_center;
     fp32 max_wheel_speed;
     uint8_t wheel_type;
-    uint8_t control_input_valid;
     uint8_t manual_online;
     uint8_t recovery_input_safe;
     int8_t motor_dir[CHASSIS_MOTOR_COUNT];
@@ -263,10 +260,11 @@ static ChassisSdLogBaseStreamState s_chassis_sdlog_base_stream = {0};
 
 
 static void ChassisRuntimeReadFrame(ChassisRuntimeSnapshot *snapshot,
+                                    const ManualInputSnapshot *manualInput,
                                     uint32_t tickMs,
                                     uint16_t periodMs)
 {
-    ChassisSnapshotCapture(snapshot, &g_chassis, tickMs, periodMs);
+    ChassisSnapshotCapture(snapshot, &g_chassis, manualInput, tickMs, periodMs);
     ChassisFaultUpdate(snapshot);
     ChassisFaultSyncInhibit(&g_chassis);
     ChassisSetMode(&g_chassis);
@@ -286,16 +284,19 @@ void ChassisRuntimeInit(void)
     ChassisFaultInit();
 }
 
-void ChassisRuntimeSafeStep(uint32_t tickMs, uint16_t periodMs)
+void ChassisRuntimeSafeStep(const ManualInputSnapshot *manualInput,
+                            uint32_t tickMs,
+                            uint16_t periodMs)
 {
     ChassisRuntimeSnapshot snapshot;
 
     /* 安全帧仍刷新反馈、故障分组和逐轴禁写，只跳过控制量及功率计算。 */
-    ChassisRuntimeReadFrame(&snapshot, tickMs, periodMs);
+    ChassisRuntimeReadFrame(&snapshot, manualInput, tickMs, periodMs);
     ChassisRuntimePublishSafeFrame();
 }
 
-void ChassisRuntimeStep(uint32_t tickMs,
+void ChassisRuntimeStep(const ManualInputSnapshot *manualInput,
+                        uint32_t tickMs,
                         uint16_t periodMs,
                         int16_t motorCurrent[CHASSIS_MOTOR_COUNT])
 {
@@ -309,7 +310,7 @@ void ChassisRuntimeStep(uint32_t tickMs,
         return;
     }
 
-    ChassisRuntimeReadFrame(&snapshot, tickMs, periodMs);
+    ChassisRuntimeReadFrame(&snapshot, manualInput, tickMs, periodMs);
     if (snapshot.manual_online == 0u || robot_mode_allow_chassis() == 0u)
     {
         ChassisRuntimePublishSafeFrame();
@@ -367,9 +368,11 @@ void ChassisRuntimeStop(void)
     ChassisWriteState(&g_chassis);
 }
 
-static ControlResult ChassisTaskRunFrame(uint8_t forceSafe)
+static ControlResult ChassisTaskRunFrame(const ManualInputSnapshot *manualInput,
+                                         uint8_t forceSafe)
 {
     ChassisCtrlInput input = {
+        .manualInput = manualInput,
         .tickMs = BspTimeGetTickMs(),
         .periodMs = RobotProfileChassisControlPeriodMs(),
         .forceSafe = forceSafe,
@@ -402,7 +405,11 @@ void ChassisControlTask(void const *pvParameters)
     while (1)
     {
         const uint64_t loop_start_us = RtProfBegin();
-        const uint8_t manualOffline = (toe_is_error(DBUS_TOE) != 0u) ? 1u : 0u;
+        ManualInputSnapshot manualInput;
+        const ManualInputSnapshot *frameInput =
+            (ManualInputSnapshotRead(&manualInput) != 0u) ? &manualInput : NULL;
+        const uint8_t manualOffline =
+            (uint8_t)(frameInput == NULL || frameInput->online == 0u);
         const uint8_t forceSafe = (uint8_t)(manualOffline != 0u ||
                                             robot_mode_allow_chassis() == 0u);
 
@@ -415,7 +422,7 @@ void ChassisControlTask(void const *pvParameters)
             WatchTaskBeat(WATCH_TASK_CHASSIS_CONTROL);
         }
 
-        (void)ChassisTaskRunFrame(forceSafe);
+        (void)ChassisTaskRunFrame(frameInput, forceSafe);
         RtProfEnd(RtProfChassisLoop, loop_start_us);
         ChassisControlDelay(&last_wake, RobotProfileChassisControlPeriodMs());
 

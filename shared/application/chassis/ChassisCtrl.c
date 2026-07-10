@@ -108,12 +108,15 @@ static ControlResult ChassisCtrlUpdate(const ControlController *controller,
 
     if (input->forceSafe != 0u)
     {
-        ChassisRuntimeSafeStep(input->tickMs, input->periodMs);
+        ChassisRuntimeSafeStep(input->manualInput, input->tickMs, input->periodMs);
         s_chassisRuntimeSafe = 1u;
         return ControlResultOk;
     }
 
-    ChassisRuntimeStep(input->tickMs, input->periodMs, output->motorCurrent);
+    ChassisRuntimeStep(input->manualInput,
+                       input->tickMs,
+                       input->periodMs,
+                       output->motorCurrent);
     s_chassisRuntimeSafe = 0u;
     return ControlResultOk;
 #else

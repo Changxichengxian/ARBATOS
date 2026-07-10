@@ -1666,18 +1666,64 @@ function Test-ControlRegistryBoundaries {
     }
 
     $chassisTaskRepoPath = "shared\application\chassis\ChassisControlTask.c"
-    $chassisTaskContent = Get-SourceContentWithPrivateIncludes -Path (Join-Path $script:RepoRoot $chassisTaskRepoPath)
+    $chassisTaskPath = Join-Path $script:RepoRoot $chassisTaskRepoPath
+    $chassisTaskRaw = Get-Content -LiteralPath $chassisTaskPath -Raw -Encoding UTF8
+    $chassisTaskContent = Get-SourceContentWithPrivateIncludes -Path $chassisTaskPath
     $chassisPrepareCount = ([regex]::Matches($chassisTaskContent, 'ChassisCtrlPrepare\s*\(')).Count
     $chassisFacadeStepCount = ([regex]::Matches($chassisTaskContent, 'ChassisCtrlStep\s*\(')).Count
     if ($chassisPrepareCount -ne 1 -or $chassisFacadeStepCount -ne 1 -or
         $chassisTaskContent -notmatch 'static\s+ControlResult\s+ChassisTaskRunFrame\s*\(') {
         Add-CheckError "${chassisTaskRepoPath}: Chassis task must prepare once and run exactly one ChassisCtrlStep call point per frame."
     }
-    if ($chassisTaskContent -match 'while\s*\(\s*toe_is_error\s*\(\s*DBUS_TOE\s*\)\s*\)') {
-        Add-CheckError "${chassisTaskRepoPath}: DBUS offline wait must keep consuming the pending Chassis controller through forced-safe frames."
+    $chassisTaskBody = [regex]::Match(
+        $chassisTaskRaw,
+        'void\s+ChassisControlTask\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\n#include\s+"ChassisCoreControl\.inc")'
+    ).Value
+    if ([string]::IsNullOrWhiteSpace($chassisTaskBody) -or
+        ([regex]::Matches($chassisTaskBody, 'ManualInputSnapshotRead\s*\(')).Count -ne 1 -or
+        ([regex]::Matches($chassisTaskBody, 'ChassisTaskRunFrame\s*\(')).Count -ne 1 -or
+        $chassisTaskBody -notmatch 'ChassisTaskRunFrame\s*\(\s*frameInput\s*,\s*forceSafe\s*\)') {
+        Add-CheckError "${chassisTaskRepoPath}: the task loop must read once and pass that exact frameInput into its sole facade call."
+    }
+    $chassisSourceRoot = Join-Path $script:RepoRoot "shared\application\chassis"
+    $chassisInputReadCount = 0
+    foreach ($chassisSourceFile in (Get-ChildItem -LiteralPath $chassisSourceRoot -Recurse -File |
+            Where-Object { $_.Extension -in @(".c", ".h", ".inc") })) {
+        $chassisSourceText = Get-Content -LiteralPath $chassisSourceFile.FullName -Raw -Encoding UTF8
+        $sourceReadCount = ([regex]::Matches($chassisSourceText, 'ManualInputSnapshotRead\s*\(')).Count
+        $chassisInputReadCount += $sourceReadCount
+        if ($sourceReadCount -ne 0 -and $chassisSourceFile.FullName -ne $chassisTaskPath) {
+            Add-CheckError "$(Format-RepoPath $chassisSourceFile.FullName): only ChassisControlTask may read the frame-owned manual-input snapshot."
+        }
+        if ($chassisSourceText -match 'static\s+(?:const\s+)?ManualInputSnapshot\s*\*') {
+            Add-CheckError "$(Format-RepoPath $chassisSourceFile.FullName): Chassis must not persist a task-stack manual-input pointer across frames."
+        }
+    }
+    if ($chassisInputReadCount -ne 1) {
+        Add-CheckError "shared\application\chassis: aggregate manual input must have exactly one lexical read owner."
+    }
+    $chassisBehaviourRepoPath = "shared\application\chassis\ChassisBehaviour.c"
+    $chassisBehaviourInputContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $chassisBehaviourRepoPath) -Raw -Encoding UTF8
+    $chassisInputContent = $chassisTaskContent + "`n" + $chassisBehaviourInputContent
+    foreach ($forbiddenPattern in @(
+            '\bDBUS_TOE\b',
+            'toe_is_error\s*\(',
+            'ManualInputGet(CurrentCopy|CurrentRc|ActiveSource)\s*\(',
+            'get_remote_control_point\s*\(',
+            'remote_control_get_active_source\s*\(',
+            'ControlInputGet(Copy|State)\s*\(',
+            'ControlInput(Axis|Switch)\s*\(',
+            '\binput_(get|axis|switch)\s*\('
+        )) {
+        if ($chassisInputContent -match $forbiddenPattern) {
+            Add-CheckError "${chassisTaskRepoPath}: Chassis control must not use legacy or source-specific input API '$forbiddenPattern'."
+        }
     }
     if ($chassisTaskContent -notmatch 'forceSafe\s*=\s*\(uint8_t\)\(manualOffline[\s\S]{0,120}?robot_mode_allow_chassis') {
-        Add-CheckError "${chassisTaskRepoPath}: DBUS offline and forbidden run modes must use forceSafe without stopping the Chassis domain."
+        Add-CheckError "${chassisTaskRepoPath}: aggregate-input offline and forbidden run modes must use forceSafe without stopping the Chassis domain."
+    }
+    if ($chassisTaskContent -notmatch 'frameInput\s*==\s*NULL\s*\|\|\s*frameInput->online\s*==\s*0u') {
+        Add-CheckError "${chassisTaskRepoPath}: Chassis online state must come from the same aggregate snapshot passed into the frame."
     }
     $chassisRunFrame = [regex]::Match($chassisTaskContent, 'static\s+ControlResult\s+ChassisTaskRunFrame[\s\S]*?(?=/\*\*\s*\r?\n\s*\*\s*@brief)').Value
     if ($chassisRunFrame -notmatch 'ChassisCtrlStep\s*\([\s\S]*?MotorInstSetCurrentBindsBestEffort\s*\(') {
@@ -1693,9 +1739,34 @@ function Test-ControlRegistryBoundaries {
         $chassisRuntimeInit -match 'ChassisSnapshotCapture\s*\(') {
         Add-CheckError "${chassisTaskRepoPath}: Chassis Runtime init must defer the first feedback snapshot to the same-frame update."
     }
-    if ($chassisTaskContent -notmatch 'ChassisSnapshotCapture\s*\(\s*snapshot\s*,\s*&g_chassis\s*,\s*tickMs\s*,\s*periodMs\s*\)' -or
+    if ($chassisTaskContent -notmatch 'ChassisSnapshotCapture\s*\(\s*snapshot\s*,\s*&g_chassis\s*,\s*manualInput\s*,\s*tickMs\s*,\s*periodMs\s*\)' -or
         $chassisTaskContent -notmatch 'ChassisSdLogAppendBaseSample\s*\(\s*&sample\s*,\s*snapshot\.tick_ms') {
         Add-CheckError "${chassisTaskRepoPath}: Chassis Runtime must carry facade tick/period through snapshot and logging."
+    }
+    if ($chassisRunFrame -notmatch '\.manualInput\s*=\s*manualInput' -or
+        $chassisCtrlContent -notmatch 'ChassisRuntimeSafeStep\s*\(\s*input->manualInput\s*,' -or
+        $chassisCtrlContent -notmatch 'ChassisRuntimeStep\s*\(\s*input->manualInput\s*,' -or
+        $chassisTaskContent -notmatch 'ChassisRuntimeReadFrame\s*\(\s*&snapshot\s*,\s*manualInput\s*,') {
+        Add-CheckError "${chassisTaskRepoPath}: Task, ChassisCtrl, normal/safe Runtime and capture must pass the same input snapshot pointer."
+    }
+    $chassisCtrlTestRepoPath = "tools\tests\ChassisCtrlRegression.c"
+    $chassisCtrlTestPath = Join-Path $script:RepoRoot $chassisCtrlTestRepoPath
+    if (-not (Test-Path -LiteralPath $chassisCtrlTestPath -PathType Leaf)) {
+        Add-CheckError "Missing Chassis facade regression: $chassisCtrlTestRepoPath"
+    }
+    else {
+        $chassisCtrlTestContent = Get-Content -LiteralPath $chassisCtrlTestPath -Raw -Encoding UTF8
+        if ([regex]::Matches($chassisCtrlTestContent, 's_lastManualInput\s*==\s*input\.manualInput').Count -lt 3 -or
+            $chassisCtrlTestContent -notmatch 'input\.manualInput\s*=\s*NULL' -or
+            $chassisCtrlTestContent -notmatch 's_lastManualInput\s*==\s*NULL' -or
+            $chassisCtrlTestContent -notmatch 'ChassisRuntimeSafeStep\s*\(\s*const\s+struct\s+ManualInputSnapshot\s*\*\s*manualInput' -or
+            $chassisCtrlTestContent -notmatch 'ChassisRuntimeStep\s*\(\s*const\s+struct\s+ManualInputSnapshot\s*\*\s*manualInput') {
+            Add-CheckError "${chassisCtrlTestRepoPath}: regression must prove normal and safe Runtime receive the facade snapshot pointer unchanged."
+        }
+    }
+    $chassisCtrlRunnerRepoPath = "tools\TestChassisCtrl.ps1"
+    if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $chassisCtrlRunnerRepoPath) -PathType Leaf)) {
+        Add-CheckError "Missing Chassis facade regression runner: $chassisCtrlRunnerRepoPath"
     }
 
     $gimbalRepoPath = "shared\application\gimbal\GimbalControlTask.c"
@@ -2110,6 +2181,10 @@ function Test-FaultIsolationBoundaries {
     }
     if ($chassisHeaderContent -match 'ChassisMotorMeasure') {
         Add-CheckError "${chassisHeaderRepoPath}: ChassisMotor cannot retain a pointer into the CAN RX storage."
+    }
+    if ($chassisHeaderContent -match '\bChassisRc\s*;' -or
+        $chassisHeaderContent -match 'ManualInputSnapshot\s*\*') {
+        Add-CheckError "${chassisHeaderRepoPath}: persistent Chassis state must not retain a frame-owned manual-input pointer."
     }
     $runtimeInitBody = [regex]::Match(
         $chassisContent,

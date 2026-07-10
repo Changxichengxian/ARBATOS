@@ -17,8 +17,11 @@
 extern "C" {
 #endif
 
+struct ManualInputSnapshot;
+
 typedef struct
 {
+    const struct ManualInputSnapshot *manualInput;
     uint32_t tickMs;
     uint16_t periodMs;
     uint8_t forceSafe;
