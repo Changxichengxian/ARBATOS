@@ -306,6 +306,13 @@ uint8_t LowCmdGetMotorManyStamped(const MotorId *ids,
                                   MotorCmd *cmds,
                                   ControlOutputStamp *owners,
                                   uint8_t count);
+/*
+ * 物理发送前的最终授权检查。单向安全的 inactive/None/Disable 可直接发送；
+ * 其他活动快照必须仍属于当前发布代和当前控制许可。
+ */
+uint8_t LowCmdOutputSnapshotAuthorized(MotorId id,
+                                       const MotorCmd *cached,
+                                       const ControlOutputStamp *cachedOwner);
 /* 兼容调试接口：返回快照缓存，新代码优先用 LowCmdGetMotor。 */
 const MotorCmd *LowCmdGetMotorPtr(MotorId id);
 uint8_t LowCmdEnterEmergencyStop(uint16_t writer);

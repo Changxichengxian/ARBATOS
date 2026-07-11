@@ -807,20 +807,22 @@ static uint8_t N6014bSetupPort(uint8_t port, uint32_t baudrate)
     return 1u;
 }
 
-static uint8_t N6014bActiveFrameAllowed(MotorId actuator_id, const MotorCmd *cached_cmd)
+static uint8_t N6014bActiveFrameAllowed(MotorId actuator_id,
+                                       const MotorCmd *cached_cmd,
+                                       const ControlOutputStamp *owner)
 {
-    MotorCmd latest;
-    uint16_t inhibit_writer = (uint16_t)LOWCMD_WRITER_NONE;
+    if (cached_cmd == NULL || owner == NULL ||
+        cached_cmd->active == 0u ||
+        cached_cmd->mode == (uint8_t)MotorModeNone ||
+        cached_cmd->mode == (uint8_t)MotorModeDisable)
+    {
+        return 0u;
+    }
 
-    (void)memset(&latest, 0, sizeof(latest));
     return (uint8_t)(RobotSafetyOutputLocked() == 0u &&
-                     cached_cmd != NULL &&
-                     cached_cmd->active != 0u &&
-                     cached_cmd->mode != (uint8_t)MotorModeNone &&
-                     cached_cmd->mode != (uint8_t)MotorModeDisable &&
-                     LowCmdGetMotor(actuator_id, &latest) != 0u &&
-                     LowCmdGetInhibitWriter(actuator_id, &inhibit_writer) != 0u &&
-                     LowCmdSnapshotAuthorized(cached_cmd, &latest, inhibit_writer) != 0u);
+                     LowCmdOutputSnapshotAuthorized(actuator_id,
+                                                    cached_cmd,
+                                                    owner) != 0u);
 }
 
 static int N6014bTxStart(uint8_t port, const uint8_t frame[N6014B_TX_FRAME_SIZE])
@@ -857,6 +859,7 @@ static int N6014bTxWait(uint8_t port)
 static int N6014bTx(uint8_t port,
                     MotorId actuator_id,
                     const MotorCmd *cached_cmd,
+                    const ControlOutputStamp *owner,
                     const uint8_t active_frame[N6014B_TX_FRAME_SIZE],
                     const uint8_t safe_frame[N6014B_TX_FRAME_SIZE],
                     uint8_t require_authority,
@@ -882,7 +885,7 @@ static int N6014bTx(uint8_t port,
 
     taskENTER_CRITICAL();
     if (require_authority != 0u &&
-        N6014bActiveFrameAllowed(actuator_id, cached_cmd) != 0u)
+        N6014bActiveFrameAllowed(actuator_id, cached_cmd, owner) != 0u)
     {
         use_safe = 0u;
     }
@@ -1120,7 +1123,8 @@ int N6014bMotorSendActuator(uint8_t port,
                                MotorId actuator_id,
                                const motor_node_param_t *node,
                                int16_t current,
-                               const MotorCmd *cmd)
+                               const MotorCmd *cmd,
+                               const ControlOutputStamp *owner)
 {
     uint8_t motor_id;
     uint8_t frame[N6014B_TX_FRAME_SIZE];
@@ -1191,6 +1195,7 @@ int N6014bMotorSendActuator(uint8_t port,
     ret = N6014bTx(port,
                    actuator_id,
                    cmd,
+                   owner,
                    frame,
                    safe_frame,
                    (uint8_t)(mode != N6014B_MODE_LOCK),
@@ -1242,11 +1247,17 @@ uint8_t CanTxProcessExtraItem(uint8_t bus,
                                   MotorId actuator_id,
                                   const motor_node_param_t *node,
                                   int16_t current,
-                                  const MotorCmd *cmd)
+                                  const MotorCmd *cmd,
+                                  const ControlOutputStamp *owner)
 {
     if (UnitreeMotorNodeSupported(node) != 0u)
     {
-        return (UnitreeMotorSendActuator(bus, actuator_id, node, current, cmd) == 0) ? 1u : 0u;
+        return (UnitreeMotorSendActuator(bus,
+                                        actuator_id,
+                                        node,
+                                        current,
+                                        cmd,
+                                        owner) == 0) ? 1u : 0u;
     }
 
     if (N6014bNodeSupported(node) == 0u)
@@ -1254,5 +1265,10 @@ uint8_t CanTxProcessExtraItem(uint8_t bus,
         return 0u;
     }
 
-    return (N6014bMotorSendActuator(bus, actuator_id, node, current, cmd) == 0) ? 1u : 0u;
+    return (N6014bMotorSendActuator(bus,
+                                   actuator_id,
+                                   node,
+                                   current,
+                                   cmd,
+                                   owner) == 0) ? 1u : 0u;
 }

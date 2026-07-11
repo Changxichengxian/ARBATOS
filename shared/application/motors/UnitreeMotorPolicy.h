@@ -35,7 +35,8 @@ static inline fp32 UnitreeMotorRatioSafe(fp32 reduction_ratio)
 
 /*
  * CanTx 缓存之后，故障任务可能已经清命令或提高禁写优先级。
- * 只有缓存与最新快照仍是同一条、且 writer 仍有权限时，才允许物理发送。
+ * 本策略只供发送节流前尽早淘汰旧缓存；物理发送前还必须同时复核命令
+ * 与 ControlOutputStamp，不能把这里的 writer 检查当成最终输出许可。
  */
 static inline uint8_t UnitreeMotorCmdSnapshotAllowed(const MotorCmd *cached,
                                                      const MotorCmd *latest,
@@ -97,6 +98,12 @@ static inline int16_t UnitreeMotorSafeCurrent(const MotorCmd *cached,
 static inline uint8_t UnitreeMotorBrakeRequired(MotorMode mode)
 {
     return (mode == MotorModeDisable) ? 1u : 0u;
+}
+
+/* Disable 是上层已经裁决好的单向安全输出，发送 BRAKE 不依赖活动控制许可。 */
+static inline uint8_t UnitreeMotorOutputAuthorityRequired(MotorMode mode)
+{
+    return (mode == MotorModeDisable) ? 0u : 1u;
 }
 
 static inline uint8_t UnitreeMotorTxDue(const UnitreeMotorTxSchedule *schedule,

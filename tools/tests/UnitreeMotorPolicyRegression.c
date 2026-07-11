@@ -56,7 +56,11 @@ static int TestDampingMapping(void)
                      "MotorApplied 未恢复为 LowCmd 输出侧单位") &&
            TestCheck(UnitreeMotorBrakeRequired(MotorModeDisable) != 0u &&
                          UnitreeMotorBrakeRequired(MotorModeDamping) == 0u,
-                     "Disable 应发 BRAKE，Damping 应保留 FOC 阻尼");
+                     "Disable 应发 BRAKE，Damping 应保留 FOC 阻尼") &&
+           TestCheck(UnitreeMotorOutputAuthorityRequired(MotorModeDisable) == 0u &&
+                         UnitreeMotorOutputAuthorityRequired(MotorModeDamping) != 0u &&
+                         UnitreeMotorOutputAuthorityRequired(MotorModeCurrent) != 0u,
+                     "只有上层 Disable/BRAKE 可以不携带活动控制许可");
 }
 
 static int TestOutputSideMapping(void)

@@ -75,23 +75,16 @@ static uint8_t CanTxMitGetFeedbackState(MotorId actuator_id,
     return 1u;
 }
 
-static uint8_t CanTxMitCommandAuthorizedNow(MotorId actuator_id, const MotorCmd *cached)
+static uint8_t CanTxMitCommandAuthorizedNow(MotorId actuator_id,
+                                            const MotorCmd *cached,
+                                            const ControlOutputStamp *owner)
 {
-    MotorCmd latest;
-    uint16_t inhibitWriter = (uint16_t)LOWCMD_WRITER_NONE;
-
-    (void)memset(&latest, 0, sizeof(latest));
-    if (cached == NULL ||
-        LowCmdGetMotor(actuator_id, &latest) == 0u ||
-        LowCmdGetInhibitWriter(actuator_id, &inhibitWriter) == 0u)
-    {
-        return 0u;
-    }
-    return CanTxCachedCmdAuthorized(cached, &latest, inhibitWriter);
+    return LowCmdOutputSnapshotAuthorized(actuator_id, cached, owner);
 }
 
 static uint8_t CanTxMitSendEnableAuthorized(MotorId actuator_id,
                                             const MotorCmd *cached,
+                                            const ControlOutputStamp *owner,
                                             uint8_t bus,
                                             uint16_t std_id,
                                             int *out_ret)
@@ -101,7 +94,9 @@ static uint8_t CanTxMitSendEnableAuthorized(MotorId actuator_id,
 
     taskENTER_CRITICAL();
     authorized = (uint8_t)(RobotSafetyOutputLocked() == 0u &&
-                           CanTxMitCommandAuthorizedNow(actuator_id, cached) != 0u);
+                           CanTxMitCommandAuthorizedNow(actuator_id,
+                                                       cached,
+                                                       owner) != 0u);
     if (authorized != 0u)
     {
         ret = CanMitMotorSendEnable(bus, std_id);
@@ -117,6 +112,7 @@ static uint8_t CanTxMitSendEnableAuthorized(MotorId actuator_id,
 
 static uint8_t CanTxMitSendCmdAuthorized(MotorId actuator_id,
                                          const MotorCmd *cached,
+                                         const ControlOutputStamp *owner,
                                          uint8_t bus,
                                          uint16_t std_id,
                                          const CanMitMotorLimits *limits,
@@ -128,7 +124,9 @@ static uint8_t CanTxMitSendCmdAuthorized(MotorId actuator_id,
 
     taskENTER_CRITICAL();
     authorized = (uint8_t)(RobotSafetyOutputLocked() == 0u &&
-                           CanTxMitCommandAuthorizedNow(actuator_id, cached) != 0u);
+                           CanTxMitCommandAuthorizedNow(actuator_id,
+                                                       cached,
+                                                       owner) != 0u);
     if (authorized != 0u)
     {
         /* CAN 入队是非阻塞操作，和最终复核放在同一短临界区。 */
@@ -238,19 +236,19 @@ static inline uint8_t CanTxNodeBus(uint8_t fallback_bus, const motor_node_param_
 
 // RM 电机仍优先吃旧双环 PID 给出的电流；只有通用状态命令才临时换算成电流。
 static int16_t CanTxBuildRmCurrentFromActuator(MotorId actuator_id,
-                                                     int16_t current)
+                                               int16_t current,
+                                               const MotorCmd *cmd)
 {
-    MotorCmd cmd;
     MotorState fb;
     MotorMode mode;
     fp32 rm_current;
 
-    if (CanTxGetCmdCopy(actuator_id, &cmd) == 0u || cmd.active == 0u)
+    if (cmd == NULL || cmd->active == 0u)
     {
         return current;
     }
 
-    mode = (MotorMode)cmd.mode;
+    mode = (MotorMode)cmd->mode;
     if (CanTxCmdModeUsesVelocityFeedback(mode) == 0u)
     {
         return current;
@@ -266,14 +264,14 @@ static int16_t CanTxBuildRmCurrentFromActuator(MotorId actuator_id,
         return 0;
     }
 
-    rm_current = cmd.tau;
+    rm_current = cmd->tau;
     if (CanTxCmdModeUsesPositionFeedback(mode) != 0u)
     {
-        rm_current += cmd.kp * (cmd.q - fb.q);
+        rm_current += cmd->kp * (cmd->q - fb.q);
     }
     if (CanTxCmdModeUsesVelocityFeedback(mode) != 0u)
     {
-        rm_current += cmd.kd * (cmd.dq - fb.dq);
+        rm_current += cmd->kd * (cmd->dq - fb.dq);
     }
 
     return CanTxFp32ToI16Saturated(rm_current);
@@ -356,15 +354,19 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
                                                   MotorId actuator_id,
                                                   const motor_node_param_t *node,
                                                   int16_t current,
+                                                  const MotorCmd *cached_cmd,
+                                                  const ControlOutputStamp *cached_owner,
                                                   uint8_t *flags)
 {
     static uint8_t mit_enabled[MotorCount];
     static uint8_t mit_disabled_confirmed[MotorCount];
+    static uint8_t mit_last_cmd_was_safety[MotorCount];
     static uint32_t mit_last_enable_tick[MotorCount];
     static uint32_t mit_last_disable_tick[MotorCount];
     static uint32_t mit_last_cmd_tick[MotorCount];
     const CanMitMotorLimits *limits;
     MotorCmd cmd;
+    ControlOutputStamp owner;
     mit_motor_cmd_t mit_cmd;
     uint8_t have_cmd;
     uint8_t active_cmd;
@@ -384,7 +386,13 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
     }
 
     (void)memset(&cmd, 0, sizeof(cmd));
-    have_cmd = CanTxGetCmdCopy(actuator_id, &cmd);
+    ControlOutputStampClear(&owner);
+    have_cmd = (uint8_t)(cached_cmd != NULL && cached_owner != NULL);
+    if (have_cmd != 0u)
+    {
+        cmd = *cached_cmd;
+        owner = *cached_owner;
+    }
     active_cmd = (uint8_t)(have_cmd != 0u &&
                            cmd.active != 0u &&
                            cmd.mode != (uint8_t)MotorModeNone &&
@@ -396,7 +404,8 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
         cmd.current = current;
         active_cmd = 1u;
     }
-    if (active_cmd != 0u && CanTxMitCommandAuthorizedNow(actuator_id, &cmd) == 0u)
+    if (active_cmd != 0u &&
+        CanTxMitCommandAuthorizedNow(actuator_id, &cmd, &owner) == 0u)
     {
         active_cmd = 0u;
         current = 0;
@@ -421,6 +430,7 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
         {
             mit_last_enable_tick[actuator_id] = 0u;
             mit_last_cmd_tick[actuator_id] = 0u;
+            mit_last_cmd_was_safety[actuator_id] = 0u;
 
             if (mit_disabled_confirmed[actuator_id] == 0u &&
                 CanTxMitPeriodDue(now, mit_last_disable_tick[actuator_id], cmd_period_ms) != 0u)
@@ -459,6 +469,7 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
 
                     if (CanTxMitSendEnableAuthorized(actuator_id,
                                                      &cmd,
+                                                     &owner,
                                                      bus,
                                                      std_id,
                                                      &ret) == 0u)
@@ -484,7 +495,10 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
             return 1u;
         }
 
+        /* 首次切入 SAFETY 零电流或纯阻尼时立即替换旧扭矩，接管后仍按原周期限速。 */
         if (mit_last_cmd_tick[actuator_id] != 0u &&
+            CanTxMitSafetyReplacementPending(cmd.writer,
+                                             mit_last_cmd_was_safety[actuator_id]) == 0u &&
             (uint32_t)(now - mit_last_cmd_tick[actuator_id]) < cmd_period_ms)
         {
             return 1u;
@@ -505,6 +519,7 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
 
             if (CanTxMitSendCmdAuthorized(actuator_id,
                                           &cmd,
+                                          &owner,
                                           bus,
                                           std_id,
                                           limits,
@@ -517,6 +532,8 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
             if (ret == 0)
             {
                 mit_last_cmd_tick[actuator_id] = now;
+                mit_last_cmd_was_safety[actuator_id] =
+                    (cmd.writer == (uint16_t)LOWCMD_WRITER_SAFETY) ? 1u : 0u;
                 s_can_tx_mit_cmd_tx_count[actuator_id]++;
             }
             else if (flags != NULL)
@@ -538,6 +555,7 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
 
         if (CanTxMitSendCmdAuthorized(actuator_id,
                                       &cmd,
+                                      &owner,
                                       bus,
                                       std_id,
                                       limits,
@@ -549,6 +567,8 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
         }
         if (ret == 0)
         {
+            mit_last_cmd_was_safety[actuator_id] =
+                (cmd.writer == (uint16_t)LOWCMD_WRITER_SAFETY) ? 1u : 0u;
             s_can_tx_mit_cmd_tx_count[actuator_id]++;
         }
         else if (flags != NULL)

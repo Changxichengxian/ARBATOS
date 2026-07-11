@@ -125,4 +125,12 @@ static inline uint8_t CanTxCachedCmdAuthorized(const MotorCmd *cached,
     return LowCmdSnapshotAuthorized(cached, latest, inhibitWriter);
 }
 
+/* 安全替代命令第一次接管时不能被普通 MIT 周期节流挡住。 */
+static inline uint8_t CanTxMitSafetyReplacementPending(uint16_t writer,
+                                                       uint8_t lastWasSafety)
+{
+    return (uint8_t)(writer == (uint16_t)LOWCMD_WRITER_SAFETY &&
+                     lastWasSafety == 0u);
+}
+
 #endif

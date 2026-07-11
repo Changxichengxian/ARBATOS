@@ -45,21 +45,16 @@ static void CanTxRecheckRmFrame(uint8_t bus,
     for (uint8_t slot = 0u; slot < 4u; slot++)
     {
         const MotorId actuator_id = s_can_tx_rm_motor[bus_index][group_index][slot];
-        MotorCmd latest;
-        uint16_t inhibit_writer = (uint16_t)LOWCMD_WRITER_NONE;
 
         if (frame[slot] == 0)
         {
             continue;
         }
-        (void)memset(&latest, 0, sizeof(latest));
         if (CanTxActuatorIdValid(actuator_id) == 0u ||
             s_can_tx_cmd_cache_valid[actuator_id] == 0u ||
-            LowCmdGetMotor(actuator_id, &latest) == 0u ||
-            LowCmdGetInhibitWriter(actuator_id, &inhibit_writer) == 0u ||
-            CanTxCachedCmdAuthorized(&s_can_tx_cmd_cache[actuator_id],
-                                     &latest,
-                                     inhibit_writer) == 0u)
+            LowCmdOutputSnapshotAuthorized(actuator_id,
+                                           &s_can_tx_cmd_cache[actuator_id],
+                                           &s_can_tx_owner_cache[actuator_id]) == 0u)
         {
             frame[slot] = 0;
             if (CanTxActuatorIdValid(actuator_id) != 0u)

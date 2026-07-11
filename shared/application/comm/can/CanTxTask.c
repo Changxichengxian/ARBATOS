@@ -54,9 +54,11 @@ __weak uint8_t CanTxProcessExtraItem(uint8_t bus,
                                          MotorId actuator_id,
                                          const motor_node_param_t *node,
                                          int16_t current,
-                                         const MotorCmd *cmd);
+                                         const MotorCmd *cmd,
+                                         const ControlOutputStamp *owner);
 
 static MotorCmd s_can_tx_cmd_cache[MotorCount];
+static ControlOutputStamp s_can_tx_owner_cache[MotorCount];
 static MotorId s_can_tx_cmd_cache_ids[MotorCount];
 static uint8_t s_can_tx_cmd_cache_valid[MotorCount];
 static uint8_t s_can_tx_cmd_expired[MotorCount];
@@ -110,13 +112,15 @@ __weak uint8_t CanTxProcessExtraItem(uint8_t bus,
                                          MotorId actuator_id,
                                          const motor_node_param_t *node,
                                          int16_t current,
-                                         const MotorCmd *cmd)
+                                         const MotorCmd *cmd,
+                                         const ControlOutputStamp *owner)
 {
     (void)bus;
     (void)actuator_id;
     (void)node;
     (void)current;
     (void)cmd;
+    (void)owner;
     return 0u;
 }
 

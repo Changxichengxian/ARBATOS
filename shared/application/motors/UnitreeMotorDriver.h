@@ -46,5 +46,6 @@ int UnitreeMotorSendActuator(uint8_t port,
                             MotorId actuator_id,
                             const motor_node_param_t *node,
                             int16_t current,
-                            const MotorCmd *can_tx_cmd);
+                            const MotorCmd *can_tx_cmd,
+                            const ControlOutputStamp *owner);
 uint8_t UnitreeMotorGetStateCopy(UnitreeMotorState *out);

@@ -50,5 +50,6 @@ int N6014bMotorSendActuator(uint8_t port,
                                MotorId actuator_id,
                                const motor_node_param_t *node,
                                int16_t current,
-                               const MotorCmd *cmd);
+                               const MotorCmd *cmd,
+                               const ControlOutputStamp *owner);
 const N6014bMotorState *N6014bMotorGetState(MotorId actuator_id);

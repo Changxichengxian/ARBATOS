@@ -140,6 +140,7 @@ static int UnitreeMotorSendFrame(const UnitreeMotorConfig *cfg,
                                  const UnitreeMotorTxFrame *safe_frame,
                                  MotorId actuator_id,
                                  const MotorCmd *cached_cmd,
+                                 const ControlOutputStamp *owner,
                                  uint8_t require_authority,
                                  uint8_t *used_safe_frame,
                                  uint8_t *authority_rejected);
@@ -156,6 +157,7 @@ static uint8_t UnitreeMotorBuildCmdFromActuator(const motor_node_param_t *node,
                                                      MotorId actuator_id,
                                                      int16_t current,
                                                      const MotorCmd *can_tx_cmd,
+                                                     const ControlOutputStamp *owner,
                                                      UnitreeMotorCmd *out,
                                                      MotorMode *applied_mode);
 static void UnitreeMotorRefreshFeedback(MotorId actuator_id, const motor_node_param_t *node);
@@ -355,13 +357,12 @@ static uint8_t UnitreeMotorBuildCmdFromActuator(const motor_node_param_t *node,
                                                      MotorId actuator_id,
                                                      int16_t current,
                                                      const MotorCmd *can_tx_cmd,
+                                                     const ControlOutputStamp *owner,
                                                      UnitreeMotorCmd *out,
                                                      MotorMode *applied_mode)
 {
     const MotorModelMitLimits *limits = MotorCfgMitLimits(node);
     MotorCmd src;
-    MotorCmd latest;
-    uint16_t inhibit_writer = (uint16_t)LOWCMD_WRITER_NONE;
     uint8_t active_cmd;
     int16_t effective_current;
     MotorMode mode = MotorModeCurrent;
@@ -387,7 +388,6 @@ static uint8_t UnitreeMotorBuildCmdFromActuator(const motor_node_param_t *node,
 
     (void)current;
     (void)memset(&src, 0, sizeof(src));
-    (void)memset(&latest, 0, sizeof(latest));
     if (can_tx_cmd != NULL)
     {
         src = *can_tx_cmd;
@@ -399,10 +399,9 @@ static uint8_t UnitreeMotorBuildCmdFromActuator(const motor_node_param_t *node,
         return 1u;
     }
 
-    active_cmd = (uint8_t)(LowCmdGetMotor(actuator_id, &latest) != 0u &&
-                           LowCmdGetInhibitWriter(actuator_id, &inhibit_writer) != 0u &&
-                           UnitreeMotorCmdSnapshotAllowed(&src, &latest, inhibit_writer) != 0u);
-    effective_current = UnitreeMotorSafeCurrent(&src, &latest, inhibit_writer);
+    active_cmd = LowCmdOutputSnapshotAuthorized(actuator_id, &src, owner);
+    effective_current = (active_cmd != 0u &&
+                         src.mode == (uint8_t)MotorModeCurrent) ? src.current : 0;
 
     if (active_cmd == 0u)
     {
@@ -723,19 +722,18 @@ static uint8_t UnitreeMotorSetupRs485(const UnitreeMotorConfig *cfg)
 }
 
 static uint8_t UnitreeMotorActiveFrameAllowed(MotorId actuator_id,
-                                              const MotorCmd *cached_cmd)
+                                              const MotorCmd *cached_cmd,
+                                              const ControlOutputStamp *owner)
 {
-    MotorCmd latest;
-    uint16_t inhibit_writer = (uint16_t)LOWCMD_WRITER_NONE;
+    if (cached_cmd == NULL || owner == NULL)
+    {
+        return 0u;
+    }
 
-    (void)memset(&latest, 0, sizeof(latest));
     return (uint8_t)(RobotSafetyOutputLocked() == 0u &&
-                     cached_cmd != NULL &&
-                     LowCmdGetMotor(actuator_id, &latest) != 0u &&
-                     LowCmdGetInhibitWriter(actuator_id, &inhibit_writer) != 0u &&
-                     UnitreeMotorCmdSnapshotAllowed(cached_cmd,
-                                                    &latest,
-                                                    inhibit_writer) != 0u);
+                     LowCmdOutputSnapshotAuthorized(actuator_id,
+                                                    cached_cmd,
+                                                    owner) != 0u);
 }
 
 static int UnitreeMotorStartFrame(uint8_t port, const UnitreeMotorTxFrame *frame)
@@ -769,6 +767,7 @@ static int UnitreeMotorSendFrame(const UnitreeMotorConfig *cfg,
                                  const UnitreeMotorTxFrame *safe_frame,
                                  MotorId actuator_id,
                                  const MotorCmd *cached_cmd,
+                                 const ControlOutputStamp *owner,
                                  uint8_t require_authority,
                                  uint8_t *used_safe_frame,
                                  uint8_t *authority_rejected)
@@ -796,7 +795,7 @@ static int UnitreeMotorSendFrame(const UnitreeMotorConfig *cfg,
      */
     taskENTER_CRITICAL();
     if (require_authority != 0u &&
-        UnitreeMotorActiveFrameAllowed(actuator_id, cached_cmd) != 0u)
+        UnitreeMotorActiveFrameAllowed(actuator_id, cached_cmd, owner) != 0u)
     {
         use_safe = 0u;
     }
@@ -873,6 +872,7 @@ static int UnitreeMotorSendCmd(const UnitreeMotorConfig *cfg,
                                MotorMode applied_mode,
                                MotorId actuator_id,
                                const MotorCmd *cached_cmd,
+                               const ControlOutputStamp *owner,
                                uint8_t *used_safe_frame,
                                uint8_t *authority_rejected)
 {
@@ -910,7 +910,8 @@ static int UnitreeMotorSendCmd(const UnitreeMotorConfig *cfg,
                                 &safe_frame,
                                 actuator_id,
                                 cached_cmd,
-                                (uint8_t)(applied_mode != MotorModeDisable),
+                                owner,
+                                UnitreeMotorOutputAuthorityRequired(applied_mode),
                                 used_safe_frame,
                                 authority_rejected);
     if (ret == 0)
@@ -1049,7 +1050,8 @@ int UnitreeMotorSendActuator(uint8_t port,
                             MotorId actuator_id,
                             const motor_node_param_t *node,
                             int16_t current,
-                            const MotorCmd *can_tx_cmd)
+                            const MotorCmd *can_tx_cmd,
+                            const ControlOutputStamp *owner)
 {
     UnitreeMotorConfig cfg;
     UnitreeMotorCmd cmd;
@@ -1070,6 +1072,7 @@ int UnitreeMotorSendActuator(uint8_t port,
                                         actuator_id,
                                         current,
                                         can_tx_cmd,
+                                        owner,
                                         &cmd,
                                         &applied_mode) == 0u)
     {
@@ -1082,6 +1085,7 @@ int UnitreeMotorSendActuator(uint8_t port,
                               applied_mode,
                               actuator_id,
                               can_tx_cmd,
+                              owner,
                               &used_safe_frame,
                               &authority_rejected);
     if (used_safe_frame != 0u)

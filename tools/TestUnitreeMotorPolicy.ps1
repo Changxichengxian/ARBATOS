@@ -62,13 +62,103 @@ foreach ($Expected in $ExpectedSendSites) {
 }
 
 $DriverSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'shared\application\motors\UnitreeMotorDriver.c') -Raw -Encoding UTF8
-if ($DriverSource -notmatch 'LowCmdGetInhibitWriter\s*\(' -or
-    $DriverSource -notmatch 'UnitreeMotorCmdSnapshotAllowed\s*\(') {
-    throw 'Unitree 发送前缺少 latest LowCmd/inhibit 二次复核。'
-}
 if ($DriverSource -notmatch 'UnitreeMotorBrakeRequired\s*\(' -or
     $DriverSource -notmatch 'UNITREE_MOTOR_MODE_BRAKE') {
     throw 'Unitree Disable 未明确映射为物理 BRAKE。'
+}
+
+$N6014bHeaderSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'shared\application\motors\N6014bMotorDriver.h') -Raw -Encoding UTF8
+$UnitreeHeaderSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'shared\application\motors\UnitreeMotorDriver.h') -Raw -Encoding UTF8
+$N6014bDriverSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'shared\application\motors\N6014bMotorDriver.c') -Raw -Encoding UTF8
+
+if ($UnitreeHeaderSource -notmatch '(?s)UnitreeMotorSendActuator\s*\(.*?const ControlOutputStamp\s*\*owner\s*\)') {
+    throw 'Unitree 公共发送接口未携带控制输出 owner。'
+}
+if ($N6014bHeaderSource -notmatch '(?s)N6014bMotorSendActuator\s*\(.*?const ControlOutputStamp\s*\*owner\s*\)') {
+    throw 'N6014b 公共发送接口未携带控制输出 owner。'
+}
+if ($N6014bDriverSource -notmatch '(?s)CanTxProcessExtraItem\s*\(.*?const ControlOutputStamp\s*\*owner\s*\).*?UnitreeMotorSendActuator\s*\(.*?cmd,\s*owner\s*\).*?N6014bMotorSendActuator\s*\(.*?cmd,\s*owner\s*\)') {
+    throw 'CanTx 扩展分发没有把同一 owner 贯穿 Unitree/N6014b。'
+}
+if ($DriverSource -notmatch '(?s)UnitreeMotorSendActuator\s*\(.*?const ControlOutputStamp\s*\*owner\s*\).*?UnitreeMotorSendCmd\s*\(.*?can_tx_cmd,\s*owner\s*,') {
+    throw 'UnitreeMotorSendActuator 没有把 owner 传给发送链。'
+}
+if ($DriverSource -notmatch '(?s)UnitreeMotorSendCmd\s*\(.*?const ControlOutputStamp\s*\*owner\s*,.*?\)\s*\{.*?UnitreeMotorSendFrame\s*\(.*?cached_cmd,\s*owner\s*,') {
+    throw 'UnitreeMotorSendCmd 没有把 owner 传到物理发送边界。'
+}
+if ($N6014bDriverSource -notmatch '(?s)N6014bMotorSendActuator\s*\(.*?const ControlOutputStamp\s*\*owner\s*\).*?N6014bTx\s*\(.*?cmd,\s*owner\s*,') {
+    throw 'N6014bMotorSendActuator 没有把 owner 传到物理发送边界。'
+}
+
+function Assert-FinalTxBoundary {
+    param(
+        [string]$Name,
+        [string]$Source,
+        [string]$FunctionPattern,
+        [string]$AuthorityPattern,
+        [string]$StartPattern,
+        [string]$WaitPattern
+    )
+
+    $Match = [regex]::Match($Source,
+        "(?ms)^static int $FunctionPattern\([^;]+?\)\s*\{(?<body>.*?)^\}")
+    if (-not $Match.Success) {
+        throw "$Name 最终发送函数提取失败。"
+    }
+    $Body = $Match.Groups['body'].Value
+    $Enter = $Body.IndexOf('taskENTER_CRITICAL();', [StringComparison]::Ordinal)
+    $Authority = [regex]::Match($Body, $AuthorityPattern)
+    $Start = [regex]::Match($Body, $StartPattern)
+    $Exit = $Body.IndexOf('taskEXIT_CRITICAL();', [StringComparison]::Ordinal)
+    $Wait = [regex]::Match($Body, $WaitPattern)
+    if ($Enter -lt 0 -or -not $Authority.Success -or -not $Start.Success -or
+        $Exit -lt 0 -or -not $Wait.Success -or
+        $Enter -ge $Authority.Index -or $Authority.Index -ge $Start.Index -or
+        $Start.Index -ge $Exit -or $Exit -ge $Wait.Index) {
+        throw "$Name 最终 owner 校验、非阻塞 TxStart、退出临界区和 Wait 的顺序被破坏。"
+    }
+    $Critical = $Body.Substring($Enter, $Exit - $Enter)
+    if ([regex]::IsMatch($Critical, $WaitPattern)) {
+        throw "$Name 串口 Wait 进入 task 临界区，可能阻塞实时任务。"
+    }
+}
+
+Assert-FinalTxBoundary `
+    -Name 'Unitree' `
+    -Source $DriverSource `
+    -FunctionPattern 'UnitreeMotorSendFrame' `
+    -AuthorityPattern 'UnitreeMotorActiveFrameAllowed\s*\(actuator_id,\s*cached_cmd,\s*owner\s*\)' `
+    -StartPattern 'UnitreeMotorStartFrame\s*\(' `
+    -WaitPattern 'UnitreeMotorWaitFrame\s*\('
+
+Assert-FinalTxBoundary `
+    -Name 'N6014b' `
+    -Source $N6014bDriverSource `
+    -FunctionPattern 'N6014bTx' `
+    -AuthorityPattern 'N6014bActiveFrameAllowed\s*\(actuator_id,\s*cached_cmd,\s*owner\s*\)' `
+    -StartPattern 'N6014bTxStart\s*\(' `
+    -WaitPattern 'N6014bTxWait\s*\('
+
+foreach ($Boundary in @(
+    @{ Name = 'Unitree'; Source = $DriverSource; Pattern = '(?s)static uint8_t UnitreeMotorActiveFrameAllowed\s*\(.*?^\}' },
+    @{ Name = 'N6014b'; Source = $N6014bDriverSource; Pattern = '(?s)static uint8_t N6014bActiveFrameAllowed\s*\(.*?^\}' }
+)) {
+    $Match = [regex]::Match($Boundary.Source, $Boundary.Pattern, [Text.RegularExpressions.RegexOptions]::Multiline)
+    if (-not $Match.Success -or
+        $Match.Value -notmatch 'RobotSafetyOutputLocked\s*\(\)\s*==\s*0u' -or
+        $Match.Value -notmatch 'LowCmdOutputSnapshotAuthorized\s*\(actuator_id,\s*cached_cmd,\s*owner\s*\)') {
+        throw "$($Boundary.Name) 最终活动帧校验未同时检查全局输出锁、命令快照和 owner。"
+    }
+    if ($Match.Value -match 'LowCmdGetMotor\s*\(' -or
+        $Match.Value -match 'LowCmdGetInhibitWriter\s*\(' -or
+        $Match.Value -match 'LowCmdSnapshotAuthorized\s*\(') {
+        throw "$($Boundary.Name) 最终边界仍绕过带 owner 的统一授权接口。"
+    }
+}
+
+if ($DriverSource -notmatch 'UnitreeMotorOutputAuthorityRequired\s*\(applied_mode\s*\)' -or
+    $N6014bDriverSource -notmatch '\(uint8_t\)\(mode\s*!=\s*N6014B_MODE_LOCK\)') {
+    throw 'Disable/BRAKE 或 LOCK 的无 owner 安全发送语义不明确。'
 }
 
 $RouteSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'shared\application\comm\can\CanCommandTxRouteHelpers.inc') -Raw -Encoding UTF8

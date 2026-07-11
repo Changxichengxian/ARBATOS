@@ -16,6 +16,9 @@ static uint32_t s_test_critical_error_count;
 static uint32_t s_test_permit_validate_count;
 static uint32_t s_test_permit_validate_outside_critical_count;
 static uint32_t s_test_last_required_mask;
+static uint32_t s_test_stamp_validate_count;
+static uint32_t s_test_stamp_validate_outside_critical_count;
+static uint32_t s_test_last_stamp_required_mask;
 static uint32_t s_test_ipsr;
 static uint8_t s_test_authority_valid;
 static ControlOutputPermit s_test_current_permit;
@@ -65,6 +68,24 @@ uint8_t ControlMgrOutputPermitValid(const ControlOutputPermit *permit,
         ControlOutputPermitAllows(&s_test_current_permit, requiredMask) == 0u ||
         ControlOutputStampEqual(&permit->stamp,
                                 &s_test_current_permit.stamp) == 0u)
+    {
+        return 0u;
+    }
+    return 1u;
+}
+
+uint8_t ControlMgrOutputStampValid(const ControlOutputStamp *stamp,
+                                   uint32_t requiredMask)
+{
+    s_test_stamp_validate_count++;
+    s_test_last_stamp_required_mask = requiredMask;
+    if (s_test_critical_depth <= 0)
+    {
+        s_test_stamp_validate_outside_critical_count++;
+    }
+    if (s_test_authority_valid == 0u ||
+        ControlOutputPermitAllows(&s_test_current_permit, requiredMask) == 0u ||
+        ControlOutputStampEqual(stamp, &s_test_current_permit.stamp) == 0u)
     {
         return 0u;
     }
@@ -716,6 +737,19 @@ static int TestCanTxUnlockGenerationBarrier(void)
                      "解锁时没有活动命令的轴应接受之后首次发布");
 }
 
+static int TestCanTxMitSafetyReplacementBypassesOnePeriod(void)
+{
+    return TestCheck(
+               CanTxMitSafetyReplacementPending((uint16_t)LOWCMD_WRITER_SAFETY, 0u) != 0u,
+               "MIT 首次 SAFETY 替代命令必须绕过一次普通周期等待") &&
+           TestCheck(
+               CanTxMitSafetyReplacementPending((uint16_t)LOWCMD_WRITER_SAFETY, 1u) == 0u,
+               "SAFETY 已接管后必须恢复普通 MIT 周期限速") &&
+           TestCheck(
+               CanTxMitSafetyReplacementPending((uint16_t)LOWCMD_WRITER_CONTROL, 0u) == 0u,
+               "普通控制命令不能借安全切换绕过 MIT 周期限速");
+}
+
 static int TestWriterAuthorityComesFromApi(void)
 {
     MotorCmd cmd = TestCurrentCmd(1234);
@@ -1166,6 +1200,341 @@ static int TestLegacyAndSafetyWritesClearOwner(void)
                      "owner 测试结束时清除急停失败");
 }
 
+static int TestOutputAuthorizationSafeDirections(void)
+{
+    MotorCmd cached = TestCurrentCmd(123);
+    ControlOutputStamp owner = {0};
+
+    LowCmdClearAll();
+    cached.active = 0u;
+    cached.mode = (uint8_t)MotorModeForcePos;
+    cached.writer = (uint16_t)LOWCMD_WRITER_FAULT;
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(Motor0, &cached, NULL) != 0u,
+                   "inactive 快照应始终允许朝安全方向发送"))
+    {
+        return 0;
+    }
+
+    cached.active = 1u;
+    cached.mode = (uint8_t)MotorModeNone;
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(Motor0, &cached, &owner) != 0u,
+                   "None 快照应允许朝安全方向发送"))
+    {
+        return 0;
+    }
+    cached.mode = (uint8_t)MotorModeDisable;
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(Motor0, &cached, NULL) != 0u,
+                   "Disable 快照应允许朝安全方向发送"))
+    {
+        return 0;
+    }
+
+    cached.mode = (uint8_t)MotorModeCurrent;
+    return TestCheck(LowCmdOutputSnapshotAuthorized(MotorCount, &cached, &owner) == 0u &&
+                         LowCmdOutputSnapshotAuthorized(Motor0, NULL, &owner) == 0u &&
+                         LowCmdOutputSnapshotAuthorized(Motor0, &cached, NULL) == 0u,
+                     "非法参数或活动快照缺 owner 时必须拒绝");
+}
+
+static int TestOutputAuthorizationTracksCurrentOwner(void)
+{
+    const MotorId id = Motor3;
+    const uint32_t mask = (uint32_t)1u << (uint32_t)id;
+    ControlOutputPermit permit = TestOutputPermit(mask);
+    ControlOutputPermit next_permit;
+    ControlOutputPermit altered;
+    MotorCmd input = TestCurrentCmd(321);
+    MotorCmd cached;
+    MotorCmd prior_cached;
+    MotorCmd altered_cmd;
+    ControlOutputStamp owner;
+    ControlOutputStamp prior_owner;
+    ControlOutputStamp altered_owner;
+    uint32_t validate_before;
+
+    LowCmdClearAll();
+    TestOutputAuthoritySet(&permit, 1u);
+    s_test_tick_ms = 300u;
+    if (!TestCheck(LowCmdSetMotorWithPermit(id, &input, &permit) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u,
+                   "准备最终输出授权快照失败"))
+    {
+        return 0;
+    }
+
+    validate_before = s_test_stamp_validate_count;
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &cached, &owner) != 0u &&
+                       s_test_stamp_validate_count == validate_before + 1u &&
+                       s_test_last_stamp_required_mask == mask &&
+                       s_test_stamp_validate_outside_critical_count == 0u,
+                   "当前 CONTROL 快照必须在 LowCmd 临界区内复核当前许可"))
+    {
+        return 0;
+    }
+
+    altered_cmd = cached;
+    altered_cmd.current++;
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &altered_cmd, &owner) == 0u,
+                   "owner 相同但命令载荷不同仍被放行"))
+    {
+        return 0;
+    }
+    altered_cmd = cached;
+    altered_cmd.seq++;
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &altered_cmd, &owner) == 0u,
+                   "owner 相同但命令发布代不同仍被放行"))
+    {
+        return 0;
+    }
+    altered_owner = owner;
+    altered_owner.authorityEpoch++;
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &cached, &altered_owner) == 0u,
+                   "命令相同但缓存 owner 不同仍被放行"))
+    {
+        return 0;
+    }
+
+    /* 同级禁写允许同级发布者维持输出，更高优先级禁写必须截断。 */
+    gLowCmdInhibitWriter[id] = (uint16_t)LOWCMD_WRITER_CONTROL;
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &cached, &owner) != 0u,
+                   "CONTROL 同级禁写错误拦截了当前许可输出"))
+    {
+        gLowCmdInhibitWriter[id] = (uint16_t)LOWCMD_WRITER_NONE;
+        return 0;
+    }
+    gLowCmdInhibitWriter[id] = (uint16_t)LOWCMD_WRITER_MANUAL;
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "更高优先级局部禁写没有截断 CONTROL 输出"))
+    {
+        gLowCmdInhibitWriter[id] = (uint16_t)LOWCMD_WRITER_NONE;
+        return 0;
+    }
+    gLowCmdInhibitWriter[id] = (uint16_t)LOWCMD_WRITER_NONE;
+
+    prior_cached = cached;
+    prior_owner = owner;
+    next_permit = permit;
+    next_permit.stamp.cycleSeq++;
+    TestOutputAuthoritySet(&next_permit, 1u);
+    s_test_tick_ms++;
+    if (!TestCheck(LowCmdSetMotorWithPermit(id, &input, &next_permit) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u,
+                   "准备 owner 换代快照失败") ||
+        !TestCheck(LowCmdOutputSnapshotAuthorized(id, &cached, &prior_owner) == 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &prior_cached, &prior_owner) == 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) != 0u,
+                   "相同载荷换 owner 后旧 owner 或旧命令仍能发送"))
+    {
+        return 0;
+    }
+
+    altered = next_permit;
+    altered.stamp.authorityEpoch++;
+    TestOutputAuthoritySet(&altered, 1u);
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "authority epoch 变化后旧 owner 仍有效")) return 0;
+
+    altered = next_permit;
+    altered.stamp.cycleSeq++;
+    TestOutputAuthoritySet(&altered, 1u);
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "cycle 变化后旧 owner 仍有效")) return 0;
+
+    altered = next_permit;
+    altered.stamp.controllerId++;
+    TestOutputAuthoritySet(&altered, 1u);
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "controller 变化后旧 owner 仍有效")) return 0;
+
+    altered = next_permit;
+    altered.stamp.domain++;
+    TestOutputAuthoritySet(&altered, 1u);
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "domain 变化后旧 owner 仍有效")) return 0;
+
+    altered = next_permit;
+    altered.actuatorMask &= ~mask;
+    TestOutputAuthoritySet(&altered, 1u);
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "当前控制器不再拥有该电机时旧 owner 仍有效")) return 0;
+
+    TestOutputAuthoritySet(&next_permit, 0u);
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "当前授权撤销后活动快照仍有效")) return 0;
+
+    TestOutputAuthoritySet(&next_permit, 1u);
+    return 1;
+}
+
+static int TestOutputAuthorizationLegacyAndSafetyBoundary(void)
+{
+    const MotorId id = Motor8;
+    const ControlOutputStamp zero_owner = {0};
+    ControlOutputPermit permit = TestOutputPermit((uint32_t)1u << (uint32_t)id);
+    MotorCmd cmd = TestCurrentCmd(0);
+    MotorCmd cached;
+    ControlOutputStamp owner;
+    union
+    {
+        uint32_t bits;
+        fp32 value;
+    } nonfinite;
+
+    LowCmdClearAll();
+    TestOutputAuthoritySet(&permit, 1u);
+    if (!TestCheck(LowCmdSetMotor(id, &cmd) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       ControlOutputStampEqual(&owner, &zero_owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "无 owner 的旧 CONTROL 活动命令不应到达物理发送层"))
+    {
+        return 0;
+    }
+
+    LowCmdClearAll();
+    if (!TestCheck(LowCmdInhibitManyFrom(&id, 1u, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u,
+                   "准备 SAFETY 最终输出例外失败"))
+    {
+        return 0;
+    }
+    cmd = TestCurrentCmd(0);
+    if (!TestCheck(LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) != 0u,
+                   "SAFETY 禁写持有者的严格零电流应允许发送"))
+    {
+        return 0;
+    }
+
+    gLowCmdRecord[id].owner = permit.stamp;
+    owner = permit.stamp;
+    if (!TestCheck(LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "带 owner 的 SAFETY 活动命令不应借安全例外绕过"))
+    {
+        return 0;
+    }
+    (void)memset(&gLowCmdRecord[id].owner, 0, sizeof(gLowCmdRecord[id].owner));
+
+    cmd = TestCurrentCmd(1);
+    if (!TestCheck(LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "SAFETY 非零电流命令不应借局部禁写绕过"))
+    {
+        return 0;
+    }
+
+    cmd = TestCurrentCmd(0);
+    cmd.q = 0.25f;
+    if (!TestCheck(LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "零电流模式携带非零浮点控制量仍被放行"))
+    {
+        return 0;
+    }
+    cmd = TestCurrentCmd(0);
+    cmd.kd = 0.25f;
+    if (!TestCheck(LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "零电流模式携带非零阻尼量仍被放行"))
+    {
+        return 0;
+    }
+
+    (void)memset(&cmd, 0, sizeof(cmd));
+    cmd.active = 1u;
+    cmd.mode = (uint8_t)MotorModeDamping;
+    cmd.kd = 2.0f;
+    if (!TestCheck(LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) != 0u,
+                   "SAFETY 禁写持有者的纯阻尼应允许发送"))
+    {
+        return 0;
+    }
+
+    cmd.kd = -0.1f;
+    if (!TestCheck(LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "负阻尼 SAFETY 命令仍被放行"))
+    {
+        return 0;
+    }
+    nonfinite.bits = 0x7f800000u;
+    cmd.kd = nonfinite.value;
+    if (!TestCheck(LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "无穷阻尼 SAFETY 命令仍被放行"))
+    {
+        return 0;
+    }
+    nonfinite.bits = 0x7fc00000u;
+    cmd.kd = nonfinite.value;
+    if (!TestCheck(LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "NaN 阻尼 SAFETY 命令仍被放行"))
+    {
+        return 0;
+    }
+    cmd.kd = 2.0f;
+    cmd.tau = 0.1f;
+    if (!TestCheck(LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "带非零前馈的 SAFETY 阻尼仍被放行"))
+    {
+        return 0;
+    }
+    cmd.tau = 0.0f;
+    cmd.current = 1;
+    if (!TestCheck(LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "带非零电流的 SAFETY 阻尼仍被放行"))
+    {
+        return 0;
+    }
+
+    (void)memset(&cmd, 0, sizeof(cmd));
+    cmd.active = 1u;
+    cmd.mode = (uint8_t)MotorModeStateTorque;
+    if (!TestCheck(LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "其他 SAFETY 活动模式不应绕过最终授权"))
+    {
+        return 0;
+    }
+
+    LowCmdClearAll();
+    cmd = TestCurrentCmd(0);
+    if (!TestCheck(LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "没有持有 SAFETY 局部禁写时不能使用安全活动例外"))
+    {
+        return 0;
+    }
+
+    LowCmdClearAll();
+    if (!TestCheck(LowCmdInhibitManyFrom(&id, 1u, (uint16_t)LOWCMD_WRITER_FAULT) != 0u &&
+                       LowCmdSetMotorFrom(id, &cmd, (uint16_t)LOWCMD_WRITER_FAULT) != 0u &&
+                       LowCmdGetMotorStamped(id, &cached, &owner) != 0u &&
+                       LowCmdOutputSnapshotAuthorized(id, &cached, &owner) == 0u,
+                   "FAULT 零命令不应借 writer 优先级绕过最终授权"))
+    {
+        return 0;
+    }
+
+    LowCmdClearAll();
+    return 1;
+}
+
 static int TestLowStateCopiesLastEcd(void)
 {
     const MotorId ids[2] = {Motor1, Motor6};
@@ -1221,16 +1590,21 @@ int main(void)
     if (!TestCanTxRejectsStaleCachedCommand()) return 1;
     if (!TestCanTxCommandExpiryBoundaries()) return 1;
     if (!TestCanTxUnlockGenerationBarrier()) return 1;
+    if (!TestCanTxMitSafetyReplacementBypassesOnePeriod()) return 1;
     if (!TestWriterAuthorityComesFromApi()) return 1;
     if (!TestPermitWriteAndStampedSnapshot()) return 1;
     if (!TestRevokedPermitRejectIsAtomic()) return 1;
     if (!TestPermitRejectsDuplicateAndIsr()) return 1;
     if (!TestPermitRecoversSafetyInhibitAtomically()) return 1;
     if (!TestLegacyAndSafetyWritesClearOwner()) return 1;
+    if (!TestOutputAuthorizationSafeDirections()) return 1;
+    if (!TestOutputAuthorizationTracksCurrentOwner()) return 1;
+    if (!TestOutputAuthorizationLegacyAndSafetyBoundary()) return 1;
     if (!TestLowStateCopiesLastEcd()) return 1;
     if (!TestCheck(s_test_critical_depth == 0 &&
                        s_test_critical_error_count == 0u &&
-                       s_test_permit_validate_outside_critical_count == 0u,
+                       s_test_permit_validate_outside_critical_count == 0u &&
+                       s_test_stamp_validate_outside_critical_count == 0u,
                    "LowCmd 临界区不配对，或许可在外层锁之外校验")) return 1;
 
     (void)puts("PASS: LowCmd clear and inhibit host regression");

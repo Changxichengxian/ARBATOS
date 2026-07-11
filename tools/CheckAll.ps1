@@ -1448,9 +1448,20 @@ function Test-CanTxDeviceConfigBoundaries {
         $content -notmatch 'allowed\s*=\s*\(\s*output_locked\s*!=\s*0u\s*\|\|\s*RobotSafetyOutputLocked\s*\(\s*\)\s*!=\s*0u\s*\)\s*\?') {
         Add-CheckError "${repoPath}: the frame lock and a fresh Lifecycle read must flow into every route decision."
     }
-    if ($content -notmatch 'static\s+uint8_t\s+CanTxRecheckCommandAuthority\s*\([\s\S]*?LowCmdGetMotor\s*\([\s\S]*?LowCmdGetInhibitWriter\s*\([\s\S]*?CanTxCachedCmdAuthorized\s*\([\s\S]*?CanTxForceDisabledCmd\s*\(' -or
-        $content -notmatch 'CanTxRecheckCommandAuthority\s*\(\s*actuator_id\s*,\s*&cmd\s*,\s*&have_cmd\s*,\s*&flags\s*\)[\s\S]{0,300}?CanTxProcessAxis\s*\(') {
-        Add-CheckError "${repoPath}: every protocol path must recheck command generation and inhibit authority immediately before dispatch."
+    if ($content -notmatch 'static\s+ControlOutputStamp\s+s_can_tx_owner_cache\s*\[\s*MotorCount\s*\]' -or
+        $content -notmatch 'LowCmdGetMotorManyStamped\s*\([\s\S]{0,240}?s_can_tx_owner_cache' -or
+        $content -notmatch 'CanTxGetCmdCopy\s*\([^;{]*ControlOutputStamp\s*\*\s*owner' -or
+        $content -notmatch 'CanTxForceDisabledCmd\s*\([^;{]*\)\s*\{[\s\S]{0,500}?ControlOutputStampClear\s*\(\s*&s_can_tx_owner_cache') {
+        Add-CheckError "${repoPath}: CanTx must cache each command with its ControlOutputStamp and clear local synthetic Disable ownership."
+    }
+    if ($content -notmatch 'static\s+uint8_t\s+CanTxRecheckCommandAuthority\s*\([^;{]*ControlOutputStamp\s*\*\s*owner[\s\S]{0,2500}?LowCmdOutputSnapshotAuthorized\s*\([\s\S]{0,1200}?CanTxForceDisabledCmd\s*\(' -or
+        $content -notmatch 'CanTxRecheckCommandAuthority\s*\(\s*actuator_id\s*,\s*&cmd\s*,\s*&owner\s*,\s*&have_cmd\s*,\s*&flags\s*\)[\s\S]{0,900}?CanTxProcessAxis\s*\(' -or
+        $content -notmatch 'CanTxProcessAxis\s*\([^;{]*const\s+ControlOutputStamp\s*\*\s*owner') {
+        Add-CheckError "${repoPath}: every protocol path must carry and recheck command ownership immediately before dispatch."
+    }
+    if ($content -notmatch 'CanTxRecheckUnitreeAuthority\s*\([^;{]*ControlOutputStamp\s*\*\s*owner[\s\S]{0,1200}?LowCmdOutputSnapshotAuthorized\s*\(' -or
+        $content -notmatch 'CanTxRecheckUnitreeAuthority\s*\(\s*actuator_id\s*,\s*&cmd\s*,\s*&owner[\s\S]{0,1400}?UnitreeMotorTxDue\s*\(') {
+        Add-CheckError "${repoPath}: Unitree must turn an invalid owner into Disable before transport throttling can defer BRAKE."
     }
     $cacheClearBody = [regex]::Match(
         $content,
@@ -1474,11 +1485,11 @@ function Test-CanTxDeviceConfigBoundaries {
     }
     else {
         $n6014bContent = Get-Content -LiteralPath $n6014bPath -Raw -Encoding UTF8
-        if ($n6014bContent -notmatch 'N6014bMotorSendActuator\s*\([^;{]*const\s+MotorCmd\s*\*\s*cmd' -or
+        if ($n6014bContent -notmatch 'N6014bMotorSendActuator\s*\([^;{]*const\s+MotorCmd\s*\*\s*cmd[^;{]*const\s+ControlOutputStamp\s*\*\s*owner' -or
             $n6014bContent -notmatch 'N6014bBuildCmdFromActuator\s*\([^;{]*const\s+MotorCmd\s*\*\s*cmd') {
-            Add-CheckError "${n6014bRepoPath}: CanTx command snapshot must flow unchanged into the N6014b encoder."
+            Add-CheckError "${n6014bRepoPath}: CanTx command and owner snapshots must flow unchanged into the N6014b encoder."
         }
-        if ($n6014bContent -notmatch 'static\s+uint8_t\s+N6014bActiveFrameAllowed[\s\S]*?RobotSafetyOutputLocked\s*\([\s\S]*?LowCmdGetMotor\s*\([\s\S]*?LowCmdGetInhibitWriter\s*\([\s\S]*?LowCmdSnapshotAuthorized\s*\(' -or
+        if ($n6014bContent -notmatch 'static\s+uint8_t\s+N6014bActiveFrameAllowed[^;{]*ControlOutputStamp\s*\*\s*owner[\s\S]*?RobotSafetyOutputLocked\s*\([\s\S]*?LowCmdOutputSnapshotAuthorized\s*\(' -or
             $n6014bContent -notmatch 'taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,500}?N6014bActiveFrameAllowed[\s\S]{0,500}?N6014bTxStart[\s\S]{0,120}?taskEXIT_CRITICAL\s*\(\s*\)[\s\S]{0,180}?N6014bTxWait') {
             Add-CheckError "${n6014bRepoPath}: final authority, active/LOCK selection and non-blocking UART start must be linearized before waiting."
         }
@@ -1494,7 +1505,7 @@ function Test-CanTxDeviceConfigBoundaries {
     else {
         $unitreeContent = Get-Content -LiteralPath $unitreePath -Raw -Encoding UTF8
         if ($unitreeContent -notmatch 'UnitreeMotorBuildTxFrame\s*\(\s*&safe_frame[\s\S]{0,180}?UNITREE_MOTOR_MODE_BRAKE' -or
-            $unitreeContent -notmatch 'static\s+uint8_t\s+UnitreeMotorActiveFrameAllowed[\s\S]*?RobotSafetyOutputLocked\s*\([\s\S]*?LowCmdGetMotor\s*\([\s\S]*?LowCmdGetInhibitWriter\s*\([\s\S]*?UnitreeMotorCmdSnapshotAllowed\s*\(' -or
+            $unitreeContent -notmatch 'static\s+uint8_t\s+UnitreeMotorActiveFrameAllowed[^;{]*ControlOutputStamp\s*\*\s*owner[\s\S]*?RobotSafetyOutputLocked\s*\([\s\S]*?LowCmdOutputSnapshotAuthorized\s*\(' -or
             $unitreeContent -notmatch 'taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,500}?UnitreeMotorActiveFrameAllowed[\s\S]{0,500}?UnitreeMotorStartFrame[\s\S]{0,120}?taskEXIT_CRITICAL\s*\(\s*\)[\s\S]{0,180}?UnitreeMotorWaitFrame') {
             Add-CheckError "${unitreeRepoPath}: final authority must select a prebuilt BRAKE frame or start the active frame before waiting outside the critical section."
         }
@@ -3350,16 +3361,22 @@ function Test-FaultIsolationBoundaries {
 
     $routeRepoPath = "shared\application\comm\can\CanCommandTxRouteHelpers.inc"
     $routeContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $routeRepoPath) -Raw -Encoding UTF8
-    foreach ($required in @("CanTxApplyInhibitGate", "CanTxCachedCmdAuthorized", "CanTxRs485DriverOwnsApplied", "CanTxMergeDriverAppliedFlags")) {
+    foreach ($required in @("CanTxApplyInhibitGate", "LowCmdOutputSnapshotAuthorized", "ControlOutputStamp *owner", "CanTxRs485DriverOwnsApplied", "CanTxMergeDriverAppliedFlags")) {
         if ($routeContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${routeRepoPath}: generic CanTx safety closure must keep '$required'."
         }
     }
+    if ($routeContent -notmatch 'CanTxProcessRs485Axis\s*\([^;{]*ControlOutputStamp\s*\*\s*owner' -or
+        $routeContent -notmatch 'CanTxProcessMitOrExtraAxis\s*\([^;{]*ControlOutputStamp\s*\*\s*owner' -or
+        $routeContent -notmatch 'CanTxProcessExtraItem\s*\([^;]*cmd\s*,\s*owner\s*\)') {
+        Add-CheckError "${routeRepoPath}: command ownership must reach both CAN and RS485 protocol senders."
+    }
 
     $emitRepoPath = "shared\application\comm\can\CanCommandTxEmitHelpers.inc"
     $emitContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $emitRepoPath) -Raw -Encoding UTF8
-    if ($emitContent -notmatch 'taskENTER_CRITICAL\s*\(\s*\)[\s\S]*?CanTxRecheckRmFrame\s*\([\s\S]*?CAN_cmd_rm_group\s*\([\s\S]*?taskEXIT_CRITICAL\s*\(\s*\)') {
-        Add-CheckError "${emitRepoPath}: RM final authorization and non-blocking enqueue must share the LowCmd task critical section."
+    if ($emitContent -notmatch 'CanTxRecheckRmFrame\s*\([^;{]*\)\s*\{[\s\S]*?frame\s*\[\s*slot\s*\]\s*==\s*0[\s\S]*?LowCmdOutputSnapshotAuthorized\s*\([^;]*s_can_tx_owner_cache[\s\S]*?frame\s*\[\s*slot\s*\]\s*=\s*0' -or
+        $emitContent -notmatch 'taskENTER_CRITICAL\s*\(\s*\)[\s\S]*?CanTxRecheckRmFrame\s*\([\s\S]*?CAN_cmd_rm_group\s*\([\s\S]*?taskEXIT_CRITICAL\s*\(\s*\)') {
+        Add-CheckError "${emitRepoPath}: RM must recheck each nonzero slot with its owner and enqueue the surviving group in one short critical section."
     }
     foreach ($required in @("CanTxUpdateApplied", "CanTxLogMotorCmd")) {
         if ($emitContent -notmatch [regex]::Escape($required)) {
@@ -3369,7 +3386,7 @@ function Test-FaultIsolationBoundaries {
 
     $unitreePolicyRepoPath = "shared\application\motors\UnitreeMotorPolicy.h"
     $unitreePolicyContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $unitreePolicyRepoPath) -Raw -Encoding UTF8
-    foreach ($required in @("UNITREE_MOTOR_DEFAULT_RX_TIMEOUT_MS", "UnitreeMotorCmdSnapshotAllowed", "UnitreeMotorBrakeRequired", "UnitreeMotorMapAppliedOutput", "UnitreeMotorTxDue")) {
+    foreach ($required in @("UNITREE_MOTOR_DEFAULT_RX_TIMEOUT_MS", "UnitreeMotorOutputAuthorityRequired", "UnitreeMotorBrakeRequired", "UnitreeMotorMapAppliedOutput", "UnitreeMotorTxDue")) {
         if ($unitreePolicyContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${unitreePolicyRepoPath}: Unitree single-sender policy must keep '$required'."
         }
@@ -3377,10 +3394,27 @@ function Test-FaultIsolationBoundaries {
 
     $mitRepoPath = "shared\application\comm\can\CanCommandTxMitHelpers.inc"
     $mitContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $mitRepoPath) -Raw -Encoding UTF8
-    if ($mitContent -notmatch 'static\s+uint8_t\s+CanTxMitSendEnableAuthorized[\s\S]*?taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,260}?CanTxMitCommandAuthorizedNow[\s\S]{0,180}?CanMitMotorSendEnable\s*\([\s\S]{0,120}?taskEXIT_CRITICAL\s*\(\s*\)') {
+    foreach ($productionSource in @(
+            [pscustomobject]@{ Path = $routeRepoPath; Content = $routeContent },
+            [pscustomobject]@{ Path = $emitRepoPath; Content = $emitContent },
+            [pscustomobject]@{ Path = $mitRepoPath; Content = $mitContent }
+        )) {
+        if ($productionSource.Content -match '\b(?:CanTxCachedCmdAuthorized|UnitreeMotorCmdSnapshotAllowed|LowCmdSnapshotAuthorized|LowCmdGetInhibitWriter)\s*\(') {
+            Add-CheckError "$($productionSource.Path): physical send paths may not authorize output from seq/writer alone."
+        }
+    }
+    if ($mitContent -notmatch 'static\s+uint8_t\s+CanTxMitCommandAuthorizedNow[^;{]*ControlOutputStamp\s*\*\s*owner[\s\S]{0,220}?LowCmdOutputSnapshotAuthorized\s*\(' -or
+        ([regex]::Matches($mitContent, 'CanTxMitCommandAuthorizedNow\s*\(')).Count -lt 4) {
+        Add-CheckError "${mitRepoPath}: MIT active selection, Enable and command send must all recheck the cached owner."
+    }
+    if ($mitContent -notmatch 'CanTxMitSafetyReplacementPending\s*\(\s*cmd\.writer[\s\S]{0,180}?mit_last_cmd_was_safety' -or
+        ([regex]::Matches($mitContent, 'mit_last_cmd_was_safety\s*\[\s*actuator_id\s*\]\s*=')).Count -lt 3) {
+        Add-CheckError "${mitRepoPath}: the first valid SAFETY replacement must bypass one normal MIT command period."
+    }
+    if ($mitContent -notmatch 'static\s+uint8_t\s+CanTxMitSendEnableAuthorized[\s\S]*?taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,500}?CanTxMitCommandAuthorizedNow[\s\S]{0,500}?CanMitMotorSendEnable\s*\([\s\S]{0,240}?taskEXIT_CRITICAL\s*\(\s*\)') {
         Add-CheckError "${mitRepoPath}: MIT Enable final authorization and CAN enqueue must share one short critical section."
     }
-    if ($mitContent -notmatch 'static\s+uint8_t\s+CanTxMitSendCmdAuthorized[\s\S]*?taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,260}?CanTxMitCommandAuthorizedNow[\s\S]{0,220}?CanMitMotorSendCmd\s*\([\s\S]{0,120}?taskEXIT_CRITICAL\s*\(\s*\)' -or
+    if ($mitContent -notmatch 'static\s+uint8_t\s+CanTxMitSendCmdAuthorized[\s\S]*?taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,500}?CanTxMitCommandAuthorizedNow[\s\S]{0,600}?CanMitMotorSendCmd\s*\([\s\S]{0,240}?taskEXIT_CRITICAL\s*\(\s*\)' -or
         ([regex]::Matches($mitContent, 'CanTxMitSendCmdAuthorized\s*\(')).Count -lt 3) {
         Add-CheckError "${mitRepoPath}: every MIT command branch must use the linearized final-authority sender."
     }

@@ -14,6 +14,7 @@
 #include "task.h"
 #include "main.h"
 
+#include <float.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -85,6 +86,63 @@ static uint8_t MotorIdValid(MotorId id)
 static uint8_t MotorCmdValid(const MotorCmd *cmd)
 {
     return (uint8_t)(cmd != NULL && MotorModeKnown(cmd->mode));
+}
+
+static uint8_t LowCmdFloatFinite(fp32 value)
+{
+    /* ARMCC5 没有稳定可用的 isfinite；有序比较同时拒绝 NaN 和无穷。 */
+    return (uint8_t)(value <= (fp32)FLT_MAX && value >= (fp32)-FLT_MAX);
+}
+
+static uint8_t LowCmdMotorCmdEqual(const MotorCmd *left, const MotorCmd *right)
+{
+    if (left == NULL || right == NULL)
+    {
+        return 0u;
+    }
+
+    return (left->active == right->active &&
+            left->mode == right->mode &&
+            left->timeoutMs == right->timeoutMs &&
+            left->writer == right->writer &&
+            left->seq == right->seq &&
+            left->tick == right->tick &&
+            left->current == right->current &&
+            left->q == right->q &&
+            left->dq == right->dq &&
+            left->kp == right->kp &&
+            left->kd == right->kd &&
+            left->tau == right->tau) ? 1u : 0u;
+}
+
+static uint8_t LowCmdOwnerAbsent(const ControlOutputStamp *owner)
+{
+    return (uint8_t)(owner != NULL &&
+                     owner->authorityEpoch == 0u &&
+                     owner->cycleSeq == 0u &&
+                     owner->controllerId == 0u &&
+                     owner->domain == 0u &&
+                     owner->valid == 0u);
+}
+
+static uint8_t LowCmdSafetyFallbackValid(const MotorCmd *cmd)
+{
+    if (cmd == NULL || cmd->active == 0u || cmd->current != 0 ||
+        cmd->q != 0.0f || cmd->dq != 0.0f || cmd->kp != 0.0f ||
+        cmd->tau != 0.0f)
+    {
+        return 0u;
+    }
+
+    if (cmd->mode == (uint8_t)MotorModeCurrent)
+    {
+        return (cmd->kd == 0.0f) ? 1u : 0u;
+    }
+    if (cmd->mode == (uint8_t)MotorModeDamping)
+    {
+        return (uint8_t)(LowCmdFloatFinite(cmd->kd) != 0u && cmd->kd >= 0.0f);
+    }
+    return 0u;
 }
 
 /*
@@ -1226,6 +1284,63 @@ uint8_t LowCmdGetMotorManyStamped(const MotorId *ids,
 
     (void)LowCmdCopyMotorSnapshot(ids, cmds, owners, count);
     return 1u;
+}
+
+uint8_t LowCmdOutputSnapshotAuthorized(MotorId id,
+                                       const MotorCmd *cached,
+                                       const ControlOutputStamp *cachedOwner)
+{
+    LowCmdCriticalState critical;
+    const LowCmdRecord *latest;
+    uint16_t inhibit_writer;
+    uint8_t authorized = 0u;
+
+    if (MotorIdValid(id) == 0u || cached == NULL)
+    {
+        return 0u;
+    }
+
+    /* 这三类快照只会让执行器失能，允许旧缓存继续朝安全方向收敛。 */
+    if (cached->active == 0u ||
+        cached->mode == (uint8_t)MotorModeNone ||
+        cached->mode == (uint8_t)MotorModeDisable)
+    {
+        return 1u;
+    }
+
+    critical = LowCmdEnterCritical();
+    latest = &gLowCmdRecord[id];
+    inhibit_writer = gLowCmdInhibitWriter[id];
+
+    if (cachedOwner == NULL ||
+        LowCmdMotorCmdEqual(cached, &latest->cmd) == 0u ||
+        ControlOutputStampEqual(cachedOwner, &latest->owner) == 0u)
+    {
+        LowCmdExitCritical(critical);
+        return 0u;
+    }
+
+    if (cached->writer == (uint16_t)LOWCMD_WRITER_CONTROL &&
+        cachedOwner->valid == 1u)
+    {
+        if ((inhibit_writer == (uint16_t)LOWCMD_WRITER_NONE ||
+             inhibit_writer <= (uint16_t)LOWCMD_WRITER_CONTROL) &&
+            ControlMgrOutputStampValid(cachedOwner,
+                                       (uint32_t)1u << (uint32_t)id) != 0u)
+        {
+            authorized = 1u;
+        }
+    }
+    else if (cached->writer == (uint16_t)LOWCMD_WRITER_SAFETY &&
+             inhibit_writer == (uint16_t)LOWCMD_WRITER_SAFETY &&
+             LowCmdOwnerAbsent(cachedOwner) != 0u &&
+             LowCmdSafetyFallbackValid(cached) != 0u)
+    {
+        authorized = 1u;
+    }
+
+    LowCmdExitCritical(critical);
+    return authorized;
 }
 
 const MotorCmd *LowCmdGetMotorPtr(MotorId id)

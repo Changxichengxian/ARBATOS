@@ -157,11 +157,12 @@ static inline uint8_t CanTxProcessRs485Axis(MotorId actuator_id,
                                               const motor_node_param_t *node,
                                               int16_t current,
                                               const MotorCmd *cmd,
+                                              const ControlOutputStamp *owner,
                                               uint8_t *flags)
 {
     const uint8_t port = (node != NULL) ? node->rs485_port : 0u;
 
-    if (CanTxProcessExtraItem(port, actuator_id, node, current, cmd) == 0u)
+    if (CanTxProcessExtraItem(port, actuator_id, node, current, cmd, owner) == 0u)
     {
         if (flags != NULL)
         {
@@ -216,12 +217,19 @@ static inline void CanTxProcessMitOrExtraAxis(uint8_t fallback_bus,
                                                     const motor_node_param_t *node,
                                                     int16_t current,
                                                     const MotorCmd *cmd,
+                                                    const ControlOutputStamp *owner,
                                                     uint8_t *flags)
 {
     const uint8_t node_bus = CanTxNodeBus(fallback_bus, node);
 
-    if (CanTxProcessCanMitItem(node_bus, actuator_id, node, current, flags) == 0u &&
-        CanTxProcessExtraItem(node_bus, actuator_id, node, current, cmd) == 0u)
+    if (CanTxProcessCanMitItem(node_bus,
+                               actuator_id,
+                               node,
+                               current,
+                               cmd,
+                               owner,
+                               flags) == 0u &&
+        CanTxProcessExtraItem(node_bus, actuator_id, node, current, cmd, owner) == 0u)
     {
         if (flags != NULL)
         {
@@ -236,11 +244,14 @@ static inline void CanTxProcessRmAxis(uint8_t fallback_bus,
                                           const motor_node_param_t *node,
                                           uint16_t can_id,
                                           int16_t current,
+                                          const MotorCmd *cmd,
                                           uint8_t *flags,
                                           int16_t *out_current)
 {
     const uint8_t node_bus = CanTxNodeBus(fallback_bus, node);
-    const int16_t rm_current = CanTxBuildRmCurrentFromActuator(actuator_id, current);
+    const int16_t rm_current = CanTxBuildRmCurrentFromActuator(actuator_id,
+                                                              current,
+                                                              cmd);
     const int16_t limited_current = MotorCfgLimitCurrentNode(node, rm_current);
 
     if (flags != NULL && limited_current != rm_current)
@@ -261,6 +272,7 @@ static inline int16_t CanTxProcessAxis(uint8_t fallback_bus,
                                           uint16_t can_id,
                                           int16_t current,
                                           const MotorCmd *cmd,
+                                          const ControlOutputStamp *owner,
                                           uint8_t *flags,
                                           uint8_t *tx_succeeded)
 {
@@ -270,7 +282,12 @@ static inline int16_t CanTxProcessAxis(uint8_t fallback_bus,
     }
     if (MotorCfgTransport(node) == MOTOR_TRANSPORT_RS485)
     {
-        const uint8_t success = CanTxProcessRs485Axis(actuator_id, node, current, cmd, flags);
+        const uint8_t success = CanTxProcessRs485Axis(actuator_id,
+                                                      node,
+                                                      current,
+                                                      cmd,
+                                                      owner,
+                                                      flags);
         if (tx_succeeded != NULL)
         {
             *tx_succeeded = success;
@@ -279,13 +296,26 @@ static inline int16_t CanTxProcessAxis(uint8_t fallback_bus,
     }
     else if (is_rm_group == 0u)
     {
-        CanTxProcessMitOrExtraAxis(fallback_bus, actuator_id, node, current, cmd, flags);
+        CanTxProcessMitOrExtraAxis(fallback_bus,
+                                   actuator_id,
+                                   node,
+                                   current,
+                                   cmd,
+                                   owner,
+                                   flags);
         return current;
     }
     else
     {
         int16_t limited_current = current;
-        CanTxProcessRmAxis(fallback_bus, actuator_id, node, can_id, current, flags, &limited_current);
+        CanTxProcessRmAxis(fallback_bus,
+                           actuator_id,
+                           node,
+                           can_id,
+                           current,
+                           cmd,
+                           flags,
+                           &limited_current);
         return limited_current;
     }
 }
@@ -398,23 +428,19 @@ static void CanTxUpdateApplied(const MotorRoute *route,
 
 static void CanTxApplyInhibitGate(MotorId actuator_id,
                                   MotorCmd *cmd,
+                                  ControlOutputStamp *owner,
                                   uint8_t *have_cmd,
                                   uint8_t *flags)
 {
-    MotorCmd latest;
-    uint16_t inhibitWriter = (uint16_t)LOWCMD_WRITER_NONE;
-
-    if (cmd == NULL || have_cmd == NULL || flags == NULL ||
-        LowCmdGetInhibitWriter(actuator_id, &inhibitWriter) == 0u ||
-        inhibitWriter == (uint16_t)LOWCMD_WRITER_NONE)
+    if (cmd == NULL || owner == NULL || have_cmd == NULL || flags == NULL ||
+        *have_cmd == 0u || cmd->active == 0u ||
+        cmd->mode == (uint8_t)MotorModeNone ||
+        cmd->mode == (uint8_t)MotorModeDisable)
     {
         return;
     }
 
-    (void)memset(&latest, 0, sizeof(latest));
-    if (*have_cmd != 0u &&
-        LowCmdGetMotor(actuator_id, &latest) != 0u &&
-        CanTxCachedCmdAuthorized(cmd, &latest, inhibitWriter) != 0u)
+    if (LowCmdOutputSnapshotAuthorized(actuator_id, cmd, owner) != 0u)
     {
         return;
     }
@@ -422,6 +448,7 @@ static void CanTxApplyInhibitGate(MotorId actuator_id,
     /* 覆盖本轮缓存，让 RM/MIT/扩展驱动都不能继续消费故障前的旧 current。 */
     CanTxForceDisabledCmd(actuator_id);
     *cmd = s_can_tx_cmd_cache[actuator_id];
+    *owner = s_can_tx_owner_cache[actuator_id];
     *have_cmd = 1u;
     *flags |= (uint8_t)MotorAppliedFlagForceDisabled;
     s_can_tx_authority_reject_count[actuator_id]++;
@@ -429,23 +456,20 @@ static void CanTxApplyInhibitGate(MotorId actuator_id,
 
 static void CanTxRecheckUnitreeAuthority(MotorId actuator_id,
                                          MotorCmd *cmd,
+                                         ControlOutputStamp *owner,
                                          uint8_t *have_cmd,
                                          uint8_t *flags)
 {
-    MotorCmd latest;
-    uint16_t inhibit_writer = (uint16_t)LOWCMD_WRITER_NONE;
-
-    if (cmd == NULL || have_cmd == NULL || flags == NULL ||
+    if (cmd == NULL || owner == NULL || have_cmd == NULL || flags == NULL ||
         (*have_cmd != 0u && cmd->mode == (uint8_t)MotorModeDisable))
     {
         return;
     }
 
-    (void)memset(&latest, 0, sizeof(latest));
     if (*have_cmd != 0u &&
-        LowCmdGetMotor(actuator_id, &latest) != 0u &&
-        LowCmdGetInhibitWriter(actuator_id, &inhibit_writer) != 0u &&
-        UnitreeMotorCmdSnapshotAllowed(cmd, &latest, inhibit_writer) != 0u)
+        cmd->active != 0u &&
+        cmd->mode != (uint8_t)MotorModeNone &&
+        LowCmdOutputSnapshotAuthorized(actuator_id, cmd, owner) != 0u)
     {
         return;
     }
@@ -453,6 +477,7 @@ static void CanTxRecheckUnitreeAuthority(MotorId actuator_id,
     /* 节流前再判一次，故障后必须先把旧缓存变成会立即发送的 BRAKE。 */
     CanTxForceDisabledCmd(actuator_id);
     *cmd = s_can_tx_cmd_cache[actuator_id];
+    *owner = s_can_tx_owner_cache[actuator_id];
     *have_cmd = 1u;
     *flags |= (uint8_t)MotorAppliedFlagForceDisabled;
     s_can_tx_authority_reject_count[actuator_id]++;
@@ -460,13 +485,11 @@ static void CanTxRecheckUnitreeAuthority(MotorId actuator_id,
 
 static uint8_t CanTxRecheckCommandAuthority(MotorId actuator_id,
                                             MotorCmd *cmd,
+                                            ControlOutputStamp *owner,
                                             uint8_t *have_cmd,
                                             uint8_t *flags)
 {
-    MotorCmd latest;
-    uint16_t inhibit_writer = (uint16_t)LOWCMD_WRITER_NONE;
-
-    if (cmd == NULL || have_cmd == NULL || flags == NULL)
+    if (cmd == NULL || owner == NULL || have_cmd == NULL || flags == NULL)
     {
         return 0u;
     }
@@ -474,6 +497,7 @@ static uint8_t CanTxRecheckCommandAuthority(MotorId actuator_id,
     {
         CanTxForceDisabledCmd(actuator_id);
         *cmd = s_can_tx_cmd_cache[actuator_id];
+        *owner = s_can_tx_owner_cache[actuator_id];
         *have_cmd = 1u;
         *flags |= (uint8_t)MotorAppliedFlagForceDisabled;
         s_can_tx_authority_reject_count[actuator_id]++;
@@ -486,10 +510,7 @@ static uint8_t CanTxRecheckCommandAuthority(MotorId actuator_id,
         return 1u;
     }
 
-    (void)memset(&latest, 0, sizeof(latest));
-    if (LowCmdGetMotor(actuator_id, &latest) != 0u &&
-        LowCmdGetInhibitWriter(actuator_id, &inhibit_writer) != 0u &&
-        CanTxCachedCmdAuthorized(cmd, &latest, inhibit_writer) != 0u)
+    if (LowCmdOutputSnapshotAuthorized(actuator_id, cmd, owner) != 0u)
     {
         return 1u;
     }
@@ -497,6 +518,7 @@ static uint8_t CanTxRecheckCommandAuthority(MotorId actuator_id,
     /* 扩展驱动调用前最后复核，不允许 N6014b 等协议重用故障前快照。 */
     CanTxForceDisabledCmd(actuator_id);
     *cmd = s_can_tx_cmd_cache[actuator_id];
+    *owner = s_can_tx_owner_cache[actuator_id];
     *have_cmd = 1u;
     *flags |= (uint8_t)MotorAppliedFlagForceDisabled;
     s_can_tx_authority_reject_count[actuator_id]++;
@@ -510,6 +532,7 @@ static void CanTxProcessInstance(const MotorRoute *route,
     MotorId actuator_id;
     const motor_node_param_t *node;
     MotorCmd cmd;
+    ControlOutputStamp owner;
     uint8_t have_cmd;
     uint8_t flags = 0u;
     uint8_t tx_succeeded = 0u;
@@ -535,7 +558,8 @@ static void CanTxProcessInstance(const MotorRoute *route,
     }
 
     (void)memset(&cmd, 0, sizeof(cmd));
-    have_cmd = CanTxGetCmdCopy(actuator_id, &cmd);
+    ControlOutputStampClear(&owner);
+    have_cmd = CanTxGetCmdCopy(actuator_id, &cmd, &owner);
     if (s_can_tx_cmd_expired[actuator_id] != 0u)
     {
         flags |= (uint8_t)MotorAppliedFlagCmdExpired;
@@ -546,11 +570,15 @@ static void CanTxProcessInstance(const MotorRoute *route,
     }
     if (allowed != 0u)
     {
-        CanTxApplyInhibitGate(actuator_id, &cmd, &have_cmd, &flags);
+        CanTxApplyInhibitGate(actuator_id, &cmd, &owner, &have_cmd, &flags);
     }
     if (CanTxIsUnitreeRoute(route) != 0u)
     {
-        CanTxRecheckUnitreeAuthority(actuator_id, &cmd, &have_cmd, &flags);
+        CanTxRecheckUnitreeAuthority(actuator_id,
+                                     &cmd,
+                                     &owner,
+                                     &have_cmd,
+                                     &flags);
     }
     if (allowed != 0u &&
         have_cmd != 0u &&
@@ -578,7 +606,11 @@ static void CanTxProcessInstance(const MotorRoute *route,
         return;
     }
 
-    if (CanTxRecheckCommandAuthority(actuator_id, &cmd, &have_cmd, &flags) == 0u)
+    if (CanTxRecheckCommandAuthority(actuator_id,
+                                     &cmd,
+                                     &owner,
+                                     &have_cmd,
+                                     &flags) == 0u)
     {
         current = 0;
     }
@@ -591,6 +623,7 @@ static void CanTxProcessInstance(const MotorRoute *route,
                                           route->canId,
                                           current,
                                           (have_cmd != 0u) ? &cmd : NULL,
+                                          (have_cmd != 0u) ? &owner : NULL,
                                           &flags,
                                           &tx_succeeded);
     if (CanTxIsUnitreeRoute(route) != 0u && tx_succeeded != 0u)

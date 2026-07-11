@@ -66,11 +66,13 @@ static MotorDriveState CanTxDriveStateFromFeedback(MotorId id)
     return MotorDriveStateEnabled;
 }
 
-static void CanTxApplyUnlockBarrierToCmd(MotorId id, MotorCmd *cmd)
+static void CanTxApplyUnlockBarrierToCmd(MotorId id,
+                                         MotorCmd *cmd,
+                                         ControlOutputStamp *owner)
 {
     uint8_t published_after_unlock;
 
-    if (cmd == NULL || CanTxActuatorIdValid(id) == 0u)
+    if (cmd == NULL || owner == NULL || CanTxActuatorIdValid(id) == 0u)
     {
         return;
     }
@@ -90,12 +92,15 @@ static void CanTxApplyUnlockBarrierToCmd(MotorId id, MotorCmd *cmd)
 
     CanTxForceDisabledCmd(id);
     *cmd = s_can_tx_cmd_cache[id];
+    *owner = s_can_tx_owner_cache[id];
     s_can_tx_cmd_unlock_blocked[id] = 1u;
 }
 
-static uint8_t CanTxGetCmdCopy(MotorId id, MotorCmd *out)
+static uint8_t CanTxGetCmdCopy(MotorId id,
+                               MotorCmd *out,
+                               ControlOutputStamp *owner)
 {
-    if (out == NULL || CanTxActuatorIdValid(id) == 0u)
+    if (out == NULL || owner == NULL || CanTxActuatorIdValid(id) == 0u)
     {
         return 0u;
     }
@@ -103,19 +108,21 @@ static uint8_t CanTxGetCmdCopy(MotorId id, MotorCmd *out)
     if (s_can_tx_cmd_cache_valid[id] != 0u)
     {
         *out = s_can_tx_cmd_cache[id];
+        *owner = s_can_tx_owner_cache[id];
         if (CanTxCmdExpiryLatchCheck(&s_can_tx_cmd_expiry_latch[id],
                                      out,
                                      CanTxNowMs()) != 0u)
         {
-            (void)memset(out, 0, sizeof(*out));
-            out->mode = (uint8_t)MotorModeDisable;
+            CanTxForceDisabledCmd(id);
+            *out = s_can_tx_cmd_cache[id];
+            *owner = s_can_tx_owner_cache[id];
             s_can_tx_cmd_expired[id] = 1u;
         }
-        CanTxApplyUnlockBarrierToCmd(id, out);
+        CanTxApplyUnlockBarrierToCmd(id, out, owner);
         return 1u;
     }
 
-    if (LowCmdGetMotor(id, out) == 0u)
+    if (LowCmdGetMotorStamped(id, out, owner) == 0u)
     {
         return 0u;
     }
@@ -123,17 +130,19 @@ static uint8_t CanTxGetCmdCopy(MotorId id, MotorCmd *out)
                                  out,
                                  CanTxNowMs()) != 0u)
     {
-        (void)memset(out, 0, sizeof(*out));
-        out->mode = (uint8_t)MotorModeDisable;
+        CanTxForceDisabledCmd(id);
+        *out = s_can_tx_cmd_cache[id];
+        *owner = s_can_tx_owner_cache[id];
         s_can_tx_cmd_expired[id] = 1u;
     }
-    CanTxApplyUnlockBarrierToCmd(id, out);
+    CanTxApplyUnlockBarrierToCmd(id, out, owner);
     return 1u;
 }
 
 static void CanTxClearCmdCache(void)
 {
     (void)memset(s_can_tx_cmd_cache_valid, 0, sizeof(s_can_tx_cmd_cache_valid));
+    (void)memset(s_can_tx_owner_cache, 0, sizeof(s_can_tx_owner_cache));
     (void)memset(s_can_tx_cmd_expired, 0, sizeof(s_can_tx_cmd_expired));
     (void)memset(s_can_tx_cmd_unlock_blocked, 0, sizeof(s_can_tx_cmd_unlock_blocked));
 }
@@ -176,7 +185,10 @@ static void CanTxCacheLowcmd(void)
     CanTxClearCmdCache();
     CanTxPrepareCmdCacheIds();
 
-    if (LowCmdGetMotorMany(s_can_tx_cmd_cache_ids, s_can_tx_cmd_cache, (uint8_t)MotorCount) == 0u)
+    if (LowCmdGetMotorManyStamped(s_can_tx_cmd_cache_ids,
+                                  s_can_tx_cmd_cache,
+                                  s_can_tx_owner_cache,
+                                  (uint8_t)MotorCount) == 0u)
     {
         return;
     }
@@ -221,6 +233,7 @@ static void CanTxForceDisabledCmd(MotorId id)
     s_can_tx_cmd_cache[id].active = 1u;
     s_can_tx_cmd_cache[id].mode = (uint8_t)MotorModeDisable;
     s_can_tx_cmd_cache[id].tick = CanTxNowMs();
+    ControlOutputStampClear(&s_can_tx_owner_cache[id]);
     s_can_tx_cmd_cache_valid[id] = 1u;
 }
 
