@@ -2892,27 +2892,34 @@ function Test-FaultIsolationBoundaries {
                         "shared/application/robot/RobotLifecycle.h",
                         "shared/application/services/diagnostics/RobotFaultGuard.h")
             AllowedRegex = '$a'
-        },
-        [pscustomobject]@{
-            Token = "ControlMgrStopAll"
-            Allowed = @("shared/application/robot/ControlMgr.c",
-                        "shared/application/robot/ControlMgr.h")
-            AllowedRegex = '$a'
         }
     )
 
-    foreach ($entry in $globalEntries) {
-        foreach ($file in $sourceFiles) {
-            $content = Get-Content -LiteralPath $file.FullName -Raw
+    $removedGlobalStopApis = @(
+        "FaultActionStopGlobal",
+        "FaultMgrSetSystemFatal",
+        "FaultMgrSystemAction",
+        "FaultMgrGetSystemStatus",
+        "FaultSystemStatus",
+        "ControlMgrStopAll"
+    )
+    foreach ($file in $sourceFiles) {
+        $content = Get-Content -LiteralPath $file.FullName -Raw
+        $repoPath = (Format-RepoPath $file.FullName) -replace '\\', '/'
+        foreach ($entry in $globalEntries) {
             if ($content -notmatch ("\b" + [regex]::Escape($entry.Token) + "\s*\(")) {
                 continue
             }
 
-            $repoPath = (Format-RepoPath $file.FullName) -replace '\\', '/'
             if ($entry.Allowed -contains $repoPath -or $repoPath -match $entry.AllowedRegex) {
                 continue
             }
             Add-CheckError "${repoPath}: $($entry.Token) is reserved for explicit system-fatal paths; device/domain faults must use FaultMgr isolation."
+        }
+        foreach ($removed in $removedGlobalStopApis) {
+            if ($content -match ("\b" + [regex]::Escape($removed) + "\b")) {
+                Add-CheckError "${repoPath}: removed global-stop API '$removed' must not return; only RobotFaultGuard owns system-fatal shutdown."
+            }
         }
     }
 
@@ -2928,6 +2935,10 @@ function Test-FaultIsolationBoundaries {
         if ($faultMgrHeaderContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${faultMgrHeaderRepoPath}: per-task fault storage must keep bounded default '$required'."
         }
+    }
+    if ($faultMgrHeaderContent -match '\buint8_t\s+systemSafe\b' -or
+        $faultMgrHeaderContent -match '\bFaultRecoveryRule\s+system\s*;') {
+        Add-CheckError "${faultMgrHeaderRepoPath}: per-task FaultMgr must only describe device and explicit coupled-domain recovery."
     }
 
     $faultMgrRepoPath = "shared\application\robot\FaultMgr.c"

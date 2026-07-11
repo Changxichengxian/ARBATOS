@@ -171,8 +171,7 @@ static void WheelLegFaultDomainUpdate(WheelLegTaskFrame *frame)
             result = FaultMgrUpdate(&s_wheelleg.fault_mgr,
                                     frame->now_ms,
                                     0u,
-                                    domain_safe_mask,
-                                    1u);
+                                    domain_safe_mask);
         }
         if (result == FaultMgrResultOk)
         {

@@ -119,7 +119,7 @@ static void ChassisFaultUpdate(const ChassisRuntimeSnapshot *snapshot)
         safeMask = s_chassisFault.configuredMask;
     }
     if (updateOk == 0u ||
-        FaultMgrUpdate(&s_chassisFault.mgr, nowMs, safeMask, 0u, 1u) != FaultMgrResultOk)
+        FaultMgrUpdate(&s_chassisFault.mgr, nowMs, safeMask, 0u) != FaultMgrResultOk)
     {
         s_chassisFault.blockingMask = s_chassisFault.configuredMask;
         return;

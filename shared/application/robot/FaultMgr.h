@@ -32,7 +32,6 @@ typedef enum
     FaultActionRun = 0u,
     FaultActionIsolateDevice,
     FaultActionStopDomain,
-    FaultActionStopGlobal,
 } FaultAction;
 
 typedef enum
@@ -64,7 +63,6 @@ typedef struct
     uint8_t domainCount;
     FaultRecoveryRule device[FAULT_MGR_DEVICE_MAX];
     FaultDomainConfig domain[FAULT_MGR_DOMAIN_MAX];
-    FaultRecoveryRule system;
 } FaultMgrConfig;
 
 typedef struct
@@ -100,20 +98,6 @@ typedef struct
     uint8_t everFaulted;
 } FaultDomainStatus;
 
-typedef struct
-{
-    FaultAction action;
-    uint32_t activeReasonMask;
-    uint32_t blockingReasonMask;
-    uint32_t historyReasonMask;
-    uint32_t firstFaultMs;
-    uint32_t lastFaultMs;
-    uint32_t healthySinceMs;
-    uint8_t faultActive;
-    uint8_t recoveryPending;
-    uint8_t everFaulted;
-} FaultSystemStatus;
-
 /* 内部记录放在结构体里，调用方只需要静态分配 FaultMgr，不应直接读写这些字段。 */
 typedef struct
 {
@@ -129,7 +113,6 @@ typedef struct
 {
     FaultMgrRecord device[FAULT_MGR_DEVICE_MAX];
     FaultMgrRecord domain[FAULT_MGR_DOMAIN_MAX];
-    FaultMgrRecord system;
     uint32_t deviceStableMs[FAULT_MGR_DEVICE_MAX];
     uint32_t domainMemberMask[FAULT_MGR_DOMAIN_MAX];
     uint32_t domainCriticalMask[FAULT_MGR_DOMAIN_MAX];
@@ -137,11 +120,9 @@ typedef struct
     uint32_t deviceRequireSafeMask;
     uint32_t domainRequireSafeMask;
     uint32_t domainRecoveryStartedMask;
-    uint32_t systemStableMs;
     uint8_t deviceDomain[FAULT_MGR_DEVICE_MAX];
     uint8_t deviceCount;
     uint8_t domainCount;
-    uint8_t systemRequireSafe;
     uint8_t initialized;
 } FaultMgr;
 
@@ -155,19 +136,13 @@ FaultMgrResult FaultMgrSetDeviceFault(FaultMgr *mgr,
                                       uint32_t reasonMask,
                                       uint8_t active,
                                       uint32_t nowMs);
-FaultMgrResult FaultMgrSetSystemFatal(FaultMgr *mgr,
-                                      uint32_t reasonMask,
-                                      uint8_t active,
-                                      uint32_t nowMs);
 FaultMgrResult FaultMgrUpdate(FaultMgr *mgr,
                               uint32_t nowMs,
                               uint32_t deviceSafeMask,
-                              uint32_t domainSafeMask,
-                              uint8_t systemSafe);
+                              uint32_t domainSafeMask);
 
 FaultAction FaultMgrDeviceAction(const FaultMgr *mgr, uint8_t deviceId);
 FaultAction FaultMgrDomainAction(const FaultMgr *mgr, uint8_t domainId);
-FaultAction FaultMgrSystemAction(const FaultMgr *mgr);
 
 FaultMgrResult FaultMgrGetDeviceStatus(const FaultMgr *mgr,
                                        uint8_t deviceId,
@@ -175,6 +150,5 @@ FaultMgrResult FaultMgrGetDeviceStatus(const FaultMgr *mgr,
 FaultMgrResult FaultMgrGetDomainStatus(const FaultMgr *mgr,
                                        uint8_t domainId,
                                        FaultDomainStatus *status);
-FaultMgrResult FaultMgrGetSystemStatus(const FaultMgr *mgr, FaultSystemStatus *status);
 
 #endif

@@ -282,7 +282,7 @@ static void ShootFaultInit(void)
         (FaultMgrInit(&s_shootFault.mgr, &config) == FaultMgrResultOk) ? 1u : 0u;
     s_shootFault.domainAction = (s_shootFault.initialized != 0u) ?
                                     (uint8_t)FaultActionRun :
-                                    (uint8_t)FaultActionStopGlobal;
+                                    (uint8_t)FaultActionStopDomain;
     s_shootFault.triggerAction = s_shootFault.domainAction;
 }
 
@@ -297,8 +297,8 @@ static void ShootFaultUpdate(uint8_t switch_safe)
 
     if (s_shootFault.initialized == 0u)
     {
-        s_shootFault.domainAction = (uint8_t)FaultActionStopGlobal;
-        s_shootFault.triggerAction = (uint8_t)FaultActionStopGlobal;
+        s_shootFault.domainAction = (uint8_t)FaultActionStopDomain;
+        s_shootFault.triggerAction = (uint8_t)FaultActionStopDomain;
         s_shootFault.blockingMask = s_shootFault.configuredMask;
         return;
     }
@@ -336,8 +336,7 @@ static void ShootFaultUpdate(uint8_t switch_safe)
     (void)FaultMgrUpdate(&s_shootFault.mgr,
                          nowMs,
                          deviceSafeMask,
-                         0u,
-                         switch_safe);
+                         0u);
 
     s_shootFault.domainAction = (uint8_t)FaultActionRun;
     s_shootFault.triggerAction =
@@ -372,8 +371,7 @@ static void ShootFaultUpdate(uint8_t switch_safe)
 
 static uint8_t ShootFaultStopsDomain(void)
 {
-    return (s_shootFault.domainAction == (uint8_t)FaultActionStopDomain ||
-            s_shootFault.domainAction == (uint8_t)FaultActionStopGlobal) ? 1u : 0u;
+    return (s_shootFault.domainAction == (uint8_t)FaultActionStopDomain) ? 1u : 0u;
 }
 
 static uint8_t ShootFaultStopsTrigger(void)

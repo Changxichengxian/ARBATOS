@@ -171,7 +171,7 @@ FaultMgrResult FaultMgrInit(FaultMgr *mgr, const FaultMgrConfig *config)
 
     (void)memset(mgr, 0, sizeof(*mgr));
     if (config->deviceCount == 0u || config->deviceCount > FAULT_MGR_DEVICE_MAX ||
-        config->domainCount > FAULT_MGR_DOMAIN_MAX || config->system.requireSafeInput > 1u)
+        config->domainCount > FAULT_MGR_DOMAIN_MAX)
     {
         return FaultMgrResultInvalidConfig;
     }
@@ -200,8 +200,6 @@ FaultMgrResult FaultMgrInit(FaultMgr *mgr, const FaultMgrConfig *config)
 
     mgr->deviceCount = config->deviceCount;
     mgr->domainCount = config->domainCount;
-    mgr->systemStableMs = config->system.stableMs;
-    mgr->systemRequireSafe = config->system.requireSafeInput;
     for (uint8_t i = 0u; i < FAULT_MGR_DEVICE_MAX; i++)
     {
         mgr->deviceDomain[i] = FAULT_MGR_DOMAIN_NONE;
@@ -274,38 +272,10 @@ FaultMgrResult FaultMgrSetDeviceFault(FaultMgr *mgr,
     return FaultMgrResultOk;
 }
 
-FaultMgrResult FaultMgrSetSystemFatal(FaultMgr *mgr,
-                                      uint32_t reasonMask,
-                                      uint8_t active,
-                                      uint32_t nowMs)
-{
-    FaultMgrResult result = FaultMgrCheckReady(mgr);
-
-    if (result != FaultMgrResultOk)
-    {
-        return result;
-    }
-    if (reasonMask == 0u || active > 1u)
-    {
-        return FaultMgrResultInvalidArg;
-    }
-
-    if (active != 0u)
-    {
-        FaultMgrRecordRaise(&mgr->system, reasonMask, nowMs);
-    }
-    else
-    {
-        FaultMgrRecordClear(&mgr->system, reasonMask, nowMs);
-    }
-    return FaultMgrResultOk;
-}
-
 FaultMgrResult FaultMgrUpdate(FaultMgr *mgr,
                               uint32_t nowMs,
                               uint32_t deviceSafeMask,
-                              uint32_t domainSafeMask,
-                              uint8_t systemSafe)
+                              uint32_t domainSafeMask)
 {
     FaultMgrResult result = FaultMgrCheckReady(mgr);
 
@@ -313,11 +283,6 @@ FaultMgrResult FaultMgrUpdate(FaultMgr *mgr,
     {
         return result;
     }
-    if (systemSafe > 1u)
-    {
-        return FaultMgrResultInvalidArg;
-    }
-
     for (uint8_t deviceId = 0u; deviceId < mgr->deviceCount; deviceId++)
     {
         const uint8_t requireSafe = (uint8_t)((mgr->deviceRequireSafeMask >> deviceId) & 1u);
@@ -360,35 +325,14 @@ FaultMgrResult FaultMgrUpdate(FaultMgr *mgr,
         }
     }
 
-    if (FaultMgrRecoveryReady(&mgr->system,
-                              mgr->systemStableMs,
-                              mgr->systemRequireSafe,
-                              systemSafe,
-                              nowMs) != 0u)
-    {
-        FaultMgrRecordRecover(&mgr->system);
-    }
     return FaultMgrResultOk;
-}
-
-FaultAction FaultMgrSystemAction(const FaultMgr *mgr)
-{
-    if (FaultMgrCheckReady(mgr) != FaultMgrResultOk)
-    {
-        return FaultActionStopGlobal;
-    }
-    return (FaultMgrRecordBlocked(&mgr->system) != 0u) ? FaultActionStopGlobal : FaultActionRun;
 }
 
 FaultAction FaultMgrDomainAction(const FaultMgr *mgr, uint8_t domainId)
 {
     if (FaultMgrCheckReady(mgr) != FaultMgrResultOk || domainId >= mgr->domainCount)
     {
-        return FaultActionStopGlobal;
-    }
-    if (FaultMgrSystemAction(mgr) == FaultActionStopGlobal)
-    {
-        return FaultActionStopGlobal;
+        return FaultActionStopDomain;
     }
     return (FaultMgrRecordBlocked(&mgr->domain[domainId]) != 0u) ? FaultActionStopDomain : FaultActionRun;
 }
@@ -399,11 +343,7 @@ FaultAction FaultMgrDeviceAction(const FaultMgr *mgr, uint8_t deviceId)
 
     if (FaultMgrCheckReady(mgr) != FaultMgrResultOk || deviceId >= mgr->deviceCount)
     {
-        return FaultActionStopGlobal;
-    }
-    if (FaultMgrSystemAction(mgr) == FaultActionStopGlobal)
-    {
-        return FaultActionStopGlobal;
+        return FaultActionStopDomain;
     }
 
     domainId = mgr->deviceDomain[deviceId];
@@ -428,12 +368,12 @@ FaultMgrResult FaultMgrGetDeviceStatus(const FaultMgr *mgr,
     (void)memset(status, 0, sizeof(*status));
     if (result != FaultMgrResultOk)
     {
-        status->action = FaultActionStopGlobal;
+        status->action = FaultActionStopDomain;
         return result;
     }
     if (deviceId >= mgr->deviceCount)
     {
-        status->action = FaultActionStopGlobal;
+        status->action = FaultActionStopDomain;
         return FaultMgrResultInvalidArg;
     }
 
@@ -466,12 +406,12 @@ FaultMgrResult FaultMgrGetDomainStatus(const FaultMgr *mgr,
     (void)memset(status, 0, sizeof(*status));
     if (result != FaultMgrResultOk)
     {
-        status->action = FaultActionStopGlobal;
+        status->action = FaultActionStopDomain;
         return result;
     }
     if (domainId >= mgr->domainCount)
     {
-        status->action = FaultActionStopGlobal;
+        status->action = FaultActionStopDomain;
         return FaultMgrResultInvalidArg;
     }
 
@@ -488,36 +428,6 @@ FaultMgrResult FaultMgrGetDomainStatus(const FaultMgr *mgr,
     status->lastFaultMs = record->lastFaultMs;
     status->healthySinceMs = record->healthySinceMs;
     status->faultActive = (uint8_t)(status->activeMemberMask != 0u);
-    status->recoveryPending = FaultMgrRecordRecovering(record);
-    status->everFaulted = (uint8_t)(record->historyReasonMask != 0u);
-    return FaultMgrResultOk;
-}
-
-FaultMgrResult FaultMgrGetSystemStatus(const FaultMgr *mgr, FaultSystemStatus *status)
-{
-    FaultMgrResult result = FaultMgrCheckReady(mgr);
-    const FaultMgrRecord *record;
-
-    if (status == NULL)
-    {
-        return FaultMgrResultInvalidArg;
-    }
-    (void)memset(status, 0, sizeof(*status));
-    if (result != FaultMgrResultOk)
-    {
-        status->action = FaultActionStopGlobal;
-        return result;
-    }
-
-    record = &mgr->system;
-    status->action = FaultMgrSystemAction(mgr);
-    status->activeReasonMask = record->activeReasonMask;
-    status->blockingReasonMask = record->incidentReasonMask;
-    status->historyReasonMask = record->historyReasonMask;
-    status->firstFaultMs = record->firstFaultMs;
-    status->lastFaultMs = record->lastFaultMs;
-    status->healthySinceMs = record->healthySinceMs;
-    status->faultActive = (uint8_t)(record->activeReasonMask != 0u);
     status->recoveryPending = FaultMgrRecordRecovering(record);
     status->everFaulted = (uint8_t)(record->historyReasonMask != 0u);
     return FaultMgrResultOk;

@@ -179,7 +179,7 @@ static void GimbalFaultUpdate(const GimbalRuntimeSnapshot *snapshot)
         safeMask = s_gimbalFault.configuredMask;
     }
     if (updateOk == 0u ||
-        FaultMgrUpdate(&s_gimbalFault.mgr, nowMs, safeMask, 0u, 1u) != FaultMgrResultOk)
+        FaultMgrUpdate(&s_gimbalFault.mgr, nowMs, safeMask, 0u) != FaultMgrResultOk)
     {
         s_gimbalFault.blockingMask = s_gimbalFault.configuredMask;
         return;

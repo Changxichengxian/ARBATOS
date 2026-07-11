@@ -936,15 +936,6 @@ ControlResult ControlMgrStop(ControlDomain domain, ControlReason reason)
     return result;
 }
 
-void ControlMgrStopAll(ControlReason reason)
-{
-    ControlMgrInit();
-    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
-    {
-        (void)ControlMgrStop((ControlDomain)i, reason);
-    }
-}
-
 void ControlMgrClearPending(ControlDomain domain)
 {
     control_domain_state_t *domain_state;

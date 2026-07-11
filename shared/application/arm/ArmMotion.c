@@ -358,7 +358,7 @@ static void ArmFaultUpdate(uint16_t keyMask)
                                      nowMs);
     }
 
-    (void)FaultMgrUpdate(&s_armFault.mgr, nowMs, deviceSafeMask, 0u, 1u);
+    (void)FaultMgrUpdate(&s_armFault.mgr, nowMs, deviceSafeMask, 0u);
     for (uint8_t i = 0u; i < ARM_MOTOR_COUNT; i++)
     {
         FaultDeviceStatus status;

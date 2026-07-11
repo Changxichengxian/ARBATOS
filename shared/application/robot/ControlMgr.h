@@ -247,7 +247,6 @@ ControlResult ControlMgrSwitch(uint16_t controller_id, ControlReason reason);
 /* By-name switch/status helpers are for low-rate command paths. */
 ControlResult ControlMgrSwitchByName(const char *name, ControlReason reason);
 ControlResult ControlMgrStop(ControlDomain domain, ControlReason reason);
-void ControlMgrStopAll(ControlReason reason);
 /* A queued fault or emergency stop cannot be cleared through this helper. */
 void ControlMgrClearPending(ControlDomain domain);
 
