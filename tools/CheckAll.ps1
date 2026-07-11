@@ -2601,11 +2601,47 @@ function Test-ControlRegistryBoundaries {
             "ShootInputGateSwitch",
             "ShootInputGateSyncSemantics",
             "ShootInputGateSyncSafeMouse",
-            "ShootInputGateApplyFrameMouse"
+            "ShootInputGateApplyFrameMouse",
+            "ShootInputGateBlockFireFrame"
         )) {
         if ($shootRuntimeContent -notmatch ([regex]::Escape($requiredGateCall) + '\s*\(')) {
             Add-CheckError "shared\application\shoot\Shoot.c: frame input must keep the tested '$requiredGateCall' policy."
         }
+    }
+    $shootRuntimeStepBody = [regex]::Match(
+        $shootRuntimeContent,
+        'int16_t\s+ShootRuntimeStep\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\n/\*\*)'
+    ).Value
+    $shootFireBlockBody = [regex]::Match(
+        $shootRuntimeContent,
+        'static\s+void\s+ShootFrameInputBlockFire\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nstatic\s+ShootControl)'
+    ).Value
+    $shootSetModeBody = [regex]::Match(
+        $shootRuntimeContent,
+        'static\s+void\s+ShootSetMode\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\n/\*\*)'
+    ).Value
+    $shootInputPolicyTestContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "tools\tests\ShootInputPolicyRegression.c") -Raw -Encoding UTF8
+    $gateReadIndex = $shootRuntimeStepBody.IndexOf('gimbalGate = ShootGimbalGateRead()')
+    $fireBlockIndex = $shootRuntimeStepBody.IndexOf('ShootFrameInputBlockFire(&frame)')
+    $setModeIndex = $shootRuntimeStepBody.IndexOf('ShootSetMode(&frame, gimbalGate)')
+    if ([string]::IsNullOrWhiteSpace($shootRuntimeStepBody) -or
+        $gateReadIndex -lt 0 -or $fireBlockIndex -lt 0 -or $setModeIndex -lt 0 -or
+        $gateReadIndex -gt $fireBlockIndex -or $fireBlockIndex -gt $setModeIndex) {
+        Add-CheckError "shared\application\shoot\Shoot.c: fire permission must rearm the frame before the Shoot state machine consumes it."
+    }
+    if ([string]::IsNullOrWhiteSpace($shootFireBlockBody) -or
+        $shootFireBlockBody -notmatch 'ShootInputGateBlockFireFrame\s*\(' -or
+        $shootFireBlockBody -match 'ShootClearFricOutput\s*\(|ShootRuntimeSafeStep\s*\(') {
+        Add-CheckError "shared\application\shoot\Shoot.c: fire rearm must block trigger intent without clearing healthy friction outputs."
+    }
+    if ([string]::IsNullOrWhiteSpace($shootSetModeBody) -or
+        $shootSetModeBody -notmatch 'frame->effectiveSwitch' -or
+        $shootSetModeBody -match 'frame->rawSwitch') {
+        Add-CheckError "shared\application\shoot\Shoot.c: Shoot state machine must consume the rearm-filtered switch."
+    }
+    if ($shootInputPolicyTestContent -notmatch 'ShootInputGateBlockFireFrame' -or
+        $shootInputPolicyTestContent -notmatch '许可恢复后持续按住') {
+        Add-CheckError "tools\tests\ShootInputPolicyRegression.c: regression must prove held fire input stays blocked after permission recovery."
     }
 
     $lifecycleRepoPath = "shared\application\robot\RobotLifecycle.c"
@@ -3142,7 +3178,7 @@ function Test-FaultIsolationBoundaries {
 
     $shootRepoPath = "shared\application\shoot\Shoot.c"
     $shootContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $shootRepoPath) -Raw -Encoding UTF8
-    foreach ($required in @("ShootFaultSyncInhibit", "LowCmdInhibitManyFrom", "LowCmdRecoverSafetyInhibitManyWithPermit", "MotorInstSetCurrentIdsWithPermit", "GimbalStateReadFresh", "ShootGimbalStateBlocksFire", "ShootFrictionFaultBlocksTrigger", "ShootClearFricFaultOutputs")) {
+    foreach ($required in @("ShootFaultSyncInhibit", "LowCmdInhibitManyFrom", "LowCmdRecoverSafetyInhibitManyWithPermit", "MotorInstSetCurrentIdsWithPermit", "GimbalStateReadFresh", "ShootGimbalGateRead", "ShootGimbalGateResolve", "ShootGimbalGateTriggerOnly", "ShootFrictionFaultBlocksTrigger", "ShootClearFricFaultOutputs")) {
         if ($shootContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${shootRepoPath}: shoot fault isolation must use '$required'."
         }
@@ -3196,6 +3232,24 @@ function Test-FaultIsolationBoundaries {
     foreach ($required in @("GimbalFaultImuAxisMask", "GimbalFaultAimAxisMask", "ROBOT_RUN_VARIANT_GIMBAL_YAW_ONLY", "ROBOT_RUN_VARIANT_GIMBAL_PITCH_ONLY")) {
         if ($gimbalPolicyContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${gimbalPolicyRepoPath}: IMU isolation scope must keep '$required'."
+        }
+    }
+
+    $gimbalFeedbackPolicyRepoPath = "shared\application\gimbal\GimbalFeedbackPolicy.h"
+    $gimbalFeedbackPolicyContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $gimbalFeedbackPolicyRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("GIMBAL_FEEDBACK_IMU_NORMAL", "GIMBAL_FEEDBACK_ENCODER_DEGRADED", "GimbalFeedbackPolicyStep", "GIMBAL_FEEDBACK_IMU_RECOVERY_MS", "transitionPending", "transitionAxisMask", "lastRequiredMask", "lastFallbackMask", "GimbalEncoderRelativeCount", "GimbalEncoderAngleRad")) {
+        if ($gimbalFeedbackPolicyContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${gimbalFeedbackPolicyRepoPath}: gimbal feedback degradation must keep '$required'."
+        }
+    }
+    foreach ($forbidden in @("FreeRTOS.h", "task.h", "cmsis_os.h", "RobotConfig.h", "LowCmd.h")) {
+        if ($gimbalFeedbackPolicyContent -match [regex]::Escape($forbidden)) {
+            Add-CheckError "${gimbalFeedbackPolicyRepoPath}: pure feedback policy cannot depend on '$forbidden'."
+        }
+    }
+    foreach ($testPath in @("tools\tests\GimbalFeedbackPolicyRegression.c", "tools\TestGimbalFeedbackPolicy.ps1")) {
+        if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $testPath) -PathType Leaf)) {
+            Add-CheckError "Missing gimbal feedback degradation regression: $testPath"
         }
     }
 
@@ -3391,6 +3445,92 @@ function Test-FaultIsolationBoundaries {
             Add-CheckError "${gimbalRepoPath}: gimbal per-axis isolation must keep '$required'."
         }
     }
+    foreach ($required in @("RobotProfileGimbalEncoderFallbackMask", "GimbalFeedbackPolicyStep", "feedback_block_mask", "encoder_degraded_mask", "GimbalFeedbackDiscardVision", "GimbalFeedbackTransitionReset", "GimbalFeedbackPolicyConsumeTransition", "GimbalFaultFrameCurrent", "MotorCfgEncoderRange", "GimbalEncoderAngleRad", "VisionTakeLatest", "encoder_feedback_degraded")) {
+        if ($gimbalContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${gimbalRepoPath}: encoder fallback flow must keep '$required'."
+        }
+    }
+    if ($gimbalContent -notmatch 'GimbalFeedbackUpdate\s*\([^;]+;[\s\S]{0,180}?GimbalFeedbackTransitionReset\s*\([^;]+;[\s\S]{0,180}?GimbalSetControl' -or
+        $gimbalContent -notmatch 'zeroWait\s*==\s*GimbalFeedbackZeroReady[\s\S]{0,300}?feedback_transition_complete\s*=\s*1u[\s\S]{0,300}?feedback_zero_wait_mask' -or
+        $gimbalContent -notmatch 'feedback_transition_complete\s*!=\s*0u[\s\S]{0,500}?GimbalFeedbackPolicyConsumeTransition' -or
+        $gimbalContent -notmatch 'publish_ok\s*=\s*GimbalPublishCurrents[\s\S]{0,1000}?GimbalFeedbackZeroBarrierCapture' -or
+        $gimbalContent -notmatch 'GimbalFeedbackZeroBarrierPoll[\s\S]{0,1200}?feedback_zero_wait_mask[\s\S]{0,3000}?GimbalPublishCurrents') {
+        Add-CheckError "${gimbalRepoPath}: feedback reset must use one exact zero command, preserve its LowCmd seq while waiting, and consume only after the matching send receipt."
+    }
+    foreach ($required in @("GimbalFeedbackZeroBarrierCapture", "GimbalFeedbackZeroBarrierPoll", "GimbalFeedbackRouteDebtObserve", "GimbalFeedbackRouteDebtPoll", "GimbalFeedbackRouteDebtCapture", "GimbalFeedbackRouteDebtHasMotor", "GimbalFeedbackRouteDebtMask", "GimbalFeedbackRouteDebtRequestPublish", "GimbalRuntimeAllowsMotor", "robot_mode_snapshot_allow_motor", "LowStateGetTxReceipt", "MotorTxReceiptMatches", "safeInhibitMask", "blockedMask", "publishMask", "waitMask", "run_mode", "target_motor", "preserveAxisMask")) {
+        if ($gimbalContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${gimbalRepoPath}: feedback transition send barrier must keep '$required'."
+        }
+    }
+    $singleMitActiveBody = [regex]::Match(
+        $gimbalContent,
+        'static\s+uint8_t\s+GimbalSingleMitYawTestActive\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nstatic\s+)'
+    ).Value
+    $singleMitApplyBody = [regex]::Match(
+        $gimbalContent,
+        'static\s+uint8_t\s+GimbalApplySingleMitYawTest\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nstatic\s+)'
+    ).Value
+    if ([string]::IsNullOrWhiteSpace($singleMitActiveBody) -or
+        $singleMitActiveBody -match 'robot_mode_(current|target_motor|variant)\s*\(' -or
+        $singleMitActiveBody -notmatch 'snapshot->run_mode' -or
+        $singleMitActiveBody -notmatch 'snapshot->target_motor') {
+        Add-CheckError "${gimbalRepoPath}: single-MIT eligibility must use one runtime snapshot instead of rereading live operation config."
+    }
+    if ([string]::IsNullOrWhiteSpace($singleMitApplyBody) -or
+        $singleMitApplyBody -match 'robot_mode_target_motor\s*\(' -or
+        $singleMitApplyBody -notmatch 's_gimbalFeedbackRouteDebt\.blockedMask' -or
+        $singleMitApplyBody -notmatch 's_gimbalFeedbackRouteDebt\.waitMask' -or
+        $singleMitApplyBody -notmatch 'result->axisMasks' -or
+        $singleMitApplyBody -notmatch 'beforeValid') {
+        Add-CheckError "${gimbalRepoPath}: single-MIT publish must preserve exact blocked/wait zero commands and report only newly published repair zeros."
+    }
+    if (([regex]::Matches($gimbalContent, 'GimbalSingleMitRouteObserve\s*\(\s*&snapshot\s*\)')).Count -lt 2 -or
+        ([regex]::Matches($gimbalContent, 'GimbalFeedbackRouteDebtHasMotor\s*\(\s*snapshot\.target_motor\s*\)')).Count -lt 2) {
+        Add-CheckError "${gimbalRepoPath}: classic and dual-yaw single-MIT paths must zero-rearm the snapshotted target before test output."
+    }
+    if ($gimbalContent -match 's_gimbalFault\.holdZeroMask\s*&\s*axisMasks\s*\[\s*i\s*\][\s\S]{0,80}?continue\s*;' -or
+        $gimbalContent -notmatch 'publishedCurrents\s*\[\s*count\s*\]\s*=\s*GimbalFaultFrameCurrent') {
+        Add-CheckError "${gimbalRepoPath}: hold-zero axes must publish an actual zero after safety inhibit release; they cannot be filtered out."
+    }
+    $gimbalFaultHelperPath = "shared\application\gimbal\GimbalFaultHelpers.inc"
+    $gimbalFaultHelperContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $gimbalFaultHelperPath) -Raw -Encoding UTF8
+    if ($gimbalFaultHelperContent -match 'GIMBAL_FAULT_REASON_IMU' -or
+        ([regex]::Matches($gimbalFaultHelperContent, 'FaultMgrSetDeviceFault\s*\(')).Count -ne 1) {
+        Add-CheckError "${gimbalFaultHelperPath}: FaultMgr may only record the real per-axis motor fault; IMU degradation is a separate feedback policy."
+    }
+    $gimbalHeaderContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "shared\application\gimbal\GimbalControlTask.h") -Raw -Encoding UTF8
+    if (($gimbalContent + "`n" + $gimbalHeaderContent) -match 'GIMBAL_USE_ENCODER_FEEDBACK') {
+        Add-CheckError "Gimbal must not restore the old compile-time all-IMU/all-encoder switch."
+    }
+
+    $expectedFallbackMasks = @{
+        "CARRIER-A" = "0x01u"
+        "HERO-C" = "0x01u"
+        "HERO-M" = "0x01u"
+        "INFANTRY-A" = "0x01u"
+        "MINIWHEELEG-C" = "0x00u"
+        "MINIWHEELEG-M" = "0x00u"
+        "SENTINEL-M" = "0x07u"
+    }
+    foreach ($targetName in $expectedFallbackMasks.Keys) {
+        $targetHeader = Join-Path $script:RepoRoot "Robotconfig\$targetName\RobotConfig.h"
+        $targetContent = Get-Content -LiteralPath $targetHeader -Raw -Encoding UTF8
+        $expectedDefine = "#define ROBOT_PROFILE_GIMBAL_ENCODER_FALLBACK_MASK $($expectedFallbackMasks[$targetName])"
+        if ($targetContent -notmatch [regex]::Escape($expectedDefine)) {
+            Add-CheckError "Robotconfig\$targetName\RobotConfig.h: expected explicit gimbal encoder fallback declaration '$expectedDefine'."
+        }
+        if ($targetContent -match 'GIMBAL_USE_ENCODER_FEEDBACK') {
+            Add-CheckError "Robotconfig\$targetName\RobotConfig.h: legacy all-axis encoder feedback switch is forbidden."
+        }
+    }
+
+    $gimbalStateRepoPath = "shared\application\gimbal\GimbalState.h"
+    $gimbalStateContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $gimbalStateRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("feedback_mode", "feedback_degraded_mask", "feedback_block_mask", "feedback_recovery_pending")) {
+        if ($gimbalStateContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${gimbalStateRepoPath}: observable degradation state must keep '$required'."
+        }
+    }
 
     $routeRepoPath = "shared\application\comm\can\CanCommandTxRouteHelpers.inc"
     $routeContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $routeRepoPath) -Raw -Encoding UTF8
@@ -3407,9 +3547,12 @@ function Test-FaultIsolationBoundaries {
 
     $emitRepoPath = "shared\application\comm\can\CanCommandTxEmitHelpers.inc"
     $emitContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $emitRepoPath) -Raw -Encoding UTF8
-    if ($emitContent -notmatch 'CanTxRecheckRmFrame\s*\([^;{]*\)\s*\{[\s\S]*?frame\s*\[\s*slot\s*\]\s*==\s*0[\s\S]*?LowCmdOutputSnapshotAuthorized\s*\([^;]*s_can_tx_owner_cache[\s\S]*?frame\s*\[\s*slot\s*\]\s*=\s*0' -or
+    if ($emitContent -notmatch 'CanTxRecheckRmFrame\s*\([^;{]*receiptEligible[^;{]*\)\s*\{[\s\S]*?LowCmdOutputSnapshotAuthorized\s*\([^;]*s_can_tx_owner_cache[\s\S]*?receiptEligible\s*\[\s*slot\s*\]\s*=\s*1u[\s\S]*?frame\s*\[\s*slot\s*\]\s*=\s*0' -or
         $emitContent -notmatch 'taskENTER_CRITICAL\s*\(\s*\)[\s\S]*?CanTxRecheckRmFrame\s*\([\s\S]*?CAN_cmd_rm_group\s*\([\s\S]*?taskEXIT_CRITICAL\s*\(\s*\)') {
-        Add-CheckError "${emitRepoPath}: RM must recheck each nonzero slot with its owner and enqueue the surviving group in one short critical section."
+        Add-CheckError "${emitRepoPath}: RM must final-check zero and nonzero slots with their owner, then enqueue the surviving group in one short critical section."
+    }
+    if ($emitContent -notmatch 'tx_ret\s*==\s*0[\s\S]{0,600}?receiptEligible\s*\[\s*slot\s*\][\s\S]{0,500}?LowStateUpdateTxReceipt') {
+        Add-CheckError "${emitRepoPath}: RM may record a command receipt only after BspCan accepts the exact eligible group frame."
     }
     foreach ($required in @("CanTxUpdateApplied", "CanTxLogMotorCmd")) {
         if ($emitContent -notmatch [regex]::Escape($required)) {
@@ -3450,6 +3593,30 @@ function Test-FaultIsolationBoundaries {
     if ($mitContent -notmatch 'static\s+uint8_t\s+CanTxMitSendCmdAuthorized[\s\S]*?taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,500}?CanTxMitCommandAuthorizedNow[\s\S]{0,600}?CanMitMotorSendCmd\s*\([\s\S]{0,240}?taskEXIT_CRITICAL\s*\(\s*\)' -or
         ([regex]::Matches($mitContent, 'CanTxMitSendCmdAuthorized\s*\(')).Count -lt 3) {
         Add-CheckError "${mitRepoPath}: every MIT command branch must use the linearized final-authority sender."
+    }
+    if ($mitContent -notmatch 'ret\s*==\s*0[\s\S]{0,350}?\*tx_succeeded\s*=\s*1u' -or
+        $routeContent -notmatch 'tx_succeeded\s*!=\s*0u[\s\S]{0,300}?MotorTransportCAN[\s\S]{0,300}?LowStateUpdateTxReceipt') {
+        Add-CheckError "${mitRepoPath}: MIT throttle, frame-budget and enqueue failures must not create a LowCmd send receipt."
+    }
+
+    $lowCmdHeaderContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "shared\application\robot\LowCmd.h") -Raw -Encoding UTF8
+    $lowCmdSourceContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "shared\application\robot\LowCmd.c") -Raw -Encoding UTF8
+    foreach ($required in @("MotorTxReceipt", "cmdSeq", "cmdTick", "acceptedTick", "LowStateUpdateTxReceipt", "LowStateGetTxReceipt")) {
+        if (($lowCmdHeaderContent + "`n" + $lowCmdSourceContent) -notmatch [regex]::Escape($required)) {
+            Add-CheckError "LowCmd send-receipt contract must keep '$required'."
+        }
+    }
+    if (([regex]::Matches($lowCmdSourceContent, 'gMotorTxReceipt\s*\[[^\]]+\]\.valid\s*=\s*0u')).Count -lt 2) {
+        Add-CheckError "LowCmd must invalidate the previous send receipt whenever a motor command is stored or cleared."
+    }
+
+    foreach ($targetName in @("CARRIER-A", "HERO-C", "INFANTRY-A", "MINIWHEELEG-C")) {
+        $canSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot "projects\$targetName\Core\Src\can.c") -Raw -Encoding UTF8
+        $iocSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot "projects\$targetName\$targetName.ioc") -Raw -Encoding UTF8
+        if (([regex]::Matches($canSource, 'TransmitFifoPriority\s*=\s*ENABLE')).Count -lt 2 -or
+            ([regex]::Matches($iocSource, 'TransmitFifoPriority=ENABLE')).Count -lt 2) {
+            Add-CheckError "${targetName}: bxCAN must preserve enqueue order so a later nonzero frame cannot overtake an accepted zero barrier."
+        }
     }
 
     $bestEffortRepoPath = "shared\application\motors\MotorInstBestEffort.h"

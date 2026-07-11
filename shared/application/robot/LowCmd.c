@@ -29,6 +29,7 @@ static LowCmdRecord gLowCmdRecord[MotorCount];
 static uint16_t gLowCmdInhibitWriter[MotorCount];
 static MotorState gMotorState[MotorCount];
 static MotorApplied gMotorApplied[MotorCount];
+static MotorTxReceipt gMotorTxReceipt[MotorCount];
 static MotorCmd gMotorCmdSnapshot[MotorCount];
 static MotorState gMotorStateSnapshot[MotorCount];
 static MotorApplied gMotorAppliedSnapshot[MotorCount];
@@ -293,6 +294,7 @@ static void LowCmdRecordStoreLocked(LowCmdRecord *record,
     record->cmd = *cmd;
     record->cmd.writer = writer;
     LowCmdStamp(&record->cmd, seq, tick);
+    gMotorTxReceipt[(uint32_t)(record - gLowCmdRecord)].valid = 0u;
     if (owner != NULL)
     {
         record->owner = *owner;
@@ -313,6 +315,7 @@ static void LowCmdRecordClearLocked(LowCmdRecord *record,
     (void)memset(record, 0, sizeof(*record));
     record->cmd.writer = writer;
     LowCmdStamp(&record->cmd, seq, tick);
+    gMotorTxReceipt[(uint32_t)(record - gLowCmdRecord)].valid = 0u;
     if (owner != NULL)
     {
         record->owner = *owner;
@@ -1441,6 +1444,7 @@ void LowStateClearAll(void)
     LowCmdCriticalState critical = LowCmdEnterCritical();
     (void)memset(gMotorState, 0, sizeof(gMotorState));
     (void)memset(gMotorApplied, 0, sizeof(gMotorApplied));
+    (void)memset(gMotorTxReceipt, 0, sizeof(gMotorTxReceipt));
     gLowStateTick = LowCmdNowMs();
     LowCmdExitCritical(critical);
 }
@@ -1469,6 +1473,41 @@ void LowStateUpdateApplied(MotorId id, const MotorApplied *applied)
     gMotorApplied[id] = *applied;
     gLowStateTick = applied->tick;
     LowCmdExitCritical(critical);
+}
+
+void LowStateUpdateTxReceipt(MotorId id, const MotorCmd *cmd)
+{
+    MotorTxReceipt receipt;
+
+    if (MotorIdValid(id) == 0u || cmd == NULL)
+    {
+        return;
+    }
+
+    (void)memset(&receipt, 0, sizeof(receipt));
+    receipt.cmdSeq = cmd->seq;
+    receipt.cmdTick = cmd->tick;
+    receipt.acceptedTick = LowCmdNowMs();
+    receipt.current = cmd->current;
+    receipt.writer = cmd->writer;
+    receipt.valid = 1u;
+    receipt.mode = cmd->mode;
+
+    {
+        LowCmdCriticalState critical = LowCmdEnterCritical();
+        const MotorCmd *latest = &gLowCmdRecord[id].cmd;
+
+        if (latest->seq == cmd->seq &&
+            latest->tick == cmd->tick &&
+            latest->writer == cmd->writer &&
+            latest->active == cmd->active &&
+            latest->mode == cmd->mode &&
+            latest->current == cmd->current)
+        {
+            gMotorTxReceipt[id] = receipt;
+        }
+        LowCmdExitCritical(critical);
+    }
 }
 
 uint8_t LowStateGet(LowState *out)
@@ -1556,4 +1595,19 @@ const MotorApplied *LowStateGetAppliedPtr(MotorId id)
     }
 
     return &gMotorAppliedSnapshot[id];
+}
+
+uint8_t LowStateGetTxReceipt(MotorId id, MotorTxReceipt *out)
+{
+    if (MotorIdValid(id) == 0u || out == NULL)
+    {
+        return 0u;
+    }
+
+    {
+        LowCmdCriticalState critical = LowCmdEnterCritical();
+        *out = gMotorTxReceipt[id];
+        LowCmdExitCritical(critical);
+    }
+    return 1u;
 }

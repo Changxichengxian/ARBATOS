@@ -29,12 +29,12 @@ typedef struct
     int16_t last_ecd;
 } motor_measure_t;
 
-extern void CAN_cmd_rm_group(uint8_t bus,
-                             uint16_t group_id,
-                             int16_t motor1,
-                             int16_t motor2,
-                             int16_t motor3,
-                             int16_t motor4);
+extern int CAN_cmd_rm_group(uint8_t bus,
+                            uint16_t group_id,
+                            int16_t motor1,
+                            int16_t motor2,
+                            int16_t motor3,
+                            int16_t motor4);
 uint8_t CAN_get_last_1ff_status(void);
 uint32_t CAN_get_last_can1_error(void);
 uint32_t CAN_get_last_can2_error(void);

@@ -16,11 +16,25 @@ typedef struct
     uint8_t holdZeroMask;
 } ShootFaultInhibitPlan;
 
-static inline uint8_t ShootGimbalStateBlocksFire(uint8_t fresh,
-                                                 uint8_t valid,
-                                                 uint8_t fireAllowed)
+typedef enum
 {
-    return (fresh == 0u || valid == 0u || fireAllowed == 0u) ? 1u : 0u;
+    ShootGimbalGateRun = 0u,
+    ShootGimbalGateTriggerOnly,
+    ShootGimbalGateStopDomain,
+} ShootGimbalGateAction;
+
+static inline ShootGimbalGateAction ShootGimbalGateResolve(uint8_t fresh,
+                                                            uint8_t valid,
+                                                            uint8_t shootStop,
+                                                            uint8_t fireAllowed)
+{
+    if (fresh == 0u || valid == 0u || shootStop != 0u)
+    {
+        return ShootGimbalGateStopDomain;
+    }
+    return (fireAllowed != 0u) ?
+               ShootGimbalGateRun :
+               ShootGimbalGateTriggerOnly;
 }
 
 static inline ShootFaultInhibitPlan ShootFaultInhibitPlanMake(uint8_t configuredMask,

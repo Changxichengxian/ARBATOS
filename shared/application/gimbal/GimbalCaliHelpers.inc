@@ -91,7 +91,11 @@ static void GimbalCalcCali(const GimbalStepCali *GimbalCali, uint16_t *yaw_offse
     }
 
     // 函数地图：先按安装方向算 yaw 中值/限位，再按 pitch 软限位和编码器范围算 pitch 中值/限位。
-    int16_t temp_max_ecd = 0, temp_min_ecd = 0, temp_ecd = 0;
+    int32_t temp_max_ecd = 0, temp_min_ecd = 0, temp_ecd = 0;
+    const uint32_t yaw_ecd_range = MotorCfgEncoderRange(g_config.motor.yaw.model);
+    const uint32_t pitch_ecd_range = MotorCfgEncoderRange(g_config.motor.pitch.model);
+    const int32_t pitch_half_ecd_range = (int32_t)(pitch_ecd_range / 2u);
+    const fp32 pitch_ecd_to_rad = GIMBAL_ENCODER_TWO_PI / (fp32)pitch_ecd_range;
 
     if (YAW_TURN)
     {
@@ -99,14 +103,17 @@ static void GimbalCalcCali(const GimbalStepCali *GimbalCali, uint16_t *yaw_offse
 
         if (temp_ecd < 0)
         {
-        temp_ecd += ECD_RANGE;
+        temp_ecd += (int32_t)yaw_ecd_range;
         }
         temp_ecd = GimbalCali->max_yaw_ecd + (temp_ecd / 2);
 
-        ecd_format(temp_ecd);
-        *yaw_offset = temp_ecd;
-        *max_yaw = -motor_ecd_to_angle_change(GimbalCali->max_yaw_ecd, *yaw_offset);
-        *min_yaw = -motor_ecd_to_angle_change(GimbalCali->min_yaw_ecd, *yaw_offset);
+        *yaw_offset = GimbalEncoderNormalizeCount(temp_ecd, yaw_ecd_range);
+        *max_yaw = -motor_ecd_to_angle_change(GimbalCali->max_yaw_ecd,
+                                              *yaw_offset,
+                                              &g_config.motor.yaw);
+        *min_yaw = -motor_ecd_to_angle_change(GimbalCali->min_yaw_ecd,
+                                              *yaw_offset,
+                                              &g_config.motor.yaw);
     }
     else
     {
@@ -115,81 +122,88 @@ static void GimbalCalcCali(const GimbalStepCali *GimbalCali, uint16_t *yaw_offse
 
         if (temp_ecd < 0)
         {
-            temp_ecd += ECD_RANGE;
+            temp_ecd += (int32_t)yaw_ecd_range;
         }
         temp_ecd = GimbalCali->max_yaw_ecd - (temp_ecd / 2);
 
-        ecd_format(temp_ecd);
-        *yaw_offset = temp_ecd;
-        *max_yaw = motor_ecd_to_angle_change(GimbalCali->max_yaw_ecd, *yaw_offset);
-        *min_yaw = motor_ecd_to_angle_change(GimbalCali->min_yaw_ecd, *yaw_offset);
+        *yaw_offset = GimbalEncoderNormalizeCount(temp_ecd, yaw_ecd_range);
+        *max_yaw = motor_ecd_to_angle_change(GimbalCali->max_yaw_ecd,
+                                             *yaw_offset,
+                                             &g_config.motor.yaw);
+        *min_yaw = motor_ecd_to_angle_change(GimbalCali->min_yaw_ecd,
+                                             *yaw_offset,
+                                             &g_config.motor.yaw);
     }
 
     if (PITCH_TURN)
 
     {
-        temp_ecd = (int16_t)(GimbalCali->max_pitch / MOTOR_ECD_TO_RAD);
+        temp_ecd = (int32_t)(GimbalCali->max_pitch / pitch_ecd_to_rad);
         temp_max_ecd = GimbalCali->max_pitch_ecd + temp_ecd;
-        temp_ecd = (int16_t)(GimbalCali->min_pitch / MOTOR_ECD_TO_RAD);
+        temp_ecd = (int32_t)(GimbalCali->min_pitch / pitch_ecd_to_rad);
         temp_min_ecd = GimbalCali->min_pitch_ecd + temp_ecd;
 
-        ecd_format(temp_max_ecd);
-        ecd_format(temp_min_ecd);
+        temp_max_ecd = (int32_t)GimbalEncoderNormalizeCount(temp_max_ecd, pitch_ecd_range);
+        temp_min_ecd = (int32_t)GimbalEncoderNormalizeCount(temp_min_ecd, pitch_ecd_range);
 
         temp_ecd = temp_max_ecd - temp_min_ecd;
 
-        if (temp_ecd > HALF_ECD_RANGE)
+        if (temp_ecd > pitch_half_ecd_range)
         {
-            temp_ecd -= ECD_RANGE;
+            temp_ecd -= (int32_t)pitch_ecd_range;
         }
-        else if (temp_ecd < -HALF_ECD_RANGE)
+        else if (temp_ecd < -pitch_half_ecd_range)
         {
-            temp_ecd += ECD_RANGE;
+            temp_ecd += (int32_t)pitch_ecd_range;
         }
 
         if (temp_max_ecd > temp_min_ecd)
         {
-            temp_min_ecd += ECD_RANGE;
+            temp_min_ecd += (int32_t)pitch_ecd_range;
         }
 
         temp_ecd = temp_max_ecd - temp_ecd / 2;
 
-        ecd_format(temp_ecd);
+        *pitch_offset = GimbalEncoderNormalizeCount(temp_ecd, pitch_ecd_range);
 
-        *pitch_offset = temp_ecd;
-
-        *max_pitch = -motor_ecd_to_angle_change(GimbalCali->max_pitch_ecd, *pitch_offset);
-        *min_pitch = -motor_ecd_to_angle_change(GimbalCali->min_pitch_ecd, *pitch_offset);
+        *max_pitch = -motor_ecd_to_angle_change(GimbalCali->max_pitch_ecd,
+                                                *pitch_offset,
+                                                &g_config.motor.pitch);
+        *min_pitch = -motor_ecd_to_angle_change(GimbalCali->min_pitch_ecd,
+                                                *pitch_offset,
+                                                &g_config.motor.pitch);
     }
     else
     {
-        temp_ecd = (int16_t)(GimbalCali->max_pitch / MOTOR_ECD_TO_RAD);
+        temp_ecd = (int32_t)(GimbalCali->max_pitch / pitch_ecd_to_rad);
         temp_max_ecd = GimbalCali->max_pitch_ecd - temp_ecd;
-        temp_ecd = (int16_t)(GimbalCali->min_pitch / MOTOR_ECD_TO_RAD);
+        temp_ecd = (int32_t)(GimbalCali->min_pitch / pitch_ecd_to_rad);
         temp_min_ecd = GimbalCali->min_pitch_ecd - temp_ecd;
 
-        ecd_format(temp_max_ecd);
-        ecd_format(temp_min_ecd);
+        temp_max_ecd = (int32_t)GimbalEncoderNormalizeCount(temp_max_ecd, pitch_ecd_range);
+        temp_min_ecd = (int32_t)GimbalEncoderNormalizeCount(temp_min_ecd, pitch_ecd_range);
 
         temp_ecd = temp_max_ecd - temp_min_ecd;
 
-        if (temp_ecd > HALF_ECD_RANGE)
+        if (temp_ecd > pitch_half_ecd_range)
         {
-            temp_ecd -= ECD_RANGE;
+            temp_ecd -= (int32_t)pitch_ecd_range;
         }
-        else if (temp_ecd < -HALF_ECD_RANGE)
+        else if (temp_ecd < -pitch_half_ecd_range)
         {
-            temp_ecd += ECD_RANGE;
+            temp_ecd += (int32_t)pitch_ecd_range;
         }
 
         temp_ecd = temp_max_ecd - temp_ecd / 2;
 
-        ecd_format(temp_ecd);
+        *pitch_offset = GimbalEncoderNormalizeCount(temp_ecd, pitch_ecd_range);
 
-        *pitch_offset = temp_ecd;
-
-        *max_pitch = motor_ecd_to_angle_change(GimbalCali->max_pitch_ecd, *pitch_offset);
-        *min_pitch = motor_ecd_to_angle_change(GimbalCali->min_pitch_ecd, *pitch_offset);
+        *max_pitch = motor_ecd_to_angle_change(GimbalCali->max_pitch_ecd,
+                                               *pitch_offset,
+                                               &g_config.motor.pitch);
+        *min_pitch = motor_ecd_to_angle_change(GimbalCali->min_pitch_ecd,
+                                               *pitch_offset,
+                                               &g_config.motor.pitch);
     }
 }
 

@@ -41,6 +41,13 @@ static inline void ShootInputGateBlockMouse(ShootInputGateState *state)
     }
 }
 
+static inline void ShootInputGateRequireRearm(ShootInputGateState *state,
+                                               uint16_t stopRaw)
+{
+    ShootInputGateReset(state, stopRaw);
+    ShootInputGateBlockMouse(state);
+}
+
 static inline uint8_t ShootInputGateSyncSemantics(ShootInputGateState *state,
                                                    uint32_t semanticsSeq,
                                                    uint16_t stopRaw)
@@ -51,8 +58,7 @@ static inline uint8_t ShootInputGateSyncSemantics(ShootInputGateState *state,
     }
 
     state->semanticsSeq = semanticsSeq;
-    ShootInputGateReset(state, stopRaw);
-    ShootInputGateBlockMouse(state);
+    ShootInputGateRequireRearm(state, stopRaw);
     return 1u;
 }
 
@@ -66,8 +72,7 @@ static inline uint8_t ShootInputGateSyncAction(ShootInputGateState *state,
     }
 
     state->actionSeq = actionSeq;
-    ShootInputGateReset(state, stopRaw);
-    ShootInputGateBlockMouse(state);
+    ShootInputGateRequireRearm(state, stopRaw);
     return 1u;
 }
 
@@ -190,6 +195,33 @@ static inline void ShootInputGateApplyFrameMouse(ShootInputGateState *state,
     }
 
     ShootInputGateApplyMouse(state, pressLeft, pressRight);
+}
+
+static inline uint16_t ShootInputGateBlockFireFrame(ShootInputGateState *state,
+                                                     uint16_t rawSwitch,
+                                                     uint8_t manualOnline,
+                                                     uint16_t stopRaw,
+                                                     uint16_t readyRaw,
+                                                     uint16_t fireRaw,
+                                                     uint8_t *pressLeft,
+                                                     uint8_t *pressRight)
+{
+    ShootInputGateRequireRearm(state, stopRaw);
+    if (pressLeft != 0)
+    {
+        *pressLeft = 0u;
+    }
+    if (pressRight != 0)
+    {
+        *pressRight = 0u;
+    }
+
+    return ShootInputGateSwitch(state,
+                                rawSwitch,
+                                manualOnline,
+                                stopRaw,
+                                readyRaw,
+                                fireRaw);
 }
 
 #endif

@@ -73,6 +73,10 @@ typedef enum
 #define ROBOT_BOARD_HAS_FPU 1u
 #endif
 
+#ifndef ROBOT_PROFILE_GIMBAL_ENCODER_FALLBACK_MASK
+#define ROBOT_PROFILE_GIMBAL_ENCODER_FALLBACK_MASK 0u
+#endif
+
 typedef struct
 {
     const char *profile_name;
@@ -83,6 +87,7 @@ typedef struct
     uint8_t BoardKind;
     uint8_t can_bus_count;
     uint8_t has_fpu;
+    uint8_t gimbal_encoder_fallback_mask;
     uint32_t cpu_hz;
 } RobotProfileIdentity;
 
@@ -164,6 +169,12 @@ static inline uint8_t RobotBoardHasFpu(void)
     return (uint8_t)((ROBOT_BOARD_HAS_FPU != 0u) ? 1u : 0u);
 }
 
+/* bit0=yaw，bit1=yaw_upper，bit2=pitch；这是目标硬件能力，不是热调参数。 */
+static inline uint8_t RobotProfileGimbalEncoderFallbackMask(void)
+{
+    return (uint8_t)((uint32_t)ROBOT_PROFILE_GIMBAL_ENCODER_FALLBACK_MASK & 0x07u);
+}
+
 static inline void RobotProfileFillIdentity(RobotProfileIdentity *out)
 {
     if (out == NULL)
@@ -180,6 +191,7 @@ static inline void RobotProfileFillIdentity(RobotProfileIdentity *out)
     out->cpu_hz = RobotBoardCpuHz();
     out->can_bus_count = RobotBoardCanBusCount();
     out->has_fpu = RobotBoardHasFpu();
+    out->gimbal_encoder_fallback_mask = RobotProfileGimbalEncoderFallbackMask();
 }
 
 // Platform defaults. A target can override these macros in project defines

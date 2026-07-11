@@ -6,13 +6,13 @@
  */
 
 #define GIMBAL_FAULT_REASON_MOTOR (1u << 0)
-#define GIMBAL_FAULT_REASON_IMU   (1u << 1)
 
 typedef struct
 {
     FaultMgr mgr;
     uint32_t configuredMask;
     uint32_t activeMask;
+    uint32_t motorBlockingMask;
     uint32_t blockingMask;
     uint32_t recoveryMask;
     uint32_t inhibitMask;
@@ -121,6 +121,7 @@ static void GimbalFaultInit(void)
         (FaultMgrInit(&s_gimbalFault.mgr, &config) == FaultMgrResultOk) ? 1u : 0u;
     if (s_gimbalFault.initialized == 0u)
     {
+        s_gimbalFault.motorBlockingMask = s_gimbalFault.configuredMask;
         s_gimbalFault.blockingMask = s_gimbalFault.configuredMask;
     }
 }
@@ -133,6 +134,7 @@ static void GimbalFaultUpdate(const GimbalRuntimeSnapshot *snapshot)
 
     s_gimbalFault.configuredMask = GimbalFaultConfiguredMask(snapshot);
     s_gimbalFault.activeMask = 0u;
+    s_gimbalFault.motorBlockingMask = 0u;
     s_gimbalFault.blockingMask = 0u;
     s_gimbalFault.recoveryMask = 0u;
     s_gimbalFault.imuRequiredMask = (snapshot != NULL) ? snapshot->imu_required_mask : 0u;
@@ -140,7 +142,9 @@ static void GimbalFaultUpdate(const GimbalRuntimeSnapshot *snapshot)
 
     if (s_gimbalFault.initialized == 0u || snapshot == NULL)
     {
-        s_gimbalFault.blockingMask = s_gimbalFault.configuredMask;
+        s_gimbalFault.motorBlockingMask = s_gimbalFault.configuredMask;
+        s_gimbalFault.blockingMask = s_gimbalFault.motorBlockingMask |
+                                     ((snapshot != NULL) ? snapshot->feedback_block_mask : 0u);
         return;
     }
 
@@ -151,11 +155,8 @@ static void GimbalFaultUpdate(const GimbalRuntimeSnapshot *snapshot)
         const uint8_t configured = ((s_gimbalFault.configuredMask & bit) != 0u) ? 1u : 0u;
         const uint8_t motorFault = (uint8_t)(configured != 0u &&
                                              (health == NULL || health->healthy == 0u));
-        const uint8_t imuFault = (uint8_t)(configured != 0u &&
-                                           (s_gimbalFault.imuRequiredMask & bit) != 0u &&
-                                           snapshot->imu_online == 0u);
 
-        if (motorFault != 0u || imuFault != 0u)
+        if (motorFault != 0u)
         {
             s_gimbalFault.activeMask |= bit;
         }
@@ -163,11 +164,6 @@ static void GimbalFaultUpdate(const GimbalRuntimeSnapshot *snapshot)
                                    axis,
                                    GIMBAL_FAULT_REASON_MOTOR,
                                    motorFault,
-                                   nowMs) != FaultMgrResultOk ||
-            FaultMgrSetDeviceFault(&s_gimbalFault.mgr,
-                                   axis,
-                                   GIMBAL_FAULT_REASON_IMU,
-                                   imuFault,
                                    nowMs) != FaultMgrResultOk)
         {
             updateOk = 0u;
@@ -181,7 +177,9 @@ static void GimbalFaultUpdate(const GimbalRuntimeSnapshot *snapshot)
     if (updateOk == 0u ||
         FaultMgrUpdate(&s_gimbalFault.mgr, nowMs, safeMask, 0u) != FaultMgrResultOk)
     {
-        s_gimbalFault.blockingMask = s_gimbalFault.configuredMask;
+        s_gimbalFault.motorBlockingMask = s_gimbalFault.configuredMask;
+        s_gimbalFault.blockingMask = s_gimbalFault.motorBlockingMask |
+                                     snapshot->feedback_block_mask;
         return;
     }
 
@@ -196,18 +194,20 @@ static void GimbalFaultUpdate(const GimbalRuntimeSnapshot *snapshot)
         }
         if (FaultMgrGetDeviceStatus(&s_gimbalFault.mgr, axis, &status) != FaultMgrResultOk)
         {
-            s_gimbalFault.blockingMask |= bit;
+            s_gimbalFault.motorBlockingMask |= bit;
             continue;
         }
         if (status.action != FaultActionRun)
         {
-            s_gimbalFault.blockingMask |= bit;
+            s_gimbalFault.motorBlockingMask |= bit;
         }
         if (status.recoveryPending != 0u)
         {
             s_gimbalFault.recoveryMask |= bit;
         }
     }
+    s_gimbalFault.blockingMask = s_gimbalFault.motorBlockingMask |
+                                 snapshot->feedback_block_mask;
 }
 
 static uint8_t GimbalFaultCollectIds(uint32_t mask,
@@ -272,7 +272,12 @@ static void GimbalFaultSyncInhibit(GimbalControl *control,
     uint32_t actualMask = 0u;
     uint8_t count;
 
-    s_gimbalFault.holdZeroMask = plan.holdZeroMask;
+    s_gimbalFault.holdZeroMask = plan.holdZeroMask |
+                                 ((snapshot != NULL) ?
+                                      snapshot->feedback_transition_zero_mask :
+                                      0u) |
+                                 GimbalFeedbackRouteDebtMask(
+                                     &s_gimbalFeedbackRouteDebt);
 
     count = GimbalFaultCollectIds(plan.acquireMask, ids, &actualMask);
     if (actualMask != plan.acquireMask)

@@ -523,14 +523,15 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
 }
 
 // 发送大疆一组四电机电流帧；MIT 等非大疆协议不会走这里。
-void CAN_cmd_rm_group(uint8_t bus,
-                      uint16_t group_id,
-                      int16_t motor1,
-                      int16_t motor2,
-                      int16_t motor3,
-                      int16_t motor4)
+int CAN_cmd_rm_group(uint8_t bus,
+                     uint16_t group_id,
+                     int16_t motor1,
+                     int16_t motor2,
+                     int16_t motor3,
+                     int16_t motor4)
 {
     uint8_t data[8] = {0};
+    int ret;
     data[0] = (uint8_t)(motor1 >> 8);
     data[1] = (uint8_t)motor1;
     data[2] = (uint8_t)(motor2 >> 8);
@@ -540,13 +541,12 @@ void CAN_cmd_rm_group(uint8_t bus,
     data[6] = (uint8_t)(motor4 >> 8);
     data[7] = (uint8_t)motor4;
 
+    ret = BspCanTx(bus, group_id, data, 8u);
     if (bus == 1u && group_id == (uint16_t)CAN_RM_GROUP_0X1FF_ID)
     {
-        last_can1ff_status = (uint8_t)BspCanTx(bus, group_id, data, 8u);
-        return;
+        last_can1ff_status = (uint8_t)ret;
     }
-
-    (void)BspCanTx(bus, group_id, data, 8u);
+    return ret;
 }
 
 void CAN_cmd_chassis_reset_ID(void)

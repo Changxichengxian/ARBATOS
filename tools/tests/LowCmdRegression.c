@@ -1574,6 +1574,61 @@ static int TestLowStateCopiesLastEcd(void)
                      "LowState 整体快照丢失上一编码器值");
 }
 
+static int TestTxReceiptTracksExactAcceptedCommand(void)
+{
+    MotorCmd cmd = TestCurrentCmd(0);
+    MotorCmd published;
+    MotorCmd newer;
+    MotorTxReceipt receipt;
+
+    LowCmdClearAll();
+    LowStateClearAll();
+    s_test_tick_ms = 900u;
+    if (!TestCheck(LowCmdSetMotorFrom(Motor2,
+                                      &cmd,
+                                      (uint16_t)LOWCMD_WRITER_CONTROL) != 0u &&
+                       LowCmdGetMotor(Motor2, &published) != 0u &&
+                       LowStateGetTxReceipt(Motor2, &receipt) != 0u &&
+                       receipt.valid == 0u,
+                   "只发布 LowCmd 不能伪造物理发送入口回执")) return 0;
+
+    LowStateUpdateTxReceipt(Motor2, &published);
+    if (!TestCheck(LowStateGetTxReceipt(Motor2, &receipt) != 0u &&
+                       MotorTxReceiptMatches(&receipt,
+                                             published.seq,
+                                             published.tick,
+                                             (uint16_t)LOWCMD_WRITER_CONTROL,
+                                             (uint8_t)MotorModeCurrent,
+                                             0) != 0u,
+                   "发送入口成功后必须精确记录命令代次、时间和零电流")) return 0;
+
+    s_test_tick_ms = 901u;
+    cmd.current = 100;
+    if (!TestCheck(LowCmdSetMotorFrom(Motor2,
+                                      &cmd,
+                                      (uint16_t)LOWCMD_WRITER_CONTROL) != 0u &&
+                       LowCmdGetMotor(Motor2, &newer) != 0u &&
+                       LowStateGetTxReceipt(Motor2, &receipt) != 0u &&
+                       receipt.valid == 0u &&
+                       MotorTxReceiptMatches(&receipt,
+                                             newer.seq,
+                                             newer.tick,
+                                             newer.writer,
+                                             newer.mode,
+                                             newer.current) == 0u,
+                   "新命令未发送前不得继承上一代零命令回执")) return 0;
+
+    LowStateUpdateTxReceipt(Motor2, &published);
+    if (!TestCheck(LowStateGetTxReceipt(Motor2, &receipt) != 0u &&
+                       receipt.valid == 0u,
+                   "发送任务迟到的旧代回执不得覆盖新命令的失效状态")) return 0;
+
+    LowStateClearAll();
+    return TestCheck(LowStateGetTxReceipt(Motor2, &receipt) != 0u &&
+                         receipt.valid == 0u,
+                     "清理 LowState 必须同时清理发送回执");
+}
+
 int main(void)
 {
     if (!TestClearManySuccess()) return 1;
@@ -1601,6 +1656,7 @@ int main(void)
     if (!TestOutputAuthorizationTracksCurrentOwner()) return 1;
     if (!TestOutputAuthorizationLegacyAndSafetyBoundary()) return 1;
     if (!TestLowStateCopiesLastEcd()) return 1;
+    if (!TestTxReceiptTracksExactAcceptedCommand()) return 1;
     if (!TestCheck(s_test_critical_depth == 0 &&
                        s_test_critical_error_count == 0u &&
                        s_test_permit_validate_outside_critical_count == 0u &&

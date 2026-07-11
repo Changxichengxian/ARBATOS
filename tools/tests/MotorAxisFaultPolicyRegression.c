@@ -191,6 +191,14 @@ int main(void)
     if (!TestCheck(mask == 0u,
                    "不运行云台输出的变体不得因 IMU 故障占用云台轴")) return 1;
 
+    if (!TestCheck(GimbalFaultFrameCurrent(GIMBAL_FAULT_MASK_YAW,
+                                            GIMBAL_FAULT_MASK_YAW,
+                                            6000) == 0 &&
+                   GimbalFaultFrameCurrent(GIMBAL_FAULT_MASK_PITCH,
+                                            GIMBAL_FAULT_MASK_YAW,
+                                            6000) == 6000,
+                   "反馈切换或恢复帧必须实际发布零值，不能跳过可靠轴写入")) return 1;
+
     (void)puts("PASS: motor axis fault policy regression");
     return 0;
 }

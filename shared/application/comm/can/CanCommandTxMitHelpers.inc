@@ -351,12 +351,13 @@ static inline void CanTxBuildMitCmdFromActuator(const motor_node_param_t *node,
 
 // 处理单个 MIT 轴：必要时先使能，再发送本周期命令。
 static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
-                                                  MotorId actuator_id,
-                                                  const motor_node_param_t *node,
-                                                  int16_t current,
-                                                  const MotorCmd *cached_cmd,
-                                                  const ControlOutputStamp *cached_owner,
-                                                  uint8_t *flags)
+                                             MotorId actuator_id,
+                                             const motor_node_param_t *node,
+                                             int16_t current,
+                                             const MotorCmd *cached_cmd,
+                                             const ControlOutputStamp *cached_owner,
+                                             uint8_t *flags,
+                                             uint8_t *tx_succeeded)
 {
     static uint8_t mit_enabled[MotorCount];
     static uint8_t mit_disabled_confirmed[MotorCount];
@@ -373,6 +374,11 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
     uint16_t cmd_period_ms;
     uint16_t std_id;
     const uint32_t now = CanTxNowMs();
+
+    if (tx_succeeded != NULL)
+    {
+        *tx_succeeded = 0u;
+    }
 
     if (node == NULL)
     {
@@ -535,6 +541,10 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
                 mit_last_cmd_was_safety[actuator_id] =
                     (cmd.writer == (uint16_t)LOWCMD_WRITER_SAFETY) ? 1u : 0u;
                 s_can_tx_mit_cmd_tx_count[actuator_id]++;
+                if (tx_succeeded != NULL)
+                {
+                    *tx_succeeded = 1u;
+                }
             }
             else if (flags != NULL)
             {
@@ -570,6 +580,10 @@ static inline uint8_t CanTxProcessCanMitItem(uint8_t bus,
             mit_last_cmd_was_safety[actuator_id] =
                 (cmd.writer == (uint16_t)LOWCMD_WRITER_SAFETY) ? 1u : 0u;
             s_can_tx_mit_cmd_tx_count[actuator_id]++;
+            if (tx_succeeded != NULL)
+            {
+                *tx_succeeded = 1u;
+            }
         }
         else if (flags != NULL)
         {

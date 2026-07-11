@@ -117,6 +117,12 @@ static void WatchCopyGimbal(void)
     g_watch.gimbal.pitch_online = gimbal.pitch_online;
     g_watch.gimbal.imu_online = gimbal.imu_online;
     g_watch.gimbal.follow_available = gimbal.follow_available;
+    g_watch.gimbal.feedback_mode = gimbal.feedback_mode;
+    g_watch.gimbal.encoder_fallback_mask = gimbal.encoder_fallback_mask;
+    g_watch.gimbal.feedback_degraded_mask = gimbal.feedback_degraded_mask;
+    g_watch.gimbal.feedback_block_mask = gimbal.feedback_block_mask;
+    g_watch.gimbal.feedback_recovery_pending = gimbal.feedback_recovery_pending;
+    g_watch.gimbal.feedback_transition_zero_mask = gimbal.feedback_transition_zero_mask;
     g_watch.gimbal.fault_configured_mask = gimbal.fault_configured_mask;
     g_watch.gimbal.fault_active_mask = gimbal.fault_active_mask;
     g_watch.gimbal.fault_blocking_mask = gimbal.fault_blocking_mask;
@@ -219,6 +225,12 @@ static void WatchCopyDualGimbal(void)
     g_watch.dual_gimbal.pitch_online = state.pitch_online;
     g_watch.dual_gimbal.imu_online = state.imu_online;
     g_watch.dual_gimbal.follow_available = state.follow_available;
+    g_watch.dual_gimbal.feedback_mode = state.feedback_mode;
+    g_watch.dual_gimbal.encoder_fallback_mask = state.encoder_fallback_mask;
+    g_watch.dual_gimbal.feedback_degraded_mask = state.feedback_degraded_mask;
+    g_watch.dual_gimbal.feedback_block_mask = state.feedback_block_mask;
+    g_watch.dual_gimbal.feedback_recovery_pending = state.feedback_recovery_pending;
+    g_watch.dual_gimbal.feedback_transition_zero_mask = state.feedback_transition_zero_mask;
     g_watch.dual_gimbal.fault_configured_mask = state.fault_configured_mask;
     g_watch.dual_gimbal.fault_active_mask = state.fault_active_mask;
     g_watch.dual_gimbal.fault_blocking_mask = state.fault_blocking_mask;

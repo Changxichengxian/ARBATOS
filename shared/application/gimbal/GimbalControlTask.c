@@ -39,6 +39,7 @@
 #include "ChassisState.h"
 #include "GimbalState.h"
 #include "GimbalFaultPolicy.h"
+#include "GimbalFeedbackPolicy.h"
 #include "GimbalBehaviour.h"
 #include "InsTask.h"
 #include "ShootCtrl.h"
@@ -96,7 +97,9 @@ typedef struct
     const motor_measure_t *pitch_measure;
     const motor_node_param_t *yaw_motor_cfg;
     const motor_node_param_t *pitch_motor_cfg;
+    robot_run_mode_e run_mode;
     robot_run_variant_e run_variant;
+    MotorId target_motor;
     uint8_t PitchCaliMode;
     uint16_t period_ms;
     uint32_t period_us;
@@ -111,19 +114,32 @@ typedef struct
     uint8_t recovery_input_safe;
     uint8_t control_allowed;
     uint32_t imu_required_mask;
+    uint32_t encoder_fallback_mask;
+    uint32_t encoder_degraded_mask;
+    uint32_t feedback_block_mask;
+    uint32_t feedback_transition_zero_mask;
+    uint32_t feedback_transition_seq;
+    uint8_t feedback_mode;
+    uint8_t feedback_recovery_pending;
+    uint8_t feedback_transition_pending;
     MotorHealthResult yaw_health;
     MotorHealthResult yaw_upper_health;
     MotorHealthResult pitch_health;
 } GimbalRuntimeSnapshot;
 
-//motor encoder value format, range[0, ECD_RANGE - 1]
-#define ecd_format(ecd)         \
-    {                           \
-        if ((ecd) >= ECD_RANGE) \
-            (ecd) -= ECD_RANGE; \
-        else if ((ecd) < 0)     \
-            (ecd) += ECD_RANGE; \
-    }
+typedef struct
+{
+    MotorId ids[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT];
+    uint32_t axisMasks[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT];
+    uint8_t count;
+} GimbalPublishResult;
+
+typedef enum
+{
+    GimbalFeedbackZeroWaitNone = 0u,
+    GimbalFeedbackZeroWaiting,
+    GimbalFeedbackZeroReady,
+} GimbalFeedbackZeroWait;
 
 #define GimbalTotalPidClear(GimbalClear)                             \
     {                                                                    \
@@ -253,12 +269,13 @@ static void GimbalModeChangeControlTransit(GimbalControl *mode_change);
   * @param[in]      offset_ecd: gimbal offset encode
   * @retval         angle, unit rad
   */
-static fp32 motor_ecd_to_angle_change(uint16_t ecd, uint16_t offset_ecd);
-#if GIMBAL_USE_ENCODER_FEEDBACK
+static fp32 motor_ecd_to_angle_change(uint16_t ecd,
+                                      uint16_t offset_ecd,
+                                      const motor_node_param_t *node);
 static void GimbalFeedbackFromEncoder(GimbalMotor *motor,
-                                         const motor_measure_t *measure,
-                                         uint8_t turn);
-#endif
+                                      const motor_measure_t *measure,
+                                      const motor_node_param_t *node,
+                                      uint8_t turn);
 /**
   * @brief          set gimbal control set-point, control set-point is set by "GimbalBehaviourControlSet".
   * @param[out]     GimbalSetControl: "GimbalControl" variable point
@@ -349,6 +366,11 @@ static fp32 GimbalPitchKickScale(fp32 angle_err);
 
 //gimbal control data
 static GimbalControl g_gimbal;
+static GimbalFeedbackPolicyState s_gimbalFeedbackPolicy;
+static GimbalFeedbackZeroBarrier s_gimbalFeedbackZeroBarrier;
+static GimbalFeedbackRouteDebt s_gimbalFeedbackRouteDebt;
+static uint8_t s_gimbalSingleMitDesiredPrev;
+static MotorId s_gimbalSingleMitTargetPrev;
 static uint8_t s_dual_yaw_imu_center_ready = 0u;
 static fp32 s_dual_yaw_imu_center = 0.0f;
 static uint8_t s_dual_yaw_output_allowed_prev = 0u;
@@ -501,12 +523,18 @@ static uint8_t GimbalPublishCurrents(const MotorCurrentBind *bindings,
                                      const uint32_t *axisMasks,
                                      const int16_t *currents,
                                      uint8_t bindingCount,
-                                     const ControlOutputPermit *permit)
+                                     const ControlOutputPermit *permit,
+                                     uint32_t preserveAxisMask,
+                                     GimbalPublishResult *result)
 {
     MotorId ids[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT];
     int16_t publishedCurrents[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT];
     uint8_t count = 0u;
 
+    if (result != NULL)
+    {
+        (void)memset(result, 0, sizeof(*result));
+    }
     if (bindings == NULL || axisMasks == NULL || currents == NULL ||
         bindingCount > DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT)
     {
@@ -516,16 +544,24 @@ static uint8_t GimbalPublishCurrents(const MotorCurrentBind *bindings,
     {
         uint16_t writer = (uint16_t)LOWCMD_WRITER_NONE;
 
-        if (bindings[i].enabled == 0u ||
+        if ((preserveAxisMask & axisMasks[i]) != 0u ||
+            bindings[i].enabled == 0u ||
             (uint32_t)bindings[i].actuator_id >= (uint32_t)MotorCount ||
-            (s_gimbalFault.holdZeroMask & axisMasks[i]) != 0u ||
             LowCmdGetInhibitWriter(bindings[i].actuator_id, &writer) == 0u ||
             writer != (uint16_t)LOWCMD_WRITER_NONE)
         {
             continue;
         }
         ids[count] = bindings[i].actuator_id;
-        publishedCurrents[count] = currents[i];
+        if (result != NULL)
+        {
+            result->ids[count] = bindings[i].actuator_id;
+            result->axisMasks[count] = axisMasks[i];
+        }
+        publishedCurrents[count] = GimbalFaultFrameCurrent(
+            axisMasks[i],
+            s_gimbalFault.holdZeroMask,
+            currents[i]);
         count++;
     }
 
@@ -533,10 +569,466 @@ static uint8_t GimbalPublishCurrents(const MotorCurrentBind *bindings,
     {
         return ControlMgrOutputPermitValid(permit, 0u);
     }
-    return MotorInstSetCurrentIdsWithPermit(ids,
-                                            publishedCurrents,
-                                            count,
-                                            permit);
+    if (MotorInstSetCurrentIdsWithPermit(ids,
+                                         publishedCurrents,
+                                         count,
+                                         permit) == 0u)
+    {
+        return 0u;
+    }
+    if (result != NULL)
+    {
+        result->count = count;
+    }
+    return 1u;
+}
+
+static uint8_t GimbalFeedbackRouteDebtHeld(uint8_t axis, MotorCmd *held)
+{
+    uint32_t axisMask;
+    MotorId id;
+
+    if (axis >= GIMBAL_FAULT_AXIS_COUNT || held == NULL)
+    {
+        return 0u;
+    }
+    axisMask = 1u << axis;
+    id = (MotorId)s_gimbalFeedbackRouteDebt.motorId[axis];
+    if ((GimbalFeedbackRouteDebtMask(&s_gimbalFeedbackRouteDebt) & axisMask) == 0u ||
+        (uint32_t)id >= (uint32_t)MotorCount ||
+        LowCmdGetMotor(id, held) == 0u ||
+        held->active == 0u ||
+        held->mode != (uint8_t)MotorModeCurrent ||
+        held->writer != (uint16_t)LOWCMD_WRITER_CONTROL ||
+        held->current != 0 ||
+        held->seq != s_gimbalFeedbackRouteDebt.cmdSeq[axis] ||
+        held->tick != s_gimbalFeedbackRouteDebt.cmdTick[axis])
+    {
+        return 0u;
+    }
+    return 1u;
+}
+
+static uint8_t GimbalFeedbackRouteDebtHasMotor(MotorId id)
+{
+    const uint32_t debtMask =
+        GimbalFeedbackRouteDebtMask(&s_gimbalFeedbackRouteDebt);
+
+    if ((uint32_t)id >= (uint32_t)MotorCount)
+    {
+        return 0u;
+    }
+    for (uint8_t axis = 0u; axis < GIMBAL_FAULT_AXIS_COUNT; axis++)
+    {
+        if ((debtMask & (1u << axis)) != 0u &&
+            s_gimbalFeedbackRouteDebt.motorId[axis] == (uint8_t)id)
+        {
+            return 1u;
+        }
+    }
+    return 0u;
+}
+
+static void GimbalSingleMitRouteObserve(const GimbalRuntimeSnapshot *snapshot)
+{
+    MotorId target;
+
+    if (GimbalSingleMitYawTestActive(snapshot) == 0u)
+    {
+        s_gimbalSingleMitDesiredPrev = 0u;
+        s_gimbalSingleMitTargetPrev = MotorCount;
+        return;
+    }
+    target = snapshot->target_motor;
+    if (s_gimbalSingleMitDesiredPrev != 0u &&
+        s_gimbalSingleMitTargetPrev == target)
+    {
+        return;
+    }
+    for (uint8_t axis = 0u; axis < GIMBAL_FAULT_AXIS_COUNT; axis++)
+    {
+        if (GimbalFaultAxisId(axis) != target)
+        {
+            continue;
+        }
+        if (GimbalFeedbackRouteDebtHasMotor(target) != 0u ||
+            GimbalFeedbackRouteDebtRequestPublish(
+                &s_gimbalFeedbackRouteDebt,
+                1u << axis,
+                (uint8_t)target) != 0u)
+        {
+            s_gimbalSingleMitDesiredPrev = 1u;
+            s_gimbalSingleMitTargetPrev = target;
+        }
+        return;
+    }
+    s_gimbalSingleMitDesiredPrev = 0u;
+    s_gimbalSingleMitTargetPrev = MotorCount;
+}
+
+static void GimbalFeedbackRouteDebtObserve(
+    const GimbalRuntimeSnapshot *snapshot,
+    const MotorCurrentBind *bindings,
+    const uint32_t *axisMasks,
+    uint8_t bindingCount)
+{
+    const uint32_t debtMask =
+        GimbalFeedbackRouteDebtMask(&s_gimbalFeedbackRouteDebt);
+
+    if (bindings == NULL || axisMasks == NULL ||
+        bindingCount > DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT)
+    {
+        return;
+    }
+    for (uint8_t i = 0u; i < bindingCount; i++)
+    {
+        if (bindings[i].enabled == 0u ||
+            (uint32_t)bindings[i].actuator_id >= (uint32_t)MotorCount ||
+            (debtMask & axisMasks[i]) != 0u ||
+            GimbalRuntimeAllowsMotor(snapshot,
+                                     bindings[i].actuator_id) != 0u)
+        {
+            continue;
+        }
+        (void)GimbalFeedbackRouteDebtRequestPublish(
+            &s_gimbalFeedbackRouteDebt,
+            axisMasks[i],
+            (uint8_t)bindings[i].actuator_id);
+    }
+}
+
+static void GimbalFeedbackRouteDebtPoll(
+    const GimbalRuntimeSnapshot *snapshot)
+{
+    for (uint8_t axis = 0u; axis < GIMBAL_FAULT_AXIS_COUNT; axis++)
+    {
+        const uint32_t axisMask = 1u << axis;
+        const MotorId id = (MotorId)s_gimbalFeedbackRouteDebt.motorId[axis];
+        MotorCmd held;
+
+        if ((s_gimbalFeedbackRouteDebt.blockedMask & axisMask) == 0u)
+        {
+            continue;
+        }
+        if (GimbalFeedbackRouteDebtHeld(axis, &held) == 0u ||
+            GimbalRuntimeAllowsMotor(snapshot, id) != 0u)
+        {
+            (void)GimbalFeedbackRouteDebtRequestPublish(
+                &s_gimbalFeedbackRouteDebt,
+                axisMask,
+                (uint8_t)id);
+        }
+    }
+
+    for (uint8_t axis = 0u; axis < GIMBAL_FAULT_AXIS_COUNT; axis++)
+    {
+        const uint32_t axisMask = 1u << axis;
+        const MotorId id = (MotorId)s_gimbalFeedbackRouteDebt.motorId[axis];
+        MotorCmd held;
+        MotorTxReceipt receipt;
+
+        if ((s_gimbalFeedbackRouteDebt.waitMask & axisMask) == 0u)
+        {
+            continue;
+        }
+        if (GimbalFeedbackRouteDebtHeld(axis, &held) == 0u)
+        {
+            (void)GimbalFeedbackRouteDebtRequestPublish(
+                &s_gimbalFeedbackRouteDebt,
+                axisMask,
+                (uint8_t)id);
+            continue;
+        }
+        if (GimbalRuntimeAllowsMotor(snapshot, id) == 0u)
+        {
+            (void)GimbalFeedbackRouteDebtHold(&s_gimbalFeedbackRouteDebt,
+                                              axisMask,
+                                              (uint8_t)id,
+                                              held.seq,
+                                              held.tick);
+            continue;
+        }
+        if (LowStateGetTxReceipt(id, &receipt) != 0u &&
+            MotorTxReceiptMatches(&receipt,
+                                  held.seq,
+                                  held.tick,
+                                  (uint16_t)LOWCMD_WRITER_CONTROL,
+                                  (uint8_t)MotorModeCurrent,
+                                  0) != 0u)
+        {
+            (void)GimbalFeedbackRouteDebtComplete(&s_gimbalFeedbackRouteDebt,
+                                                  axisMask);
+        }
+    }
+}
+
+static void GimbalFeedbackRouteDebtCapture(
+    const GimbalRuntimeSnapshot *snapshot,
+    const GimbalPublishResult *result)
+{
+    if (result == NULL)
+    {
+        return;
+    }
+
+    for (uint8_t i = 0u; i < result->count; i++)
+    {
+        const uint32_t axisMask = result->axisMasks[i];
+        MotorCmd cmd;
+
+        if ((s_gimbalFeedbackRouteDebt.publishMask & axisMask) == 0u ||
+            LowCmdGetMotor(result->ids[i], &cmd) == 0u ||
+            cmd.active == 0u ||
+            cmd.mode != (uint8_t)MotorModeCurrent ||
+            cmd.writer != (uint16_t)LOWCMD_WRITER_CONTROL ||
+            cmd.current != 0)
+        {
+            continue;
+        }
+        if (GimbalRuntimeAllowsMotor(snapshot, result->ids[i]) == 0u)
+        {
+            (void)GimbalFeedbackRouteDebtHold(&s_gimbalFeedbackRouteDebt,
+                                              axisMask,
+                                              (uint8_t)result->ids[i],
+                                              cmd.seq,
+                                              cmd.tick);
+        }
+        else
+        {
+            (void)GimbalFeedbackRouteDebtWait(&s_gimbalFeedbackRouteDebt,
+                                              axisMask,
+                                              (uint8_t)result->ids[i],
+                                              cmd.seq,
+                                              cmd.tick);
+        }
+    }
+}
+
+static uint8_t GimbalFeedbackRouteDebtCoverBarrier(
+    const GimbalRuntimeSnapshot *snapshot,
+    uint32_t axisMask)
+{
+    const uint8_t axis = (axisMask == GIMBAL_FAULT_MASK_YAW) ?
+                             GIMBAL_FAULT_AXIS_YAW :
+                             ((axisMask == GIMBAL_FAULT_MASK_YAW_UPPER) ?
+                                  GIMBAL_FAULT_AXIS_YAW_UPPER :
+                                  GIMBAL_FAULT_AXIS_PITCH);
+    const MotorId id = (MotorId)s_gimbalFeedbackRouteDebt.motorId[axis];
+    MotorCmd held;
+
+    if (GimbalFeedbackRouteDebtHeld(axis, &held) == 0u)
+    {
+        return 0u;
+    }
+    if ((s_gimbalFeedbackRouteDebt.blockedMask & axisMask) != 0u)
+    {
+        return (uint8_t)(GimbalRuntimeAllowsMotor(snapshot, id) == 0u);
+    }
+    if ((s_gimbalFeedbackRouteDebt.waitMask & axisMask) != 0u &&
+        GimbalRuntimeAllowsMotor(snapshot, id) != 0u)
+    {
+        return GimbalFeedbackZeroBarrierAdd(&s_gimbalFeedbackZeroBarrier,
+                                            axisMask,
+                                            (uint8_t)id,
+                                            held.seq,
+                                            held.tick);
+    }
+    return 0u;
+}
+
+static uint8_t GimbalFeedbackZeroBarrierCapture(
+    const GimbalRuntimeSnapshot *snapshot,
+    const GimbalPublishResult *result)
+{
+    uint32_t coveredMask;
+
+    if (snapshot == NULL || result == NULL ||
+        snapshot->feedback_transition_pending == 0u)
+    {
+        return 0u;
+    }
+
+    GimbalFeedbackZeroBarrierBegin(&s_gimbalFeedbackZeroBarrier,
+                                   snapshot->feedback_transition_seq);
+    coveredMask = 0u;
+    for (uint8_t i = 0u; i < result->count; i++)
+    {
+        MotorCmd cmd;
+        const uint32_t axisMask = result->axisMasks[i];
+
+        if ((snapshot->feedback_transition_zero_mask & axisMask) == 0u)
+        {
+            continue;
+        }
+        if (LowCmdGetMotor(result->ids[i], &cmd) == 0u ||
+            cmd.active == 0u ||
+            cmd.mode != (uint8_t)MotorModeCurrent ||
+            cmd.writer != (uint16_t)LOWCMD_WRITER_CONTROL ||
+            cmd.current != 0)
+        {
+            GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+            return 0u;
+        }
+        if (GimbalRuntimeAllowsMotor(snapshot, result->ids[i]) == 0u)
+        {
+            if (GimbalFeedbackRouteDebtHold(&s_gimbalFeedbackRouteDebt,
+                                            axisMask,
+                                            (uint8_t)result->ids[i],
+                                            cmd.seq,
+                                            cmd.tick) == 0u)
+            {
+                GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+                return 0u;
+            }
+        }
+        else if (GimbalFeedbackZeroBarrierAdd(&s_gimbalFeedbackZeroBarrier,
+                                              axisMask,
+                                              (uint8_t)result->ids[i],
+                                              cmd.seq,
+                                              cmd.tick) == 0u)
+        {
+            GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+            return 0u;
+        }
+        coveredMask |= axisMask;
+    }
+    for (uint8_t axis = 0u; axis < GIMBAL_FAULT_AXIS_COUNT; axis++)
+    {
+        const uint32_t axisMask = 1u << axis;
+        const MotorId id = GimbalFaultAxisId(axis);
+        uint16_t writer = (uint16_t)LOWCMD_WRITER_NONE;
+
+        if ((snapshot->feedback_transition_zero_mask & axisMask) == 0u ||
+            (coveredMask & axisMask) != 0u)
+        {
+            continue;
+        }
+        if (GimbalFeedbackRouteDebtCoverBarrier(snapshot, axisMask) != 0u)
+        {
+            coveredMask |= axisMask;
+            continue;
+        }
+        if ((s_gimbalFault.inhibitMask & axisMask) == 0u)
+        {
+            continue;
+        }
+        if ((uint32_t)id < (uint32_t)MotorCount &&
+            LowCmdGetInhibitWriter(id, &writer) != 0u &&
+            writer == (uint16_t)LOWCMD_WRITER_SAFETY &&
+            GimbalFeedbackZeroBarrierExcludeSafe(
+                &s_gimbalFeedbackZeroBarrier,
+                axisMask) != 0u)
+        {
+            coveredMask |= axisMask;
+        }
+    }
+    if ((coveredMask & snapshot->feedback_transition_zero_mask) !=
+        snapshot->feedback_transition_zero_mask)
+    {
+        GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+        return 0u;
+    }
+    return 1u;
+}
+
+static GimbalFeedbackZeroWait GimbalFeedbackZeroBarrierPoll(
+    const GimbalRuntimeSnapshot *snapshot)
+{
+    uint8_t allReady = 1u;
+
+    if (snapshot == NULL || snapshot->feedback_transition_pending == 0u)
+    {
+        GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+        return GimbalFeedbackZeroWaitNone;
+    }
+    if (GimbalFeedbackZeroBarrierMatches(&s_gimbalFeedbackZeroBarrier,
+                                         snapshot->feedback_transition_seq) == 0u)
+    {
+        GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+        return GimbalFeedbackZeroWaitNone;
+    }
+
+    for (uint8_t axis = 0u; axis < GIMBAL_FAULT_AXIS_COUNT; axis++)
+    {
+        const uint32_t axisMask = 1u << axis;
+        const MotorId id = GimbalFaultAxisId(axis);
+        uint16_t inhibitWriter = (uint16_t)LOWCMD_WRITER_NONE;
+
+        if ((s_gimbalFeedbackZeroBarrier.safeInhibitMask & axisMask) == 0u)
+        {
+            continue;
+        }
+        if ((s_gimbalFault.inhibitMask & axisMask) == 0u ||
+            (uint32_t)id >= (uint32_t)MotorCount ||
+            LowCmdGetInhibitWriter(id, &inhibitWriter) == 0u ||
+            inhibitWriter != (uint16_t)LOWCMD_WRITER_SAFETY)
+        {
+            GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+            return GimbalFeedbackZeroWaitNone;
+        }
+    }
+
+    for (uint8_t axis = 0u; axis < 3u; axis++)
+    {
+        const uint32_t axisMask = 1u << axis;
+        const MotorId id = (MotorId)s_gimbalFeedbackZeroBarrier.motorId[axis];
+        MotorCmd held;
+        MotorTxReceipt receipt;
+        uint16_t inhibitWriter = (uint16_t)LOWCMD_WRITER_NONE;
+
+        if ((s_gimbalFeedbackZeroBarrier.waitMask & axisMask) == 0u)
+        {
+            continue;
+        }
+        if ((uint32_t)id >= (uint32_t)MotorCount ||
+            LowCmdGetInhibitWriter(id, &inhibitWriter) == 0u)
+        {
+            GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+            return GimbalFeedbackZeroWaitNone;
+        }
+        if (inhibitWriter != (uint16_t)LOWCMD_WRITER_NONE)
+        {
+            if (inhibitWriter == (uint16_t)LOWCMD_WRITER_SAFETY &&
+                (s_gimbalFault.inhibitMask & axisMask) != 0u)
+            {
+                if (GimbalFeedbackZeroBarrierExcludeSafe(
+                        &s_gimbalFeedbackZeroBarrier,
+                        axisMask) == 0u)
+                {
+                    GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+                    return GimbalFeedbackZeroWaitNone;
+                }
+                s_gimbalFeedbackZeroBarrier.waitMask &= ~axisMask;
+                continue;
+            }
+            GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+            return GimbalFeedbackZeroWaitNone;
+        }
+        if (LowCmdGetMotor(id, &held) == 0u ||
+            held.active == 0u ||
+            held.mode != (uint8_t)MotorModeCurrent ||
+            held.writer != (uint16_t)LOWCMD_WRITER_CONTROL ||
+            held.current != 0 ||
+            held.seq != s_gimbalFeedbackZeroBarrier.cmdSeq[axis] ||
+            held.tick != s_gimbalFeedbackZeroBarrier.cmdTick[axis])
+        {
+            GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+            return GimbalFeedbackZeroWaitNone;
+        }
+        if (LowStateGetTxReceipt(id, &receipt) == 0u ||
+            MotorTxReceiptMatches(&receipt,
+                                  held.seq,
+                                  held.tick,
+                                  (uint16_t)LOWCMD_WRITER_CONTROL,
+                                  (uint8_t)MotorModeCurrent,
+                                  0) == 0u)
+        {
+            allReady = 0u;
+        }
+    }
+    return (allReady != 0u) ?
+               GimbalFeedbackZeroReady :
+               GimbalFeedbackZeroWaiting;
 }
 
 
@@ -567,18 +1059,32 @@ void GimbalControlTask(void const *pvParameters)
         const ManualInputSnapshot *frame_input =
             (ManualInputSnapshotRead(&manual_input) != 0u) ? &manual_input : NULL;
         GimbalRuntimeSnapshot snapshot;
+        GimbalPublishResult publish_result;
         ControlOutputPermit output_permit = {0};
         uint8_t gimbal_allowed;
+        uint8_t publish_ok = 0u;
+        uint8_t feedback_transition_complete = 0u;
+        uint32_t feedback_zero_wait_mask = 0u;
+        (void)memset(&publish_result, 0, sizeof(publish_result));
         WatchTaskBeat(WATCH_TASK_GIMBAL_CONTROL);
         GimbalSnapshotCapture(&snapshot, &g_gimbal, frame_input);
+        GimbalFeedbackDiscardVision(&snapshot);
         GimbalFaultUpdate(&snapshot);
         gimbal_allowed = (uint8_t)GimbalControlMgrAllows(ControlIdSingleGimbal,
                                                          &snapshot,
                                                          &output_permit);
         snapshot.control_allowed = gimbal_allowed;
+        GimbalSingleMitRouteObserve(&snapshot);
+        GimbalFeedbackRouteDebtObserve(&snapshot,
+                                       GimbalOutputCurrentBindings,
+                                       GimbalOutputAxisMasks,
+                                       GIMBAL_OUTPUT_MOTOR_COUNT);
         GimbalFaultSyncInhibit(&g_gimbal,
                                &snapshot,
                                (gimbal_allowed != 0u) ? &output_permit : NULL);
+        GimbalFeedbackRouteDebtPoll(&snapshot);
+        feedback_zero_wait_mask = s_gimbalFeedbackRouteDebt.blockedMask |
+                                  s_gimbalFeedbackRouteDebt.waitMask;
         GimbalLoopCounter++;
         if (gimbal_allowed == 0u)
         {
@@ -598,11 +1104,26 @@ void GimbalControlTask(void const *pvParameters)
         (void)GimbalControlReleaseOutputs(GimbalOutputCurrentBindings,
                                           GIMBAL_OUTPUT_MOTOR_COUNT,
                                           &output_permit);
+        {
+            const GimbalFeedbackZeroWait zeroWait =
+                GimbalFeedbackZeroBarrierPoll(&snapshot);
+
+            if (zeroWait == GimbalFeedbackZeroReady)
+            {
+                feedback_transition_complete = 1u;
+                feedback_zero_wait_mask |= s_gimbalFeedbackZeroBarrier.waitMask;
+            }
+            else if (zeroWait == GimbalFeedbackZeroWaiting)
+            {
+                feedback_zero_wait_mask |= s_gimbalFeedbackZeroBarrier.waitMask;
+            }
+        }
 
         GimbalSetMode(&g_gimbal);                    //设置云台控制模式
         PitchCaliTickPre(&g_gimbal, GimbalBehaviourWatch, snapshot.PitchCaliMode);
         GimbalModeChangeControlTransit(&g_gimbal); //控制模式切换 控制数据过渡
         GimbalFeedbackUpdate(&g_gimbal, &snapshot);  //云台数据反馈
+        GimbalFeedbackTransitionReset(&g_gimbal, &snapshot);
         GimbalSetControl(&g_gimbal);
         GimbalControlLoop(&g_gimbal);
         PitchCaliTickPost(&g_gimbal, GimbalBehaviourWatch, snapshot.PitchCaliMode);
@@ -626,14 +1147,19 @@ void GimbalControlTask(void const *pvParameters)
         // watch 输出：观察最终下发电流（含运行模式、安全模式及方向翻转后的值）
         GimbalWatchYawCurrent = yaw_can_set_current;
         GimbalWatchPitchCurrent = pitch_can_set_current;
-        if (GimbalSingleMitYawTestActive(&snapshot) != 0u)
+        if (GimbalSingleMitYawTestActive(&snapshot) != 0u &&
+            snapshot.feedback_transition_pending == 0u &&
+            GimbalFeedbackRouteDebtHasMotor(snapshot.target_motor) == 0u)
         {
             GimbalWatchYawCurrent = 0;
             GimbalWatchPitchCurrent = 0;
-            GimbalApplySingleMitYawTest(&snapshot,
-                                        GimbalOutputCurrentBindings,
-                                        GIMBAL_OUTPUT_MOTOR_COUNT,
-                                        &output_permit);
+            publish_ok = GimbalApplySingleMitYawTest(
+                &snapshot,
+                GimbalOutputCurrentBindings,
+                GimbalOutputAxisMasks,
+                GIMBAL_OUTPUT_MOTOR_COUNT,
+                &output_permit,
+                &publish_result);
         }
         else
         {
@@ -642,11 +1168,38 @@ void GimbalControlTask(void const *pvParameters)
                 pitch_can_set_current,
             };
 
-            (void)GimbalPublishCurrents(GimbalOutputCurrentBindings,
-                                        GimbalOutputAxisMasks,
-                                        GimbalCurrentCmd,
-                                        GIMBAL_OUTPUT_MOTOR_COUNT,
-                                        &output_permit);
+            publish_ok = GimbalPublishCurrents(GimbalOutputCurrentBindings,
+                                               GimbalOutputAxisMasks,
+                                               GimbalCurrentCmd,
+                                               GIMBAL_OUTPUT_MOTOR_COUNT,
+                                               &output_permit,
+                                               feedback_zero_wait_mask,
+                                               &publish_result);
+        }
+        if (publish_ok != 0u && s_gimbalFeedbackRouteDebt.publishMask != 0u)
+        {
+            GimbalFeedbackRouteDebtCapture(&snapshot, &publish_result);
+        }
+        if (snapshot.feedback_transition_pending != 0u &&
+            publish_ok != 0u &&
+            GimbalFeedbackZeroBarrierMatches(&s_gimbalFeedbackZeroBarrier,
+                                             snapshot.feedback_transition_seq) == 0u)
+        {
+            publish_ok = GimbalFeedbackZeroBarrierCapture(&snapshot,
+                                                          &publish_result);
+        }
+        if (feedback_transition_complete != 0u)
+        {
+            const MotorAxisFaultInhibitPlan faultPlan =
+                MotorAxisFaultInhibitPlanMake(s_gimbalFault.configuredMask,
+                                              s_gimbalFault.blockingMask,
+                                              s_gimbalFault.inhibitMask);
+
+            GimbalFeedbackPolicyConsumeTransition(&s_gimbalFeedbackPolicy);
+            GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+            s_gimbalFault.holdZeroMask = faultPlan.holdZeroMask |
+                                         GimbalFeedbackRouteDebtMask(
+                                             &s_gimbalFeedbackRouteDebt);
         }
 
         {
@@ -700,19 +1253,33 @@ void DualYawGimbalControlTask(void const *pvParameters)
         const ManualInputSnapshot *frame_input =
             (ManualInputSnapshotRead(&manual_input) != 0u) ? &manual_input : NULL;
         GimbalRuntimeSnapshot snapshot;
+        GimbalPublishResult publish_result;
         ControlOutputPermit output_permit = {0};
         uint8_t gimbal_allowed;
+        uint8_t publish_ok = 0u;
+        uint8_t feedback_transition_complete = 0u;
+        uint32_t feedback_zero_wait_mask = 0u;
 
+        (void)memset(&publish_result, 0, sizeof(publish_result));
         WatchTaskBeat(WATCH_TASK_GIMBAL_CONTROL);
         GimbalSnapshotCapture(&snapshot, &g_gimbal, frame_input);
+        GimbalFeedbackDiscardVision(&snapshot);
         GimbalFaultUpdate(&snapshot);
         gimbal_allowed = (uint8_t)GimbalControlMgrAllows(ControlIdDualYawGimbal,
                                                          &snapshot,
                                                          &output_permit);
         snapshot.control_allowed = gimbal_allowed;
+        GimbalSingleMitRouteObserve(&snapshot);
+        GimbalFeedbackRouteDebtObserve(&snapshot,
+                                       DualYawGimbalOutputCurrentBindings,
+                                       DualYawGimbalOutputAxisMasks,
+                                       DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT);
         GimbalFaultSyncInhibit(&g_gimbal,
                                &snapshot,
                                (gimbal_allowed != 0u) ? &output_permit : NULL);
+        GimbalFeedbackRouteDebtPoll(&snapshot);
+        feedback_zero_wait_mask = s_gimbalFeedbackRouteDebt.blockedMask |
+                                  s_gimbalFeedbackRouteDebt.waitMask;
         const uint8_t output_allowed = RobotLifecycleOutputAllowed();
         GimbalLoopCounter++;
         if (gimbal_allowed == 0u)
@@ -737,10 +1304,25 @@ void DualYawGimbalControlTask(void const *pvParameters)
         (void)GimbalControlReleaseOutputs(DualYawGimbalOutputCurrentBindings,
                                           DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT,
                                           &output_permit);
+        {
+            const GimbalFeedbackZeroWait zeroWait =
+                GimbalFeedbackZeroBarrierPoll(&snapshot);
+
+            if (zeroWait == GimbalFeedbackZeroReady)
+            {
+                feedback_transition_complete = 1u;
+                feedback_zero_wait_mask |= s_gimbalFeedbackZeroBarrier.waitMask;
+            }
+            else if (zeroWait == GimbalFeedbackZeroWaiting)
+            {
+                feedback_zero_wait_mask |= s_gimbalFeedbackZeroBarrier.waitMask;
+            }
+        }
 
         GimbalSetMode(&g_gimbal);
         GimbalModeChangeControlTransit(&g_gimbal);
         GimbalFeedbackUpdate(&g_gimbal, &snapshot);
+        GimbalFeedbackTransitionReset(&g_gimbal, &snapshot);
         GimbalDualYawImuCenterUpdateOnOutput(&g_gimbal, &snapshot, output_allowed);
         GimbalSetControl(&g_gimbal);
         GimbalControlLoop(&g_gimbal);
@@ -782,15 +1364,20 @@ void DualYawGimbalControlTask(void const *pvParameters)
         GimbalWatchYawCurrent = yaw_can_set_current;
         GimbalWatchYawUpperCurrent = yaw_upper_can_set_current;
         GimbalWatchPitchCurrent = pitch_can_set_current;
-        if (GimbalSingleMitYawTestActive(&snapshot) != 0u)
+        if (GimbalSingleMitYawTestActive(&snapshot) != 0u &&
+            snapshot.feedback_transition_pending == 0u &&
+            GimbalFeedbackRouteDebtHasMotor(snapshot.target_motor) == 0u)
         {
             GimbalWatchYawCurrent = 0;
             GimbalWatchYawUpperCurrent = 0;
             GimbalWatchPitchCurrent = 0;
-            GimbalApplySingleMitYawTest(&snapshot,
-                                        DualYawGimbalOutputCurrentBindings,
-                                        DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT,
-                                        &output_permit);
+            publish_ok = GimbalApplySingleMitYawTest(
+                &snapshot,
+                DualYawGimbalOutputCurrentBindings,
+                DualYawGimbalOutputAxisMasks,
+                DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT,
+                &output_permit,
+                &publish_result);
         }
         else
         {
@@ -800,11 +1387,38 @@ void DualYawGimbalControlTask(void const *pvParameters)
                 pitch_can_set_current,
             };
 
-            (void)GimbalPublishCurrents(DualYawGimbalOutputCurrentBindings,
-                                        DualYawGimbalOutputAxisMasks,
-                                        GimbalCurrentCmd,
-                                        DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT,
-                                        &output_permit);
+            publish_ok = GimbalPublishCurrents(DualYawGimbalOutputCurrentBindings,
+                                               DualYawGimbalOutputAxisMasks,
+                                               GimbalCurrentCmd,
+                                               DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT,
+                                               &output_permit,
+                                               feedback_zero_wait_mask,
+                                               &publish_result);
+        }
+        if (publish_ok != 0u && s_gimbalFeedbackRouteDebt.publishMask != 0u)
+        {
+            GimbalFeedbackRouteDebtCapture(&snapshot, &publish_result);
+        }
+        if (snapshot.feedback_transition_pending != 0u &&
+            publish_ok != 0u &&
+            GimbalFeedbackZeroBarrierMatches(&s_gimbalFeedbackZeroBarrier,
+                                             snapshot.feedback_transition_seq) == 0u)
+        {
+            publish_ok = GimbalFeedbackZeroBarrierCapture(&snapshot,
+                                                          &publish_result);
+        }
+        if (feedback_transition_complete != 0u)
+        {
+            const MotorAxisFaultInhibitPlan faultPlan =
+                MotorAxisFaultInhibitPlanMake(s_gimbalFault.configuredMask,
+                                              s_gimbalFault.blockingMask,
+                                              s_gimbalFault.inhibitMask);
+
+            GimbalFeedbackPolicyConsumeTransition(&s_gimbalFeedbackPolicy);
+            GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+            s_gimbalFault.holdZeroMask = faultPlan.holdZeroMask |
+                                         GimbalFeedbackRouteDebtMask(
+                                             &s_gimbalFeedbackRouteDebt);
         }
 
         {

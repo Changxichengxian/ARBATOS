@@ -80,7 +80,8 @@ static const ManualInputSemanticsConfig ShootDefaultSemantics = {
   * @param[in]      void
   * @retval         void
   */
-static void ShootSetMode(const ShootFrameInput *frame);
+static void ShootSetMode(const ShootFrameInput *frame,
+                         ShootGimbalGateAction gimbalGate);
 /**
   * @brief          update shoot feedback data.
   * @param[in]      void
@@ -103,7 +104,7 @@ static void ShootClearTriggerOutput(void);
   * @retval         1: ready 0: not ready
   */
 static bool_t ShootFricSpeedReady(void);
-static bool_t ShootGimbalCmdToShootStop(void);
+static ShootGimbalGateAction ShootGimbalGateRead(void);
 static void ShootWriteState(void);
 static void ShootFaultInit(void);
 static void ShootFaultUpdate(uint8_t switch_safe);
@@ -545,6 +546,27 @@ static void ShootFrameInputBuild(const ManualInputSnapshot *manualInput,
     ShootMouseRearmApply(frame);
 }
 
+static void ShootFrameInputBlockFire(ShootFrameInput *frame)
+{
+    const ManualInputSemanticsConfig *semantics;
+
+    if (frame == NULL)
+    {
+        return;
+    }
+
+    semantics = ShootSemanticsOrDefault(&frame->semantics);
+    frame->effectiveSwitch = ShootInputGateBlockFireFrame(
+        &s_shootInputGate,
+        frame->rawSwitch,
+        frame->manualOnline,
+        ShootSwitchRawFromPos(semantics->ShootStopPos),
+        ShootSwitchRawFromPos(semantics->ShootReadyPos),
+        ShootSwitchRawFromPos(semantics->ShootFirePos),
+        &frame->mousePressL,
+        &frame->mousePressR);
+}
+
 
 
 static ShootControl g_shoot;          // shoot control data
@@ -580,13 +602,15 @@ void ShootTuneApplyTriggerPid(void)
     taskEXIT_CRITICAL();
 }
 
-static bool_t ShootGimbalCmdToShootStop(void)
+static ShootGimbalGateAction ShootGimbalGateRead(void)
 {
     GimbalState state = {0};
     const uint8_t fresh = GimbalStateReadFresh(&state, GIMBAL_STATE_FRESH_TIMEOUT_MS);
 
-    /* 云台状态缺失或过期时按不可射击处理，不能沿用任务卡死前的允许位。 */
-    return (ShootGimbalStateBlocksFire(fresh, state.valid, state.fire_allowed) != 0u) ? 1 : 0;
+    return ShootGimbalGateResolve(fresh,
+                                  state.valid,
+                                  state.ShootStop,
+                                  state.fire_allowed);
 }
 
 static void ShootWriteState(void)
@@ -1068,6 +1092,10 @@ int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput,
 {
     static uint8_t entertain_entered = 0u;
     ShootFrameInput frame;
+    ShootGimbalGateAction gimbalGate;
+    bool_t allow_fric;
+    bool_t allow_trigger;
+    uint8_t entertain;
 
     ShootFrameInputBuild(manualInput, &frame);
     const uint16_t rawSwitch = frame.rawSwitch;
@@ -1076,11 +1104,24 @@ int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput,
          ShootSwitchIsStop(rawSwitch, &frame.semantics) != 0u) ? 1u : 0u;
 
     ShootFaultUpdate(switchSafe);
+    gimbalGate = ShootGimbalGateRead();
+    allow_fric = (robot_mode_allow_shoot_fric() != 0u) ? 1 : 0;
+    allow_trigger = (robot_mode_allow_shoot_trigger() != 0u) ? 1 : 0;
+    entertain = robot_mode_is_entertain();
+    if (gimbalGate != ShootGimbalGateRun ||
+        allow_trigger == 0 ||
+        entertain != 0u ||
+        ShootFaultStopsDomain() != 0u ||
+        ShootFaultStopsTrigger() != 0u)
+    {
+        /* 只封锁拨弹意图；摩擦轮是否预热仍由后续运行策略决定。 */
+        ShootFrameInputBlockFire(&frame);
+    }
     ShootFaultSyncInhibit(permit);
     (void)ShootControlReleaseOutputs(permit);
 
     // 函数地图：先处理娱乐模式；再跑射击状态机；最后分别输出拨弹和摩擦轮电流。
-    if (robot_mode_is_entertain() != 0u)
+    if (entertain != 0u)
     {
         if (entertain_entered == 0u)
         {
@@ -1110,10 +1151,8 @@ int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput,
         return 0;
     }
 
-    ShootSetMode(&frame);        //设置状态机
+    ShootSetMode(&frame, gimbalGate); //设置状态机
     ShootFeedbackUpdate(&frame); // update feedback data
-    const bool_t allow_fric = (robot_mode_allow_shoot_fric() != 0u) ? 1 : 0;
-    const bool_t allow_trigger = (robot_mode_allow_shoot_trigger() != 0u) ? 1 : 0;
     const uint16_t ShootSw = frame.effectiveSwitch;
     const bool_t sw_ready = ShootSwitchIsReady(ShootSw, &frame.semantics);
     const bool_t sw_fire = ShootSwitchIsFire(ShootSw, &frame.semantics);
@@ -1246,7 +1285,8 @@ int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput,
   * @param[in]      void
   * @retval         void
   */
-static void ShootSetMode(const ShootFrameInput *frame)
+static void ShootSetMode(const ShootFrameInput *frame,
+                         ShootGimbalGateAction gimbalGate)
 {
     // 函数地图：先按拨杆定大状态，再叠加运行模式、鼠标/微动开关和完成/堵转条件。
     const ManualInputSemanticsConfig *semantics =
@@ -1254,7 +1294,7 @@ static void ShootSetMode(const ShootFrameInput *frame)
     const bool_t allow_fric = (robot_mode_allow_shoot_fric() != 0u) ? 1 : 0;
     const bool_t allow_trigger = (robot_mode_allow_shoot_trigger() != 0u) ? 1 : 0;
     const uint16_t ShootSw = (frame != NULL) ?
-                                 frame->rawSwitch :
+                                 frame->effectiveSwitch :
                                  ShootSwitchRawFromPos(semantics->ShootStopPos);
     const bool_t sw_fire = ShootSwitchIsFire(ShootSw, semantics);
 
@@ -1342,10 +1382,15 @@ static void ShootSetMode(const ShootFrameInput *frame)
             g_shoot.mode =SHOOT_READY_BULLET;
         }
     }
-    //如果云台状态是 无力状态，就关闭射击
-    if (ShootGimbalCmdToShootStop())
+    /* 状态失效或云台明确停射才停整域；反馈降级只保留摩擦轮预热。 */
+    if (gimbalGate == ShootGimbalGateStopDomain)
     {
         g_shoot.mode = SHOOT_STOP;
+    }
+    else if (gimbalGate == ShootGimbalGateTriggerOnly &&
+             g_shoot.mode > SHOOT_READY_FRIC)
+    {
+        g_shoot.mode = SHOOT_READY_FRIC;
     }
 
     if(!allow_trigger && g_shoot.mode > SHOOT_READY_FRIC)

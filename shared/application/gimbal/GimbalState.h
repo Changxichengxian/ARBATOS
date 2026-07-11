@@ -62,6 +62,12 @@ typedef struct
     uint8_t fire_allowed;
     uint8_t manual_online;
     uint8_t imu_online;
+    uint8_t feedback_mode;
+    uint8_t encoder_fallback_mask;
+    uint8_t feedback_degraded_mask;
+    uint8_t feedback_block_mask;
+    uint8_t feedback_recovery_pending;
+    uint8_t feedback_transition_zero_mask;
     uint8_t yaw_required;
     uint8_t yaw_online;
     uint8_t yaw_upper_required;

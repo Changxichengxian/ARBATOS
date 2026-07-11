@@ -350,6 +350,12 @@ typedef struct
     uint32_t imu_age_ms;
     uint32_t fault_inhibit_fail_count;
     uint32_t fault_release_fail_count;
+    uint8_t feedback_mode;
+    uint8_t encoder_fallback_mask;
+    uint8_t feedback_degraded_mask;
+    uint8_t feedback_block_mask;
+    uint8_t feedback_recovery_pending;
+    uint8_t feedback_transition_zero_mask;
 } WatchGimbal;
 
 typedef struct
@@ -681,6 +687,12 @@ typedef struct
     int16_t yaw_current;
     int16_t yaw_upper_current;
     uint16_t yaw_upper_ecd;
+    uint8_t feedback_mode;
+    uint8_t encoder_fallback_mask;
+    uint8_t feedback_degraded_mask;
+    uint8_t feedback_block_mask;
+    uint8_t feedback_recovery_pending;
+    uint8_t feedback_transition_zero_mask;
 } WatchDualGimbal;
 
 typedef struct

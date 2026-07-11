@@ -213,12 +213,13 @@ static void CanTxMergeDriverAppliedFlags(MotorId actuator_id, uint8_t flags)
 }
 
 static inline void CanTxProcessMitOrExtraAxis(uint8_t fallback_bus,
-                                                    MotorId actuator_id,
-                                                    const motor_node_param_t *node,
-                                                    int16_t current,
-                                                    const MotorCmd *cmd,
-                                                    const ControlOutputStamp *owner,
-                                                    uint8_t *flags)
+                                              MotorId actuator_id,
+                                              const motor_node_param_t *node,
+                                              int16_t current,
+                                              const MotorCmd *cmd,
+                                              const ControlOutputStamp *owner,
+                                              uint8_t *flags,
+                                              uint8_t *tx_succeeded)
 {
     const uint8_t node_bus = CanTxNodeBus(fallback_bus, node);
 
@@ -228,7 +229,8 @@ static inline void CanTxProcessMitOrExtraAxis(uint8_t fallback_bus,
                                current,
                                cmd,
                                owner,
-                               flags) == 0u &&
+                               flags,
+                               tx_succeeded) == 0u &&
         CanTxProcessExtraItem(node_bus, actuator_id, node, current, cmd, owner) == 0u)
     {
         if (flags != NULL)
@@ -302,7 +304,8 @@ static inline int16_t CanTxProcessAxis(uint8_t fallback_bus,
                                    current,
                                    cmd,
                                    owner,
-                                   flags);
+                                   flags,
+                                   tx_succeeded);
         return current;
     }
     else
@@ -626,6 +629,13 @@ static void CanTxProcessInstance(const MotorRoute *route,
                                           (have_cmd != 0u) ? &owner : NULL,
                                           &flags,
                                           &tx_succeeded);
+    if (tx_succeeded != 0u &&
+        have_cmd != 0u &&
+        route->transport == (uint8_t)MotorTransportCAN &&
+        route->isRmGroup == 0u)
+    {
+        LowStateUpdateTxReceipt(actuator_id, &cmd);
+    }
     if (CanTxIsUnitreeRoute(route) != 0u && tx_succeeded != 0u)
     {
         UnitreeMotorTxMark(&s_can_tx_unitree_schedule[actuator_id],

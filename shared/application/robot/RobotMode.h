@@ -55,14 +55,23 @@ static inline uint8_t robot_mode_is_calibration(robot_cali_target_e target)
                      robot_mode_cali_target() == target);
 }
 
-static inline uint8_t robot_mode_allow_motor(MotorId id)
+static inline uint8_t robot_mode_snapshot_allow_motor(robot_run_mode_e mode,
+                                                       MotorId target,
+                                                       MotorId id)
 {
-    if (robot_mode_current() != ROBOT_RUN_MODE_SINGLE_MOTOR)
+    if (mode != ROBOT_RUN_MODE_SINGLE_MOTOR)
     {
         return 1u;
     }
 
-    return (uint8_t)(id == robot_mode_target_motor());
+    return (uint8_t)(id == target);
+}
+
+static inline uint8_t robot_mode_allow_motor(MotorId id)
+{
+    return robot_mode_snapshot_allow_motor(robot_mode_current(),
+                                           robot_mode_target_motor(),
+                                           id);
 }
 
 static inline uint8_t robot_mode_force_chassis_only(void)

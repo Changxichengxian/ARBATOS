@@ -163,6 +163,52 @@ int main(void)
     if (!TestCheck(pressLeft == 1u && pressRight == 0u,
                    "换权后左右鼠标必须分别真实释放再恢复")) return 1;
 
+    /* 反馈降级或输出许可丢失时，只封锁拨弹意图，拨杆仍保持预热语义。 */
+    ShootInputGateReset(&state, TEST_SWITCH_STOP);
+    if (!TestCheck(TestSwitch(&state, TEST_SWITCH_STOP, 1u) == TEST_SWITCH_STOP &&
+                   TestSwitch(&state, TEST_SWITCH_FIRE, 1u) == TEST_SWITCH_FIRE,
+                   "准备禁止拨弹场景失败")) return 1;
+    pressLeft = 1u;
+    pressRight = 1u;
+    if (!TestCheck(ShootInputGateBlockFireFrame(&state,
+                                                TEST_SWITCH_FIRE,
+                                                1u,
+                                                TEST_SWITCH_STOP,
+                                                TEST_SWITCH_READY,
+                                                TEST_SWITCH_FIRE,
+                                                &pressLeft,
+                                                &pressRight) == TEST_SWITCH_READY &&
+                   pressLeft == 0u && pressRight == 0u,
+                   "禁止拨弹应保留摩擦轮预热，并遮蔽当帧拨杆和鼠标开火意图")) return 1;
+    pressLeft = 1u;
+    pressRight = 0u;
+    if (!TestCheck(ShootInputGateBlockFireFrame(&state,
+                                                TEST_SWITCH_FIRE,
+                                                1u,
+                                                TEST_SWITCH_STOP,
+                                                TEST_SWITCH_READY,
+                                                TEST_SWITCH_FIRE,
+                                                &pressLeft,
+                                                &pressRight) == TEST_SWITCH_READY &&
+                   pressLeft == 0u,
+                   "持续禁止期间不得消费重新确认锁")) return 1;
+    pressLeft = 1u;
+    pressRight = 0u;
+    ShootInputGateApplyFrameMouse(&state, 1u, &pressLeft, &pressRight);
+    if (!TestCheck(TestSwitch(&state, TEST_SWITCH_FIRE, 1u) == TEST_SWITCH_READY &&
+                   pressLeft == 0u,
+                   "许可恢复后持续按住的拨杆和鼠标不得自动拨弹")) return 1;
+    pressLeft = 0u;
+    ShootInputGateApplyFrameMouse(&state, 1u, &pressLeft, &pressRight);
+    if (!TestCheck(TestSwitch(&state, TEST_SWITCH_READY, 1u) == TEST_SWITCH_READY,
+                   "恢复后必须先真实离开开火档")) return 1;
+    pressLeft = 1u;
+    if (!TestCheck(TestSwitch(&state, TEST_SWITCH_FIRE, 1u) == TEST_SWITCH_FIRE,
+                   "拨杆重新进入开火档后应恢复有效")) return 1;
+    ShootInputGateApplyFrameMouse(&state, 1u, &pressLeft, &pressRight);
+    if (!TestCheck(pressLeft == 1u,
+                   "鼠标释放后的新按下应恢复有效")) return 1;
+
     (void)puts("PASS: Shoot 输入安全恢复门控回归");
     return 0;
 }

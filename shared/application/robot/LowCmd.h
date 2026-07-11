@@ -184,6 +184,39 @@ typedef struct
     fp32 tau;
 } MotorApplied;
 
+/*
+ * 发送任务只有在协议帧被底层非阻塞发送队列接受后才更新这份回执。
+ * 它和 MotorApplied 分开：后者描述本轮换算结果，不能拿来证明命令已经越过节流和帧预算。
+ */
+typedef struct
+{
+    uint32_t cmdSeq;
+    uint32_t cmdTick;
+    uint32_t acceptedTick;
+    int16_t current;
+    uint16_t writer;
+    uint8_t valid;
+    uint8_t mode;
+    uint8_t reserved0;
+    uint8_t reserved1;
+} MotorTxReceipt;
+
+static inline uint8_t MotorTxReceiptMatches(const MotorTxReceipt *receipt,
+                                            uint32_t cmdSeq,
+                                            uint32_t cmdTick,
+                                            uint16_t writer,
+                                            uint8_t mode,
+                                            int16_t current)
+{
+    return (uint8_t)(receipt != NULL &&
+                     receipt->valid != 0u &&
+                     receipt->cmdSeq == cmdSeq &&
+                     receipt->cmdTick == cmdTick &&
+                     receipt->writer == writer &&
+                     receipt->mode == mode &&
+                     receipt->current == current);
+}
+
 typedef struct
 {
     uint32_t seq;
@@ -323,6 +356,7 @@ uint8_t LowCmdGetDiag(LowCmdDiag *out);
 void LowStateClearAll(void);
 void LowStateUpdateMotor(MotorId id, const MotorState *feedback);
 void LowStateUpdateApplied(MotorId id, const MotorApplied *applied);
+void LowStateUpdateTxReceipt(MotorId id, const MotorCmd *cmd);
 uint8_t LowStateGet(LowState *out);
 uint8_t LowStateGetMotor(MotorId id, MotorState *out);
 uint8_t LowStateGetMotorMany(const MotorId *ids, MotorState *out, uint8_t count);
@@ -331,5 +365,6 @@ const MotorState *LowStateGetMotorPtr(MotorId id);
 uint8_t LowStateGetApplied(MotorId id, MotorApplied *out);
 /* 兼容调试接口：返回快照缓存，新代码优先用 LowStateGetApplied。 */
 const MotorApplied *LowStateGetAppliedPtr(MotorId id);
+uint8_t LowStateGetTxReceipt(MotorId id, MotorTxReceipt *out);
 
 #endif

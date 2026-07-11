@@ -60,7 +60,9 @@ static fp32 GimbalDualYawUpperAngle(const motor_measure_t *measure, fp32 *gyro_o
 
     if (measure != NULL)
     {
-        angle = motor_ecd_to_angle_change(measure->ecd, g_config.dual_gimbal.yaw_upper_middle_ecd);
+        angle = motor_ecd_to_angle_change(measure->ecd,
+                                          g_config.dual_gimbal.yaw_upper_middle_ecd,
+                                          &g_config.motor.yaw_upper);
         gyro = (fp32)measure->speed_rpm * 0.104719755f;
     }
 

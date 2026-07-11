@@ -30,12 +30,13 @@ static uint8_t CanTxRmGroupHasConfig(uint8_t bus, uint16_t group_id)
 static void CanTxRecheckRmFrame(uint8_t bus,
                                 uint16_t group_id,
                                 int16_t frame[4],
+                                uint8_t receiptEligible[4],
                                 sdlog_actuator_current_t *log)
 {
     uint8_t bus_index = 0u;
     uint8_t group_index = 0u;
 
-    if (frame == NULL ||
+    if (frame == NULL || receiptEligible == NULL ||
         CanTxBusIndex(bus, &bus_index) == 0u ||
         CanTxRmGroupIndex(group_id, &group_index) == 0u)
     {
@@ -46,15 +47,18 @@ static void CanTxRecheckRmFrame(uint8_t bus,
     {
         const MotorId actuator_id = s_can_tx_rm_motor[bus_index][group_index][slot];
 
-        if (frame[slot] == 0)
-        {
-            continue;
-        }
-        if (CanTxActuatorIdValid(actuator_id) == 0u ||
-            s_can_tx_cmd_cache_valid[actuator_id] == 0u ||
+        receiptEligible[slot] = 0u;
+        if (CanTxActuatorIdValid(actuator_id) != 0u &&
+            s_can_tx_cmd_cache_valid[actuator_id] != 0u &&
             LowCmdOutputSnapshotAuthorized(actuator_id,
                                            &s_can_tx_cmd_cache[actuator_id],
-                                           &s_can_tx_owner_cache[actuator_id]) == 0u)
+                                           &s_can_tx_owner_cache[actuator_id]) != 0u)
+        {
+            receiptEligible[slot] = 1u;
+            continue;
+        }
+
+        if (frame[slot] != 0)
         {
             frame[slot] = 0;
             if (CanTxActuatorIdValid(actuator_id) != 0u)
@@ -77,6 +81,11 @@ static void CanTxEmitRmGroupIfNeeded(uint8_t bus,
                                      int16_t frame[4],
                                      sdlog_actuator_current_t *log)
 {
+    uint8_t bus_index = 0u;
+    uint8_t group_index = 0u;
+    uint8_t receiptEligible[4] = {0u};
+    int tx_ret;
+
     /*
      * 与 LowCmd 的禁写获取使用同一任务临界区，把“最终复核→非阻塞入队”
      * 线性化：故障要么先取得禁写并让本帧归零，要么发生在本帧已经入队之后。
@@ -88,7 +97,7 @@ static void CanTxEmitRmGroupIfNeeded(uint8_t bus,
     }
     else
     {
-        CanTxRecheckRmFrame(bus, group_id, frame, log);
+        CanTxRecheckRmFrame(bus, group_id, frame, receiptEligible, log);
     }
     if (CanTxRmFrameHasOutput(frame) == 0u &&
         CanTxRmGroupHasConfig(bus, group_id) == 0u)
@@ -97,7 +106,24 @@ static void CanTxEmitRmGroupIfNeeded(uint8_t bus,
         return;
     }
 
-    CAN_cmd_rm_group(bus, group_id, frame[0], frame[1], frame[2], frame[3]);
+    tx_ret = CAN_cmd_rm_group(bus, group_id, frame[0], frame[1], frame[2], frame[3]);
+    if (tx_ret == 0 &&
+        CanTxBusIndex(bus, &bus_index) != 0u &&
+        CanTxRmGroupIndex(group_id, &group_index) != 0u)
+    {
+        for (uint8_t slot = 0u; slot < 4u; slot++)
+        {
+            const MotorId actuator_id = s_can_tx_rm_motor[bus_index][group_index][slot];
+
+            if (receiptEligible[slot] != 0u &&
+                CanTxActuatorIdValid(actuator_id) != 0u &&
+                s_can_tx_cmd_cache_valid[actuator_id] != 0u)
+            {
+                LowStateUpdateTxReceipt(actuator_id,
+                                        &s_can_tx_cmd_cache[actuator_id]);
+            }
+        }
+    }
     taskEXIT_CRITICAL();
 }
 

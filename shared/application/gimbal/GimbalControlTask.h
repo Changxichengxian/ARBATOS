@@ -86,8 +86,6 @@
 #define PITCH_CURRENT_LIMIT           (g_config.gimbal.pitch_current_limit)
 
 // motor encoder range helpers
-#define HALF_ECD_RANGE                4096
-#define ECD_RANGE                     8192
 
 #define GIMBAL_INIT_ANGLE_ERROR       (g_config.gimbal.init_angle_error)
 #define GIMBAL_INIT_STOP_TIME         (g_config.gimbal.init_stop_time_ms)
@@ -113,14 +111,6 @@
 
 #define GIMBAL_MOTIONLESS_RC_DEADLINE (g_config.gimbal.motionless_rc_deadline)
 #define GIMBAL_MOTIONLESS_TIME_MAX    (g_config.gimbal.motionless_time_max_ms)
-
-#ifndef MOTOR_ECD_TO_RAD
-#define MOTOR_ECD_TO_RAD              (g_config.gimbal.motor_ecd_to_rad)
-#endif
-
-#ifndef GIMBAL_USE_ENCODER_FEEDBACK
-#define GIMBAL_USE_ENCODER_FEEDBACK   0u
-#endif
 
 #ifndef GIMBAL_PITCH_MIDDLE_ECD
 #define GIMBAL_PITCH_MIDDLE_ECD       0u
@@ -182,6 +172,7 @@ typedef struct
     uint8_t safe_pos;
     uint8_t active_source;
     uint8_t image_auto_aim_requested;
+    uint8_t encoder_feedback_degraded;
     int16_t yaw_axis;
     int16_t pitch_axis;
     int16_t mouse_x;

@@ -19,6 +19,13 @@
 #define GIMBAL_FAULT_MASK_YAW_UPPER (1u << GIMBAL_FAULT_AXIS_YAW_UPPER)
 #define GIMBAL_FAULT_MASK_PITCH     (1u << GIMBAL_FAULT_AXIS_PITCH)
 
+static inline int16_t GimbalFaultFrameCurrent(uint32_t axisMask,
+                                               uint32_t holdZeroMask,
+                                               int16_t requestedCurrent)
+{
+    return ((holdZeroMask & axisMask) != 0u) ? 0 : requestedCurrent;
+}
+
 /* 只把 IMU 故障映射到当前运行变体实际依赖 IMU 的云台轴。 */
 static inline uint32_t GimbalFaultImuAxisMask(robot_run_variant_e variant,
                                               uint32_t configuredMask,

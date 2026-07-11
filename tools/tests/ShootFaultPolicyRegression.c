@@ -57,11 +57,14 @@ int main(void)
                        ShootFrictionFaultBlocksTrigger(0u, frictionMask) == 0u,
                    "任一摩擦轮故障必须阻止拨弹，但 trigger 自身故障不伪造摩擦轮故障")) return 1;
 
-    if (!TestCheck(ShootGimbalStateBlocksFire(0u, 1u, 1u) != 0u &&
-                       ShootGimbalStateBlocksFire(1u, 0u, 1u) != 0u &&
-                       ShootGimbalStateBlocksFire(1u, 1u, 0u) != 0u &&
-                       ShootGimbalStateBlocksFire(1u, 1u, 1u) == 0u,
-                   "云台状态缺失、过期、无效或禁止射击都必须阻断输出")) return 1;
+    if (!TestCheck(ShootGimbalGateResolve(0u, 1u, 0u, 1u) == ShootGimbalGateStopDomain &&
+                       ShootGimbalGateResolve(1u, 0u, 0u, 1u) == ShootGimbalGateStopDomain &&
+                       ShootGimbalGateResolve(1u, 1u, 1u, 1u) == ShootGimbalGateStopDomain,
+                   "云台状态缺失、过期、无效或 ShootStop 必须停止整域")) return 1;
+
+    if (!TestCheck(ShootGimbalGateResolve(1u, 1u, 0u, 0u) == ShootGimbalGateTriggerOnly &&
+                       ShootGimbalGateResolve(1u, 1u, 0u, 1u) == ShootGimbalGateRun,
+                   "IMU 降级的 fire_allowed=0 只能禁止拨弹并保留摩擦轮预热")) return 1;
 
     (void)puts("PASS: Shoot fault inhibit policy regression");
     return 0;

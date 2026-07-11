@@ -13,14 +13,13 @@
   */
 static uint8_t GimbalDualYawImuCenterEnabled(const GimbalRuntimeSnapshot *snapshot)
 {
-#if GIMBAL_USE_ENCODER_FEEDBACK
-    (void)snapshot;
-    return 0u;
-#else
-    (void)snapshot;
+    if (snapshot != NULL &&
+        snapshot->feedback_mode != (uint8_t)GIMBAL_FEEDBACK_IMU_NORMAL)
+    {
+        return 0u;
+    }
     return (uint8_t)(RobotProfileNeedDualGimbalControlTask() != 0u &&
                      MotorCfgNodeId(&g_config.motor.yaw) != 0u);
-#endif
 }
 
 static uint8_t GimbalYawImuFeedbackTurn(const GimbalRuntimeSnapshot *snapshot)
@@ -139,6 +138,11 @@ static void GimbalInit(GimbalControl *init)
 
     //清除所有PID
     GimbalTotalPidClear(init);
+    GimbalFeedbackPolicyInit(&s_gimbalFeedbackPolicy);
+    GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
+    GimbalFeedbackRouteDebtInit(&s_gimbalFeedbackRouteDebt);
+    s_gimbalSingleMitDesiredPrev = 0u;
+    s_gimbalSingleMitTargetPrev = MotorCount;
     s_dual_yaw_imu_center_ready = 0u;
     s_dual_yaw_imu_center = 0.0f;
     s_dual_yaw_output_allowed_prev = 0u;
@@ -236,27 +240,24 @@ static void GimbalSetMode(GimbalControl *set_mode)
   */
 static void GimbalFeedbackUpdate(GimbalControl *feedback_update, const GimbalRuntimeSnapshot *snapshot)
 {
+    const uint32_t yawMask = (snapshot != NULL && snapshot->yaw_control_is_upper != 0u) ?
+                                 GIMBAL_FAULT_MASK_YAW_UPPER :
+                                 GIMBAL_FAULT_MASK_YAW;
+
     if (feedback_update == NULL)
     {
         return;
     }
 
-#if GIMBAL_USE_ENCODER_FEEDBACK
+    if (snapshot != NULL &&
+        (snapshot->encoder_degraded_mask & GIMBAL_FAULT_MASK_PITCH) != 0u)
     {
-        const motor_measure_t *pitch_measure = (snapshot != NULL) ?
-                                                   snapshot->pitch_measure :
-                                                   feedback_update->GimbalPitchMotor.GimbalMotorMeasure;
-        const motor_measure_t *yaw_measure = (snapshot != NULL) ?
-                                                 snapshot->yaw_measure :
-                                                 feedback_update->GimbalYawMotor.GimbalMotorMeasure;
-        const uint8_t pitch_turn = (snapshot != NULL) ? snapshot->pitch_turn : (PITCH_TURN ? 1u : 0u);
-        const uint8_t yaw_turn = (snapshot != NULL) ? snapshot->yaw_turn : (YAW_TURN ? 1u : 0u);
-
-        GimbalFeedbackFromEncoder(&feedback_update->GimbalPitchMotor, pitch_measure, pitch_turn);
-        GimbalFeedbackFromEncoder(&feedback_update->GimbalYawMotor, yaw_measure, yaw_turn);
-        return;
+        GimbalFeedbackFromEncoder(&feedback_update->GimbalPitchMotor,
+                                  snapshot->pitch_measure,
+                                  snapshot->pitch_motor_cfg,
+                                  snapshot->pitch_turn);
     }
-#else
+    else
     {
         fp32 pitch_angle_raw = 0.0f;
         fp32 pitch_speed_raw = 0.0f;
@@ -278,6 +279,14 @@ static void GimbalFeedbackUpdate(GimbalControl *feedback_update, const GimbalRun
         feedback_update->GimbalPitchMotor.motor_gyro = (pitch_turn != 0u) ? -pitch_speed_raw : pitch_speed_raw;
     }
 
+    if (snapshot != NULL && (snapshot->encoder_degraded_mask & yawMask) != 0u)
+    {
+        GimbalFeedbackFromEncoder(&feedback_update->GimbalYawMotor,
+                                  snapshot->yaw_measure,
+                                  snapshot->yaw_motor_cfg,
+                                  snapshot->yaw_turn);
+    }
+    else
     {
         fp32 yaw_angle_raw = 0.0f;
         fp32 yaw_speed_raw = 0.0f;
@@ -309,7 +318,6 @@ static void GimbalFeedbackUpdate(GimbalControl *feedback_update, const GimbalRun
         }
         feedback_update->GimbalYawMotor.motor_gyro = (yaw_turn != 0u) ? -yaw_speed_raw : yaw_speed_raw;
     }
-#endif
 }
 
 /**
@@ -318,35 +326,31 @@ static void GimbalFeedbackUpdate(GimbalControl *feedback_update, const GimbalRun
   * @param[in]      offset_ecd: gimbal offset encode
   * @retval         angle, unit rad
   */
-static fp32 motor_ecd_to_angle_change(uint16_t ecd, uint16_t offset_ecd)
+static fp32 motor_ecd_to_angle_change(uint16_t ecd,
+                                      uint16_t offset_ecd,
+                                      const motor_node_param_t *node)
 {
-    int32_t relative_ecd = ecd - offset_ecd;
-    if (relative_ecd > HALF_ECD_RANGE)
-    {
-        relative_ecd -= ECD_RANGE;
-    }
-    else if (relative_ecd < -HALF_ECD_RANGE)
-    {
-        relative_ecd += ECD_RANGE;
-    }
+    const uint32_t encoderRange = (node != NULL) ?
+                                      MotorCfgEncoderRange(node->model) :
+                                      8192u;
 
-    return relative_ecd * MOTOR_ECD_TO_RAD;
+    return GimbalEncoderAngleRad(ecd, offset_ecd, encoderRange);
 }
 
-#if GIMBAL_USE_ENCODER_FEEDBACK
 static void GimbalFeedbackFromEncoder(GimbalMotor *motor,
-                                         const motor_measure_t *measure,
-                                         uint8_t turn)
+                                      const motor_measure_t *measure,
+                                      const motor_node_param_t *node,
+                                      uint8_t turn)
 {
     fp32 angle;
     fp32 speed;
 
-    if (motor == NULL || measure == NULL)
+    if (motor == NULL || measure == NULL || node == NULL)
     {
         return;
     }
 
-    angle = motor_ecd_to_angle_change(measure->ecd, motor->offset_ecd);
+    angle = motor_ecd_to_angle_change(measure->ecd, motor->offset_ecd, node);
     speed = (fp32)measure->speed_rpm * 0.104719755f;
 
     if (turn != 0u)
@@ -359,7 +363,6 @@ static void GimbalFeedbackFromEncoder(GimbalMotor *motor,
     motor->motor_gyro = speed;
     motor->motor_speed = speed;
 }
-#endif
 
 /**
   * @brief          when gimbal mode change, some param should be changed, such as  yaw_set should be new yaw
@@ -422,7 +425,9 @@ static void GimbalSetControl(GimbalControl *set_control)
 
     image_manual_active = (set_control->fast.active_source == MANUAL_INPUT_SRC_IMAGE) ? 1u : 0u;
     image_auto_aim_on = set_control->fast.image_auto_aim_requested;
-    if (VisionTakeLatest(&VisionCmd) && (VisionCmd.mode == 1U || VisionCmd.mode == 2U) &&
+    if (VisionTakeLatest(&VisionCmd) &&
+        set_control->fast.encoder_feedback_degraded == 0u &&
+        (VisionCmd.mode == 1U || VisionCmd.mode == 2U) &&
         (image_manual_active == 0u || image_auto_aim_on != 0u) &&
         set_control->GimbalYawMotor.mode == GIMBAL_MOTOR_ENCODER &&
         set_control->GimbalPitchMotor.mode == GIMBAL_MOTOR_ENCODER &&

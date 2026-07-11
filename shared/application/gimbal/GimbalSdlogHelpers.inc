@@ -176,7 +176,7 @@ static void GimbalWriteState(const GimbalRuntimeSnapshot *snapshot)
     const uint8_t yaw_upper_configured = (MotorCfgNodeId(&g_config.motor.yaw_upper) != 0u) ? 1u : 0u;
     const uint8_t pitch_configured = (MotorCfgNodeId(&g_config.motor.pitch) != 0u) ? 1u : 0u;
     const uint8_t manual_offline = (snapshot == NULL || snapshot->manual_online == 0u) ? 1u : 0u;
-    const uint8_t imu_required = (snapshot != NULL && snapshot->imu_required_mask != 0u) ? 1u : 0u;
+    const uint8_t imu_required = (snapshot != NULL && snapshot->feedback_block_mask != 0u) ? 1u : 0u;
     const uint8_t imu_offline = (snapshot == NULL || snapshot->imu_online == 0u) ? 1u : 0u;
     const uint8_t yaw_offline = (yaw_configured != 0u &&
                                  (snapshot == NULL || snapshot->yaw_health.healthy == 0u)) ?
@@ -204,6 +204,24 @@ static void GimbalWriteState(const GimbalRuntimeSnapshot *snapshot)
     state.ShootStop = (uint8_t)GimbalCmdToShootStop();
     state.manual_online = (manual_offline == 0u) ? 1u : 0u;
     state.imu_online = (imu_offline == 0u) ? 1u : 0u;
+    state.feedback_mode = (snapshot != NULL) ?
+                              snapshot->feedback_mode :
+                              (uint8_t)GIMBAL_FEEDBACK_ENCODER_DEGRADED;
+    state.encoder_fallback_mask = (snapshot != NULL) ?
+                                      (uint8_t)snapshot->encoder_fallback_mask :
+                                      0u;
+    state.feedback_degraded_mask = (snapshot != NULL) ?
+                                       (uint8_t)snapshot->encoder_degraded_mask :
+                                       0u;
+    state.feedback_block_mask = (snapshot != NULL) ?
+                                    (uint8_t)snapshot->feedback_block_mask :
+                                    (uint8_t)s_gimbalFault.configuredMask;
+    state.feedback_recovery_pending = (snapshot != NULL) ?
+                                          snapshot->feedback_recovery_pending :
+                                          0u;
+    state.feedback_transition_zero_mask = (snapshot != NULL) ?
+                                              (uint8_t)snapshot->feedback_transition_zero_mask :
+                                              0u;
     state.yaw_required = yaw_required;
     state.yaw_online = (yaw_configured != 0u && yaw_offline == 0u) ? 1u : 0u;
     state.yaw_upper_required = yaw_upper_required;
@@ -223,7 +241,11 @@ static void GimbalWriteState(const GimbalRuntimeSnapshot *snapshot)
     state.fault_release_fail_count = s_gimbalFault.releaseFailCount;
     state.follow_available = (uint8_t)(snapshot != NULL &&
                                        GimbalYawControlHealthy(snapshot) != 0u &&
-                                       GimbalImuFeedbackReady(snapshot) != 0u &&
+                                       GimbalFeedbackAxisReady(
+                                           snapshot,
+                                           snapshot->yaw_control_is_upper != 0u ?
+                                               GIMBAL_FAULT_MASK_YAW_UPPER :
+                                               GIMBAL_FAULT_MASK_YAW) != 0u &&
                                        (s_gimbalFault.blockingMask &
                                         (snapshot->yaw_control_is_upper != 0u ?
                                              GIMBAL_FAULT_MASK_YAW_UPPER :
