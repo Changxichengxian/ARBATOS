@@ -99,7 +99,7 @@ typedef struct
     ArmJ0UnitreeState j0_unitree;
 } ArmStatus;
 
-typedef char ArmStatusFitsStore[(sizeof(ArmStatus) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
+typedef char ArmStatusFitsStore[(sizeof(ArmStatus) <= STATE_STORE_ARM_STATUS_BYTES) ? 1 : -1];
 
 static inline uint8_t ArmStatusWrite(const ArmStatus *status)
 {

@@ -39,7 +39,7 @@
 #define ENTERTAIN_MUSIC_PATH_MAX 256u
 #define ENTERTAIN_MUSIC_ROOT "0:/"
 
-static uint8_t lost_beep_confirm_due(uint8_t manualOnline);
+static uint8_t lost_beep_confirm_due(const DetectSummary *detectSummary, uint8_t manualOnline);
 static void BuzzerSchedule(uint8_t times);
 static void BuzzerTick(void);
 static uint8_t BuzzerIsIdle(void);
@@ -50,7 +50,6 @@ static int entertainment_find_music_by_index(int32_t *index_io,
                                              uint32_t out_size,
                                              uint32_t *count_out);
 
-const DetectError *error_list_test_local;
 static uint8_t beep_times_pending = 0;
 static uint16_t beep_on_ticks_left = 0;
 static uint16_t beep_gap_ticks_left = 0;
@@ -418,13 +417,12 @@ static void entertainment_music_tick(const ManualInputSnapshot *manualInput)
 void StartupServiceTask(void const * argument)
 {
     static uint8_t error, last_error;
-    static uint8_t error_num;
     static uint8_t ever_all_online = 0;
     static uint8_t startup_beep_done = 0;
     static uint16_t startup_lost_beep_mute_ticks = STARTUP_LOST_BEEP_MUTE_TICKS;
+    static DetectSummary detectSummary;
     static ManualInputSnapshot manual_input;
     (void)argument;
-    error_list_test_local = get_error_list_point();
 
     /* Start USB CDC device once at boot so the PC can enumerate */
     BspUsbDeviceInit();
@@ -439,24 +437,18 @@ void StartupServiceTask(void const * argument)
 
         memset(&lifecycle, 0, sizeof(lifecycle));
         (void)RobotLifecycleGetSnapshot(&lifecycle);
-        error = 0;
-
-        // find error
-        for(error_num = 0; error_num < REFEREE_TOE; error_num++)
+        const uint8_t detectValid = DetectSummaryRead(&detectSummary);
+        uint16_t startupLostMask = (detectValid != 0u) ? detectSummary.lostMask : UINT16_MAX;
+        if (lifecycle.manual_online != 0u)
         {
-            if (error_num == (uint8_t)DBUS_TOE && lifecycle.manual_online != 0u)
-            {
-                /* ELRS/图传仍在线时，物理 DBUS 故障只保留诊断，不触发整机掉线蜂鸣。 */
-                continue;
-            }
-            if(error_list_test_local[error_num].is_lost)
-            {
-                error = 1;
-                break;
-            }
+            /* ELRS/图传仍在线时，物理 DBUS 故障只保留诊断，不触发整机掉线蜂鸣。 */
+            startupLostMask &= (uint16_t)~(1u << DBUS_TOE);
         }
+        error = (uint8_t)((startupLostMask & (uint16_t)((1u << REFEREE_TOE) - 1u)) != 0u);
 
-        const uint8_t confirmed_lost = lost_beep_confirm_due(lifecycle.manual_online);
+        const uint8_t confirmed_lost = lost_beep_confirm_due(
+            (detectValid != 0u) ? &detectSummary : NULL,
+            lifecycle.manual_online);
         if (startup_lost_beep_mute_ticks != 0u)
         {
             startup_lost_beep_mute_ticks--;
@@ -542,14 +534,14 @@ static uint8_t BuzzerIsIdle(void)
             BuzzerPcmIsRunning() == 0u) ? 1u : 0u;
 }
 
-static uint8_t lost_beep_confirm_due(uint8_t manualOnline)
+static uint8_t lost_beep_confirm_due(const DetectSummary *detectSummary, uint8_t manualOnline)
 {
     uint8_t due = 0u;
     const uint8_t toe_limit = ((uint8_t)REFEREE_TOE < (uint8_t)DETECT_ERROR_COUNT) ?
         (uint8_t)REFEREE_TOE :
         (uint8_t)DETECT_ERROR_COUNT;
 
-    if (error_list_test_local == NULL)
+    if (detectSummary == NULL || detectSummary->valid == 0u)
     {
         return 0u;
     }
@@ -565,7 +557,7 @@ static uint8_t lost_beep_confirm_due(uint8_t manualOnline)
             continue;
         }
 
-        if (error_list_test_local[toe].is_lost != 0u)
+        if ((detectSummary->lostMask & (uint16_t)(1u << toe)) != 0u)
         {
             const uint8_t step_ticks =
                 (LOST_BEEP_CONFIRM_STEP_TICKS > 0u) ? (uint8_t)LOST_BEEP_CONFIRM_STEP_TICKS : 1u;

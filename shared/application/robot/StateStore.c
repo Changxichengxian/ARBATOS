@@ -6,6 +6,7 @@
  * Use of this file is governed by the LICENSE file in the repository root.
  */
 
+#include "RobotConfig.h"
 #include "StateStore.h"
 
 #include <string.h>
@@ -23,7 +24,6 @@ typedef struct
     uint16_t size;
     uint32_t seq;
     uint32_t write_tick_ms;
-    uint8_t payload[STATE_STORE_MAX_BYTES];
 } state_bank_t;
 
 typedef struct
@@ -36,11 +36,112 @@ typedef struct
     state_bank_t banks[STATE_STORE_BANK_COUNT];
 } state_slot_t;
 
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL || ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
+#define STATE_STORE_GIMBAL_CAPACITY STATE_STORE_GIMBAL_BYTES
+#else
+#define STATE_STORE_GIMBAL_CAPACITY 0u
+#endif
+
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
+#define STATE_STORE_CHASSIS_CAPACITY STATE_STORE_CHASSIS_BYTES
+#else
+#define STATE_STORE_CHASSIS_CAPACITY 0u
+#endif
+
+#if ROBOT_TASK_BUILD_SHOOT_RM
+#define STATE_STORE_SHOOT_CAPACITY STATE_STORE_SHOOT_BYTES
+#else
+#define STATE_STORE_SHOOT_CAPACITY 0u
+#endif
+
+#if ROBOT_TASK_BUILD_WHEELLEG_MIT
+#define STATE_STORE_WHEELLEG_CMD_CAPACITY STATE_STORE_WHEELLEG_CMD_BYTES
+#define STATE_STORE_WHEELLEG_STATE_CAPACITY STATE_STORE_WHEELLEG_STATE_BYTES
+#define STATE_STORE_WHEELLEG_STATUS_CAPACITY STATE_STORE_WHEELLEG_STATUS_BYTES
+#define STATE_STORE_WHEELLEG_DEBUG_CAPACITY STATE_STORE_WHEELLEG_DEBUG_BYTES
+#else
+#define STATE_STORE_WHEELLEG_CMD_CAPACITY 0u
+#define STATE_STORE_WHEELLEG_STATE_CAPACITY 0u
+#define STATE_STORE_WHEELLEG_STATUS_CAPACITY 0u
+#define STATE_STORE_WHEELLEG_DEBUG_CAPACITY 0u
+#endif
+
+#if ROBOT_TASK_BUILD_ARM
+#define STATE_STORE_ARM_STATUS_CAPACITY STATE_STORE_ARM_STATUS_BYTES
+#else
+#define STATE_STORE_ARM_STATUS_CAPACITY 0u
+#endif
+
+#if ROBOT_TASK_BUILD_IMU
+#define STATE_STORE_IMU_CAPACITY STATE_STORE_IMU_BYTES
+#else
+#define STATE_STORE_IMU_CAPACITY 0u
+#endif
+
+#define STATE_STORE_GIMBAL_OFFSET 0u
+#define STATE_STORE_CHASSIS_OFFSET \
+    (STATE_STORE_GIMBAL_OFFSET + STATE_STORE_GIMBAL_CAPACITY)
+#define STATE_STORE_SHOOT_OFFSET \
+    (STATE_STORE_CHASSIS_OFFSET + STATE_STORE_CHASSIS_CAPACITY)
+#define STATE_STORE_WHEELLEG_CMD_OFFSET \
+    (STATE_STORE_SHOOT_OFFSET + STATE_STORE_SHOOT_CAPACITY)
+#define STATE_STORE_WHEELLEG_STATE_OFFSET \
+    (STATE_STORE_WHEELLEG_CMD_OFFSET + STATE_STORE_WHEELLEG_CMD_CAPACITY)
+#define STATE_STORE_WHEELLEG_STATUS_OFFSET \
+    (STATE_STORE_WHEELLEG_STATE_OFFSET + STATE_STORE_WHEELLEG_STATE_CAPACITY)
+#define STATE_STORE_WHEELLEG_DEBUG_OFFSET \
+    (STATE_STORE_WHEELLEG_STATUS_OFFSET + STATE_STORE_WHEELLEG_STATUS_CAPACITY)
+#define STATE_STORE_ARM_STATUS_OFFSET \
+    (STATE_STORE_WHEELLEG_DEBUG_OFFSET + STATE_STORE_WHEELLEG_DEBUG_CAPACITY)
+#define STATE_STORE_IMU_OFFSET \
+    (STATE_STORE_ARM_STATUS_OFFSET + STATE_STORE_ARM_STATUS_CAPACITY)
+#define STATE_STORE_PAYLOAD_BYTES \
+    (STATE_STORE_IMU_OFFSET + STATE_STORE_IMU_CAPACITY)
+#define STATE_STORE_STORAGE_BYTES \
+    ((STATE_STORE_PAYLOAD_BYTES != 0u) ? STATE_STORE_PAYLOAD_BYTES : 1u)
+
+/* 未编译的控制模块容量为 0；每个 bank 只保留本目标真实会发布的状态。 */
+typedef union
+{
+    uint32_t align;
+    uint8_t bytes[STATE_STORE_STORAGE_BYTES];
+} state_payload_bank_t;
+
 static state_slot_t s_state_slots[STATE_COUNT];
+static state_payload_bank_t s_state_payload[STATE_STORE_BANK_COUNT];
+
+static const uint16_t s_state_capacity[STATE_COUNT] = {
+    STATE_STORE_GIMBAL_CAPACITY,
+    STATE_STORE_CHASSIS_CAPACITY,
+    STATE_STORE_SHOOT_CAPACITY,
+    STATE_STORE_WHEELLEG_CMD_CAPACITY,
+    STATE_STORE_WHEELLEG_STATE_CAPACITY,
+    STATE_STORE_WHEELLEG_STATUS_CAPACITY,
+    STATE_STORE_WHEELLEG_DEBUG_CAPACITY,
+    STATE_STORE_ARM_STATUS_CAPACITY,
+    STATE_STORE_IMU_CAPACITY,
+};
+
+static const uint16_t s_state_offset[STATE_COUNT] = {
+    STATE_STORE_GIMBAL_OFFSET,
+    STATE_STORE_CHASSIS_OFFSET,
+    STATE_STORE_SHOOT_OFFSET,
+    STATE_STORE_WHEELLEG_CMD_OFFSET,
+    STATE_STORE_WHEELLEG_STATE_OFFSET,
+    STATE_STORE_WHEELLEG_STATUS_OFFSET,
+    STATE_STORE_WHEELLEG_DEBUG_OFFSET,
+    STATE_STORE_ARM_STATUS_OFFSET,
+    STATE_STORE_IMU_OFFSET,
+};
 
 static uint8_t state_is_valid(state_id_e id)
 {
     return ((uint32_t)id < (uint32_t)STATE_COUNT) ? 1u : 0u;
+}
+
+static uint8_t *StateStorePayload(state_id_e id, uint8_t bank)
+{
+    return &s_state_payload[bank].bytes[s_state_offset[id]];
 }
 
 static void StateStoreLock(void)
@@ -55,7 +156,8 @@ static void StateStoreUnlock(void)
 
 uint8_t StateStoreWrite(state_id_e id, const void *payload, uint16_t size)
 {
-    if (state_is_valid(id) == 0u || payload == NULL || size == 0u || size > STATE_STORE_MAX_BYTES)
+    if (state_is_valid(id) == 0u || payload == NULL || size == 0u ||
+        size > s_state_capacity[id])
     {
         return 0u;
     }
@@ -80,7 +182,7 @@ uint8_t StateStoreWrite(state_id_e id, const void *payload, uint16_t size)
 
     bank = &slot->banks[write_index];
 
-    memcpy(bank->payload, payload, size);
+    memcpy(StateStorePayload(id, write_index), payload, size);
     bank->size = size;
     bank->seq = next_seq;
     bank->write_tick_ms = write_tick_ms;
@@ -132,7 +234,7 @@ uint8_t StateStoreReadSnapshot(state_id_e id, void *out, uint16_t size, state_in
     slot->readers[read_index]++;
     StateStoreUnlock();
 
-    memcpy(out, bank->payload, size);
+    memcpy(out, StateStorePayload(id, read_index), size);
 
     __DMB();
     StateStoreLock();

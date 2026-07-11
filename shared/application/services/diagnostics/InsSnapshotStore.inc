@@ -8,6 +8,9 @@
 #include "BspTime.h"
 #include "StateStore.h"
 
+typedef char InsSnapshotFitsStore[
+    (sizeof(InsSnapshot) <= STATE_STORE_IMU_BYTES) ? 1 : -1];
+
 static void InsSnapshotPublishCurrent(uint32_t sample_tick_ms, fp32 temperature_c)
 {
     InsSnapshot snapshot = {0};

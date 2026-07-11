@@ -1032,6 +1032,8 @@ static fp32 AuxTelemGetValue(const AuxTelemCtx *ctx, AuxTelemSig sig)
     case AUX_TELEM_SIG_PACK_OFFLINE:
     {
         uint32_t mask = 0u;
+        DetectSummary detectSummary;
+        uint16_t detectErrorMask = UINT16_MAX;
         const uint8_t classic_chassis_on = RobotProfileNeedClassicChassisControlTask();
         const uint8_t GimbalOn = (uint8_t)(RobotProfileNeedSingleGimbalControlTask() ||
                                             RobotProfileNeedDualGimbalControlTask());
@@ -1042,12 +1044,16 @@ static fp32 AuxTelemGetValue(const AuxTelemCtx *ctx, AuxTelemSig sig)
         GimbalState state;
         const uint8_t state_valid_gimbal =
             (GimbalStateRead(&state) != 0u && state.valid != 0u) ? 1u : 0u;
+        if (DetectSummaryRead(&detectSummary) != 0u)
+        {
+            detectErrorMask = detectSummary.errorMask;
+        }
         /* PACK_OFFLINE 是既有物理 TOE 协议；统一输入质量由 RC_ERROR 单独表达。 */
-        if (toe_is_error(DBUS_TOE)) mask |= 1u << 0;
-        if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR1_TOE)) mask |= 1u << 1;
-        if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR2_TOE)) mask |= 1u << 2;
-        if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR3_TOE)) mask |= 1u << 3;
-        if (classic_chassis_on && toe_is_error(CHASSIS_MOTOR4_TOE)) mask |= 1u << 4;
+        if ((detectErrorMask & (1u << DBUS_TOE)) != 0u) mask |= 1u << 0;
+        if (classic_chassis_on && (detectErrorMask & (1u << CHASSIS_MOTOR1_TOE)) != 0u) mask |= 1u << 1;
+        if (classic_chassis_on && (detectErrorMask & (1u << CHASSIS_MOTOR2_TOE)) != 0u) mask |= 1u << 2;
+        if (classic_chassis_on && (detectErrorMask & (1u << CHASSIS_MOTOR3_TOE)) != 0u) mask |= 1u << 3;
+        if (classic_chassis_on && (detectErrorMask & (1u << CHASSIS_MOTOR4_TOE)) != 0u) mask |= 1u << 4;
         if (GimbalOn && state_valid_gimbal != 0u)
         {
             if ((state.offline_mask & GIMBAL_STATE_OFFLINE_YAW) != 0u) mask |= 1u << 5;
@@ -1055,16 +1061,17 @@ static fp32 AuxTelemGetValue(const AuxTelemCtx *ctx, AuxTelemSig sig)
         }
         else
         {
-            if (GimbalOn && yaw_on && toe_is_error(YAW_GIMBAL_MOTOR_TOE)) mask |= 1u << 5;
-            if (GimbalOn && second_gimbal_axis_on && toe_is_error(PITCH_GIMBAL_MOTOR_TOE)) mask |= 1u << 6;
+            if (GimbalOn && yaw_on && (detectErrorMask & (1u << YAW_GIMBAL_MOTOR_TOE)) != 0u) mask |= 1u << 5;
+            if (GimbalOn && second_gimbal_axis_on &&
+                (detectErrorMask & (1u << PITCH_GIMBAL_MOTOR_TOE)) != 0u) mask |= 1u << 6;
         }
-        if (trigger_on && toe_is_error(TRIGGER_MOTOR_TOE)) mask |= 1u << 7;
-        if (toe_is_error(REFEREE_TOE)) mask |= 1u << 8;
-        if (toe_is_error(RM_IMU_TOE)) mask |= 1u << 9;
-        if (toe_is_error(BOARD_GYRO_TOE)) mask |= 1u << 10;
-        if (toe_is_error(BOARD_ACCEL_TOE)) mask |= 1u << 11;
-        if (toe_is_error(BOARD_MAG_TOE)) mask |= 1u << 12;
-        if (toe_is_error(OLED_TOE)) mask |= 1u << 13;
+        if (trigger_on && (detectErrorMask & (1u << TRIGGER_MOTOR_TOE)) != 0u) mask |= 1u << 7;
+        if ((detectErrorMask & (1u << REFEREE_TOE)) != 0u) mask |= 1u << 8;
+        if ((detectErrorMask & (1u << RM_IMU_TOE)) != 0u) mask |= 1u << 9;
+        if ((detectErrorMask & (1u << BOARD_GYRO_TOE)) != 0u) mask |= 1u << 10;
+        if ((detectErrorMask & (1u << BOARD_ACCEL_TOE)) != 0u) mask |= 1u << 11;
+        if ((detectErrorMask & (1u << BOARD_MAG_TOE)) != 0u) mask |= 1u << 12;
+        if ((detectErrorMask & (1u << OLED_TOE)) != 0u) mask |= 1u << 13;
         return (fp32)mask;
     }
 

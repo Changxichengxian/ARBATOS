@@ -184,10 +184,10 @@ typedef struct
     uint32_t overrun_count;
 } WheelLegDebug;
 
-typedef char WheelLegCmdFitsStore[(sizeof(WheelLegCmd) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
-typedef char WheelLegStateFitsStore[(sizeof(WheelLegState) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
-typedef char WheelLegStatusFitsStore[(sizeof(WheelLegStatus) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
-typedef char WheelLegDebugFitsStore[(sizeof(WheelLegDebug) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
+typedef char WheelLegCmdFitsStore[(sizeof(WheelLegCmd) <= STATE_STORE_WHEELLEG_CMD_BYTES) ? 1 : -1];
+typedef char WheelLegStateFitsStore[(sizeof(WheelLegState) <= STATE_STORE_WHEELLEG_STATE_BYTES) ? 1 : -1];
+typedef char WheelLegStatusFitsStore[(sizeof(WheelLegStatus) <= STATE_STORE_WHEELLEG_STATUS_BYTES) ? 1 : -1];
+typedef char WheelLegDebugFitsStore[(sizeof(WheelLegDebug) <= STATE_STORE_WHEELLEG_DEBUG_BYTES) ? 1 : -1];
 
 static inline uint8_t WheelLegCmdWrite(const WheelLegCmd *cmd)
 {

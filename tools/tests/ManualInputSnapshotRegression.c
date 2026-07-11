@@ -811,7 +811,7 @@ static int TestOtherSourcesStayOnline(void)
     input.rc.ch[0] = 40;
     ManualInputUpdateSource(MANUAL_INPUT_SRC_ELRS, &input);
 
-    if (!TestCheck(toe_is_error(DBUS_TOE) != 0u,
+    if (!TestCheck(DetectIsError(DBUS_TOE) != 0u,
                    "测试桩应保持物理 DBUS 离线")) return 0;
     if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u && snapshot.online == 1u &&
                    snapshot.activeSource == MANUAL_INPUT_SRC_ELRS,
@@ -1271,7 +1271,7 @@ void DetectHook(uint8_t toe)
     s_detectHookCount++;
 }
 
-uint8_t toe_is_error(uint8_t toe)
+uint8_t DetectIsError(uint8_t toe)
 {
     (void)toe;
     return s_toeError;

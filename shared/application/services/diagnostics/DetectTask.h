@@ -56,6 +56,51 @@ typedef struct
     void (*solve_data_error_fun)(void);
 } DetectError;
 
+/*
+ * DetectTask 是健康状态的唯一计算者。接收中断只更新时间事实，任务按固定周期
+ * 发布这一份带代次和时间的完整快照；普通查询不得顺便推进掉线状态。
+ */
+typedef struct
+{
+    uint32_t newTimeMs;
+    uint32_t lastTimeMs;
+    uint32_t lostTimeMs;
+    uint32_t workTimeMs;
+    uint16_t offlineTimeMs;
+    uint16_t onlineTimeMs;
+    fp32 frequencyHz;
+    uint8_t enable;
+    uint8_t priority;
+    uint8_t errorExist;
+    uint8_t isLost;
+    uint8_t dataIsError;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+} DetectState;
+
+typedef struct
+{
+    uint32_t seq;
+    uint32_t publishTimeMs;
+    uint16_t errorMask;
+    uint16_t lostMask;
+    uint16_t dataErrorMask;
+    uint8_t valid;
+    uint8_t reserved0;
+    DetectState state[DETECT_ERROR_COUNT];
+} DetectSnapshot;
+
+typedef struct
+{
+    uint32_t seq;
+    uint32_t publishTimeMs;
+    uint16_t errorMask;
+    uint16_t lostMask;
+    uint16_t dataErrorMask;
+    uint8_t valid;
+    uint8_t reserved0;
+} DetectSummary;
 
 /**
   * @brief          detect task
@@ -80,7 +125,9 @@ extern void HealthMonitorTask(void const *pvParameters);
   * @param[in]      toe:设备目录
   * @retval         true(错误) 或者false(没错误)
   */
-extern bool_t toe_is_error(uint8_t err);
+extern bool_t DetectIsError(uint8_t err);
+extern uint8_t DetectSnapshotRead(DetectSnapshot *out);
+extern uint8_t DetectSummaryRead(DetectSummary *out);
 
 /**
   * @brief          record the time
@@ -93,17 +140,5 @@ extern bool_t toe_is_error(uint8_t err);
   * @retval         none
   */
 extern void DetectHook(uint8_t toe);
-
-/**
-  * @brief          get error list
-  * @param[in]      none
-  * @retval         the point of error_list
-  */
-/**
-  * @brief          得到错误列表
-  * @param[in]      none
-  * @retval         error_list的指针
-  */
-extern const DetectError *get_error_list_point(void);
 
 #endif

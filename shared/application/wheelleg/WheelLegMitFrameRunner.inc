@@ -235,9 +235,11 @@ static void WheelLegFaultDomainUpdate(WheelLegTaskFrame *frame)
 
 static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
 {
+    DetectSummary detectSummary;
     InsSnapshot imu_snapshot = {0};
     const fp32 *angle = NULL;
     const fp32 *gyro = NULL;
+    uint16_t detectErrorMask = UINT16_MAX;
     uint8_t imu_snapshot_ok;
 
     if (frame == NULL)
@@ -255,6 +257,10 @@ static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
     frame->control_allowed =
         WheellegControlMgrAllows(frame->now_ms, frame->dt, &frame->output_permit);
 
+    if (DetectSummaryRead(&detectSummary) != 0u)
+    {
+        detectErrorMask = detectSummary.errorMask;
+    }
     imu_snapshot_ok = (uint8_t)InsSnapshotRead(&imu_snapshot);
     if (imu_snapshot_ok != 0u)
     {
@@ -274,8 +280,8 @@ static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
     frame->profile_on = RobotProfileIsWheelLegMit();
     frame->imu_ok = (uint8_t)(imu_snapshot_ok != 0u &&
                               imu_snapshot.age_ms <= (uint32_t)frame->period_ms * 3u + 2u &&
-                              toe_is_error(BOARD_GYRO_TOE) == 0u &&
-                              toe_is_error(BOARD_ACCEL_TOE) == 0u);
+                              (detectErrorMask & ((1u << BOARD_GYRO_TOE) |
+                                                  (1u << BOARD_ACCEL_TOE))) == 0u);
     frame->single_test = WheelLegSingleTestEnabled();
     frame->left_leg_test = robot_mode_wheelleg_left_leg_swing();
     frame->foot_test = robot_mode_wheelleg_foot_trajectory();

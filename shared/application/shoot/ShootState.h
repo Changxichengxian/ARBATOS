@@ -63,7 +63,7 @@ typedef struct
     int16_t fric_current_set[SHOOT_STATE_FRIC_MOTOR_COUNT];
 } ShootState;
 
-typedef char ShootStateFitsStore[(sizeof(ShootState) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
+typedef char ShootStateFitsStore[(sizeof(ShootState) <= STATE_STORE_SHOOT_BYTES) ? 1 : -1];
 
 static inline uint8_t ShootStateWrite(const ShootState *state)
 {

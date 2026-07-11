@@ -104,7 +104,7 @@ typedef struct
     GimbalMotorState pitch;
 } GimbalState;
 
-typedef char GimbalStateFitsStore[(sizeof(GimbalState) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
+typedef char GimbalStateFitsStore[(sizeof(GimbalState) <= STATE_STORE_GIMBAL_BYTES) ? 1 : -1];
 
 static inline uint8_t GimbalStateWrite(const GimbalState *state)
 {

@@ -6,6 +6,6 @@
 #define DBUS_TOE 0u
 
 void DetectHook(uint8_t toe);
-uint8_t toe_is_error(uint8_t toe);
+uint8_t DetectIsError(uint8_t toe);
 
 #endif

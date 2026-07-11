@@ -17,6 +17,7 @@ New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 $Output = Join-Path $BuildDir 'state-store-regression.exe'
 $TestSource = Join-Path $RepoRoot 'tools\tests\StateStoreRegression.c'
 $IncludeDirs = @(
+    (Join-Path $RepoRoot 'tools\tests\state-store-stubs'),
     (Join-Path $RepoRoot 'tools\tests\stubs'),
     (Join-Path $RepoRoot 'shared\components\support'),
     (Join-Path $RepoRoot 'shared\application\robot'),

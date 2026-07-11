@@ -455,7 +455,7 @@ void ChassisPowerControl(ChassisMove *ChassisPowerControl, uint32_t activeMotorM
     uint8_t robot_id = get_robot_id();
     fp32 runtime_power_limit = power_cfg->power_limit;
     fp32 power_budget = 0.0f;
-    uint8_t RefereeOffline = (uint8_t)toe_is_error(REFEREE_TOE);
+    uint8_t RefereeOffline = (uint8_t)DetectIsError(REFEREE_TOE);
     uint8_t use_total_current_fallback =
         (uint8_t)(RefereeOffline || robot_id == RED_ENGINEER || robot_id == BLUE_ENGINEER || robot_id == 0u);
     fp32 currents[4] = {0};

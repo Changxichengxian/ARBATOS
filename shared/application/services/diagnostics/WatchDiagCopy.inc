@@ -41,7 +41,7 @@ static void WatchCopyDiag(void)
         g_watch.diag.alg_age_ms = now_ms - algorithm.last_ms;
     }
 
-    dbus_error = toe_is_error(DBUS_TOE) ? 1u : 0u;
+    dbus_error = DetectIsError(DBUS_TOE) ? 1u : 0u;
     manual_online = (uint8_t)(s_watch_manual_input_valid != 0u &&
                               s_watch_manual_input.online != 0u);
     output_allowed = lifecycle.output_allowed;

@@ -1427,7 +1427,7 @@ function Test-CanTxDeviceConfigBoundaries {
         Add-CheckError "${repoPath}: RM group send path must use the resolved node CAN bus, not the fixed fallback bus."
     }
 
-    if ($content -match '\bDBUS_TOE\b|toe_is_error\s*\(|RobotSafetyManual(?:Disconnected|SafeActive)\s*\(|RobotLifecycle(?!Update\b)\w*\s*\(|ManualInput\w*\s*\(|ControlInput\w*\s*\(') {
+    if ($content -match '\bDBUS_TOE\b|DetectIsError\s*\(|RobotSafetyManual(?:Disconnected|SafeActive)\s*\(|RobotLifecycle(?!Update\b)\w*\s*\(|ManualInput\w*\s*\(|ControlInput\w*\s*\(') {
         Add-CheckError "${repoPath}: transport must not own source-specific manual-input fault policy."
     }
     $canTxTaskBody = [regex]::Match(
@@ -2017,9 +2017,14 @@ function Test-ManualInputSnapshotBoundaries {
         $wheellegContent -notmatch '&frame->manual_input_snapshot\.semantics') {
         Add-CheckError "${wheellegRepoPath}: WheelLeg MIT must read one frame-owned aggregate snapshot and use its online/control/semantics generation throughout the frame."
     }
+    if (([regex]::Matches($wheellegContent, 'DetectSummaryRead\s*\(')).Count -ne 1 -or
+        $wheellegContent -notmatch 'detectErrorMask[\s\S]{0,220}?BOARD_GYRO_TOE[\s\S]{0,120}?BOARD_ACCEL_TOE' -or
+        $wheellegContent -match 'DetectIsError\s*\(\s*BOARD_(?:GYRO|ACCEL)_TOE') {
+        Add-CheckError "${wheellegRepoPath}: WheelLeg MIT must reuse one Detect summary for both frame IMU health checks."
+    }
     foreach ($forbiddenPattern in @(
             '\bDBUS_TOE\b',
-            'toe_is_error\s*\(\s*DBUS_TOE',
+            'DetectIsError\s*\(\s*DBUS_TOE',
             'ManualInputGet\w*\s*\(',
             'ControlInputGet(?:Copy|State)\s*\(',
             'ControlInput(?:Axis|Switch)\s*\(',
@@ -2099,11 +2104,13 @@ function Test-ManualInputSnapshotBoundaries {
     $auxTelemRepoPath = "shared\application\comm\host\AuxTelem.c"
     $auxTelemContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $auxTelemRepoPath) -Raw -Encoding UTF8
     if (([regex]::Matches($auxTelemContent, 'ManualInputSnapshotRead\s*\(')).Count -ne 1 -or
+        ([regex]::Matches($auxTelemContent, 'DetectSummaryRead\s*\(')).Count -ne 1 -or
         $auxTelemContent -match 'RC_data_is_error\s*\(' -or
         $auxTelemContent -notmatch 'manualDataValid\s*=\s*s_aux_telem_manual_input\.dataValid' -or
         $auxTelemContent -notmatch 'control->sw\s*\[\s*INPUT_SW_CHASSIS_MODE\s*\]' -or
-        $auxTelemContent -notmatch 'toe_is_error\s*\(\s*DBUS_TOE\s*\)\s*\)\s*mask\s*\|=\s*1u\s*<<\s*0') {
-        Add-CheckError "${auxTelemRepoPath}: one telemetry frame must reuse one aggregate snapshot for RC error and mapped chassis switch signals."
+        $auxTelemContent -notmatch 'detectErrorMask\s*=\s*detectSummary\.errorMask' -or
+        $auxTelemContent -match 'DetectIsError\s*\(') {
+        Add-CheckError "${auxTelemRepoPath}: one telemetry frame must reuse one input snapshot and one Detect summary."
     }
 
     $watchDiagRepoPath = "shared\application\services\diagnostics\WatchDiagCopy.inc"
@@ -2114,7 +2121,8 @@ function Test-ManualInputSnapshotBoundaries {
 
     $startupRepoPath = "shared\application\services\startup\StartupServiceTask.c"
     $startupContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $startupRepoPath) -Raw -Encoding UTF8
-    if ($startupContent -notmatch 'lost_beep_confirm_due\s*\(\s*lifecycle\.manual_online\s*\)' -or
+    if ($startupContent -notmatch 'DetectSummaryRead\s*\(\s*&detectSummary\s*\)' -or
+        $startupContent -notmatch 'lost_beep_confirm_due\s*\([\s\S]{0,160}?lifecycle\.manual_online\s*\)' -or
         $startupContent -notmatch 'toe\s*==\s*\(uint8_t\)DBUS_TOE\s*&&\s*manualOnline\s*!=\s*0u') {
         Add-CheckError "${startupRepoPath}: DBUS beep confirmation must share the aggregate-input fallback rule used by the main scan."
     }
@@ -2159,6 +2167,168 @@ function Test-ManualInputSnapshotBoundaries {
                 Add-CheckError "$(Format-RepoPath $source.FullName): removed parallel input API must not return."
             }
         }
+    }
+}
+
+function Test-DetectSingleWriterBoundaries {
+    Write-Host "[check] Detect single-writer boundaries"
+
+    $headerRepoPath = "shared\application\services\diagnostics\DetectTask.h"
+    $commonRepoPath = "shared\application\services\diagnostics\DetectCommon.h"
+    $startupRepoPath = "shared\application\services\startup\StartupServiceTask.c"
+    $runnerRepoPath = "tools\TestDetectSingleWriter.ps1"
+    $testRepoPath = "tools\tests\DetectSingleWriterRegression.c"
+    foreach ($requiredPath in @($headerRepoPath, $commonRepoPath, $startupRepoPath, $runnerRepoPath, $testRepoPath)) {
+        if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $requiredPath) -PathType Leaf)) {
+            Add-CheckError "Missing Detect single-writer file: $requiredPath"
+            return
+        }
+    }
+
+    $headerContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $headerRepoPath) -Raw -Encoding UTF8
+    $stateBody = [regex]::Match(
+        $headerContent,
+        'typedef\s+struct\s*\{\s*uint32_t\s+newTimeMs\s*;[\s\S]*?uint8_t\s+dataIsError\s*;[\s\S]*?\}\s*DetectState\s*;').Value
+    if ([string]::IsNullOrWhiteSpace($stateBody) -or
+        $stateBody -match '\(\s*\*' -or
+        $headerContent -notmatch 'DetectState\s+state\s*\[\s*DETECT_ERROR_COUNT\s*\]' -or
+        $headerContent -notmatch 'uint16_t\s+errorMask\s*;[\s\S]{0,80}?uint16_t\s+lostMask\s*;[\s\S]{0,80}?uint16_t\s+dataErrorMask\s*;' -or
+        $headerContent -notmatch '\}\s*DetectSummary\s*;' -or
+        $headerContent -notmatch 'DetectSummaryRead\s*\(' -or
+        $headerContent -match 'get_error_list_point\s*\(') {
+        Add-CheckError "${headerRepoPath}: public Detect snapshot must expose pure data and no mutable error-list pointer."
+    }
+
+    $commonContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $commonRepoPath) -Raw -Encoding UTF8
+    if ($commonContent -notmatch 'DetectSnapshot\s+snapshot\s*\[\s*2\s*\]' -or
+        $commonContent -notmatch 'DetectState\s*\*state\s*=\s*&snapshot->state\[i\]' -or
+        $commonContent -notmatch 'static\s+inline\s+void\s+DetectCommonTakeFact\s*\(' -or
+        $commonContent -notmatch '#define\s+DETECT_COMMON_RUNTIME_POLL_MS\s+DETECT_CONTROL_TIME' -or
+        $commonContent -notmatch 'static\s+inline\s+void\s+DetectCommonRefreshOne\s*\(' -or
+        $commonContent -notmatch 'static\s+inline\s+uint8_t\s+DetectCommonSummaryRead' -or
+        $commonContent -notmatch 'static\s+inline\s+bool_t\s+DetectCommonSnapshotIsError' -or
+        $commonContent -notmatch 'static\s+inline\s+uint8_t\s+DetectCommonSnapshotRead' -or
+        $commonContent -match 'DetectCommonTakeFacts\s*\(') {
+        Add-CheckError "${commonRepoPath}: Detect must keep double-bank pure-data publication and pure query helpers."
+    }
+
+    foreach ($target in @(
+            "CARRIER-A",
+            "HERO-C",
+            "HERO-M",
+            "INFANTRY-A",
+            "MINIWHEELEG-C",
+            "MINIWHEELEG-M",
+            "SENTINEL-M"
+        )) {
+        $detectRepoPath = "Robotconfig\$target\DetectTask.c"
+        $detectContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $detectRepoPath) -Raw -Encoding UTF8
+        foreach ($requiredPattern in @(
+                'static\s+DetectRuntime\s+g_detect',
+                'static\s+void\s+DetectRefresh\s*\(',
+                'DetectCommonTakeFact\s*\(',
+                'DetectCommonRefreshOne\s*\(',
+                'DetectCommonPublish\s*\(',
+                'g_detect\.activeIndex\s*=\s*nextIndex',
+                'bool_t\s+DetectIsError\s*\(',
+                'DetectCommonSnapshotIsError\s*\(',
+                'uint8_t\s+DetectSnapshotRead\s*\(',
+                'uint8_t\s+DetectSummaryRead\s*\(',
+                'DetectCommonSummaryRead\s*\('
+            )) {
+            if ($detectContent -notmatch $requiredPattern) {
+                Add-CheckError "${detectRepoPath}: Detect task single-writer path is missing '$requiredPattern'."
+            }
+        }
+        if ($detectContent -match 'get_error_list_point\s*\(' -or
+            $detectContent -match 'DetectCommonIsError\s*\(' -or
+            $detectContent -match 'DetectCommonTakeFacts\s*\(' -or
+            ([regex]::Matches($detectContent, 'DetectCommonTakeFact\s*\(')).Count -ne 1 -or
+            $detectContent -notmatch 'static\s+void\s+DetectRefresh[\s\S]{0,600}?for\s*\([\s\S]{0,220}?DetectEnterCritical\s*\(\s*\)[\s\S]{0,220}?DetectCommonTakeFact[\s\S]{0,180}?DetectExitCritical[\s\S]{0,180}?DetectCommonRefreshOne') {
+            Add-CheckError "${detectRepoPath}: Detect queries must read the active snapshot and receipt facts must use per-TOE critical sections."
+        }
+        if ($target -in @("HERO-C", "HERO-M") -and
+            ($detectContent -match '#define\s+error_list' -or
+             $detectContent -notmatch 'void\s+DetectHook[\s\S]{0,500}?critical\.fromIsr[\s\S]{0,160}?xTaskGetTickCountFromISR')) {
+            Add-CheckError "${detectRepoPath}: HERO DetectHook must select the ISR-safe tick API without an error-list macro alias."
+        }
+    }
+
+    $startupContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $startupRepoPath) -Raw -Encoding UTF8
+    if ($startupContent -notmatch 'DetectSummaryRead\s*\(\s*&detectSummary\s*\)' -or
+        $startupContent -match 'DetectSnapshotRead\s*\(' -or
+        $startupContent -match 'get_error_list_point\s*\(') {
+        Add-CheckError "${startupRepoPath}: startup diagnostics must consume a local Detect summary."
+    }
+
+    $testContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $testRepoPath) -Raw -Encoding UTF8
+    foreach ($requiredPattern in @(
+            'TestQueriesArePure\s*\(',
+            'TestEarlyHookSurvivesWriterInit\s*\(',
+            'TestTakeFactKeepsOtherToePending\s*\(',
+            'TestWriterCadenceBoundsTimeoutDelay\s*\(',
+            'DetectCommonSnapshotIsError\s*\(',
+            'DetectCommonSummaryRead\s*\(',
+            'DetectCommonTakeFact\s*\(',
+            'summary\.errorMask\s*==',
+            'lostTimeMs\s*==\s*161u'
+        )) {
+        if ($testContent -notmatch $requiredPattern) {
+            Add-CheckError "${testRepoPath}: Detect single-writer regression is missing '$requiredPattern'."
+        }
+    }
+
+    $runnerContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $runnerRepoPath) -Raw -Encoding UTF8
+    if ($runnerContent -notmatch 'DetectSingleWriterRegression\.c' -or
+        $runnerContent -notmatch "'-Werror'" -or
+        $runnerContent -notmatch 'detect-single-writer-regression\.exe') {
+        Add-CheckError "${runnerRepoPath}: Detect host regression runner must compile the strict executable test."
+    }
+
+    foreach ($sourceRoot in @("shared", "Robotconfig", "boards", "tools\tests")) {
+        foreach ($source in (Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot $sourceRoot) -Recurse -File |
+                Where-Object { $_.Extension -in @(".c", ".h", ".inc") })) {
+            $sourceText = Get-Content -LiteralPath $source.FullName -Raw -Encoding UTF8
+            if ($sourceText -match '\btoe_is_error\b') {
+                Add-CheckError "$(Format-RepoPath $source.FullName): removed Detect query name toe_is_error must not return."
+            }
+        }
+    }
+}
+
+function Test-RamCapacityBoundaries {
+    Write-Host "[check] target RAM capacity boundaries"
+
+    $storeHeaderRepoPath = "shared\application\robot\StateStore.h"
+    $storeSourceRepoPath = "shared\application\robot\StateStore.c"
+    $canRepoPath = "shared\hal\BspCan.c"
+    $storeHeader = Get-Content -LiteralPath (Join-Path $script:RepoRoot $storeHeaderRepoPath) -Raw -Encoding UTF8
+    $storeSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot $storeSourceRepoPath) -Raw -Encoding UTF8
+    $canSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot $canRepoPath) -Raw -Encoding UTF8
+
+    foreach ($capacity in @(
+            "STATE_STORE_GIMBAL_BYTES",
+            "STATE_STORE_CHASSIS_BYTES",
+            "STATE_STORE_SHOOT_BYTES",
+            "STATE_STORE_WHEELLEG_CMD_BYTES",
+            "STATE_STORE_WHEELLEG_STATE_BYTES",
+            "STATE_STORE_WHEELLEG_STATUS_BYTES",
+            "STATE_STORE_WHEELLEG_DEBUG_BYTES",
+            "STATE_STORE_ARM_STATUS_BYTES",
+            "STATE_STORE_IMU_BYTES"
+        )) {
+        if ($storeHeader -notmatch ("#define\s+" + $capacity + "\s+")) {
+            Add-CheckError "${storeHeaderRepoPath}: missing per-state RAM budget $capacity."
+        }
+    }
+    if ($storeSource -match 'payload\s*\[\s*STATE_STORE_MAX_BYTES\s*\]' -or
+        $storeSource -notmatch 'state_payload_bank_t\s+s_state_payload\s*\[\s*STATE_STORE_BANK_COUNT\s*\]' -or
+        $storeSource -notmatch 'ROBOT_TASK_BUILD_CLASSIC_CHASSIS' -or
+        $storeSource -notmatch 'ROBOT_TASK_BUILD_WHEELLEG_MIT') {
+        Add-CheckError "${storeSourceRepoPath}: StateStore must allocate exact payload sizes only for built target modules."
+    }
+    if ($canSource -notmatch '#if\s+defined\(HAL_FDCAN_MODULE_ENABLED\)[\s\S]{0,120}?BSP_CAN_TX_COMPLETION_RING_SIZE\s+128u[\s\S]{0,160}?BSP_CAN_TX_COMPLETION_RING_SIZE\s+16u') {
+        Add-CheckError "${canRepoPath}: CAN completion ring must keep the compact bxCAN and full FDCAN capacities."
     }
 }
 
@@ -2380,7 +2550,7 @@ function Test-ControlRegistryBoundaries {
     $chassisInputContent = $chassisTaskContent + "`n" + $chassisBehaviourInputContent
     foreach ($forbiddenPattern in @(
             '\bDBUS_TOE\b',
-            'toe_is_error\s*\(',
+            'DetectIsError\s*\(',
             'ManualInputGet(CurrentCopy|CurrentRc|ActiveSource)\s*\(',
             'get_remote_control_point\s*\(',
             'remote_control_get_active_source\s*\(',
@@ -2515,7 +2685,7 @@ function Test-ControlRegistryBoundaries {
     $gimbalShootInputContent = $gimbalContent + "`n" + ($shootSourceTexts -join "`n")
     foreach ($forbiddenPattern in @(
             '\bDBUS_TOE\b',
-            'toe_is_error\s*\(\s*DBUS_TOE',
+            'DetectIsError\s*\(\s*DBUS_TOE',
             'ManualInputGet\w*\s*\(',
             'get_remote_control_point\s*\(',
             'remote_control_get_active_source\s*\(',
@@ -2666,7 +2836,7 @@ function Test-ControlRegistryBoundaries {
     ).Value
     if (([regex]::Matches($lifecycleContent, 'ManualInputSnapshotRead\s*\(')).Count -ne 1 -or
         ([regex]::Matches($lifecycleUpdateBody, 'ManualInputSnapshotRead\s*\(')).Count -ne 1 -or
-        $lifecycleContent -match '\bDBUS_TOE\b|toe_is_error\s*\(|ManualInputGet\w*\s*\(|ControlInput(?:Get|Axis|Switch)\s*\(') {
+        $lifecycleContent -match '\bDBUS_TOE\b|DetectIsError\s*\(|ManualInputGet\w*\s*\(|ControlInput(?:Get|Axis|Switch)\s*\(') {
         Add-CheckError "${lifecycleRepoPath}: lifecycle policy must consume one aggregate snapshot only in its explicit writer update."
     }
     if ([string]::IsNullOrWhiteSpace($lifecycleReaderBodies) -or
@@ -4083,6 +4253,8 @@ Test-HighRateApiBoundaries
 Test-CanRxAndStackSamplingBoundaries
 Test-CanTxDeviceConfigBoundaries
 Test-ManualInputSnapshotBoundaries
+Test-DetectSingleWriterBoundaries
+Test-RamCapacityBoundaries
 Test-ControlRegistryBoundaries
 Test-FaultGuardBoundaries
 Test-FaultIsolationBoundaries

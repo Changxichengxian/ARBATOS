@@ -35,10 +35,26 @@ int main(void)
 {
     const uint32_t first[4] = {1u, 2u, 3u, 4u};
     const uint32_t second[4] = {5u, 6u, 7u, 8u};
+    uint8_t oversized_chassis[STATE_STORE_CHASSIS_BYTES + 1u] = {0u};
     uint32_t out[4] = {0u};
     state_info_t info = StateStoreInfo(STATE_CHASSIS);
 
+    if (!TestCheck(sizeof(s_state_payload) ==
+                       2u * (STATE_STORE_GIMBAL_BYTES +
+                             STATE_STORE_CHASSIS_BYTES +
+                             STATE_STORE_SHOOT_BYTES +
+                             STATE_STORE_WHEELLEG_CMD_BYTES +
+                             STATE_STORE_WHEELLEG_STATE_BYTES +
+                             STATE_STORE_WHEELLEG_STATUS_BYTES +
+                             STATE_STORE_WHEELLEG_DEBUG_BYTES +
+                             STATE_STORE_ARM_STATUS_BYTES +
+                             STATE_STORE_IMU_BYTES),
+                   "状态池必须按真实结构容量分配")) return 1;
     if (!TestCheck(info.valid == 0u && info.age_ms == 0u, "初始状态应无有效快照")) return 1;
+    if (!TestCheck(StateStoreWrite(STATE_CHASSIS,
+                                   oversized_chassis,
+                                   (uint16_t)sizeof(oversized_chassis)) == 0u,
+                   "超过本类状态容量的写入必须拒绝")) return 1;
 
     s_test_tick_ms = 100u;
     if (!TestCheck(StateStoreWrite(STATE_CHASSIS, first, (uint16_t)sizeof(first)) != 0u,

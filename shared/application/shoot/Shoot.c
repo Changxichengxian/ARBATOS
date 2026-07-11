@@ -1373,7 +1373,7 @@ static void ShootSetMode(const ShootFrameInput *frame,
     }
 
     get_shoot_heat0_limit_and_heat0(&g_shoot.heat_limit, &g_shoot.heat);
-    if(!toe_is_error(REFEREE_TOE) && (g_shoot.heat + SHOOT_HEAT_REMAIN_VALUE > g_shoot.heat_limit))
+    if(!DetectIsError(REFEREE_TOE) && (g_shoot.heat + SHOOT_HEAT_REMAIN_VALUE > g_shoot.heat_limit))
     {
         if(g_shoot.mode == SHOOT_BULLET ||
            g_shoot.mode == SHOOT_CONTINUE_BULLET ||

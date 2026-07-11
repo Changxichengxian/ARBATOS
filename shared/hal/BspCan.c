@@ -35,17 +35,20 @@ extern CAN_HandleTypeDef hcan2;
 #define BSP_CAN_FAULT_ABORT_SPIN_LIMIT 100000u
 #define BSP_CAN_FAULT_TX_SPIN_LIMIT 400000u
 #define BSP_CAN_FAULT_FLUSH_SPIN_LIMIT 2000000u
-#define BSP_CAN_TX_COMPLETION_RING_SIZE 128u
 #define BSP_CAN_TX_TRACK_TIMEOUT_MS 50u
 #define BSP_CAN_TX_ABORT_GRACE_MS 10u
 #if defined(HAL_FDCAN_MODULE_ENABLED)
+#define BSP_CAN_TX_COMPLETION_RING_SIZE 128u
 #define BSP_CAN_TX_SLOT_COUNT 32u
 #else
+#define BSP_CAN_TX_COMPLETION_RING_SIZE 16u
 #define BSP_CAN_TX_SLOT_COUNT 3u
 #endif
 typedef char _check_can_rx_ring_pow2[(BSP_CAN_RX_RING_SIZE & (BSP_CAN_RX_RING_SIZE - 1u)) == 0u ? 1 : -1];
 typedef char _check_can_tx_completion_ring_pow2[
     (BSP_CAN_TX_COMPLETION_RING_SIZE & (BSP_CAN_TX_COMPLETION_RING_SIZE - 1u)) == 0u ? 1 : -1];
+typedef char _check_can_tx_completion_ring_capacity[
+    BSP_CAN_TX_COMPLETION_RING_SIZE > (BSP_CAN_BUS_COUNT * BSP_CAN_TX_SLOT_COUNT) ? 1 : -1];
 
 typedef struct
 {

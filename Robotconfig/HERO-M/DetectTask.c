@@ -27,6 +27,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "main.h"
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
 extern uint32_t GimbalHighWater;
@@ -43,7 +44,7 @@ extern ChassisBehaviour ChassisBehaviourMode;
 
 
 /**
-  * @brief          init error_list, assign  offline_time, online_time, priority.
+  * @brief          init Detect working state and configured timing.
   * @param[in]      time: system time
   * @retval         none
   */
@@ -57,8 +58,13 @@ static void DetectInit(uint32_t time);
 
 
 
-DetectError error_list[DETECT_ERROR_COUNT + 1];
-static uint32_t g_last_tick_ms[DETECT_ERROR_COUNT];
+typedef struct
+{
+    uint8_t fromIsr;
+    UBaseType_t savedMask;
+} DetectCriticalState;
+
+static DetectRuntime g_detect;
 static const DetectConfig *const DetectCfg = &g_config.detect;
 static ManualInputSnapshot s_control_summary_manual_input;
 
@@ -66,6 +72,66 @@ static ManualInputSnapshot s_control_summary_manual_input;
 #if INCLUDE_uxTaskGetStackHighWaterMark
 uint32_t DetectTaskStack;
 #endif
+
+static DetectCriticalState DetectEnterCritical(void)
+{
+    DetectCriticalState state;
+
+    state.fromIsr = (__get_IPSR() != 0U) ? 1u : 0u;
+    state.savedMask = 0u;
+    if (state.fromIsr != 0u)
+    {
+        state.savedMask = taskENTER_CRITICAL_FROM_ISR();
+    }
+    else
+    {
+        taskENTER_CRITICAL();
+    }
+    return state;
+}
+
+static void DetectExitCritical(DetectCriticalState state)
+{
+    if (state.fromIsr != 0u)
+    {
+        taskEXIT_CRITICAL_FROM_ISR(state.savedMask);
+    }
+    else
+    {
+        taskEXIT_CRITICAL();
+    }
+}
+
+static void DetectRefresh(uint32_t nowMs)
+{
+    for (uint8_t toe = 0u; toe < (uint8_t)DETECT_ERROR_COUNT; toe++)
+    {
+        DetectReceiptFact fact;
+        DetectCriticalState critical = DetectEnterCritical();
+        DetectCommonTakeFact(g_detect.receipt, &fact, (uint8_t)DETECT_ERROR_COUNT, toe);
+        DetectExitCritical(critical);
+        DetectCommonRefreshOne(&g_detect.working[toe], &fact, nowMs);
+    }
+}
+
+static void DetectPublish(uint32_t nowMs)
+{
+    const uint8_t nextIndex = (uint8_t)(g_detect.activeIndex ^ 1u);
+    uint32_t nextSeq = g_detect.publishSeq + 1u;
+    if (nextSeq == 0u)
+    {
+        nextSeq = 1u;
+    }
+    DetectCommonPublish(&g_detect.snapshot[nextIndex],
+                        g_detect.working,
+                        (uint8_t)DETECT_ERROR_COUNT,
+                        nowMs,
+                        nextSeq);
+    g_detect.publishSeq = nextSeq;
+    DetectCriticalState critical = DetectEnterCritical();
+    g_detect.activeIndex = nextIndex;
+    DetectExitCritical(critical);
+}
 
 static void sdlog_pack_detect_summary(sdlog_detect_summary_t *out, uint8_t display_toe)
 {
@@ -80,7 +146,7 @@ static void sdlog_pack_detect_summary(sdlog_detect_summary_t *out, uint8_t displ
     const uint8_t n = (uint8_t)DETECT_ERROR_COUNT;
     for (uint8_t i = 0u; i < n; i++)
     {
-        const DetectError *e = &error_list[i];
+        const DetectError *e = &g_detect.working[i];
         const uint16_t bit = (uint16_t)(1u << i);
 
         if (e->enable != 0u)
@@ -208,11 +274,12 @@ void DetectTask(void const *pvParameters)
     uint8_t ChassisBehaviourLast = (uint8_t)ChassisBehaviourMode;
     const ShootControl *ShootWatch = get_shoot_control_point();
     uint8_t ShootModeLast = (ShootWatch != NULL) ? (uint8_t)ShootWatch->mode : 0u;
+    TickType_t last_wake = xTaskGetTickCount();
 
     for (uint8_t i = 0u; i < (uint8_t)(sizeof(toe_last_lost) / sizeof(toe_last_lost[0])); i++)
     {
-        toe_last_lost[i] = (uint8_t)error_list[i].is_lost;
-        toe_last_data_err[i] = (uint8_t)error_list[i].data_is_error;
+        toe_last_lost[i] = (uint8_t)g_detect.working[i].is_lost;
+        toe_last_data_err[i] = (uint8_t)g_detect.working[i].data_is_error;
     }
 
     while (1)
@@ -221,50 +288,51 @@ void DetectTask(void const *pvParameters)
         system_time = xTaskGetTickCount();
 
         error_num_display = DETECT_ERROR_COUNT;
-        error_list[DETECT_ERROR_COUNT].is_lost = 0;
-        error_list[DETECT_ERROR_COUNT].error_exist = 0;
+        g_detect.working[DETECT_ERROR_COUNT].is_lost = 0;
+        g_detect.working[DETECT_ERROR_COUNT].error_exist = 0;
 
-        DetectCommonRefreshAll(error_list,
-                                  g_last_tick_ms,
-                                  (uint8_t)DETECT_ERROR_COUNT,
-                                  system_time);
+        DetectRefresh(system_time);
 
         for (uint8_t i = 0u; i < (uint8_t)DETECT_ERROR_COUNT; i++)
         {
-            if (error_list[i].enable == 0u || error_list[i].error_exist == 0u)
+            if (g_detect.working[i].enable == 0u || g_detect.working[i].error_exist == 0u)
             {
                 continue;
             }
 
-            error_list[DETECT_ERROR_COUNT].error_exist = 1u;
-            if (error_list[i].is_lost != 0u)
+            g_detect.working[DETECT_ERROR_COUNT].error_exist = 1u;
+            if (g_detect.working[i].is_lost != 0u)
             {
-                error_list[DETECT_ERROR_COUNT].is_lost = 1u;
+                g_detect.working[DETECT_ERROR_COUNT].is_lost = 1u;
             }
-            if (error_list[i].priority > error_list[error_num_display].priority)
+            if (g_detect.working[i].priority > g_detect.working[error_num_display].priority)
             {
                 error_num_display = i;
             }
         }
+        DetectPublish(system_time);
 
         // Edge-triggered events for link/bus health.
         for (uint8_t i = 0u; i < (uint8_t)(sizeof(toe_last_lost) / sizeof(toe_last_lost[0])); i++)
         {
-            const uint8_t lost_now = (uint8_t)error_list[i].is_lost;
-            const uint8_t err_now = (uint8_t)error_list[i].data_is_error;
+            const uint8_t lost_now = (uint8_t)g_detect.working[i].is_lost;
+            const uint8_t err_now = (uint8_t)g_detect.working[i].data_is_error;
 
             if (lost_now && !toe_last_lost[i])
             {
-                sdlog_emit_event(SDLOG_EVT_TOE_LOST, i, error_list[i].new_time, error_list[i].set_offline_time);
+                sdlog_emit_event(SDLOG_EVT_TOE_LOST,
+                                 i,
+                                 g_detect.working[i].new_time,
+                                 g_detect.working[i].set_offline_time);
             }
             else if (!lost_now && toe_last_lost[i])
             {
-                sdlog_emit_event(SDLOG_EVT_TOE_RECOVER, i, error_list[i].new_time, 0u);
+                sdlog_emit_event(SDLOG_EVT_TOE_RECOVER, i, g_detect.working[i].new_time, 0u);
             }
 
             if (err_now && !toe_last_data_err[i])
             {
-                sdlog_emit_event(SDLOG_EVT_TOE_DATA_ERROR, i, error_list[i].new_time, 0u);
+                sdlog_emit_event(SDLOG_EVT_TOE_DATA_ERROR, i, g_detect.working[i].new_time, 0u);
             }
 
             toe_last_lost[i] = lost_now;
@@ -378,6 +446,7 @@ void DetectTask(void const *pvParameters)
             sys.heap_ever_free = g_watch.rtos.heap_ever_free;
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
+            DetectTaskStack = uxTaskGetStackHighWaterMark(NULL);
             sys.stack_gimbal = GimbalHighWater;
             sys.stack_chassis = ChassisHighWater;
             sys.stack_detect = DetectTaskStack;
@@ -399,10 +468,7 @@ void DetectTask(void const *pvParameters)
             }
         }
 
-        vTaskDelay(DETECT_COMMON_RUNTIME_POLL_MS);
-#if INCLUDE_uxTaskGetStackHighWaterMark
-        DetectTaskStack = uxTaskGetStackHighWaterMark(NULL);
-#endif
+        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(DETECT_COMMON_RUNTIME_POLL_MS));
     }
 }
 
@@ -417,13 +483,15 @@ void DetectTask(void const *pvParameters)
   * @param[in]      toe:设备目录
   * @retval         true(错误) 或者false(没错误)
   */
-bool_t toe_is_error(uint8_t toe)
+bool_t DetectIsError(uint8_t toe)
 {
-    return DetectCommonIsError(error_list,
-                                  g_last_tick_ms,
-                                  (uint8_t)DETECT_ERROR_COUNT,
-                                  toe,
-                                  xTaskGetTickCount());
+    bool_t result;
+    DetectCriticalState critical = DetectEnterCritical();
+    result = DetectCommonSnapshotIsError(&g_detect.snapshot[g_detect.activeIndex],
+                                         (uint8_t)DETECT_ERROR_COUNT,
+                                         toe);
+    DetectExitCritical(critical);
+    return result;
 }
 
 /**
@@ -438,47 +506,43 @@ bool_t toe_is_error(uint8_t toe)
   */
 void DetectHook(uint8_t toe)
 {
-    DetectCommonHook(error_list, g_last_tick_ms, (uint8_t)DETECT_ERROR_COUNT, toe, xTaskGetTickCount());
+    DetectCriticalState critical = DetectEnterCritical();
+    const uint32_t nowMs = (critical.fromIsr != 0u) ?
+                               (uint32_t)xTaskGetTickCountFromISR() :
+                               (uint32_t)xTaskGetTickCount();
+    DetectCommonHook(g_detect.receipt, (uint8_t)DETECT_ERROR_COUNT, toe, nowMs);
+    DetectExitCritical(critical);
 }
 
-/**
-  * @brief          get error list
-  * @param[in]      none
-  * @retval         the point of error_list
-  */
-/**
-  * @brief          得到错误列表
-  * @param[in]      none
-  * @retval         error_list的指针
-  */
-const DetectError *get_error_list_point(void)
+uint8_t DetectSnapshotRead(DetectSnapshot *out)
 {
-    return error_list;
+    uint8_t valid;
+    DetectCriticalState critical = DetectEnterCritical();
+    valid = DetectCommonSnapshotRead(&g_detect.snapshot[g_detect.activeIndex], out);
+    DetectExitCritical(critical);
+    return valid;
+}
+
+uint8_t DetectSummaryRead(DetectSummary *out)
+{
+    uint8_t valid;
+    DetectCriticalState critical = DetectEnterCritical();
+    valid = DetectCommonSummaryRead(&g_detect.snapshot[g_detect.activeIndex], out);
+    DetectExitCritical(critical);
+    return valid;
 }
 
 static void DetectInit(uint32_t time)
 {
-    //设置离线时间，上线稳定工作时间，优先级 offlineTime onlinetime priority
-    for (uint8_t i = 0; i < DETECT_ERROR_COUNT; i++)
+    if (g_detect.writerInitialized != 0u)
     {
-        error_list[i].set_offline_time = DetectCfg->items[i].offline_time_ms;
-        error_list[i].set_online_time = DetectCfg->items[i].online_time_ms;
-        error_list[i].priority = DetectCfg->items[i].priority;
-        error_list[i].data_is_error_fun = NULL;
-        error_list[i].solve_lost_fun = NULL;
-        error_list[i].solve_data_error_fun = NULL;
-
-        error_list[i].enable = (DetectCfg->enable_mask >> i) & 0x1U;
-        error_list[i].error_exist = error_list[i].enable ? 1 : 0;
-        error_list[i].is_lost = error_list[i].enable ? 1 : 0;
-        error_list[i].data_is_error = error_list[i].enable ? 1 : 0;
-        error_list[i].frequency = 0.0f;
-        error_list[i].new_time = time;
-        error_list[i].last_time = time;
-        error_list[i].lost_time = time;
-        error_list[i].work_time = time;
-        g_last_tick_ms[i] = time;
+        return;
     }
 
-
+    DetectCommonInitFromConfig(g_detect.working, (uint8_t)DETECT_ERROR_COUNT, DetectCfg, time);
+    DetectCriticalState critical = DetectEnterCritical();
+    DetectCommonSeedBaseline(g_detect.receipt, (uint8_t)DETECT_ERROR_COUNT, time);
+    DetectExitCritical(critical);
+    g_detect.writerInitialized = 1u;
+    DetectPublish(time);
 }

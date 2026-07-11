@@ -764,7 +764,7 @@ void DetectHook(uint8_t toe)
     (void)toe;
 }
 
-uint8_t toe_is_error(uint8_t toe)
+uint8_t DetectIsError(uint8_t toe)
 {
     (void)toe;
     return 1u;

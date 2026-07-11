@@ -70,7 +70,7 @@ typedef struct
     ChassisMotorState motor[CHASSIS_STATE_MOTOR_COUNT];
 } ChassisState;
 
-typedef char ChassisStateFitsStore[(sizeof(ChassisState) <= STATE_STORE_MAX_BYTES) ? 1 : -1];
+typedef char ChassisStateFitsStore[(sizeof(ChassisState) <= STATE_STORE_CHASSIS_BYTES) ? 1 : -1];
 
 static inline uint8_t ChassisStateWrite(const ChassisState *state)
 {
