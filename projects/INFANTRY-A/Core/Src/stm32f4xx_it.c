@@ -54,37 +54,6 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-typedef struct
-{
-  uint32_t r0;
-  uint32_t r1;
-  uint32_t r2;
-  uint32_t r3;
-  uint32_t r12;
-  uint32_t lr;
-  uint32_t pc;
-  uint32_t psr;
-  uint32_t exc_return;
-  uint32_t msp;
-  uint32_t psp;
-  uint32_t cfsr;
-  uint32_t hfsr;
-  uint32_t dfsr;
-  uint32_t afsr;
-  uint32_t mmfar;
-  uint32_t bfar;
-  uint32_t icsr;
-  uint32_t shcsr;
-  uint32_t control;
-  uint32_t stack_ptr;
-  uint32_t basic_ptr;
-  uint32_t stack_dump[16];
-} hardfault_info_t;
-
-volatile hardfault_info_t g_hardfault_info;
-
-void HardFault_HandlerC(uint32_t *stack, uint32_t exc_return);
-
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -129,7 +98,7 @@ void NMI_Handler(void)
 #if defined(__CC_ARM)
 __asm void HardFault_Handler(void)
 {
-  IMPORT HardFault_HandlerC
+  IMPORT RobotFaultHardFaultEntry
 
   /* USER CODE BEGIN HardFault_IRQn 0 */
   /* USER CODE END HardFault_IRQn 0 */
@@ -139,7 +108,7 @@ __asm void HardFault_Handler(void)
   MRSEQ r0, MSP
   MRSNE r0, PSP
   MOV r1, lr
-  B HardFault_HandlerC
+  B RobotFaultHardFaultEntry
 }
 #else
 __attribute__((naked)) void HardFault_Handler(void)
@@ -153,157 +122,9 @@ __attribute__((naked)) void HardFault_Handler(void)
       "mrseq r0, msp         \n"
       "mrsne r0, psp         \n"
       "mov r1, lr            \n"
-      "b HardFault_HandlerC  \n");
+      "b RobotFaultHardFaultEntry  \n");
 }
 #endif
-
-void HardFault_HandlerC(uint32_t *stack, uint32_t exc_return)
-{
-  const uint32_t *frame0;
-  const uint32_t *frame1;
-  const uint32_t *basic;
-  uint32_t pc0;
-  uint32_t psr0;
-  uint32_t pc1;
-  uint32_t psr1;
-  uint32_t xpsr_t_bit;
-  uint8_t valid0;
-  uint8_t valid1;
-  uint32_t sp;
-  uint8_t sp_aligned;
-  uint8_t sp_in_sram;
-  uint8_t sp_in_ccm;
-
-  __disable_irq();
-  CanTxEmergencyStopNow();
-
-  sp = (uint32_t)stack;
-  sp_aligned = ((sp & 0x3U) == 0U) ? 1U : 0U;
-  sp_in_sram = ((sp >= 0x20000000U) && (sp <= (0x20040000U - 104U))) ? 1U : 0U;
-  sp_in_ccm = ((sp >= 0x10000000U) && (sp <= (0x10020000U - 104U))) ? 1U : 0U;
-  if ((sp_aligned == 0U) || ((sp_in_sram == 0U) && (sp_in_ccm == 0U)))
-  {
-    RobotFaultResetFromException((uint32_t)ROBOT_FAULT_REASON_HARDFAULT, SCB->HFSR, SCB->CFSR);
-  }
-
-  frame0 = stack;
-  frame1 = stack + 18;
-
-  pc0 = frame0[6];
-  psr0 = frame0[7];
-  pc1 = frame1[6];
-  psr1 = frame1[7];
-
-  xpsr_t_bit = (1UL << 24);
-  valid0 = (((pc0 & 1U) != 0U) && ((psr0 & xpsr_t_bit) != 0U)) ? 1U : 0U;
-  valid1 = (((pc1 & 1U) != 0U) && ((psr1 & xpsr_t_bit) != 0U)) ? 1U : 0U;
-
-  basic = frame0;
-  if ((exc_return & (1UL << 4)) == 0U)
-  {
-    if (valid1 && !valid0)
-    {
-      basic = frame1;
-    }
-    else if (!valid1 && valid0)
-    {
-      basic = frame0;
-    }
-    else if (valid1 && valid0)
-    {
-      const uint8_t pc0_in_flash = (pc0 >= 0x08000000U) && (pc0 < 0x08100000U);
-      const uint8_t pc1_in_flash = (pc1 >= 0x08000000U) && (pc1 < 0x08100000U);
-      if (pc1_in_flash && !pc0_in_flash)
-      {
-        basic = frame1;
-      }
-      else if (pc0_in_flash && !pc1_in_flash)
-      {
-        basic = frame0;
-      }
-      else
-      {
-        basic = frame1;
-      }
-    }
-    else
-    {
-      basic = frame1;
-    }
-  }
-
-  g_hardfault_info.r0 = basic[0];
-  g_hardfault_info.r1 = basic[1];
-  g_hardfault_info.r2 = basic[2];
-  g_hardfault_info.r3 = basic[3];
-  g_hardfault_info.r12 = basic[4];
-  g_hardfault_info.lr = basic[5];
-  g_hardfault_info.pc = basic[6];
-  g_hardfault_info.psr = basic[7];
-  g_hardfault_info.exc_return = exc_return;
-  g_hardfault_info.msp = __get_MSP();
-  g_hardfault_info.psp = __get_PSP();
-  g_hardfault_info.cfsr = SCB->CFSR;
-  g_hardfault_info.hfsr = SCB->HFSR;
-  g_hardfault_info.dfsr = SCB->DFSR;
-  g_hardfault_info.afsr = SCB->AFSR;
-  g_hardfault_info.mmfar = SCB->MMFAR;
-  g_hardfault_info.bfar = SCB->BFAR;
-  g_hardfault_info.icsr = SCB->ICSR;
-  g_hardfault_info.shcsr = SCB->SHCSR;
-  g_hardfault_info.control = __get_CONTROL();
-  g_hardfault_info.stack_ptr = (uint32_t)stack;
-  g_hardfault_info.basic_ptr = (uint32_t)basic;
-
-  for (uint32_t i = 0U; i < (uint32_t)(sizeof(g_hardfault_info.stack_dump) / sizeof(g_hardfault_info.stack_dump[0])); i++)
-  {
-    g_hardfault_info.stack_dump[i] = 0U;
-  }
-
-  sp = (uint32_t)stack;
-  sp_aligned = ((sp & 0x3U) == 0U) ? 1U : 0U;
-  sp_in_sram = ((sp >= 0x20000000U) && (sp < 0x20040000U)) ? 1U : 0U;
-  sp_in_ccm = ((sp >= 0x10000000U) && (sp < 0x10020000U)) ? 1U : 0U;
-  if (sp_aligned && (sp_in_sram || sp_in_ccm))
-  {
-    for (uint32_t i = 0U; i < (uint32_t)(sizeof(g_hardfault_info.stack_dump) / sizeof(g_hardfault_info.stack_dump[0])); i++)
-    {
-      g_hardfault_info.stack_dump[i] = stack[i];
-    }
-  }
-
-  g_watch.fault.hardfault_valid = 1U;
-  g_watch.fault.hardfault_r0 = g_hardfault_info.r0;
-  g_watch.fault.hardfault_r1 = g_hardfault_info.r1;
-  g_watch.fault.hardfault_r2 = g_hardfault_info.r2;
-  g_watch.fault.hardfault_r3 = g_hardfault_info.r3;
-  g_watch.fault.hardfault_r12 = g_hardfault_info.r12;
-  g_watch.fault.hardfault_lr = g_hardfault_info.lr;
-  g_watch.fault.hardfault_pc = g_hardfault_info.pc;
-  g_watch.fault.hardfault_psr = g_hardfault_info.psr;
-  g_watch.fault.hardfault_exc_return = g_hardfault_info.exc_return;
-  g_watch.fault.hardfault_msp = g_hardfault_info.msp;
-  g_watch.fault.hardfault_psp = g_hardfault_info.psp;
-  g_watch.fault.hardfault_cfsr = g_hardfault_info.cfsr;
-  g_watch.fault.hardfault_hfsr = g_hardfault_info.hfsr;
-  g_watch.fault.hardfault_dfsr = g_hardfault_info.dfsr;
-  g_watch.fault.hardfault_afsr = g_hardfault_info.afsr;
-  g_watch.fault.hardfault_mmfar = g_hardfault_info.mmfar;
-  g_watch.fault.hardfault_bfar = g_hardfault_info.bfar;
-  g_watch.fault.hardfault_icsr = g_hardfault_info.icsr;
-  g_watch.fault.hardfault_shcsr = g_hardfault_info.shcsr;
-  g_watch.fault.hardfault_control = g_hardfault_info.control;
-  g_watch.fault.hardfault_stack_ptr = g_hardfault_info.stack_ptr;
-  g_watch.fault.hardfault_basic_ptr = g_hardfault_info.basic_ptr;
-  for (uint32_t i = 0U; i < (uint32_t)(sizeof(g_watch.fault.hardfault_stack_dump) / sizeof(g_watch.fault.hardfault_stack_dump[0])); i++)
-  {
-    g_watch.fault.hardfault_stack_dump[i] = g_hardfault_info.stack_dump[i];
-  }
-
-  RobotFaultResetFromException((uint32_t)ROBOT_FAULT_REASON_HARDFAULT,
-                               g_hardfault_info.hfsr,
-                               g_hardfault_info.cfsr);
-}
 
 /**
   * @brief This function handles Memory management fault.

@@ -33,6 +33,7 @@
 #include "RobotConfig.h"
 #include "BspBuzzer.h"
 #include "BspCan.h"
+#include "BspResetEvidence.h"
 #include "ManualInput.h"
 #include "RobotFaultGuard.h"
 
@@ -80,6 +81,7 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
+  BspResetEvidenceCaptureBoot();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -130,6 +132,9 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  RobotFaultRecordAndReset((uint32_t)ROBOT_FAULT_REASON_SCHEDULER_RETURN,
+                           0u,
+                           0u);
   while (1)
   {
     /* USER CODE END WHILE */
@@ -218,7 +223,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  RobotFaultRecordAndHalt((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
+  RobotFaultRecordAndReset((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
@@ -232,8 +237,7 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  RobotFaultAssert((const char *)file, line);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

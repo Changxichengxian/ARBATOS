@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "cmsis_os.h"
+#include "BspResetEvidence.h"
 #include "BspTime.h"
 #include "SdCard.h"
 #include "RtProf.h"
@@ -1038,6 +1039,9 @@ static int sdlog_open_next_file(void)
                 .arg1_u32 = (uint32_t)prev_error_code,
                 .arg2_u32 = prev_error_bytes,
             };
+            BspResetEvidenceBoot reset_evidence;
+            const uint8_t reset_evidence_ready =
+                BspResetEvidenceGetBoot(&reset_evidence);
 
             uint8_t raw[512u];
             uint32_t raw_len = 0u;
@@ -1119,6 +1123,27 @@ static int sdlog_open_next_file(void)
                 return -4;
             }
 
+            if (reset_evidence_ready != 0u)
+            {
+                raw_len = 0u;
+                append_status = sdlog_append_record_bytes(
+                    raw,
+                    (uint32_t)sizeof(raw),
+                    &raw_len,
+                    0u,
+                    SDLOG_TAG_RESET_EVIDENCE,
+                    &reset_evidence,
+                    (uint16_t)sizeof(reset_evidence));
+                if (append_status != 0 || SdLogWrite_block(raw, raw_len) != 0)
+                {
+                    sdlog_remember_error(SDLOG_RESTART_REASON_STARTUP_BLOCK,
+                                         sdlog_last_error);
+                    (void)f_close(&sdlog_fp);
+                    SdcardUnmount();
+                    return -4;
+                }
+            }
+
             const FRESULT sync_r = sdlog_sync_profiled();
             if (sync_r != FR_OK)
             {
@@ -1135,6 +1160,12 @@ static int sdlog_open_next_file(void)
             sdlog_prev_error_reason = 0u;
             sdlog_prev_error_code = 0;
             sdlog_prev_error_bytes = 0u;
+            if (reset_evidence_ready != 0u &&
+                reset_evidence.evidenceValid != 0u)
+            {
+                BspResetEvidenceAcknowledge(
+                    reset_evidence.evidence.sequence);
+            }
 
             // Best-effort: persist the next index so next boot does not scan 0:/.
             sdlog_index_write_best_effort(i + 1u);

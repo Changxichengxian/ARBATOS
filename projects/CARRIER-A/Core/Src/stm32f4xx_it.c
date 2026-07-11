@@ -88,12 +88,36 @@ void NMI_Handler(void)
 /**
   * @brief This function handles Hard fault interrupt.
   */
-void HardFault_Handler(void)
+#if defined(__CC_ARM)
+__asm void HardFault_Handler(void)
+{
+  IMPORT RobotFaultHardFaultEntry
+
+  /* USER CODE BEGIN HardFault_IRQn 0 */
+  /* USER CODE END HardFault_IRQn 0 */
+
+  TST lr, #4
+  ITE EQ
+  MRSEQ r0, MSP
+  MRSNE r0, PSP
+  MOV r1, lr
+  B RobotFaultHardFaultEntry
+}
+#else
+__attribute__((naked)) void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-  RobotFaultResetFromException((uint32_t)ROBOT_FAULT_REASON_HARDFAULT, SCB->HFSR, SCB->CFSR);
   /* USER CODE END HardFault_IRQn 0 */
+
+  __asm volatile(
+      "tst lr, #4            \n"
+      "ite eq                \n"
+      "mrseq r0, msp         \n"
+      "mrsne r0, psp         \n"
+      "mov r1, lr            \n"
+      "b RobotFaultHardFaultEntry  \n");
 }
+#endif
 
 /**
   * @brief This function handles Memory management fault.

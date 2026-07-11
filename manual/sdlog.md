@@ -49,6 +49,8 @@ GCC/CMake 路线也会在 `tools/build.ps1 -Action gcc` 和 `tools/build.ps1 -Ac
 
 因此，只要 SD 日志能解析出 `BUILD_INFO`，这次固件就有基本发布追溯。`build_dirty = 1` 需要在复盘里说明，但它不是“仓库缺少发布纪律”的扣分点。
 
+启动块还会写一条 `RESET_EVIDENCE`。它包含本次启动的 RCC 复位标志，以及上次致命复位前保存在备份 SRAM 的原因、参数、CPU 故障寄存器和异常栈 PC/LR。文件完成同步后，固件才确认并清除备份区的有效标记；SD 不可用时，证据会继续保留供 Watch 或遥测读取。
+
 ## 查看日志
 
 启动网页查看器：

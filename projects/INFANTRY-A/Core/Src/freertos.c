@@ -486,25 +486,16 @@ static const char *WatchRtosTaskNameFromHandle(TaskHandle_t xTask, const char *f
 
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
-  RobotFaultEnterSafeStateEx((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
-                                  0u,
-                                  0u,
-                                  (uint32_t)xTask,
-                                  WatchRtosTaskNameFromHandle(xTask, pcTaskName));
-  RobotFaultHaltForever();
+  RobotFaultTaskAndReset((uint32_t)ROBOT_FAULT_REASON_STACK_OVERFLOW,
+                         0u,
+                         0u,
+                         xTask,
+                         WatchRtosTaskNameFromHandle(xTask, pcTaskName));
 }
 
 void vApplicationMallocFailedHook(void)
 {
-  const TaskHandle_t current_task = RobotFaultCurrentTaskHandle();
-
-  RobotFaultEnterSafeStateEx((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED,
-                                  0u,
-                                  0u,
-                                  (uint32_t)(uintptr_t)current_task,
-                                  WatchRtosTaskNameFromHandle(current_task,
-                                                                    RobotFaultTaskNameOrUnknown(current_task)));
-  RobotFaultHaltForever();
+  RobotFaultRecordAndReset((uint32_t)ROBOT_FAULT_REASON_MALLOC_FAILED, 0u, 0u);
 }
 
 /* USER CODE END Application */

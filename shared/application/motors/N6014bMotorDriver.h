@@ -10,6 +10,7 @@
 #define N6014B_MOTOR_RS485_PORT1 1u
 #define N6014B_MOTOR_DEFAULT_BAUDRATE 6000000u
 #define N6014B_MOTOR_DEFAULT_RX_TIMEOUT_MS 50u
+#define N6014B_MOTOR_FAULT_FRAME_SIZE 20u
 
 #ifndef N6014B_MOTOR_MAX_AXIS
 #define N6014B_MOTOR_MAX_AXIS MOTOR_ARM_JOINT_COUNT
@@ -46,6 +47,10 @@ typedef struct
 } N6014bMotorState;
 
 void N6014bMotorDriverInit(void);
+uint16_t N6014bMotorFaultFrameBuild(const motor_node_param_t *node,
+                                    uint8_t *out,
+                                    uint16_t capacity,
+                                    uint32_t *out_baudrate);
 int N6014bMotorSendActuator(uint8_t port,
                                MotorId actuator_id,
                                const motor_node_param_t *node,

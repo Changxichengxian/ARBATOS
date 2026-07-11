@@ -8,6 +8,8 @@
 
 #define UNITREE_MOTOR_RS485_PORT0 0u
 #define UNITREE_MOTOR_RS485_PORT1 1u
+#define UNITREE_MOTOR_DEFAULT_BAUDRATE 4000000u
+#define UNITREE_MOTOR_FAULT_FRAME_SIZE 34u
 
 typedef struct
 {
@@ -42,6 +44,10 @@ typedef struct
 } UnitreeMotorState;
 
 uint8_t UnitreeMotorNodeSupported(const motor_node_param_t *node);
+uint16_t UnitreeMotorFaultFrameBuild(const motor_node_param_t *node,
+                                     uint8_t *out,
+                                     uint16_t capacity,
+                                     uint32_t *out_baudrate);
 int UnitreeMotorSendActuator(uint8_t port,
                             MotorId actuator_id,
                             const motor_node_param_t *node,

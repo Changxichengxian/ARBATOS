@@ -57,6 +57,22 @@ TAG_NAMES: dict[int, str] = {
     0x0051: "BUILD_INFO",
     0x0052: "RUNTIME_DEVICE",
     0x0053: "WHEELLEG_MIT_MOTOR_DIAG",
+    0x0054: "RESET_EVIDENCE",
+}
+
+ROBOT_FAULT_REASON_NAMES: dict[int, str] = {
+    0: "NONE",
+    1: "STACK_OVERFLOW",
+    2: "MALLOC_FAILED",
+    3: "ERROR_HANDLER",
+    4: "HARDFAULT",
+    5: "MEMMANAGE",
+    6: "BUSFAULT",
+    7: "USAGEFAULT",
+    8: "NMI",
+    9: "ASSERT",
+    10: "SCHEDULER_RETURN",
+    11: "DEFAULT_INTERRUPT",
 }
 
 RT_PROFILER_NAMES: dict[int, str] = {
@@ -1642,6 +1658,51 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
 
     if tag == 0x0053:  # WHEELLEG_MIT_MOTOR_DIAG
         return _extract_wheelleg_mit_motor_diag(name, payload)
+
+    if tag == 0x0054:  # RESET_EVIDENCE
+        v = _unpack_exact("<33I", payload)
+        if v is None:
+            return None
+        keys = (
+            "reset_flags",
+            "evidence_valid",
+            "format_version",
+            "record_size",
+            "sequence",
+            "reason",
+            "arg0",
+            "arg1",
+            "ipsr",
+            "exc_return",
+            "msp",
+            "psp",
+            "cfsr",
+            "hfsr",
+            "dfsr",
+            "afsr",
+            "mmfar",
+            "bfar",
+            "icsr",
+            "shcsr",
+            "control",
+            "stack_ptr",
+            "r0",
+            "r1",
+            "r2",
+            "r3",
+            "r12",
+            "lr",
+            "pc",
+            "xpsr",
+            "tick_ms",
+            "boot_stage",
+            "task_handle",
+        )
+        decoded = dict(zip(keys, v))
+        decoded["reason_name"] = ROBOT_FAULT_REASON_NAMES.get(
+            decoded["reason"], f"reason_{decoded['reason']}"
+        )
+        return [(name, name, decoded)]
 
     if tag == 0x0042:  # EVENT
         v = _unpack_exact("<HHII", payload)

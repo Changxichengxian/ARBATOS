@@ -2819,16 +2819,16 @@ function Test-ControlRegistryBoundaries {
 function Test-FaultGuardBoundaries {
     Write-Host "[check] fault guard boundaries"
 
-    $guardRepoPath = "shared\application\services\diagnostics\RobotFaultGuard.h"
+    $guardRepoPath = "shared\application\services\diagnostics\RobotFaultGuard.c"
     $guardPath = Join-Path $script:RepoRoot $guardRepoPath
     $guardContent = Get-Content -LiteralPath $guardPath -Raw
-    foreach ($required in @("CanTxEmergencyStopNow", "BspCanFaultWaitTxIdle", "NVIC_SystemReset", "RobotFaultResetFromException")) {
+    foreach ($required in @("BspResetEvidenceWriteFatal", "CanTxEmergencyStopNow", "BspCanFaultWaitTxIdle", "NVIC_SystemReset", "RobotFaultResetFromException")) {
         if ($guardContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${guardRepoPath}: shared fatal path must use '$required'."
         }
     }
-    if ($guardContent -notmatch 'RobotFaultEnterSafeStateEx[\s\S]{0,500}?CanTxEmergencyStopNow[\s\S]{0,500}?WatchDiagMarkFatal') {
-        Add-CheckError "${guardRepoPath}: fatal path must lock and emit safe output before diagnostic work."
+    if ($guardContent -notmatch 'RobotFaultTaskAndReset[\s\S]{0,900}?RobotFaultPersist[\s\S]{0,300}?CanTxEmergencyStopNow[\s\S]{0,500}?WatchDiagMarkFatal') {
+        Add-CheckError "${guardRepoPath}: fatal path must persist fixed evidence, emit safe output, then update volatile diagnostics."
     }
     if ($guardContent -match 'for\s*\(\s*;\s*;\s*\)') {
         Add-CheckError "${guardRepoPath}: fatal path must end in bounded reset, not a permanent loop."
@@ -2842,7 +2842,11 @@ function Test-FaultGuardBoundaries {
             "CAN_TX_EMERGENCY_MAGIC",
             "s_can_tx_emergency_hash",
             "BspCanFaultLock",
-            "BspCanFaultTx"
+            "BspCanFaultTx",
+            "BspRs485FaultLock",
+            "BspRs485FaultTx",
+            "UnitreeMotorFaultFrameBuild",
+            "N6014bMotorFaultFrameBuild"
         )) {
         if ($canTxContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${canTxRepoPath}: emergency output path must use '$required'."
@@ -2851,6 +2855,141 @@ function Test-FaultGuardBoundaries {
     if ($canTxContent -notmatch 'mit_count\s*>\s*\(uint8_t\)MotorCount' -or
         $canTxContent -notmatch 'route->bus\s*<\s*1u[\s\S]{0,200}?route->std_id\s*>\s*0x7FFu') {
         Add-CheckError "${canTxRepoPath}: fault consumer must bound the cached route count, bus and standard CAN ID."
+    }
+    if ($canTxContent -notmatch 'rs485_count\s*>\s*\(uint8_t\)MotorCount' -or
+        $canTxContent -notmatch 'route->port\s*>\s*1u[\s\S]{0,300}?route->len\s*>\s*\(uint8_t\)BSP_RS485_TX_IT_MAX_LEN') {
+        Add-CheckError "${canTxRepoPath}: fault consumer must bound the cached RS485 count, port and frame length."
+    }
+
+    $bspUsartRepoPath = "boards\DmMc02H7\bsp\BspUsart.c"
+    $bspUsartContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $bspUsartRepoPath) -Raw
+    foreach ($required in @(
+            "rs485_fault_locked",
+            "BspRs485FaultBaudPrepare",
+            "BspRs485FaultLock",
+            "BspRs485FaultTx",
+            "BSP_RS485_FAULT_TX_SPIN_LIMIT",
+            "USART_ISR_TXE_TXFNF",
+            "USART_ISR_TC"
+        )) {
+        if ($bspUsartContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${bspUsartRepoPath}: RS485 fatal output must keep '$required'."
+        }
+    }
+    if ($bspUsartContent -notmatch 'BspRs485TxItStart[\s\S]{0,500}?rs485_fault_locked' -or
+        $bspUsartContent -notmatch 'BspRs485SetBaudrate[\s\S]{0,500}?rs485_fault_locked') {
+        Add-CheckError "${bspUsartRepoPath}: normal RS485 traffic and baud changes must reject after the fatal lock."
+    }
+    $faultTxMatch = [regex]::Match(
+        $bspUsartContent,
+        'int\s+BspRs485FaultTx\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nuint8_t\s+BspRs485FaultLocked)')
+    if (-not $faultTxMatch.Success -or
+        $faultTxMatch.Value -match 'HAL_UART_Transmit|HAL_GetTick|xSemaphore|vTaskDelay|osDelay') {
+        Add-CheckError "${bspUsartRepoPath}: fatal RS485 output must use bounded register polling without HAL tick or RTOS waits."
+    }
+
+    foreach ($driver in @(
+            [pscustomobject]@{ Path = "shared\application\motors\UnitreeMotorDriver.c"; Builder = "UnitreeMotorFaultFrameBuild"; Mode = "UNITREE_MOTOR_MODE_BRAKE" },
+            [pscustomobject]@{ Path = "shared\application\motors\N6014bMotorDriver.c"; Builder = "N6014bMotorFaultFrameBuild"; Mode = "N6014B_MODE_LOCK" }
+        )) {
+        $driverContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $driver.Path) -Raw
+        foreach ($required in @($driver.Builder, $driver.Mode)) {
+            if ($driverContent -notmatch [regex]::Escape($required)) {
+                Add-CheckError "$($driver.Path): fatal frame builder must keep '$required'."
+            }
+        }
+    }
+
+    $evidenceRepoPath = "shared\hal\BspResetEvidence.c"
+    $evidenceContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $evidenceRepoPath) -Raw
+    foreach ($testRepoPath in @(
+            "tools\TestResetEvidencePolicy.ps1",
+            "tools\tests\ResetEvidencePolicyRegression.c"
+        )) {
+        if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $testRepoPath))) {
+            Add-CheckError "${testRepoPath}: reset evidence regression asset is required."
+        }
+    }
+    foreach ($required in @(
+            "BspResetEvidenceCaptureBoot",
+            "BspResetEvidenceRawValid",
+            "BspResetEvidenceWriteFatal",
+            "BspResetEvidenceAcknowledge",
+            "BspResetEvidenceCacheClean"
+        )) {
+        if ($evidenceContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${evidenceRepoPath}: reset evidence path must keep '$required'."
+        }
+    }
+    foreach ($forbidden in @("FreeRTOS.h", "task.h", "cmsis_os.h", "SdLog.h", "BspFlash.h")) {
+        if ($evidenceContent -match [regex]::Escape($forbidden)) {
+            Add-CheckError "${evidenceRepoPath}: fatal evidence storage must stay independent from '$forbidden'."
+        }
+    }
+    if ($evidenceContent -notmatch 'storage->magic\s*=\s*0u[\s\S]{0,2500}?storage->checksum\s*=\s*checksum[\s\S]{0,900}?storage->magic\s*=\s*BSP_RESET_EVIDENCE_MAGIC') {
+        Add-CheckError "${evidenceRepoPath}: evidence commit must invalidate magic, write body/checksum, then publish magic last."
+    }
+
+    $projectFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "projects") -Recurse -Filter "*.uvprojx")
+    foreach ($projectFile in $projectFiles) {
+        $projectContent = Get-Content -LiteralPath $projectFile.FullName -Raw
+        $projectRepoPath = Format-RepoPath $projectFile.FullName
+        foreach ($requiredSource in @("BspResetEvidence.c", "RobotFaultGuard.c")) {
+            if ($projectContent -notmatch ("<FileName>" + [regex]::Escape($requiredSource) + "</FileName>")) {
+                Add-CheckError "${projectRepoPath}: every target must compile $requiredSource."
+            }
+        }
+    }
+
+    $bootMainRepoPaths = @(
+        "projects\CARRIER-A\Core\Src\main.c",
+        "projects\HERO-C\Core\Src\main.c",
+        "projects\INFANTRY-A\Core\Src\main.c",
+        "projects\MINIWHEELEG-C\Core\Src\main.c",
+        "boards\DmMc02H7\app\BoardMain.c"
+    )
+    foreach ($bootMainRepoPath in $bootMainRepoPaths) {
+        $bootMainContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $bootMainRepoPath) -Raw
+        if ($bootMainContent -notmatch 'BspResetEvidenceCaptureBoot\s*\(\s*\)[\s\S]{0,500}?HAL_Init\s*\(') {
+            Add-CheckError "${bootMainRepoPath}: reset flags and previous evidence must be captured before HAL_Init."
+        }
+    }
+
+    $configFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "projects") -Recurse -Filter "FreeRTOSConfig.h")
+    foreach ($configFile in $configFiles) {
+        $configContent = Get-Content -LiteralPath $configFile.FullName -Raw
+        $configRepoPath = Format-RepoPath $configFile.FullName
+        if ($configContent -notmatch '#define\s+configASSERT\s*\([^)]*\)[^\r\n]*RobotFaultAssert') {
+            Add-CheckError "${configRepoPath}: configASSERT must persist evidence and reset through RobotFaultAssert."
+        }
+        if ($configContent -match '#define\s+configASSERT[^\r\n]*(for\s*\(\s*;\s*;\s*\)|while\s*\(\s*1\s*\))') {
+            Add-CheckError "${configRepoPath}: configASSERT must not freeze forever with interrupts disabled."
+        }
+    }
+
+    $startupFiles = @(Get-ChildItem -Path (Join-Path $script:RepoRoot "projects") -Recurse -Filter "startup_stm32*.s")
+    foreach ($startupFile in $startupFiles) {
+        $startupContent = Get-Content -LiteralPath $startupFile.FullName -Raw
+        $startupRepoPath = Format-RepoPath $startupFile.FullName
+        if ($startupContent -notmatch 'Default_Handler\s+PROC' -or
+            $startupContent -notmatch 'IMPORT\s+RobotFaultDefaultHandler[\s\S]{0,100}?B\s+RobotFaultDefaultHandler') {
+            Add-CheckError "${startupRepoPath}: unexpected interrupts must enter the shared bounded reset path."
+        }
+        if ($startupContent -notmatch 'LDR\s+R0,\s*=RobotFaultEarlyInit[\s\S]{0,100}?BLX\s+R0[\s\S]{0,180}?LDR\s+R0,\s*=SystemInit') {
+            Add-CheckError "${startupRepoPath}: fatal re-entry state must be initialized before SystemInit and the C runtime."
+        }
+    }
+
+    $gccGeneratorRepoPath = "tools\build\GccProject.py"
+    $gccGeneratorContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $gccGeneratorRepoPath) -Raw
+    if ($gccGeneratorContent -notmatch 'bl RobotFaultEarlyInit[\s\S]{0,100}?bl SystemInit') {
+        Add-CheckError "${gccGeneratorRepoPath}: generated GCC startup must initialize fatal re-entry state before SystemInit."
+    }
+
+    $sdLogRepoPath = "shared\application\services\storage\SdLog.c"
+    $sdLogContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $sdLogRepoPath) -Raw
+    if ($sdLogContent -notmatch 'SDLOG_TAG_RESET_EVIDENCE[\s\S]{0,1200}?sdlog_sync_profiled\s*\(\s*\)[\s\S]{0,900}?BspResetEvidenceAcknowledge') {
+        Add-CheckError "${sdLogRepoPath}: previous fatal evidence may only be acknowledged after it is written and synchronized."
     }
 
     $registryRepoPath = "shared\application\robot\RobotControlRegistry.h"
@@ -2876,7 +3015,7 @@ function Test-FaultGuardBoundaries {
         if ($content -notmatch '#include\s+"RobotFaultGuard\.h"') {
             Add-CheckError "${repoPath}: Error_Handler must include RobotFaultGuard.h."
         }
-        if ($content -notmatch 'void\s+Error_Handler\s*\(\s*void\s*\)[\s\S]*?RobotFaultRecordAndHalt\s*\(') {
+        if ($content -notmatch 'void\s+Error_Handler\s*\(\s*void\s*\)[\s\S]*?RobotFaultRecordAndReset\s*\(') {
             Add-CheckError "${repoPath}: Error_Handler must record the fault and enter the shared safe halt path."
         }
     }
@@ -2894,11 +3033,17 @@ function Test-FaultGuardBoundaries {
                 "ROBOT_FAULT_REASON_USAGEFAULT"
             )) {
             if ($content -notmatch $reason) {
-                Add-CheckError "${repoPath}: Cortex fault handler must record $reason."
+                if ($reason -ne "ROBOT_FAULT_REASON_HARDFAULT" -or
+                    $content -notmatch 'RobotFaultHardFaultEntry') {
+                    Add-CheckError "${repoPath}: Cortex fault handler must record $reason."
+                }
             }
         }
         if ($content -notmatch 'RobotFaultResetFromException\s*\(') {
             Add-CheckError "${repoPath}: Cortex fault handlers must use the scheduler-independent bounded reset path."
+        }
+        if ($content -notmatch 'RobotFaultHardFaultEntry') {
+            Add-CheckError "${repoPath}: HardFault must pass the original exception stack to the shared evidence path."
         }
     }
 
@@ -2909,8 +3054,8 @@ function Test-FaultGuardBoundaries {
         $content = Get-Content -LiteralPath $freertosFile.FullName -Raw
         $repoPath = Format-RepoPath $freertosFile.FullName
         if ($content -match 'void\s+vApplication(StackOverflowHook|MallocFailedHook)\s*\(' -and
-            $content -notmatch 'RobotFaultEnterSafeStateEx\s*\(') {
-            Add-CheckError "${repoPath}: FreeRTOS fatal hooks must enter the shared safe state."
+            $content -notmatch 'RobotFault(TaskAndReset|RecordAndReset)\s*\(') {
+            Add-CheckError "${repoPath}: FreeRTOS fatal hooks must enter one bounded shared reset call."
         }
     }
 }
@@ -2931,20 +3076,75 @@ function Test-FaultIsolationBoundaries {
             Token = "CanTxEmergencyStopNow"
             Allowed = @("shared/application/comm/can/CanTxTask.c",
                         "shared/application/comm/can/CanTxTask.h",
-                        "shared/application/services/diagnostics/RobotFaultGuard.h")
-            AllowedRegex = '/Core/Src/stm32[^/]*xx_it\.c$'
+                        "shared/application/services/diagnostics/RobotFaultGuard.c")
+            AllowedRegex = '$a'
         },
         [pscustomobject]@{
             Token = "LowCmdEnterEmergencyStop"
             Allowed = @("shared/application/robot/LowCmd.c",
                         "shared/application/robot/LowCmd.h",
-                        "shared/application/services/diagnostics/RobotFaultGuard.h")
+                        "shared/application/services/diagnostics/RobotFaultGuard.c")
             AllowedRegex = '$a'
         },
         [pscustomobject]@{
             Token = "RobotLifecycleEnterFatalFault"
             Allowed = @("shared/application/robot/RobotLifecycle.c",
-                        "shared/application/robot/RobotLifecycle.h",
+                         "shared/application/robot/RobotLifecycle.h",
+                         "shared/application/services/diagnostics/RobotFaultGuard.c")
+            AllowedRegex = '$a'
+        },
+        [pscustomobject]@{
+            Token = "WatchDiagMarkFatal"
+            Allowed = @("shared/application/services/diagnostics/Watch.h",
+                        "shared/application/services/diagnostics/WatchCoreHelpers.inc",
+                        "shared/application/services/diagnostics/RobotFaultGuard.c",
+                        "boards/DmMc02H7/app/WatchStub.c")
+            AllowedRegex = '$a'
+        },
+        [pscustomobject]@{
+            Token = "BspResetEvidenceWriteFatal"
+            Allowed = @("shared/hal/BspResetEvidence.c",
+                        "shared/hal/BspResetEvidence.h",
+                        "shared/application/services/diagnostics/RobotFaultGuard.c")
+            AllowedRegex = '$a'
+        },
+        [pscustomobject]@{
+            Token = "RobotFaultEarlyInit"
+            Allowed = @("shared/application/services/diagnostics/RobotFaultGuard.c",
+                        "shared/application/services/diagnostics/RobotFaultGuard.h")
+            AllowedRegex = '$a'
+        },
+        [pscustomobject]@{
+            Token = "RobotFaultTaskAndReset"
+            Allowed = @("shared/application/services/diagnostics/RobotFaultGuard.c",
+                        "shared/application/services/diagnostics/RobotFaultGuard.h",
+                        "boards/DmMc02H7/app/BoardFreertos.c")
+            AllowedRegex = '/Core/Src/freertos\.c$'
+        },
+        [pscustomobject]@{
+            Token = "RobotFaultRecordAndReset"
+            Allowed = @("shared/application/services/diagnostics/RobotFaultGuard.c",
+                        "shared/application/services/diagnostics/RobotFaultGuard.h",
+                        "boards/DmMc02H7/app/BoardMain.c",
+                        "boards/DmMc02H7/app/BoardFreertos.c")
+            AllowedRegex = '/Core/Src/(main|freertos)\.c$'
+        },
+        [pscustomobject]@{
+            Token = "RobotFaultResetFromException"
+            Allowed = @("shared/application/services/diagnostics/RobotFaultGuard.c",
+                        "shared/application/services/diagnostics/RobotFaultGuard.h")
+            AllowedRegex = '/Core/Src/stm32[^/]*xx_it\.c$'
+        },
+        [pscustomobject]@{
+            Token = "RobotFaultAssert"
+            Allowed = @("shared/application/services/diagnostics/RobotFaultGuard.c",
+                        "shared/application/services/diagnostics/RobotFaultGuard.h",
+                        "boards/DmMc02H7/app/BoardMain.c")
+            AllowedRegex = '/Core/(Inc/FreeRTOSConfig\.h|Src/main\.c)$'
+        },
+        [pscustomobject]@{
+            Token = "RobotFaultDefaultHandler"
+            Allowed = @("shared/application/services/diagnostics/RobotFaultGuard.c",
                         "shared/application/services/diagnostics/RobotFaultGuard.h")
             AllowedRegex = '$a'
         }

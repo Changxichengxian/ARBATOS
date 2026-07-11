@@ -14,6 +14,7 @@
 #include "BspBuzzer.h"
 #include "BspCan.h"
 #include "BspDelay.h"
+#include "BspResetEvidence.h"
 #include "ManualInput.h"
 #include "RobotConfig.h"
 #include "RobotFaultGuard.h"
@@ -29,7 +30,8 @@ void ExitRun0Mode(void)
 
 int main(void)
 {
-   HAL_Init();
+    BspResetEvidenceCaptureBoot();
+    HAL_Init();
     WatchDiagSetBootStage(WATCH_BOOT_STAGE_HAL_INIT_DONE);
     SystemClock_Config();
     WatchDiagSetBootStage(WATCH_BOOT_STAGE_SYS_CLOCK_BUS);
@@ -74,6 +76,11 @@ int main(void)
     MX_FREERTOS_Init();
     WatchDiagSetBootStage(WATCH_BOOT_STAGE_SCHEDULER_START);
     osKernelStart();
+
+    RobotFaultRecordAndReset(
+        (uint32_t)ROBOT_FAULT_REASON_SCHEDULER_RETURN,
+        0u,
+        0u);
 
     while (1)
     {
@@ -146,7 +153,6 @@ void Error_Handler(void)
 #ifdef USE_FULL_ASSERT
 void assert_failed(uint8_t *file, uint32_t line)
 {
-    (void)file;
-    (void)line;
+    RobotFaultAssert((const char *)file, line);
 }
 #endif

@@ -169,8 +169,11 @@ __Vectors_Size  EQU  __Vectors_End - __Vectors
 Reset_Handler    PROC
                  EXPORT  Reset_Handler             [WEAK]
         IMPORT  SystemInit
+        IMPORT  RobotFaultEarlyInit
         IMPORT  __main
 
+                 LDR     R0, =RobotFaultEarlyInit
+                 BLX     R0
                  LDR     R0, =SystemInit
                  BLX     R0
                  LDR     R0, =__main
@@ -387,7 +390,8 @@ DCMI_IRQHandler
 HASH_RNG_IRQHandler
 FPU_IRQHandler  
            
-                B       .
+                IMPORT  RobotFaultDefaultHandler
+                B       RobotFaultDefaultHandler
 
                 ENDP
 

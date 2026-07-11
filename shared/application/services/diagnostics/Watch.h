@@ -617,6 +617,18 @@ typedef struct
     uint32_t hardfault_stack_ptr;
     uint32_t hardfault_basic_ptr;
     uint32_t hardfault_stack_dump[16];
+
+    /* 上一次复位前的致命摘要；确认写入 SD 前仍保留在备份 SRAM。 */
+    uint32_t reset_flags;
+    uint32_t previous_fatal_valid;
+    uint32_t previous_fatal_sequence;
+    uint32_t previous_fatal_reason;
+    uint32_t previous_fatal_arg0;
+    uint32_t previous_fatal_arg1;
+    uint32_t previous_fatal_ipsr;
+    uint32_t previous_fatal_tick_ms;
+    uint32_t previous_fatal_boot_stage;
+    uint32_t previous_fatal_task_handle;
 } WatchFault;
 
 typedef struct
@@ -1090,6 +1102,7 @@ extern Watch g_watch;
 void WatchInit(void);
 void WatchUpdate(void);
 void WatchDiagSetBootStage(WatchBootStage stage);
+uint32_t WatchDiagBootStageGet(void);
 void WatchDiagMarkErrorHandler(uint32_t tick_ms, uint32_t ipsr);
 void WatchDiagSetErrorArgs(uint32_t arg0, uint32_t arg1);
 void WatchDiagMarkFatal(uint32_t reason, uint32_t task_handle, const char *task_name);

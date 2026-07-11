@@ -17,6 +17,18 @@ extern UART_HandleTypeDef huart3;
 #define BSP_AUX_UART_HANDLE           BSP_BOARD_AUX_UART_HANDLE
 #define BSP_RS485_PORT0_UART_HANDLE   BSP_BOARD_RS485_PORT0_UART_HANDLE
 #define BSP_RS485_PORT1_UART_HANDLE   BSP_BOARD_RS485_PORT1_UART_HANDLE
+#define BSP_RS485_FAULT_ACK_SPIN_LIMIT 1000000u
+#define BSP_RS485_FAULT_TX_SPIN_LIMIT  24000000u
+#define BSP_RS485_FAULT_BRR_MIN        0x10u
+#define BSP_RS485_FAULT_BRR_MAX        0xFFFFu
+#define BSP_RS485_FAULT_CR1_IRQ_MASK   (USART_CR1_IDLEIE | USART_CR1_RXNEIE_RXFNEIE | \
+                                        USART_CR1_TCIE | USART_CR1_TXEIE_TXFNFIE | \
+                                        USART_CR1_PEIE | USART_CR1_CMIE | USART_CR1_RTOIE | \
+                                        USART_CR1_EOBIE | USART_CR1_TXFEIE | USART_CR1_RXFFIE)
+#define BSP_RS485_FAULT_CR3_IRQ_MASK   (USART_CR3_EIE | USART_CR3_CTSIE | USART_CR3_WUFIE | \
+                                        USART_CR3_TXFTIE | USART_CR3_TCBGTIE | USART_CR3_RXFTIE)
+#define BSP_RS485_FAULT_ICR_MASK       (USART_ICR_PECF | USART_ICR_FECF | USART_ICR_NECF | \
+                                        USART_ICR_ORECF | USART_ICR_TCCF)
 
 static BspAuxLinkRxEventCb g_aux_rx_event_cb = NULL;
 static BspAuxLinkRxByteCb g_aux_rx_byte_cb = NULL;
@@ -42,9 +54,108 @@ static uint8_t usart3_dispatch_registered = 0u;
 static SemaphoreHandle_t usart3_tx_sem = NULL;
 static StaticSemaphore_t usart3_tx_sem_buf;
 static uint8_t usart3_tx_buf[BSP_RS485_TX_IT_MAX_LEN];
+static volatile uint8_t rs485_fault_locked = 0u;
+
+static UART_HandleTypeDef *BspRs485Handle(uint8_t port)
+{
+    if (port == 0u)
+    {
+        return &BSP_RS485_PORT0_UART_HANDLE;
+    }
+    if (port == 1u)
+    {
+        return &BSP_RS485_PORT1_UART_HANDLE;
+    }
+    return NULL;
+}
+
+static uint8_t BspRs485FaultWaitFlag(USART_TypeDef *uart,
+                                     uint32_t mask,
+                                     uint32_t expected,
+                                     uint32_t spin_limit)
+{
+    if (uart == NULL)
+    {
+        return 0u;
+    }
+
+    while (spin_limit > 0u)
+    {
+        if ((uart->ISR & mask) == expected)
+        {
+            return 1u;
+        }
+        spin_limit--;
+        __NOP();
+    }
+    return 0u;
+}
+
+static void BspRs485FaultAbortUart(UART_HandleTypeDef *huart)
+{
+    USART_TypeDef *uart;
+
+    if (huart == NULL || huart->Instance == NULL)
+    {
+        return;
+    }
+
+    uart = huart->Instance;
+    uart->CR1 &= ~BSP_RS485_FAULT_CR1_IRQ_MASK;
+    uart->CR3 &= ~(BSP_RS485_FAULT_CR3_IRQ_MASK | USART_CR3_DMAT | USART_CR3_DMAR);
+    uart->CR1 &= ~USART_CR1_TE;
+    (void)BspRs485FaultWaitFlag(uart,
+                               USART_ISR_TEACK,
+                               0u,
+                               BSP_RS485_FAULT_ACK_SPIN_LIMIT);
+    uart->RQR = USART_RQR_TXFRQ | USART_RQR_RXFRQ;
+    uart->ICR = BSP_RS485_FAULT_ICR_MASK;
+}
+
+static uint8_t BspRs485FaultConfigure(UART_HandleTypeDef *huart,
+                                      uint32_t baudrate,
+                                      uint32_t brr)
+{
+    USART_TypeDef *uart;
+    uint32_t cr1;
+
+    if (huart == NULL || huart->Instance == NULL || baudrate == 0u ||
+        brr < BSP_RS485_FAULT_BRR_MIN || brr > BSP_RS485_FAULT_BRR_MAX)
+    {
+        return 0u;
+    }
+
+    uart = huart->Instance;
+    BspRs485FaultAbortUart(huart);
+    cr1 = uart->CR1;
+    uart->CR1 = cr1 & ~(USART_CR1_UE | BSP_RS485_FAULT_CR1_IRQ_MASK);
+    if (BspRs485FaultWaitFlag(uart,
+                              USART_ISR_TEACK | USART_ISR_REACK,
+                              0u,
+                              BSP_RS485_FAULT_ACK_SPIN_LIMIT) == 0u)
+    {
+        return 0u;
+    }
+
+    uart->BRR = brr;
+    uart->CR3 = (uart->CR3 & ~(BSP_RS485_FAULT_CR3_IRQ_MASK | USART_CR3_DMAT | USART_CR3_DMAR)) |
+                USART_CR3_DEM;
+    uart->ICR = BSP_RS485_FAULT_ICR_MASK;
+    uart->CR1 = (cr1 | USART_CR1_UE | USART_CR1_TE | USART_CR1_RE) &
+                ~BSP_RS485_FAULT_CR1_IRQ_MASK;
+    huart->Init.BaudRate = baudrate;
+    return BspRs485FaultWaitFlag(uart,
+                                 USART_ISR_TEACK,
+                                 USART_ISR_TEACK,
+                                 BSP_RS485_FAULT_ACK_SPIN_LIMIT);
+}
 
 static int BspRs485TxSemPrepare(SemaphoreHandle_t *sem, StaticSemaphore_t *storage)
 {
+    if (rs485_fault_locked != 0u)
+    {
+        return (int)HAL_ERROR;
+    }
     if (sem == NULL || storage == NULL)
     {
         return (int)HAL_ERROR;
@@ -65,6 +176,10 @@ static int BspRs485TxItStart(UART_HandleTypeDef *huart,
                              const uint8_t *data,
                              uint16_t len)
 {
+    if (rs485_fault_locked != 0u)
+    {
+        return (int)HAL_ERROR;
+    }
     if (huart == NULL || sem == NULL || storage == NULL || data == NULL ||
         len == 0u || len > (uint16_t)BSP_RS485_TX_IT_MAX_LEN)
     {
@@ -120,6 +235,10 @@ static int BspRs485SetBaudrate(UART_HandleTypeDef *huart, volatile uint8_t *it_r
 {
     HAL_StatusTypeDef ret = HAL_OK;
 
+    if (rs485_fault_locked != 0u)
+    {
+        return (int)HAL_ERROR;
+    }
     if (huart == NULL || it_rx_active == NULL || baudrate == 0u)
     {
         return (int)HAL_ERROR;
@@ -160,6 +279,127 @@ static int BspRs485SetBaudrate(UART_HandleTypeDef *huart, volatile uint8_t *it_r
 
     ret = HAL_UARTEx_DisableFifoMode(huart);
     return (int)ret;
+}
+
+uint8_t BspRs485FaultBaudPrepare(uint8_t port, uint32_t baudrate, uint32_t *out_brr)
+{
+    UART_HandleTypeDef *huart = BspRs485Handle(port);
+    UART_ClockSourceTypeDef clocksource;
+    uint32_t pclk;
+    uint32_t brr;
+
+    if (huart == NULL || out_brr == NULL || baudrate == 0u ||
+        huart->Init.OverSampling != UART_OVERSAMPLING_16)
+    {
+        return 0u;
+    }
+
+    UART_GETCLOCKSOURCE(huart, clocksource);
+    if (clocksource != UART_CLOCKSOURCE_D2PCLK1)
+    {
+        /* MC02 H7 的 USART2/3 固定走 D2PCLK1；时钟源变化时不能沿用错误 BRR。 */
+        return 0u;
+    }
+
+    pclk = HAL_RCC_GetPCLK1Freq();
+    if (pclk == 0u)
+    {
+        return 0u;
+    }
+    brr = UART_DIV_SAMPLING16(pclk, baudrate, huart->Init.ClockPrescaler);
+    if (brr < BSP_RS485_FAULT_BRR_MIN || brr > BSP_RS485_FAULT_BRR_MAX)
+    {
+        return 0u;
+    }
+
+    *out_brr = brr;
+    return 1u;
+}
+
+void BspRs485FaultLock(void)
+{
+    const uint32_t primask = __get_PRIMASK();
+
+    __disable_irq();
+    if (rs485_fault_locked == 0u)
+    {
+        rs485_fault_locked = 1u;
+        __DMB();
+        NVIC_DisableIRQ(USART2_IRQn);
+        NVIC_DisableIRQ(USART3_IRQn);
+        NVIC_ClearPendingIRQ(USART2_IRQn);
+        NVIC_ClearPendingIRQ(USART3_IRQn);
+        BspRs485FaultAbortUart(&BSP_RS485_PORT0_UART_HANDLE);
+        BspRs485FaultAbortUart(&BSP_RS485_PORT1_UART_HANDLE);
+    }
+    if (primask == 0u)
+    {
+        __enable_irq();
+    }
+}
+
+int BspRs485FaultTx(uint8_t port,
+                    uint32_t baudrate,
+                    uint32_t brr,
+                    const uint8_t *data,
+                    uint16_t len)
+{
+    UART_HandleTypeDef *huart = BspRs485Handle(port);
+    USART_TypeDef *uart;
+    uint32_t primask;
+    int ret = (int)HAL_ERROR;
+
+    if (rs485_fault_locked == 0u || huart == NULL || data == NULL ||
+        len == 0u || len > (uint16_t)BSP_RS485_TX_IT_MAX_LEN)
+    {
+        return (int)HAL_ERROR;
+    }
+
+    primask = __get_PRIMASK();
+    __disable_irq();
+    uart = huart->Instance;
+    if (BspRs485FaultConfigure(huart, baudrate, brr) == 0u)
+    {
+        goto out;
+    }
+
+    for (uint16_t i = 0u; i < len; i++)
+    {
+        if (BspRs485FaultWaitFlag(uart,
+                                  USART_ISR_TXE_TXFNF,
+                                  USART_ISR_TXE_TXFNF,
+                                  BSP_RS485_FAULT_TX_SPIN_LIMIT) == 0u)
+        {
+            ret = (int)HAL_TIMEOUT;
+            goto out;
+        }
+        uart->TDR = data[i];
+    }
+    if (BspRs485FaultWaitFlag(uart,
+                              USART_ISR_TC,
+                              USART_ISR_TC,
+                              BSP_RS485_FAULT_TX_SPIN_LIMIT) == 0u)
+    {
+        ret = (int)HAL_TIMEOUT;
+        goto out;
+    }
+    ret = (int)HAL_OK;
+
+out:
+    if (ret != (int)HAL_OK)
+    {
+        BspRs485FaultAbortUart(huart);
+    }
+    if (primask == 0u)
+    {
+        __enable_irq();
+    }
+    return ret;
+}
+
+uint8_t BspRs485FaultLocked(void)
+{
+    return rs485_fault_locked;
 }
 
 static void BspAuxLinkDispatchError(UART_HandleTypeDef *huart)

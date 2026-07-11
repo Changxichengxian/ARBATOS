@@ -109,7 +109,13 @@ function Update-BuildInfo {
 
 switch ($Action) {
     "check" {
-        & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "tools\CheckAll.ps1")
+        $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+        if ($null -ne $pwsh) {
+            & $pwsh.Source -NoLogo -NoProfile -File (Join-Path $RepoRoot "tools\CheckAll.ps1")
+        }
+        else {
+            & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "tools\CheckAll.ps1")
+        }
         exit $LASTEXITCODE
     }
 

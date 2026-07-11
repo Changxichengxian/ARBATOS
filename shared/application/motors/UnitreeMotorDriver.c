@@ -98,6 +98,8 @@ typedef struct
 
 typedef char UnitreeMotorTxFrameFitsBsp[
     (sizeof(UnitreeMotorTxFrame) <= BSP_RS485_TX_IT_MAX_LEN) ? 1 : -1];
+typedef char UnitreeMotorFaultFrameSizeMatches[
+    (sizeof(UnitreeMotorTxFrame) == UNITREE_MOTOR_FAULT_FRAME_SIZE) ? 1 : -1];
 
 #define UNITREE_MOTOR_PI_F                3.1415926f
 #define UNITREE_MOTOR_TWO_PI_F            (2.0f * UNITREE_MOTOR_PI_F)
@@ -349,7 +351,7 @@ static void UnitreeMotorBuildConfigFromNode(UnitreeMotorConfig *out,
     out->enable = UnitreeMotorNodeSupported(node);
     out->rs485_port = (node->rs485_port <= UNITREE_MOTOR_RS485_PORT1) ? node->rs485_port : port;
     out->motor_id = MotorCfgNodeId(node);
-    out->baudrate = (node->baudrate != 0u) ? node->baudrate : 4000000u;
+    out->baudrate = (node->baudrate != 0u) ? node->baudrate : UNITREE_MOTOR_DEFAULT_BAUDRATE;
     out->rx_timeout_ms = UnitreeMotorRxTimeoutMs(node->rx_timeout_ms);
 }
 
@@ -475,6 +477,32 @@ static void UnitreeMotorBuildTxFrame(UnitreeMotorTxFrame *frame,
     frame->cmd.low_hz_cmd_byte = 0u;
     frame->cmd.end_res = 0u;
     frame->crc32 = UnitreeMotorCrc32Words((const uint8_t *)frame, UNITREE_MOTOR_TX_WORD_COUNT);
+}
+
+uint16_t UnitreeMotorFaultFrameBuild(const motor_node_param_t *node,
+                                     uint8_t *out,
+                                     uint16_t capacity,
+                                     uint32_t *out_baudrate)
+{
+    UnitreeMotorTxFrame frame;
+    uint8_t motor_id;
+
+    if (UnitreeMotorNodeSupported(node) == 0u || out == NULL || out_baudrate == NULL ||
+        capacity < (uint16_t)sizeof(frame))
+    {
+        return 0u;
+    }
+
+    motor_id = MotorCfgNodeId(node);
+    if (motor_id == 0u)
+    {
+        return 0u;
+    }
+
+    UnitreeMotorBuildTxFrame(&frame, motor_id, UNITREE_MOTOR_MODE_BRAKE, NULL);
+    (void)memcpy(out, &frame, sizeof(frame));
+    *out_baudrate = (node->baudrate != 0u) ? node->baudrate : UNITREE_MOTOR_DEFAULT_BAUDRATE;
+    return (uint16_t)sizeof(frame);
 }
 
 static void UnitreeMotorProcessRxFrame(const uint8_t *frame_bytes)

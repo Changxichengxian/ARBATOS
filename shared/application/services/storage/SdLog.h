@@ -129,6 +129,7 @@ typedef enum
     SDLOG_TAG_BUILD_INFO = 0x0051u,
     SDLOG_TAG_RUNTIME_DEVICE = 0x0052u,
     SDLOG_TAG_WHEELLEG_MIT_MOTOR_DIAG = 0x0053u,
+    SDLOG_TAG_RESET_EVIDENCE = 0x0054u, // payload: BspResetEvidenceBoot
 } sdlog_tag_e;
 
 typedef enum

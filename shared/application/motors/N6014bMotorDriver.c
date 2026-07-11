@@ -16,7 +16,7 @@
 
 #include <string.h>
 
-#define N6014B_TX_FRAME_SIZE 20u
+#define N6014B_TX_FRAME_SIZE N6014B_MOTOR_FAULT_FRAME_SIZE
 #define N6014B_RX_FRAME_SIZE 26u
 #define N6014B_CMD_CRC_LEN 16u
 #define N6014B_FBK_CRC_OFFSET 2u
@@ -513,6 +513,32 @@ static void N6014bBuildTxFrame(uint8_t frame[N6014B_TX_FRAME_SIZE],
 
     crc = N6014bCrc32WordsLe(frame, N6014B_CMD_CRC_LEN);
     N6014bWriteU32Le(&frame[16], crc);
+}
+
+uint16_t N6014bMotorFaultFrameBuild(const motor_node_param_t *node,
+                                    uint8_t *out,
+                                    uint16_t capacity,
+                                    uint32_t *out_baudrate)
+{
+    uint8_t motor_id;
+
+    if (N6014bNodeSupported(node) == 0u || N6014bNodeDisabled(node) != 0u ||
+        out == NULL || out_baudrate == NULL || capacity < N6014B_TX_FRAME_SIZE ||
+        N6014bNodeMotorId(node, &motor_id) == 0u)
+    {
+        return 0u;
+    }
+
+    N6014bBuildTxFrame(out,
+                       motor_id,
+                       N6014B_MODE_LOCK,
+                       0.0f,
+                       0.0f,
+                       0.0f,
+                       0.0f,
+                       0.0f);
+    *out_baudrate = N6014bNodeBaudrate(node);
+    return N6014B_TX_FRAME_SIZE;
 }
 
 static void N6014bCopyStateFromIsr(MotorId id,

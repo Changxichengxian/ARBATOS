@@ -192,6 +192,11 @@ void WatchDiagSetBootStage(WatchBootStage stage)
     WatchDiagPushStage(stage);
 }
 
+uint32_t WatchDiagBootStageGet(void)
+{
+    return (uint32_t)g_watch.fault.boot_stage;
+}
+
 void WatchDiagMarkErrorHandler(uint32_t tick_ms, uint32_t ipsr)
 {
     g_watch.fault.error_handler_count++;
@@ -360,7 +365,63 @@ void WatchIrqHit(WatchIrqId irq_id)
 
 void WatchInit(void)
 {
+    const WatchBootStage early_stage = g_watch.fault.boot_stage;
+    WatchBootStage early_trace[4];
+    BspResetEvidenceBoot boot;
+
+    memcpy(early_trace,
+           g_watch.fault.boot_trace,
+           sizeof(early_trace));
     memset(&g_watch, 0, sizeof(g_watch));
+    g_watch.fault.boot_stage = early_stage;
+    memcpy(g_watch.fault.boot_trace,
+           early_trace,
+           sizeof(g_watch.fault.boot_trace));
+
+    if (BspResetEvidenceGetBoot(&boot) != 0u)
+    {
+        const BspResetEvidenceRecord *evidence = &boot.evidence;
+
+        g_watch.fault.reset_flags = boot.resetFlags;
+        g_watch.fault.previous_fatal_valid = boot.evidenceValid;
+        if (boot.evidenceValid != 0u)
+        {
+            g_watch.fault.previous_fatal_sequence = evidence->sequence;
+            g_watch.fault.previous_fatal_reason = evidence->reason;
+            g_watch.fault.previous_fatal_arg0 = evidence->arg0;
+            g_watch.fault.previous_fatal_arg1 = evidence->arg1;
+            g_watch.fault.previous_fatal_ipsr = evidence->ipsr;
+            g_watch.fault.previous_fatal_tick_ms = evidence->tickMs;
+            g_watch.fault.previous_fatal_boot_stage = evidence->bootStage;
+            g_watch.fault.previous_fatal_task_handle = evidence->taskHandle;
+
+            g_watch.fault.hardfault_valid =
+                (uint32_t)(evidence->reason == (uint32_t)ROBOT_FAULT_REASON_HARDFAULT &&
+                           evidence->pc != 0u &&
+                           (evidence->xpsr & (1u << 24)) != 0u);
+            g_watch.fault.hardfault_r0 = evidence->r0;
+            g_watch.fault.hardfault_r1 = evidence->r1;
+            g_watch.fault.hardfault_r2 = evidence->r2;
+            g_watch.fault.hardfault_r3 = evidence->r3;
+            g_watch.fault.hardfault_r12 = evidence->r12;
+            g_watch.fault.hardfault_lr = evidence->lr;
+            g_watch.fault.hardfault_pc = evidence->pc;
+            g_watch.fault.hardfault_psr = evidence->xpsr;
+            g_watch.fault.hardfault_exc_return = evidence->excReturn;
+            g_watch.fault.hardfault_msp = evidence->msp;
+            g_watch.fault.hardfault_psp = evidence->psp;
+            g_watch.fault.hardfault_cfsr = evidence->cfsr;
+            g_watch.fault.hardfault_hfsr = evidence->hfsr;
+            g_watch.fault.hardfault_dfsr = evidence->dfsr;
+            g_watch.fault.hardfault_afsr = evidence->afsr;
+            g_watch.fault.hardfault_mmfar = evidence->mmfar;
+            g_watch.fault.hardfault_bfar = evidence->bfar;
+            g_watch.fault.hardfault_icsr = evidence->icsr;
+            g_watch.fault.hardfault_shcsr = evidence->shcsr;
+            g_watch.fault.hardfault_control = evidence->control;
+            g_watch.fault.hardfault_stack_ptr = evidence->stackPtr;
+        }
+    }
 #if WATCH_ENABLE_SHOOT_RM
     WatchPrepareMotorIds();
 #endif

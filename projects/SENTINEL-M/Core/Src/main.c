@@ -544,7 +544,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
 
   /* User can add his own implementation to report the HAL error return state */
-  RobotFaultRecordAndHalt((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
+  RobotFaultRecordAndReset((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
 
   /* USER CODE END Error_Handler_Debug */
 }

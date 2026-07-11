@@ -420,6 +420,11 @@
               <FilePath>..\\..\\..\\shared\\hal\\BspCan.c</FilePath>
             </File>
             <File>
+              <FileName>BspResetEvidence.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\hal\\BspResetEvidence.c</FilePath>
+            </File>
+            <File>
               <FileName>BspCrc32.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\hal\\BspCrc32.c</FilePath>
@@ -783,6 +788,11 @@
               <FileName>Watch.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\\..\\..\\shared\\application\\services\\diagnostics\\Watch.c</FilePath>
+            </File>
+            <File>
+              <FileName>RobotFaultGuard.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\\..\\..\\shared\\application\\services\\diagnostics\\RobotFaultGuard.c</FilePath>
             </File>
             <File>
               <FileName>SdCard.c</FileName>

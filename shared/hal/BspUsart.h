@@ -101,6 +101,21 @@ int BspAuxLinkRxToIdleDmaStart(uint8_t *buf, uint16_t len);
 // ===== RS485 ports (USART2 / USART3 on MC02 H7) =====
 #define BSP_RS485_TX_IT_MAX_LEN 40u
 
+#if defined(STM32H723xx)
+/*
+ * 致命故障专用：Prepare 只在正常启动阶段计算 BRR；Lock 后普通 IT 发送永久拒绝。
+ * FaultTx 不使用 RTOS、HAL 超时和中断，只按预计算 BRR 直接轮询寄存器。
+ */
+uint8_t BspRs485FaultBaudPrepare(uint8_t port, uint32_t baudrate, uint32_t *out_brr);
+void BspRs485FaultLock(void);
+int BspRs485FaultTx(uint8_t port,
+                    uint32_t baudrate,
+                    uint32_t brr,
+                    const uint8_t *data,
+                    uint16_t len);
+uint8_t BspRs485FaultLocked(void);
+#endif
+
 void BspUsart2SetRxByteCb(BspUsartRxByteCb cb);
 void BspUsart2SetErrorCb(BspUsartErrorCb cb);
 uint32_t BspUsart2GetBaudrate(void);
