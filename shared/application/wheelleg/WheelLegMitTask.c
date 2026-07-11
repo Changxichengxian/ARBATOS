@@ -34,6 +34,7 @@
 #include "SdLog.h"
 #include "Watch.h"
 #include "WheelLegMsg.h"
+#include "WheelLegOutputPlan.h"
 
 #include <math.h>
 #include <string.h>
@@ -293,6 +294,7 @@ typedef struct
     uint32_t domain_inhibit_fail_count;
     uint32_t domain_inhibit_release_fail_count;
     uint32_t domain_last_stop_tick_ms;
+    WheelLegOutputPlan output_plan;
 } WheelLegMitCtrl;
 
 typedef struct
@@ -341,6 +343,8 @@ typedef struct
     fp32 target_foot_x;
     fp32 target_foot_y;
     fp32 wheel_torque[WHEELLEG_SIDE_COUNT];
+    ControlOutputPermit output_permit;
+    uint8_t control_allowed;
 } WheelLegTaskFrame;
 
 typedef struct
@@ -489,7 +493,7 @@ void WheelLegMitTask(void const *pvParameters)
         WheelLegTaskFrame frame;
 
         WheelLegTaskFrameInit(&frame);
-        if (WheellegControlMgrAllows(frame.now_ms, frame.dt) == 0u)
+        if (frame.control_allowed == 0u)
         {
             WheelLegHandleDisabledFrame(&frame);
             WheelLegTaskFinishFrame(&frame, frame.faults, profiler_start_us, &last_wake, 0u);
@@ -503,13 +507,23 @@ void WheelLegMitTask(void const *pvParameters)
             continue;
         }
 
+        if (WheelLegOutputBegin() == 0u)
+        {
+            frame.faults |= WHEELLEG_FAULT_CONTROLLER;
+            WheelLegHandleDisabledFrame(&frame);
+            WheelLegTaskFinishFrame(&frame, frame.faults, profiler_start_us, &last_wake, 0u);
+            continue;
+        }
+
         if (WheelLegRunOperationTest(&frame) != 0u)
         {
+            (void)WheelLegCommitFrameOutput(&frame);
             WheelLegTaskFinishFrame(&frame, frame.faults, profiler_start_us, &last_wake, 1u);
             continue;
         }
 
         WheelLegRunBalanceFrame(&frame);
+        (void)WheelLegCommitFrameOutput(&frame);
         WheelLegTaskFinishFrame(&frame,
                                    (uint16_t)(frame.faults | frame.feedback_faults),
                                    profiler_start_us,

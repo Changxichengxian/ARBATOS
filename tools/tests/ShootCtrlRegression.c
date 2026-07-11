@@ -17,6 +17,9 @@ static uint32_t s_runtimeSafeStepCount;
 static uint32_t s_runtimeStopCount;
 static const struct ManualInputSnapshot *s_runtimeStepInputs[16];
 static const struct ManualInputSnapshot *s_runtimeSafeStepInputs[8];
+static ControlOutputPermit s_runtimeStepPermits[16];
+static ControlOutputPermit s_runtimeSafeStepPermits[8];
+static uint32_t s_runtimePermitInvalidCount;
 static char s_runtimeEvents[16];
 static uint8_t s_runtimeEventCount;
 
@@ -48,23 +51,41 @@ void ShootRuntimeInit(void)
     RuntimeRecord('I');
 }
 
-int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput)
+int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput,
+                         const ControlOutputPermit *permit)
 {
     if (s_runtimeStepCount < (uint32_t)(sizeof(s_runtimeStepInputs) / sizeof(s_runtimeStepInputs[0])))
     {
         s_runtimeStepInputs[s_runtimeStepCount] = manualInput;
+        if (permit != NULL)
+        {
+            s_runtimeStepPermits[s_runtimeStepCount] = *permit;
+        }
+    }
+    if (ControlMgrOutputPermitValid(permit, 0u) == 0u)
+    {
+        s_runtimePermitInvalidCount++;
     }
     s_runtimeStepCount++;
     RuntimeRecord('U');
     return (int16_t)(300 + s_runtimeStepCount);
 }
 
-void ShootRuntimeSafeStep(const struct ManualInputSnapshot *manualInput)
+void ShootRuntimeSafeStep(const struct ManualInputSnapshot *manualInput,
+                          const ControlOutputPermit *permit)
 {
     if (s_runtimeSafeStepCount <
         (uint32_t)(sizeof(s_runtimeSafeStepInputs) / sizeof(s_runtimeSafeStepInputs[0])))
     {
         s_runtimeSafeStepInputs[s_runtimeSafeStepCount] = manualInput;
+        if (permit != NULL)
+        {
+            s_runtimeSafeStepPermits[s_runtimeSafeStepCount] = *permit;
+        }
+    }
+    if (ControlMgrOutputPermitValid(permit, 0u) == 0u)
+    {
+        s_runtimePermitInvalidCount++;
     }
     s_runtimeSafeStepCount++;
     RuntimeRecord('F');
@@ -165,10 +186,13 @@ int main(void)
                    s_runtimeStopCount == 0u &&
                    s_runtimeStepInputs[0] == &firstInput &&
                    s_runtimeEventCount == 2u &&
-                   s_runtimeEvents[0] == 'I' &&
-                   s_runtimeEvents[1] == 'U' &&
-                   output.triggerCurrent == 301,
-                   "首次有效 Step 应依次 Init、Step，并返回执行体输出")) return 1;
+                    s_runtimeEvents[0] == 'I' &&
+                    s_runtimeEvents[1] == 'U' &&
+                    s_runtimePermitInvalidCount == 0u &&
+                    s_runtimeStepPermits[0].stamp.controllerId == ControlIdShoot &&
+                    s_runtimeStepPermits[0].stamp.domain == (uint8_t)ControlDomainShoot &&
+                    output.triggerCurrent == 301,
+                    "首次有效 Step 应持当帧许可依次 Init、Step，并返回执行体输出")) return 1;
     if (!TestStatus(&status)) return 1;
     if (!TestCheck(status.pending_request == ControlRequestNone &&
                    status.active != 0u &&
@@ -180,10 +204,12 @@ int main(void)
     input.manualInput = &nextInput;
     if (!TestCheck(ShootCtrlStep(&input, &output) == ControlResultOk &&
                    s_runtimeInitCount == 1u &&
-                   s_runtimeStepCount == 2u &&
-                   s_runtimeStepInputs[1] == &nextInput &&
-                   output.triggerCurrent == 302,
-                   "连续 Step 不得重复 Init 或单周期重复更新")) return 1;
+                    s_runtimeStepCount == 2u &&
+                    s_runtimeStepInputs[1] == &nextInput &&
+                    ControlOutputStampEqual(&s_runtimeStepPermits[0].stamp,
+                                            &s_runtimeStepPermits[1].stamp) == 0u &&
+                    output.triggerCurrent == 302,
+                    "连续 Step 必须换用新许可且不得重复 Init 或单周期重复更新")) return 1;
     if (!TestStatus(&status)) return 1;
     if (!TestCheck(status.update_count == 2u,
                     "第二周期 ControlMgr 更新计数应只增加一次")) return 1;
@@ -238,9 +264,11 @@ int main(void)
     if (!TestCheck(ShootCtrlStep(&input, &output) == ControlResultOk &&
                    output.triggerCurrent == 0 &&
                    s_runtimeStepCount == 4u &&
-                   s_runtimeSafeStepCount == 1u &&
-                   s_runtimeSafeStepInputs[0] == &safeInput &&
-                   s_runtimeStopCount == 1u,
+                    s_runtimeSafeStepCount == 1u &&
+                    s_runtimeSafeStepInputs[0] == &safeInput &&
+                    s_runtimeSafeStepPermits[0].stamp.controllerId == ControlIdShoot &&
+                    s_runtimePermitInvalidCount == 0u &&
+                    s_runtimeStopCount == 1u,
                    "forceSafe 应把同一快照传给安全帧并保持零输出")) return 1;
     if (!TestStatus(&status)) return 1;
     if (!TestCheck(status.active != 0u &&

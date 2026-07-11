@@ -2388,8 +2388,8 @@ function Test-ControlRegistryBoundaries {
         Add-CheckError "${chassisTaskRepoPath}: Chassis online state must come from the same aggregate snapshot passed into the frame."
     }
     $chassisRunFrame = [regex]::Match($chassisTaskContent, 'static\s+ControlResult\s+ChassisTaskRunFrame[\s\S]*?(?=/\*\*\s*\r?\n\s*\*\s*@brief)').Value
-    if ($chassisRunFrame -notmatch 'ChassisCtrlStep\s*\([\s\S]*?MotorInstSetCurrentBindsBestEffort\s*\(') {
-        Add-CheckError "${chassisTaskRepoPath}: ChassisTaskRunFrame must publish the ChassisCtrlOutput after its single facade step."
+    if ($chassisRunFrame -notmatch 'ChassisCtrlStep\s*\([\s\S]*?MotorInstSetCurrentBindsBestEffortWithPermit\s*\([\s\S]*?&output\.outputPermit') {
+        Add-CheckError "${chassisTaskRepoPath}: ChassisTaskRunFrame must publish its output once with the same facade permit."
     }
     $chassisRuntimeStep = [regex]::Match($chassisTaskContent, 'void\s+ChassisRuntimeStep\s*\([\s\S]*?(?=void\s+ChassisRuntimeStop\s*\()').Value
     if ([string]::IsNullOrWhiteSpace($chassisRuntimeStep) -or
@@ -2436,14 +2436,17 @@ function Test-ControlRegistryBoundaries {
     $gimbalRaw = Get-Content -LiteralPath $gimbalPath -Raw -Encoding UTF8
     $gimbalContent = Get-SourceContentWithPrivateIncludes -Path $gimbalPath
     $shootPrepareCount = ([regex]::Matches($gimbalContent, 'ShootCtrlPrepare\s*\(')).Count
-    $shootForceSafeCount = ([regex]::Matches($gimbalContent, 'GimbalRunShootControl\s*\(\s*&snapshot\s*,\s*1u\s*\)')).Count
-    $shootNormalCount = ([regex]::Matches($gimbalContent, 'GimbalRunShootControl\s*\(\s*&snapshot\s*,\s*0u\s*\)')).Count
+    $shootFrameCount = ([regex]::Matches($gimbalContent, 'GimbalRunShootControl\s*\(\s*&snapshot\s*\)')).Count
     $shootFacadeStepCount = ([regex]::Matches($gimbalContent, 'ShootCtrlStep\s*\(')).Count
     if ($shootPrepareCount -ne 2 -or
-        $shootForceSafeCount -ne 2 -or
-        $shootNormalCount -ne 2 -or
+        $shootFrameCount -ne 4 -or
         $shootFacadeStepCount -ne 1) {
-        Add-CheckError "${gimbalRepoPath}: both gimbal owners must prepare Shoot and run exactly one normal or forced-safe ShootCtrl step per frame."
+        Add-CheckError "${gimbalRepoPath}: both gimbal owners must prepare Shoot and run its independent facade exactly once on both frame branches."
+    }
+    if ($gimbalContent -notmatch 'GimbalRunShootControl[\s\S]{0,900}?snapshot->manual_online[\s\S]{0,300}?snapshot->recovery_input_safe[\s\S]{0,300}?RobotLifecycleOutputAllowed\s*\(\s*\)' -or
+        $gimbalContent -notmatch 'GimbalWriteState\s*\(\s*&snapshot\s*\)\s*;\s*GimbalRunShootControl\s*\(\s*&snapshot\s*\)' -or
+        ([regex]::Matches($gimbalContent, 'snapshot\.control_allowed\s*=\s*gimbal_allowed')).Count -ne 2) {
+        Add-CheckError "${gimbalRepoPath}: Shoot must observe the same-frame Gimbal state and lifecycle output lock before normal publication."
     }
 
     $singleGimbalTaskBody = [regex]::Match(
@@ -2559,10 +2562,10 @@ function Test-ControlRegistryBoundaries {
         }
     }
     if ([string]::IsNullOrWhiteSpace($shootForceSafeBody) -or
-        $shootForceSafeBody -notmatch 'ShootRuntimeSafeStep\s*\(\s*input->manualInput\s*\)' -or
+        $shootForceSafeBody -notmatch 'ShootRuntimeSafeStep\s*\(\s*input->manualInput\s*,\s*&context->outputPermit\s*\)' -or
         $shootForceSafeBody -match 'ShootRuntimeStop\s*\(' -or
-        $shootCtrlContent -notmatch 'ShootRuntimeStep\s*\(\s*input->manualInput\s*\)') {
-        Add-CheckError "shared\application\shoot\ShootCtrl.c: normal and safe updates must pass the same input pointer without stopping the active domain."
+        $shootCtrlContent -notmatch 'ShootRuntimeStep\s*\(\s*input->manualInput\s*,\s*&context->outputPermit\s*\)') {
+        Add-CheckError "shared\application\shoot\ShootCtrl.c: normal and safe updates must pass the same input pointer and current permit without stopping the active domain."
     }
 
     $shootCtrlTestRepoPath = "tools\tests\ShootCtrlRegression.c"
@@ -2957,6 +2960,7 @@ function Test-FaultIsolationBoundaries {
             "LowCmdSetMotorManyWithPermit",
             "LowCmdSetCurrentManyWithPermit",
             "LowCmdClearManyWithPermit",
+            "LowCmdRecoverSafetyInhibitManyWithPermit",
             "LowCmdGetMotorManyStamped"
         )) {
         if ($lowCmdContent -notmatch [regex]::Escape($required)) {
@@ -2982,9 +2986,91 @@ function Test-FaultIsolationBoundaries {
     }
     $lowCmdTestRepoPath = "tools\tests\LowCmdRegression.c"
     $lowCmdTestContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $lowCmdTestRepoPath) -Raw -Encoding UTF8
-    foreach ($required in @("TestPermitWriteAndStampedSnapshot", "TestRevokedPermitRejectIsAtomic", "TestPermitRejectsDuplicateAndIsr", "TestLegacyAndSafetyWritesClearOwner", "s_test_permit_validate_outside_critical_count")) {
+    foreach ($required in @("TestPermitWriteAndStampedSnapshot", "TestRevokedPermitRejectIsAtomic", "TestPermitRejectsDuplicateAndIsr", "TestPermitRecoversSafetyInhibitAtomically", "TestLegacyAndSafetyWritesClearOwner", "s_test_permit_validate_outside_critical_count")) {
         if ($lowCmdTestContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${lowCmdTestRepoPath}: output envelope regression must keep '$required'."
+        }
+    }
+
+    $motorInstRepoPath = "shared\application\motors\MotorInst.c"
+    $motorInstContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $motorInstRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @(
+            "MotorInstSetIdsWithPermit",
+            "MotorInstSetIdsBestEffortWithPermit",
+            "MotorInstSetCurrentIdsWithPermit",
+            "MotorInstSetCurrentBindsBestEffortWithPermit",
+            "MotorInstSetStateTorqueIdsWithPermit",
+            "MotorInstSetStateTorqueIdsBestEffortWithPermit",
+            "MotorInstControlWriteBlocked",
+            "LowCmdSetMotorManyWithPermit",
+            "LowCmdSetCurrentManyWithPermit"
+        )) {
+        if ($motorInstContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${motorInstRepoPath}: permit-aware motor boundary must keep '$required'."
+        }
+    }
+    $motorPermitTestRepoPath = "tools\tests\MotorInstPermitRegression.c"
+    $motorPermitRunnerRepoPath = "tools\TestMotorInstPermit.ps1"
+    if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $motorPermitTestRepoPath) -PathType Leaf) -or
+        -not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $motorPermitRunnerRepoPath) -PathType Leaf)) {
+        Add-CheckError "MotorInst permit regression source and runner must both exist."
+    }
+    else {
+        $motorPermitTestContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $motorPermitTestRepoPath) -Raw -Encoding UTF8
+        foreach ($required in @("TestStrictBatchAndInputValidation", "TestBestEffortFiltersThenPublishesOnce", "TestCurrentBindingsAndModeHelpers")) {
+            if ($motorPermitTestContent -notmatch [regex]::Escape($required)) {
+                Add-CheckError "${motorPermitTestRepoPath}: permit motor regression must keep '$required'."
+            }
+        }
+    }
+
+    $armTaskRepoPath = "shared\application\arm\ArmTask.c"
+    $armTaskContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $armTaskRepoPath) -Raw -Encoding UTF8
+    if ($armTaskContent -notmatch 'ArmControlMgrAllows\s*\(\s*&outputPermit\s*\)' -or
+        $armTaskContent -notmatch 'ArmMotionStepManual\s*\(\s*keyMask\s*,\s*&outputPermit\s*\)') {
+        Add-CheckError "${armTaskRepoPath}: Arm gate must pass the exact current-frame permit into motion publication."
+    }
+
+    $gimbalRepoPath = "shared\application\gimbal\GimbalControlTask.c"
+    $gimbalContent = Get-SourceContentWithPrivateIncludes -Path (Join-Path $script:RepoRoot $gimbalRepoPath)
+    $shootRepoPath = "shared\application\shoot\Shoot.c"
+    $shootContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $shootRepoPath) -Raw -Encoding UTF8
+    if ($gimbalContent -match '"motor\.trigger"' -or
+        $gimbalContent -match '\bMotor4\b' -or
+        $gimbalContent -match 'MotorInstSetCurrentBindsBestEffort\s*\(') {
+        Add-CheckError "${gimbalRepoPath}: Gimbal must not own trigger, hard-code the MIT test actuator, or use ownerless normal publication."
+    }
+    if ($shootContent -notmatch 'ShootOutputMotorNames[\s\S]{0,180}?"motor\.trigger"' -or
+        $shootContent -notmatch 'MotorCfgLimitCurrentNode\s*\(\s*&g_config\.motor\.trigger' -or
+        $shootContent -notmatch 'MotorInstSetCurrentIdsWithPermit\s*\(') {
+        Add-CheckError "${shootRepoPath}: Shoot must own, limit, and atomically publish trigger plus friction with its permit."
+    }
+
+    $wheellegPlanRepoPath = "shared\application\wheelleg\WheelLegOutputPlan.h"
+    $wheellegPlanContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $wheellegPlanRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("WHEELLEG_OUTPUT_AXIS_COUNT", "WheelLegOutputLeftWheel", "WheelLegOutputRightWheel", "publishAttempted", "WheelLegOutputPlanCommit")) {
+        if ($wheellegPlanContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${wheellegPlanRepoPath}: six-axis atomic plan must keep '$required'."
+        }
+    }
+    $wheellegContent = Get-SourceContentWithPrivateIncludes -Path (Join-Path $script:RepoRoot "shared\application\wheelleg\WheelLegMitTask.c")
+    if ($wheellegContent -notmatch 'WheelLegOutputPlanCommit[\s\S]{0,240}?MotorInstSetIdsWithPermit' -or
+        $wheellegContent -match 'MotorInstSetStateTorqueId\s*\(' -or
+        $wheellegContent -match 'MotorInstSetStateTorqueIds\s*\(') {
+        Add-CheckError "shared\application\wheelleg\WheelLegMitTask.c: WheelLeg must use one strict six-axis permit batch and no legacy per-axis normal sends."
+    }
+    $wheellegPlanTestRepoPath = "tools\tests\WheelLegOutputPlanRegression.c"
+    $wheellegPlanRunnerRepoPath = "tools\TestWheelLegOutputPlan.ps1"
+    if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $wheellegPlanTestRepoPath) -PathType Leaf) -or
+        -not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $wheellegPlanRunnerRepoPath) -PathType Leaf)) {
+        Add-CheckError "WheelLeg six-axis output-plan regression source and runner must both exist."
+    }
+    else {
+        $wheellegPlanTestContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $wheellegPlanTestRepoPath) -Raw -Encoding UTF8
+        foreach ($required in @("TestThreeModesOneBatch", "TestMissingOrInhibitedAxisRejectsWholeBatch", "TestUnusedAxesHaveExplicitSafeCommand")) {
+            if ($wheellegPlanTestContent -notmatch [regex]::Escape($required)) {
+                Add-CheckError "${wheellegPlanTestRepoPath}: six-axis output regression must keep '$required'."
+            }
         }
     }
 
@@ -2995,7 +3081,7 @@ function Test-FaultIsolationBoundaries {
             Add-CheckError "${armMotionRepoPath}: Arm may only publish LowCmd; physical MIT sender '$forbidden' belongs to CanTx."
         }
     }
-    foreach ($required in @("LowCmdInhibitManyFrom", "LowCmdReleaseInhibitManyFrom", "ArmFaultSyncInhibit")) {
+    foreach ($required in @("LowCmdInhibitManyFrom", "LowCmdRecoverSafetyInhibitManyWithPermit", "ArmFaultSyncInhibit", "MotorInstSetIdsBestEffortWithPermit", "s_armFault.holdZeroMask")) {
         if ($armMotionContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${armMotionRepoPath}: Arm fault isolation must use '$required'."
         }
@@ -3012,10 +3098,14 @@ function Test-FaultIsolationBoundaries {
 
     $shootRepoPath = "shared\application\shoot\Shoot.c"
     $shootContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $shootRepoPath) -Raw -Encoding UTF8
-    foreach ($required in @("ShootFaultSyncInhibit", "LowCmdInhibitManyFrom", "LowCmdReleaseInhibitManyFrom", "GimbalStateReadFresh", "ShootGimbalStateBlocksFire")) {
+    foreach ($required in @("ShootFaultSyncInhibit", "LowCmdInhibitManyFrom", "LowCmdRecoverSafetyInhibitManyWithPermit", "MotorInstSetCurrentIdsWithPermit", "GimbalStateReadFresh", "ShootGimbalStateBlocksFire", "ShootFrictionFaultBlocksTrigger", "ShootClearFricFaultOutputs")) {
         if ($shootContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${shootRepoPath}: shoot fault isolation must use '$required'."
         }
+    }
+    if ($shootContent -match 'criticalMask\s*\|=' -or
+        $shootContent -match 'config\.domainCount\s*=\s*1u') {
+        Add-CheckError "${shootRepoPath}: a single friction fault must stay per-axis and must not become a critical Shoot domain stop."
     }
 
     $axisPolicyRepoPath = "shared\application\motors\MotorAxisFaultPolicy.h"
@@ -3045,8 +3135,7 @@ function Test-FaultIsolationBoundaries {
         foreach ($required in @(
                 "FaultMgrSetDeviceFault",
                 "LowCmdInhibitManyFrom",
-                "LowCmdClearManyFrom",
-                "LowCmdReleaseInhibitManyFrom",
+                "LowCmdRecoverSafetyInhibitManyWithPermit",
                 $faultHelper.Sync
             )) {
             if ($faultContent -notmatch [regex]::Escape($required)) {
@@ -3253,7 +3342,7 @@ function Test-FaultIsolationBoundaries {
 
     $gimbalRepoPath = "shared\application\gimbal\GimbalControlTask.c"
     $gimbalContent = Get-SourceContentWithPrivateIncludes -Path (Join-Path $script:RepoRoot $gimbalRepoPath)
-    foreach ($required in @("GimbalFaultUpdate", "GimbalFaultSyncInhibit", "MotorInstSetCurrentBindsBestEffort")) {
+    foreach ($required in @("GimbalFaultUpdate", "GimbalFaultSyncInhibit", "MotorInstSetCurrentIdsWithPermit", "MotorInstSetIdsBestEffortWithPermit")) {
         if ($gimbalContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${gimbalRepoPath}: gimbal per-axis isolation must keep '$required'."
         }

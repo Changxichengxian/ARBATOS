@@ -50,6 +50,7 @@ static void ChassisCtrlClearOutput(ControlCtx *context)
         {
             output->motorCurrent[i] = 0;
         }
+        ControlOutputPermitClear(&output->outputPermit);
     }
 }
 
@@ -108,7 +109,10 @@ static ControlResult ChassisCtrlUpdate(const ControlController *controller,
 
     if (input->forceSafe != 0u)
     {
-        ChassisRuntimeSafeStep(input->manualInput, input->tickMs, input->periodMs);
+        ChassisRuntimeSafeStep(input->manualInput,
+                               input->tickMs,
+                               input->periodMs,
+                               &context->outputPermit);
         s_chassisRuntimeSafe = 1u;
         return ControlResultOk;
     }
@@ -116,6 +120,7 @@ static ControlResult ChassisCtrlUpdate(const ControlController *controller,
     ChassisRuntimeStep(input->manualInput,
                        input->tickMs,
                        input->periodMs,
+                       &context->outputPermit,
                        output->motorCurrent);
     s_chassisRuntimeSafe = 0u;
     return ControlResultOk;
@@ -188,6 +193,7 @@ ControlResult ChassisCtrlStep(const ChassisCtrlInput *input, ChassisCtrlOutput *
         {
             output->motorCurrent[i] = 0;
         }
+        ControlOutputPermitClear(&output->outputPermit);
     }
     if (input == NULL || output == NULL)
     {
@@ -206,6 +212,14 @@ ControlResult ChassisCtrlStep(const ChassisCtrlInput *input, ChassisCtrlOutput *
     context.input = (void *)input;
     context.output = output;
     result = ControlMgrUpdateDomain(ControlDomainChassis, &context);
+    if (result == ControlResultOk)
+    {
+        output->outputPermit = context.outputPermit;
+    }
+    else
+    {
+        ControlOutputPermitClear(&output->outputPermit);
+    }
     if (result != ControlResultOk &&
         s_chassisInitialized != 0u &&
         s_chassisRuntimeSafe == 0u)

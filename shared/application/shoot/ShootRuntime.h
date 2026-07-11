@@ -11,6 +11,8 @@
 
 #include <stdint.h>
 
+#include "ControlOutputPermit.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,8 +24,10 @@ struct ManualInputSnapshot;
  * ControlMgr 直接调用，避免出现两套生命周期。
  */
 void ShootRuntimeInit(void);
-int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput);
-void ShootRuntimeSafeStep(const struct ManualInputSnapshot *manualInput);
+int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput,
+                         const ControlOutputPermit *permit);
+void ShootRuntimeSafeStep(const struct ManualInputSnapshot *manualInput,
+                          const ControlOutputPermit *permit);
 void ShootRuntimeStop(void);
 
 #ifdef __cplusplus

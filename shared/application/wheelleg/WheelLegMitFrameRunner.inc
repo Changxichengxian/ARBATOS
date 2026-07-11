@@ -207,7 +207,7 @@ static void WheelLegFaultDomainUpdate(WheelLegTaskFrame *frame)
              s_wheelleg.domain_inhibit_complete != 0u ||
              s_wheelleg.domain_stop_clear_complete != 0u)
     {
-        if (WheelLegDomainInhibitRelease() == 0u)
+        if (WheelLegDomainInhibitRelease(&frame->output_permit) == 0u)
         {
             /* 清零和整批释放没有全部成功前，故障管理器即使已恢复也不能放行。 */
             s_wheelleg.fault_domain_status.action = FaultActionStopDomain;
@@ -253,6 +253,8 @@ static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
     frame->period_ms = WheelLegPeriodMs();
     frame->dt = WheelLegPeriodS();
     frame->now_ms = WheelLegTickMs();
+    frame->control_allowed =
+        WheellegControlMgrAllows(frame->now_ms, frame->dt, &frame->output_permit);
 
     imu_snapshot_ok = (uint8_t)InsSnapshotRead(&imu_snapshot);
     if (imu_snapshot_ok != 0u)
@@ -445,7 +447,29 @@ static void WheelLegMarkTestResult(WheelLegTaskFrame *frame, uint8_t ok)
     {
         frame->faults |= WHEELLEG_FAULT_CONTROLLER;
         s_wheelleg.mode = WHEELLEG_MODE_FAULT;
+        (void)WheelLegStopDomainOutputs();
     }
+}
+
+static uint8_t WheelLegCommitFrameOutput(WheelLegTaskFrame *frame)
+{
+    if (frame == NULL || frame->controller_active == 0u ||
+        frame->faults != WHEELLEG_FAULT_NONE)
+    {
+        return 0u;
+    }
+
+    if (WheelLegOutputCommit(&frame->output_permit) != 0u)
+    {
+        return 1u;
+    }
+
+    frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+    s_wheelleg.mode = WHEELLEG_MODE_FAULT;
+    (void)WheelLegStopDomainOutputs();
+    WheelLegResetDomainControlState();
+    frame->controller_active = 0u;
+    return 0u;
 }
 
 static uint8_t WheelLegRunOperationTest(WheelLegTaskFrame *frame)
@@ -509,8 +533,9 @@ static void WheelLegPrepareBalanceFrame(WheelLegTaskFrame *frame)
 
 static void WheelLegRunBenchStage(WheelLegTaskFrame *frame)
 {
-    uint8_t joint_hold_ok;
+    uint8_t joint_hold_count;
     uint8_t wheel_lqr_ok = 0u;
+    uint8_t wheel_plan_count;
 
     if (frame == NULL)
     {
@@ -520,7 +545,7 @@ static void WheelLegRunBenchStage(WheelLegTaskFrame *frame)
     WheelLegPidClear(&s_wheelleg.leg_pid[WHEELLEG_SIDE_LEFT]);
     WheelLegPidClear(&s_wheelleg.leg_pid[WHEELLEG_SIDE_RIGHT]);
     WheelLegPidClear(&s_wheelleg.split_pid);
-    joint_hold_ok = WheelLegBenchHoldApplyJoints();
+    joint_hold_count = WheelLegBenchHoldApplyJoints();
     frame->target_leg = s_wheelleg.bench_hold_target_leg_m;
     frame->target_foot_x = s_wheelleg.bench_hold_target_foot_x_m;
 
@@ -565,13 +590,21 @@ static void WheelLegRunBenchStage(WheelLegTaskFrame *frame)
 
     if ((frame->faults & WHEELLEG_FAULT_CONTROLLER) == 0u)
     {
-        frame->controller_active = (uint8_t)((joint_hold_ok != 0u || wheel_lqr_ok != 0u) ? 1u : 0u);
         if (wheel_lqr_ok == 0u)
         {
             frame->wheel_torque[WHEELLEG_SIDE_RIGHT] = 0.0f;
             frame->wheel_torque[WHEELLEG_SIDE_LEFT] = 0.0f;
         }
-        WheelLegSendWheelTorques(frame->wheel_torque);
+        wheel_plan_count = WheelLegPlanWheelTorques(frame->wheel_torque);
+        if (joint_hold_count == 4u && wheel_plan_count == 2u &&
+            s_wheelleg.output_plan.commandMask == WHEELLEG_OUTPUT_ALL_MASK)
+        {
+            frame->controller_active = 1u;
+        }
+        else
+        {
+            frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+        }
     }
 }
 
@@ -646,8 +679,17 @@ static void WheelLegRunPositionStage(WheelLegTaskFrame *frame)
 
     if (frame->faults == WHEELLEG_FAULT_NONE)
     {
-        frame->controller_active = (uint8_t)((position_ok != 0u || wheel_lqr_ok != 0u) ? 1u : 0u);
-        WheelLegSendWheelTorques(frame->wheel_torque);
+        const uint8_t wheel_plan_count = WheelLegPlanWheelTorques(frame->wheel_torque);
+
+        if (position_ok != 0u && wheel_lqr_ok != 0u && wheel_plan_count == 2u &&
+            s_wheelleg.output_plan.commandMask == WHEELLEG_OUTPUT_ALL_MASK)
+        {
+            frame->controller_active = 1u;
+        }
+        else
+        {
+            frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+        }
     }
 }
 
@@ -701,9 +743,18 @@ static void WheelLegRunVmcStage(WheelLegTaskFrame *frame)
                                      use_lqr_hip,
                                      frame->wheel_torque) != 0u)
         {
-            frame->controller_active = 1u;
-            WheelLegSendWheelTorques(frame->wheel_torque);
-            WheelLegSendVmcJointTorques();
+            const uint8_t wheel_plan_count = WheelLegPlanWheelTorques(frame->wheel_torque);
+            const uint8_t joint_plan_count = WheelLegPlanVmcJointTorques();
+
+            if (wheel_plan_count == 2u && joint_plan_count == 4u &&
+                s_wheelleg.output_plan.commandMask == WHEELLEG_OUTPUT_ALL_MASK)
+            {
+                frame->controller_active = 1u;
+            }
+            else
+            {
+                frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+            }
         }
         else
         {

@@ -72,11 +72,33 @@ static void ChassisControlClearOutputs(ChassisMove *control)
 
 static void ChassisControlStopOutputs(ChassisMove *control)
 {
-    ChassisControlClearOutputs(control);
+    MotorId ids[CHASSIS_MOTOR_COUNT];
+    uint8_t count = 0u;
 
-    (void)MotorInstSetCurrentBindsBestEffort(ChassisMotorCurrentBindings,
-                                             ChassisZeroCurrentCmd,
-                                             CHASSIS_MOTOR_COUNT);
+    ChassisControlClearOutputs(control);
+    for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT; i++)
+    {
+        if (ChassisMotorCurrentBindings[i].enabled != 0u &&
+            (uint32_t)ChassisMotorCurrentBindings[i].actuator_id < (uint32_t)MotorCount)
+        {
+            ids[count++] = ChassisMotorCurrentBindings[i].actuator_id;
+        }
+    }
+    if (count != 0u)
+    {
+        /* 生命周期停止发布 inactive，让发送层走统一 Disable。 */
+        if (LowCmdClearManyFrom(ids,
+                                count,
+                                (uint16_t)LOWCMD_WRITER_SAFETY) == 0u)
+        {
+            for (uint8_t i = 0u; i < count; i++)
+            {
+                (void)LowCmdClearManyFrom(&ids[i],
+                                          1u,
+                                          (uint16_t)LOWCMD_WRITER_SAFETY);
+            }
+        }
+    }
 }
 
 static void ChassisControlDelay(TickType_t *last_wake, uint16_t period_ms)

@@ -299,10 +299,16 @@ static void GimbalWriteState(const GimbalRuntimeSnapshot *snapshot)
         state.online = (uint8_t)(state.required_offline_mask == 0u &&
                                  (s_gimbalFault.blockingMask & required_axis_mask) == 0u);
     }
-    state.controllable = (state.online != 0u && state.manual_online != 0u && state.ChassisStop == 0u) ? 1u : 0u;
+    state.controllable = (uint8_t)(state.online != 0u &&
+                                   state.manual_online != 0u &&
+                                   state.ChassisStop == 0u &&
+                                   snapshot != NULL &&
+                                   snapshot->control_allowed != 0u);
     state.fire_allowed = (GimbalFireAimReady(snapshot) != 0u &&
                           (s_gimbalFault.blockingMask & aim_axis_mask) == 0u &&
                           state.manual_online != 0u &&
+                          snapshot != NULL &&
+                          snapshot->control_allowed != 0u &&
                           state.ShootStop == 0u) ?
                              1u :
                              0u;

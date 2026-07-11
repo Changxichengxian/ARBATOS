@@ -615,6 +615,100 @@ uint8_t LowCmdReleaseInhibitManyFrom(const MotorId *ids, uint8_t count, uint16_t
     return 1u;
 }
 
+uint8_t LowCmdRecoverSafetyInhibitManyWithPermit(const MotorId *ids,
+                                                  uint8_t count,
+                                                  const ControlOutputPermit *permit)
+{
+    const uint32_t tick = LowCmdNowMs();
+    ControlOutputPermit permit_copy;
+    uint32_t required_mask;
+    uint8_t changed = 0u;
+
+    if (__get_IPSR() != 0U || permit == NULL ||
+        LowCmdIdsMask(ids, count, &required_mask) == 0u)
+    {
+        return 0u;
+    }
+    permit_copy = *permit;
+
+    {
+        LowCmdCriticalState critical = LowCmdEnterCritical();
+
+        if (LowCmdPermitValidLocked(&permit_copy, required_mask, tick) == 0u)
+        {
+            LowCmdExitCritical(critical);
+            return 0u;
+        }
+        if (gLowCmdDiag.emergency_active != 0u)
+        {
+            LowCmdRecordReject((uint16_t)LOWCMD_WRITER_CONTROL,
+                               gLowCmdDiag.emergency_writer,
+                               tick);
+            LowCmdExitCritical(critical);
+            return 0u;
+        }
+        for (uint8_t i = 0u; i < count; i++)
+        {
+            const uint16_t inhibit_writer = gLowCmdInhibitWriter[ids[i]];
+            const MotorCmd *cmd = &gLowCmdRecord[ids[i]].cmd;
+
+            /* SAFETY 禁写不能借恢复接口覆盖仍由更高层持有的局部活动命令。 */
+            if (cmd->active != 0u &&
+                cmd->writer > (uint16_t)LOWCMD_WRITER_SAFETY)
+            {
+                LowCmdRecordReject((uint16_t)LOWCMD_WRITER_CONTROL,
+                                   cmd->writer,
+                                   tick);
+                LowCmdExitCritical(critical);
+                return 0u;
+            }
+
+            if (inhibit_writer == (uint16_t)LOWCMD_WRITER_SAFETY)
+            {
+                changed = 1u;
+                continue;
+            }
+            if (inhibit_writer != (uint16_t)LOWCMD_WRITER_NONE)
+            {
+                LowCmdRecordReject((uint16_t)LOWCMD_WRITER_CONTROL,
+                                   inhibit_writer,
+                                   tick);
+                LowCmdExitCritical(critical);
+                return 0u;
+            }
+        }
+
+        if (changed != 0u)
+        {
+            gLowCmdSeq++;
+            for (uint8_t i = 0u; i < count; i++)
+            {
+                if (gLowCmdInhibitWriter[ids[i]] != (uint16_t)LOWCMD_WRITER_SAFETY)
+                {
+                    continue;
+                }
+                gLowCmdInhibitWriter[ids[i]] = (uint16_t)LOWCMD_WRITER_NONE;
+                gLowCmdDiag.inhibit_mask &= ~(1ul << (uint32_t)ids[i]);
+                LowCmdRecordClearLocked(&gLowCmdRecord[ids[i]],
+                                        (uint16_t)LOWCMD_WRITER_CONTROL,
+                                        gLowCmdSeq,
+                                        tick,
+                                        &permit_copy.stamp);
+            }
+            gLowCmdDiag.inhibit_release_count++;
+            gLowCmdDiag.seq = gLowCmdSeq;
+        }
+        LowCmdExitCritical(critical);
+    }
+    return 1u;
+}
+
+uint8_t LowCmdRecoverSafetyInhibitWithPermit(MotorId id,
+                                              const ControlOutputPermit *permit)
+{
+    return LowCmdRecoverSafetyInhibitManyWithPermit(&id, 1u, permit);
+}
+
 uint8_t LowCmdGetInhibitWriter(MotorId id, uint16_t *out)
 {
     if (MotorIdValid(id) == 0u || out == NULL)

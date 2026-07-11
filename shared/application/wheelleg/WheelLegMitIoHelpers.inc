@@ -200,37 +200,86 @@ static uint8_t WheelLegCalcVmc(WheelLegLegCalc *leg)
     return WheelLegCoreCalcVmc(leg);
 }
 
-static uint8_t WheelLegSendStateCmd(MotorId id,
-                                       fp32 position,
-                                       fp32 velocity,
-                                       fp32 kp,
-                                       fp32 kd,
-                                       fp32 torque)
+static uint8_t WheelLegOutputAxisResolve(MotorId id, WheelLegOutputAxis *axis_out)
 {
-    MotorCmd cmd;
+    uint8_t i;
 
-    if ((uint32_t)id >= (uint32_t)MotorCount)
+    if (axis_out == NULL || (uint32_t)id >= (uint32_t)MotorCount)
     {
         return 0u;
     }
 
-    control_core_cmd_set_state_torque(&cmd, position, velocity, kp, kd, torque);
-    if (MotorInstSetStateTorqueId(id, &cmd) == 0u)
+    for (i = 0u; i < (uint8_t)WheelLegMemberCount; i++)
+    {
+        if (s_wheelleg.domain_member[i].actuator == id)
+        {
+            *axis_out = (WheelLegOutputAxis)i;
+            return 1u;
+        }
+    }
+    return 0u;
+}
+
+static uint8_t WheelLegOutputBegin(void)
+{
+    MotorId ids[WHEELLEG_OUTPUT_AXIS_COUNT];
+    uint8_t i;
+
+    for (i = 0u; i < WHEELLEG_OUTPUT_AXIS_COUNT; i++)
+    {
+        ids[i] = s_wheelleg.domain_member[i].actuator;
+    }
+    return WheelLegOutputPlanBegin(&s_wheelleg.output_plan, ids);
+}
+
+static uint8_t WheelLegPlanStateCmd(MotorId id,
+                                    fp32 position,
+                                    fp32 velocity,
+                                    fp32 kp,
+                                    fp32 kd,
+                                    fp32 torque)
+{
+    WheelLegOutputAxis axis;
+
+    if (WheelLegOutputAxisResolve(id, &axis) == 0u)
+    {
+        return 0u;
+    }
+
+    return WheelLegOutputPlanSetStateTorque(&s_wheelleg.output_plan,
+                                            axis,
+                                            position,
+                                            velocity,
+                                            kp,
+                                            kd,
+                                            torque);
+}
+
+static void WheelLegPlanDisable(MotorId id)
+{
+    MotorCmd cmd;
+    WheelLegOutputAxis axis;
+
+    if (WheelLegOutputAxisResolve(id, &axis) != 0u)
+    {
+        control_core_cmd_set_disable(&cmd);
+        (void)WheelLegOutputPlanSet(&s_wheelleg.output_plan, axis, &cmd);
+    }
+}
+
+static uint8_t WheelLegOutputCommit(const ControlOutputPermit *permit)
+{
+    const uint8_t written =
+        WheelLegOutputPlanCommit(&s_wheelleg.output_plan,
+                                 permit,
+                                 MotorInstSetIdsWithPermit);
+
+    if (written == 0u)
     {
         return 0u;
     }
     s_wheelleg.domain_outputs_active = 1u;
     return 1u;
-}
-
-static void WheelLegClearStateCmd(MotorId id)
-{
-    if ((uint32_t)id >= (uint32_t)MotorCount)
-    {
-        return;
-    }
-
-    (void)MotorInstClearId(id);
 }
 
 static void WheelLegClearLegVirtualOutputs(void)
@@ -367,7 +416,7 @@ static uint8_t WheelLegDomainInhibitHold(void)
     return 1u;
 }
 
-static uint8_t WheelLegDomainInhibitRelease(void)
+static uint8_t WheelLegDomainInhibitRelease(const ControlOutputPermit *permit)
 {
     MotorId ids[WHEELLEG_DOMAIN_MEMBER_COUNT];
     uint8_t count = 0u;
@@ -377,21 +426,8 @@ static uint8_t WheelLegDomainInhibitRelease(void)
         (void)WheelLegForceStopDomainOutputs();
         return 0u;
     }
-    if (WheelLegForceStopDomainOutputs() == 0u)
-    {
-        s_wheelleg.domain_inhibit_release_fail_count++;
-        return 0u;
-    }
-    s_wheelleg.domain_stop_clear_complete = 1u;
-
-    /* 急停仍有效时，即使 SAFETY 级清零成功也继续持有六轴禁写。 */
-    if (LowCmdEmergencyActive() != 0u)
-    {
-        s_wheelleg.domain_inhibit_release_fail_count++;
-        return 0u;
-    }
     if (WheelLegDomainIdsCollect(ids, &count) == 0u ||
-        MotorInstReleaseInhibitIds(ids, count) == 0u)
+        LowCmdRecoverSafetyInhibitManyWithPermit(ids, count, permit) == 0u)
     {
         s_wheelleg.domain_inhibit_release_fail_count++;
         return 0u;

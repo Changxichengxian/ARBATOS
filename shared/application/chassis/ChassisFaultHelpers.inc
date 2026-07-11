@@ -196,7 +196,8 @@ static void ChassisFaultResetControl(ChassisMove *control, uint32_t mask)
     }
 }
 
-static void ChassisFaultSyncInhibit(ChassisMove *control)
+static void ChassisFaultSyncInhibit(ChassisMove *control,
+                                    const ControlOutputPermit *outputPermit)
 {
     const MotorAxisFaultInhibitPlan plan =
         MotorAxisFaultInhibitPlanMake(s_chassisFault.configuredMask,
@@ -253,8 +254,7 @@ static void ChassisFaultSyncInhibit(ChassisMove *control)
     }
 
     ChassisFaultResetControl(control, actualMask);
-    if (LowCmdClearManyFrom(ids, count, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
-        LowCmdReleaseInhibitManyFrom(ids, count, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u)
+    if (LowCmdRecoverSafetyInhibitManyWithPermit(ids, count, outputPermit) != 0u)
     {
         s_chassisFault.inhibitMask &= ~actualMask;
         return;
@@ -269,8 +269,7 @@ static void ChassisFaultSyncInhibit(ChassisMove *control)
             const MotorId id = ChassisMotorCurrentBindings[i].actuator_id;
 
             if ((actualMask & bit) != 0u &&
-                LowCmdClearManyFrom(&id, 1u, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
-                LowCmdReleaseInhibitManyFrom(&id, 1u, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u)
+                LowCmdRecoverSafetyInhibitWithPermit(id, outputPermit) != 0u)
             {
                 releasedMask |= bit;
             }

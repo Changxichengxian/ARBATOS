@@ -19,6 +19,7 @@ static uint32_t s_runtimeStopCount;
 static uint32_t s_lastTickMs;
 static uint16_t s_lastPeriodMs;
 static const struct ManualInputSnapshot *s_lastManualInput;
+static ControlOutputPermit s_lastOutputPermit;
 static char s_runtimeEvents[24];
 static uint8_t s_runtimeEventCount;
 
@@ -53,12 +54,14 @@ void ChassisRuntimeInit(void)
 void ChassisRuntimeStep(const struct ManualInputSnapshot *manualInput,
                         uint32_t tickMs,
                         uint16_t periodMs,
+                        const ControlOutputPermit *outputPermit,
                         int16_t motorCurrent[4])
 {
     s_runtimeStepCount++;
     s_lastTickMs = tickMs;
     s_lastPeriodMs = periodMs;
     s_lastManualInput = manualInput;
+    s_lastOutputPermit = *outputPermit;
     RuntimeRecord('U');
     for (uint8_t i = 0u; i < 4u; i++)
     {
@@ -68,12 +71,14 @@ void ChassisRuntimeStep(const struct ManualInputSnapshot *manualInput,
 
 void ChassisRuntimeSafeStep(const struct ManualInputSnapshot *manualInput,
                             uint32_t tickMs,
-                            uint16_t periodMs)
+                            uint16_t periodMs,
+                            const ControlOutputPermit *outputPermit)
 {
     s_runtimeSafeStepCount++;
     s_lastTickMs = tickMs;
     s_lastPeriodMs = periodMs;
     s_lastManualInput = manualInput;
+    s_lastOutputPermit = *outputPermit;
     RuntimeRecord('F');
 }
 
@@ -124,7 +129,7 @@ int main(void)
         .periodMs = 2u,
         .forceSafe = 0u,
     };
-    ChassisCtrlOutput output = {{11, 22, 33, 44}};
+    ChassisCtrlOutput output = {.motorCurrent = {11, 22, 33, 44}};
     ControlCtx managerContext = {0};
     ControlStatus status;
     uint32_t updatesBeforeStop;
@@ -160,15 +165,19 @@ int main(void)
                    s_runtimeStopCount == 0u,
                    "Switch 只能留下 pending，不能提前启动执行体")) return 1;
 
+    output.outputPermit.stamp.valid = 1u;
     if (!TestCheck(ChassisCtrlStep(NULL, &output) == ControlResultBadArgument &&
-                   TestOutputZero(&output),
-                   "空输入应清零输出并返回 BadArgument")) return 1;
+                   TestOutputZero(&output) &&
+                   output.outputPermit.stamp.valid == 0u,
+                   "空输入应清零输出、撤销旧许可并返回 BadArgument")) return 1;
     if (!TestCheck(ChassisCtrlStep(&input, NULL) == ControlResultBadArgument,
                    "空输出应返回 BadArgument")) return 1;
     output.motorCurrent[0] = 1234;
+    output.outputPermit.stamp.valid = 1u;
     if (!TestCheck(ChassisCtrlStep(&input, &output) == ControlResultNotActive &&
-                   TestOutputZero(&output),
-                   "Prepare 前应清零输出并返回 NotActive")) return 1;
+                   TestOutputZero(&output) &&
+                   output.outputPermit.stamp.valid == 0u,
+                   "Prepare 前应清零输出、撤销旧许可并返回 NotActive")) return 1;
     if (!TestStatus(&status)) return 1;
     if (!TestCheck(status.pending_request == ControlRequestSwitch &&
                    status.active == 0u &&
@@ -192,6 +201,9 @@ int main(void)
                    s_runtimeEvents[1] == 'U' &&
                    output.motorCurrent[0] == 100 &&
                    output.motorCurrent[3] == 103 &&
+                   output.outputPermit.stamp.valid == 1u &&
+                   ControlOutputStampEqual(&output.outputPermit.stamp,
+                                           &s_lastOutputPermit.stamp) != 0u &&
                    s_lastManualInput == input.manualInput &&
                    s_lastTickMs == input.tickMs &&
                    s_lastPeriodMs == input.periodMs,
@@ -215,6 +227,9 @@ int main(void)
                    s_lastManualInput == input.manualInput &&
                    s_lastTickMs == input.tickMs &&
                    s_lastPeriodMs == input.periodMs &&
+                   output.outputPermit.stamp.valid == 1u &&
+                   ControlOutputStampEqual(&output.outputPermit.stamp,
+                                           &s_lastOutputPermit.stamp) != 0u &&
                    TestOutputZero(&output),
                    "forceSafe 应执行 SafeStep、清零输出且不退出控制域")) return 1;
     input.tickMs += input.periodMs;
@@ -257,6 +272,7 @@ int main(void)
     output.motorCurrent[0] = 1234;
     if (!TestCheck(ChassisCtrlStep(&input, &output) == ControlResultResourceBusy &&
                    TestOutputZero(&output) &&
+                   output.outputPermit.stamp.valid == 0u &&
                    s_runtimeStepCount == 2u &&
                    s_runtimeStopCount == 1u,
                    "资源冲突帧必须保留旧控制器并立即清除 Runtime 输出")) return 1;
@@ -286,6 +302,7 @@ int main(void)
     output.motorCurrent[0] = 1234;
     if (!TestCheck(ChassisCtrlStep(&input, &output) == ControlResultNotActive &&
                    TestOutputZero(&output) &&
+                   output.outputPermit.stamp.valid == 0u &&
                    s_runtimeStopCount == 2u,
                    "显式 Stop 应执行停止回调、清零输出并返回 NotActive")) return 1;
     if (!TestStatus(&status)) return 1;

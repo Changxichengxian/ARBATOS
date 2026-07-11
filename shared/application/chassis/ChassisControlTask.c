@@ -66,7 +66,6 @@ static const char *const ChassisMotorInstNames[CHASSIS_MOTOR_COUNT] = {
     "motor.chassis3",
 };
 static MotorCurrentBind ChassisMotorCurrentBindings[CHASSIS_MOTOR_COUNT];
-static const int16_t ChassisZeroCurrentCmd[CHASSIS_MOTOR_COUNT] = {0};
 
 // Chassis follow-yaw stop window (reduces dithering when nearly aligned).
 // NOTE: yaw error uses gimbal-relative angle (rad), wz uses chassis rotation speed (rad/s).
@@ -262,11 +261,12 @@ static ChassisSdLogBaseStreamState s_chassis_sdlog_base_stream = {0};
 static void ChassisRuntimeReadFrame(ChassisRuntimeSnapshot *snapshot,
                                     const ManualInputSnapshot *manualInput,
                                     uint32_t tickMs,
-                                    uint16_t periodMs)
+                                    uint16_t periodMs,
+                                    const ControlOutputPermit *outputPermit)
 {
     ChassisSnapshotCapture(snapshot, &g_chassis, manualInput, tickMs, periodMs);
     ChassisFaultUpdate(snapshot);
-    ChassisFaultSyncInhibit(&g_chassis);
+    ChassisFaultSyncInhibit(&g_chassis, outputPermit);
     ChassisSetMode(&g_chassis);
     ChassisModeChangeControlTransit(&g_chassis);
     ChassisFeedbackUpdate(&g_chassis, snapshot);
@@ -286,19 +286,21 @@ void ChassisRuntimeInit(void)
 
 void ChassisRuntimeSafeStep(const ManualInputSnapshot *manualInput,
                             uint32_t tickMs,
-                            uint16_t periodMs)
+                            uint16_t periodMs,
+                            const ControlOutputPermit *outputPermit)
 {
     ChassisRuntimeSnapshot snapshot;
 
     /* 安全帧仍刷新反馈、故障分组和逐轴禁写，只跳过控制量及功率计算。 */
     ChassisBehaviourInputGateBlock();
-    ChassisRuntimeReadFrame(&snapshot, manualInput, tickMs, periodMs);
+    ChassisRuntimeReadFrame(&snapshot, manualInput, tickMs, periodMs, outputPermit);
     ChassisRuntimePublishSafeFrame();
 }
 
 void ChassisRuntimeStep(const ManualInputSnapshot *manualInput,
                         uint32_t tickMs,
                         uint16_t periodMs,
+                        const ControlOutputPermit *outputPermit,
                         int16_t motorCurrent[CHASSIS_MOTOR_COUNT])
 {
     ChassisRuntimeSnapshot snapshot;
@@ -311,7 +313,7 @@ void ChassisRuntimeStep(const ManualInputSnapshot *manualInput,
         return;
     }
 
-    ChassisRuntimeReadFrame(&snapshot, manualInput, tickMs, periodMs);
+    ChassisRuntimeReadFrame(&snapshot, manualInput, tickMs, periodMs, outputPermit);
     if (snapshot.manual_online == 0u || robot_mode_allow_chassis() == 0u)
     {
         ChassisBehaviourInputGateBlock();
@@ -384,9 +386,10 @@ static ControlResult ChassisTaskRunFrame(const ManualInputSnapshot *manualInput,
     const ControlResult result = ChassisCtrlStep(&input, &output);
 
     /* ChassisCtrlOutput 是唯一正常输出边界；Runtime 只负责计算。 */
-    (void)MotorInstSetCurrentBindsBestEffort(ChassisMotorCurrentBindings,
-                                             output.motorCurrent,
-                                             CHASSIS_MOTOR_COUNT);
+    (void)MotorInstSetCurrentBindsBestEffortWithPermit(ChassisMotorCurrentBindings,
+                                                       output.motorCurrent,
+                                                       CHASSIS_MOTOR_COUNT,
+                                                       &output.outputPermit);
     return result;
 }
 

@@ -75,7 +75,7 @@ static uint8_t WheelLegPositionApplyLeg(const WheelLegActuatorMap *map,
         s_wheelleg.foot_test_target[side] = target;
     }
 
-    if (WheelLegSendStateCmd(map->front,
+    if (WheelLegPlanStateCmd(map->front,
                                 WheelLegKinematicToRaw(front_target,
                                                           front_raw_zero,
                                                           front_dir,
@@ -84,7 +84,7 @@ static uint8_t WheelLegPositionApplyLeg(const WheelLegActuatorMap *map,
                                 kp,
                                 kd,
                                 0.0f) == 0u ||
-        WheelLegSendStateCmd(map->back,
+        WheelLegPlanStateCmd(map->back,
                                 WheelLegKinematicToRaw(back_target,
                                                           back_raw_zero,
                                                           back_dir,
@@ -97,7 +97,7 @@ static uint8_t WheelLegPositionApplyLeg(const WheelLegActuatorMap *map,
         return 0u;
     }
 
-    WheelLegClearStateCmd(map->wheel);
+    WheelLegPlanDisable(map->wheel);
     return 1u;
 }
 
@@ -202,8 +202,6 @@ static uint8_t WheelLegLeftLegTestApply(uint32_t now_ms)
         s_wheelleg.left_test_active = 1u;
     }
 
-    WheelLegClearJointTestCmds();
-
     torque_limit = WheelLegAbs(cfg->left_test_torque_limit_nm);
     torque = (torque_limit > 0.0f)
                  ? WheelLegClamp(cfg->left_test_torque_ff_nm, -torque_limit, torque_limit)
@@ -212,7 +210,7 @@ static uint8_t WheelLegLeftLegTestApply(uint32_t now_ms)
 
     if (cfg->left_test_front_dir != 0)
     {
-        if (WheelLegSendStateCmd(left_map->front,
+        if (WheelLegPlanStateCmd(left_map->front,
                                     WheelLegJointToRaw(target,
                                                           cfg->left_front_zero_rad,
                                                           cfg->left_test_front_dir),
@@ -227,7 +225,7 @@ static uint8_t WheelLegLeftLegTestApply(uint32_t now_ms)
     }
     if (cfg->left_test_back_dir != 0)
     {
-        if (WheelLegSendStateCmd(left_map->back,
+        if (WheelLegPlanStateCmd(left_map->back,
                                     WheelLegJointToRaw(target,
                                                           cfg->left_back_zero_rad,
                                                           cfg->left_test_back_dir),
@@ -242,7 +240,7 @@ static uint8_t WheelLegLeftLegTestApply(uint32_t now_ms)
     }
     if (cfg->right_test_front_dir != 0)
     {
-        if (WheelLegSendStateCmd(right_map->front,
+        if (WheelLegPlanStateCmd(right_map->front,
                                     WheelLegJointToRaw(target,
                                                           cfg->right_front_zero_rad,
                                                           cfg->right_test_front_dir),
@@ -257,7 +255,7 @@ static uint8_t WheelLegLeftLegTestApply(uint32_t now_ms)
     }
     if (cfg->right_test_back_dir != 0)
     {
-        if (WheelLegSendStateCmd(right_map->back,
+        if (WheelLegPlanStateCmd(right_map->back,
                                     WheelLegJointToRaw(target,
                                                           cfg->right_back_zero_rad,
                                                           cfg->right_test_back_dir),

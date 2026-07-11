@@ -175,12 +175,18 @@ static int16_t GimbalApplyOutputTurn(int16_t current, uint8_t turn)
 static uint8_t GimbalSingleMitYawTestActive(const GimbalRuntimeSnapshot *snapshot)
 {
     const MotorId target = robot_mode_target_motor();
+    MotorId expected;
     const motor_node_param_t *node = MotorInstNode(target);
     const robot_run_variant_e variant = (snapshot != NULL) ? snapshot->run_variant : robot_mode_variant();
 
+    GimbalMotorIdsEnsure();
+    expected = (snapshot != NULL && snapshot->yaw_control_is_upper != 0u) ?
+                   s_gimbal_yaw_upper_id :
+                   s_gimbal_yaw_id;
     if (robot_mode_current() != ROBOT_RUN_MODE_SINGLE_MOTOR ||
         variant != ROBOT_RUN_VARIANT_GIMBAL_YAW_ONLY ||
-        target != Motor4 ||
+        target != expected ||
+        (uint32_t)target >= (uint32_t)MotorCount ||
         node == NULL)
     {
         return 0u;
@@ -231,16 +237,53 @@ static fp32 GimbalSingleMitYawTestTorque(const GimbalRuntimeSnapshot *snapshot)
     return torque;
 }
 
-static void GimbalApplySingleMitYawTest(const GimbalRuntimeSnapshot *snapshot)
+static void GimbalApplySingleMitYawTest(const GimbalRuntimeSnapshot *snapshot,
+                                        const MotorCurrentBind *bindings,
+                                        uint8_t bindingCount,
+                                        const ControlOutputPermit *permit)
 {
+    const MotorId target = robot_mode_target_motor();
     const fp32 torque = GimbalSingleMitYawTestTorque(snapshot);
+    MotorId ids[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT];
+    MotorCmd cmds[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT];
+    uint8_t count = 0u;
+    uint8_t targetFound = 0u;
 
     GimbalTotalPidClear(&g_gimbal);
     g_gimbal.GimbalYawMotor.current_set = 0.0f;
     g_gimbal.GimbalYawMotor.given_current = 0;
     g_gimbal.GimbalPitchMotor.current_set = 0.0f;
     g_gimbal.GimbalPitchMotor.given_current = 0;
-    (void)MotorInstSetDampingId(Motor4, GIMBAL_SINGLE_MIT_TEST_DAMPING_KD, torque);
+    if (bindings == NULL || bindingCount > DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT)
+    {
+        return;
+    }
+    for (uint8_t i = 0u; i < bindingCount; i++)
+    {
+        if (bindings[i].enabled == 0u ||
+            (uint32_t)bindings[i].actuator_id >= (uint32_t)MotorCount)
+        {
+            continue;
+        }
+        ids[count] = bindings[i].actuator_id;
+        if (ids[count] == target)
+        {
+            control_core_cmd_set_damping(&cmds[count],
+                                         GIMBAL_SINGLE_MIT_TEST_DAMPING_KD,
+                                         torque);
+            targetFound = 1u;
+        }
+        else
+        {
+            control_core_cmd_set_current(&cmds[count], 0);
+        }
+        count++;
+    }
+    if (targetFound != 0u && count != 0u)
+    {
+        /* 测试轴与其余云台轴也只发布一个许可批次，避免残留上一周期电流。 */
+        (void)MotorInstSetIdsBestEffortWithPermit(ids, cmds, count, permit);
+    }
 }
 
 static uint8_t GimbalDualYawUseUpperControl(void)
@@ -316,7 +359,6 @@ static void GimbalSnapshotCapture(GimbalRuntimeSnapshot *snapshot,
     snapshot->pitch_measure = (control != NULL) ? control->GimbalPitchMotor.GimbalMotorMeasure : get_pitch_gimbal_motor_measure_point();
     snapshot->yaw_motor_cfg = GimbalYawControlMotorCfg();
     snapshot->pitch_motor_cfg = &g_config.motor.pitch;
-    snapshot->trigger_motor_cfg = &g_config.motor.trigger;
     snapshot->run_variant = robot_mode_variant();
     snapshot->imu_required_mask = GimbalFaultImuAxisMask(
         snapshot->run_variant,
@@ -430,7 +472,8 @@ static void GimbalApplyOperationMode(const GimbalRuntimeSnapshot *snapshot, int1
 }
 
 static bool_t GimbalControlMgrAllows(uint16_t expected_controller_id,
-                                            const GimbalRuntimeSnapshot *snapshot)
+                                     const GimbalRuntimeSnapshot *snapshot,
+                                     ControlOutputPermit *permit)
 {
     ControlCtx context = {0};
     const uint16_t period_ms =
@@ -439,15 +482,23 @@ static bool_t GimbalControlMgrAllows(uint16_t expected_controller_id,
     context.tick_ms = BspTimeGetTickMs();
     context.dt_s = (fp32)period_ms * 0.001f;
 
-    if (ControlMgrUpdateDomain(ControlDomainGimbal, &context) != ControlResultOk)
+    if (permit == NULL ||
+        ControlMgrUpdateDomain(ControlDomainGimbal, &context) != ControlResultOk)
     {
         return 0;
     }
 
-    return (ControlMgrActiveId(ControlDomainGimbal) == expected_controller_id) ? 1 : 0;
+    if (ControlMgrActiveId(ControlDomainGimbal) != expected_controller_id ||
+        ControlMgrOutputPermitValid(&context.outputPermit, 0u) == 0u)
+    {
+        return 0;
+    }
+
+    *permit = context.outputPermit;
+    return 1;
 }
 
-static int16_t GimbalRunShootControl(const GimbalRuntimeSnapshot *snapshot, uint8_t force_safe)
+static void GimbalRunShootControl(const GimbalRuntimeSnapshot *snapshot)
 {
     ShootCtrlInput input = {0};
     ShootCtrlOutput output = {0};
@@ -457,39 +508,26 @@ static int16_t GimbalRunShootControl(const GimbalRuntimeSnapshot *snapshot, uint
     input.periodMs = (snapshot != NULL && snapshot->period_ms != 0u) ?
                          snapshot->period_ms :
                          RobotProfileGimbalControlPeriodMs();
-    input.forceSafe = (force_safe != 0u) ? 1u : 0u;
-
-    if (ShootCtrlStep(&input, &output) != ControlResultOk)
-    {
-        return 0;
-    }
-
-    return output.triggerCurrent;
+    input.forceSafe = (uint8_t)(snapshot == NULL ||
+                                snapshot->manual_online == 0u ||
+                                snapshot->recovery_input_safe != 0u ||
+                                RobotLifecycleOutputAllowed() == 0u);
+    (void)ShootCtrlStep(&input, &output);
 }
 
-static void GimbalStopOutputs(const MotorCurrentBind *bindings,
-                              uint8_t count,
-                              const GimbalRuntimeSnapshot *snapshot)
+static void GimbalStopOutputs(const GimbalRuntimeSnapshot *snapshot)
 {
-    int16_t zero_current[DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT] = {0};
-
     GimbalTotalPidClear(&g_gimbal);
     g_gimbal.GimbalYawMotor.current_set = 0;
     g_gimbal.GimbalYawMotor.given_current = 0;
     g_gimbal.GimbalPitchMotor.current_set = 0;
     g_gimbal.GimbalPitchMotor.given_current = 0;
-    ShootCanSetCurrent = 0;
     yaw_can_set_current = 0;
     pitch_can_set_current = 0;
     GimbalWatchYawCurrent = 0;
     GimbalWatchYawUpperCurrent = 0;
     GimbalWatchPitchCurrent = 0;
 
-    if (count > DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT)
-    {
-        count = DUAL_YAW_GIMBAL_OUTPUT_MOTOR_COUNT;
-    }
-    (void)MotorInstSetCurrentBindsBestEffort(bindings, zero_current, count);
     GimbalWriteState(snapshot);
 }
 

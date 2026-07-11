@@ -982,6 +982,136 @@ static int TestPermitRejectsDuplicateAndIsr(void)
     return 1;
 }
 
+static int TestPermitRecoversSafetyInhibitAtomically(void)
+{
+    const MotorId ids[2] = {Motor5, Motor6};
+    const uint32_t mask = ((uint32_t)1u << (uint32_t)Motor5) |
+                          ((uint32_t)1u << (uint32_t)Motor6);
+    ControlOutputPermit permit = TestOutputPermit(mask);
+    MotorCmd cmds[2];
+    MotorCmd fault_cmd = TestCurrentCmd(999);
+    ControlOutputStamp owners[2];
+    LowCmdDiag diag_before;
+    LowCmdDiag diag_after;
+    uint16_t writer5;
+    uint16_t writer6;
+    uint32_t seq_before;
+    uint32_t validate_before;
+
+    LowCmdClearAll();
+    TestOutputAuthoritySet(&permit, 1u);
+    s_test_tick_ms = 260u;
+    if (!TestCheck(LowCmdInhibitManyFrom(ids, 2u, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetDiag(&diag_before) != 0u,
+                   "准备许可恢复 SAFETY 禁写失败"))
+    {
+        return 0;
+    }
+    seq_before = LowCmdSeq();
+    if (!TestCheck(LowCmdRecoverSafetyInhibitManyWithPermit(ids, 2u, &permit) != 0u &&
+                       LowCmdSeq() == seq_before + 1u &&
+                       LowCmdGetInhibitWriter(ids[0], &writer5) != 0u &&
+                       LowCmdGetInhibitWriter(ids[1], &writer6) != 0u &&
+                       writer5 == (uint16_t)LOWCMD_WRITER_NONE &&
+                       writer6 == (uint16_t)LOWCMD_WRITER_NONE &&
+                       LowCmdGetMotorManyStamped(ids, cmds, owners, 2u) != 0u &&
+                       cmds[0].active == 0u && cmds[1].active == 0u &&
+                       cmds[0].seq == cmds[1].seq &&
+                       ControlOutputStampEqual(&owners[0], &permit.stamp) != 0u &&
+                       ControlOutputStampEqual(&owners[1], &permit.stamp) != 0u,
+                   "恢复必须同锁清安全命令、释放禁写并保存当前许可"))
+    {
+        return 0;
+    }
+    if (!TestCheck(LowCmdGetDiag(&diag_after) != 0u &&
+                       diag_after.inhibit_release_count ==
+                           diag_before.inhibit_release_count + 1u &&
+                       (diag_after.inhibit_mask & mask) == 0u,
+                   "许可恢复后的禁写诊断错误"))
+    {
+        return 0;
+    }
+
+    seq_before = LowCmdSeq();
+    if (!TestCheck(LowCmdRecoverSafetyInhibitManyWithPermit(ids, 2u, &permit) != 0u &&
+                       LowCmdSeq() == seq_before,
+                   "已恢复轴再次恢复应校验许可但不产生新命令"))
+    {
+        return 0;
+    }
+
+    if (!TestCheck(LowCmdInhibitManyFrom(ids, 2u, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u,
+                   "准备撤销许可恢复测试失败"))
+    {
+        return 0;
+    }
+    seq_before = LowCmdSeq();
+    TestOutputAuthoritySet(&permit, 0u);
+    if (!TestCheck(LowCmdRecoverSafetyInhibitManyWithPermit(ids, 2u, &permit) == 0u &&
+                       LowCmdSeq() == seq_before &&
+                       LowCmdGetInhibitWriter(ids[0], &writer5) != 0u &&
+                       LowCmdGetInhibitWriter(ids[1], &writer6) != 0u &&
+                       writer5 == (uint16_t)LOWCMD_WRITER_SAFETY &&
+                       writer6 == (uint16_t)LOWCMD_WRITER_SAFETY,
+                   "失效许可不得释放任何 SAFETY 禁写"))
+    {
+        return 0;
+    }
+
+    TestOutputAuthoritySet(&permit, 1u);
+    if (!TestCheck(LowCmdSetMotorFrom(ids[1],
+                                      &fault_cmd,
+                                      (uint16_t)LOWCMD_WRITER_FAULT) != 0u,
+                   "准备高优先级局部命令恢复测试失败"))
+    {
+        return 0;
+    }
+    seq_before = LowCmdSeq();
+    if (!TestCheck(LowCmdRecoverSafetyInhibitManyWithPermit(ids, 2u, &permit) == 0u &&
+                       LowCmdSeq() == seq_before &&
+                       LowCmdGetMotor(ids[1], &cmds[1]) != 0u &&
+                       cmds[1].active != 0u &&
+                       cmds[1].writer == (uint16_t)LOWCMD_WRITER_FAULT &&
+                       cmds[1].current == 999 &&
+                       LowCmdGetInhibitWriter(ids[0], &writer5) != 0u &&
+                       LowCmdGetInhibitWriter(ids[1], &writer6) != 0u &&
+                       writer5 == (uint16_t)LOWCMD_WRITER_SAFETY &&
+                       writer6 == (uint16_t)LOWCMD_WRITER_SAFETY,
+                   "许可恢复不得覆盖更高 writer 的局部活动命令"))
+    {
+        return 0;
+    }
+    if (!TestCheck(LowCmdInhibitManyFrom(&ids[1], 1u, (uint16_t)LOWCMD_WRITER_FAULT) != 0u,
+                   "准备更高优先级禁写恢复测试失败"))
+    {
+        return 0;
+    }
+    seq_before = LowCmdSeq();
+    if (!TestCheck(LowCmdRecoverSafetyInhibitManyWithPermit(ids, 2u, &permit) == 0u &&
+                       LowCmdSeq() == seq_before &&
+                       LowCmdGetInhibitWriter(ids[0], &writer5) != 0u &&
+                       LowCmdGetInhibitWriter(ids[1], &writer6) != 0u &&
+                       writer5 == (uint16_t)LOWCMD_WRITER_SAFETY &&
+                       writer6 == (uint16_t)LOWCMD_WRITER_FAULT,
+                   "批内存在非 SAFETY owner 时必须整批保持不变"))
+    {
+        return 0;
+    }
+
+    validate_before = s_test_permit_validate_count;
+    s_test_ipsr = 1u;
+    if (!TestCheck(LowCmdRecoverSafetyInhibitWithPermit(ids[0], &permit) == 0u &&
+                       s_test_permit_validate_count == validate_before,
+                   "中断上下文不得进入许可恢复临界区"))
+    {
+        s_test_ipsr = 0u;
+        return 0;
+    }
+    s_test_ipsr = 0u;
+    LowCmdClearAll();
+    return 1;
+}
+
 static int TestLegacyAndSafetyWritesClearOwner(void)
 {
     const uint32_t mask = ((uint32_t)1u << (uint32_t)Motor0) |
@@ -1095,6 +1225,7 @@ int main(void)
     if (!TestPermitWriteAndStampedSnapshot()) return 1;
     if (!TestRevokedPermitRejectIsAtomic()) return 1;
     if (!TestPermitRejectsDuplicateAndIsr()) return 1;
+    if (!TestPermitRecoversSafetyInhibitAtomically()) return 1;
     if (!TestLegacyAndSafetyWritesClearOwner()) return 1;
     if (!TestLowStateCopiesLastEcd()) return 1;
     if (!TestCheck(s_test_critical_depth == 0 &&

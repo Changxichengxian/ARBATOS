@@ -251,6 +251,15 @@ uint8_t LowCmdInhibitManyFrom(const MotorId *ids, uint8_t count, uint16_t writer
  * 任一电机由更高 writer 禁写时整批不变，释放不改当前命令及命令序号。
  */
 uint8_t LowCmdReleaseInhibitManyFrom(const MotorId *ids, uint8_t count, uint16_t writer);
+/*
+ * 当前控制域凭当帧许可恢复 SAFETY 局部禁写：同一临界区内复核许可、
+ * 清掉安全替代命令并释放禁写。NONE 视为已经恢复；其他 owner 整批拒绝。
+ */
+uint8_t LowCmdRecoverSafetyInhibitWithPermit(MotorId id,
+                                              const ControlOutputPermit *permit);
+uint8_t LowCmdRecoverSafetyInhibitManyWithPermit(const MotorId *ids,
+                                                  uint8_t count,
+                                                  const ControlOutputPermit *permit);
 uint8_t LowCmdGetInhibitWriter(MotorId id, uint16_t *out);
 uint8_t LowCmdSetMotor(MotorId id, const MotorCmd *cmd);
 uint8_t LowCmdSetMotorMany(const MotorId *ids, const MotorCmd *cmds, uint8_t count);

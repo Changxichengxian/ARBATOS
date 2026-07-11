@@ -80,9 +80,8 @@ static ControlResult ShootCtrlUpdate(const ControlController *controller,
     const ShootCtrlInput *input;
     ShootCtrlOutput *output;
 
-    (void)controller;
     ShootCtrlClearOutput(context);
-    if (s_shootPrepared == 0u || context == NULL ||
+    if (s_shootPrepared == 0u || controller == NULL || context == NULL ||
         context->input == NULL || context->output == NULL)
     {
         return ControlResultBadArgument;
@@ -92,9 +91,16 @@ static ControlResult ShootCtrlUpdate(const ControlController *controller,
     output = (ShootCtrlOutput *)context->output;
 
 #if ROBOT_TASK_BUILD_SHOOT_RM
+    if (ControlMgrOutputPermitValid(&context->outputPermit,
+                                    controller->actuator_mask) == 0u)
+    {
+        ShootCtrlRuntimeStop();
+        return ControlResultNotActive;
+    }
+
     if (input->forceSafe != 0u)
     {
-        ShootRuntimeSafeStep(input->manualInput);
+        ShootRuntimeSafeStep(input->manualInput, &context->outputPermit);
         s_shootRuntimeSafe = 1u;
         return ControlResultOk;
     }
@@ -104,7 +110,8 @@ static ControlResult ShootCtrlUpdate(const ControlController *controller,
         return ControlResultNotActive;
     }
 
-    output->triggerCurrent = ShootRuntimeStep(input->manualInput);
+    output->triggerCurrent = ShootRuntimeStep(input->manualInput,
+                                              &context->outputPermit);
     s_shootRuntimeSafe = 0u;
     return ControlResultOk;
 #else

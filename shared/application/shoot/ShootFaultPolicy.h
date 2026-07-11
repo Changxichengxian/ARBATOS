@@ -24,19 +24,22 @@ static inline uint8_t ShootGimbalStateBlocksFire(uint8_t fresh,
 }
 
 static inline ShootFaultInhibitPlan ShootFaultInhibitPlanMake(uint8_t configuredMask,
-                                                              uint8_t triggerMask,
-                                                              uint8_t triggerBlocked,
-                                                              uint8_t domainBlocked,
+                                                              uint8_t blockedMask,
                                                               uint8_t heldMask)
 {
     ShootFaultInhibitPlan plan;
 
-    plan.desiredMask = (domainBlocked != 0u) ? configuredMask :
-        ((triggerBlocked != 0u) ? (uint8_t)(configuredMask & triggerMask) : 0u);
+    plan.desiredMask = (uint8_t)(configuredMask & blockedMask);
     plan.acquireMask = plan.desiredMask;
     plan.releaseMask = (uint8_t)(heldMask & (uint8_t)~plan.desiredMask);
     plan.holdZeroMask = (uint8_t)(plan.desiredMask | plan.releaseMask);
     return plan;
+}
+
+static inline uint8_t ShootFrictionFaultBlocksTrigger(uint8_t blockingMask,
+                                                       uint8_t frictionMask)
+{
+    return ((blockingMask & frictionMask) != 0u) ? 1u : 0u;
 }
 
 #endif

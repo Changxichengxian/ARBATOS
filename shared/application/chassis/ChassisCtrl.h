@@ -30,6 +30,7 @@ typedef struct
 typedef struct
 {
     int16_t motorCurrent[4];
+    ControlOutputPermit outputPermit;
 } ChassisCtrlOutput;
 
 const ControlController *ChassisCtrlDesc(void);

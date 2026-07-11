@@ -26,7 +26,7 @@
 #define ARM_TASK_PERIOD_MS 5u
 
 static void ArmWriteStatus(uint16_t key_mask);
-static uint8_t ArmControlMgrAllows(void);
+static uint8_t ArmControlMgrAllows(ControlOutputPermit *outputPermit);
 
 static uint32_t s_arm_status_seq = 0u;
 
@@ -99,19 +99,24 @@ static void ArmWriteStatus(uint16_t key_mask)
     (void)ArmStatusWrite(&status);
 }
 
-static uint8_t ArmControlMgrAllows(void)
+static uint8_t ArmControlMgrAllows(ControlOutputPermit *outputPermit)
 {
     ControlCtx context = {0};
+
+    ControlOutputPermitClear(outputPermit);
 
     context.tick_ms = BspTimeGetTickMs();
     context.dt_s = (float)ARM_TASK_PERIOD_MS * 0.001f;
 
-    if (ControlMgrUpdateDomain(ControlDomainArm, &context) != ControlResultOk)
+    if (ControlMgrUpdateDomain(ControlDomainArm, &context) != ControlResultOk ||
+        ControlMgrActiveId(ControlDomainArm) != ControlIdArmMotion ||
+        ControlMgrOutputPermitValid(&context.outputPermit, 0u) == 0u)
     {
         return 0u;
     }
 
-    return (ControlMgrActiveId(ControlDomainArm) == ControlIdArmMotion) ? 1u : 0u;
+    *outputPermit = context.outputPermit;
+    return 1u;
 }
 
 void ArmTask(void const *argument)
@@ -130,9 +135,10 @@ void ArmTask(void const *argument)
     for (;;)
     {
         ManualInputSnapshot manualInput;
+        ControlOutputPermit outputPermit;
         const uint8_t inputValid = ManualInputSnapshotRead(&manualInput);
         const uint8_t outputLocked = RobotSafetyOutputLocked();
-        const uint8_t managerAllowed = ArmControlMgrAllows();
+        const uint8_t managerAllowed = ArmControlMgrAllows(&outputPermit);
         const uint8_t controlAllowed =
             (uint8_t)(inputValid != 0u &&
                       manualInput.online != 0u &&
@@ -150,7 +156,7 @@ void ArmTask(void const *argument)
                               observedKeys);
 
         WatchTaskBeat(WATCH_TASK_ARM);
-        ArmMotionStepManual(keyMask);
+        ArmMotionStepManual(keyMask, &outputPermit);
         ArmWriteStatus(keyMask);
         osDelay(ARM_TASK_PERIOD_MS);
     }

@@ -253,10 +253,17 @@ static uint32_t WheelLegTickMs(void)
     return (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
 }
 
-static uint8_t WheellegControlMgrAllows(uint32_t tick_ms, fp32 dt)
+static uint8_t WheellegControlMgrAllows(uint32_t tick_ms,
+                                        fp32 dt,
+                                        ControlOutputPermit *permit_out)
 {
     ControlCtx context = {0};
 
+    if (permit_out == NULL)
+    {
+        return 0u;
+    }
+    ControlOutputPermitClear(permit_out);
     context.tick_ms = tick_ms;
     context.dt_s = dt;
 
@@ -265,7 +272,13 @@ static uint8_t WheellegControlMgrAllows(uint32_t tick_ms, fp32 dt)
         return 0u;
     }
 
-    return (ControlMgrActiveId(ControlDomainWheelleg) == ControlIdWheellegMitBalance) ? 1u : 0u;
+    if (ControlMgrActiveId(ControlDomainWheelleg) != ControlIdWheellegMitBalance)
+    {
+        return 0u;
+    }
+
+    *permit_out = context.outputPermit;
+    return (uint8_t)(context.outputPermit.stamp.valid != 0u);
 }
 
 static void WheelLegPidApply(WheelLegPid *pid, const PidParam *cfg)

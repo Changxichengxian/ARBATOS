@@ -123,6 +123,10 @@ uint8_t MotorInstModeSupportedId(MotorId id, MotorMode mode);
 
 uint8_t MotorInstClearId(MotorId id);
 uint8_t MotorInstClearIds(const MotorId *ids, uint8_t count);
+uint8_t MotorInstClearIdWithPermit(MotorId id, const ControlOutputPermit *permit);
+uint8_t MotorInstClearIdsWithPermit(const MotorId *ids,
+                                    uint8_t count,
+                                    const ControlOutputPermit *permit);
 /* 默认由 SAFETY 获取/释放；From 版本供更高优先级故障路径显式指定 writer。 */
 uint8_t MotorInstInhibitIds(const MotorId *ids, uint8_t count);
 uint8_t MotorInstInhibitIdsFrom(const MotorId *ids, uint8_t count, uint16_t writer);
@@ -130,15 +134,54 @@ uint8_t MotorInstReleaseInhibitIds(const MotorId *ids, uint8_t count);
 uint8_t MotorInstReleaseInhibitIdsFrom(const MotorId *ids, uint8_t count, uint16_t writer);
 uint8_t MotorInstSetIds(const MotorId *ids, const MotorCmd *cmds, uint8_t count);
 uint8_t MotorInstSetIdsBestEffort(const MotorId *ids, const MotorCmd *cmds, uint8_t count);
+uint8_t MotorInstSetIdWithPermit(MotorId id,
+                                 const MotorCmd *cmd,
+                                 const ControlOutputPermit *permit);
+uint8_t MotorInstSetIdsWithPermit(const MotorId *ids,
+                                  const MotorCmd *cmds,
+                                  uint8_t count,
+                                  const ControlOutputPermit *permit);
+/*
+ * 许可版 BestEffort 只过滤发布前已知不可用或被高优先级禁写的轴。
+ * 过滤后只做一次原子批量发布；许可撤销或并发禁写导致失败时整批返回 0，不逐轴降级。
+ */
+uint8_t MotorInstSetIdsBestEffortWithPermit(const MotorId *ids,
+                                            const MotorCmd *cmds,
+                                            uint8_t count,
+                                            const ControlOutputPermit *permit);
 uint8_t MotorInstSetCurrentId(MotorId id, int16_t current);
+uint8_t MotorInstSetCurrentIdWithPermit(MotorId id,
+                                        int16_t current,
+                                        const ControlOutputPermit *permit);
 uint8_t MotorInstSetStateTorqueId(MotorId id, const MotorCmd *cmd);
 uint8_t MotorInstSetStateTorqueIds(const MotorId *ids, const MotorCmd *cmds, uint8_t count);
 uint8_t MotorInstSetStateTorqueIdsBestEffort(const MotorId *ids,
                                                             const MotorCmd *cmds,
                                                             uint8_t count);
+uint8_t MotorInstSetStateTorqueIdWithPermit(MotorId id,
+                                            const MotorCmd *cmd,
+                                            const ControlOutputPermit *permit);
+uint8_t MotorInstSetStateTorqueIdsWithPermit(const MotorId *ids,
+                                             const MotorCmd *cmds,
+                                             uint8_t count,
+                                             const ControlOutputPermit *permit);
+uint8_t MotorInstSetStateTorqueIdsBestEffortWithPermit(const MotorId *ids,
+                                                       const MotorCmd *cmds,
+                                                       uint8_t count,
+                                                       const ControlOutputPermit *permit);
 uint8_t MotorInstSetDisableId(MotorId id);
 uint8_t MotorInstSetDampingId(MotorId id, fp32 kd, fp32 tau);
 uint8_t MotorInstSetSpeedId(MotorId id, fp32 velocity, fp32 kd, fp32 torque);
+uint8_t MotorInstSetDisableIdWithPermit(MotorId id, const ControlOutputPermit *permit);
+uint8_t MotorInstSetDampingIdWithPermit(MotorId id,
+                                        fp32 kd,
+                                        fp32 tau,
+                                        const ControlOutputPermit *permit);
+uint8_t MotorInstSetSpeedIdWithPermit(MotorId id,
+                                      fp32 velocity,
+                                      fp32 kd,
+                                      fp32 torque,
+                                      const ControlOutputPermit *permit);
 uint8_t MotorInstClear(const char *name);
 uint8_t MotorInstSetDisable(const char *name);
 uint8_t MotorInstSetDamping(const char *name, fp32 kd, fp32 tau);
@@ -148,12 +191,24 @@ uint8_t MotorInstSetSpeed(const char *name, fp32 velocity, fp32 kd, fp32 torque)
 uint8_t MotorInstGetCmd(const char *name, MotorCmd *out);
 uint8_t MotorInstGetFeedback(const char *name, MotorState *out);
 uint8_t MotorInstSetCurrentIds(const MotorId *ids, const int16_t *currents, uint8_t count);
+uint8_t MotorInstSetCurrentIdsWithPermit(const MotorId *ids,
+                                         const int16_t *currents,
+                                         uint8_t count,
+                                         const ControlOutputPermit *permit);
 uint8_t MotorInstSetCurrentMany(const char *const *names, const int16_t *currents, uint8_t count);
 uint8_t MotorInstSetCurrentIdsBestEffort(const MotorId *ids, const int16_t *currents, uint8_t count);
+uint8_t MotorInstSetCurrentIdsBestEffortWithPermit(const MotorId *ids,
+                                                   const int16_t *currents,
+                                                   uint8_t count,
+                                                   const ControlOutputPermit *permit);
 uint8_t MotorInstSetCurrentManyBestEffort(const char *const *names, const int16_t *currents, uint8_t count);
 uint8_t MotorInstSetCurrentBindsBestEffort(const MotorCurrentBind *bindings,
                                                             const int16_t *currents,
                                                             uint8_t count);
+uint8_t MotorInstSetCurrentBindsBestEffortWithPermit(const MotorCurrentBind *bindings,
+                                                     const int16_t *currents,
+                                                     uint8_t count,
+                                                     const ControlOutputPermit *permit);
 uint8_t MotorInstGetFeedbackIds(const MotorId *ids, MotorState *out, uint8_t count);
 uint8_t MotorInstGetFeedbackMany(const char *const *names, MotorState *out, uint8_t count);
 uint8_t MotorInstResolveControllerOutputs(const struct control_controller *controller,

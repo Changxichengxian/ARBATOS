@@ -11,6 +11,8 @@
 
 #include <stdint.h>
 
+#include "ControlOutputPermit.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -25,10 +27,12 @@ void ChassisRuntimeInit(void);
 void ChassisRuntimeStep(const struct ManualInputSnapshot *manualInput,
                         uint32_t tickMs,
                         uint16_t periodMs,
+                        const ControlOutputPermit *outputPermit,
                         int16_t motorCurrent[4]);
 void ChassisRuntimeSafeStep(const struct ManualInputSnapshot *manualInput,
                             uint32_t tickMs,
-                            uint16_t periodMs);
+                            uint16_t periodMs,
+                            const ControlOutputPermit *outputPermit);
 void ChassisRuntimeStop(void);
 
 #ifdef __cplusplus

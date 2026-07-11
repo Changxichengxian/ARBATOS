@@ -261,7 +261,8 @@ static void GimbalFaultResetControl(GimbalControl *control,
 }
 
 static void GimbalFaultSyncInhibit(GimbalControl *control,
-                                   const GimbalRuntimeSnapshot *snapshot)
+                                   const GimbalRuntimeSnapshot *snapshot,
+                                   const ControlOutputPermit *permit)
 {
     const MotorAxisFaultInhibitPlan plan =
         MotorAxisFaultInhibitPlanMake(s_gimbalFault.configuredMask,
@@ -318,8 +319,7 @@ static void GimbalFaultSyncInhibit(GimbalControl *control,
     }
 
     GimbalFaultResetControl(control, snapshot, actualMask);
-    if (LowCmdClearManyFrom(ids, count, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
-        LowCmdReleaseInhibitManyFrom(ids, count, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u)
+    if (LowCmdRecoverSafetyInhibitManyWithPermit(ids, count, permit) != 0u)
     {
         s_gimbalFault.inhibitMask &= ~actualMask;
         return;
@@ -334,8 +334,7 @@ static void GimbalFaultSyncInhibit(GimbalControl *control,
             const MotorId id = GimbalFaultAxisId(axis);
 
             if ((actualMask & bit) != 0u &&
-                LowCmdClearManyFrom(&id, 1u, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
-                LowCmdReleaseInhibitManyFrom(&id, 1u, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u)
+                LowCmdRecoverSafetyInhibitWithPermit(id, permit) != 0u)
             {
                 releasedMask |= bit;
             }

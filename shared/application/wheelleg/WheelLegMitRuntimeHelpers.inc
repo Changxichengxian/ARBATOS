@@ -63,11 +63,9 @@ static MotorId WheelLegCoreActuatorToId(WheelLegCoreActuator actuator)
     }
 }
 
-static uint8_t WheelLegSendCoreOutput(const WheelLegCoreOutput *out)
+static uint8_t WheelLegPlanCoreOutput(const WheelLegCoreOutput *out)
 {
-    MotorId ids[WHEELLEG_CORE_ACTUATOR_COUNT];
-    MotorCmd cmds[WHEELLEG_CORE_ACTUATOR_COUNT];
-    uint8_t written = 0u;
+    uint8_t planned = 0u;
     uint8_t i;
 
     if (out == NULL)
@@ -90,39 +88,38 @@ static uint8_t WheelLegSendCoreOutput(const WheelLegCoreOutput *out)
             return 0u;
         }
 
-        ids[written] = id;
-        cmds[written] = out->actuator[i];
-        written++;
+        {
+            WheelLegOutputAxis axis;
+
+            if (WheelLegOutputAxisResolve(id, &axis) == 0u ||
+                WheelLegOutputPlanSet(&s_wheelleg.output_plan,
+                                      axis,
+                                      &out->actuator[i]) == 0u)
+            {
+                return 0u;
+            }
+        }
+        planned++;
     }
 
-    if (written == 0u)
-    {
-        return 0u;
-    }
-
-    if (MotorInstSetStateTorqueIds(ids, cmds, written) == 0u)
-    {
-        return 0u;
-    }
-    s_wheelleg.domain_outputs_active = 1u;
-    return 1u;
+    return planned;
 }
 
-static void WheelLegSendWheelTorques(const fp32 wheel_torque[WHEELLEG_SIDE_COUNT])
+static uint8_t WheelLegPlanWheelTorques(const fp32 wheel_torque[WHEELLEG_SIDE_COUNT])
 {
     WheelLegCoreOutput out;
 
     if (wheel_torque == NULL)
     {
-        return;
+        return 0u;
     }
 
     WheelLegCoreOutputClear(&out);
     WheelLegCoreSetWheelTorques(&out, wheel_torque);
-    (void)WheelLegSendCoreOutput(&out);
+    return WheelLegPlanCoreOutput(&out);
 }
 
-static void WheelLegSendVmcJointTorques(void)
+static uint8_t WheelLegPlanVmcJointTorques(void)
 {
     const WheelLegMitConfig *cfg = &g_config.WheelLegMit;
     WheelLegCoreOutput out;
@@ -134,7 +131,7 @@ static void WheelLegSendVmcJointTorques(void)
                                         cfg->right_back_dir,
                                         cfg->left_front_dir,
                                         cfg->left_back_dir);
-    (void)WheelLegSendCoreOutput(&out);
+    return WheelLegPlanCoreOutput(&out);
 }
 
 static void WheelLegClearJointTestCmds(void)
@@ -177,7 +174,7 @@ static uint8_t WheelLegBenchHoldApplyJoints(void)
 
         if (s_wheelleg.bench_hold_front_valid[side] != 0u)
         {
-            sent += WheelLegSendStateCmd(map->front,
+            sent += WheelLegPlanStateCmd(map->front,
                                             s_wheelleg.bench_hold_front_rad[side],
                                             0.0f,
                                             kp,
@@ -186,7 +183,7 @@ static uint8_t WheelLegBenchHoldApplyJoints(void)
         }
         if (s_wheelleg.bench_hold_back_valid[side] != 0u)
         {
-            sent += WheelLegSendStateCmd(map->back,
+            sent += WheelLegPlanStateCmd(map->back,
                                             s_wheelleg.bench_hold_back_rad[side],
                                             0.0f,
                                             kp,
@@ -195,7 +192,7 @@ static uint8_t WheelLegBenchHoldApplyJoints(void)
         }
     }
 
-    return (sent > 0u) ? 1u : 0u;
+    return sent;
 }
 
 static void WheelLegBenchHoldUpdatePoseTarget(void)
@@ -242,13 +239,11 @@ static uint8_t WheelLegSingleTestApply(int16_t speed_axis)
     fp32 torque_limit;
     fp32 torque;
 
-    WheelLegClearJointTestCmds();
-
     torque_limit = WheelLegAbs(cfg->single_test_torque_limit_nm);
     torque = (torque_limit > 0.0f)
                  ? WheelLegClamp(cfg->single_test_torque_nm, -torque_limit, torque_limit)
                  : 0.0f;
-    return WheelLegSendStateCmd(id,
+    return WheelLegPlanStateCmd(id,
                                    cfg->single_test_position_rad,
                                    velocity,
                                    cfg->single_test_kp,
@@ -538,7 +533,7 @@ static uint8_t WheelLegFootTestApplyWheel(const WheelLegActuatorMap *map,
     wheel_target = s_wheelleg.foot_test_wheel_zero_rad[side] +
                    s_wheelleg.foot_test_wheel_comp_rad[side];
     s_wheelleg.foot_test_wheel_target_rad[side] = wheel_target;
-    return WheelLegSendStateCmd(map->wheel, wheel_target, 0.0f, kp, kd, 0.0f);
+    return WheelLegPlanStateCmd(map->wheel, wheel_target, 0.0f, kp, kd, 0.0f);
 }
 
 static uint8_t WheelLegFootTestApplyLeg(const WheelLegActuatorMap *map,
@@ -590,7 +585,7 @@ static uint8_t WheelLegFootTestApplyLeg(const WheelLegActuatorMap *map,
         s_wheelleg.foot_test_target[side] = target;
     }
     s_wheelleg.foot_test_phase = phase;
-    if (WheelLegSendStateCmd(map->front,
+    if (WheelLegPlanStateCmd(map->front,
                                 WheelLegKinematicToRaw(front_target,
                                                           front_raw_zero,
                                                           front_dir,
@@ -599,7 +594,7 @@ static uint8_t WheelLegFootTestApplyLeg(const WheelLegActuatorMap *map,
                                 kp,
                                 kd,
                                 torque) == 0u ||
-        WheelLegSendStateCmd(map->back,
+        WheelLegPlanStateCmd(map->back,
                                 WheelLegKinematicToRaw(back_target,
                                                           back_raw_zero,
                                                           back_dir,
@@ -631,8 +626,6 @@ static uint8_t WheelLegFootTestApply(uint32_t now_ms, fp32 pitch)
         s_wheelleg.foot_test_active = 1u;
         WheelLegFootTestResetWheelZero();
     }
-
-    WheelLegClearJointTestCmds();
 
     torque_limit = WheelLegAbs(cfg->foot_test_torque_limit_nm);
     torque = (torque_limit > 0.0f)

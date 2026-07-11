@@ -84,12 +84,12 @@ static void ArmSyncJ0UnitreeState(void);
 static void ArmReadJ0Unitree(const ArmMotorEntry *entry);
 static void ArmBuildCoreConfig(ArmCoreConfig *out);
 static void ArmBuildCoreJointParams(ArmCoreJointParam *out, uint8_t out_count);
-static void ArmApplyJ0CoreOutput(const ArmCoreOutput *core_output);
-static void ArmStepJ0(const ArmCoreOutput *core_output, uint8_t isolated);
-static void ArmStepMit(const ArmCoreOutput *core_output, uint32_t isolatedMask);
+static void ArmPublishCoreOutput(const ArmCoreOutput *coreOutput,
+                                 const ControlOutputPermit *outputPermit);
 static void ArmFaultInit(void);
 static void ArmFaultUpdate(uint16_t keyMask);
-static void ArmFaultSyncInhibit(const ArmCoreOutput *coreOutput);
+static void ArmFaultSyncInhibit(const ArmCoreOutput *coreOutput,
+                                const ControlOutputPermit *outputPermit);
 static uint8_t ArmFaultIsolated(uint8_t index);
 
 static void ArmBuildCoreConfig(ArmCoreConfig *out)
@@ -475,7 +475,8 @@ static void ArmFaultWriteJ0Safety(void)
     }
 }
 
-static void ArmFaultSyncInhibit(const ArmCoreOutput *coreOutput)
+static void ArmFaultSyncInhibit(const ArmCoreOutput *coreOutput,
+                                const ControlOutputPermit *outputPermit)
 {
     const uint32_t mitEligibleMask = ArmMitEligibleMask();
     const uint8_t manualStopMit =
@@ -537,8 +538,7 @@ static void ArmFaultSyncInhibit(const ArmCoreOutput *coreOutput)
         return;
     }
 
-    if (LowCmdClearManyFrom(ids, count, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
-        LowCmdReleaseInhibitManyFrom(ids, count, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u)
+    if (LowCmdRecoverSafetyInhibitManyWithPermit(ids, count, outputPermit) != 0u)
     {
         s_armFault.inhibitMask &= ~actualMask;
         return;
@@ -554,8 +554,7 @@ static void ArmFaultSyncInhibit(const ArmCoreOutput *coreOutput)
             const MotorId id = ArmActuatorId(i);
 
             if ((actualMask & bit) != 0u &&
-                LowCmdClearManyFrom(&id, 1u, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
-                LowCmdReleaseInhibitManyFrom(&id, 1u, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u)
+                LowCmdRecoverSafetyInhibitWithPermit(id, outputPermit) != 0u)
             {
                 releasedMask |= bit;
             }
@@ -702,44 +701,6 @@ static void ArmSyncJ0UnitreeState(void)
     g_arm_j0_unitree_state.joint_position_rad = state.joint_position_rad;
 }
 
-static void ArmApplyJ0CoreOutput(const ArmCoreOutput *core_output)
-{
-    const ArmMotorEntry *entry = ArmJ0Entry();
-    const MotorCmd *cmd = NULL;
-
-    if (core_output != NULL && core_output->joint_count > ARM_J0_INDEX)
-    {
-        cmd = &core_output->cmd[ARM_J0_INDEX];
-    }
-
-    if (cmd == NULL || cmd->active == 0u)
-    {
-        (void)MotorInstSetSpeedId(ArmJ0ActuatorId(), 0.0f, 0.0f, 0.0f);
-        return;
-    }
-
-    if (ArmJ0UnitreeEnabled(entry) != 0u)
-    {
-        if (cmd->mode == (uint8_t)MotorModeSpeed)
-        {
-            (void)MotorInstSetSpeedId(ArmJ0ActuatorId(), cmd->dq, cmd->kd, cmd->tau);
-        }
-        else
-        {
-            (void)MotorInstSetSpeedId(ArmJ0ActuatorId(), 0.0f, 0.0f, 0.0f);
-        }
-    }
-    else if (cmd->mode == (uint8_t)MotorModeCurrent)
-    {
-        const int16_t current = MotorCfgLimitCurrentNode(ArmEntryNode(entry), cmd->current);
-        (void)MotorInstSetCurrentId(ArmJ0ActuatorId(), current);
-    }
-    else
-    {
-        (void)MotorInstSetCurrentId(ArmJ0ActuatorId(), 0);
-    }
-}
-
 static void ArmReadJ0Unitree(const ArmMotorEntry *entry)
 {
     if (ArmJ0UnitreeEnabled(entry) == 0u)
@@ -797,74 +758,83 @@ static void ArmRefreshJ0Feedback(void)
     }
 }
 
-static void ArmStepJ0(const ArmCoreOutput *core_output, uint8_t isolated)
+static void ArmPublishCoreOutput(const ArmCoreOutput *coreOutput,
+                                 const ControlOutputPermit *outputPermit)
 {
-    const ArmMotorEntry *entry = ArmJ0Entry();
+    MotorId ids[ARM_MOTOR_COUNT];
+    MotorCmd cmds[ARM_MOTOR_COUNT];
+    uint8_t count = 0u;
 
-    if (MotorCfgNodeId(ArmEntryNode(entry)) == 0u)
-    {
-        (void)MotorInstClearId(ArmJ0ActuatorId());
-        return;
-    }
-
-    if (isolated != 0u)
-    {
-        if (ArmJ0UnitreeEnabled(entry) != 0u)
-        {
-            const fp32 damping = (g_config.ArmJ0Unitree.hold_kd > 0.0f) ?
-                g_config.ArmJ0Unitree.hold_kd : 0.5f;
-            (void)MotorInstSetDampingId(ArmJ0ActuatorId(), damping, 0.0f);
-        }
-        else
-        {
-            (void)MotorInstSetCurrentId(ArmJ0ActuatorId(), 0);
-        }
-    }
-    else
-    {
-        ArmApplyJ0CoreOutput(core_output);
-    }
-    ArmReadJ0Unitree(entry);
-}
-
-static void ArmStepMit(const ArmCoreOutput *core_output, uint32_t isolatedMask)
-{
-    uint32_t i;
-
-    /* Arm 只发布 LowCmd；MIT Disable/Enable/控制帧全部由通用 CanTx 单一发送。 */
-    for (i = 0u; i < ARM_MOTOR_COUNT; i++)
+    for (uint8_t i = 0u; i < ARM_MOTOR_COUNT; i++)
     {
         const ArmMotorEntry *entry = &g_arm_motor_table[i];
-        const MotorId actuator_id = ArmActuatorId((uint8_t)i);
+        const motor_node_param_t *node = ArmEntryNode(entry);
+        MotorCmd cmd;
 
-        if (entry->driver != ARM_MOTOR_DRIVER_CAN_MIT ||
-            MotorCfgNodeId(ArmEntryNode(entry)) == 0u ||
-            ArmMitLimits(entry) == NULL)
+        if (MotorCfgNodeId(node) == 0u || ArmFaultIsolated(i) != 0u ||
+            (i != ARM_J0_INDEX &&
+             (s_armFault.holdZeroMask & (1u << i)) != 0u))
         {
             continue;
         }
+        (void)memset(&cmd, 0, sizeof(cmd));
 
-        if ((isolatedMask & (1u << i)) != 0u)
+        if (i == ARM_J0_INDEX)
         {
-            ArmClearMitLowCmd((uint8_t)i);
-            continue;
+            cmd.active = 1u;
+            if (ArmJ0UnitreeEnabled(entry) != 0u)
+            {
+                cmd.mode = (uint8_t)MotorModeSpeed;
+                if (coreOutput != NULL && i < coreOutput->joint_count &&
+                    coreOutput->cmd[i].active != 0u &&
+                    coreOutput->cmd[i].mode == (uint8_t)MotorModeSpeed)
+                {
+                    cmd.dq = coreOutput->cmd[i].dq;
+                    cmd.kd = coreOutput->cmd[i].kd;
+                    cmd.tau = coreOutput->cmd[i].tau;
+                }
+            }
+            else
+            {
+                cmd.mode = (uint8_t)MotorModeCurrent;
+                if (coreOutput != NULL && i < coreOutput->joint_count &&
+                    coreOutput->cmd[i].active != 0u &&
+                    coreOutput->cmd[i].mode == (uint8_t)MotorModeCurrent)
+                {
+                    cmd.current = MotorCfgLimitCurrentNode(node,
+                                                           coreOutput->cmd[i].current);
+                }
+            }
         }
-
-        if (core_output != NULL &&
-            i < core_output->joint_count &&
-            core_output->cmd[i].active != 0u &&
-            core_output->cmd[i].mode == (uint8_t)MotorModeSpeed)
+        else if (entry->driver == ARM_MOTOR_DRIVER_CAN_MIT &&
+                 ArmMitLimits(entry) != NULL)
         {
-            (void)MotorInstSetSpeedId(actuator_id,
-                                                  core_output->cmd[i].dq,
-                                                  core_output->cmd[i].kd,
-                                                  core_output->cmd[i].tau);
+            if (coreOutput != NULL && i < coreOutput->joint_count &&
+                coreOutput->cmd[i].active != 0u &&
+                coreOutput->cmd[i].mode == (uint8_t)MotorModeSpeed)
+            {
+                cmd = coreOutput->cmd[i];
+            }
         }
         else
         {
-            ArmClearMitLowCmd((uint8_t)i);
+            continue;
         }
+
+        ids[count] = ArmActuatorId(i);
+        cmds[count] = cmd;
+        count++;
     }
+
+    if (count != 0u)
+    {
+        /* 同一控制域当帧只发布一次，避免 J0 与 MIT 关节来自不同许可周期。 */
+        (void)MotorInstSetIdsBestEffortWithPermit(ids,
+                                                  cmds,
+                                                  count,
+                                                  outputPermit);
+    }
+    ArmReadJ0Unitree(ArmJ0Entry());
 }
 
 void ArmMotionInit(void)
@@ -873,14 +843,15 @@ void ArmMotionInit(void)
     (void)memset(g_arm_feedback, 0, sizeof(g_arm_feedback));
     (void)memset(g_arm_mit_feedback, 0, sizeof(g_arm_mit_feedback));
     (void)memset(&g_arm_j0_unitree_state, 0, sizeof(g_arm_j0_unitree_state));
-    (void)MotorInstSetCurrentId(ArmJ0ActuatorId(), 0);
+    (void)MotorInstClearId(ArmJ0ActuatorId());
     ArmClearMitLowCmds();
     ArmReadJ0Unitree(ArmJ0Entry());
     ArmRefreshJ0Feedback();
     ArmFaultInit();
 }
 
-void ArmMotionStepManual(uint16_t key_mask)
+void ArmMotionStepManual(uint16_t key_mask,
+                         const ControlOutputPermit *outputPermit)
 {
     ArmCoreConfig core_cfg;
     ArmCoreJointParam core_joint[ARM_MOTOR_COUNT];
@@ -900,10 +871,9 @@ void ArmMotionStepManual(uint16_t key_mask)
 
     ArmCoreStepManual(&core_cfg, core_joint, (uint8_t)ARM_MOTOR_COUNT, &core_input, &core_output);
 
-    ArmFaultSyncInhibit(&core_output);
-    ArmStepJ0(&core_output, ArmFaultIsolated(ARM_J0_INDEX));
+    ArmFaultSyncInhibit(&core_output, outputPermit);
+    ArmPublishCoreOutput(&core_output, outputPermit);
     ArmRefreshJ0Feedback();
-    ArmStepMit(&core_output, s_armFault.holdZeroMask);
 }
 
 const ArmMotorFeedback *ArmMotionGetFeedback(uint8_t index)

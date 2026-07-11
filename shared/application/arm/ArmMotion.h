@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "ArmTask.h"
+#include "ControlOutputPermit.h"
 
 typedef struct
 {
@@ -20,7 +21,8 @@ typedef struct
 } ArmMotionFaultStatus;
 
 void ArmMotionInit(void);
-void ArmMotionStepManual(uint16_t key_mask);
+void ArmMotionStepManual(uint16_t key_mask,
+                         const ControlOutputPermit *outputPermit);
 const ArmMotorFeedback *ArmMotionGetFeedback(uint8_t index);
 uint8_t ArmMotionGetFaultStatus(ArmMotionFaultStatus *out);
 uint8_t ArmMotionProcessCanFeedback(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8_t data[8]);

@@ -11,7 +11,7 @@
  * - 前段：拨杆/图传输入解释、娱乐模式蜂鸣器音乐、摩擦轮/拨弹输出清零。
  * - 中段：ShootRuntimeStep() 串起状态机、反馈更新、PID 电流输出。
  * - 后段：ShootSetMode() 决定射击状态，feedback_update() 维护编码器圈数和堵转信息。
- * - 输出：拨弹电流作为返回值，摩擦轮电流写入 LowCmd。
+ * - 输出：Shoot 控制域把拨弹与摩擦轮作为同一批命令发布。
  */
 
 #include "RobotConfig.h"
@@ -46,6 +46,7 @@
 #include "RobotMode.h"
 #include "Pid.h"
 #include "BspTime.h"
+#include "ControlMgr.h"
 
 // 微动开关 GPIO 是板相关差异，通过 BSP 读取。
 
@@ -93,6 +94,7 @@ static void ShootFeedbackUpdate(const ShootFrameInput *frame);
   * @retval         void
   */
 static void ShootClearFricOutput(void);
+static void ShootClearFricFaultOutputs(uint8_t faultMask);
 static void ShootClearTriggerOutput(void);
 
 /**
@@ -105,23 +107,25 @@ static bool_t ShootGimbalCmdToShootStop(void);
 static void ShootWriteState(void);
 static void ShootFaultInit(void);
 static void ShootFaultUpdate(uint8_t switch_safe);
-static void ShootFaultSyncInhibit(void);
+static void ShootFaultSyncInhibit(const ControlOutputPermit *permit);
 static uint8_t ShootFaultStopsDomain(void);
 static uint8_t ShootFaultStopsTrigger(void);
 static uint8_t ShootFaultTriggerUsable(void);
 
-static const char *const ShootFrictionMotorNames[FRIC_MOTOR_NUM] = {
+#define SHOOT_OUTPUT_MOTOR_COUNT (1u + FRIC_MOTOR_NUM)
+#define SHOOT_FAULT_DEVICE_COUNT SHOOT_OUTPUT_MOTOR_COUNT
+
+static const char *const ShootOutputMotorNames[SHOOT_OUTPUT_MOTOR_COUNT] = {
+    "motor.trigger",
     "motor.friction0",
     "motor.friction1",
     "motor.friction2",
     "motor.friction3",
 };
-static MotorCurrentBind ShootFrictionCurrentBindings[FRIC_MOTOR_NUM];
-static const int16_t ShootFricZeroCurrentCmd[FRIC_MOTOR_NUM] = {0};
+static MotorCurrentBind ShootOutputCurrentBindings[SHOOT_OUTPUT_MOTOR_COUNT];
+static uint32_t s_shootControlInhibitMask;
 
-#define SHOOT_FAULT_DEVICE_COUNT (1u + FRIC_MOTOR_NUM)
 #define SHOOT_FAULT_TRIGGER_DEVICE 0u
-#define SHOOT_FAULT_DOMAIN_ID 0u
 #define SHOOT_FAULT_RECOVERY_MS 200u
 #define SHOOT_FAULT_REASON_MOTOR (1u << 0)
 
@@ -139,7 +143,6 @@ typedef struct
     uint8_t holdZeroMask;
     uint8_t domainAction;
     uint8_t triggerAction;
-    uint8_t domainConfigured;
     uint8_t initialized;
     uint32_t inhibitFailCount;
     uint32_t releaseFailCount;
@@ -244,8 +247,6 @@ static void ShootFaultInit(void)
         "motor.friction3",
     };
     FaultMgrConfig config;
-    uint32_t memberMask = 0u;
-    uint32_t criticalMask = 0u;
 
     (void)memset(&s_shootFault, 0, sizeof(s_shootFault));
     (void)memset(&config, 0, sizeof(config));
@@ -268,33 +269,20 @@ static void ShootFaultInit(void)
         }
 
         s_shootFault.configuredMask |= (uint8_t)(1u << i);
-        memberMask |= 1u << i;
+        config.device[i].stableMs = SHOOT_FAULT_RECOVERY_MS;
+        config.device[i].requireSafeInput = 1u;
         if (i == SHOOT_FAULT_TRIGGER_DEVICE)
         {
-            config.device[i].stableMs = SHOOT_FAULT_RECOVERY_MS;
-            config.device[i].requireSafeInput = 1u;
+            continue;
         }
-        else
-        {
-            criticalMask |= 1u << i;
-            s_shootFault.fricMask |= (uint8_t)(1u << i);
-        }
-    }
-
-    if (criticalMask != 0u)
-    {
-        config.domainCount = 1u;
-        config.domain[SHOOT_FAULT_DOMAIN_ID].memberMask = memberMask;
-        config.domain[SHOOT_FAULT_DOMAIN_ID].criticalMask = criticalMask;
-        config.domain[SHOOT_FAULT_DOMAIN_ID].recovery.stableMs = SHOOT_FAULT_RECOVERY_MS;
-        config.domain[SHOOT_FAULT_DOMAIN_ID].recovery.requireSafeInput = 1u;
-        s_shootFault.domainConfigured = 1u;
+        s_shootFault.fricMask |= (uint8_t)(1u << i);
     }
 
     s_shootFault.initialized =
         (FaultMgrInit(&s_shootFault.mgr, &config) == FaultMgrResultOk) ? 1u : 0u;
     s_shootFault.domainAction = (s_shootFault.initialized != 0u) ?
-                                    (uint8_t)FaultActionRun : (uint8_t)FaultActionStopGlobal;
+                                    (uint8_t)FaultActionRun :
+                                    (uint8_t)FaultActionStopGlobal;
     s_shootFault.triggerAction = s_shootFault.domainAction;
 }
 
@@ -302,7 +290,6 @@ static void ShootFaultUpdate(uint8_t switch_safe)
 {
     const uint32_t nowMs = BspTimeGetTickMs();
     uint32_t deviceSafeMask = 0u;
-    uint32_t domainSafeMask = 0u;
 
     s_shootFault.activeMask = 0u;
     s_shootFault.blockingMask = 0u;
@@ -344,18 +331,15 @@ static void ShootFaultUpdate(uint8_t switch_safe)
 
     if (switch_safe != 0u)
     {
-        deviceSafeMask |= 1u << SHOOT_FAULT_TRIGGER_DEVICE;
-        domainSafeMask |= 1u << SHOOT_FAULT_DOMAIN_ID;
+        deviceSafeMask |= s_shootFault.configuredMask;
     }
     (void)FaultMgrUpdate(&s_shootFault.mgr,
                          nowMs,
                          deviceSafeMask,
-                         domainSafeMask,
+                         0u,
                          switch_safe);
 
-    s_shootFault.domainAction = (s_shootFault.domainConfigured != 0u) ?
-        (uint8_t)FaultMgrDomainAction(&s_shootFault.mgr, SHOOT_FAULT_DOMAIN_ID) :
-        (uint8_t)FaultActionRun;
+    s_shootFault.domainAction = (uint8_t)FaultActionRun;
     s_shootFault.triggerAction =
         ((s_shootFault.configuredMask & (1u << SHOOT_FAULT_TRIGGER_DEVICE)) != 0u) ?
             (uint8_t)FaultMgrDeviceAction(&s_shootFault.mgr, SHOOT_FAULT_TRIGGER_DEVICE) :
@@ -384,29 +368,19 @@ static void ShootFaultUpdate(uint8_t switch_safe)
         }
     }
 
-    if (s_shootFault.domainConfigured != 0u)
-    {
-        FaultDomainStatus status;
-
-        if (FaultMgrGetDomainStatus(&s_shootFault.mgr,
-                                    SHOOT_FAULT_DOMAIN_ID,
-                                    &status) == FaultMgrResultOk &&
-            status.recoveryPending != 0u)
-        {
-            s_shootFault.recoveryMask |= (uint8_t)status.memberMask;
-        }
-    }
 }
 
 static uint8_t ShootFaultStopsDomain(void)
 {
-    return (s_shootFault.domainAction != (uint8_t)FaultActionRun ||
-            (s_shootFault.holdZeroMask & s_shootFault.fricMask) != 0u) ? 1u : 0u;
+    return (s_shootFault.domainAction == (uint8_t)FaultActionStopDomain ||
+            s_shootFault.domainAction == (uint8_t)FaultActionStopGlobal) ? 1u : 0u;
 }
 
 static uint8_t ShootFaultStopsTrigger(void)
 {
     return (s_shootFault.triggerAction != (uint8_t)FaultActionRun ||
+            ShootFrictionFaultBlocksTrigger(s_shootFault.blockingMask,
+                                             s_shootFault.fricMask) != 0u ||
             (s_shootFault.holdZeroMask & (1u << SHOOT_FAULT_TRIGGER_DEVICE)) != 0u) ? 1u : 0u;
 }
 
@@ -690,12 +664,161 @@ static void ShootClearFricOutput(void)
         g_shoot.fric_current_set[i] = 0;
     }
 
-    (void)MotorInstSetCurrentBindsBestEffort(ShootFrictionCurrentBindings,
-                                                              ShootFricZeroCurrentCmd,
-                                                              FRIC_MOTOR_NUM);
-
     g_shoot.fric_speed_ramp.out = SHOOT_FRIC_SPEED_OFF_RPM;
     g_shoot.fric_speed_set = SHOOT_FRIC_SPEED_OFF_RPM;
+}
+
+static void ShootClearFricFaultOutputs(uint8_t faultMask)
+{
+    for (uint8_t i = 0u; i < FRIC_MOTOR_NUM; i++)
+    {
+        const uint8_t bit = (uint8_t)(1u << (i + 1u));
+
+        if ((faultMask & bit) == 0u)
+        {
+            continue;
+        }
+        PID_clear(&g_shoot.fric_speed_pid[i]);
+        g_shoot.fric_current_set[i] = 0;
+    }
+}
+
+static uint32_t ShootMotorBit(MotorId id)
+{
+    return ((uint32_t)id < (uint32_t)MotorCount) ? (1ul << (uint32_t)id) : 0u;
+}
+
+static uint8_t ShootFaultInhibitsMotor(MotorId id)
+{
+    for (uint8_t i = 0u; i < SHOOT_FAULT_DEVICE_COUNT; i++)
+    {
+        if ((s_shootFault.inhibitMask & (uint8_t)(1u << i)) != 0u &&
+            s_shootFault.motorId[i] == id)
+        {
+            return 1u;
+        }
+    }
+    return 0u;
+}
+
+static void ShootControlInhibitOutputs(void)
+{
+    for (uint8_t i = 0u; i < SHOOT_OUTPUT_MOTOR_COUNT; i++)
+    {
+        const MotorId id = ShootOutputCurrentBindings[i].actuator_id;
+        const uint32_t bit = ShootMotorBit(id);
+        uint16_t writer = (uint16_t)LOWCMD_WRITER_NONE;
+
+        if (ShootOutputCurrentBindings[i].enabled == 0u || bit == 0u ||
+            (s_shootControlInhibitMask & bit) != 0u ||
+            LowCmdGetInhibitWriter(id, &writer) == 0u)
+        {
+            continue;
+        }
+        if (writer >= (uint16_t)LOWCMD_WRITER_SAFETY)
+        {
+            continue;
+        }
+        if (LowCmdInhibitManyFrom(&id, 1u, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u)
+        {
+            s_shootControlInhibitMask |= bit;
+        }
+    }
+}
+
+static uint8_t ShootControlReleaseOutputs(const ControlOutputPermit *permit)
+{
+    MotorId ids[SHOOT_OUTPUT_MOTOR_COUNT];
+    uint32_t releasedMask = 0u;
+    uint8_t count = 0u;
+
+    for (uint8_t i = 0u; i < SHOOT_OUTPUT_MOTOR_COUNT; i++)
+    {
+        const MotorId id = ShootOutputCurrentBindings[i].actuator_id;
+        const uint32_t bit = ShootMotorBit(id);
+        uint16_t writer = (uint16_t)LOWCMD_WRITER_NONE;
+
+        if (ShootOutputCurrentBindings[i].enabled == 0u || bit == 0u ||
+            (s_shootControlInhibitMask & bit) == 0u ||
+            ShootFaultInhibitsMotor(id) != 0u ||
+            LowCmdGetInhibitWriter(id, &writer) == 0u)
+        {
+            continue;
+        }
+        if (writer == (uint16_t)LOWCMD_WRITER_NONE)
+        {
+            s_shootControlInhibitMask &= ~bit;
+            continue;
+        }
+        if (writer != (uint16_t)LOWCMD_WRITER_SAFETY)
+        {
+            continue;
+        }
+        ids[count++] = id;
+        releasedMask |= bit;
+    }
+
+    if (count == 0u)
+    {
+        return 1u;
+    }
+    if (LowCmdRecoverSafetyInhibitManyWithPermit(ids, count, permit) != 0u)
+    {
+        s_shootControlInhibitMask &= ~releasedMask;
+        return 1u;
+    }
+
+    {
+        uint32_t recoveredMask = 0u;
+
+        for (uint8_t i = 0u; i < count; i++)
+        {
+            const uint32_t bit = ShootMotorBit(ids[i]);
+
+            if (LowCmdRecoverSafetyInhibitWithPermit(ids[i], permit) != 0u)
+            {
+                recoveredMask |= bit;
+            }
+        }
+        s_shootControlInhibitMask &= ~recoveredMask;
+        return (recoveredMask == releasedMask) ? 1u : 0u;
+    }
+}
+
+static uint8_t ShootPublishOutput(const ControlOutputPermit *permit)
+{
+    MotorId ids[SHOOT_OUTPUT_MOTOR_COUNT];
+    int16_t currents[SHOOT_OUTPUT_MOTOR_COUNT];
+    uint8_t count = 0u;
+
+    g_shoot.given_current = MotorCfgLimitCurrentNode(&g_config.motor.trigger,
+                                                      g_shoot.given_current);
+    for (uint8_t i = 0u; i < SHOOT_OUTPUT_MOTOR_COUNT; i++)
+    {
+        const MotorCurrentBind *binding = &ShootOutputCurrentBindings[i];
+        uint16_t writer = (uint16_t)LOWCMD_WRITER_NONE;
+
+        if (binding->enabled == 0u ||
+            (uint32_t)binding->actuator_id >= (uint32_t)MotorCount ||
+            (s_shootFault.holdZeroMask & (uint8_t)(1u << i)) != 0u ||
+            LowCmdGetInhibitWriter(binding->actuator_id, &writer) == 0u ||
+            writer != (uint16_t)LOWCMD_WRITER_NONE)
+        {
+            continue;
+        }
+
+        ids[count] = binding->actuator_id;
+        currents[count] = (i == SHOOT_FAULT_TRIGGER_DEVICE) ?
+                              g_shoot.given_current :
+                              g_shoot.fric_current_set[i - 1u];
+        count++;
+    }
+
+    if (count == 0u)
+    {
+        return ControlMgrOutputPermitValid(permit, 0u);
+    }
+    return MotorInstSetCurrentIdsWithPermit(ids, currents, count, permit);
 }
 
 static uint8_t ShootFaultCollectIds(uint8_t mask,
@@ -726,13 +849,11 @@ static uint8_t ShootFaultCollectIds(uint8_t mask,
     return count;
 }
 
-static void ShootFaultSyncInhibit(void)
+static void ShootFaultSyncInhibit(const ControlOutputPermit *permit)
 {
     const ShootFaultInhibitPlan plan =
         ShootFaultInhibitPlanMake(s_shootFault.configuredMask,
-                                  (uint8_t)(1u << SHOOT_FAULT_TRIGGER_DEVICE),
-                                  (s_shootFault.triggerAction != (uint8_t)FaultActionRun) ? 1u : 0u,
-                                  (s_shootFault.domainAction != (uint8_t)FaultActionRun) ? 1u : 0u,
+                                  s_shootFault.blockingMask,
                                   s_shootFault.inhibitMask);
     MotorId ids[SHOOT_FAULT_DEVICE_COUNT];
     uint8_t actualMask = 0u;
@@ -776,7 +897,6 @@ static void ShootFaultSyncInhibit(void)
     {
         return;
     }
-
     /* 恢复帧先清内部状态和 LowCmd，再释放；holdZeroMask 让本帧仍保持零输出。 */
     if ((actualMask & (1u << SHOOT_FAULT_TRIGGER_DEVICE)) != 0u)
     {
@@ -785,10 +905,9 @@ static void ShootFaultSyncInhibit(void)
     }
     if ((actualMask & s_shootFault.fricMask) != 0u)
     {
-        ShootClearFricOutput();
+        ShootClearFricFaultOutputs(actualMask);
     }
-    if (LowCmdClearManyFrom(ids, count, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
-        LowCmdReleaseInhibitManyFrom(ids, count, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u)
+    if (LowCmdRecoverSafetyInhibitManyWithPermit(ids, count, permit) != 0u)
     {
         s_shootFault.inhibitMask &= (uint8_t)~actualMask;
         return;
@@ -803,8 +922,7 @@ static void ShootFaultSyncInhibit(void)
             const MotorId id = s_shootFault.motorId[i];
 
             if ((actualMask & bit) != 0u &&
-                LowCmdClearManyFrom(&id, 1u, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
-                LowCmdReleaseInhibitManyFrom(&id, 1u, (uint16_t)LOWCMD_WRITER_SAFETY) != 0u)
+                LowCmdRecoverSafetyInhibitWithPermit(id, permit) != 0u)
             {
                 releasedMask |= bit;
             }
@@ -824,6 +942,7 @@ void ShootRuntimeStop(void)
     g_shoot.mode = SHOOT_STOP;
     ShootClearTriggerOutput();
     ShootClearFricOutput();
+    ShootControlInhibitOutputs();
     ShootWriteState();
 }
 
@@ -869,10 +988,10 @@ void ShootRuntimeInit(void)
 
     const fp32 Trigger_speed_pid[3] = {TRIGGER_ANGLE_PID_KP, TRIGGER_ANGLE_PID_KI, TRIGGER_ANGLE_PID_KD};
     const fp32 Fric_speed_pid[3] = {g_config.shoot.fric_speed_pid.kp, g_config.shoot.fric_speed_pid.ki, g_config.shoot.fric_speed_pid.kd};
-    (void)MotorInstBindCurrent(ShootFrictionMotorNames,
-                                              FRIC_MOTOR_NUM,
-                                              ShootFrictionCurrentBindings,
-                                              FRIC_MOTOR_NUM);
+    (void)MotorInstBindCurrent(ShootOutputMotorNames,
+                               SHOOT_OUTPUT_MOTOR_COUNT,
+                               ShootOutputCurrentBindings,
+                               SHOOT_OUTPUT_MOTOR_COUNT);
     ShootFaultInit();
     ShootResetInputGate(NULL);
     ShootInputGateBlockMouse(&s_shootInputGate);
@@ -899,10 +1018,12 @@ void ShootRuntimeInit(void)
     g_shoot.speed = 0.0f;
     g_shoot.speed_set = 0.0f;
     g_shoot.key_time = 0;
+    ShootControlInhibitOutputs();
     ShootWriteState();
 }
 
-void ShootRuntimeSafeStep(const struct ManualInputSnapshot *manualInput)
+void ShootRuntimeSafeStep(const struct ManualInputSnapshot *manualInput,
+                          const ControlOutputPermit *permit)
 {
     ShootFrameInput observed;
     ShootFrameInput safeFrame = {0};
@@ -913,7 +1034,8 @@ void ShootRuntimeSafeStep(const struct ManualInputSnapshot *manualInput)
                            ShootSwitchIsStop(observed.rawSwitch,
                                              &observed.semantics) != 0u);
     ShootFaultUpdate(switchSafe);
-    ShootFaultSyncInhibit();
+    /* 强制安全帧只允许新增禁写；恢复释放留给正常许可帧。 */
+    ShootFaultSyncInhibit(NULL);
 
     (void)ShootInputGateSyncSemantics(
         &s_shootInputGate,
@@ -934,6 +1056,7 @@ void ShootRuntimeSafeStep(const struct ManualInputSnapshot *manualInput)
     ShootFeedbackUpdate(&safeFrame);
     ShootClearTriggerOutput();
     ShootClearFricOutput();
+    (void)ShootPublishOutput(permit);
     ShootWriteState();
 }
 
@@ -942,7 +1065,8 @@ void ShootRuntimeSafeStep(const struct ManualInputSnapshot *manualInput)
   * @param[in]      void
   * @retval         返回can控制值
   */
-int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput)
+int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput,
+                         const ControlOutputPermit *permit)
 {
     static uint8_t entertain_entered = 0u;
     ShootFrameInput frame;
@@ -954,7 +1078,8 @@ int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput)
          ShootSwitchIsStop(rawSwitch, &frame.semantics) != 0u) ? 1u : 0u;
 
     ShootFaultUpdate(switchSafe);
-    ShootFaultSyncInhibit();
+    ShootFaultSyncInhibit(permit);
+    (void)ShootControlReleaseOutputs(permit);
 
     // 函数地图：先处理娱乐模式；再跑射击状态机；最后分别输出拨弹和摩擦轮电流。
     if (robot_mode_is_entertain() != 0u)
@@ -971,6 +1096,7 @@ int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput)
             g_shoot.mode = SHOOT_STOP;
         }
         ShootWriteState();
+        (void)ShootPublishOutput(permit);
         return 0;
     }
     entertain_entered = 0u;
@@ -982,6 +1108,7 @@ int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput)
         ShootClearFricOutput();
         g_shoot.trigger_measure_ready = 0u;
         ShootWriteState();
+        (void)ShootPublishOutput(permit);
         return 0;
     }
 
@@ -1090,16 +1217,16 @@ int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput)
     // 速度环：每路用反馈转速闭环输出电流
     if (allow_fric && g_shoot.mode != SHOOT_STOP)
     {
-        int16_t fric_current_cmd[FRIC_MOTOR_NUM] = {0};
         g_shoot.fric_speed_set = g_shoot.fric_speed_ramp.out;
         for (uint8_t i = 0; i < FRIC_MOTOR_NUM; i++)
         {
             const int8_t dir = SHOOT_FRIC_DIR(i);
-            if (dir == 0)
+            const uint8_t faultBit = (uint8_t)(1u << (i + 1u));
+            if (dir == 0 ||
+                (s_shootFault.holdZeroMask & faultBit) != 0u)
             {
                 g_shoot.fric_current_set[i] = 0;
                 PID_clear(&g_shoot.fric_speed_pid[i]);
-                fric_current_cmd[i] = 0;
                 continue;
             }
 
@@ -1109,13 +1236,9 @@ int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput)
             const int16_t current_raw = (int16_t)PID_calc(&g_shoot.fric_speed_pid[i], speed_fdb, speed_set);
             const int16_t current = MotorCfgLimitCurrentNode(&g_config.motor.friction[i], current_raw);
             g_shoot.fric_current_set[i] = current;
-            fric_current_cmd[i] = current;
         }
-
-        (void)MotorInstSetCurrentBindsBestEffort(ShootFrictionCurrentBindings,
-                                                                  fric_current_cmd,
-                                                                  FRIC_MOTOR_NUM);
     }
+    (void)ShootPublishOutput(permit);
     ShootWriteState();
     return g_shoot.given_current;
 }
