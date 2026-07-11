@@ -56,10 +56,12 @@ static fp32 CanMitMotorClampFp32(fp32 x, fp32 x_min, fp32 x_max)
     return x;
 }
 
-int CanMitMotorSendCmd(uint8_t bus,
-                           uint16_t std_id,
-                           const CanMitMotorLimits *limits,
-                           const CanMitMotorCmd *cmd)
+static int CanMitMotorSendCmdInternal(uint8_t bus,
+                                      uint16_t std_id,
+                                      const CanMitMotorLimits *limits,
+                                      const CanMitMotorCmd *cmd,
+                                      const BspCanTxTicket *ticket,
+                                      uint8_t *tracked)
 {
     uint8_t data[8];
     uint32_t p_int;
@@ -88,7 +90,39 @@ int CanMitMotorSendCmd(uint8_t bus,
     data[6] = (uint8_t)(((kd_int & 0x0Fu) << 4) | (t_int >> 8));
     data[7] = (uint8_t)t_int;
 
+    if (ticket != NULL && tracked != NULL)
+    {
+        return BspCanTxTracked(bus, std_id, data, 8u, ticket, tracked);
+    }
     return BspCanTx(bus, std_id, data, 8u);
+}
+
+int CanMitMotorSendCmd(uint8_t bus,
+                       uint16_t std_id,
+                       const CanMitMotorLimits *limits,
+                       const CanMitMotorCmd *cmd)
+{
+    return CanMitMotorSendCmdInternal(bus,
+                                      std_id,
+                                      limits,
+                                      cmd,
+                                      NULL,
+                                      NULL);
+}
+
+int CanMitMotorSendCmdTracked(uint8_t bus,
+                              uint16_t std_id,
+                              const CanMitMotorLimits *limits,
+                              const CanMitMotorCmd *cmd,
+                              const BspCanTxTicket *ticket,
+                              uint8_t *tracked)
+{
+    return CanMitMotorSendCmdInternal(bus,
+                                      std_id,
+                                      limits,
+                                      cmd,
+                                      ticket,
+                                      tracked);
 }
 
 int CanMitMotorSendEnable(uint8_t bus, uint16_t std_id)

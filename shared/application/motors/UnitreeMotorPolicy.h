@@ -19,6 +19,7 @@ typedef struct
 {
     uint32_t last_tick_ms;
     uint32_t last_seq;
+    uint32_t last_seq_epoch;
     uint8_t last_mode;
     uint8_t valid;
 } UnitreeMotorTxSchedule;
@@ -115,10 +116,13 @@ static inline uint8_t UnitreeMotorTxDue(const UnitreeMotorTxSchedule *schedule,
                           cmd->mode != (uint8_t)MotorModeNone) ?
         cmd->mode : (uint8_t)MotorModeDisable;
     const uint32_t seq = (cmd != 0) ? cmd->seq : 0u;
+    const uint32_t seq_epoch = (cmd != 0) ? cmd->seqEpoch : 0u;
     const uint16_t period = (period_ms != 0u) ? period_ms : 1u;
 
     if (schedule == 0 || schedule->valid == 0u ||
-        schedule->last_seq != seq || schedule->last_mode != mode)
+        schedule->last_seq != seq ||
+        schedule->last_seq_epoch != seq_epoch ||
+        schedule->last_mode != mode)
     {
         return 1u;
     }
@@ -136,6 +140,7 @@ static inline void UnitreeMotorTxMark(UnitreeMotorTxSchedule *schedule,
 
     schedule->last_tick_ms = now_ms;
     schedule->last_seq = (cmd != 0) ? cmd->seq : 0u;
+    schedule->last_seq_epoch = (cmd != 0) ? cmd->seqEpoch : 0u;
     schedule->last_mode = (cmd != 0 && cmd->active != 0u &&
                            cmd->mode != (uint8_t)MotorModeNone) ?
         cmd->mode : (uint8_t)MotorModeDisable;

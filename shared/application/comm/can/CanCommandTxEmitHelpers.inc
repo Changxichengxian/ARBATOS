@@ -84,6 +84,11 @@ static void CanTxEmitRmGroupIfNeeded(uint8_t bus,
     uint8_t bus_index = 0u;
     uint8_t group_index = 0u;
     uint8_t receiptEligible[4] = {0u};
+    uint8_t trackEligible[4] = {0u};
+    uint8_t haveTrackCandidate = 0u;
+    uint8_t tracked = 0u;
+    MotorTxIdentity identities[4] = {0};
+    BspCanTxTicket ticket = {0};
     int tx_ret;
 
     /*
@@ -106,7 +111,46 @@ static void CanTxEmitRmGroupIfNeeded(uint8_t bus,
         return;
     }
 
-    tx_ret = CAN_cmd_rm_group(bus, group_id, frame[0], frame[1], frame[2], frame[3]);
+    if (CanTxBusIndex(bus, &bus_index) != 0u &&
+        CanTxRmGroupIndex(group_id, &group_index) != 0u)
+    {
+        for (uint8_t slot = 0u; slot < 4u; slot++)
+        {
+            const MotorId actuator_id = s_can_tx_rm_motor[bus_index][group_index][slot];
+
+            if (receiptEligible[slot] != 0u &&
+                CanTxActuatorIdValid(actuator_id) != 0u &&
+                s_can_tx_cmd_cache_valid[actuator_id] != 0u)
+            {
+                trackEligible[slot] = CanTxPhysicalPrepare(
+                    actuator_id,
+                    &s_can_tx_cmd_cache[actuator_id],
+                    &identities[slot]);
+                haveTrackCandidate |= trackEligible[slot];
+            }
+        }
+    }
+    if (haveTrackCandidate != 0u)
+    {
+        ticket = CanTxPhysicalTicketNext();
+        tx_ret = CAN_cmd_rm_group_tracked(bus,
+                                          group_id,
+                                          frame[0],
+                                          frame[1],
+                                          frame[2],
+                                          frame[3],
+                                          &ticket,
+                                          &tracked);
+    }
+    else
+    {
+        tx_ret = CAN_cmd_rm_group(bus,
+                                  group_id,
+                                  frame[0],
+                                  frame[1],
+                                  frame[2],
+                                  frame[3]);
+    }
     if (tx_ret == 0 &&
         CanTxBusIndex(bus, &bus_index) != 0u &&
         CanTxRmGroupIndex(group_id, &group_index) != 0u)
@@ -119,8 +163,13 @@ static void CanTxEmitRmGroupIfNeeded(uint8_t bus,
                 CanTxActuatorIdValid(actuator_id) != 0u &&
                 s_can_tx_cmd_cache_valid[actuator_id] != 0u)
             {
-                LowStateUpdateTxReceipt(actuator_id,
-                                        &s_can_tx_cmd_cache[actuator_id]);
+                LowStateUpdateTxQueued(actuator_id, &identities[slot]);
+                if (tracked != 0u && trackEligible[slot] != 0u)
+                {
+                    CanTxPhysicalArm(actuator_id,
+                                     &identities[slot],
+                                     &ticket);
+                }
             }
         }
     }

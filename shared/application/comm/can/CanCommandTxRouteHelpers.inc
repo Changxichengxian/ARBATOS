@@ -629,13 +629,6 @@ static void CanTxProcessInstance(const MotorRoute *route,
                                           (have_cmd != 0u) ? &owner : NULL,
                                           &flags,
                                           &tx_succeeded);
-    if (tx_succeeded != 0u &&
-        have_cmd != 0u &&
-        route->transport == (uint8_t)MotorTransportCAN &&
-        route->isRmGroup == 0u)
-    {
-        LowStateUpdateTxReceipt(actuator_id, &cmd);
-    }
     if (CanTxIsUnitreeRoute(route) != 0u && tx_succeeded != 0u)
     {
         UnitreeMotorTxMark(&s_can_tx_unitree_schedule[actuator_id],

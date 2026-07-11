@@ -120,6 +120,10 @@ static uint8_t CanTxMitSendCmdAuthorized(MotorId actuator_id,
                                          int *out_ret)
 {
     uint8_t authorized;
+    uint8_t trackEligible = 0u;
+    uint8_t tracked = 0u;
+    MotorTxIdentity identity = {0};
+    BspCanTxTicket ticket = {0};
     int ret = -1;
 
     taskENTER_CRITICAL();
@@ -129,8 +133,32 @@ static uint8_t CanTxMitSendCmdAuthorized(MotorId actuator_id,
                                                        owner) != 0u);
     if (authorized != 0u)
     {
-        /* CAN 入队是非阻塞操作，和最终复核放在同一短临界区。 */
-        ret = CanMitMotorSendCmd(bus, std_id, limits, mit_cmd);
+        /* CAN 入队和最终复核在同一短临界区，物理完成稍后按票据核对。 */
+        trackEligible = CanTxPhysicalPrepare(actuator_id,
+                                             cached,
+                                             &identity);
+        if (trackEligible != 0u)
+        {
+            ticket = CanTxPhysicalTicketNext();
+            ret = CanMitMotorSendCmdTracked(bus,
+                                            std_id,
+                                            limits,
+                                            mit_cmd,
+                                            &ticket,
+                                            &tracked);
+        }
+        else
+        {
+            ret = CanMitMotorSendCmd(bus, std_id, limits, mit_cmd);
+        }
+        if (ret == 0)
+        {
+            LowStateUpdateTxQueued(actuator_id, &identity);
+            if (tracked != 0u)
+            {
+                CanTxPhysicalArm(actuator_id, &identity, &ticket);
+            }
+        }
     }
     taskEXIT_CRITICAL();
 

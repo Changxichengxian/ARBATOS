@@ -101,6 +101,12 @@ typedef enum
 
 typedef struct
 {
+    uint32_t epoch;
+    uint32_t seq;
+} LowCmdVersion;
+
+typedef struct
+{
     uint8_t active;
     uint8_t mode; // MotorMode
     uint16_t timeoutMs;
@@ -113,7 +119,69 @@ typedef struct
     fp32 kp;
     fp32 kd;
     fp32 tau;
+    uint32_t seqEpoch;
 } MotorCmd;
+
+/* 发送完成可能晚于命令缓存更新，只保存核对物理回执所需的不可变身份。 */
+typedef struct
+{
+    uint32_t cmdSeq;
+    uint32_t cmdTick;
+    int16_t current;
+    uint16_t writer;
+    uint8_t active;
+    uint8_t mode;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint32_t cmdSeqEpoch;
+} MotorTxIdentity;
+
+static inline void MotorTxIdentityFromCmd(MotorTxIdentity *identity,
+                                          const MotorCmd *cmd)
+{
+    if (identity == NULL || cmd == NULL)
+    {
+        return;
+    }
+    identity->cmdSeq = cmd->seq;
+    identity->cmdTick = cmd->tick;
+    identity->current = cmd->current;
+    identity->writer = cmd->writer;
+    identity->active = cmd->active;
+    identity->mode = cmd->mode;
+    identity->reserved0 = 0u;
+    identity->reserved1 = 0u;
+    identity->cmdSeqEpoch = cmd->seqEpoch;
+}
+
+static inline uint8_t MotorTxIdentityEqual(
+    const MotorTxIdentity *left,
+    const MotorTxIdentity *right)
+{
+    return (uint8_t)(left != NULL && right != NULL &&
+                     left->cmdSeq == right->cmdSeq &&
+                     left->cmdTick == right->cmdTick &&
+                     left->current == right->current &&
+                     left->writer == right->writer &&
+                     left->active == right->active &&
+                     left->mode == right->mode &&
+                     left->cmdSeqEpoch == right->cmdSeqEpoch);
+}
+
+static inline uint8_t MotorTxIdentityMatchesCmd(
+    const MotorTxIdentity *identity,
+    const MotorCmd *cmd)
+{
+    return (uint8_t)(identity != NULL &&
+                     cmd != NULL &&
+                     identity->cmdSeq == cmd->seq &&
+                     identity->cmdTick == cmd->tick &&
+                     identity->current == cmd->current &&
+                     identity->writer == cmd->writer &&
+                     identity->active == cmd->active &&
+                     identity->mode == cmd->mode &&
+                     identity->cmdSeqEpoch == cmd->seqEpoch);
+}
 
 /*
  * 发送层缓存只有仍指向当前发布代、且 writer 没被更高优先级禁写时才有效。
@@ -127,7 +195,9 @@ static inline uint8_t LowCmdSnapshotAuthorized(const MotorCmd *cached,
     uint16_t cachedWriter;
 
     if (cached == NULL || latest == NULL || latest->active == 0u ||
-        cached->seq != latest->seq || cached->writer != latest->writer)
+        cached->seq != latest->seq ||
+        cached->seqEpoch != latest->seqEpoch ||
+        cached->writer != latest->writer)
     {
         return 0u;
     }
@@ -185,24 +255,27 @@ typedef struct
 } MotorApplied;
 
 /*
- * 发送任务只有在协议帧被底层非阻塞发送队列接受后才更新这份回执。
- * 它和 MotorApplied 分开：后者描述本轮换算结果，不能拿来证明命令已经越过节流和帧预算。
+ * queued 只表示硬件发送队列接受；valid 只在控制器确认帧完成总线发送后置位。
+ * 它和 MotorApplied 分开：后者描述本轮换算结果，不能拿来证明命令已经上总线。
  */
 typedef struct
 {
     uint32_t cmdSeq;
     uint32_t cmdTick;
-    uint32_t acceptedTick;
+    uint32_t queuedTick;
+    uint32_t completedTick;
     int16_t current;
     uint16_t writer;
     uint8_t valid;
+    uint8_t queued;
     uint8_t mode;
     uint8_t reserved0;
-    uint8_t reserved1;
+    uint32_t cmdSeqEpoch;
 } MotorTxReceipt;
 
 static inline uint8_t MotorTxReceiptMatches(const MotorTxReceipt *receipt,
                                             uint32_t cmdSeq,
+                                            uint32_t cmdSeqEpoch,
                                             uint32_t cmdTick,
                                             uint16_t writer,
                                             uint8_t mode,
@@ -211,6 +284,7 @@ static inline uint8_t MotorTxReceiptMatches(const MotorTxReceipt *receipt,
     return (uint8_t)(receipt != NULL &&
                      receipt->valid != 0u &&
                      receipt->cmdSeq == cmdSeq &&
+                     receipt->cmdSeqEpoch == cmdSeqEpoch &&
                      receipt->cmdTick == cmdTick &&
                      receipt->writer == writer &&
                      receipt->mode == mode &&
@@ -222,6 +296,7 @@ typedef struct
     uint32_t seq;
     uint32_t tick;
     MotorCmd motorCmd[MotorCount];
+    uint32_t seqEpoch;
 } LowCmd;
 
 typedef struct
@@ -312,6 +387,7 @@ uint8_t LowCmdClearManyWithPermit(const MotorId *ids,
                                   const ControlOutputPermit *permit);
 const char *MotorModeName(MotorMode mode);
 uint32_t LowCmdSeq(void);
+uint8_t LowCmdVersionGet(LowCmdVersion *out);
 uint8_t LowCmdGet(LowCmd *out);
 void LowCmdSetDisable(MotorId id);
 void LowCmdSetDisableFrom(MotorId id, uint16_t writer);
@@ -356,7 +432,8 @@ uint8_t LowCmdGetDiag(LowCmdDiag *out);
 void LowStateClearAll(void);
 void LowStateUpdateMotor(MotorId id, const MotorState *feedback);
 void LowStateUpdateApplied(MotorId id, const MotorApplied *applied);
-void LowStateUpdateTxReceipt(MotorId id, const MotorCmd *cmd);
+void LowStateUpdateTxQueued(MotorId id, const MotorTxIdentity *identity);
+void LowStateUpdateTxComplete(MotorId id, const MotorTxIdentity *identity);
 uint8_t LowStateGet(LowState *out);
 uint8_t LowStateGetMotor(MotorId id, MotorState *out);
 uint8_t LowStateGetMotorMany(const MotorId *ids, MotorState *out, uint8_t count);

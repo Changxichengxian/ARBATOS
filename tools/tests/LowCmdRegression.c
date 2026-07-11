@@ -1574,11 +1574,12 @@ static int TestLowStateCopiesLastEcd(void)
                      "LowState 整体快照丢失上一编码器值");
 }
 
-static int TestTxReceiptTracksExactAcceptedCommand(void)
+static int TestTxReceiptTracksPhysicalCompletion(void)
 {
     MotorCmd cmd = TestCurrentCmd(0);
     MotorCmd published;
     MotorCmd newer;
+    MotorTxIdentity identity;
     MotorTxReceipt receipt;
 
     LowCmdClearAll();
@@ -1589,18 +1590,30 @@ static int TestTxReceiptTracksExactAcceptedCommand(void)
                                       (uint16_t)LOWCMD_WRITER_CONTROL) != 0u &&
                        LowCmdGetMotor(Motor2, &published) != 0u &&
                        LowStateGetTxReceipt(Motor2, &receipt) != 0u &&
-                       receipt.valid == 0u,
+                       receipt.valid == 0u && receipt.queued == 0u,
                    "只发布 LowCmd 不能伪造物理发送入口回执")) return 0;
 
-    LowStateUpdateTxReceipt(Motor2, &published);
+    MotorTxIdentityFromCmd(&identity, &published);
+    LowStateUpdateTxQueued(Motor2, &identity);
+    if (!TestCheck(LowStateGetTxReceipt(Motor2, &receipt) != 0u &&
+                       receipt.queued != 0u && receipt.valid == 0u,
+                   "控制器只接受入队时不能伪造总线发送完成")) return 0;
+
+    LowStateUpdateTxComplete(Motor2, &identity);
     if (!TestCheck(LowStateGetTxReceipt(Motor2, &receipt) != 0u &&
                        MotorTxReceiptMatches(&receipt,
                                              published.seq,
+                                             published.seqEpoch,
                                              published.tick,
                                              (uint16_t)LOWCMD_WRITER_CONTROL,
                                              (uint8_t)MotorModeCurrent,
                                              0) != 0u,
-                   "发送入口成功后必须精确记录命令代次、时间和零电流")) return 0;
+                   "控制器完成发送后必须精确记录完整代次、时间和零电流")) return 0;
+
+    LowStateUpdateTxQueued(Motor2, &identity);
+    if (!TestCheck(LowStateGetTxReceipt(Motor2, &receipt) != 0u &&
+                       receipt.valid != 0u,
+                   "同一命令再次入队不能抹掉已经取得的物理完成")) return 0;
 
     s_test_tick_ms = 901u;
     cmd.current = 100;
@@ -1609,16 +1622,17 @@ static int TestTxReceiptTracksExactAcceptedCommand(void)
                                       (uint16_t)LOWCMD_WRITER_CONTROL) != 0u &&
                        LowCmdGetMotor(Motor2, &newer) != 0u &&
                        LowStateGetTxReceipt(Motor2, &receipt) != 0u &&
-                       receipt.valid == 0u &&
+                       receipt.valid == 0u && receipt.queued == 0u &&
                        MotorTxReceiptMatches(&receipt,
                                              newer.seq,
+                                             newer.seqEpoch,
                                              newer.tick,
                                              newer.writer,
                                              newer.mode,
                                              newer.current) == 0u,
                    "新命令未发送前不得继承上一代零命令回执")) return 0;
 
-    LowStateUpdateTxReceipt(Motor2, &published);
+    LowStateUpdateTxComplete(Motor2, &identity);
     if (!TestCheck(LowStateGetTxReceipt(Motor2, &receipt) != 0u &&
                        receipt.valid == 0u,
                    "发送任务迟到的旧代回执不得覆盖新命令的失效状态")) return 0;
@@ -1626,7 +1640,62 @@ static int TestTxReceiptTracksExactAcceptedCommand(void)
     LowStateClearAll();
     return TestCheck(LowStateGetTxReceipt(Motor2, &receipt) != 0u &&
                          receipt.valid == 0u,
-                     "清理 LowState 必须同时清理发送回执");
+                      "清理 LowState 必须同时清理发送回执");
+}
+
+static int TestLowCmdVersionWrapIsExact(void)
+{
+    MotorCmd cmd = TestCurrentCmd(20);
+    MotorCmd published;
+    MotorCmd old_identity;
+    MotorTxIdentity identity;
+    MotorTxReceipt receipt;
+    LowCmdVersion version;
+
+    LowCmdClearAll();
+    gLowCmdSeq = UINT32_MAX;
+    gLowCmdSeqEpoch = 7u;
+    s_test_tick_ms = 1000u;
+    if (!TestCheck(LowCmdSetMotorFrom(Motor3,
+                                      &cmd,
+                                      (uint16_t)LOWCMD_WRITER_CONTROL) != 0u &&
+                       LowCmdGetMotor(Motor3, &published) != 0u &&
+                       LowCmdVersionGet(&version) != 0u &&
+                       published.seq == 0u &&
+                       published.seqEpoch == 8u &&
+                       version.seq == 0u && version.epoch == 8u,
+                   "LowCmd 低位回绕时必须推进高位代次")) return 0;
+
+    old_identity = published;
+    old_identity.seqEpoch = 7u;
+    if (!TestCheck(LowCmdSnapshotAuthorized(&old_identity,
+                                            &published,
+                                            (uint16_t)LOWCMD_WRITER_NONE) == 0u,
+                   "相同低位序号和载荷、不同高位代次不能视为同一命令")) return 0;
+
+    MotorTxIdentityFromCmd(&identity, &published);
+    identity.cmdSeqEpoch = 7u;
+    LowStateClearAll();
+    LowStateUpdateTxQueued(Motor3, &identity);
+    LowStateUpdateTxComplete(Motor3, &identity);
+    if (!TestCheck(LowStateGetTxReceipt(Motor3, &receipt) != 0u &&
+                       receipt.queued == 0u && receipt.valid == 0u,
+                   "旧高位代次的迟到发送结果不能命中新命令")) return 0;
+
+    gLowCmdSeq = UINT32_MAX;
+    gLowCmdSeqEpoch = 9u;
+    LowCmdClearAll();
+    if (!TestCheck(LowCmdVersionGet(&version) != 0u &&
+                       version.seq == 0u && version.epoch == 10u,
+                   "LowCmdClearAll 跨回绕时必须保留新的完整版本")) return 0;
+    for (uint8_t id = 0u; id < (uint8_t)MotorCount; id++)
+    {
+        if (!TestCheck(LowCmdGetMotor((MotorId)id, &published) != 0u &&
+                           published.seq == 0u &&
+                           published.seqEpoch == 10u,
+                       "LowCmdClearAll 必须给全部清空记录写入同一完整版本")) return 0;
+    }
+    return 1;
 }
 
 int main(void)
@@ -1656,7 +1725,8 @@ int main(void)
     if (!TestOutputAuthorizationTracksCurrentOwner()) return 1;
     if (!TestOutputAuthorizationLegacyAndSafetyBoundary()) return 1;
     if (!TestLowStateCopiesLastEcd()) return 1;
-    if (!TestTxReceiptTracksExactAcceptedCommand()) return 1;
+    if (!TestTxReceiptTracksPhysicalCompletion()) return 1;
+    if (!TestLowCmdVersionWrapIsExact()) return 1;
     if (!TestCheck(s_test_critical_depth == 0 &&
                        s_test_critical_error_count == 0u &&
                        s_test_permit_validate_outside_critical_count == 0u &&

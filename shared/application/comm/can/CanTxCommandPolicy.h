@@ -13,12 +13,14 @@
 typedef struct
 {
     uint32_t seq;
+    uint32_t seqEpoch;
     uint8_t valid;
 } CanTxCmdExpiryLatch;
 
 typedef struct
 {
     uint32_t seq;
+    uint32_t seqEpoch;
     uint16_t writer;
     uint8_t valid;
 } CanTxCmdUnlockBarrier;
@@ -32,6 +34,7 @@ static inline void CanTxCmdUnlockBarrierCapture(CanTxCmdUnlockBarrier *barrier,
     }
     barrier->valid = (uint8_t)(cmd != NULL && cmd->active != 0u);
     barrier->seq = (cmd != NULL) ? cmd->seq : 0u;
+    barrier->seqEpoch = (cmd != NULL) ? cmd->seqEpoch : 0u;
     barrier->writer = (cmd != NULL) ? cmd->writer : (uint16_t)LOWCMD_WRITER_NONE;
 }
 
@@ -47,7 +50,9 @@ static inline uint8_t CanTxCmdPublishedAfterUnlock(const CanTxCmdUnlockBarrier *
     {
         return 1u;
     }
-    return (uint8_t)(cmd->seq != barrier->seq || cmd->writer != barrier->writer);
+    return (uint8_t)(cmd->seq != barrier->seq ||
+                     cmd->seqEpoch != barrier->seqEpoch ||
+                     cmd->writer != barrier->writer);
 }
 
 static inline uint8_t CanTxCmdIsLocalDisable(const MotorCmd *cmd)
@@ -56,6 +61,7 @@ static inline uint8_t CanTxCmdIsLocalDisable(const MotorCmd *cmd)
                      cmd->active != 0u &&
                      cmd->mode == (uint8_t)MotorModeDisable &&
                      cmd->seq == 0u &&
+                     cmd->seqEpoch == 0u &&
                      cmd->writer == (uint16_t)LOWCMD_WRITER_NONE &&
                      cmd->timeoutMs == 0u);
 }
@@ -101,7 +107,7 @@ static inline uint8_t CanTxCmdExpiryLatchCheck(CanTxCmdExpiryLatch *latch,
     }
     if (latch->valid != 0u)
     {
-        if (latch->seq == cmd->seq)
+        if (latch->seq == cmd->seq && latch->seqEpoch == cmd->seqEpoch)
         {
             return 1u;
         }
@@ -113,6 +119,7 @@ static inline uint8_t CanTxCmdExpiryLatchCheck(CanTxCmdExpiryLatch *latch,
     }
 
     latch->seq = cmd->seq;
+    latch->seqEpoch = cmd->seqEpoch;
     latch->valid = 1u;
     return 1u;
 }

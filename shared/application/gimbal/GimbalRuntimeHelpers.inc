@@ -386,6 +386,7 @@ static uint8_t GimbalApplySingleMitYawTest(
                     after.current != 0 ||
                     (beforeValid[i] != 0u &&
                      after.seq == before[i].seq &&
+                     after.seqEpoch == before[i].seqEpoch &&
                      after.tick == before[i].tick))
                 {
                     continue;

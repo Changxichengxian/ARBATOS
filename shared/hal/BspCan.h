@@ -24,6 +24,29 @@ typedef struct
     uint8_t data[8];
 } BspCanFrame;
 
+typedef struct BspCanTxTicket
+{
+    uint32_t epoch;
+    uint32_t seq;
+} BspCanTxTicket;
+
+typedef enum
+{
+    BspCanTxResultNone = 0u,
+    BspCanTxResultComplete,
+    BspCanTxResultFailed,
+    BspCanTxResultAborted,
+    BspCanTxResultUnknown,
+} BspCanTxResult;
+
+typedef struct
+{
+    BspCanTxTicket ticket;
+    uint16_t stdId;
+    uint8_t bus;
+    uint8_t result; /* BspCanTxResult */
+} BspCanTxCompletion;
+
 #define BSP_CAN_FLAG_FD  0x01u
 #define BSP_CAN_FLAG_BRS 0x02u
 
@@ -40,9 +63,30 @@ uint16_t BspCanRxGetLastStdId(uint8_t bus);
 uint8_t BspCanRxGetLastDlc(uint8_t bus);
 
 // ===== TX =====
-// Return: 0 on success, else HAL_StatusTypeDef value (1: ERROR, 2: BUSY, 3: TIMEOUT)
+/*
+ * 普通返回值只说明控制器发送队列接受了帧。Tracked 接口还会把不透明票据
+ * 关联到硬件槽位；只有 CompletionPop 返回 Complete 才说明控制器完成总线发送。
+ */
+// Return: 0 on queue success, else HAL_StatusTypeDef value (1: ERROR, 2: BUSY, 3: TIMEOUT)
 int BspCanTx(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_t dlc);
 int BspCanTxFlags(uint8_t bus, uint16_t std_id, const uint8_t data[8], uint8_t dlc, uint8_t flags);
+int BspCanTxTracked(uint8_t bus,
+                    uint16_t std_id,
+                    const uint8_t data[8],
+                    uint8_t dlc,
+                    const BspCanTxTicket *ticket,
+                    uint8_t *tracked);
+int BspCanTxFlagsTracked(uint8_t bus,
+                         uint16_t std_id,
+                         const uint8_t data[8],
+                         uint8_t dlc,
+                         uint8_t flags,
+                         const BspCanTxTicket *ticket,
+                         uint8_t *tracked);
+void BspCanTxCompletionPoll(void);
+int BspCanTxCompletionPop(BspCanTxCompletion *out);
+uint32_t BspCanGetTxCompletionBackpressureCount(uint8_t bus);
+uint32_t BspCanGetTxTerminalCount(uint8_t bus, BspCanTxResult result);
 int BspCanFdSetDataBitrate(uint8_t bus, uint32_t data_bitrate);
 
 /*

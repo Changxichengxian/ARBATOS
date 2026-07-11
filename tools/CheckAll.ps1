@@ -3551,8 +3551,9 @@ function Test-FaultIsolationBoundaries {
         $emitContent -notmatch 'taskENTER_CRITICAL\s*\(\s*\)[\s\S]*?CanTxRecheckRmFrame\s*\([\s\S]*?CAN_cmd_rm_group\s*\([\s\S]*?taskEXIT_CRITICAL\s*\(\s*\)') {
         Add-CheckError "${emitRepoPath}: RM must final-check zero and nonzero slots with their owner, then enqueue the surviving group in one short critical section."
     }
-    if ($emitContent -notmatch 'tx_ret\s*==\s*0[\s\S]{0,600}?receiptEligible\s*\[\s*slot\s*\][\s\S]{0,500}?LowStateUpdateTxReceipt') {
-        Add-CheckError "${emitRepoPath}: RM may record a command receipt only after BspCan accepts the exact eligible group frame."
+    if ($emitContent -notmatch 'CAN_cmd_rm_group_tracked\s*\([\s\S]{0,1800}?tx_ret\s*==\s*0[\s\S]{0,900}?receiptEligible\s*\[\s*slot\s*\][\s\S]{0,700}?LowStateUpdateTxQueued[\s\S]{0,500}?CanTxPhysicalArm' -or
+        $emitContent -match 'LowStateUpdateTxComplete\s*\(') {
+        Add-CheckError "${emitRepoPath}: RM must separate controller queue acceptance from the later physical completion ticket."
     }
     foreach ($required in @("CanTxUpdateApplied", "CanTxLogMotorCmd")) {
         if ($emitContent -notmatch [regex]::Escape($required)) {
@@ -3590,18 +3591,19 @@ function Test-FaultIsolationBoundaries {
     if ($mitContent -notmatch 'static\s+uint8_t\s+CanTxMitSendEnableAuthorized[\s\S]*?taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,500}?CanTxMitCommandAuthorizedNow[\s\S]{0,500}?CanMitMotorSendEnable\s*\([\s\S]{0,240}?taskEXIT_CRITICAL\s*\(\s*\)') {
         Add-CheckError "${mitRepoPath}: MIT Enable final authorization and CAN enqueue must share one short critical section."
     }
-    if ($mitContent -notmatch 'static\s+uint8_t\s+CanTxMitSendCmdAuthorized[\s\S]*?taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,500}?CanTxMitCommandAuthorizedNow[\s\S]{0,600}?CanMitMotorSendCmd\s*\([\s\S]{0,240}?taskEXIT_CRITICAL\s*\(\s*\)' -or
+    if ($mitContent -notmatch 'static\s+uint8_t\s+CanTxMitSendCmdAuthorized[\s\S]*?taskENTER_CRITICAL\s*\(\s*\)[\s\S]{0,500}?CanTxMitCommandAuthorizedNow[\s\S]{0,1200}?CanMitMotorSendCmd(?:Tracked)?\s*\([\s\S]{0,900}?taskEXIT_CRITICAL\s*\(\s*\)' -or
         ([regex]::Matches($mitContent, 'CanTxMitSendCmdAuthorized\s*\(')).Count -lt 3) {
         Add-CheckError "${mitRepoPath}: every MIT command branch must use the linearized final-authority sender."
     }
-    if ($mitContent -notmatch 'ret\s*==\s*0[\s\S]{0,350}?\*tx_succeeded\s*=\s*1u' -or
-        $routeContent -notmatch 'tx_succeeded\s*!=\s*0u[\s\S]{0,300}?MotorTransportCAN[\s\S]{0,300}?LowStateUpdateTxReceipt') {
-        Add-CheckError "${mitRepoPath}: MIT throttle, frame-budget and enqueue failures must not create a LowCmd send receipt."
+    if ($mitContent -notmatch 'ret\s*==\s*0[\s\S]{0,300}?LowStateUpdateTxQueued[\s\S]{0,300}?tracked\s*!=\s*0u[\s\S]{0,200}?CanTxPhysicalArm' -or
+        $mitContent -match 'LowStateUpdateTxComplete\s*\(' -or
+        $routeContent -match 'LowStateUpdateTx(?:Queued|Complete)\s*\(') {
+        Add-CheckError "${mitRepoPath}: MIT throttle, frame-budget and enqueue failures must not create a physical completion receipt."
     }
 
     $lowCmdHeaderContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "shared\application\robot\LowCmd.h") -Raw -Encoding UTF8
     $lowCmdSourceContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "shared\application\robot\LowCmd.c") -Raw -Encoding UTF8
-    foreach ($required in @("MotorTxReceipt", "cmdSeq", "cmdTick", "acceptedTick", "LowStateUpdateTxReceipt", "LowStateGetTxReceipt")) {
+    foreach ($required in @("MotorTxReceipt", "cmdSeq", "cmdSeqEpoch", "cmdTick", "queuedTick", "completedTick", "LowStateUpdateTxQueued", "LowStateUpdateTxComplete", "LowStateGetTxReceipt")) {
         if (($lowCmdHeaderContent + "`n" + $lowCmdSourceContent) -notmatch [regex]::Escape($required)) {
             Add-CheckError "LowCmd send-receipt contract must keep '$required'."
         }
@@ -3612,11 +3614,40 @@ function Test-FaultIsolationBoundaries {
 
     foreach ($targetName in @("CARRIER-A", "HERO-C", "INFANTRY-A", "MINIWHEELEG-C")) {
         $canSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot "projects\$targetName\Core\Src\can.c") -Raw -Encoding UTF8
+        $canItSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot "projects\$targetName\Core\Src\stm32f4xx_it.c") -Raw -Encoding UTF8
+        $canItHeader = Get-Content -LiteralPath (Join-Path $script:RepoRoot "projects\$targetName\Core\Inc\stm32f4xx_it.h") -Raw -Encoding UTF8
         $iocSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot "projects\$targetName\$targetName.ioc") -Raw -Encoding UTF8
         if (([regex]::Matches($canSource, 'TransmitFifoPriority\s*=\s*ENABLE')).Count -lt 2 -or
             ([regex]::Matches($iocSource, 'TransmitFifoPriority=ENABLE')).Count -lt 2) {
             Add-CheckError "${targetName}: bxCAN must preserve enqueue order so a later nonzero frame cannot overtake an accepted zero barrier."
         }
+        foreach ($irq in @("CAN1_TX_IRQn", "CAN2_TX_IRQn")) {
+            if ($canSource -notmatch ([regex]::Escape("HAL_NVIC_SetPriority($irq, 6, 0)") ) -or
+                $canSource -notmatch ([regex]::Escape("HAL_NVIC_EnableIRQ($irq)")) -or
+                $iocSource -notmatch ([regex]::Escape("NVIC.$irq"))) {
+                Add-CheckError "${targetName}: '$irq' must stay enabled at priority 6 in source and CubeMX metadata."
+            }
+        }
+        foreach ($handler in @("CAN1_TX_IRQHandler", "CAN2_TX_IRQHandler")) {
+            if ($canItSource -notmatch ([regex]::Escape("void $handler(void)")) -or
+                $canItHeader -notmatch ([regex]::Escape("void $handler(void);"))) {
+                Add-CheckError "${targetName}: '$handler' must remain connected to the HAL CAN completion handler."
+            }
+        }
+    }
+
+    $bspCanHeaderContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "shared\hal\BspCan.h") -Raw -Encoding UTF8
+    $bspCanSourceContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "shared\hal\BspCan.c") -Raw -Encoding UTF8
+    foreach ($required in @("BspCanTxTicket", "BspCanTxTracked", "BspCanTxCompletionPoll", "BspCanTxCompletionPop", "BspCanGetTxTerminalCount", "HAL_FDCAN_TxBufferCompleteCallback", "HAL_FDCAN_TxBufferAbortCallback", "HAL_CAN_TxMailbox0CompleteCallback", "HAL_CAN_ErrorCallback")) {
+        if (($bspCanHeaderContent + "`n" + $bspCanSourceContent) -notmatch [regex]::Escape($required)) {
+            Add-CheckError "BspCan physical-completion contract must keep '$required'."
+        }
+    }
+    if ($bspCanSourceContent -notmatch 'old_tracked\s*=\s*can_tx_track[\s\S]{0,700}?BspCanTxResultUnknown[\s\S]{0,500}?TSR\s*&\s*rqcp[\s\S]{0,500}?BspCanTxTrackInstallLocked') {
+        Add-CheckError "BspCan bxCAN mailbox reuse must reject ambiguous old RQCP instead of completing the new ticket."
+    }
+    if ($bspCanSourceContent -match 'int\s+BspCanTxCompletionPop\s*\([^)]*\)\s*\{[\s\S]{0,1400}?BspCanTxFlushDeferredLocked') {
+        Add-CheckError "BspCan completion pop must stay O(1); deferred-slot scans belong in the once-per-cycle poll."
     }
 
     $bestEffortRepoPath = "shared\application\motors\MotorInstBestEffort.h"

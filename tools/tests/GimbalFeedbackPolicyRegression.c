@@ -214,6 +214,7 @@ static int TestZeroReceiptBarrier(void)
                                                  GIMBAL_FAULT_MASK_YAW,
                                                  3u,
                                                  101u,
+                                                 7u,
                                                  500u) != 0u &&
                        GimbalFeedbackZeroBarrierExcludeSafe(
                            &barrier,
@@ -223,6 +224,7 @@ static int TestZeroReceiptBarrier(void)
                        barrier.safeInhibitMask == GIMBAL_FAULT_MASK_PITCH &&
                        barrier.motorId[0] == 3u &&
                        barrier.cmdSeq[0] == 101u &&
+                       barrier.cmdSeqEpoch[0] == 7u &&
                        barrier.cmdTick[0] == 500u,
                    "零命令屏障必须保存切换代次、物理轴和精确命令身份")) return 0;
 
@@ -231,6 +233,7 @@ static int TestZeroReceiptBarrier(void)
                                                      GIMBAL_FAULT_MASK_PITCH,
                                                  4u,
                                                  102u,
+                                                 7u,
                                                  501u) == 0u &&
                        GimbalFeedbackZeroBarrierExcludeSafe(&barrier, 0x08u) == 0u,
                    "发送屏障必须拒绝多轴合并位和未知轴")) return 0;
@@ -254,12 +257,14 @@ static int TestRouteZeroDebt(void)
                                                GIMBAL_FAULT_MASK_PITCH,
                                                5u,
                                                103u,
+                                               8u,
                                                502u) != 0u &&
                        debt.blockedMask == GIMBAL_FAULT_MASK_PITCH &&
                        debt.publishMask == 0u &&
                        debt.waitMask == 0u &&
                        debt.motorId[2] == 5u &&
                        debt.cmdSeq[2] == 103u &&
+                       debt.cmdSeqEpoch[2] == 8u &&
                        debt.cmdTick[2] == 502u,
                    "运行模式禁发轴必须独立保存精确零命令")) return 0;
     if (!TestCheck(GimbalFeedbackRouteDebtRequestPublish(
@@ -274,11 +279,13 @@ static int TestRouteZeroDebt(void)
                                                GIMBAL_FAULT_MASK_PITCH,
                                                5u,
                                                104u,
+                                               8u,
                                                503u) != 0u &&
                        debt.blockedMask == 0u &&
                        debt.publishMask == 0u &&
                        debt.waitMask == GIMBAL_FAULT_MASK_PITCH &&
                        debt.cmdSeq[2] == 104u &&
+                       debt.cmdSeqEpoch[2] == 8u &&
                        debt.cmdTick[2] == 503u,
                    "补发零命令后必须等待新命令身份的发送回执")) return 0;
     if (!TestCheck(GimbalFeedbackRouteDebtComplete(
@@ -294,6 +301,7 @@ static int TestRouteZeroDebt(void)
                          GIMBAL_FAULT_MASK_YAW | GIMBAL_FAULT_MASK_PITCH,
                          3u,
                          105u,
+                         9u,
                          504u) == 0u,
                      "重新放行欠账必须拒绝多轴合并位");
 }

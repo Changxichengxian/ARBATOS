@@ -52,6 +52,7 @@ typedef struct
     uint32_t waitMask;
     uint32_t safeInhibitMask;
     uint32_t cmdSeq[3];
+    uint32_t cmdSeqEpoch[3];
     uint32_t cmdTick[3];
     uint8_t motorId[3];
     uint8_t armed;
@@ -63,6 +64,7 @@ typedef struct
     uint32_t publishMask;
     uint32_t waitMask;
     uint32_t cmdSeq[3];
+    uint32_t cmdSeqEpoch[3];
     uint32_t cmdTick[3];
     uint8_t motorId[3];
 } GimbalFeedbackRouteDebt;
@@ -201,6 +203,7 @@ static inline void GimbalFeedbackZeroBarrierInit(
     for (uint8_t axis = 0u; axis < 3u; axis++)
     {
         barrier->cmdSeq[axis] = 0u;
+        barrier->cmdSeqEpoch[axis] = 0u;
         barrier->cmdTick[axis] = 0u;
         barrier->motorId[axis] = 0u;
     }
@@ -235,6 +238,7 @@ static inline void GimbalFeedbackRouteDebtInit(
     for (uint8_t axis = 0u; axis < 3u; axis++)
     {
         debt->cmdSeq[axis] = 0u;
+        debt->cmdSeqEpoch[axis] = 0u;
         debt->cmdTick[axis] = 0u;
         debt->motorId[axis] = 0u;
     }
@@ -255,6 +259,7 @@ static inline uint8_t GimbalFeedbackRouteDebtHold(
     uint32_t axisMask,
     uint8_t motorId,
     uint32_t cmdSeq,
+    uint32_t cmdSeqEpoch,
     uint32_t cmdTick)
 {
     uint8_t axis;
@@ -271,6 +276,7 @@ static inline uint8_t GimbalFeedbackRouteDebtHold(
     debt->waitMask &= ~axisMask;
     debt->motorId[axis] = motorId;
     debt->cmdSeq[axis] = cmdSeq;
+    debt->cmdSeqEpoch[axis] = cmdSeqEpoch;
     debt->cmdTick[axis] = cmdTick;
     return 1u;
 }
@@ -294,6 +300,7 @@ static inline uint8_t GimbalFeedbackRouteDebtRequestPublish(
     debt->waitMask &= ~axisMask;
     debt->motorId[axis] = motorId;
     debt->cmdSeq[axis] = 0u;
+    debt->cmdSeqEpoch[axis] = 0u;
     debt->cmdTick[axis] = 0u;
     return 1u;
 }
@@ -303,6 +310,7 @@ static inline uint8_t GimbalFeedbackRouteDebtWait(
     uint32_t axisMask,
     uint8_t motorId,
     uint32_t cmdSeq,
+    uint32_t cmdSeqEpoch,
     uint32_t cmdTick)
 {
     uint8_t axis;
@@ -319,6 +327,7 @@ static inline uint8_t GimbalFeedbackRouteDebtWait(
     debt->waitMask |= axisMask;
     debt->motorId[axis] = motorId;
     debt->cmdSeq[axis] = cmdSeq;
+    debt->cmdSeqEpoch[axis] = cmdSeqEpoch;
     debt->cmdTick[axis] = cmdTick;
     return 1u;
 }
@@ -341,6 +350,7 @@ static inline uint8_t GimbalFeedbackRouteDebtComplete(
     debt->waitMask &= ~axisMask;
     debt->motorId[axis] = 0u;
     debt->cmdSeq[axis] = 0u;
+    debt->cmdSeqEpoch[axis] = 0u;
     debt->cmdTick[axis] = 0u;
     return 1u;
 }
@@ -362,6 +372,7 @@ static inline uint8_t GimbalFeedbackZeroBarrierAdd(
     uint32_t axisMask,
     uint8_t motorId,
     uint32_t cmdSeq,
+    uint32_t cmdSeqEpoch,
     uint32_t cmdTick)
 {
     uint8_t axis;
@@ -376,6 +387,7 @@ static inline uint8_t GimbalFeedbackZeroBarrierAdd(
     barrier->waitMask |= axisMask;
     barrier->motorId[axis] = motorId;
     barrier->cmdSeq[axis] = cmdSeq;
+    barrier->cmdSeqEpoch[axis] = cmdSeqEpoch;
     barrier->cmdTick[axis] = cmdTick;
     return 1u;
 }

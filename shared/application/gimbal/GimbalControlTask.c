@@ -602,6 +602,7 @@ static uint8_t GimbalFeedbackRouteDebtHeld(uint8_t axis, MotorCmd *held)
         held->writer != (uint16_t)LOWCMD_WRITER_CONTROL ||
         held->current != 0 ||
         held->seq != s_gimbalFeedbackRouteDebt.cmdSeq[axis] ||
+        held->seqEpoch != s_gimbalFeedbackRouteDebt.cmdSeqEpoch[axis] ||
         held->tick != s_gimbalFeedbackRouteDebt.cmdTick[axis])
     {
         return 0u;
@@ -745,12 +746,14 @@ static void GimbalFeedbackRouteDebtPoll(
                                               axisMask,
                                               (uint8_t)id,
                                               held.seq,
+                                              held.seqEpoch,
                                               held.tick);
             continue;
         }
         if (LowStateGetTxReceipt(id, &receipt) != 0u &&
             MotorTxReceiptMatches(&receipt,
                                   held.seq,
+                                  held.seqEpoch,
                                   held.tick,
                                   (uint16_t)LOWCMD_WRITER_CONTROL,
                                   (uint8_t)MotorModeCurrent,
@@ -791,6 +794,7 @@ static void GimbalFeedbackRouteDebtCapture(
                                               axisMask,
                                               (uint8_t)result->ids[i],
                                               cmd.seq,
+                                              cmd.seqEpoch,
                                               cmd.tick);
         }
         else
@@ -799,6 +803,7 @@ static void GimbalFeedbackRouteDebtCapture(
                                               axisMask,
                                               (uint8_t)result->ids[i],
                                               cmd.seq,
+                                              cmd.seqEpoch,
                                               cmd.tick);
         }
     }
@@ -831,6 +836,7 @@ static uint8_t GimbalFeedbackRouteDebtCoverBarrier(
                                             axisMask,
                                             (uint8_t)id,
                                             held.seq,
+                                            held.seqEpoch,
                                             held.tick);
     }
     return 0u;
@@ -875,6 +881,7 @@ static uint8_t GimbalFeedbackZeroBarrierCapture(
                                             axisMask,
                                             (uint8_t)result->ids[i],
                                             cmd.seq,
+                                            cmd.seqEpoch,
                                             cmd.tick) == 0u)
             {
                 GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
@@ -885,6 +892,7 @@ static uint8_t GimbalFeedbackZeroBarrierCapture(
                                               axisMask,
                                               (uint8_t)result->ids[i],
                                               cmd.seq,
+                                              cmd.seqEpoch,
                                               cmd.tick) == 0u)
         {
             GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
@@ -1010,6 +1018,7 @@ static GimbalFeedbackZeroWait GimbalFeedbackZeroBarrierPoll(
             held.writer != (uint16_t)LOWCMD_WRITER_CONTROL ||
             held.current != 0 ||
             held.seq != s_gimbalFeedbackZeroBarrier.cmdSeq[axis] ||
+            held.seqEpoch != s_gimbalFeedbackZeroBarrier.cmdSeqEpoch[axis] ||
             held.tick != s_gimbalFeedbackZeroBarrier.cmdTick[axis])
         {
             GimbalFeedbackZeroBarrierInit(&s_gimbalFeedbackZeroBarrier);
@@ -1018,6 +1027,7 @@ static GimbalFeedbackZeroWait GimbalFeedbackZeroBarrierPoll(
         if (LowStateGetTxReceipt(id, &receipt) == 0u ||
             MotorTxReceiptMatches(&receipt,
                                   held.seq,
+                                  held.seqEpoch,
                                   held.tick,
                                   (uint16_t)LOWCMD_WRITER_CONTROL,
                                   (uint8_t)MotorModeCurrent,

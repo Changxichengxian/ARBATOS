@@ -37,6 +37,7 @@
 #include "RobotLifecycle.h"
 #include "RobotSafety.h"
 #include "CanTxCommandPolicy.h"
+#include "CanTxCompletionPolicy.h"
 #include "UnitreeMotorPolicy.h"
 
 #include <string.h>
@@ -101,6 +102,8 @@ static void CanTxForceDisabledCmd(MotorId id);
 
 #include "CanCommandTxCommonHelpers.inc"
 
+#include "CanCommandTxCompletionHelpers.inc"
+
 #include "CanCommandTxMitHelpers.inc"
 
 #include "CanCommandTxRouteHelpers.inc"
@@ -134,6 +137,21 @@ __weak int CanMitMotorSendCmd(uint8_t bus,
     (void)limits;
     (void)cmd;
     return -1;
+}
+
+__weak int CanMitMotorSendCmdTracked(uint8_t bus,
+                                     uint16_t std_id,
+                                     const CanMitMotorLimits *limits,
+                                     const CanMitMotorCmd *cmd,
+                                     const BspCanTxTicket *ticket,
+                                     uint8_t *tracked)
+{
+    (void)ticket;
+    if (tracked != NULL)
+    {
+        *tracked = 0u;
+    }
+    return CanMitMotorSendCmd(bus, std_id, limits, cmd);
 }
 
 __weak int CanMitMotorSendEnable(uint8_t bus, uint16_t std_id)
@@ -397,6 +415,7 @@ void CanTxTask(void const *pvParameters)
     while (1)
     {
         const uint64_t loop_start_us = RtProfBegin();
+        CanTxPhysicalProcessCompletions();
         WatchTaskBeat(WATCH_TASK_CAN_COMMAND_TX);
         const uint16_t period_ms = RobotProfileCanCommandTxPeriodMs();
 
@@ -411,6 +430,7 @@ void CanTxTask(void const *pvParameters)
 
         CanTxOutputGateSync(output_locked);
         CanTxExecInstances(output_locked);
+        CanTxPhysicalProcessCompletions();
 
         RtProfEnd(RtProfCanTxLoop, loop_start_us);
         {

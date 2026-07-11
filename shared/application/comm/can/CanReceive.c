@@ -522,13 +522,14 @@ void CAN_rx_process_frame(uint8_t bus, uint16_t std_id, uint8_t dlc, const uint8
     (void)CAN_rx_process_extra_frame(bus, std_id, dlc, data);
 }
 
-// 发送大疆一组四电机电流帧；MIT 等非大疆协议不会走这里。
-int CAN_cmd_rm_group(uint8_t bus,
-                     uint16_t group_id,
-                     int16_t motor1,
-                     int16_t motor2,
-                     int16_t motor3,
-                     int16_t motor4)
+static int CanCmdRmGroupSend(uint8_t bus,
+                             uint16_t group_id,
+                             int16_t motor1,
+                             int16_t motor2,
+                             int16_t motor3,
+                             int16_t motor4,
+                             const BspCanTxTicket *ticket,
+                             uint8_t *tracked)
 {
     uint8_t data[8] = {0};
     int ret;
@@ -541,12 +542,56 @@ int CAN_cmd_rm_group(uint8_t bus,
     data[6] = (uint8_t)(motor4 >> 8);
     data[7] = (uint8_t)motor4;
 
-    ret = BspCanTx(bus, group_id, data, 8u);
+    if (ticket != NULL && tracked != NULL)
+    {
+        ret = BspCanTxTracked(bus, group_id, data, 8u, ticket, tracked);
+    }
+    else
+    {
+        ret = BspCanTx(bus, group_id, data, 8u);
+    }
     if (bus == 1u && group_id == (uint16_t)CAN_RM_GROUP_0X1FF_ID)
     {
         last_can1ff_status = (uint8_t)ret;
     }
     return ret;
+}
+
+// 发送大疆一组四电机电流帧；MIT 等非大疆协议不会走这里。
+int CAN_cmd_rm_group(uint8_t bus,
+                     uint16_t group_id,
+                     int16_t motor1,
+                     int16_t motor2,
+                     int16_t motor3,
+                     int16_t motor4)
+{
+    return CanCmdRmGroupSend(bus,
+                             group_id,
+                             motor1,
+                             motor2,
+                             motor3,
+                             motor4,
+                             NULL,
+                             NULL);
+}
+
+int CAN_cmd_rm_group_tracked(uint8_t bus,
+                             uint16_t group_id,
+                             int16_t motor1,
+                             int16_t motor2,
+                             int16_t motor3,
+                             int16_t motor4,
+                             const BspCanTxTicket *ticket,
+                             uint8_t *tracked)
+{
+    return CanCmdRmGroupSend(bus,
+                             group_id,
+                             motor1,
+                             motor2,
+                             motor3,
+                             motor4,
+                             ticket,
+                             tracked);
 }
 
 void CAN_cmd_chassis_reset_ID(void)
