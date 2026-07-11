@@ -43,8 +43,11 @@ typedef struct
     uint32_t transition_count;
     uint32_t reject_count;
     uint32_t reserved_claim_mask;
+    uint32_t authority_epoch;
+    uint32_t cycle_seq;
     uint8_t update_in_progress;
     uint8_t protected_stop_reason;
+    uint8_t grant_active;
 } control_domain_state_t;
 
 static control_registry_t s_registry;
@@ -54,11 +57,35 @@ static ControlActuatorAudit s_actuator_audit;
 static uint32_t s_registered_actuator_mask[ControlDomainCount];
 static uint32_t s_cross_domain_actuator_overlap_mask;
 static uint32_t s_active_claim_mask;
+/* Reset 不能清零；否则复位前的许可可能在新会话里重新匹配。 */
+static uint32_t s_output_epoch_seed;
 static uint8_t s_inited;
 
 static uint8_t control_domain_valid(ControlDomain domain)
 {
     return ((uint32_t)domain < (uint32_t)ControlDomainCount) ? 1u : 0u;
+}
+
+static uint32_t control_output_epoch_next_locked(void)
+{
+    s_output_epoch_seed++;
+    if (s_output_epoch_seed == 0u)
+    {
+        s_output_epoch_seed++;
+    }
+    return s_output_epoch_seed;
+}
+
+static void control_output_revoke_locked(control_domain_state_t *domain_state)
+{
+    if (domain_state == NULL)
+    {
+        return;
+    }
+
+    domain_state->grant_active = 0u;
+    domain_state->authority_epoch = control_output_epoch_next_locked();
+    domain_state->cycle_seq = 0u;
 }
 
 static void control_pending_clear_locked(control_domain_state_t *domain_state)
@@ -178,6 +205,13 @@ static ControlResult control_queue_request_locked(control_domain_state_t *domain
         (ControlReason)domain_state->protected_stop_reason);
     const uint8_t incoming_priority = control_request_priority(request, reason);
 
+    if (domain_state->pending_request == request &&
+        domain_state->pending_id == controller_id &&
+        domain_state->pending_reason == reason)
+    {
+        return ControlResultOk;
+    }
+
     if (running_priority != 0u)
     {
         if (incoming_priority > running_priority)
@@ -203,6 +237,7 @@ static ControlResult control_queue_request_locked(control_domain_state_t *domain
     domain_state->pending_id = controller_id;
     domain_state->pending_reason = reason;
     domain_state->pending_request = request;
+    control_output_revoke_locked(domain_state);
     return ControlResultOk;
 }
 
@@ -291,6 +326,59 @@ static ControlCtx *control_context_or_local(ControlCtx *context, ControlCtx *loc
     return local;
 }
 
+static void control_output_context_clear(ControlCtx *context)
+{
+    if (context != NULL)
+    {
+        ControlOutputPermitClear(&context->outputPermit);
+    }
+}
+
+static void control_output_issue_locked(control_domain_state_t *domain_state,
+                                        const ControlController *controller,
+                                        ControlCtx *context)
+{
+    if (domain_state == NULL || controller == NULL || context == NULL ||
+        domain_state->active != controller ||
+        domain_state->pending_request != ControlRequestNone ||
+        domain_state->protected_stop_reason != (uint8_t)ControlReasonNone)
+    {
+        return;
+    }
+
+    domain_state->grant_active = 1u;
+    domain_state->cycle_seq++;
+    if (domain_state->cycle_seq == 0u)
+    {
+        /* 1 kHz 连续运行约 49 天会回绕；换代后旧 cycle 仍不能重新匹配。 */
+        domain_state->authority_epoch = control_output_epoch_next_locked();
+        domain_state->cycle_seq++;
+    }
+
+    context->outputPermit.stamp.authorityEpoch = domain_state->authority_epoch;
+    context->outputPermit.stamp.cycleSeq = domain_state->cycle_seq;
+    context->outputPermit.stamp.controllerId = controller->id;
+    context->outputPermit.stamp.domain = (uint8_t)controller->domain;
+    context->outputPermit.stamp.valid = 1u;
+    context->outputPermit.actuatorMask = controller->actuator_mask;
+}
+
+#if defined(CONTROL_MANAGER_TEST)
+/* 仅供主机回归把 49 天后的回绕边界压缩到一次 update。 */
+uint8_t ControlMgrTestOutputCycleSet(ControlDomain domain, uint32_t cycle_seq)
+{
+    if (control_domain_valid(domain) == 0u)
+    {
+        return 0u;
+    }
+
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    s_domain[domain].cycle_seq = cycle_seq;
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return 1u;
+}
+#endif
+
 static const ControlController *control_find(uint16_t controller_id)
 {
     for (uint8_t i = 0u; i < s_registry.count; i++)
@@ -365,6 +453,13 @@ static ControlResult control_stop_active(ControlDomain domain,
 
     domain_state = &s_domain[domain];
     reason = control_protected_stop_begin(domain, reason);
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    if (domain_state->grant_active != 0u)
+    {
+        control_output_revoke_locked(domain_state);
+    }
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    control_output_context_clear(context);
     controller = domain_state->active;
     if (controller == NULL)
     {
@@ -477,12 +572,14 @@ static ControlResult control_start_controller(const ControlController *next,
     }
     domain_state->reserved_claim_mask = 0u;
     domain_state->active = next;
+    domain_state->grant_active = 0u;
     domain_state->state = ControlStateRunning;
     domain_state->last_reason = reason;
     domain_state->last_result = ControlResultOk;
     s_active_claim_mask |= next->claim_mask;
     CONTROL_MANAGER_EXIT_CRITICAL();
 
+    control_output_context_clear(context);
     result = control_call_callback(next->enter, next, context, reason);
     if (result != ControlResultOk)
     {
@@ -576,6 +673,10 @@ static void control_reset_state_unlocked(void)
     memset(s_registered_actuator_mask, 0, sizeof(s_registered_actuator_mask));
     s_cross_domain_actuator_overlap_mask = 0u;
     s_active_claim_mask = 0u;
+    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
+    {
+        s_domain[i].authority_epoch = control_output_epoch_next_locked();
+    }
     s_inited = 1u;
 }
 
@@ -883,6 +984,7 @@ static ControlResult control_update_domain(ControlDomain domain,
     uint8_t protected_pending;
 
     ControlMgrInit();
+    control_output_context_clear(context);
     if (control_domain_valid(domain) == 0u)
     {
         return ControlResultBadArgument;
@@ -933,6 +1035,9 @@ static ControlResult control_update_domain(ControlDomain domain,
         goto update_done;
     }
 
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    control_output_issue_locked(domain_state, active, context);
+    CONTROL_MANAGER_EXIT_CRITICAL();
     callback_result = control_call_callback(active->update, active, context, ControlReasonNone);
     CONTROL_MANAGER_ENTER_CRITICAL();
     domain_state->update_count++;
@@ -1195,4 +1300,46 @@ ControlResult ControlMgrGetActuatorDiag(ControlActuatorDiag *out)
     out->invalidIdCount = s_actuator_audit.invalidIdCount;
     CONTROL_MANAGER_EXIT_CRITICAL();
     return ControlResultOk;
+}
+
+uint8_t ControlMgrOutputStampValid(const ControlOutputStamp *stamp,
+                                   uint32_t requiredMask)
+{
+    control_domain_state_t *domain_state;
+    const ControlController *active;
+    uint8_t valid = 0u;
+
+    ControlMgrInit();
+    if (stamp == NULL || stamp->valid != 1u ||
+        stamp->domain >= (uint8_t)ControlDomainCount)
+    {
+        return 0u;
+    }
+
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    domain_state = &s_domain[stamp->domain];
+    active = domain_state->active;
+    if (domain_state->grant_active == 1u &&
+        active != NULL &&
+        active->id == stamp->controllerId &&
+        active->domain == (ControlDomain)stamp->domain &&
+        domain_state->authority_epoch == stamp->authorityEpoch &&
+        domain_state->cycle_seq == stamp->cycleSeq &&
+        (active->actuator_mask & requiredMask) == requiredMask)
+    {
+        valid = 1u;
+    }
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return valid;
+}
+
+uint8_t ControlMgrOutputPermitValid(const ControlOutputPermit *permit,
+                                    uint32_t requiredMask)
+{
+    if (ControlOutputPermitAllows(permit, requiredMask) == 0u)
+    {
+        return 0u;
+    }
+
+    return ControlMgrOutputStampValid(&permit->stamp, requiredMask);
 }

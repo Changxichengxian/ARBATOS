@@ -11,6 +11,8 @@
 
 #include <stdint.h>
 
+#include "ControlOutputPermit.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -131,6 +133,7 @@ typedef struct
     ControlReason reason;
     void *input;
     void *output;
+    ControlOutputPermit outputPermit;
 } ControlCtx;
 
 struct control_controller;
@@ -263,6 +266,15 @@ ControlResult ControlMgrGetDiag(ControlMgrDiag *out);
 ControlResult ControlMgrSetActuatorAudit(const ControlActuatorAudit *audit);
 uint32_t ControlMgrActiveActuatorMask(void);
 ControlResult ControlMgrGetActuatorDiag(ControlActuatorDiag *out);
+
+/*
+ * requiredMask 为 0 时只核对许可身份和当前周期；物理单轴发送必须传入
+ * 已完成 MotorId 范围检查的非零执行器位。
+ */
+uint8_t ControlMgrOutputPermitValid(const ControlOutputPermit *permit,
+                                    uint32_t requiredMask);
+uint8_t ControlMgrOutputStampValid(const ControlOutputStamp *stamp,
+                                   uint32_t requiredMask);
 
 #ifdef __cplusplus
 }

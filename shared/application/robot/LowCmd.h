@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ControlOutputPermit.h"
 #include "Types.h"
 
 #define LOWCMD_DEFAULT_TIMEOUT_MS 100u
@@ -213,6 +214,9 @@ typedef struct
     uint16_t emergency_writer;
     uint8_t emergency_active;
     uint8_t reserved0;
+    /* 新诊断只能追加，保留既有 Watch 字段偏移。 */
+    uint32_t permit_reject_count;
+    uint32_t last_permit_reject_mask;
 } LowCmdDiag;
 
 static inline MotorId MotorIdRange(MotorId first, uint8_t index, uint8_t count)
@@ -253,6 +257,17 @@ uint8_t LowCmdSetMotorMany(const MotorId *ids, const MotorCmd *cmds, uint8_t cou
 /* writer 以 API 参数为准；MotorCmd.writer 是发布后的只读归属信息，不能由载荷提权。 */
 uint8_t LowCmdSetMotorFrom(MotorId id, const MotorCmd *cmd, uint16_t writer);
 uint8_t LowCmdSetMotorManyFrom(const MotorId *ids, const MotorCmd *cmds, uint8_t count, uint16_t writer);
+uint8_t LowCmdSetMotorWithPermit(MotorId id,
+                                 const MotorCmd *cmd,
+                                 const ControlOutputPermit *permit);
+uint8_t LowCmdSetMotorManyWithPermit(const MotorId *ids,
+                                     const MotorCmd *cmds,
+                                     uint8_t count,
+                                     const ControlOutputPermit *permit);
+uint8_t LowCmdClearWithPermit(MotorId id, const ControlOutputPermit *permit);
+uint8_t LowCmdClearManyWithPermit(const MotorId *ids,
+                                  uint8_t count,
+                                  const ControlOutputPermit *permit);
 const char *MotorModeName(MotorMode mode);
 uint32_t LowCmdSeq(void);
 uint8_t LowCmdGet(LowCmd *out);
@@ -262,12 +277,26 @@ void LowCmdSetDamping(MotorId id, fp32 kd, fp32 tau);
 void LowCmdSetCurrent(MotorId id, int16_t current);
 uint8_t LowCmdSetCurrentMany(const MotorId *ids, const int16_t *currents, uint8_t count);
 uint8_t LowCmdSetCurrentManyFrom(const MotorId *ids, const int16_t *currents, uint8_t count, uint16_t writer);
+uint8_t LowCmdSetCurrentManyWithPermit(const MotorId *ids,
+                                       const int16_t *currents,
+                                       uint8_t count,
+                                       const ControlOutputPermit *permit);
+uint8_t LowCmdSetCurrentWithPermit(MotorId id,
+                                   int16_t current,
+                                   const ControlOutputPermit *permit);
 int16_t LowCmdGetCurrent(MotorId id);
 uint8_t LowCmdGetCurrentMany(const MotorId *ids, int16_t *out, uint8_t count);
 void LowCmdSetStateTorque(MotorId id, const MotorCmd *cmd);
 void LowCmdSetSpeed(MotorId id, fp32 velocity, fp32 kd, fp32 torque);
 uint8_t LowCmdGetMotor(MotorId id, MotorCmd *out);
 uint8_t LowCmdGetMotorMany(const MotorId *ids, MotorCmd *out, uint8_t count);
+uint8_t LowCmdGetMotorStamped(MotorId id,
+                              MotorCmd *cmd,
+                              ControlOutputStamp *owner);
+uint8_t LowCmdGetMotorManyStamped(const MotorId *ids,
+                                  MotorCmd *cmds,
+                                  ControlOutputStamp *owners,
+                                  uint8_t count);
 /* 兼容调试接口：返回快照缓存，新代码优先用 LowCmdGetMotor。 */
 const MotorCmd *LowCmdGetMotorPtr(MotorId id);
 uint8_t LowCmdEnterEmergencyStop(uint16_t writer);

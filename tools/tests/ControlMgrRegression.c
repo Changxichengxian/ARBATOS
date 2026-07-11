@@ -37,11 +37,23 @@ typedef struct
     ControlResult stopUpgradeResult;
     ControlResult stopSwitchResult;
     ControlReason lastStopReason;
+    uint32_t permitRequiredMask;
+    uint8_t enterPermitValid;
+    uint8_t updatePermitValidBeforeRequest;
+    uint8_t updatePermitValidAfterRequest;
+    uint8_t exitPermitValid;
+    uint8_t stopPermitValid;
+    ControlOutputPermit enterPermit;
+    ControlOutputPermit updatePermit;
+    ControlOutputPermit exitPermit;
+    ControlOutputPermit stopPermit;
 } TestBehavior;
 
 static int s_criticalDepth;
 static uint32_t s_criticalErrorCount;
 static uint32_t s_callbackCriticalErrorCount;
+
+uint8_t ControlMgrTestOutputCycleSet(ControlDomain domain, uint32_t cycle_seq);
 
 void ControlMgrTestEnterCritical(void)
 {
@@ -69,9 +81,11 @@ static void TestCallbackBoundary(void)
 static ControlResult TestEnter(const ControlController *controller, ControlCtx *context)
 {
     TestBehavior *behavior = (TestBehavior *)controller->user;
-    (void)context;
     TestCallbackBoundary();
     behavior->enterCount++;
+    behavior->enterPermit = context->outputPermit;
+    behavior->enterPermitValid = ControlMgrOutputPermitValid(&context->outputPermit,
+                                                              behavior->permitRequiredMask);
     if (behavior->enterStopReason != ControlReasonNone)
     {
         behavior->enterStopResult = ControlMgrStop(controller->domain,
@@ -90,6 +104,10 @@ static ControlResult TestUpdate(const ControlController *controller, ControlCtx 
     TestBehavior *behavior = (TestBehavior *)controller->user;
     TestCallbackBoundary();
     behavior->updateCount++;
+    behavior->updatePermit = context->outputPermit;
+    behavior->updatePermitValidBeforeRequest = ControlMgrOutputPermitValid(
+        &context->outputPermit,
+        behavior->permitRequiredMask);
     if (behavior->recurseUpdate != 0u)
     {
         behavior->recurseUpdate = 0u;
@@ -102,15 +120,20 @@ static ControlResult TestUpdate(const ControlController *controller, ControlCtx 
         behavior->updateStopResult = ControlMgrStop(controller->domain,
                                                     behavior->updateStopReason);
     }
+    behavior->updatePermitValidAfterRequest = ControlMgrOutputPermitValid(
+        &context->outputPermit,
+        behavior->permitRequiredMask);
     return behavior->updateResult;
 }
 
 static ControlResult TestExit(const ControlController *controller, ControlCtx *context)
 {
     TestBehavior *behavior = (TestBehavior *)controller->user;
-    (void)context;
     TestCallbackBoundary();
     behavior->exitCount++;
+    behavior->exitPermit = context->outputPermit;
+    behavior->exitPermitValid = ControlMgrOutputPermitValid(&context->outputPermit,
+                                                             behavior->permitRequiredMask);
     if (behavior->exitStopReason != ControlReasonNone)
     {
         behavior->exitStopResult = ControlMgrStop(controller->domain,
@@ -132,6 +155,9 @@ static ControlResult TestStop(const ControlController *controller, ControlCtx *c
     TestCallbackBoundary();
     behavior->stopCount++;
     behavior->lastStopReason = context->reason;
+    behavior->stopPermit = context->outputPermit;
+    behavior->stopPermitValid = ControlMgrOutputPermitValid(&context->outputPermit,
+                                                             behavior->permitRequiredMask);
     if (behavior->stopUpgradeReason != ControlReasonNone)
     {
         behavior->stopUpgradeResult = ControlMgrStop(controller->domain,
@@ -889,6 +915,212 @@ static int TestActuatorOwnershipDiagnostics(void)
     return 1;
 }
 
+static int TestOutputPermitLifecycle(void)
+{
+    const uint32_t motor0 = ((uint32_t)1u << 0u);
+    const uint32_t motor1 = ((uint32_t)1u << 1u);
+    const uint32_t motor2 = ((uint32_t)1u << 2u);
+    TestBehavior firstBehavior = {0};
+    TestBehavior secondBehavior = {0};
+    ControlController first;
+    ControlController second;
+    ControlCtx context;
+    ControlOutputPermit firstPermit;
+    ControlOutputPermit priorCyclePermit;
+    ControlOutputPermit currentPermit;
+    ControlOutputPermit alteredPermit;
+    ControlOutputPermit clearedPermit;
+    ControlOutputStamp clearedStamp;
+    ControlOutputStamp zeroStamp = {0};
+    uint32_t expectedEpoch;
+
+    memset(&context, 0, sizeof(context));
+    memset(&clearedPermit, 0xA5, sizeof(clearedPermit));
+    memset(&clearedStamp, 0xA5, sizeof(clearedStamp));
+    ControlOutputPermitClear(&clearedPermit);
+    ControlOutputStampClear(&clearedStamp);
+    TEST_CHECK(memcmp(&clearedPermit, &(ControlOutputPermit){0}, sizeof(clearedPermit)) == 0 &&
+               memcmp(&clearedStamp, &zeroStamp, sizeof(clearedStamp)) == 0 &&
+               ControlOutputPermitAllows(NULL, 0u) == 0u &&
+               ControlOutputStampEqual(NULL, &zeroStamp) == 0u &&
+               ControlOutputStampEqual(&clearedStamp, &zeroStamp) == 1u,
+               "输出许可纯函数的清空、空指针或等值语义错误");
+
+    ControlMgrReset();
+    firstBehavior.permitRequiredMask = motor0;
+    secondBehavior.permitRequiredMask = motor2;
+    first = TestController(ControlIdCustomBase,
+                           ControlDomainChassis,
+                           ControlResChassisWheels,
+                           "controller.test.permit_first",
+                           &firstBehavior);
+    first.actuator_mask = motor0 | motor1;
+    second = TestController((uint16_t)(ControlIdCustomBase + 1u),
+                            ControlDomainChassis,
+                            ControlResChassisWheels,
+                            "controller.test.permit_second",
+                            &secondBehavior);
+    second.actuator_mask = motor1 | motor2;
+
+    TEST_CHECK(ControlMgrRegister(&first) == ControlResultOk &&
+               ControlMgrRegister(&second) == ControlResultOk &&
+               ControlMgrSwitch(first.id, ControlReasonStartup) == ControlResultOk &&
+               ControlMgrUpdateDomain(ControlDomainChassis, &context) == ControlResultOk,
+               "首个控制器输出许可场景准备失败");
+    firstPermit = context.outputPermit;
+    TEST_CHECK(firstBehavior.enterPermit.stamp.valid == 0u &&
+               firstBehavior.enterPermitValid == 0u &&
+               firstBehavior.updatePermitValidBeforeRequest == 1u &&
+               firstBehavior.updatePermitValidAfterRequest == 1u &&
+               ControlMgrOutputPermitValid(&firstPermit, motor0 | motor1) == 1u &&
+               ControlMgrOutputPermitValid(&firstPermit, 0u) == 1u &&
+               ControlMgrOutputStampValid(&firstPermit.stamp, motor1) == 1u &&
+               ControlMgrOutputPermitValid(NULL, 0u) == 0u &&
+               ControlMgrOutputStampValid(NULL, 0u) == 0u &&
+               ControlOutputPermitAllows(&firstPermit, motor2) == 0u &&
+               ControlMgrOutputPermitValid(&firstPermit, motor2) == 0u,
+               "enter 必须无许可，首个 update 必须只获得自己的执行器许可");
+
+    alteredPermit = firstPermit;
+    alteredPermit.actuatorMask = motor0;
+    TEST_CHECK(ControlMgrOutputPermitValid(&alteredPermit, motor1) == 0u &&
+               ControlMgrOutputStampValid(&alteredPermit.stamp, motor2) == 0u,
+               "Permit 自带范围和当前控制器真实范围都必须限制执行器位");
+
+    alteredPermit = firstPermit;
+    alteredPermit.stamp.valid = 0u;
+    TEST_CHECK(ControlMgrOutputPermitValid(&alteredPermit, 0u) == 0u,
+               "valid 字段损坏后不得通过许可校验");
+    alteredPermit = firstPermit;
+    alteredPermit.stamp.controllerId = second.id;
+    TEST_CHECK(ControlMgrOutputPermitValid(&alteredPermit, motor1) == 0u,
+               "控制器身份不匹配时不得通过许可校验");
+    alteredPermit = firstPermit;
+    alteredPermit.stamp.domain = (uint8_t)ControlDomainCount;
+    TEST_CHECK(ControlMgrOutputPermitValid(&alteredPermit, motor1) == 0u,
+               "控制域越界时不得通过许可校验");
+    alteredPermit = firstPermit;
+    alteredPermit.stamp.authorityEpoch++;
+    TEST_CHECK(ControlMgrOutputPermitValid(&alteredPermit, motor1) == 0u,
+               "授权代次不匹配时不得通过许可校验");
+    alteredPermit = firstPermit;
+    alteredPermit.stamp.cycleSeq++;
+    TEST_CHECK(ControlMgrOutputPermitValid(&alteredPermit, motor1) == 0u,
+               "控制周期不匹配时不得通过许可校验");
+
+    TEST_CHECK(ControlMgrSwitch(second.id, ControlReasonModeSwitch) == ControlResultOk &&
+               ControlMgrOutputPermitValid(&firstPermit, motor0) == 0u &&
+               ControlMgrOutputStampValid(&firstPermit.stamp, 0u) == 0u,
+               "Switch 成功入队时必须立即撤销旧控制器许可");
+    TEST_CHECK(ControlMgrUpdateDomain(ControlDomainChassis, &context) == ControlResultOk,
+               "A 到 B 的许可切换失败");
+    priorCyclePermit = context.outputPermit;
+    TEST_CHECK(firstBehavior.exitPermit.stamp.valid == 0u &&
+               firstBehavior.exitPermitValid == 0u &&
+               secondBehavior.enterPermit.stamp.valid == 0u &&
+               secondBehavior.enterPermitValid == 0u &&
+               secondBehavior.updatePermitValidBeforeRequest == 1u &&
+               priorCyclePermit.stamp.controllerId == second.id &&
+               ControlMgrOutputPermitValid(&priorCyclePermit, motor1 | motor2) == 1u &&
+               ControlMgrOutputPermitValid(&firstPermit, 0u) == 0u,
+               "A 到 B 后旧许可必须失效，exit/enter 必须无许可且 B update 获得新许可");
+
+    TEST_CHECK(ControlMgrUpdateDomain(ControlDomainChassis, &context) == ControlResultOk,
+               "连续 update 周期失败");
+    currentPermit = context.outputPermit;
+    TEST_CHECK(ControlOutputStampEqual(&priorCyclePermit.stamp,
+                                       &currentPermit.stamp) == 0u &&
+               priorCyclePermit.stamp.authorityEpoch == currentPermit.stamp.authorityEpoch &&
+               priorCyclePermit.stamp.cycleSeq != currentPermit.stamp.cycleSeq &&
+               ControlMgrOutputPermitValid(&priorCyclePermit, motor2) == 0u &&
+               ControlMgrOutputPermitValid(&currentPermit, motor2) == 1u,
+               "下一次真实 update 必须让旧 cycle 失效");
+
+    priorCyclePermit = currentPermit;
+    TEST_CHECK(ControlMgrTestOutputCycleSet(ControlDomainChassis, UINT32_MAX) == 1u &&
+               ControlMgrUpdateDomain(ControlDomainChassis, &context) == ControlResultOk,
+               "输出周期回绕场景准备失败");
+    currentPermit = context.outputPermit;
+    TEST_CHECK(currentPermit.stamp.cycleSeq == 1u &&
+               currentPermit.stamp.authorityEpoch != priorCyclePermit.stamp.authorityEpoch &&
+               ControlMgrOutputPermitValid(&priorCyclePermit, motor2) == 0u &&
+               ControlMgrOutputPermitValid(&currentPermit, motor2) == 1u,
+               "cycle 回绕必须换授权代次并从 1 重新发布");
+
+    TEST_CHECK(ControlMgrSwitch(999u, ControlReasonTest) == ControlResultNotFound &&
+               ControlMgrStop(ControlDomainCount, ControlReasonDisable) == ControlResultBadArgument &&
+               ControlMgrOutputPermitValid(&currentPermit, motor2) == 1u,
+               "被拒绝的 Switch/Stop 不得撤销当前许可");
+
+    expectedEpoch = currentPermit.stamp.authorityEpoch + 1u;
+    if (expectedEpoch == 0u)
+    {
+        expectedEpoch = 1u;
+    }
+    TEST_CHECK(ControlMgrSwitch(second.id, ControlReasonModeSwitch) == ControlResultOk &&
+               ControlMgrOutputPermitValid(&currentPermit, motor2) == 0u &&
+               ControlMgrSwitch(second.id, ControlReasonModeSwitch) == ControlResultOk &&
+               ControlMgrUpdateDomain(ControlDomainChassis, &context) == ControlResultOk,
+               "同 ID Switch 或重复请求处理失败");
+    TEST_CHECK(context.outputPermit.stamp.controllerId == second.id &&
+               context.outputPermit.stamp.authorityEpoch == expectedEpoch &&
+               context.outputPermit.stamp.cycleSeq == 1u &&
+               secondBehavior.enterCount == 1u &&
+               ControlMgrOutputPermitValid(&context.outputPermit, motor2) == 1u,
+               "同 ID Switch 必须换授权代次、同轮重发许可，重复请求不得再换代");
+
+    currentPermit = context.outputPermit;
+    ControlMgrReset();
+    TEST_CHECK(ControlMgrOutputPermitValid(&currentPermit, 0u) == 0u &&
+               ControlMgrOutputStampValid(&currentPermit.stamp, 0u) == 0u,
+               "Reset 后旧许可不得在新管理器会话复活");
+    TEST_CHECK(ControlMgrRegister(&second) == ControlResultOk &&
+               ControlMgrSwitch(second.id, ControlReasonStartup) == ControlResultOk &&
+               ControlMgrUpdateDomain(ControlDomainChassis, &context) == ControlResultOk &&
+               ControlMgrOutputPermitValid(&context.outputPermit, motor2) == 1u &&
+               context.outputPermit.stamp.authorityEpoch != currentPermit.stamp.authorityEpoch &&
+               ControlMgrOutputPermitValid(&currentPermit, 0u) == 0u,
+               "Reset 后同域同 ID 重新启动也不得让旧许可复活");
+    return 1;
+}
+
+static int TestOutputPermitCallbackStop(void)
+{
+    const uint32_t motor3 = ((uint32_t)1u << 3u);
+    TestBehavior behavior = {0};
+    ControlController controller;
+    ControlCtx context;
+
+    memset(&context, 0, sizeof(context));
+    ControlMgrReset();
+    behavior.permitRequiredMask = motor3;
+    behavior.updateStopReason = ControlReasonDisable;
+    controller = TestController(ControlIdCustomBase,
+                                ControlDomainShoot,
+                                ControlResShootTrigger,
+                                "controller.test.permit_callback_stop",
+                                &behavior);
+    controller.actuator_mask = motor3;
+
+    TEST_CHECK(ControlMgrRegister(&controller) == ControlResultOk &&
+               ControlMgrSwitch(controller.id, ControlReasonStartup) == ControlResultOk &&
+               ControlMgrUpdateDomain(ControlDomainShoot, &context) == ControlResultOk,
+               "update 回调内 Stop 的许可场景准备失败");
+    TEST_CHECK(behavior.enterPermitValid == 0u &&
+               behavior.updatePermitValidBeforeRequest == 1u &&
+               behavior.updateStopResult == ControlResultOk &&
+               behavior.updatePermitValidAfterRequest == 0u &&
+               ControlMgrOutputPermitValid(&context.outputPermit, motor3) == 0u,
+               "update 回调内 Stop 成功入队后同一许可必须立即失效");
+    TEST_CHECK(ControlMgrUpdateDomain(ControlDomainShoot, &context) == ControlResultNotActive &&
+               behavior.stopCount == 1u &&
+               behavior.stopPermit.stamp.valid == 0u &&
+               behavior.stopPermitValid == 0u &&
+               context.outputPermit.stamp.valid == 0u,
+               "stop 回调和停机返回上下文都不得携带输出许可");
+    return 1;
+}
+
 static int TestDiagnostics(void)
 {
     TestBehavior behavior = {0};
@@ -970,6 +1202,8 @@ int main(void)
     if (!TestFaultStateSurvivesEmptyProtectedStop()) return 1;
     if (!TestOrdinaryCallbackRequestWaitsNextFrame()) return 1;
     if (!TestActuatorOwnershipDiagnostics()) return 1;
+    if (!TestOutputPermitLifecycle()) return 1;
+    if (!TestOutputPermitCallbackStop()) return 1;
     if (!TestDiagnostics()) return 1;
     if (!TestCheck(s_criticalDepth == 0 &&
                    s_criticalErrorCount == 0u &&

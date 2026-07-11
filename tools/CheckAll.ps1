@@ -2233,7 +2233,11 @@ function Test-ControlRegistryBoundaries {
             "ControlMgrGetDiag",
             "control_registered_actuator_mask_locked",
             "control_active_actuator_mask_locked",
-            "ControlMgrGetActuatorDiag"
+            "ControlMgrGetActuatorDiag",
+            "control_output_revoke_locked",
+            "control_output_issue_locked",
+            "ControlMgrOutputPermitValid",
+            "ControlMgrOutputStampValid"
         )) {
         if ($controlMgrContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${controlMgrRepoPath}: hardened lifecycle arbitration must keep '$required'."
@@ -2249,6 +2253,18 @@ function Test-ControlRegistryBoundaries {
         $controlMgrHeaderContent -notmatch 'uint32_t\s+crossDomainOverlapMask\s*;' -or
         $controlMgrHeaderContent -notmatch 'uint16_t\s+unresolvedOutputCount\s*;\s*uint16_t\s+invalidIdCount\s*;') {
         Add-CheckError "${controlMgrHeaderRepoPath}: physical ownership and actuator diagnostics must use fixed-width fields."
+    }
+    $outputPermitRepoPath = "shared\application\robot\ControlOutputPermit.h"
+    $outputPermitContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $outputPermitRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("authorityEpoch", "cycleSeq", "controllerId", "actuatorMask", "ControlOutputStampEqual")) {
+        if ($outputPermitContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${outputPermitRepoPath}: output permit ABI must keep '$required'."
+        }
+    }
+    foreach ($forbidden in @("FreeRTOS.h", "task.h", "ControlMgr.h", "LowCmd.h")) {
+        if ($outputPermitContent -match [regex]::Escape($forbidden)) {
+            Add-CheckError "${outputPermitRepoPath}: fixed-width output permit types must stay independent from '$forbidden'."
+        }
     }
 
     $watchHeaderRepoPath = "shared\application\services\diagnostics\Watch.h"
@@ -2286,7 +2302,7 @@ function Test-ControlRegistryBoundaries {
         }
     }
     $controlMgrAbiContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "tools\tests\ControlMgrAbiRegression.c") -Raw -Encoding UTF8
-    foreach ($required in @("control_mgr_diag_size", "control_actuator_diag_size", "control_actuator_diag_tail_offset")) {
+    foreach ($required in @("control_mgr_diag_size", "control_actuator_diag_size", "control_actuator_diag_tail_offset", "control_output_stamp_size", "control_output_permit_size", "low_cmd_diag_size", "low_cmd_diag_permit_tail_offset")) {
         if ($controlMgrAbiContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "tools\tests\ControlMgrAbiRegression.c: Watch ABI regression must keep '$required'."
         }
@@ -2932,13 +2948,44 @@ function Test-FaultIsolationBoundaries {
 
     $lowCmdRepoPath = "shared\application\robot\LowCmd.c"
     $lowCmdContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $lowCmdRepoPath) -Raw -Encoding UTF8
-    foreach ($required in @("LowCmdWriterValid", "resolved_writer")) {
+    foreach ($required in @(
+            "LowCmdWriterValid",
+            "resolved_writer",
+            "gLowCmdRecord",
+            "LowCmdRecordStoreLocked",
+            "LowCmdPermitValidLocked",
+            "LowCmdSetMotorManyWithPermit",
+            "LowCmdSetCurrentManyWithPermit",
+            "LowCmdClearManyWithPermit",
+            "LowCmdGetMotorManyStamped"
+        )) {
         if ($lowCmdContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${lowCmdRepoPath}: LowCmd authority must keep '$required'."
         }
     }
     if ($lowCmdContent -match 'cmds\s*\[\s*i\s*\]\s*\.\s*writer') {
         Add-CheckError "${lowCmdRepoPath}: MotorCmd payload must not override the writer supplied by the API."
+    }
+    if ($lowCmdContent -notmatch 'LowCmdSetMotorManyChecked[\s\S]{0,1800}?LowCmdEnterCritical\s*\(\s*\)[\s\S]{0,300}?LowCmdPermitValidLocked[\s\S]{0,900}?LowCmdRecordStoreLocked') {
+        Add-CheckError "${lowCmdRepoPath}: permit validation and command+stamp storage must share one LowCmd critical section."
+    }
+    if ($lowCmdContent -notmatch 'LowCmdRecordStoreLocked[\s\S]{0,900}?memset\s*\(\s*record\s*,\s*0\s*,\s*sizeof\s*\(\s*\*record\s*\)\s*\)') {
+        Add-CheckError "${lowCmdRepoPath}: every legacy overwrite must be able to clear the complete command owner stamp."
+    }
+    if ($lowCmdContent -notmatch 'typedef\s+struct\s*\{\s*MotorCmd\s+cmd;\s*ControlOutputStamp\s+owner;\s*\}\s*LowCmdRecord\s*;') {
+        Add-CheckError "${lowCmdRepoPath}: internal LowCmdRecord must keep ownership outside the pure MotorCmd payload."
+    }
+    $lowCmdHeaderRepoPath = "shared\application\robot\LowCmd.h"
+    $lowCmdHeaderContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $lowCmdHeaderRepoPath) -Raw -Encoding UTF8
+    if ($lowCmdHeaderContent -match '\bLowCmdRecord\b') {
+        Add-CheckError "${lowCmdHeaderRepoPath}: LowCmdRecord is an implementation detail and must not leak through the public header."
+    }
+    $lowCmdTestRepoPath = "tools\tests\LowCmdRegression.c"
+    $lowCmdTestContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $lowCmdTestRepoPath) -Raw -Encoding UTF8
+    foreach ($required in @("TestPermitWriteAndStampedSnapshot", "TestRevokedPermitRejectIsAtomic", "TestPermitRejectsDuplicateAndIsr", "TestLegacyAndSafetyWritesClearOwner", "s_test_permit_validate_outside_critical_count")) {
+        if ($lowCmdTestContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "${lowCmdTestRepoPath}: output envelope regression must keep '$required'."
+        }
     }
 
     $armMotionRepoPath = "shared\application\arm\ArmMotion.c"

@@ -17,6 +17,7 @@ $Sources = @(
 )
 $Args = @(
     'cc', '-std=c11', '-Wall', '-Wextra', '-Werror',
+    '-DCONTROL_MANAGER_TEST=1',
     '-include', $CriticalHeader,
     ('-I' + (Join-Path $RepoRoot 'shared\application\robot'))
 )
