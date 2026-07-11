@@ -67,7 +67,7 @@ static inline void RobotFaultEnterSafeStateEx(uint32_t reason,
     /* 中断和 CPU 异常上下文不能进入依赖 FreeRTOS 临界区的状态链。 */
     if (__get_IPSR() == 0u && xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
     {
-        RobotLifecycleEnterFault(ROBOT_LIFECYCLE_REASON_FATAL_FAULT);
+        RobotLifecycleEnterFatalFault();
         (void)LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_FAULT);
     }
 }

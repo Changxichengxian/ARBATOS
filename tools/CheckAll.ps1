@@ -2618,11 +2618,15 @@ function Test-ControlRegistryBoundaries {
     ).Value
     $lifecycleReaderBodies = [regex]::Match(
         $lifecycleContent,
-        'RobotLifecycleState\s+RobotLifecycleCurrent\s*\([^;]*\)[\s\S]*?(?=\r?\nvoid\s+RobotLifecycleEnterFault\s*\()'
+        'RobotLifecycleState\s+RobotLifecycleCurrent\s*\([^;]*\)[\s\S]*?(?=\r?\nvoid\s+RobotLifecycleEnterFatalFault\s*\()'
     ).Value
     $lifecycleCommitBody = [regex]::Match(
         $lifecycleContent,
         'static\s+void\s+RobotLifecycleCommit\s*\([^;]*\)\s*\{[\s\S]*?(?=\r?\nvoid\s+RobotLifecycleInit\s*\()'
+    ).Value
+    $lifecycleInitBody = [regex]::Match(
+        $lifecycleContent,
+        'void\s+RobotLifecycleInit\s*\(\s*void\s*\)\s*\{[\s\S]*?(?=\r?\nstatic\s+void\s+RobotLifecycleUpdateFromInput\s*\()'
     ).Value
     if (([regex]::Matches($lifecycleContent, 'ManualInputSnapshotRead\s*\(')).Count -ne 1 -or
         ([regex]::Matches($lifecycleUpdateBody, 'ManualInputSnapshotRead\s*\(')).Count -ne 1 -or
@@ -2667,6 +2671,15 @@ function Test-ControlRegistryBoundaries {
         $lifecycleCommitBody -notmatch 'g_robot_lifecycle\.fault_latched\s*!=\s*0u[\s\S]{0,300}?next_state\s*=\s*ROBOT_LIFECYCLE_FAULT') {
         Add-CheckError "${lifecycleRepoPath}: commit must recheck a concurrently latched fault before allowing output."
     }
+    if ($lifecycleHeaderContent -notmatch 'void\s+RobotLifecycleEnterFatalFault\s*\(\s*void\s*\)\s*;' -or
+        $lifecycleHeaderContent -match '\bRobotLifecycleEnterFault\b|\bRobotLifecycleClearFault\b|\bROBOT_LIFECYCLE_REASON_FAULT_LATCHED\b' -or
+        $lifecycleContent -match '\bRobotLifecycleEnterFault\b|\bRobotLifecycleClearFault\b|\bROBOT_LIFECYCLE_REASON_FAULT_LATCHED\b') {
+        Add-CheckError "${lifecycleRepoPath}: FAULT must only expose the non-clearable RobotLifecycleEnterFatalFault path."
+    }
+    if ([string]::IsNullOrWhiteSpace($lifecycleInitBody) -or
+        $lifecycleInitBody -notmatch 'if\s*\(\s*g_robot_lifecycle_inited\s*==\s*0u\s*\)[\s\S]{0,900}?memset\s*\(\s*&g_robot_lifecycle') {
+        Add-CheckError "${lifecycleRepoPath}: repeated Init must be idempotent and preserve an already latched fatal fault."
+    }
     $lifecycleUpdateOwners = @{}
     foreach ($source in (Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot "shared") -Recurse -File |
             Where-Object { $_.Extension -in @(".c", ".inc") })) {
@@ -2696,7 +2709,13 @@ function Test-ControlRegistryBoundaries {
             'TEST_SEMANTICS_OLD_SEQ',
             'TEST_SEMANTICS_NEW_SEQ',
             'snapshot\.manual_semantics_seq\s*==\s*expectedSeq',
-            'TEST_SEMANTICS_NEW_SEQ\s*\)[\s\S]{0,300}?ROBOT_LIFECYCLE_REASON_STARTUP_SAFE_REQUIRED'
+            'TEST_SEMANTICS_NEW_SEQ\s*\)[\s\S]{0,300}?ROBOT_LIFECYCLE_REASON_STARTUP_SAFE_REQUIRED',
+            'RobotLifecycleEnterFatalFault\s*\(\s*\)',
+            '安全档不得清除致命故障',
+            '运行档不得越过致命故障锁存',
+            '离线裁决不得覆盖致命故障原因',
+            '缓存过期不得把致命故障降成可恢复安全状态',
+            '重复 Init 不得清除已锁存的致命故障'
         )) {
         if ($lifecycleRegressionContent -notmatch $requiredPattern) {
             Add-CheckError "${lifecycleRegressionRepoPath}: semantics-refresh lifecycle regression is missing '$requiredPattern'."
@@ -2887,7 +2906,7 @@ function Test-FaultIsolationBoundaries {
             AllowedRegex = '$a'
         },
         [pscustomobject]@{
-            Token = "RobotLifecycleEnterFault"
+            Token = "RobotLifecycleEnterFatalFault"
             Allowed = @("shared/application/robot/RobotLifecycle.c",
                         "shared/application/robot/RobotLifecycle.h",
                         "shared/application/services/diagnostics/RobotFaultGuard.h")
@@ -2901,7 +2920,10 @@ function Test-FaultIsolationBoundaries {
         "FaultMgrSystemAction",
         "FaultMgrGetSystemStatus",
         "FaultSystemStatus",
-        "ControlMgrStopAll"
+        "ControlMgrStopAll",
+        "RobotLifecycleEnterFault",
+        "RobotLifecycleClearFault",
+        "ROBOT_LIFECYCLE_REASON_FAULT_LATCHED"
     )
     foreach ($file in $sourceFiles) {
         $content = Get-Content -LiteralPath $file.FullName -Raw

@@ -212,69 +212,6 @@ int main(void)
                          "已见过安全档后在线运行可恢复输出")) return 1;
 
     readsBefore = s_manualReadCount;
-    s_tickMs++;
-    RobotLifecycleEnterFault(ROBOT_LIFECYCLE_REASON_NONE);
-    if (!TestCheck(s_manualReadCount == readsBefore,
-                   "EnterFault 不得读取手动输入快照")) return 1;
-    if (!TestCachedState(ROBOT_LIFECYCLE_FAULT,
-                         ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
-                         0u,
-                         1u,
-                         1u,
-                         "EnterFault 必须立即锁存故障并清除输出许可")) return 1;
-
-    TestSetInput(1u, 1u, TEST_SWITCH_RUN,
-                 TEST_SWITCH_SAFE, TEST_SEMANTICS_OLD_SEQ);
-    if (!TestUpdateReadsOnce("故障锁存后的运行 Update 必须且只能读取一次快照")) return 1;
-    if (!TestCachedState(ROBOT_LIFECYCLE_FAULT,
-                         ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
-                         0u,
-                         1u,
-                         1u,
-                         "运行输入不得越过锁存故障")) return 1;
-
-    TestSetInput(1u, 1u, TEST_SWITCH_SAFE,
-                 TEST_SWITCH_SAFE, TEST_SEMANTICS_OLD_SEQ);
-    if (!TestUpdateReadsOnce("故障锁存后的安全 Update 必须且只能读取一次快照")) return 1;
-    if (!TestCachedState(ROBOT_LIFECYCLE_FAULT,
-                         ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
-                         0u,
-                         1u,
-                         1u,
-                         "安全输入也不得自行清除锁存故障")) return 1;
-
-    readsBefore = s_manualReadCount;
-    RobotLifecycleClearFault();
-    if (!TestCheck(s_manualReadCount == readsBefore,
-                   "ClearFault 不得读取手动输入快照")) return 1;
-    if (!TestCachedState(ROBOT_LIFECYCLE_FAULT,
-                         ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
-                         0u,
-                         0u,
-                         1u,
-                         "ClearFault 只能解除锁存，不能立即放行或重算状态")) return 1;
-
-    TestSetInput(1u, 1u, TEST_SWITCH_SAFE,
-                 TEST_SWITCH_SAFE, TEST_SEMANTICS_OLD_SEQ);
-    if (!TestUpdateReadsOnce("清故障后的安全 Update 必须且只能读取一次快照")) return 1;
-    if (!TestCachedState(ROBOT_LIFECYCLE_SAFE,
-                         ROBOT_LIFECYCLE_REASON_MANUAL_SAFE_SWITCH,
-                         0u,
-                         0u,
-                         1u,
-                         "清故障后必须先保持安全档锁定")) return 1;
-
-    TestSetInput(1u, 1u, TEST_SWITCH_RUN,
-                 TEST_SWITCH_SAFE, TEST_SEMANTICS_OLD_SEQ);
-    if (!TestUpdateReadsOnce("清故障后的运行 Update 必须且只能读取一次快照")) return 1;
-    if (!TestCachedState(ROBOT_LIFECYCLE_ACTIVE,
-                         ROBOT_LIFECYCLE_REASON_NONE,
-                         1u,
-                         0u,
-                         1u,
-                         "清故障后的安全档到运行档序列应恢复输出")) return 1;
-
-    readsBefore = s_manualReadCount;
     s_tickMs += 21u;
     if (!TestCachedState(ROBOT_LIFECYCLE_SAFE,
                          ROBOT_LIFECYCLE_REASON_UPDATE_STALE,
@@ -389,6 +326,71 @@ int main(void)
                          0u,
                          1u,
                          "换权帧本身已在安全档时应建立新代安全资格")) return 1;
+
+    /* 致命故障不可在线恢复，因此必须放在全部可恢复状态回归之后。 */
+    readsBefore = s_manualReadCount;
+    s_tickMs++;
+    RobotLifecycleEnterFatalFault();
+    if (!TestCheck(s_manualReadCount == readsBefore,
+                   "EnterFatalFault 不得读取手动输入快照")) return 1;
+    if (!TestCachedState(ROBOT_LIFECYCLE_FAULT,
+                         ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
+                         0u,
+                         1u,
+                         1u,
+                         "EnterFatalFault 必须立即锁存致命故障并清除输出许可")) return 1;
+
+    TestSetInput(1u, 1u, TEST_SWITCH_SAFE,
+                 TEST_SWITCH_SAFE, TEST_SEMANTICS_NEW_SEQ);
+    if (!TestUpdateReadsOnce("致命故障后的安全档 Update 必须且只能读取一次快照")) return 1;
+    if (!TestCachedState(ROBOT_LIFECYCLE_FAULT,
+                         ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
+                         0u,
+                         1u,
+                         1u,
+                         "安全档不得清除致命故障")) return 1;
+
+    TestSetInput(1u, 1u, TEST_SWITCH_RUN,
+                 TEST_SWITCH_SAFE, TEST_SEMANTICS_NEW_SEQ);
+    if (!TestUpdateReadsOnce("致命故障后的运行档 Update 必须且只能读取一次快照")) return 1;
+    if (!TestCachedState(ROBOT_LIFECYCLE_FAULT,
+                         ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
+                         0u,
+                         1u,
+                         1u,
+                         "运行档不得越过致命故障锁存")) return 1;
+
+    TestSetInput(1u, 0u, TEST_SWITCH_RUN,
+                 TEST_SWITCH_SAFE, TEST_SEMANTICS_NEW_SEQ);
+    if (!TestUpdateReadsOnce("致命故障后的离线 Update 必须且只能读取一次快照")) return 1;
+    if (!TestCachedState(ROBOT_LIFECYCLE_FAULT,
+                         ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
+                         0u,
+                         1u,
+                         1u,
+                         "离线裁决不得覆盖致命故障原因")) return 1;
+
+    readsBefore = s_manualReadCount;
+    s_tickMs += ROBOT_LIFECYCLE_UPDATE_TIMEOUT_MS + 1u;
+    if (!TestCachedState(ROBOT_LIFECYCLE_FAULT,
+                         ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
+                         0u,
+                         1u,
+                         1u,
+                         "缓存过期不得把致命故障降成可恢复安全状态") ||
+        !TestCheck(s_manualReadCount == readsBefore,
+                   "致命故障过期裁决不得读取手动输入")) return 1;
+
+    readsBefore = s_manualReadCount;
+    RobotLifecycleInit();
+    if (!TestCheck(s_manualReadCount == readsBefore,
+                   "重复 Init 不得读取手动输入快照")) return 1;
+    if (!TestCachedState(ROBOT_LIFECYCLE_FAULT,
+                         ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
+                         0u,
+                         1u,
+                         1u,
+                         "重复 Init 不得清除已锁存的致命故障")) return 1;
 
     (void)puts("PASS: RobotLifecycle 统一快照与锁定状态回归");
     return 0;

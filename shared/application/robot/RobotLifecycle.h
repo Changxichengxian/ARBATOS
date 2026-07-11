@@ -24,10 +24,10 @@ typedef enum
     ROBOT_LIFECYCLE_REASON_NONE,
     ROBOT_LIFECYCLE_REASON_MANUAL_OFFLINE,
     ROBOT_LIFECYCLE_REASON_MANUAL_SAFE_SWITCH,
-    ROBOT_LIFECYCLE_REASON_FAULT_LATCHED,
-    ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
-    ROBOT_LIFECYCLE_REASON_STARTUP_SAFE_REQUIRED,
-    ROBOT_LIFECYCLE_REASON_UPDATE_STALE,
+    /* 数值 4 曾用于可恢复故障锁存；保留后续诊断编号，避免旧日志错译。 */
+    ROBOT_LIFECYCLE_REASON_FATAL_FAULT = 5u,
+    ROBOT_LIFECYCLE_REASON_STARTUP_SAFE_REQUIRED = 6u,
+    ROBOT_LIFECYCLE_REASON_UPDATE_STALE = 7u,
 } RobotLifecycleReason;
 
 typedef struct
@@ -52,8 +52,7 @@ void RobotLifecycleUpdate(void);
 RobotLifecycleState RobotLifecycleCurrent(void);
 uint8_t RobotLifecycleOutputAllowed(void);
 uint8_t RobotLifecycleGetSnapshot(RobotLifecycleSnapshot *out);
-void RobotLifecycleEnterFault(RobotLifecycleReason reason);
-void RobotLifecycleClearFault(void);
+void RobotLifecycleEnterFatalFault(void);
 uint8_t RobotLifecycleFaultLatched(void);
 const char *RobotLifecycleName(RobotLifecycleState state);
 

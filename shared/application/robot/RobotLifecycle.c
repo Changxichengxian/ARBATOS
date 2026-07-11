@@ -77,8 +77,7 @@ static RobotLifecycleState RobotLifecycleResolve(uint8_t manual_online,
 {
     if (snapshot->fault_latched != 0u)
     {
-        *reason = (snapshot->reason == ROBOT_LIFECYCLE_REASON_FATAL_FAULT) ?
-                  ROBOT_LIFECYCLE_REASON_FATAL_FAULT : ROBOT_LIFECYCLE_REASON_FAULT_LATCHED;
+        *reason = ROBOT_LIFECYCLE_REASON_FATAL_FAULT;
         return ROBOT_LIFECYCLE_FAULT;
     }
     if (manual_online == 0u)
@@ -123,9 +122,7 @@ static void RobotLifecycleCommit(RobotLifecycleState next_state,
     if (g_robot_lifecycle.fault_latched != 0u)
     {
         next_state = ROBOT_LIFECYCLE_FAULT;
-        reason = (g_robot_lifecycle.reason == ROBOT_LIFECYCLE_REASON_FATAL_FAULT) ?
-                     ROBOT_LIFECYCLE_REASON_FATAL_FAULT :
-                     ROBOT_LIFECYCLE_REASON_FAULT_LATCHED;
+        reason = ROBOT_LIFECYCLE_REASON_FATAL_FAULT;
     }
 
     if (g_robot_lifecycle.state != next_state)
@@ -149,13 +146,16 @@ void RobotLifecycleInit(void)
 {
     RobotLifecycleCriticalState critical = RobotLifecycleEnterCritical();
 
-    memset(&g_robot_lifecycle, 0, sizeof(g_robot_lifecycle));
-    g_robot_lifecycle.state = ROBOT_LIFECYCLE_BOOT;
-    g_robot_lifecycle.prev_state = ROBOT_LIFECYCLE_BOOT;
-    g_robot_lifecycle.reason = ROBOT_LIFECYCLE_REASON_BOOT;
-    g_robot_lifecycle.enter_tick = HAL_GetTick();
-    g_robot_lifecycle.update_tick = g_robot_lifecycle.enter_tick;
-    g_robot_lifecycle_inited = 1u;
+    if (g_robot_lifecycle_inited == 0u)
+    {
+        memset(&g_robot_lifecycle, 0, sizeof(g_robot_lifecycle));
+        g_robot_lifecycle.state = ROBOT_LIFECYCLE_BOOT;
+        g_robot_lifecycle.prev_state = ROBOT_LIFECYCLE_BOOT;
+        g_robot_lifecycle.reason = ROBOT_LIFECYCLE_REASON_BOOT;
+        g_robot_lifecycle.enter_tick = HAL_GetTick();
+        g_robot_lifecycle.update_tick = g_robot_lifecycle.enter_tick;
+        g_robot_lifecycle_inited = 1u;
+    }
 
     RobotLifecycleExitCritical(critical);
 }
@@ -260,7 +260,7 @@ uint8_t RobotLifecycleGetSnapshot(RobotLifecycleSnapshot *out)
     return 1u;
 }
 
-void RobotLifecycleEnterFault(RobotLifecycleReason reason)
+void RobotLifecycleEnterFatalFault(void)
 {
     const uint32_t now = HAL_GetTick();
     RobotLifecycleCriticalState critical = RobotLifecycleEnterCritical();
@@ -279,32 +279,12 @@ void RobotLifecycleEnterFault(RobotLifecycleReason reason)
     }
 
     g_robot_lifecycle.state = ROBOT_LIFECYCLE_FAULT;
-    g_robot_lifecycle.reason = (reason == ROBOT_LIFECYCLE_REASON_NONE) ?
-                               ROBOT_LIFECYCLE_REASON_FATAL_FAULT : reason;
+    g_robot_lifecycle.reason = ROBOT_LIFECYCLE_REASON_FATAL_FAULT;
     g_robot_lifecycle.enter_tick = now;
     g_robot_lifecycle.update_tick = now;
     g_robot_lifecycle.output_allowed = 0u;
     g_robot_lifecycle.fault_latched = 1u;
 
-    RobotLifecycleExitCritical(critical);
-}
-
-void RobotLifecycleClearFault(void)
-{
-    RobotLifecycleCriticalState critical = RobotLifecycleEnterCritical();
-
-    if (g_robot_lifecycle_inited == 0u)
-    {
-        memset(&g_robot_lifecycle, 0, sizeof(g_robot_lifecycle));
-        g_robot_lifecycle.state = ROBOT_LIFECYCLE_BOOT;
-        g_robot_lifecycle.prev_state = ROBOT_LIFECYCLE_BOOT;
-        g_robot_lifecycle.reason = ROBOT_LIFECYCLE_REASON_BOOT;
-        g_robot_lifecycle.enter_tick = HAL_GetTick();
-        g_robot_lifecycle_inited = 1u;
-    }
-
-    g_robot_lifecycle.fault_latched = 0u;
-    g_robot_lifecycle.update_tick = HAL_GetTick();
     RobotLifecycleExitCritical(critical);
 }
 
