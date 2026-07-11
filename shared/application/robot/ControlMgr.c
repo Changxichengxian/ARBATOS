@@ -50,6 +50,9 @@ typedef struct
 static control_registry_t s_registry;
 static control_domain_state_t s_domain[ControlDomainCount];
 static ControlMgrDiag s_diag;
+static ControlActuatorAudit s_actuator_audit;
+static uint32_t s_registered_actuator_mask[ControlDomainCount];
+static uint32_t s_cross_domain_actuator_overlap_mask;
 static uint32_t s_active_claim_mask;
 static uint8_t s_inited;
 
@@ -95,6 +98,45 @@ static uint32_t control_reserved_claim_mask_locked(void)
     for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
     {
         mask |= s_domain[i].reserved_claim_mask;
+    }
+    return mask;
+}
+
+static uint32_t control_registered_actuator_mask_locked(void)
+{
+    uint32_t mask = 0u;
+
+    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
+    {
+        mask |= s_registered_actuator_mask[i];
+    }
+    return mask;
+}
+
+static uint32_t control_registered_actuator_mask_without_domain_locked(ControlDomain domain)
+{
+    uint32_t mask = 0u;
+
+    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
+    {
+        if (i != (uint8_t)domain)
+        {
+            mask |= s_registered_actuator_mask[i];
+        }
+    }
+    return mask;
+}
+
+static uint32_t control_active_actuator_mask_locked(void)
+{
+    uint32_t mask = 0u;
+
+    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
+    {
+        if (s_domain[i].active != NULL)
+        {
+            mask |= s_domain[i].active->actuator_mask;
+        }
     }
     return mask;
 }
@@ -530,6 +572,9 @@ static void control_reset_state_unlocked(void)
     memset(&s_registry, 0, sizeof(s_registry));
     memset(&s_domain, 0, sizeof(s_domain));
     memset(&s_diag, 0, sizeof(s_diag));
+    memset(&s_actuator_audit, 0, sizeof(s_actuator_audit));
+    memset(s_registered_actuator_mask, 0, sizeof(s_registered_actuator_mask));
+    s_cross_domain_actuator_overlap_mask = 0u;
     s_active_claim_mask = 0u;
     s_inited = 1u;
 }
@@ -600,7 +645,12 @@ ControlResult ControlMgrRegister(const ControlController *controller)
     }
     else
     {
+        const uint32_t other_domain_actuators =
+            control_registered_actuator_mask_without_domain_locked(controller->domain);
+
         s_registry.controller[s_registry.count] = *controller;
+        s_cross_domain_actuator_overlap_mask |= controller->actuator_mask & other_domain_actuators;
+        s_registered_actuator_mask[controller->domain] |= controller->actuator_mask;
         s_registry.count++;
     }
     control_diag_register_locked(controller_id, result);
@@ -1092,6 +1142,57 @@ ControlResult ControlMgrGetDiag(ControlMgrDiag *out)
     CONTROL_MANAGER_ENTER_CRITICAL();
     *out = s_diag;
     out->reservedClaimMask = control_reserved_claim_mask_locked();
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return ControlResultOk;
+}
+
+ControlResult ControlMgrSetActuatorAudit(const ControlActuatorAudit *audit)
+{
+    ControlMgrInit();
+    if (audit == NULL)
+    {
+        return ControlResultBadArgument;
+    }
+
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    s_actuator_audit = *audit;
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return ControlResultOk;
+}
+
+uint32_t ControlMgrActiveActuatorMask(void)
+{
+    uint32_t mask;
+
+    ControlMgrInit();
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    mask = control_active_actuator_mask_locked();
+    CONTROL_MANAGER_EXIT_CRITICAL();
+    return mask;
+}
+
+ControlResult ControlMgrGetActuatorDiag(ControlActuatorDiag *out)
+{
+    uint32_t registered_mask;
+
+    ControlMgrInit();
+    if (out == NULL)
+    {
+        return ControlResultBadArgument;
+    }
+
+    CONTROL_MANAGER_ENTER_CRITICAL();
+    registered_mask = control_registered_actuator_mask_locked();
+    memset(out, 0, sizeof(*out));
+    out->routableMask = s_actuator_audit.routableMask;
+    out->registeredMask = registered_mask;
+    out->activeMask = control_active_actuator_mask_locked();
+    out->duplicateMask = s_actuator_audit.duplicateMask;
+    out->crossDomainOverlapMask = s_cross_domain_actuator_overlap_mask;
+    out->unownedMask = s_actuator_audit.routableMask & ~registered_mask;
+    out->unroutableMask = registered_mask & ~s_actuator_audit.routableMask;
+    out->unresolvedOutputCount = s_actuator_audit.unresolvedOutputCount;
+    out->invalidIdCount = s_actuator_audit.invalidIdCount;
     CONTROL_MANAGER_EXIT_CRITICAL();
     return ControlResultOk;
 }

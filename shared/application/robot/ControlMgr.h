@@ -153,6 +153,7 @@ typedef struct control_controller
     uint16_t id;
     ControlDomain domain;
     uint32_t claim_mask;
+    uint32_t actuator_mask;
     const char *name;
     ControlMeta meta;
     ControlCallback enter;
@@ -196,6 +197,31 @@ typedef struct
     uint8_t reserved[2];
 } ControlMgrDiag;
 
+/*
+ * 组合入口负责把名称和运行配置解析成物理执行器；ControlMgr 只保存结果。
+ * 这一层诊断暂不参与控制器切换和输出仲裁。
+ */
+typedef struct
+{
+    uint32_t routableMask;
+    uint32_t duplicateMask;
+    uint16_t unresolvedOutputCount;
+    uint16_t invalidIdCount;
+} ControlActuatorAudit;
+
+typedef struct
+{
+    uint32_t routableMask;
+    uint32_t registeredMask;
+    uint32_t activeMask;
+    uint32_t duplicateMask;
+    uint32_t crossDomainOverlapMask;
+    uint32_t unownedMask;
+    uint32_t unroutableMask;
+    uint16_t unresolvedOutputCount;
+    uint16_t invalidIdCount;
+} ControlActuatorDiag;
+
 void ControlMgrInit(void);
 void ControlMgrReset(void);
 
@@ -234,6 +260,9 @@ const char *ControlMgrActiveName(ControlDomain domain);
 ControlResult ControlMgrGetStatus(ControlDomain domain, ControlStatus *out);
 uint32_t ControlMgrActiveClaimMask(void);
 ControlResult ControlMgrGetDiag(ControlMgrDiag *out);
+ControlResult ControlMgrSetActuatorAudit(const ControlActuatorAudit *audit);
+uint32_t ControlMgrActiveActuatorMask(void);
+ControlResult ControlMgrGetActuatorDiag(ControlActuatorDiag *out);
 
 #ifdef __cplusplus
 }

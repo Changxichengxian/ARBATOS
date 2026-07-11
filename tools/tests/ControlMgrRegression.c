@@ -795,6 +795,100 @@ static int TestOrdinaryCallbackRequestWaitsNextFrame(void)
     return 1;
 }
 
+static int TestActuatorOwnershipDiagnostics(void)
+{
+    const uint32_t motor0 = ((uint32_t)1u << 0u);
+    const uint32_t motor1 = ((uint32_t)1u << 1u);
+    const uint32_t motor2 = ((uint32_t)1u << 2u);
+    const uint32_t motor4 = ((uint32_t)1u << 4u);
+    const uint32_t motor5 = ((uint32_t)1u << 5u);
+    const uint32_t motor6 = ((uint32_t)1u << 6u);
+    const uint32_t motor17 = ((uint32_t)1u << 17u);
+    const ControlActuatorAudit audit = {
+        .routableMask = motor0 | motor1 | motor2 | motor4 | motor17,
+        .duplicateMask = motor6,
+        .unresolvedOutputCount = 1u,
+        .invalidIdCount = 2u,
+    };
+    const ControlActuatorDiag zero = {0};
+    TestBehavior firstBehavior = {0};
+    TestBehavior sameDomainBehavior = {0};
+    TestBehavior otherDomainBehavior = {0};
+    ControlController first;
+    ControlController sameDomain;
+    ControlController otherDomain;
+    ControlActuatorDiag diag;
+
+    ControlMgrReset();
+    TEST_CHECK(ControlMgrSetActuatorAudit(NULL) == ControlResultBadArgument &&
+               ControlMgrGetActuatorDiag(NULL) == ControlResultBadArgument,
+               "执行器诊断接口必须拒绝空参数");
+    TEST_CHECK(ControlMgrSetActuatorAudit(&audit) == ControlResultOk,
+               "设置执行器审计输入失败");
+
+    first = TestController(ControlIdCustomBase,
+                           ControlDomainChassis,
+                           ControlResChassisWheels,
+                           "controller.test.actuator_first",
+                           &firstBehavior);
+    first.actuator_mask = motor0 | motor2 | motor5;
+    sameDomain = TestController((uint16_t)(ControlIdCustomBase + 1u),
+                                ControlDomainChassis,
+                                ControlResChassisWheels,
+                                "controller.test.actuator_same_domain",
+                                &sameDomainBehavior);
+    sameDomain.actuator_mask = motor2 | motor17;
+    otherDomain = TestController((uint16_t)(ControlIdCustomBase + 2u),
+                                 ControlDomainArm,
+                                 ControlResArm,
+                                 "controller.test.actuator_other_domain",
+                                 &otherDomainBehavior);
+    otherDomain.actuator_mask = motor0 | motor1;
+
+    TEST_CHECK(ControlMgrRegister(&first) == ControlResultOk &&
+               ControlMgrRegister(&sameDomain) == ControlResultOk &&
+               ControlMgrRegister(&otherDomain) == ControlResultOk,
+               "执行器所有权诊断场景注册失败");
+    TEST_CHECK(ControlMgrGetActuatorDiag(&diag) == ControlResultOk &&
+               diag.routableMask == audit.routableMask &&
+               diag.registeredMask == (motor0 | motor1 | motor2 | motor5 | motor17) &&
+               diag.activeMask == 0u &&
+               diag.duplicateMask == motor6 &&
+               diag.crossDomainOverlapMask == motor0 &&
+               diag.unownedMask == motor4 &&
+               diag.unroutableMask == motor5 &&
+               diag.unresolvedOutputCount == 1u &&
+               diag.invalidIdCount == 2u,
+               "注册、重复、跨域、无主、无路径或非法 ID 诊断错误");
+    TEST_CHECK(ControlMgrGet(1u) != NULL &&
+               ControlMgrGet(1u)->actuator_mask == (motor2 | motor17),
+               "注册表必须按值保存包含 Motor17 的执行器掩码");
+
+    TEST_CHECK(ControlMgrSwitch(first.id, ControlReasonTest) == ControlResultOk &&
+               ControlMgrUpdateDomain(ControlDomainChassis, NULL) == ControlResultOk &&
+               ControlMgrSwitch(otherDomain.id, ControlReasonTest) == ControlResultOk &&
+               ControlMgrUpdateDomain(ControlDomainArm, NULL) == ControlResultOk,
+               "跨域执行器重叠只应诊断，不得改变现有启动行为");
+    TEST_CHECK(ControlMgrActiveActuatorMask() == (motor0 | motor1 | motor2 | motor5),
+               "活动执行器掩码没有合并两个控制域");
+
+    TEST_CHECK(ControlMgrSwitch(sameDomain.id, ControlReasonModeSwitch) == ControlResultOk &&
+               ControlMgrUpdateDomain(ControlDomainChassis, NULL) == ControlResultOk &&
+               ControlMgrActiveActuatorMask() == (motor0 | motor1 | motor2 | motor17),
+               "同域候选共享执行器时仍应按原规则切换");
+    TEST_CHECK(ControlMgrStop(ControlDomainChassis, ControlReasonDisable) == ControlResultOk &&
+               ControlMgrUpdateDomain(ControlDomainChassis, NULL) == ControlResultNotActive &&
+               ControlMgrActiveActuatorMask() == (motor0 | motor1),
+               "停止重叠域后不得清掉另一个活动域仍拥有的执行器");
+
+    ControlMgrReset();
+    TEST_CHECK(ControlMgrGetActuatorDiag(&diag) == ControlResultOk &&
+               memcmp(&diag, &zero, sizeof(diag)) == 0 &&
+               ControlMgrActiveActuatorMask() == 0u,
+               "Reset 必须清除执行器所有权和审计诊断");
+    return 1;
+}
+
 static int TestDiagnostics(void)
 {
     TestBehavior behavior = {0};
@@ -875,6 +969,7 @@ int main(void)
     if (!TestUpdateSuccessAppliesEmergencyStop()) return 1;
     if (!TestFaultStateSurvivesEmptyProtectedStop()) return 1;
     if (!TestOrdinaryCallbackRequestWaitsNextFrame()) return 1;
+    if (!TestActuatorOwnershipDiagnostics()) return 1;
     if (!TestDiagnostics()) return 1;
     if (!TestCheck(s_criticalDepth == 0 &&
                    s_criticalErrorCount == 0u &&

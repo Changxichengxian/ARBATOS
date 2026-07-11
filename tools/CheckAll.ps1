@@ -798,6 +798,7 @@ function Test-ProfileIdentity {
                 "ROBOT_BOARD_KIND",
                 "ROBOT_BOARD_CPU_HZ",
                 "ROBOT_BOARD_CAN_BUS_COUNT",
+                "ROBOT_BOARD_RS485_PORT_COUNT",
                 "ROBOT_BOARD_HAS_FPU"
             )) {
             if ($content -notmatch "(?m)^\s*#define\s+$macro\b") {
@@ -824,6 +825,23 @@ function Test-ProfileIdentity {
             $value = [int]$canBusCount.Groups[1].Value
             if ($value -lt 1 -or $value -gt 3) {
                 Add-CheckError "$(Format-RepoPath $configHeader): ROBOT_BOARD_CAN_BUS_COUNT '$value' looks invalid."
+            }
+        }
+        $rs485PortCount = [regex]::Match($content, '(?m)^\s*#define\s+ROBOT_BOARD_RS485_PORT_COUNT\s+(\d+)u?\b')
+        if ($rs485PortCount.Success) {
+            $value = [int]$rs485PortCount.Groups[1].Value
+            if ($value -lt 0 -or $value -gt 2) {
+                Add-CheckError "$(Format-RepoPath $configHeader): ROBOT_BOARD_RS485_PORT_COUNT '$value' looks invalid."
+            }
+            elseif ($boardKind.Success -and
+                    $boardKind.Groups[1].Value -eq "ROBOT_BOARD_KIND_STM32H7" -and
+                    $value -ne 2) {
+                Add-CheckError "$(Format-RepoPath $configHeader): current H7 board contract exposes two RS485 ports."
+            }
+            elseif ($boardKind.Success -and
+                    $boardKind.Groups[1].Value -in @("ROBOT_BOARD_KIND_STM32F407", "ROBOT_BOARD_KIND_STM32F427") -and
+                    $value -ne 0) {
+                Add-CheckError "$(Format-RepoPath $configHeader): current F4 board contract exposes no RS485 motor port."
             }
         }
     }
@@ -2143,8 +2161,19 @@ function Test-ControlRegistryBoundaries {
         return
     }
 
-    $content = Get-Content -LiteralPath $fullPath -Raw
-    foreach ($required in @("RobotControlBootstrapProfileDefaults", "RobotControlStartProfileDefaults", "ChassisCtrlDesc", "ShootCtrlDesc")) {
+    $content = Get-Content -LiteralPath $fullPath -Raw -Encoding UTF8
+    foreach ($required in @(
+            "RobotControlBootstrapProfileDefaults",
+            "RobotControlStartProfileDefaults",
+            "RobotControlResolveDeviceActuator",
+            "RobotControlResolveNamedActuators",
+            "RobotControlResolveRawActuators",
+            "RobotControlActuatorMaskWidthCheck",
+            "ControlActuatorRouteRoutable",
+            "ControlMgrSetActuatorAudit",
+            "ChassisCtrlDesc",
+            "ShootCtrlDesc"
+        )) {
         if ($content -notmatch [regex]::Escape($required)) {
             Add-CheckError "${repoPath}: control registry must expose '$required'."
         }
@@ -2155,8 +2184,43 @@ function Test-ControlRegistryBoundaries {
             Add-CheckError "${repoPath}: default controller bootstrap must not use low-rate name lookup or due scheduling via '$forbidden'."
         }
     }
-    if ($content -match 'controller\s*==\s*NULL') {
-        Add-CheckError "${repoPath}: enabled modules must pass missing descriptors to ControlMgrRegister so registration diagnostics remain visible."
+    if ($content -notmatch 'RobotControlRegisterNamed[\s\S]{0,1500}?ControlMgrRegister\s*\(\s*controller\s*\)') {
+        Add-CheckError "${repoPath}: enabled modules must still pass missing descriptors to ControlMgrRegister so registration diagnostics remain visible."
+    }
+    if ($content -match 'MotorInstResolveControllerOutputs\s*\(') {
+        Add-CheckError "${repoPath}: ownership binding must inspect raw device source_id before the legacy fallback can hide an invalid ID."
+    }
+    if ($content -notmatch 'entry->source_id\s*!=\s*ROBOT_DEVICE_SOURCE_NONE[\s\S]{0,100}?entry->source_id\s*>=\s*\(uint16_t\)MotorCount' -or
+        $content -notmatch 'ControlActuatorResolveSourceId\s*\(\s*entry->source_id') {
+        Add-CheckError "${repoPath}: raw motor source_id audit must allow only ROBOT_DEVICE_SOURCE_NONE to use the role default and diagnose other out-of-range values."
+    }
+    $actuatorPolicyRepoPath = "shared\application\robot\ControlActuatorPolicy.h"
+    $actuatorPolicyContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $actuatorPolicyRepoPath) -Raw -Encoding UTF8
+    if ($actuatorPolicyContent -notmatch 'source_id\s*==\s*UINT16_MAX' -or
+        $actuatorPolicyContent -notmatch 'transport\s*==\s*\(uint8_t\)MotorTransportCAN' -or
+        $actuatorPolicyContent -notmatch 'transport\s*==\s*\(uint8_t\)MotorTransportRS485' -or
+        $actuatorPolicyContent -notmatch 'MOTOR_PROTOCOL_UNITREE_RS485' -or
+        $actuatorPolicyContent -notmatch 'MOTOR_PROTOCOL_N6014B_RS485' -or
+        $actuatorPolicyContent -notmatch 'canId\s*>=\s*0x201u\s*&&\s*route->canId\s*<=\s*0x208u' -or
+        $actuatorPolicyContent -notmatch 'route->hasLimits\s*!=\s*0u' -or
+        $actuatorPolicyContent -notmatch 'route->deviceId\s*<=\s*15u') {
+        Add-CheckError "${actuatorPolicyRepoPath}: tested ownership policy must keep the sole default sentinel and explicit CAN/RS485 branches."
+    }
+    foreach ($wheellegField in @(
+            "left_front_actuator", "left_back_actuator", "left_wheel_actuator",
+            "right_front_actuator", "right_back_actuator", "right_wheel_actuator"
+        )) {
+        if ($content -notmatch [regex]::Escape("g_config.WheelLegMit.$wheellegField")) {
+            Add-CheckError "${repoPath}: wheel-leg ownership must bind the real '$wheellegField' MotorId."
+        }
+    }
+    if ($content -notmatch 'route_view\.protocol\s*=\s*route->protocol' -or
+        $content -notmatch 'route_view\.isRmGroup\s*=\s*route->isRmGroup' -or
+        $content -notmatch 'route_view\.hasLimits\s*=\s*\(route->mitLimits\s*!=\s*NULL\)' -or
+        $content -notmatch 'route_view\.canBusCount\s*=\s*RobotBoardCanBusCount\s*\(\s*\)' -or
+        $content -notmatch 'route_view\.rs485PortCount\s*=\s*RobotBoardRs485PortCount\s*\(\s*\)' -or
+        $content -notmatch 'ControlActuatorRouteRoutable\s*\(\s*&route_view\s*\)') {
+        Add-CheckError "${repoPath}: routable actuator inventory must use the tested transport, protocol, board bus/port and frame-ID policy."
     }
 
     $controlMgrRepoPath = "shared\application\robot\ControlMgr.c"
@@ -2166,7 +2230,10 @@ function Test-ControlRegistryBoundaries {
             "update_in_progress",
             "protected_stop_reason",
             "control_reserved_claim_mask_locked",
-            "ControlMgrGetDiag"
+            "ControlMgrGetDiag",
+            "control_registered_actuator_mask_locked",
+            "control_active_actuator_mask_locked",
+            "ControlMgrGetActuatorDiag"
         )) {
         if ($controlMgrContent -notmatch [regex]::Escape($required)) {
             Add-CheckError "${controlMgrRepoPath}: hardened lifecycle arbitration must keep '$required'."
@@ -2178,21 +2245,50 @@ function Test-ControlRegistryBoundaries {
     if ($controlMgrHeaderContent -notmatch 'uint8_t\s+lastRegisterError\s*;\s*uint8_t\s+lastSwitchError\s*;\s*uint8_t\s+reserved\[2\]\s*;') {
         Add-CheckError "${controlMgrHeaderRepoPath}: ControlMgrDiag error fields must use fixed-width storage for ARMCC/clang Watch ABI parity."
     }
+    if ($controlMgrHeaderContent -notmatch 'uint32_t\s+actuator_mask\s*;' -or
+        $controlMgrHeaderContent -notmatch 'uint32_t\s+crossDomainOverlapMask\s*;' -or
+        $controlMgrHeaderContent -notmatch 'uint16_t\s+unresolvedOutputCount\s*;\s*uint16_t\s+invalidIdCount\s*;') {
+        Add-CheckError "${controlMgrHeaderRepoPath}: physical ownership and actuator diagnostics must use fixed-width fields."
+    }
 
     $watchHeaderRepoPath = "shared\application\services\diagnostics\Watch.h"
     $watchHeaderContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $watchHeaderRepoPath) -Raw -Encoding UTF8
-    if ($watchHeaderContent -notmatch 'WatchRuntimeDomain\s+domain\[ControlDomainCount\];\s*ControlMgrDiag\s+control_mgr;\s*}\s*WatchRuntime;') {
-        Add-CheckError "${watchHeaderRepoPath}: ControlMgrDiag must remain after the WatchRuntime domain array as an append-only ABI field."
+    if ($watchHeaderContent -notmatch 'WatchRuntimeDomain\s+domain\[ControlDomainCount\];\s*ControlMgrDiag\s+control_mgr;\s*ControlActuatorDiag\s+control_actuator;\s*}\s*WatchRuntime;') {
+        Add-CheckError "${watchHeaderRepoPath}: actuator diagnostics must be appended after the existing ControlMgrDiag Watch ABI tail."
+    }
+    $watchCopyRepoPath = "shared\application\services\diagnostics\WatchRuntimeCopy.inc"
+    $watchCopyContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot $watchCopyRepoPath) -Raw -Encoding UTF8
+    if ($watchCopyContent -notmatch 'ControlMgrGetActuatorDiag\s*\(\s*&g_watch\.runtime\.control_actuator\s*\)') {
+        Add-CheckError "${watchCopyRepoPath}: Watch runtime copy must expose actuator ownership diagnostics."
     }
 
     foreach ($testRepoPath in @(
             "tools\TestControlMgr.ps1",
             "tools\tests\ControlMgrRegression.c",
+            "tools\tests\ControlActuatorPolicyRegression.c",
             "tools\tests\ControlMgrAbiRegression.c",
             "tools\tests\ControlMgrTestCritical.h"
         )) {
         if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot $testRepoPath) -PathType Leaf)) {
             Add-CheckError "Missing ControlMgr regression file: $testRepoPath"
+        }
+    }
+    $controlMgrTestContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "tools\tests\ControlMgrRegression.c") -Raw -Encoding UTF8
+    foreach ($required in @("TestActuatorOwnershipDiagnostics", "motor17", "crossDomainOverlapMask", "ControlMgrActiveActuatorMask")) {
+        if ($controlMgrTestContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "tools\tests\ControlMgrRegression.c: actuator ownership regression must keep '$required'."
+        }
+    }
+    $actuatorPolicyTestContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "tools\tests\ControlActuatorPolicyRegression.c") -Raw -Encoding UTF8
+    foreach ($required in @("TestSourceIdPolicy", "TestDeclarationPolicy", "TestRoutePolicy", "Motor17", "0xFFFEu", "MotorTransportRS485", "MOTOR_PROTOCOL_N6014B_RS485")) {
+        if ($actuatorPolicyTestContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "tools\tests\ControlActuatorPolicyRegression.c: executable actuator policy regression must keep '$required'."
+        }
+    }
+    $controlMgrAbiContent = Get-Content -LiteralPath (Join-Path $script:RepoRoot "tools\tests\ControlMgrAbiRegression.c") -Raw -Encoding UTF8
+    foreach ($required in @("control_mgr_diag_size", "control_actuator_diag_size", "control_actuator_diag_tail_offset")) {
+        if ($controlMgrAbiContent -notmatch [regex]::Escape($required)) {
+            Add-CheckError "tools\tests\ControlMgrAbiRegression.c: Watch ABI regression must keep '$required'."
         }
     }
 

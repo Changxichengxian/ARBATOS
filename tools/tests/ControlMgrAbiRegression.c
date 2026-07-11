@@ -9,6 +9,8 @@
     typedef char abi_assert_##name_[((condition_) != 0) ? 1 : -1]
 
 ABI_ASSERT(sizeof(ControlMgrDiag) == 40u, control_mgr_diag_size);
+ABI_ASSERT(sizeof(ControlActuatorAudit) == 12u, control_actuator_audit_size);
+ABI_ASSERT(sizeof(ControlActuatorDiag) == 32u, control_actuator_diag_size);
 
 #if UINTPTR_MAX == UINT32_MAX
 /* ControlStatus 含编译器枚举，不作为 Watch 原始块 ABI；这里只钉固定宽度的观察结构。 */
@@ -26,3 +28,6 @@ ABI_ASSERT(sizeof(WatchRuntimeController) == 24u, host_runtime_controller_size);
 ABI_ASSERT(offsetof(WatchRuntime, control_mgr) ==
                offsetof(WatchRuntime, domain) + sizeof(((WatchRuntime *)0)->domain),
            control_mgr_diag_tail_offset);
+ABI_ASSERT(offsetof(WatchRuntime, control_actuator) ==
+               offsetof(WatchRuntime, control_mgr) + sizeof(((WatchRuntime *)0)->control_mgr),
+           control_actuator_diag_tail_offset);

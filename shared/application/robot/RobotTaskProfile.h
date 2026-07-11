@@ -65,6 +65,10 @@ typedef enum
 #define ROBOT_BOARD_CAN_BUS_COUNT 2u
 #endif
 
+#ifndef ROBOT_BOARD_RS485_PORT_COUNT
+#define ROBOT_BOARD_RS485_PORT_COUNT 0u
+#endif
+
 #ifndef ROBOT_BOARD_HAS_FPU
 #define ROBOT_BOARD_HAS_FPU 1u
 #endif
@@ -148,6 +152,11 @@ static inline uint32_t RobotBoardCpuHz(void)
 static inline uint8_t RobotBoardCanBusCount(void)
 {
     return (uint8_t)ROBOT_BOARD_CAN_BUS_COUNT;
+}
+
+static inline uint8_t RobotBoardRs485PortCount(void)
+{
+    return (uint8_t)ROBOT_BOARD_RS485_PORT_COUNT;
 }
 
 static inline uint8_t RobotBoardHasFpu(void)

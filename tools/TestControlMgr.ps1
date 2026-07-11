@@ -33,6 +33,26 @@ if ($LASTEXITCODE -ne 0) {
     throw "控制管理器回归失败，退出码 $LASTEXITCODE"
 }
 
+$ActuatorPolicySource = Join-Path $RepoRoot 'tools\tests\ControlActuatorPolicyRegression.c'
+$ActuatorPolicyOutput = Join-Path $BuildDir 'control-actuator-policy-regression.exe'
+$ActuatorPolicyArgs = @(
+    'cc', '-std=c11', '-Wall', '-Wextra', '-Werror',
+    ('-I' + (Join-Path $RepoRoot 'shared\application\robot')),
+    ('-I' + (Join-Path $RepoRoot 'shared\components\support')),
+    $ActuatorPolicySource,
+    '-o', $ActuatorPolicyOutput
+)
+
+& $Zig.Source @ActuatorPolicyArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "执行器所有权策略回归编译失败，退出码 $LASTEXITCODE"
+}
+
+& $ActuatorPolicyOutput
+if ($LASTEXITCODE -ne 0) {
+    throw "执行器所有权策略回归失败，退出码 $LASTEXITCODE"
+}
+
 $AbiSource = Join-Path $RepoRoot 'tools\tests\ControlMgrAbiRegression.c'
 $AbiOutput = Join-Path $BuildDir 'control-mgr-abi-regression.obj'
 $AbiArgs = @(

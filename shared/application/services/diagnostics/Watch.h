@@ -1003,6 +1003,7 @@ typedef struct
     WatchRuntimeController controller[WATCH_RUNTIME_MAX_CONTROLLERS];
     WatchRuntimeDomain domain[ControlDomainCount];
     ControlMgrDiag control_mgr;
+    ControlActuatorDiag control_actuator;
 } WatchRuntime;
 
 typedef enum
