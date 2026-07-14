@@ -10,7 +10,7 @@ static void WatchCopyDiag(void)
     VisionLinkDebug vision = {0};
     ExternalMotionIntent motion = {0};
     ChassisAlgorithmDebug algorithm = {0};
-    RobotLifecycleSnapshot lifecycle = {0};
+    RobotLifecycleSnapshot lifecycle;
     uint32_t now_ms;
     uint32_t motion_age_ms = 0u;
     uint8_t dbus_error;
@@ -22,11 +22,16 @@ static void WatchCopyDiag(void)
     uint8_t motion_on;
 
     memset(&g_watch.diag, 0, sizeof(g_watch.diag));
+    memset(&lifecycle, 0, sizeof(lifecycle));
 
     now_ms = HAL_GetTick();
     (void)RobotLifecycleGetSnapshot(&lifecycle);
+#if ROBOT_TASK_BUILD_HOST_LINK
     VisionLinkGetDebug(&vision);
+#endif
+#if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
     ChassisAlgorithmDebugRead(&algorithm);
+#endif
     if (vision.lc_last_tick_ms != 0u)
     {
         g_watch.diag.lc_age_ms = now_ms - vision.lc_last_tick_ms;

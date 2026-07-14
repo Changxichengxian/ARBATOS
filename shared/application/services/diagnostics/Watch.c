@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "RobotConfig.h"
+#include "RobotTaskBuildConfig.h"
 #include "main.h"
 
 #include "FreeRTOS.h"
