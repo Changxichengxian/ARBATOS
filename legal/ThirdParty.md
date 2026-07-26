@@ -7,6 +7,7 @@
 下面这些位置里的内容，优先看各自的文件头、目录内 `LICENSE`、`COPYING`、`NOTICE` 或上游说明：
 
 - `projects/*/Drivers/`
+- `projects/MINIWHEELEG-M/Drivers/CMSIS/` 中随工程分发的 ARM CMSIS Core 与 ST STM32H7xx Device 头文件，许可证见目录内的 `LICENSE.txt` 和 `Package_license.md`
 - `projects/*/Middlewares/`
 - `shared/components/algorithm/*.lib`
 - `tools/Mp3ToU8/ffmpeg.exe`
