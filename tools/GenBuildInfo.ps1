@@ -32,8 +32,19 @@ function Invoke-GitText {
         return $null
     }
 
-    $output = & $git.Source -C $RepoRoot @GitArgs 2>$null
-    if ($LASTEXITCODE -ne 0) {
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        # Windows PowerShell 5.1 会把原生程序的 stderr 包装成错误记录。
+        # Git 的换行提示不应中断构建信息生成。
+        $ErrorActionPreference = "Continue"
+        $output = & $git.Source -C $RepoRoot @GitArgs 2>$null
+        $gitExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($gitExitCode -ne 0) {
         return $null
     }
 
@@ -53,10 +64,18 @@ if ([string]::IsNullOrWhiteSpace($gitSha)) {
 $dirty = 0
 $git = Get-Command git -ErrorAction SilentlyContinue
 if ($insideGit -and $null -ne $git) {
-    & $git.Source -C $RepoRoot diff --quiet --ignore-submodules -- 2>$null
-    $worktreeDirty = ($LASTEXITCODE -ne 0)
-    & $git.Source -C $RepoRoot diff --cached --quiet --ignore-submodules -- 2>$null
-    $indexDirty = ($LASTEXITCODE -ne 0)
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        & $git.Source -C $RepoRoot diff --quiet --ignore-submodules -- 2>$null
+        $worktreeDirty = ($LASTEXITCODE -ne 0)
+        & $git.Source -C $RepoRoot diff --cached --quiet --ignore-submodules -- 2>$null
+        $indexDirty = ($LASTEXITCODE -ne 0)
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
     if ($worktreeDirty -or $indexDirty) {
         $dirty = 1
     }
