@@ -34,6 +34,7 @@ fp32 electricity_percentage;
 static uint8_t BatteryLowAlarm;
 static uint8_t BatteryAlarmBeepOn;
 static uint16_t BatteryAlarmBeepElapsedMs;
+static uint8_t BatteryVoltageValidState;
 
 /**
   * @brief          power ADC and calculate electricity percentage
@@ -52,8 +53,16 @@ void BatteryMonitorTask(void const * argument)
     init_vrefint_reciprocal();
     while(1)
     {
-        BatteryVoltage = get_battery_voltage() + voltage_cfg->voltage_drop;
-        electricity_percentage = calc_battery_percentage(BatteryVoltage);
+        const fp32 measured_voltage = get_battery_voltage() + voltage_cfg->voltage_drop;
+        /*
+         * 有序比较会同时拒绝 NaN 和无穷。没有可信 ADC 映射时保持 0 V、0%，
+         * 并进入低压告警，不能把“未知”显示成满电。
+         */
+        BatteryVoltageValidState =
+            (measured_voltage > 1.0f && measured_voltage < 100.0f) ? 1u : 0u;
+        BatteryVoltage = (BatteryVoltageValidState != 0u) ? measured_voltage : 0.0f;
+        electricity_percentage =
+            (BatteryVoltageValidState != 0u) ? calc_battery_percentage(BatteryVoltage) : 0.0f;
 
         sdlog_battery_t pkt = {0};
         pkt.voltage = BatteryVoltage;
@@ -145,7 +154,11 @@ static void BatteryLowAlarmUpdate(void)
     const fp32 low_voltage = voltage_cfg->low_battery_voltage;
     const uint8_t was_alarm = BatteryLowAlarm;
 
-    if ((BatteryVoltage > 1.0f) && (BatteryVoltage <= low_voltage))
+    if (BatteryVoltageValidState == 0u)
+    {
+        BatteryLowAlarm = 1u;
+    }
+    else if (BatteryVoltage <= low_voltage)
     {
         BatteryLowAlarm = 1u;
     }

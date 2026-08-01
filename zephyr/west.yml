@@ -1,0 +1,11 @@
+manifest:
+  version: "1.2"
+
+  self:
+    path: arbatos
+
+  projects:
+    - name: zephyr
+      url: https://github.com/zephyrproject-rtos/zephyr
+      revision: v4.4.0
+      import: true

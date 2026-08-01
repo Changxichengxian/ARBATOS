@@ -1,0 +1,5 @@
+description: ARBATOS SD card using the repository SPI protocol layer
+
+compatible: "arbatos,sd-spi"
+
+include: spi-device.yaml

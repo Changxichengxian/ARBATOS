@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_DM_MC02_H7
+	select SOC_STM32H723XX

@@ -32,6 +32,8 @@
 /tmp_*
 /tmp/mujoco_wheelleg/
 /build/
+/zephyr/build*/
+/zephyr/twister-out/
 
 # Keil build outputs/dirs
 MDK-ARM/standard_tpye_c/

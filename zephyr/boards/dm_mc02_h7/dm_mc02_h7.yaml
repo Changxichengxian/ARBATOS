@@ -1,0 +1,15 @@
+identifier: dm_mc02_h7
+name: Damiao MC02 STM32H723
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+ram: 512
+flash: 1024
+supported:
+  - can
+  - gpio
+  - pwm
+  - spi
+  - usb_device
+vendor: arbatos

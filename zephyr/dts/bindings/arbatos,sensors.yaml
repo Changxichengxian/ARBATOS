@@ -1,0 +1,27 @@
+description: ARBATOS board sensor resources
+compatible: "arbatos,sensors"
+
+properties:
+  bmi088-spi:
+    type: phandle
+  bmi088-accel-cs-gpios:
+    type: phandle-array
+  bmi088-gyro-cs-gpios:
+    type: phandle-array
+  bmi088-spi-hz:
+    type: int
+  ist8310-i2c:
+    type: phandle
+  ist8310-reset-gpios:
+    type: phandle-array
+  mpu6500-spi:
+    type: phandle
+  mpu6500-cs-gpios:
+    type: phandle-array
+  mpu6500-spi-hz:
+    type: int
+  imu-heater-pwms:
+    type: phandle-array
+    specifier-space: pwm
+  imu-heater-period-cycles:
+    type: int

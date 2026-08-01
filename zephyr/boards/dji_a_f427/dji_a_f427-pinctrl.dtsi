@@ -1,0 +1,31 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+#include <zephyr/dt-bindings/pinctrl/stm32-pinctrl.h>
+
+&pinctrl {
+	usart1_tx_pb6: usart1_tx_pb6 { pinmux = <STM32_PINMUX('B', 6, AF7)>; drive-push-pull; };
+	usart1_rx_pb7: usart1_rx_pb7 { pinmux = <STM32_PINMUX('B', 7, AF7)>; bias-pull-up; };
+	usart3_tx_pd8: usart3_tx_pd8 { pinmux = <STM32_PINMUX('D', 8, AF7)>; drive-push-pull; };
+	usart3_rx_pd9: usart3_rx_pd9 { pinmux = <STM32_PINMUX('D', 9, AF7)>; bias-pull-up; };
+	usart6_tx_pg14: usart6_tx_pg14 { pinmux = <STM32_PINMUX('G', 14, AF8)>; drive-push-pull; };
+	usart6_rx_pg9: usart6_rx_pg9 { pinmux = <STM32_PINMUX('G', 9, AF8)>; bias-pull-up; };
+	uart8_tx_pe1: uart8_tx_pe1 { pinmux = <STM32_PINMUX('E', 1, AF8)>; drive-push-pull; };
+	uart8_rx_pe0: uart8_rx_pe0 { pinmux = <STM32_PINMUX('E', 0, AF8)>; bias-pull-up; };
+	can1_rx_pd0: can1_rx_pd0 { pinmux = <STM32_PINMUX('D', 0, AF9)>; bias-pull-up; };
+	can1_tx_pd1: can1_tx_pd1 { pinmux = <STM32_PINMUX('D', 1, AF9)>; drive-push-pull; };
+	can2_rx_pb12: can2_rx_pb12 { pinmux = <STM32_PINMUX('B', 12, AF9)>; bias-pull-up; };
+	can2_tx_pb13: can2_tx_pb13 { pinmux = <STM32_PINMUX('B', 13, AF9)>; drive-push-pull; };
+	spi5_sck_pf7: spi5_sck_pf7 { pinmux = <STM32_PINMUX('F', 7, AF5)>; };
+	spi5_miso_pf8: spi5_miso_pf8 { pinmux = <STM32_PINMUX('F', 8, AF5)>; bias-pull-up; };
+	spi5_mosi_pf9: spi5_mosi_pf9 { pinmux = <STM32_PINMUX('F', 9, AF5)>; };
+	sdmmc1_d0_pc8: sdmmc1_d0_pc8 { pinmux = <STM32_PINMUX('C', 8, AF12)>; bias-pull-up; };
+	sdmmc1_d1_pc9: sdmmc1_d1_pc9 { pinmux = <STM32_PINMUX('C', 9, AF12)>; bias-pull-up; };
+	sdmmc1_d2_pc10: sdmmc1_d2_pc10 { pinmux = <STM32_PINMUX('C', 10, AF12)>; bias-pull-up; };
+	sdmmc1_d3_pc11: sdmmc1_d3_pc11 { pinmux = <STM32_PINMUX('C', 11, AF12)>; bias-pull-up; };
+	sdmmc1_ck_pc12: sdmmc1_ck_pc12 { pinmux = <STM32_PINMUX('C', 12, AF12)>; };
+	sdmmc1_cmd_pd2: sdmmc1_cmd_pd2 { pinmux = <STM32_PINMUX('D', 2, AF12)>; bias-pull-up; };
+	usb_otg_fs_dm_pa11: usb_otg_fs_dm_pa11 { pinmux = <STM32_PINMUX('A', 11, AF10)>; };
+	usb_otg_fs_dp_pa12: usb_otg_fs_dp_pa12 { pinmux = <STM32_PINMUX('A', 12, AF10)>; };
+	tim3_ch2_pb5: tim3_ch2_pb5 { pinmux = <STM32_PINMUX('B', 5, AF2)>; };
+	tim12_ch1_ph6: tim12_ch1_ph6 { pinmux = <STM32_PINMUX('H', 6, AF9)>; };
+};

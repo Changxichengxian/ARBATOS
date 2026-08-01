@@ -1,0 +1,6 @@
+board:
+  name: dm_mc02_h7
+  full_name: Damiao MC02 STM32H723
+  vendor: arbatos
+  socs:
+    - name: stm32h723xx

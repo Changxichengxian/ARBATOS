@@ -1,0 +1,9 @@
+description: ARBATOS board platform resources
+compatible: "arbatos,platform"
+properties:
+  key-gpios: {type: phandle-array}
+  led0-gpios: {type: phandle-array}
+  buzzer-pwms:
+    type: phandle-array
+    specifier-space: pwm
+  shoot-trig-gpios: {type: phandle-array}

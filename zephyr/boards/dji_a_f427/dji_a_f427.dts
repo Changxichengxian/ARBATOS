@@ -1,0 +1,89 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/dts-v1/;
+#include <st/f4/stm32f427Xi.dtsi>
+#include "dji_a_f427-pinctrl.dtsi"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+/ {
+	model = "DJI A Board with STM32F427";
+	compatible = "arbatos,dji-a-f427";
+
+	chosen {
+		zephyr,console = &usart1;
+		zephyr,shell-uart = &usart1;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,dtcm = &ccm0;
+		zephyr,canbus = &can1;
+	};
+
+	aliases {
+		sw0 = &user_key;
+		can-primary = &can1;
+		can-secondary = &can2;
+		uart-rc = &usart1;
+		uart-aux = &uart8;
+		uart-referee = &usart6;
+		sd-disk = &sdmmc1;
+	};
+
+	keys {
+		compatible = "gpio-keys";
+		user_key: key_0 {
+			label = "KEY";
+			gpios = <&gpiob 2 GPIO_ACTIVE_HIGH>;
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	arbatos_sensors {
+		compatible = "arbatos,sensors";
+		mpu6500-spi = <&spi5>;
+		mpu6500-cs-gpios = <&gpiof 6 GPIO_ACTIVE_LOW>;
+		mpu6500-spi-hz = <8000000>;
+		imu-heater-pwms = <&pwm3 2 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
+		imu-heater-period-cycles = <50>;
+	};
+
+	arbatos_platform: arbatos-platform {
+		compatible = "arbatos,platform";
+		key-gpios = <&gpiob 2 GPIO_ACTIVE_HIGH>;
+		buzzer-pwms = <&pwm12 1 PWM_USEC(100) PWM_POLARITY_NORMAL>;
+	};
+};
+
+&clk_lsi { status = "okay"; };
+&clk_lse { status = "okay"; };
+&clk_hse { clock-frequency = <DT_FREQ_M(12)>; status = "okay"; };
+&pll { div-m = <12>; mul-n = <336>; div-p = <2>; div-q = <7>; clocks = <&clk_hse>; status = "okay"; };
+&rcc { clocks = <&pll>; clock-frequency = <DT_FREQ_M(168)>; ahb-prescaler = <1>; apb1-prescaler = <4>; apb2-prescaler = <2>; };
+
+&usart1 { pinctrl-0 = <&usart1_tx_pb6 &usart1_rx_pb7>; pinctrl-names = "default"; current-speed = <100000>; status = "okay"; };
+&usart3 { pinctrl-0 = <&usart3_tx_pd8 &usart3_rx_pd9>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
+&usart6 { pinctrl-0 = <&usart6_tx_pg14 &usart6_rx_pg9>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
+&uart8 { pinctrl-0 = <&uart8_tx_pe1 &uart8_rx_pe0>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
+&can1 { pinctrl-0 = <&can1_rx_pd0 &can1_tx_pd1>; pinctrl-names = "default"; status = "okay"; };
+&can2 { pinctrl-0 = <&can2_rx_pb12 &can2_tx_pb13>; pinctrl-names = "default"; status = "okay"; };
+&spi5 { pinctrl-0 = <&spi5_sck_pf7 &spi5_miso_pf8 &spi5_mosi_pf9>; pinctrl-names = "default"; status = "okay"; };
+&sdmmc1 { pinctrl-0 = <&sdmmc1_d0_pc8 &sdmmc1_d1_pc9 &sdmmc1_d2_pc10 &sdmmc1_d3_pc11 &sdmmc1_ck_pc12 &sdmmc1_cmd_pd2>; pinctrl-names = "default"; bus-width = <4>; disk-name = "SD"; status = "okay"; };
+zephyr_udc0: &usbotg_fs {
+	pinctrl-0 = <&usb_otg_fs_dm_pa11 &usb_otg_fs_dp_pa12>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+
+&timers3 {
+	status = "okay";
+	pwm3: pwm { status = "okay"; pinctrl-0 = <&tim3_ch2_pb5>; pinctrl-names = "default"; };
+};
+
+&timers12 {
+	status = "okay";
+	pwm12: pwm { status = "okay"; pinctrl-0 = <&tim12_ch1_ph6>; pinctrl-names = "default"; };
+};

@@ -1,0 +1,90 @@
+mainmenu "ARBATOS Zephyr firmware"
+
+source "Kconfig.zephyr"
+
+menu "ARBATOS robot application"
+
+choice ARBATOS_TARGET
+    prompt "Robot target"
+    default ARBATOS_TARGET_HERO_C
+    help
+      Selects one existing Robotconfig/<target> directory.  A board is still
+      selected separately with west build -b.
+
+config ARBATOS_TARGET_HERO_C
+    bool "HERO-C"
+
+config ARBATOS_TARGET_HERO_M
+    bool "HERO-M"
+
+config ARBATOS_TARGET_INFANTRY_A
+    bool "INFANTRY-A"
+
+config ARBATOS_TARGET_SENTINEL_M
+    bool "SENTINEL-M"
+
+config ARBATOS_TARGET_CARRIER_A
+    bool "CARRIER-A"
+
+config ARBATOS_TARGET_MINIWHEELEG_M
+    bool "MINIWHEELEG-M"
+
+config ARBATOS_TARGET_MINIWHEELEG_C
+    bool "MINIWHEELEG-C"
+
+endchoice
+
+config ARBATOS_LEGACY_SOURCES
+    bool "Compile selected Keil target's reusable ARBATOS sources"
+    default n
+    help
+      Adds the selected Keil target's explicit Robotconfig, shared application,
+      algorithm and support source manifest.  Legacy CubeMX startup, FreeRTOS,
+      STM32 HAL/BSP code and ARMCC libraries stay excluded.  Enable this only
+      with the Zephyr compatibility and board-driver layers for the target.
+
+config ARBATOS_BOOT_BANNER
+    bool "Print target name at startup"
+    default y
+
+config ARBATOS_FREERTOS_MAX_TASKS
+    int "Maximum legacy task count"
+    default 32
+    range 16 64
+    help
+      Fixed-capacity task and notification registry used while the existing
+      application tasks move from FreeRTOS/CMSIS-RTOS to native Zephyr APIs.
+
+config ARBATOS_THREAD_STACK_POOL_SIZE
+    int "Static legacy thread stack pool size in bytes"
+    default 8192
+    range 4096 16384
+    help
+      Fallback pool used only when osThreadNew is called without a caller
+      supplied stack.  ARBATOS runtime tasks keep their explicit static
+      stacks in CPU-local CCM/DTCM memory.  This pool is boot-only monotonic:
+      memory is never freed or allocated from the Zephyr heap.
+
+config ARBATOS_CMSIS_MUTEX_COUNT
+    int "Maximum legacy CMSIS mutex count"
+    default 16
+    range 4 32
+
+config ARBATOS_LEGACY_HEAP_SIZE
+    int "Bounded legacy application heap size in bytes"
+    default 32768 if ARBATOS_TARGET_HERO_M || ARBATOS_TARGET_SENTINEL_M || ARBATOS_TARGET_MINIWHEELEG_M
+    default 8192
+    range 4096 65536
+    help
+      Dedicated Zephyr heap used only by the existing heap_malloc and
+      pvPortMalloc compatibility calls.  Control threads and driver rings use
+      static storage and do not consume this heap.
+
+config APP_LINK_WITH_ARBATOS_PORT
+    bool
+    default y
+    help
+      Lets applications using this directory as ZEPHYR_EXTRA_MODULES inherit
+      the public ARBATOS migration headers from the arbatos_port interface.
+
+endmenu

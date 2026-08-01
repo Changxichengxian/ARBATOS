@@ -520,8 +520,8 @@ static void GimbalBehavourSet(GimbalControl *GimbalModeSet)
         static uint16_t init_stop_time = 0;
         init_time++;
 
-        if ((fabs(GimbalModeSet->GimbalYawMotor.angle - INIT_YAW_SET) < GIMBAL_INIT_ANGLE_ERROR &&
-             fabs(GimbalModeSet->GimbalPitchMotor.angle - INIT_PITCH_SET) < GIMBAL_INIT_ANGLE_ERROR))
+        if ((fabsf(GimbalModeSet->GimbalYawMotor.angle - INIT_YAW_SET) < GIMBAL_INIT_ANGLE_ERROR &&
+             fabsf(GimbalModeSet->GimbalPitchMotor.angle - INIT_PITCH_SET) < GIMBAL_INIT_ANGLE_ERROR))
         {
 
             if (init_stop_time < GIMBAL_INIT_STOP_TIME)
@@ -636,7 +636,7 @@ static void GimbalInitControl(fp32 *yaw, fp32 *pitch, GimbalControl *GimbalContr
     }
 
     //初始化状态控制量计算
-    if (fabs(INIT_PITCH_SET - GimbalControlSet->GimbalPitchMotor.angle) > GIMBAL_INIT_ANGLE_ERROR)
+    if (fabsf(INIT_PITCH_SET - GimbalControlSet->GimbalPitchMotor.angle) > GIMBAL_INIT_ANGLE_ERROR)
     {
         *pitch = (INIT_PITCH_SET - GimbalControlSet->GimbalPitchMotor.angle) * GIMBAL_INIT_PITCH_SPEED;
         *yaw = 0.0f;

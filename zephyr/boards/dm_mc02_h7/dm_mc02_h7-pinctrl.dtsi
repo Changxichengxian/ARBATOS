@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+#include <zephyr/dt-bindings/pinctrl/stm32-pinctrl.h>
+
+&pinctrl {
+	usart1_tx_pa9: usart1_tx_pa9 { pinmux = <STM32_PINMUX('A', 9, AF7)>; drive-push-pull; };
+	usart1_rx_pa10: usart1_rx_pa10 { pinmux = <STM32_PINMUX('A', 10, AF7)>; bias-pull-up; };
+	usart2_de_pd4: usart2_de_pd4 { pinmux = <STM32_PINMUX('D', 4, AF7)>; drive-push-pull; };
+	usart2_tx_pd5: usart2_tx_pd5 { pinmux = <STM32_PINMUX('D', 5, AF7)>; drive-push-pull; };
+	usart2_rx_pd6: usart2_rx_pd6 { pinmux = <STM32_PINMUX('D', 6, AF7)>; bias-pull-up; };
+	usart3_de_pb14: usart3_de_pb14 { pinmux = <STM32_PINMUX('B', 14, AF7)>; drive-push-pull; };
+	usart3_tx_pd8: usart3_tx_pd8 { pinmux = <STM32_PINMUX('D', 8, AF7)>; drive-push-pull; };
+	usart3_rx_pd9: usart3_rx_pd9 { pinmux = <STM32_PINMUX('D', 9, AF7)>; bias-pull-up; };
+	uart5_rx_pd2: uart5_rx_pd2 { pinmux = <STM32_PINMUX('D', 2, AF8)>; bias-pull-up; };
+	uart7_tx_pe8: uart7_tx_pe8 { pinmux = <STM32_PINMUX('E', 8, AF7)>; drive-push-pull; };
+	uart7_rx_pe7: uart7_rx_pe7 { pinmux = <STM32_PINMUX('E', 7, AF7)>; bias-pull-up; };
+	usart10_rx_pe2: usart10_rx_pe2 { pinmux = <STM32_PINMUX('E', 2, AF4)>; bias-pull-up; };
+	usart10_tx_pe3: usart10_tx_pe3 { pinmux = <STM32_PINMUX('E', 3, AF4)>; drive-push-pull; };
+	fdcan1_rx_pd0: fdcan1_rx_pd0 { pinmux = <STM32_PINMUX('D', 0, AF9)>; bias-pull-up; };
+	fdcan1_tx_pd1: fdcan1_tx_pd1 { pinmux = <STM32_PINMUX('D', 1, AF9)>; drive-push-pull; };
+	fdcan2_rx_pb5: fdcan2_rx_pb5 { pinmux = <STM32_PINMUX('B', 5, AF9)>; bias-pull-up; };
+	fdcan2_tx_pb6: fdcan2_tx_pb6 { pinmux = <STM32_PINMUX('B', 6, AF9)>; drive-push-pull; };
+	fdcan3_rx_pd12: fdcan3_rx_pd12 { pinmux = <STM32_PINMUX('D', 12, AF5)>; bias-pull-up; };
+	fdcan3_tx_pd13: fdcan3_tx_pd13 { pinmux = <STM32_PINMUX('D', 13, AF5)>; drive-push-pull; };
+	spi1_sck_pb3: spi1_sck_pb3 { pinmux = <STM32_PINMUX('B', 3, AF5)>; };
+	spi1_mosi_pd7: spi1_mosi_pd7 { pinmux = <STM32_PINMUX('D', 7, AF5)>; };
+	spi2_sck_pb13: spi2_sck_pb13 { pinmux = <STM32_PINMUX('B', 13, AF5)>; };
+	spi2_miso_pc2: spi2_miso_pc2 { pinmux = <STM32_PINMUX('C', 2, AF5)>; bias-pull-up; };
+	spi2_mosi_pc1: spi2_mosi_pc1 { pinmux = <STM32_PINMUX('C', 1, AF5)>; };
+	spi3_sck_pc10: spi3_sck_pc10 { pinmux = <STM32_PINMUX('C', 10, AF6)>; };
+	spi3_miso_pc11: spi3_miso_pc11 { pinmux = <STM32_PINMUX('C', 11, AF6)>; bias-pull-up; };
+	spi3_mosi_pc12: spi3_mosi_pc12 { pinmux = <STM32_PINMUX('C', 12, AF6)>; };
+	spi6_sck_pc12: spi6_sck_pc12 { pinmux = <STM32_PINMUX('C', 12, AF8)>; };
+	spi6_miso_pa6: spi6_miso_pa6 { pinmux = <STM32_PINMUX('A', 6, AF8)>; bias-pull-up; };
+	spi6_mosi_pa7: spi6_mosi_pa7 { pinmux = <STM32_PINMUX('A', 7, AF8)>; };
+	usb_otg_hs_dm_pa11: usb_otg_hs_dm_pa11 { pinmux = <STM32_PINMUX('A', 11, AF10)>; };
+	usb_otg_hs_dp_pa12: usb_otg_hs_dp_pa12 { pinmux = <STM32_PINMUX('A', 12, AF10)>; };
+	tim3_ch4_pb1: tim3_ch4_pb1 { pinmux = <STM32_PINMUX('B', 1, AF2)>; };
+	tim12_ch2_pb15: tim12_ch2_pb15 { pinmux = <STM32_PINMUX('B', 15, AF9)>; };
+	i2c1_scl_pb8: i2c1_scl_pb8 { pinmux = <STM32_PINMUX('B', 8, AF4)>; drive-open-drain; bias-pull-up; };
+	i2c1_sda_pb9: i2c1_sda_pb9 { pinmux = <STM32_PINMUX('B', 9, AF4)>; drive-open-drain; bias-pull-up; };
+};

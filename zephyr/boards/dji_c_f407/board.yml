@@ -1,0 +1,6 @@
+board:
+  name: dji_c_f407
+  full_name: DJI C Board STM32F407
+  vendor: arbatos
+  socs:
+    - name: stm32f407xx

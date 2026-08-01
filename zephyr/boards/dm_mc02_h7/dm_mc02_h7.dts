@@ -1,0 +1,106 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/dts-v1/;
+#include <st/h7/stm32h723Xg.dtsi>
+#include "dm_mc02_h7-pinctrl.dtsi"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+/ {
+	model = "Damiao MC02 Board with STM32H723";
+	compatible = "arbatos,dm-mc02-h7";
+
+	chosen {
+		zephyr,console = &usart1;
+		zephyr,shell-uart = &usart1;
+		zephyr,dtcm = &dtcm;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,canbus = &fdcan1;
+	};
+
+	aliases {
+		sw0 = &user_key;
+		can-primary = &fdcan1;
+		can-secondary = &fdcan2;
+		can-tertiary = &fdcan3;
+		uart-rc = &uart5;
+		uart-aux = &usart1;
+		uart-referee = &uart7;
+		uart-rs485-0 = &usart2;
+		uart-rs485-1 = &usart3;
+		sd-spi = &sd_spi;
+	};
+
+	keys {
+		compatible = "gpio-keys";
+		user_key: key_0 {
+			label = "KEY";
+			gpios = <&gpioa 15 GPIO_ACTIVE_LOW>;
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	arbatos_sensors {
+		compatible = "arbatos,sensors";
+		bmi088-spi = <&spi2>;
+		bmi088-accel-cs-gpios = <&gpioc 0 GPIO_ACTIVE_LOW>;
+		bmi088-gyro-cs-gpios = <&gpioc 3 GPIO_ACTIVE_LOW>;
+		bmi088-spi-hz = <8000000>;
+		imu-heater-pwms = <&pwm3 4 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
+		imu-heater-period-cycles = <10000>;
+	};
+
+	arbatos_platform: arbatos-platform {
+		compatible = "arbatos,platform";
+		key-gpios = <&gpioa 15 GPIO_ACTIVE_LOW>;
+		buzzer-pwms = <&pwm12 2 PWM_USEC(100) PWM_POLARITY_NORMAL>;
+	};
+};
+
+&clk_lsi { status = "okay"; };
+&clk_hsi48 { status = "okay"; };
+&clk_hse { clock-frequency = <DT_FREQ_M(24)>; status = "okay"; };
+&pll { div-m = <2>; mul-n = <40>; div-p = <1>; div-q = <4>; div-r = <2>; clocks = <&clk_hse>; status = "okay"; };
+&pll2 { div-m = <3>; mul-n = <10>; div-p = <1>; div-q = <1>; div-r = <1>; clocks = <&clk_hse>; status = "okay"; };
+&rcc { clocks = <&pll>; clock-frequency = <DT_FREQ_M(480)>; d1cpre = <1>; hpre = <2>; d1ppre = <2>; d2ppre1 = <2>; d2ppre2 = <2>; d3ppre = <2>; };
+&pwr { power-supply = "ldo"; };
+
+&usart1 { pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
+&usart2 { pinctrl-0 = <&usart2_de_pd4 &usart2_tx_pd5 &usart2_rx_pd6>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
+&usart3 { pinctrl-0 = <&usart3_de_pb14 &usart3_tx_pd8 &usart3_rx_pd9>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
+&uart5 { pinctrl-0 = <&uart5_rx_pd2>; pinctrl-names = "default"; current-speed = <100000>; status = "okay"; };
+&uart7 { pinctrl-0 = <&uart7_tx_pe8 &uart7_rx_pe7>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
+&usart10 { pinctrl-0 = <&usart10_rx_pe2 &usart10_tx_pe3>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
+&fdcan1 { pinctrl-0 = <&fdcan1_rx_pd0 &fdcan1_tx_pd1>; pinctrl-names = "default"; clocks = <&rcc STM32_CLOCK(APB1_2, 8)>, <&rcc STM32_SRC_PLL2_Q FDCAN_SEL(2)>; status = "okay"; };
+&fdcan2 { pinctrl-0 = <&fdcan2_rx_pb5 &fdcan2_tx_pb6>; pinctrl-names = "default"; clocks = <&rcc STM32_CLOCK(APB1_2, 8)>, <&rcc STM32_SRC_PLL2_Q FDCAN_SEL(2)>; status = "okay"; };
+&fdcan3 { pinctrl-0 = <&fdcan3_rx_pd12 &fdcan3_tx_pd13>; pinctrl-names = "default"; clocks = <&rcc STM32_CLOCK(APB1_2, 8)>, <&rcc STM32_SRC_PLL2_Q FDCAN_SEL(2)>; status = "okay"; };
+&spi1 { pinctrl-0 = <&spi1_sck_pb3 &spi1_mosi_pd7>; pinctrl-names = "default"; status = "okay"; };
+&spi2 { pinctrl-0 = <&spi2_sck_pb13 &spi2_miso_pc2 &spi2_mosi_pc1>; pinctrl-names = "default"; status = "okay"; };
+&spi3 {
+	pinctrl-0 = <&spi3_sck_pc10 &spi3_miso_pc11 &spi3_mosi_pc12>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpioe 14 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	sd_spi: sd-card@0 {
+		compatible = "arbatos,sd-spi";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+	};
+};
+/* SPI3 and SPI6 share PC12. Keep SPI6 disabled until the LCD and SD wiring is selected. */
+&spi6 { status = "disabled"; };
+zephyr_udc0: &usbotg_hs {
+	pinctrl-0 = <&usb_otg_hs_dm_pa11 &usb_otg_hs_dp_pa12>;
+	pinctrl-names = "default";
+	maximum-speed = "full-speed";
+	status = "okay";
+
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+
+&timers3 { status = "okay"; pwm3: pwm { status = "okay"; pinctrl-0 = <&tim3_ch4_pb1>; pinctrl-names = "default"; }; };
+&timers12 { status = "okay"; pwm12: pwm { status = "okay"; pinctrl-0 = <&tim12_ch2_pb15>; pinctrl-names = "default"; }; };

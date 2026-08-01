@@ -1,0 +1,20 @@
+/* SENTINEL-M 子板上的 PCF8563 RTC。 */
+
+/ {
+	aliases {
+		subboard-rtc = &subboard_rtc;
+	};
+};
+
+&i2c1 {
+	pinctrl-0 = <&i2c1_scl_pb8 &i2c1_sda_pb9>;
+	pinctrl-names = "default";
+	clock-frequency = <100000>;
+	status = "okay";
+
+	subboard_rtc: rtc@51 {
+		compatible = "nxp,pcf8563";
+		reg = <0x51>;
+		status = "okay";
+	};
+};
