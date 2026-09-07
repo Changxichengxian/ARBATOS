@@ -2,6 +2,15 @@
 
 当前整车目标为 HERO-M、SENTINEL-M、MINIWHEELEG-M，主板均为 DM MC02 H7 / STM32H723。A、C、M 三种开发板支持都保留在 boards，与车型分开管理。后续开发提交到 main。旧 Keil 工程、GCC 转换器与 A/C 板车型已从主线移除，历史保存在提交 951857f 和 zephyr 分支中。
 
+## 根目录快速入口
+
+- 双击 `打开工程.cmd`：自动查找 PATH 或 JetBrains 安装记录中的 CLion，打开 `projects`；保留 IDE 当前配置，本机目前启用 `hero-m-local`。
+- 双击 `编译固件.cmd`：选择 HERO-M、SENTINEL-M 或 MINIWHEELEG-M，回车默认 HERO-M；结束后窗口保留编译结果。也可在终端运行 `.\编译固件.cmd -Project SENTINEL-M`。
+
+三个车型共享一个 CMake 工程，不必为每台车复制一份 CLion 工程。单独编译某车型不会修改 IDE 当前选择；在 CLion 中切换时使用下面对应的 `*-local` 配置。入口按 [CLion 官方命令行用法](https://www.jetbrains.com/help/clion/opening-files-from-command-line.html)传入项目目录，不改 `.idea` 或本机预设。
+
+入口需要 PowerShell 7（`pwsh`）。若 CLion 使用便携安装且未登记位置，可把 `clion64.exe` 所在目录加入 PATH，或通过 `CLION_EXE` 环境变量指定完整文件路径。仅核对入口、不打开 IDE 或编译时，运行 `.\打开工程.cmd -Check` 或 `.\编译固件.cmd -Check -Project HERO-M`。
+
 ## 还要安装什么
 
 这台电脑已有 CLion 2026.2.2、Zephyr 4.4、Zephyr SDK、Python/West、CMake、Ninja、OpenOCD 和 ARM GDB。当前流程不需要 STM32CubeCLT、CubeMX、CubeIDE 或 Keil。CubeCLT 是 ST 提供的另一套编译/烧录工具包；这里直接使用现有 Zephyr SDK。
@@ -13,7 +22,7 @@ cd D:\ARBATOS
 pwsh -NoProfile -File .\tools\build.ps1 -Action probe
 ```
 
-还需要接好现有 CMSIS-DAP 调试器：USB 接电脑，SWDIO、SWCLK、GND、目标电压参考与 M 板匹配，M 板正常供电。Windows 能识别 CMSIS-DAP 即可，不必因为使用 CLion 再装一遍驱动；只有 OpenOCD 报找不到调试器时才检查 USB 线和实际驱动。
+需要下载或调试时，再接好现有 CMSIS-DAP 调试器：USB 接电脑，SWDIO、SWCLK、GND、目标电压参考与 M 板匹配，M 板正常供电。打开工程和编译不需要接板。Windows 能识别 CMSIS-DAP 即可，不必因为使用 CLion 再装一遍驱动；只有 OpenOCD 报找不到调试器时才检查 USB 线和实际驱动。
 
 本机工具目录是 `local/cache/` 下的本地环境，未提交 Git。以后换电脑需按 [Zephyr 官方安装说明](https://docs.zephyrproject.org/latest/develop/getting_started/index.html)准备 Zephyr 4.4、SDK 和 Python 依赖，再创建本机 CMakeUserPresets.json；只克隆此仓库不会自动带上 SDK。
 

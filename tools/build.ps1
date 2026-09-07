@@ -177,10 +177,10 @@ switch ($Action) {
         $westPath = Resolve-Tool -Value $West -Name "West" -PreferredPaths @(Join-Path $localVenv "west.exe")
         $ninjaPath = Resolve-Tool -Value $Ninja -Name "Ninja" -PreferredPaths @(Join-Path $localVenv "ninja.exe")
         if ($Pristine) {
-            & (Join-Path $RepoRoot "tools\build-matrix.ps1") -Target $target -BuildRoot $BuildRoot -West $westPath -Ninja $ninjaPath -Jobs $Jobs -Pristine
+            & (Join-Path $RepoRoot "tools\build\build-matrix.ps1") -Target $target -BuildRoot $BuildRoot -West $westPath -Ninja $ninjaPath -Jobs $Jobs -Pristine
         }
         else {
-            & (Join-Path $RepoRoot "tools\build-matrix.ps1") -Target $target -BuildRoot $BuildRoot -West $westPath -Ninja $ninjaPath -Jobs $Jobs
+            & (Join-Path $RepoRoot "tools\build\build-matrix.ps1") -Target $target -BuildRoot $BuildRoot -West $westPath -Ninja $ninjaPath -Jobs $Jobs
         }
         exit $LASTEXITCODE
     }
@@ -190,7 +190,7 @@ switch ($Action) {
         if ($Json) {
             $arguments += "--json"
         }
-        Invoke-PythonTool -ToolPath (Join-Path $RepoRoot "tools\CheckZephyr.py") -Arguments $arguments
+        Invoke-PythonTool -ToolPath (Join-Path $RepoRoot "tools\build\CheckZephyr.py") -Arguments $arguments
     }
 
     "flash" {

@@ -1,7 +1,7 @@
 param()
 
 $ErrorActionPreference = 'Stop'
-$RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
+$RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 $Zig = Get-Command zig -ErrorAction SilentlyContinue
 if ($null -eq $Zig) {
     throw '找不到 zig，无法运行 MotorInst 许可写入主机回归。'

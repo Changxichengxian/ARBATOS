@@ -18,7 +18,7 @@ jobs:
 
       - name: Run portable Zephyr source checks
         shell: powershell
-        run: python .\tools\CheckZephyr.py --project all --json
+        run: python .\tools\build\CheckZephyr.py --project all --json
 
       - name: Run Zephyr checker regressions
         shell: powershell

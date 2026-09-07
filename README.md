@@ -17,7 +17,9 @@
 
 ## 开始使用
 
-CLion 打开 `D:\ARBATOS\projects`，启用 `hero-m-local`，构建目标选择 `zephyr_final`。默认并行数为 2，日常增量编译。
+在仓库根目录双击 [打开工程.cmd](打开工程.cmd)，会找到本机 CLion 并打开 `projects`。三个车型共用同一个工程；默认沿用当前的 `hero-m-local`，构建目标选择 `zephyr_final`。
+
+双击 [编译固件.cmd](编译固件.cmd)，按菜单选择车型，直接回车编译 HERO-M。这个入口只编译，结束后保留结果窗口；默认并行数为 2，日常增量构建。换车型的 CLion 配置和其他操作见[CLion 开发指南](manual/CLion开发指南.md)。
 
 也可以在仓库根目录运行：
 
@@ -65,7 +67,7 @@ pwsh -NoProfile -File .\tools\build.ps1 -Project HERO-M
 
 文档按用途合并维护，自写文件名和标题使用中文；保留 `README.md`、CLion、Zephyr 等惯用名称。接口或路径变更时同步修改对应说明和链接。实测结论保留日期、硬件与固件条件；未验证内容明确写出，不把编译结果推广为实车结果。
 
-`manual/` 和各目录的 README 是随代码提交的正式说明。`local/docs/` 只保留本机的 `厂商手册/` 与 `原厂资料包/`；旧参考工程放 `local/reference/`，运行日志放 `local/logs/`，下载缓存和仿真生成文件放 `local/cache/`，构建产物放 `local/build/`。`tools/` 保存可复用工具源码，正式说明和待办不在 `local/docs/` 再维护一份。
+`manual/` 和各目录的 README 是随代码提交的正式说明。`local/docs/` 只保留本机的 `厂商手册/` 与 `原厂资料包/`；旧参考工程放 `local/reference/`，SD 日志放 `local/sdlogs/`，下载缓存和仿真生成文件放 `local/cache/`，构建产物放 `local/build/`。`tools/` 保存可复用工具源码，正式说明和待办不在 `local/docs/` 再维护一份。
 
 旧 Keil/CubeMX 工程和已删除车型可在历史提交 `951857f` 或探索分支的 `6bdf19e` 查看。复现历史固件使用单独检出目录。
 

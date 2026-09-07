@@ -23,7 +23,7 @@ param(
 $ErrorActionPreference = 'Stop'
 # 限制本次编译的并行数，避免默认占满电脑。
 $env:CMAKE_BUILD_PARALLEL_LEVEL = [string]$Jobs
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $appRoot = Join-Path $repoRoot 'projects'
 if ([string]::IsNullOrWhiteSpace($BuildRoot)) {
     $BuildRoot = Join-Path $repoRoot 'local\\build'

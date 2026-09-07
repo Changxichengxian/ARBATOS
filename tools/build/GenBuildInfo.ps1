@@ -4,7 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+$RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
     $OutputPath = Join-Path $RepoRoot "shared\generated\build_info_autogen.h"
 }

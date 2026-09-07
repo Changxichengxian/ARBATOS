@@ -1,7 +1,7 @@
 param()
 
 $ErrorActionPreference = 'Stop'
-$RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
+$RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 $Zig = Get-Command zig -ErrorAction SilentlyContinue
 if ($null -eq $Zig) {
     throw 'zig is required for reset evidence policy regression.'

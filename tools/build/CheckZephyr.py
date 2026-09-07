@@ -154,7 +154,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Check ARBATOS formal Zephyr source and preset consistency.")
     parser.add_argument("--project", default="all", help="all (default) or a formal project name, e.g. HERO-M")
     parser.add_argument("--json", action="store_true", help="emit one JSON result object")
-    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1], help=argparse.SUPPRESS)
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2], help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     requested = args.project.upper()
     if requested == "ALL":

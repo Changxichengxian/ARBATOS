@@ -1,6 +1,6 @@
 /*
  * Lightweight host regression for the production DBUS codec and referee parser.
- * Build through tools/TestInputReferee.ps1; this file is not part of firmware targets.
+ * Build through tools/tests/TestInputReferee.ps1; this file is not part of firmware targets.
  */
 
 #include <stdint.h>

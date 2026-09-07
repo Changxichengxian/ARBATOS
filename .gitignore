@@ -47,10 +47,9 @@ MDK-ARM/standard_tpye_c/
 # Local logs / cache / references
 docs/
 local/docs/
-local/logs/**
-!local/logs/
-!local/logs/sdlog/
-!local/logs/sdlog/.gitkeep
+local/sdlogs/**
+!local/sdlogs/
+!local/sdlogs/.gitkeep
 local/reference/
 local/cache/
 **/__pycache__/

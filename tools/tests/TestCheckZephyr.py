@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-CHECK = REPO / "tools" / "CheckZephyr.py"
+CHECK = REPO / "tools" / "build" / "CheckZephyr.py"
 
 
 class CheckZephyrTest(unittest.TestCase):

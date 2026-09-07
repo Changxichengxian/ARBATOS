@@ -214,7 +214,7 @@ A/C 板的 IMU、存储、串口、输出能力与 M 板不同，不能直接照
 2. 在 `projects/Kconfig` 增加目标选项，在 `projects/src/ArbatosTarget.c` 增加对应的目标选择。当前选择器对未识别目标会报错。
 3. 在 `projects/cmake/ArbatosLegacy.cmake` 增加源码和头文件目录，只接入本车的 `RobotConfig.c`、检测和板级实现，不读取 `.uvprojx`。
 4. 在 `projects/CMakePresets.json` 增加配置/构建预设；A、C、M 板分别选 `dji_a_f427`、`dji_c_f407`、`dm_mc02_h7`。本机绝对路径写进不提交的 `CMakeUserPresets.json`。
-5. 更新 `tools/build.ps1`、`tools/build-matrix.ps1`、`tools/CheckZephyr.py` 的车型表和对应板名；下载时也要使用该板的 OpenOCD 配置。
+5. 更新 `tools/build.ps1`、`tools/build/build-matrix.ps1`、`tools/build/CheckZephyr.py` 的车型表和对应板名；下载时也要使用该板的 OpenOCD 配置。若要从根目录快捷入口选择新车型，同时更新 `tools/build/StartProject.ps1`。
 6. 增加新的业务任务时，补 `RobotTaskBuildConfig.h` 的编译选择，以及 `projects/src/ArbatosRuntime.c` 的固定栈、创建函数和模块映射，详见 [模块声明](../manual/开发与代码规范.md#新增任务)。
 
 独立板级验证可先使用 [tests/Boards](../tests/README.md)，不必恢复已经删除的 A/C 旧车型。
