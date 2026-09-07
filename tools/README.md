@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | `build.ps1` | 统一检查、编译、下载和调试入口 | 日常开发保留 |
 | `build/` | 启动入口、实际构建、工程检查、固件版本信息生成 | 构建配套，通常不用逐个打开 |
+| `config/RobotConfigGen.py` | 从 `Robotconfig/<车型>/RobotConfig.toml` 生成构建、任务和 profile 输入 | 新增车型或检查声明时使用 |
 | `tests/` | 电脑上的自动回归测试和所需测试代码 | 修改控制、输入、故障保护时使用，保留 |
 | `sdlog/` | 查看、解压和导出 SD 日志 | 实车调试使用 |
 | `Mp3ToU8/` | 把 MP3 转成蜂鸣器播放格式 | 可选，音乐功能使用 |
@@ -30,6 +31,19 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action 
 默认并行数为 2，可用 `-BuildRoot`、`-West`、`-Ninja` 指定本机路径，用 `-Jobs` 指定并行数。`-Action check` 调用 `build/CheckZephyr.py`，检查 Zephyr 的 CMake 源码清单、正式目标、板级配置和 overlay 引用；它不读取 `.uvprojx`，不需要 Keil，也不代替编译或实车验证。`flash` 与 `debug` 会连接、复位或写入硬件；CLion 预设和 OpenOCD 的用法见[CLion 开发指南](../manual/CLion开发指南.md)。
 
 `build/build-matrix.ps1` 是 `build.ps1` 调用的实际编译实现。CMake 自动调用 `build/GenBuildInfo.py`，为每个构建目录刷新固件版本和源码指纹；不变时不重写版本头。`build/GenBuildInfo.ps1` 仅保留手动兼容入口，使用条件见[日志说明](../manual/调试与日志.md#日志与复盘)。
+
+车型列表来自 `Robotconfig/*/RobotConfig.toml`，脚本会自动发现，无需修改 PowerShell 映射表。可以单独查看或检查声明：
+
+新增车型可运行 `pwsh -File tools/build.ps1 -Action new -Project NEW -From HERO-M`，再运行 `pwsh -File tools/build.ps1 -Action presets -Project all`，为 CLion 补齐本机配置。这两个入口自动使用项目的 Python 环境。
+
+```powershell
+python .\tools\config\RobotConfigGen.py list --json
+python .\tools\config\RobotConfigGen.py check --target HERO-M
+python .\tools\config\RobotConfigGen.py new --target NEW --from HERO-M
+python .\tools\config\RobotConfigGen.py presets --target all
+```
+
+生成出的 `robot.conf`、`RobotTarget*.h/.inc/.cmake` 和 `robot-config.json` 都在构建目录，不能手工修改。`robot-config.json` 可用来核对选择了哪些服务、依赖、固定栈和优先级。新算法控制器放在 `shared/controllers/<name>/`，由其 `Controller.toml` 的参数默认值和范围约束；车型只在 TOML 选择控制器并按电机实例名装配。控制器不直接写总线，输出仍要经过 `LowCmd` 许可、急停和限幅。
 
 已移除的旧工具、工程检查和构建脚本可用 `git show 951857f:<path>` 或 `zephyr` 分支的 `6bdf19e` 查阅。
 

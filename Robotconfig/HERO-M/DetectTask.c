@@ -17,10 +17,7 @@
 #include "SdLog.h"
 #include "SdCard.h"
 #include "BspBuzzer.h"
-#include "GimbalBehaviour.h"
-#include "ChassisBehaviour.h"
 #include "CpuUsage.h"
-#include "Shoot.h"
 #include "HostLinkTask.h"
 #include "RobotMode.h"
 #include <string.h>
@@ -29,15 +26,33 @@
 #include "task.h"
 #include "main.h"
 
-#if INCLUDE_uxTaskGetStackHighWaterMark
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
+#include "GimbalBehaviour.h"
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
+#include "ChassisBehaviour.h"
+#endif
+#if WATCH_ENABLE_SHOOT_RM
+#include "Shoot.h"
+#endif
+
+#if INCLUDE_uxTaskGetStackHighWaterMark && (WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL)
 extern uint32_t GimbalHighWater;
+#endif
+#if INCLUDE_uxTaskGetStackHighWaterMark && WATCH_ENABLE_LOCOMOTION_CLASSIC
 extern uint32_t ChassisHighWater;
+#endif
+#if INCLUDE_uxTaskGetStackHighWaterMark && ROBOT_TASK_BUILD_CALIBRATION
 extern uint32_t CalibrateTaskStack;
 #endif
 
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
 extern volatile uint32_t GimbalLoopCounter;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
 extern volatile uint32_t ChassisLoopCounter;
 extern ChassisBehaviour ChassisBehaviourMode;
+#endif
 
 #define DETECT_LOG_PERIOD_MS 1000u
 #define SYS_STATS_PERIOD_MS 250u
@@ -205,25 +220,31 @@ static void sdlog_pack_control_summary(sdlog_control_summary_t *out)
             out->rc_ch[i] = s_control_summary_manual_input.manual.rc.ch[i];
         }
     }
+    /* 未编入的旧控制链没有对应 g_watch 字段，摘要保持清零，不能伪造观测值。 */
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
     out->ChassisMode = (uint8_t)g_watch.chassis.mode;
-    out->yaw_mode = (uint8_t)g_watch.gimbal.yaw_mode;
-    out->pitch_mode = (uint8_t)g_watch.gimbal.pitch_mode;
-    out->ShootMode = (uint8_t)g_watch.shoot.mode;
-
     out->ChassisVxSet = g_watch.chassis.vx_set;
     out->ChassisVySet = g_watch.chassis.vy_set;
     out->ChassisWzSet = g_watch.chassis.wz_set;
     out->ChassisVx = g_watch.chassis.vx;
     out->ChassisVy = g_watch.chassis.vy;
     out->ChassisWz = g_watch.chassis.wz;
+#endif
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
+    out->yaw_mode = (uint8_t)g_watch.gimbal.yaw_mode;
+    out->pitch_mode = (uint8_t)g_watch.gimbal.pitch_mode;
     out->yaw_set_deg = g_watch.gimbal.yaw_set_deg;
     out->yaw_deg = g_watch.gimbal.yaw_angle_deg;
     out->pitch_set_deg = g_watch.gimbal.pitch_set_deg;
     out->pitch_deg = g_watch.gimbal.pitch_angle_deg;
     out->yaw_current = g_watch.gimbal.yaw_current;
     out->pitch_current = g_watch.gimbal.pitch_current;
+#endif
+#if WATCH_ENABLE_SHOOT_RM
+    out->ShootMode = (uint8_t)g_watch.shoot.mode;
     out->trigger_current = g_watch.shoot.trigger_current;
     out->fric_speed_set_rpm = g_watch.shoot.fric_speed_set_rpm;
+#endif
 }
 
 static void sdlog_emit_event(uint16_t event_id, uint16_t arg0_u16, uint32_t arg1_u32, uint32_t arg2_u32)
@@ -270,10 +291,16 @@ void DetectTask(void const *pvParameters)
     uint32_t last_log_snapshot_tick = system_time;
 
     uint8_t run_variant_last = (uint8_t)robot_mode_variant();
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
     uint8_t GimbalBehaviourLast = (uint8_t)GimbalBehaviourWatch;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
     uint8_t ChassisBehaviourLast = (uint8_t)ChassisBehaviourMode;
+#endif
+#if WATCH_ENABLE_SHOOT_RM
     const ShootControl *ShootWatch = get_shoot_control_point();
     uint8_t ShootModeLast = (ShootWatch != NULL) ? (uint8_t)ShootWatch->mode : 0u;
+#endif
     TickType_t last_wake = xTaskGetTickCount();
 
     for (uint8_t i = 0u; i < (uint8_t)(sizeof(toe_last_lost) / sizeof(toe_last_lost[0])); i++)
@@ -377,20 +404,25 @@ void DetectTask(void const *pvParameters)
             run_variant_last = run_variant_now;
         }
 
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
         const uint8_t GimbalBehaviourNow = (uint8_t)GimbalBehaviourWatch;
         if (GimbalBehaviourNow != GimbalBehaviourLast)
         {
             sdlog_emit_event(SDLOG_EVT_GIMBAL_BEHAVIOUR, GimbalBehaviourNow, GimbalBehaviourLast, 0u);
             GimbalBehaviourLast = GimbalBehaviourNow;
         }
+#endif
 
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
         const uint8_t ChassisBehaviourNow = (uint8_t)ChassisBehaviourMode;
         if (ChassisBehaviourNow != ChassisBehaviourLast)
         {
             sdlog_emit_event(SDLOG_EVT_CHASSIS_BEHAVIOUR, ChassisBehaviourNow, ChassisBehaviourLast, 0u);
             ChassisBehaviourLast = ChassisBehaviourNow;
         }
+#endif
 
+#if WATCH_ENABLE_SHOOT_RM
         ShootWatch = get_shoot_control_point();
         const uint8_t ShootModeNow = (ShootWatch != NULL) ? (uint8_t)ShootWatch->mode : 0u;
         if (ShootModeNow != ShootModeLast)
@@ -398,6 +430,7 @@ void DetectTask(void const *pvParameters)
             sdlog_emit_event(SDLOG_EVT_SHOOT_MODE, ShootModeNow, ShootModeLast, 0u);
             ShootModeLast = ShootModeNow;
         }
+#endif
 
         // Log configuration snapshot once after boot (when SD log is active).
         if (!ConfigLogged && SdLogIsActive())
@@ -447,14 +480,32 @@ void DetectTask(void const *pvParameters)
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
             DetectTaskStack = uxTaskGetStackHighWaterMark(NULL);
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
             sys.stack_gimbal = GimbalHighWater;
+#elif WATCH_ENABLE_CONTROL_GIMBAL
+            sys.stack_gimbal = g_watch.rtos.stack_gimbal;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
             sys.stack_chassis = ChassisHighWater;
+#elif WATCH_ENABLE_CONTROL_CHASSIS
+            sys.stack_chassis = g_watch.rtos.stack_chassis;
+#endif
             sys.stack_detect = DetectTaskStack;
+#if ROBOT_TASK_BUILD_CALIBRATION
             sys.stack_calibrate = CalibrateTaskStack;
 #endif
+#endif
 
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
             sys.GimbalLoopCnt = GimbalLoopCounter;
+#elif WATCH_ENABLE_CONTROL_GIMBAL
+            sys.GimbalLoopCnt = g_watch.rtos.task.GimbalControlTask.beat_count;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
             sys.ChassisLoopCnt = ChassisLoopCounter;
+#elif WATCH_ENABLE_CONTROL_CHASSIS
+            sys.ChassisLoopCnt = g_watch.rtos.task.ChassisControlTask.beat_count;
+#endif
             sys.cpu_load_permille = CpuUsageGetPermille();
 
             SdLogWrite(SDLOG_TAG_SYS_STATS, &sys, (uint16_t)sizeof(sys));

@@ -1,6 +1,6 @@
 ﻿# 车型配置
 
-`Robotconfig/` 放“这台机器人是谁”的内容。这里描述目标本身，不描述 Zephyr 工程怎么编译，也不描述某块开发板有哪些引脚。
+`Robotconfig/` 放“这台机器人怎么装配”的内容。这里选择开发板、控制器、服务和车型专属实现，填写接线与参数；公共构建规则和板级驱动无需随车型复制。
 
 查看[现有车型](#当前机器人配置)、[配置分层](#配置分层)、[新增车型](#新增车型)或[安装说明模板](#安装说明模板)。
 
@@ -8,7 +8,7 @@
 
 | 配置 | 说明 | 主要文件 |
 |---|---|---|
-| `HERO-M` | 英雄机器人，已完整改用 MC02 H7 和 V2 副板接线 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`PitchCaliBuiltin.c` |
+| `HERO-M` | 英雄机器人，已完整改用 MC02 H7 和 V2 副板接线 | `RobotConfig.toml`、`RobotConfig.c`、`Config*.inc`、`DetectTask.c`、`PitchCaliBuiltin.c` |
 | `SENTINEL-M` | 哨兵机器人接 MC02 H7 板 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`Mc02Compat.c` |
 | `MINIWHEELEG-M` | H7 接板和机械臂实验 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`ArmMotorTable.c` |
 
@@ -17,6 +17,7 @@
 ```text
 Robotconfig/<TARGET>/
 |-- RobotConfig.h
+|-- RobotConfig.toml
 |-- RobotConfig.c
 |-- ConfigOperation.inc
 |-- ConfigHardware.inc
@@ -27,9 +28,9 @@ Robotconfig/<TARGET>/
 `-- 目标私有补充文件
 ```
 
-`RobotConfig.c` 只保留 `g_config` 总入口、调参块表和块启用判断。真正要改默认值时，按下面几个片段找：
+`RobotConfig.c` 只保留 `g_config` 总入口。调参块表和块启用判断共用 `shared/application/robot/RobotConfigBlocks.c`。真正要改默认值时，按下面几个片段找：
 
-- `ConfigOperation.inc`：运行模式、目标任务/电机、任务模块列表。
+- `ConfigOperation.inc`：运行模式和目标任务/电机；任务模块列表由 `RobotConfig.toml` 生成。
 - `ConfigHardware.inc`：设备表和电机装配。
 - `安装说明.md`：控制板固定在哪个机械部件上、开发板朝向、INS 姿态代表谁。
 - `ConfigTuning.inc`：云台、底盘、轮腿、射击、功率、IMU、电压、蜂鸣器、LED 参数。
@@ -47,7 +48,7 @@ Robotconfig/<TARGET>/
 
 ## 不应该放这里
 
-- 正式工程配置、显式源码清单和启动入口：放 `projects/`。
+- 公共构建规则和启动入口：放 `projects/`；车型自己的额外源文件在 TOML 的 `[build]` 登记。
 - 某块板子的串口、CAN、IMU、蜂鸣器、按键、SD 卡适配：放 `boards/`。
 - 可复用控制逻辑、电机协议、输入链路、日志、诊断：放 `shared/`。
 - 厂商手册和资料包放 `local/docs/`，参考工程放 `local/reference/`，临时生成文件放 `local/cache/`。
@@ -58,7 +59,7 @@ Robotconfig/<TARGET>/
 
 建议按这五类理解目标配置：
 
-1. 运行编排：`ConfigOperation.inc` 里的 `g_config.operation` 和 `g_config.profile`，决定默认怎么跑、哪些任务静态启用。
+1. 运行编排：`ConfigOperation.inc` 里的 `g_config.operation` 决定默认怎么跑；`RobotConfig.toml` 选择哪些任务静态启用。
 2. 硬件装配：`ConfigHardware.inc` 里的 `g_config.devices` 和 `g_config.motor`，决定有哪些设备、电机怎么接；`安装说明.md` 决定控制板和主要部件装在哪里、朝哪里。
 3. 控制参数：`ConfigTuning.inc`，放云台、底盘、射击、功率、轮腿、机械臂等 PID、限幅和几何参数。
 4. 输入映射：`ConfigInput.inc`，放输入源策略、遥控通道、语义开关和安全档。
@@ -84,58 +85,46 @@ AUX 临时调参只改 RAM，重启后恢复配置文件默认值。运行模式
 
 | 新目标条件 | 优先复制 |
 |---|---|
-| DJI A F427 / DJI C F407 | 复用 `boards/DjiAF427` / `boards/DjiCF407`，按机构参考现有车型业务配置 |
+| DJI A F427 / DJI C F407 | 当前仅保留板级验证；完整机器人运行栈尚未完成迁移 |
 | DM MC02 H7 | `HERO-M`、`SENTINEL-M` 或 `MINIWHEELEG-M` |
 | 经典底盘 + 单云台 | `HERO-M` |
 | 双 yaw 云台 | `SENTINEL-M` |
 | MIT 轮腿实验 | `MINIWHEELEG-M` |
 
-A/C 板的 IMU、存储、串口、输出能力与 M 板不同，不能直接照搬 M 板引脚或安装方向。板级缺项见各板 README；新目标初期先使用已经实现的接口。
+A/C 板的 IMU、存储、串口、输出能力与 M 板不同，生成器会拒绝将当前完整运行栈装到 A/C 板上。板级缺项见各板 README。
 
-默认先复制 `Robotconfig/<OLD>/` 到 `Robotconfig/<NEW>/`，再在 `projects/<TARGET>/`、板级定义、CMake 预设和 `projects/cmake/ArbatosLegacy.cmake` 的显式清单中补齐该目标。正式构建不读取 `.uvprojx`。
+默认用生成器从 `Robotconfig/<OLD>` 创建 `Robotconfig/<NEW>`；车型接入不再要求修改 `projects/`、CMake 预设或构建工具。正式构建不读取 `.uvprojx`。
 
 已移除的旧工程如需核对，使用 `git show 951857f:<path>` 或查看 `zephyr` 分支的 `6bdf19e`，不要把它们作为新目标入口。
 
-### 2. 填目标身份
+### 2. 创建目标身份
 
-在 `Robotconfig/<TARGET>/RobotConfig.h` 顶部写清楚：
-
-```c
-#define ARBATOS_TARGET_NAME "NEW-TARGET"
-#define ARBATOS_BOARD_NAME "DmMc02H7"
-```
-
-这两个值会进入 SD 日志的 `BUILD_INFO`。以后只拿到一张 SD 卡，也能知道日志来自哪台车、哪块板。
+运行 `pwsh -File tools/build.ps1 -Action new -Project NEW-TARGET -From HERO-M`。目录名就是车型名，开发板由 TOML 的 `board` 选择；身份宏、日志身份和构建配置自动生成，不再手改头文件。新副本默认停在未选电机的单电机模式，接线和参数检查完后再修改 `ConfigOperation.inc`。
 
 ### 3. 配 profile 和任务模块
 
-先改 `Robotconfig/<TARGET>/ConfigOperation.inc` 里的 `.profile`。
+在 `RobotConfig.toml` 选择需要的服务和控制器。例如：
 
-现在 profile 只做一件事：列出这台车要启用哪些任务模块。任务创建、调参块是否显示、观测块是否显示，都按这张表走。例子：
+```toml
+schema = 1
+board = "dm_mc02_h7"
+profile = "custom"
+services = ["RC_SBUS", "HEALTH_MONITOR", "SDLOG"]
 
-```c
-.task_module_count = 8u,
-.task_modules =
-    {
-        ROBOT_TASK_MODULE_RC_SBUS,
-        ROBOT_TASK_MODULE_HEALTH_MONITOR,
-        ROBOT_TASK_MODULE_SDLOG,
-        ROBOT_TASK_MODULE_CAN_COMMAND_TX,
-        ROBOT_TASK_MODULE_CAN_FEEDBACK_RX,
-        ROBOT_TASK_MODULE_CLASSIC_CHASSIS,
-        ROBOT_TASK_MODULE_SINGLE_GIMBAL,
-        ROBOT_TASK_MODULE_IMU,
-    },
+[controllers.chassis]
+type = "classic"
+
+[controllers.gimbal]
+type = "single"
 ```
 
 几个规则：
 
-- `task_module_count` 必须等于下面实际列出来的模块数量。
-- 模块需同时具备编译实现和启动映射，加入列表后才会创建对应业务任务；没有列出的业务模块不启用。
-- 底盘二选一：经典底盘用 `ROBOT_TASK_MODULE_CLASSIC_CHASSIS`，MIT 轮腿用 `ROBOT_TASK_MODULE_WHEELLEG_MIT`。
-- 云台二选一：单云台用 `ROBOT_TASK_MODULE_SINGLE_GIMBAL`，双 yaw 云台用 `ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL`。
-- 通信和服务类任务也要显式列，比如 `RC_SBUS`、`HOST_LINK`、`ELRS_LINK`、`REFEREE_RX`、`SDLOG`。
-- `ROBOT_TASK_MODULE_MAX` 是模块表上限，超过它要先扩表，不要偷偷多写。
+- CAN 收发、IMU 等依赖按控制器选择自动加入，任务数量、编译开关和启动表自动保持一致。
+- 同一控制域只能选一种实现；经典底盘与轮腿、两种云台等冲突会提前报错。
+- 栈和优先级有公共默认值，确需覆盖时用 `[tasks.<任务名>]`，无需修改启动源码。
+- 未完成当前平台迁移的服务会明确报错。当前 `ELRS_LINK`、`SERVO`、`WHEELLEG_SERVO` 尚不能直接选入正式固件。
+- 现有任务容量为 16，超过会报错，不会截断列表。
 
 新车先少开模块：输入、在线检测、CAN 收发、IMU，加一个要调的子系统。确认能跑后再把日志、遥测、裁判、发射等模块补上。
 
@@ -206,16 +195,23 @@ A/C 板的 IMU、存储、串口、输出能力与 M 板不同，不能直接照
 
 不要把还没接线的设备硬塞进检测表。实物没接就先不列对应任务模块或不启用对应检测；等接线确定后再补。这样上车时红灯才有意义。
 
-### 8. 配 Zephyr 工程入口
+### 8. 生成构建配置
 
-在 `projects/` 及工具入口补齐以下内容：
+车型能力只写在 `Robotconfig/<TARGET>/RobotConfig.toml`。它选择开发板、服务、内置控制链、可选控制器、专属源文件和 overlay；不再去 `projects/`、Kconfig、CMake 预设或构建脚本重复登记车型。
 
-1. 新建 `<TARGET>/prj.conf`，需要改默认引脚或串口用途时增加 `app.overlay`；公共配置在 `projects/prj.conf`。
-2. 在 `projects/Kconfig` 增加目标选项，在 `projects/src/ArbatosTarget.c` 增加对应的目标选择。当前选择器对未识别目标会报错。
-3. 在 `projects/cmake/ArbatosLegacy.cmake` 增加源码和头文件目录，只接入本车的 `RobotConfig.c`、检测和板级实现，不读取 `.uvprojx`。
-4. 在 `projects/CMakePresets.json` 增加配置/构建预设；A、C、M 板分别选 `dji_a_f427`、`dji_c_f407`、`dm_mc02_h7`。本机绝对路径写进不提交的 `CMakeUserPresets.json`。
-5. 更新 `tools/build.ps1`、`tools/build/build-matrix.ps1`、`tools/build/CheckZephyr.py` 的车型表和对应板名；下载时也要使用该板的 OpenOCD 配置。若要从根目录快捷入口选择新车型，同时更新 `tools/build/StartProject.ps1`。
-6. 增加新的业务任务时，补 `RobotTaskBuildConfig.h` 的编译选择，以及 `projects/src/ArbatosRuntime.c` 的固定栈、创建函数和模块映射，详见 [模块声明](../manual/开发与代码规范.md#新增任务)。
+从最接近的车型创建目录：
+
+```powershell
+pwsh -File .\tools\build.ps1 -Action new -Project NEW -From HERO-M
+pwsh -File .\tools\build.ps1 -Action check -Project NEW
+pwsh -File .\tools\build.ps1 -Action presets -Project all
+```
+
+`new` 只创建 `Robotconfig/NEW` 下的声明和车型文件。`presets` 只补齐缺少的本机 `CMakeUserPresets.json` 项，不覆盖已有个人预设。生成器会在构建目录生成 `RobotTargetConfig.h`、任务表、profile、CMake 输入、`robot.conf` 和 `robot-config.json`；这些文件不能手改。`robot-config.json` 会列出选中的任务、依赖、优先级和栈，先看它再处理配置报错。
+
+`RobotConfig.toml` 只做装配选择；`Config*.inc` 仍放接线、电机、PID、限幅、输入和安装参数。任务编号、名称、默认优先级、默认栈、入口和任务实现源只在 `shared/application/robot/RobotTaskCatalog.def` 维护。当前 classic、single、dual_yaw、mit、arm 仍复用已经存在的控制链，新车型不表示新板已自动支持，也不代表已经实车验证。
+
+可复用的新底盘或云台算法放 `shared/controllers/<name>/`，其中 `Controller.toml` 声明参数默认值、范围、依赖和源码，`.c/.h` 放实现。生成器会自动发现它；车型在 TOML 里按电机实例名绑定。算法层 `ControlAlgorithm` 只算控制量，`ControlRuntime` 负责输入、反馈、安全检查和提交，所有输出仍必须经过 `LowCmd` 的许可、急停和限幅，不能由控制器直接绕过。
 
 独立板级验证可先使用 [tests/Boards](../tests/README.md)，不必恢复已经删除的 A/C 旧车型。
 
@@ -236,7 +232,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action 
 
 - `tools/build.ps1 -Action check -Project <TARGET>` 通过。
 - 对应 Zephyr 目标从干净目录构建通过。
-- SD 日志的 target、board 和配置正确；需记录 Git 身份时，构建前手动刷新 `GenBuildInfo.ps1`，并留存 ELF/BIN 与哈希，见 [日志说明](../manual/调试与日志.md#日志与复盘)。
+- SD 日志的 target、board 和配置正确；正常构建自动刷新 Git 身份，留存 ELF/BIN 与哈希，见 [日志说明](../manual/调试与日志.md#日志与复盘)。
 - `g_watch` 能看到任务状态和主要设备状态。
 - 遥控输入、CAN 反馈、IMU 姿态都能观察。
 - 每个子系统都能单独关闭或单独测试。

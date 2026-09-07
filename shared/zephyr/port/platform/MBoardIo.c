@@ -2,6 +2,7 @@
 #include "BspAdc.h"
 #include "SdLog.h"
 #include "MBoardIo.h"
+#include "RobotTargetConfig.h"
 #include <errno.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/i2c.h>
@@ -115,7 +116,7 @@ int MBoardRtcSet(const SdLogDateTime *time)
     return ret;
 }
 
-#if !defined(CONFIG_ARBATOS_TARGET_SENTINEL_M)
+#if !ROBOT_SUBBOARD_RTC_SERVICE
 int SdLogRtcNow(SdLogDateTime *out)
 {
     return out != NULL && MBoardRtcRead(out) == 0;

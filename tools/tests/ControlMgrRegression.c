@@ -262,9 +262,12 @@ static int TestCrossDomainReservation(void)
                                     &nextBehavior);
     blocker = TestController(ControlIdCustomBase + 2u,
                              ControlDomainSystem,
-                             ControlResArm,
+                             ControlResGimbalYaw,
                              "controller.test.blocker",
                              &blockerBehavior);
+    oldController.actuator_mask = (uint32_t)1u << 0u;
+    nextController.actuator_mask = (uint32_t)1u << 1u;
+    blocker.actuator_mask = (uint32_t)1u << 1u;
     TEST_CHECK(ControlMgrRegister(&oldController) == ControlResultOk &&
                ControlMgrRegister(&nextController) == ControlResultOk &&
                ControlMgrRegister(&blocker) == ControlResultOk,
@@ -280,17 +283,22 @@ static int TestCrossDomainReservation(void)
                "外层控制器切换失败");
     TEST_CHECK(oldBehavior.exitSwitchResult == ControlResultOk &&
                oldBehavior.exitUpdateResult == ControlResultResourceBusy,
-               "旧 exit 内的跨域启动必须看见外层资源预留");
+               "旧 exit 内的跨域启动必须看见外层执行器预留");
     TEST_CHECK(blockerBehavior.enterCount == 0u && blockerBehavior.updateCount == 0u &&
                nextBehavior.enterCount == 1u && nextBehavior.updateCount == 1u,
-               "冲突控制器不能与预留控制器同时进入运行态");
+               "冲突控制器不能与预留执行器的控制器同时进入运行态");
     TEST_CHECK(ControlMgrActiveId(ControlDomainChassis) == nextController.id &&
                ControlMgrActiveId(ControlDomainSystem) == ControlIdNone &&
                ControlMgrActiveClaimMask() == ControlResArm,
                "资源预留切换后的活动资源错误");
     TEST_CHECK(ControlMgrGetDiag(&diag) == ControlResultOk &&
                diag.claimConflictCount == 1u && diag.reservedClaimMask == 0u,
-               "资源冲突或预留释放诊断错误");
+               "执行器冲突或预留释放诊断错误");
+    TEST_CHECK(ControlMgrStop(ControlDomainChassis, ControlReasonDisable) == ControlResultOk &&
+               ControlMgrUpdateDomain(ControlDomainChassis, NULL) == ControlResultNotActive &&
+               ControlMgrSwitch(blocker.id, ControlReasonTest) == ControlResultOk &&
+               ControlMgrUpdateDomain(ControlDomainSystem, NULL) == ControlResultOk,
+               "同域切换完成并停止后必须释放执行器预留");
     return 1;
 }
 
@@ -318,9 +326,12 @@ static int TestReservationFailureCleanup(void)
                                     &nextBehavior);
     otherController = TestController(ControlIdCustomBase + 2u,
                                      ControlDomainSystem,
-                                     ControlResArm,
+                                     ControlResGimbalYaw,
                                      "controller.test.exit_fail_other",
                                      &otherBehavior);
+    oldController.actuator_mask = (uint32_t)1u << 0u;
+    nextController.actuator_mask = (uint32_t)1u << 1u;
+    otherController.actuator_mask = (uint32_t)1u << 1u;
     TEST_CHECK(ControlMgrRegister(&oldController) == ControlResultOk &&
                ControlMgrRegister(&nextController) == ControlResultOk &&
                ControlMgrRegister(&otherController) == ControlResultOk &&
@@ -348,9 +359,11 @@ static int TestReservationFailureCleanup(void)
                                     &nextBehavior);
     otherController = TestController(ControlIdCustomBase + 4u,
                                      ControlDomainSystem,
-                                     ControlResArm,
+                                     ControlResGimbalYaw,
                                      "controller.test.enter_fail_other",
                                      &otherBehavior);
+    nextController.actuator_mask = (uint32_t)1u << 1u;
+    otherController.actuator_mask = (uint32_t)1u << 1u;
     TEST_CHECK(ControlMgrRegister(&nextController) == ControlResultOk &&
                ControlMgrRegister(&otherController) == ControlResultOk,
                "enter 失败场景注册失败");
@@ -893,19 +906,23 @@ static int TestActuatorOwnershipDiagnostics(void)
     TEST_CHECK(ControlMgrSwitch(first.id, ControlReasonTest) == ControlResultOk &&
                ControlMgrUpdateDomain(ControlDomainChassis, NULL) == ControlResultOk &&
                ControlMgrSwitch(otherDomain.id, ControlReasonTest) == ControlResultOk &&
-               ControlMgrUpdateDomain(ControlDomainArm, NULL) == ControlResultOk,
-               "跨域执行器重叠只应诊断，不得改变现有启动行为");
-    TEST_CHECK(ControlMgrActiveActuatorMask() == (motor0 | motor1 | motor2 | motor5),
-               "活动执行器掩码没有合并两个控制域");
+               ControlMgrUpdateDomain(ControlDomainArm, NULL) == ControlResultResourceBusy,
+               "跨域控制器不得同时占用同一物理执行器");
+    TEST_CHECK(ControlMgrActiveActuatorMask() == (motor0 | motor2 | motor5) &&
+               otherDomainBehavior.enterCount == 0u,
+               "跨域冲突失败后不得扩大活动执行器集合");
 
     TEST_CHECK(ControlMgrSwitch(sameDomain.id, ControlReasonModeSwitch) == ControlResultOk &&
                ControlMgrUpdateDomain(ControlDomainChassis, NULL) == ControlResultOk &&
-               ControlMgrActiveActuatorMask() == (motor0 | motor1 | motor2 | motor17),
+               ControlMgrActiveActuatorMask() == (motor2 | motor17),
                "同域候选共享执行器时仍应按原规则切换");
     TEST_CHECK(ControlMgrStop(ControlDomainChassis, ControlReasonDisable) == ControlResultOk &&
                ControlMgrUpdateDomain(ControlDomainChassis, NULL) == ControlResultNotActive &&
+               ControlMgrActiveActuatorMask() == 0u &&
+               ControlMgrSwitch(otherDomain.id, ControlReasonTest) == ControlResultOk &&
+               ControlMgrUpdateDomain(ControlDomainArm, NULL) == ControlResultOk &&
                ControlMgrActiveActuatorMask() == (motor0 | motor1),
-               "停止重叠域后不得清掉另一个活动域仍拥有的执行器");
+               "原占用域停止后，其他域应能获取执行器");
 
     ControlMgrReset();
     TEST_CHECK(ControlMgrGetActuatorDiag(&diag) == ControlResultOk &&

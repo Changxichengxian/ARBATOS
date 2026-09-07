@@ -1,0 +1,43 @@
+schema = 1
+name = "differential"
+domain = "chassis"
+header = "DifferentialChassis.h"
+symbol = "DifferentialChassis"
+sources = ["DifferentialChassis.c"]
+requires = ["CAN_COMMAND_TX", "CAN_FEEDBACK_RX"]
+outputs = 2
+
+[parameters.track_width_m]
+default = 0.4
+min = 0.01
+max = 10.0
+
+[parameters.wheel_radius_m]
+default = 0.076
+min = 0.005
+max = 1.0
+
+[parameters.gear_ratio]
+default = 19.0
+min = 0.01
+max = 500.0
+
+[parameters.max_speed_mps]
+default = 2.0
+min = 0.0
+max = 20.0
+
+[parameters.max_yaw_rate_radps]
+default = 4.0
+min = 0.0
+max = 50.0
+
+[parameters.speed_kp]
+default = 8.0
+min = 0.0
+max = 1000.0
+
+[parameters.max_current]
+default = 12000.0
+min = 0.0
+max = 32767.0

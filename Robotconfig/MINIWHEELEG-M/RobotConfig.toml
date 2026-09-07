@@ -1,0 +1,11 @@
+schema = 1
+board = "dm_mc02_h7"
+profile = "wheelleg"
+services = ["RC_SBUS", "HEALTH_MONITOR", "SDLOG", "BATTERY_MONITOR", "REFEREE_RX"]
+
+[controllers.wheelleg]
+type = "mit"
+
+[build]
+sources = ["RobotConfig.c", "Mc02Compat.c", "DetectTask.c", "ArmMotorTable.c"]
+shared_sources = ["shared/application/comm/host/HostLinkTaskStub.c"]

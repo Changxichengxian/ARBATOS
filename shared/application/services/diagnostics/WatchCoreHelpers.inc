@@ -112,13 +112,13 @@ static WatchTaskDiagEntry *WatchTaskDiagGet(WatchTaskId task_id)
     case WATCH_TASK_IMU:
         return &g_watch.rtos.task.imu_task;
     case WATCH_TASK_GIMBAL_CONTROL:
-#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL || WATCH_ENABLE_CONTROL_GIMBAL
         return &g_watch.rtos.task.GimbalControlTask;
 #else
         return NULL;
 #endif
     case WATCH_TASK_CHASSIS_CONTROL:
-#if WATCH_ENABLE_LOCOMOTION_CLASSIC
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC || WATCH_ENABLE_CONTROL_CHASSIS
         return &g_watch.rtos.task.ChassisControlTask;
 #else
         return NULL;

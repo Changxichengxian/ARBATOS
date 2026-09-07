@@ -45,7 +45,7 @@ $env:ZEPHYR_SDK_INSTALL_DIR = 'D:/ARBATOS/local/cache/zephyr-sdk'
 $env:PATH = 'C:/Program Files/CMake/bin;D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts;' + $env:PATH
 $env:CMAKE_BUILD_PARALLEL_LEVEL = '2'
 $env:ZEPHYR_TOOLCHAIN_VARIANT = 'zephyr'
-& 'D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts/west.exe' build -s projects -d local/build/hero-m-music -b dm_mc02_h7 -- '-DZephyr-sdk_DIR=D:/ARBATOS/local/cache/zephyr-sdk/cmake' '-DEXTRA_CONF_FILE=D:/ARBATOS/projects/HERO-M/prj.conf;D:/ARBATOS/projects/HERO-M/music.conf' '-DEXTRA_DTC_OVERLAY_FILE=D:/ARBATOS/projects/HERO-M/music.overlay' '-DCMAKE_MAKE_PROGRAM=D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts/ninja.exe'
+& 'D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts/west.exe' build -s projects -d local/build/hero-m-music -b dm_mc02_h7 -- '-DARBATOS_ROBOT=HERO-M' '-DZephyr-sdk_DIR=D:/ARBATOS/local/cache/zephyr-sdk/cmake' '-DEXTRA_CONF_FILE=D:/ARBATOS/projects/HERO-M/music.conf' '-DEXTRA_DTC_OVERLAY_FILE=D:/ARBATOS/projects/HERO-M/music.overlay' '-DCMAKE_MAKE_PROGRAM=D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts/ninja.exe'
 ```
 
 正式整车构建使用 `tools/build.ps1 -Project HERO-M`，输出为 `local/build/hero-m`；正式 `flash`/`debug` 会拒绝音乐、准备和只接收配置。2026-09-06 已确认当时 M 板接线的 HERO-M 整车运动正常，且实际听到 `.u8` 播放。后续报警/按钮调整版的实体单击、双击行为仍待补验收；WAV 只完成编译与代码检查，尚未用真实 WAV 文件验收。上述结果不代表当前提交、其他接线、其他外设或长期负载已经验证。

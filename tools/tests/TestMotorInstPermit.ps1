@@ -2,6 +2,8 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $PSScriptRoot 'PrepareRobotConfig.ps1')
+$GeneratedConfig = Get-TestRobotConfig -Project 'SENTINEL-M'
 $Zig = Get-Command zig -ErrorAction SilentlyContinue
 if ($null -eq $Zig) {
     throw '找不到 zig，无法运行 MotorInst 许可写入主机回归。'
@@ -14,6 +16,7 @@ $TestSource = Join-Path $RepoRoot 'tools\tests\MotorInstPermitRegression.c'
 $IncludeDirs = @(
     (Join-Path $RepoRoot 'tools\tests\stubs'),
     (Join-Path $RepoRoot 'Robotconfig\SENTINEL-M'),
+    $GeneratedConfig,
     (Join-Path $RepoRoot 'shared\components\support'),
     (Join-Path $RepoRoot 'shared\application\comm\can'),
     (Join-Path $RepoRoot 'shared\application\motors'),

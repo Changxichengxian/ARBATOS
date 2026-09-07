@@ -15,15 +15,7 @@ LOG_MODULE_DECLARE(arbatos);
 
 const char *ArbatosTargetName(void)
 {
-#if CONFIG_ARBATOS_TARGET_HERO_M
-    return "HERO-M";
-#elif CONFIG_ARBATOS_TARGET_SENTINEL_M
-    return "SENTINEL-M";
-#elif CONFIG_ARBATOS_TARGET_MINIWHEELEG_M
-    return "MINIWHEELEG-M";
-#else
-#error "No ARBATOS robot target selected"
-#endif
+    return CONFIG_ARBATOS_ROBOT_NAME;
 }
 
 void ArbatosTargetStart(void)

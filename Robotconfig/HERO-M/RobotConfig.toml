@@ -1,0 +1,22 @@
+# 车型能力唯一入口；参数、接线和输入映射仍在同目录 Config*.inc。
+schema = 1
+board = "dm_mc02_h7"
+profile = "hero"
+services = ["RC_SBUS", "HEALTH_MONITOR", "SDLOG", "BATTERY_MONITOR", "REFEREE_RX"]
+
+[controllers.chassis]
+type = "classic"
+
+[controllers.gimbal]
+type = "single"
+
+[controllers.shoot]
+type = "rm"
+
+[features]
+subboard_music = true
+imu_mount = true
+
+[build]
+sources = ["RobotConfig.c", "Mc02Compat.c", "DetectTask.c", "ArmMotorTable.c", "PitchCaliBuiltin.c"]
+shared_sources = ["shared/application/comm/host/HostLinkTaskStub.c"]

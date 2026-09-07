@@ -35,7 +35,7 @@ pwsh -NoProfile -File .\tools\build.ps1 -Action probe
 
 个人预设已设置本机 SDK、Python、Ninja 路径。CLion 的初始普通 `Debug` 配置找不到 Zephyr，并不表示这些工具尚未安装。工程编译器由 Zephyr SDK 选择，不需要改用 CubeCLT 的编译器。
 
-另外两个车型分别使用 `sentinel-m-local`、`miniwheeleg-m-local`，输出目录分别为 `local/build/sentinel-m`、`local/build/miniwheeleg-m`。一次只启用当前需要的配置。
+另外两个车型分别使用 `sentinel-m-local`、`miniwheeleg-m-local`，输出目录分别为 `local/build/sentinel-m`、`local/build/miniwheeleg-m`。新增车型后先运行 `python .\tools\config\RobotConfigGen.py presets --target all`；它只补齐缺失的 `CMakeUserPresets.json` 项，不覆盖已有个人预设。一次只启用当前需要的配置。
 
 默认构建并行数为 2。若 CLion 自己的 Build options 中指定了更大的 `-j`，改为 `-j2`，避免界面设置覆盖限制。正常修改只用增量构建，不需要每次清缓存或重编所有车型。
 
@@ -133,11 +133,8 @@ projects/
   CMakePresets.json     CLion 与命令行共用预设
   cmake/                显式源码清单
   src/                  main 与任务启动
-  HERO-M/prj.conf       英雄构建配置；测试模式也在此目录
-  SENTINEL-M/           哨兵构建配置与副板配置
-  MINIWHEELEG-M/        小轮腿构建配置
-Robotconfig/            车型参数、控制配置、安装方向
+Robotconfig/            每车型 RobotConfig.toml、参数、接线和安装方向
 local/build/            所有新编译产物，不提交 Git
 ```
 
-新增车型时，按[车型配置](../Robotconfig/README.md#新增车型)补齐目标选择、源码清单、预设和工具车型表。A/C 独立编译检查见[测试说明](../tests/README.md)。板级支持与当前外设缺项见[开发板说明](../boards/README.md)。
+新增车型时，按[车型配置](../Robotconfig/README.md#新增车型)生成 `Robotconfig/<车型>` 并在其中完成声明。A/C 独立编译检查见[测试说明](../tests/README.md)。板级支持与当前外设缺项见[开发板说明](../boards/README.md)。

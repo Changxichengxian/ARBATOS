@@ -12,32 +12,16 @@
 #include "LowCmd.h"
 
 #ifndef ROBOT_TASK_MODULE_MAX
-#define ROBOT_TASK_MODULE_MAX 16u
+#define ROBOT_TASK_MODULE_MAX 22u
 #endif
 
 typedef enum
 {
     ROBOT_TASK_MODULE_NONE = 0u,
-    ROBOT_TASK_MODULE_RC_SBUS = 1u,
-    ROBOT_TASK_MODULE_HEALTH_MONITOR = 2u,
-    ROBOT_TASK_MODULE_SDLOG = 3u,
-    ROBOT_TASK_MODULE_CAN_COMMAND_TX = 4u,
-    ROBOT_TASK_MODULE_CAN_FEEDBACK_RX = 5u,
-    ROBOT_TASK_MODULE_CLASSIC_CHASSIS = 6u,
-    ROBOT_TASK_MODULE_WHEELLEG_SERVO = 7u,
-    ROBOT_TASK_MODULE_WHEELLEG_MIT = 8u,
-    ROBOT_TASK_MODULE_SINGLE_GIMBAL = 9u,
-    ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL = 10u,
-    ROBOT_TASK_MODULE_ARM = 11u,
-    ROBOT_TASK_MODULE_IMU = 12u,
-    ROBOT_TASK_MODULE_HOST_LINK = 13u,
-    ROBOT_TASK_MODULE_ELRS_LINK = 14u,
-    ROBOT_TASK_MODULE_REFEREE_RX = 15u,
-    ROBOT_TASK_MODULE_BATTERY_MONITOR = 16u,
-    ROBOT_TASK_MODULE_SERVO = 17u,
-    ROBOT_TASK_MODULE_CALIBRATION = 18u,
-    ROBOT_TASK_MODULE_STATUS_LED = 19u,
-    ROBOT_TASK_MODULE_STARTUP_SERVICE = 20u,
+#define ROBOT_TASK(symbol, id, moduleName, taskName, kind, period, budget, stackM, stackOther, priority, flags, resourceSuffix, header, entry, order, dependencies, source) \
+    ROBOT_TASK_MODULE_##symbol = (id),
+#include "RobotTaskCatalog.def"
+#undef ROBOT_TASK
 } RobotTaskModule;
 
 typedef struct

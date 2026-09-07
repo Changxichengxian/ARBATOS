@@ -193,9 +193,31 @@ static void WatchCopyRtos(void)
     g_watch.rtos.stack_default = uxTaskGetStackHighWaterMark(NULL);
 #if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
     g_watch.rtos.stack_gimbal = GimbalHighWater;
+#elif WATCH_ENABLE_CONTROL_GIMBAL
+#if WATCH_ENABLE_RUNTIME_COPY
+    {
+        const WatchTaskModuleCreateSlot *task =
+            WatchTaskModuleCreateFind((uint8_t)ROBOT_TASK_MODULE_CONTROL_GIMBAL);
+        g_watch.rtos.stack_gimbal = (task != NULL && task->thread_handle != 0u) ?
+            uxTaskGetStackHighWaterMark((TaskHandle_t)(uintptr_t)task->thread_handle) : 0u;
+    }
+#else
+    g_watch.rtos.stack_gimbal = 0u;
+#endif
 #endif
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
     g_watch.rtos.stack_chassis = ChassisHighWater;
+#elif WATCH_ENABLE_CONTROL_CHASSIS
+#if WATCH_ENABLE_RUNTIME_COPY
+    {
+        const WatchTaskModuleCreateSlot *task =
+            WatchTaskModuleCreateFind((uint8_t)ROBOT_TASK_MODULE_CONTROL_CHASSIS);
+        g_watch.rtos.stack_chassis = (task != NULL && task->thread_handle != 0u) ?
+            uxTaskGetStackHighWaterMark((TaskHandle_t)(uintptr_t)task->thread_handle) : 0u;
+    }
+#else
+    g_watch.rtos.stack_chassis = 0u;
+#endif
 #endif
     g_watch.rtos.stack_detect = DetectTaskStack;
     g_watch.rtos.stack_calibrate = CalibrateTaskStack;
@@ -203,8 +225,12 @@ static void WatchCopyRtos(void)
     g_watch.rtos.stack_default = 0u;
 #if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
     g_watch.rtos.stack_gimbal = 0u;
+#elif WATCH_ENABLE_CONTROL_GIMBAL
+    g_watch.rtos.stack_gimbal = 0u;
 #endif
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
+    g_watch.rtos.stack_chassis = 0u;
+#elif WATCH_ENABLE_CONTROL_CHASSIS
     g_watch.rtos.stack_chassis = 0u;
 #endif
     g_watch.rtos.stack_detect = 0u;

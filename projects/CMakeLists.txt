@@ -2,6 +2,83 @@
 cmake_minimum_required(VERSION 3.20.0)
 
 get_filename_component(ARBATOS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+set(ARBATOS_ROBOT "HERO-M" CACHE STRING "Robotconfig target name")
+file(GLOB_RECURSE ARBATOS_ROBOT_CONFIG_INPUTS CONFIGURE_DEPENDS
+    "${ARBATOS_ROOT}/Robotconfig/*/RobotConfig.toml"
+    "${ARBATOS_ROOT}/shared/controllers/*/Controller.toml")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${ARBATOS_ROOT}/tools/config/RobotConfigGen.py"
+    "${ARBATOS_ROOT}/tools/config/SourcePolicy.py"
+    "${ARBATOS_ROOT}/shared/application/robot/RobotTaskCatalog.def"
+    ${ARBATOS_ROBOT_CONFIG_INPUTS})
+
+# 车型资料只在 Robotconfig/<车型>/RobotConfig.toml 中维护。这里在
+# find_package(Zephyr) 前生成配置，确保 BOARD、Kconfig 片段和 overlay 都来自同一份声明。
+if(NOT DEFINED Python3_EXECUTABLE AND DEFINED WEST_PYTHON)
+    set(Python3_EXECUTABLE "${WEST_PYTHON}" CACHE FILEPATH "Python used by west")
+endif()
+find_package(Python3 3.12 REQUIRED COMPONENTS Interpreter)
+set(ARBATOS_TARGET_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated/robotconfig")
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" -X utf8 "${ARBATOS_ROOT}/tools/config/RobotConfigGen.py"
+        generate --target "${ARBATOS_ROBOT}" --out "${ARBATOS_TARGET_GENERATED_DIR}"
+    WORKING_DIRECTORY "${ARBATOS_ROOT}"
+    RESULT_VARIABLE ARBATOS_TARGET_GENERATE_RESULT
+    OUTPUT_VARIABLE ARBATOS_TARGET_GENERATE_OUTPUT
+    ERROR_VARIABLE ARBATOS_TARGET_GENERATE_ERROR
+)
+if(NOT ARBATOS_TARGET_GENERATE_RESULT EQUAL 0)
+    message(FATAL_ERROR "Cannot generate robot configuration for ${ARBATOS_ROBOT}: ${ARBATOS_TARGET_GENERATE_ERROR}${ARBATOS_TARGET_GENERATE_OUTPUT}")
+endif()
+include("${ARBATOS_TARGET_GENERATED_DIR}/RobotTarget.cmake")
+if(NOT DEFINED ARBATOS_BOARD OR "${ARBATOS_BOARD}" STREQUAL "")
+    message(FATAL_ERROR "RobotTarget.cmake did not provide ARBATOS_BOARD")
+endif()
+if(DEFINED BOARD AND NOT "${BOARD}" STREQUAL "${ARBATOS_BOARD}")
+    message(FATAL_ERROR "BOARD=${BOARD} conflicts with ${ARBATOS_ROBOT} board ${ARBATOS_BOARD}")
+endif()
+set(BOARD "${ARBATOS_BOARD}" CACHE STRING "Zephyr board selected by ARBATOS_ROBOT" FORCE)
+set(ARBATOS_TARGET_CONF "${ARBATOS_TARGET_GENERATED_DIR}/robot.conf")
+set(ARBATOS_OLD_TARGET_CONF "${CMAKE_CURRENT_SOURCE_DIR}/${ARBATOS_ROBOT}/prj.conf")
+# 生成的 robot.conf 永远排在前面。专用音乐、准备和只接收配置只能追加；
+# 它们不能重新选择车型或替换正式车型的基础能力。
+set(ARBATOS_EXTRA_CONF_FILES "")
+if(DEFINED EXTRA_CONF_FILE)
+    foreach(ARBATOS_CONF IN LISTS EXTRA_CONF_FILE)
+        if("${ARBATOS_CONF}" STREQUAL "" OR "${ARBATOS_CONF}" STREQUAL "${ARBATOS_TARGET_CONF}")
+            continue()
+        endif()
+        if("${ARBATOS_CONF}" STREQUAL "${ARBATOS_OLD_TARGET_CONF}")
+            # 旧缓存只保留同车型路径的一次迁移兼容，不能再次叠加。
+            continue()
+        endif()
+        get_filename_component(ARBATOS_CONF_ABSOLUTE "${ARBATOS_CONF}" ABSOLUTE
+            BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+        if(NOT EXISTS "${ARBATOS_CONF_ABSOLUTE}")
+            message(FATAL_ERROR "EXTRA_CONF_FILE references missing file: ${ARBATOS_CONF}")
+        endif()
+        file(STRINGS "${ARBATOS_CONF_ABSOLUTE}" ARBATOS_CONF_IDENTITY
+            REGEX "^[ \t]*CONFIG_ARBATOS_(ROBOT_NAME|TARGET_[A-Z0-9_]+|LEGACY_SOURCES)=")
+        if(ARBATOS_CONF_IDENTITY)
+            message(FATAL_ERROR "Extra configuration ${ARBATOS_CONF} must not select or replace a robot identity")
+        endif()
+        list(APPEND ARBATOS_EXTRA_CONF_FILES "${ARBATOS_CONF_ABSOLUTE}")
+    endforeach()
+endif()
+list(REMOVE_DUPLICATES ARBATOS_EXTRA_CONF_FILES)
+set(EXTRA_CONF_FILE "${ARBATOS_TARGET_CONF};${ARBATOS_EXTRA_CONF_FILES}" CACHE STRING
+    "Generated robot configuration followed by optional test fragments" FORCE)
+if(ARBATOS_TARGET_OVERLAY)
+    set(ARBATOS_OLD_TARGET_OVERLAY "${CMAKE_CURRENT_SOURCE_DIR}/${ARBATOS_ROBOT}/app.overlay")
+    if(DEFINED DTC_OVERLAY_FILE AND NOT "${DTC_OVERLAY_FILE}" STREQUAL "${ARBATOS_TARGET_OVERLAY}" AND
+       NOT "${DTC_OVERLAY_FILE}" STREQUAL "${ARBATOS_OLD_TARGET_OVERLAY}")
+        message(FATAL_ERROR "DTC_OVERLAY_FILE=${DTC_OVERLAY_FILE} conflicts with ${ARBATOS_ROBOT} overlay ${ARBATOS_TARGET_OVERLAY}")
+    endif()
+    set(DTC_OVERLAY_FILE "${ARBATOS_TARGET_OVERLAY}" CACHE FILEPATH "Robot device-tree overlay" FORCE)
+elseif(DEFINED DTC_OVERLAY_FILE AND NOT "${DTC_OVERLAY_FILE}" STREQUAL "")
+    message(FATAL_ERROR "DTC_OVERLAY_FILE is set but ${ARBATOS_ROBOT} has no declared overlay")
+endif()
+
 list(APPEND BOARD_ROOT ${ARBATOS_ROOT})
 list(APPEND DTS_ROOT ${ARBATOS_ROOT}/boards)
 find_package(Zephyr 4.4 REQUIRED HINTS $ENV{ZEPHYR_BASE})
@@ -69,11 +146,6 @@ if(CONFIG_ARBATOS_LEGACY_SOURCES)
     target_sources_ifdef(CONFIG_ARBATOS_RECEIVE_ONLY app PRIVATE
         ${ARBATOS_ROOT}/shared/zephyr/port/subboard/MReceiveCheck.c)
 
-    if((CONFIG_ARBATOS_TARGET_HERO_M OR CONFIG_ARBATOS_TARGET_SENTINEL_M OR
-        CONFIG_ARBATOS_TARGET_MINIWHEELEG_M) AND NOT CONFIG_BOARD_DM_MC02_H7)
-        message(FATAL_ERROR "HERO-M, SENTINEL-M and MINIWHEELEG-M require board dm_mc02_h7")
-    endif()
-
     if(CONFIG_BOARD_DJI_A_F427)
         target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/sensors/Mpu6500.c)
     elseif(CONFIG_BOARD_DJI_C_F407)
@@ -84,12 +156,10 @@ if(CONFIG_ARBATOS_LEGACY_SOURCES)
         message(FATAL_ERROR "Board sensor port is not configured")
     endif()
 
-    if(CONFIG_ARBATOS_TARGET_SENTINEL_M)
-        target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/subboard/SubBoardBringupZephyr.c)
-    endif()
 endif()
 
 target_include_directories(app BEFORE PRIVATE
+    ${ARBATOS_TARGET_GENERATED_DIR}
     ${ARBATOS_ROOT}/shared/zephyr/include
     ${ARBATOS_ROOT}/shared/zephyr/compat/cmsis
     ${ARBATOS_ROOT}/shared/zephyr/compat/freertos

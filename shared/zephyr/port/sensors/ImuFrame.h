@@ -2,14 +2,15 @@
 #define IMU_FRAME_H
 
 #include <stdint.h>
-#if defined(CONFIG_ARBATOS_TARGET_HERO_M)
+#include "RobotTargetConfig.h"
+#if ROBOT_IMU_MOUNT_CONFIGURED
 #include "ImuMount.h"
 #endif
 
 static inline uint32_t ImuFrameVersion(void)
 {
-#if defined(CONFIG_ARBATOS_TARGET_HERO_M)
-    return HERO_M_IMU_FRAME_VERSION;
+#if ROBOT_IMU_MOUNT_CONFIGURED
+    return ROBOT_IMU_FRAME_VERSION;
 #else
     return 1u;
 #endif
@@ -17,7 +18,7 @@ static inline uint32_t ImuFrameVersion(void)
 
 static inline void ImuFrameRotate(float out[3], const float raw[3])
 {
-#if defined(CONFIG_ARBATOS_TARGET_HERO_M)
+#if ROBOT_IMU_MOUNT_CONFIGURED
     ImuMountRotate(out, raw);
 #else
     float x = raw[0], y = raw[1], z = raw[2];

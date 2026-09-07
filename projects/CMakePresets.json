@@ -23,8 +23,7 @@
       "inherits": "zephyr-base",
       "displayName": "HERO-M / Zephyr",
       "cacheVariables": {
-        "BOARD": "dm_mc02_h7",
-        "EXTRA_CONF_FILE": "${sourceDir}/HERO-M/prj.conf"
+        "ARBATOS_ROBOT": "HERO-M"
       }
     },
     {
@@ -32,9 +31,7 @@
       "inherits": "zephyr-base",
       "displayName": "SENTINEL-M / Zephyr",
       "cacheVariables": {
-        "BOARD": "dm_mc02_h7",
-        "EXTRA_CONF_FILE": "${sourceDir}/SENTINEL-M/prj.conf",
-        "DTC_OVERLAY_FILE": "${sourceDir}/SENTINEL-M/app.overlay"
+        "ARBATOS_ROBOT": "SENTINEL-M"
       }
     },
     {
@@ -42,8 +39,7 @@
       "inherits": "zephyr-base",
       "displayName": "MINIWHEELEG-M / Zephyr",
       "cacheVariables": {
-        "BOARD": "dm_mc02_h7",
-        "EXTRA_CONF_FILE": "${sourceDir}/MINIWHEELEG-M/prj.conf"
+        "ARBATOS_ROBOT": "MINIWHEELEG-M"
       }
     }
   ],

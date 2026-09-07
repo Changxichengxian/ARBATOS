@@ -1,0 +1,32 @@
+schema = 1
+name = "speed_gimbal"
+domain = "gimbal"
+header = "SpeedGimbal.h"
+symbol = "SpeedGimbal"
+sources = ["SpeedGimbal.c"]
+requires = ["CAN_COMMAND_TX", "CAN_FEEDBACK_RX"]
+outputs = 2
+
+# 两轴转速控制示例，使用 RM 电机反馈 rpm；不提供姿态保持。
+[parameters.yaw_speed_rpm]
+default = 60.0
+min = 0.0
+max = 3000.0
+unit = "rpm"
+
+[parameters.pitch_speed_rpm]
+default = 30.0
+min = 0.0
+max = 3000.0
+unit = "rpm"
+
+[parameters.speed_kp]
+default = 10.0
+min = 0.0
+max = 1000.0
+
+[parameters.max_current]
+default = 2000.0
+min = 0.0
+max = 32767.0
+unit = "RM command"

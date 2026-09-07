@@ -26,6 +26,23 @@ extern "C" {
 
 #define ROBOT_MODULE_ARRAY_COUNT(array_) ((uint8_t)(sizeof(array_) / sizeof((array_)[0])))
 
+/* 目标生成头可按车型覆盖任务栈和优先级；宿主环境保留目录中的通用值。 */
+#ifndef ROBOT_TASK_SELECTED_STACK
+#define ROBOT_TASK_SELECTED_STACK(symbol, stack_m, stack_other) (stack_other)
+#endif
+
+#ifndef ROBOT_TASK_SELECTED_PRIORITY
+#define ROBOT_TASK_SELECTED_PRIORITY(symbol, fallback) (fallback)
+#endif
+
+#ifndef ROBOT_CONTROL_CHASSIS_PERIOD_MS
+#define ROBOT_CONTROL_CHASSIS_PERIOD_MS RobotProfileChassisControlPeriodMs()
+#endif
+
+#ifndef ROBOT_CONTROL_GIMBAL_PERIOD_MS
+#define ROBOT_CONTROL_GIMBAL_PERIOD_MS RobotProfileGimbalControlPeriodMs()
+#endif
+
 typedef enum
 {
     RobotResourceNone = 0u,
@@ -197,6 +214,26 @@ static const RobotResourceId sRobotModuleProGimbal[] = {
     RobotResourceGimbalState,
     RobotResourceGimbalOutput,
     RobotResourceShootOutput,
+};
+
+/* 通用算法只声明真实提供的输出，不能冒充旧控制链的状态和发射服务。 */
+static const RobotResourceId sRobotModuleReqControlChassis[] = {
+    RobotResourceControlInput, RobotResourceMotorInst, RobotResourceLowCmd, RobotResourceControlMgr,
+#if ROBOT_CONTROL_CHASSIS_REQUIRE_IMU
+    RobotResourceImu,
+#endif
+};
+static const RobotResourceId sRobotModuleProControlChassis[] = {
+    RobotResourceChassisOutput,
+};
+static const RobotResourceId sRobotModuleReqControlGimbal[] = {
+    RobotResourceControlInput, RobotResourceMotorInst, RobotResourceLowCmd, RobotResourceControlMgr,
+#if ROBOT_CONTROL_GIMBAL_REQUIRE_IMU
+    RobotResourceImu,
+#endif
+};
+static const RobotResourceId sRobotModuleProControlGimbal[] = {
+    RobotResourceGimbalOutput,
 };
 
 static const RobotResourceId sRobotModuleReqArm[] = {
@@ -392,268 +429,22 @@ static inline const char *RobotModulePriorityName(uint8_t priority)
 static inline const RobotModuleDesc *RobotModuleKnownModules(uint8_t *count)
 {
     static const RobotModuleDesc modules[] = {
-        {ROBOT_TASK_MODULE_RC_SBUS,
-         "module.rc_sbus",
-         "task.rc_sbus",
-         RobotModuleKindInput,
-         0u,
-         0u,
-         256u,
-         (uint8_t)RobotModulePriorityAboveNormal,
-         (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK | ROBOT_MODULE_FLAG_REQUIRED_BY_PROFILE),
-         sRobotModuleReqRcSbus,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqRcSbus),
-         sRobotModuleProRcSbus,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProRcSbus)},
-        {ROBOT_TASK_MODULE_HEALTH_MONITOR,
-         "module.health_monitor",
-         "task.health_monitor",
-         RobotModuleKindSafety,
-         ROBOT_PROFILE_WATCH_TASK_BEAT_MIN_PERIOD_MS,
-         ROBOT_PROFILE_WATCH_TASK_BEAT_BUDGET_US,
-         384u,
-         (uint8_t)RobotModulePriorityNormal,
-         (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK |
-                   ROBOT_MODULE_FLAG_REQUIRED_BY_PROFILE |
-                   ROBOT_MODULE_FLAG_SAFETY_RELATED),
-         sRobotModuleReqHealthMonitor,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqHealthMonitor),
-         sRobotModuleProHealthMonitor,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProHealthMonitor)},
-        {ROBOT_TASK_MODULE_SDLOG,
-         "module.sdlog",
-         "task.sdlog",
-         RobotModuleKindService,
-         0u,
-         ROBOT_PROFILE_SDLOG_BLOCK_WRITE_BUDGET_US,
-         512u,
-         (uint8_t)RobotModulePriorityLow,
-         (uint8_t)ROBOT_MODULE_FLAG_HAS_TASK,
-         sRobotModuleReqSdLog,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqSdLog),
-         sRobotModuleProSdLog,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProSdLog)},
-        {ROBOT_TASK_MODULE_CAN_COMMAND_TX,
-         "module.can_command_tx",
-         "task.can_command_tx",
-         RobotModuleKindComm,
-         ROBOT_PROFILE_CAN_COMMAND_TX_PERIOD_MS,
-         ROBOT_PROFILE_CAN_COMMAND_TX_BUDGET_US,
-         256u,
-         (uint8_t)RobotModulePriorityAboveNormal,
-         (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK | ROBOT_MODULE_FLAG_FAST_PATH),
-         sRobotModuleReqCanCommandTx,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqCanCommandTx),
-         sRobotModuleProCanCommandTx,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProCanCommandTx)},
-        {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX,
-         "module.can_feedback_rx",
-         "task.can_feedback_rx",
-         RobotModuleKindComm,
-         0u,
-         ROBOT_PROFILE_CAN_FEEDBACK_RX_PROFILE_BUDGET_US,
-         256u,
-         (uint8_t)RobotModulePriorityHigh,
-         (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK | ROBOT_MODULE_FLAG_FAST_PATH | ROBOT_MODULE_FLAG_EVENT_DRIVEN),
-         sRobotModuleReqCanFeedbackRx,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqCanFeedbackRx),
-         sRobotModuleProCanFeedbackRx,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProCanFeedbackRx)},
-        {ROBOT_TASK_MODULE_CLASSIC_CHASSIS,
-         "module.classic_chassis",
-         "task.classic_chassis",
-         RobotModuleKindControl,
-         ROBOT_PROFILE_CHASSIS_CONTROL_DEFAULT_PERIOD_MS,
-         ROBOT_PROFILE_CHASSIS_CONTROL_BUDGET_US,
-         768u,
-         (uint8_t)RobotModulePriorityAboveNormal,
-         (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK | ROBOT_MODULE_FLAG_FAST_PATH | ROBOT_MODULE_FLAG_SAFETY_RELATED),
-         sRobotModuleReqClassicChassis,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqClassicChassis),
-         sRobotModuleProClassicChassis,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProClassicChassis)},
-        {ROBOT_TASK_MODULE_WHEELLEG_SERVO,
-         "module.wheelleg_servo",
-         "task.WheelLegServo",
-         RobotModuleKindControl,
-         ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_DEFAULT_PERIOD_MS,
-         ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_BUDGET_US,
-         768u,
-         (uint8_t)RobotModulePriorityAboveNormal,
-         (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK | ROBOT_MODULE_FLAG_FAST_PATH | ROBOT_MODULE_FLAG_SAFETY_RELATED),
-         sRobotModuleReqWheelleg,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqWheelleg),
-         sRobotModuleProWheelleg,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProWheelleg)},
-        {ROBOT_TASK_MODULE_WHEELLEG_MIT,
-         "module.wheelleg_mit",
-         "task.WheelLegMit",
-         RobotModuleKindControl,
-         ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_DEFAULT_PERIOD_MS,
-         ROBOT_PROFILE_WHEELLEG_MIT_CONTROL_BUDGET_US,
-         768u,
-         (uint8_t)RobotModulePriorityAboveNormal,
-         (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK | ROBOT_MODULE_FLAG_FAST_PATH | ROBOT_MODULE_FLAG_SAFETY_RELATED),
-         sRobotModuleReqWheelleg,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqWheelleg),
-         sRobotModuleProWheelleg,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProWheelleg)},
-        {ROBOT_TASK_MODULE_SINGLE_GIMBAL,
-         "module.single_gimbal",
-         "task.single_gimbal",
-         RobotModuleKindControl,
-         ROBOT_PROFILE_GIMBAL_CONTROL_DEFAULT_PERIOD_MS,
-         ROBOT_PROFILE_GIMBAL_CONTROL_BUDGET_US,
-         1024u,
-         (uint8_t)RobotModulePriorityHigh,
-         (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK | ROBOT_MODULE_FLAG_FAST_PATH | ROBOT_MODULE_FLAG_SAFETY_RELATED),
-         sRobotModuleReqGimbal,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqGimbal),
-         sRobotModuleProGimbal,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProGimbal)},
-        {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL,
-         "module.dual_yaw_gimbal",
-         "task.DualYawGimbal",
-         RobotModuleKindControl,
-         ROBOT_PROFILE_GIMBAL_CONTROL_DEFAULT_PERIOD_MS,
-         ROBOT_PROFILE_GIMBAL_CONTROL_BUDGET_US,
-         1024u,
-         (uint8_t)RobotModulePriorityHigh,
-         (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK | ROBOT_MODULE_FLAG_FAST_PATH | ROBOT_MODULE_FLAG_SAFETY_RELATED),
-         sRobotModuleReqGimbal,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqGimbal),
-         sRobotModuleProGimbal,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProGimbal)},
-        {ROBOT_TASK_MODULE_ARM,
-         "module.arm",
-         "task.arm",
-         RobotModuleKindControl,
-         0u,
-         0u,
-         768u,
-         (uint8_t)RobotModulePriorityNormal,
-         (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK | ROBOT_MODULE_FLAG_SAFETY_RELATED),
-         sRobotModuleReqArm,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqArm),
-         sRobotModuleProArm,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProArm)},
-        {ROBOT_TASK_MODULE_IMU,
-         "module.imu",
-         "task.imu",
-         RobotModuleKindDevice,
-         1u,
-         0u,
-         1024u,
-         (uint8_t)RobotModulePriorityRealtime,
-         (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK | ROBOT_MODULE_FLAG_FAST_PATH),
-         sRobotModuleReqImu,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqImu),
-         sRobotModuleProImu,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProImu)},
-        {ROBOT_TASK_MODULE_HOST_LINK,
-         "module.host_link",
-         "task.host_link",
-         RobotModuleKindComm,
-         0u,
-         0u,
-         512u,
-         (uint8_t)RobotModulePriorityNormal,
-         (uint8_t)ROBOT_MODULE_FLAG_HAS_TASK,
-         sRobotModuleReqHostLink,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqHostLink),
-         sRobotModuleProHostLink,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProHostLink)},
-        {ROBOT_TASK_MODULE_ELRS_LINK,
-         "module.elrs_link",
-         "task.ElrsLink",
-         RobotModuleKindInput,
-         0u,
-         0u,
-         256u,
-         (uint8_t)RobotModulePriorityAboveNormal,
-         (uint8_t)ROBOT_MODULE_FLAG_HAS_TASK,
-         sRobotModuleReqElrsLink,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqElrsLink),
-         sRobotModuleProElrsLink,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProElrsLink)},
-        {ROBOT_TASK_MODULE_REFEREE_RX,
-         "module.referee_rx",
-         "task.RefereeRx",
-         RobotModuleKindComm,
-         0u,
-         0u,
-         128u,
-         (uint8_t)RobotModulePriorityNormal,
-         (uint8_t)ROBOT_MODULE_FLAG_HAS_TASK,
-         sRobotModuleReqRefereeRx,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqRefereeRx),
-         sRobotModuleProRefereeRx,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProRefereeRx)},
-        {ROBOT_TASK_MODULE_BATTERY_MONITOR,
-         "module.battery_monitor",
-         "task.BatteryMonitor",
-         RobotModuleKindDevice,
-         0u,
-         0u,
-         128u,
-         (uint8_t)RobotModulePriorityNormal,
-         (uint8_t)ROBOT_MODULE_FLAG_HAS_TASK,
-         sRobotModuleReqBatteryMonitor,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqBatteryMonitor),
-         sRobotModuleProBatteryMonitor,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProBatteryMonitor)},
-        {ROBOT_TASK_MODULE_SERVO,
-         "module.servo",
-         "task.servo",
-         RobotModuleKindControl,
-         0u,
-         0u,
-         192u,
-         (uint8_t)RobotModulePriorityNormal,
-         (uint8_t)ROBOT_MODULE_FLAG_HAS_TASK,
-         sRobotModuleReqServo,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqServo),
-         sRobotModuleProServo,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProServo)},
-        {ROBOT_TASK_MODULE_CALIBRATION,
-         "module.calibration",
-         "task.calibration",
-         RobotModuleKindService,
-         0u,
-         0u,
-         512u,
-         (uint8_t)RobotModulePriorityNormal,
-         (uint8_t)(ROBOT_MODULE_FLAG_HAS_TASK | ROBOT_MODULE_FLAG_SAFETY_RELATED),
-         sRobotModuleReqCalibration,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqCalibration),
-         sRobotModuleProCalibration,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProCalibration)},
-        {ROBOT_TASK_MODULE_STATUS_LED,
-         "module.status_led",
-         "task.status_led",
-         RobotModuleKindService,
-         0u,
-         0u,
-         256u,
-         (uint8_t)RobotModulePriorityNormal,
-         (uint8_t)ROBOT_MODULE_FLAG_HAS_TASK,
-         sRobotModuleReqStatusLed,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqStatusLed),
-         sRobotModuleProStatusLed,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProStatusLed)},
-        {ROBOT_TASK_MODULE_STARTUP_SERVICE,
-         "module.startup_service",
-         "task.startup_service",
-         RobotModuleKindService,
-         0u,
-         0u,
-         768u,
-         (uint8_t)RobotModulePriorityNormal,
-         (uint8_t)ROBOT_MODULE_FLAG_HAS_TASK,
-         sRobotModuleReqStartupService,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReqStartupService),
-         sRobotModuleProStartupService,
-         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleProStartupService)},
+#define ROBOT_TASK(symbol, id, moduleName, taskName, kind, period, budget, stackM, stackOther, priority, flags, resourceSuffix, header, entry, order, dependencies, source) \
+        {ROBOT_TASK_MODULE_##symbol,                                                                                                            \
+         moduleName,                                                                                                                            \
+         taskName,                                                                                                                              \
+         kind,                                                                                                                                  \
+         period,                                                                                                                                \
+         budget,                                                                                                                                \
+         ROBOT_TASK_SELECTED_STACK(symbol, stackM, stackOther),                                                                               \
+         (uint8_t)ROBOT_TASK_SELECTED_PRIORITY(symbol, priority),                                                                             \
+         (uint8_t)(flags),                                                                                                                      \
+         sRobotModuleReq##resourceSuffix,                                                                                                      \
+         ROBOT_MODULE_ARRAY_COUNT(sRobotModuleReq##resourceSuffix),                                                                            \
+         sRobotModulePro##resourceSuffix,                                                                                                      \
+         ROBOT_MODULE_ARRAY_COUNT(sRobotModulePro##resourceSuffix)},
+#include "RobotTaskCatalog.def"
+#undef ROBOT_TASK
     };
 
     if (count != NULL)
@@ -700,12 +491,16 @@ static inline uint16_t RobotModulePeriodMs(const RobotModuleDesc *desc)
         return RobotProfileCanCommandTxPeriodMs();
     case ROBOT_TASK_MODULE_CLASSIC_CHASSIS:
         return RobotProfileChassisControlPeriodMs();
+    case ROBOT_TASK_MODULE_CONTROL_CHASSIS:
+        return ROBOT_CONTROL_CHASSIS_PERIOD_MS;
     case ROBOT_TASK_MODULE_WHEELLEG_SERVO:
     case ROBOT_TASK_MODULE_WHEELLEG_MIT:
         return RobotProfileWheellegMitControlPeriodMs();
     case ROBOT_TASK_MODULE_SINGLE_GIMBAL:
     case ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL:
         return RobotProfileGimbalControlPeriodMs();
+    case ROBOT_TASK_MODULE_CONTROL_GIMBAL:
+        return ROBOT_CONTROL_GIMBAL_PERIOD_MS;
     default:
         return desc->defaultPeriodMs;
     }

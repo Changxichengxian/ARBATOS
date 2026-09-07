@@ -334,26 +334,10 @@ typedef struct
 static inline const RobotTaskModuleDesc *RobotProfileKnownModules(uint8_t *count)
 {
     static const RobotTaskModuleDesc modules[] = {
-        {ROBOT_TASK_MODULE_RC_SBUS, "task.rc_sbus"},
-        {ROBOT_TASK_MODULE_HEALTH_MONITOR, "task.health_monitor"},
-        {ROBOT_TASK_MODULE_SDLOG, "task.sdlog"},
-        {ROBOT_TASK_MODULE_CAN_COMMAND_TX, "task.can_command_tx"},
-        {ROBOT_TASK_MODULE_CAN_FEEDBACK_RX, "task.can_feedback_rx"},
-        {ROBOT_TASK_MODULE_CLASSIC_CHASSIS, "task.classic_chassis"},
-        {ROBOT_TASK_MODULE_WHEELLEG_SERVO, "task.WheelLegServo"},
-        {ROBOT_TASK_MODULE_WHEELLEG_MIT, "task.WheelLegMit"},
-        {ROBOT_TASK_MODULE_SINGLE_GIMBAL, "task.single_gimbal"},
-        {ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL, "task.DualYawGimbal"},
-        {ROBOT_TASK_MODULE_ARM, "task.arm"},
-        {ROBOT_TASK_MODULE_IMU, "task.imu"},
-        {ROBOT_TASK_MODULE_HOST_LINK, "task.host_link"},
-        {ROBOT_TASK_MODULE_ELRS_LINK, "task.ElrsLink"},
-        {ROBOT_TASK_MODULE_REFEREE_RX, "task.RefereeRx"},
-        {ROBOT_TASK_MODULE_BATTERY_MONITOR, "task.BatteryMonitor"},
-        {ROBOT_TASK_MODULE_SERVO, "task.servo"},
-        {ROBOT_TASK_MODULE_CALIBRATION, "task.calibration"},
-        {ROBOT_TASK_MODULE_STATUS_LED, "task.status_led"},
-        {ROBOT_TASK_MODULE_STARTUP_SERVICE, "task.startup_service"},
+#define ROBOT_TASK(symbol, id, moduleName, taskName, kind, period, budget, stackM, stackOther, priority, flags, resourceSuffix, header, entry, order, dependencies, source) \
+        {ROBOT_TASK_MODULE_##symbol, taskName},
+#include "RobotTaskCatalog.def"
+#undef ROBOT_TASK
     };
 
     if (count != NULL)

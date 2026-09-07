@@ -16,10 +16,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Run portable Zephyr source checks
         shell: powershell
         run: python .\tools\build\CheckZephyr.py --project all --json
 
-      - name: Run Zephyr checker regressions
+      - name: Check generated robot configurations
         shell: powershell
-        run: python -m unittest .\tools\tests\TestCheckZephyr.py
+        run: python .\tools\config\RobotConfigGen.py check --target all
+
+      - name: Run configuration and tool regressions
+        shell: powershell
+        run: python -m unittest discover -s .\tools\tests -p 'Test*.py'
+
+  portable-controller-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and run the portable controllers
+        run: |
+          python tools/config/RobotConfigGen.py generate --target HERO-M --out "$RUNNER_TEMP/robotconfig"
+          cc -std=c11 -Wall -Wextra -Werror \
+            -I"$RUNNER_TEMP/robotconfig" -Ishared/application/robot \
+            -Ishared/controllers/differential_chassis -Ishared/controllers/speed_gimbal \
+            tools/tests/ControllerAlgorithmsRegression.c \
+            shared/controllers/differential_chassis/DifferentialChassis.c \
+            shared/controllers/speed_gimbal/SpeedGimbal.c \
+            -lm -o "$RUNNER_TEMP/controller-tests"
+          "$RUNNER_TEMP/controller-tests"

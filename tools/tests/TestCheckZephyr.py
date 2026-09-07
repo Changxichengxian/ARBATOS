@@ -14,8 +14,8 @@ CHECK = REPO / "tools" / "build" / "CheckZephyr.py"
 class CheckZephyrTest(unittest.TestCase):
     def run_check(self, root=REPO, project="all"):
         return subprocess.run(
-            [sys.executable, str(CHECK), "--root", str(root), "--project", project, "--json"],
-            capture_output=True, text=True, check=False,
+            [sys.executable, "-X", "utf8", str(CHECK), "--root", str(root), "--project", project, "--json"],
+            capture_output=True, text=True, encoding="utf-8", check=False,
         )
 
     def fixture(self):
@@ -23,7 +23,7 @@ class CheckZephyrTest(unittest.TestCase):
         root = Path(directory.name) / "ARBATOS"
         tracked = subprocess.check_output(
             ["git", "-C", str(REPO), "ls-files", "--cached", "--others", "--exclude-standard",
-             "-z", "projects", "shared", "Robotconfig", "boards"],
+             "-z", "projects", "shared", "Robotconfig", "boards", "tools/config"],
         ).decode("utf-8").split("\0")
         for relative in filter(None, tracked):
             source = REPO / relative
@@ -41,15 +41,15 @@ class CheckZephyrTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         payload = json.loads(result.stdout)
         self.assertTrue(payload["ok"])
-        self.assertEqual(len(payload["checked_projects"]), 3)
+        self.assertTrue({"HERO-M", "SENTINEL-M", "MINIWHEELEG-M"}.issubset(payload["checked_projects"]))
 
-    def test_missing_formal_config_fails(self):
+    def test_missing_target_declaration_fails(self):
         directory, root = self.fixture()
         with directory:
-            (root / "projects" / "HERO-M" / "prj.conf").unlink()
+            (root / "Robotconfig" / "HERO-M" / "RobotConfig.toml").unlink()
             result = self.run_check(root, "HERO-M")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("missing file", result.stdout)
+        self.assertIn("one of", result.stderr + result.stdout)
 
     def test_old_startup_source_in_manifest_fails(self):
         directory, root = self.fixture()
@@ -63,10 +63,21 @@ class CheckZephyrTest(unittest.TestCase):
     def test_missing_sentinel_overlay_fails(self):
         directory, root = self.fixture()
         with directory:
-            (root / "projects" / "SENTINEL-M" / "app.overlay").unlink()
+            (root / "Robotconfig" / "SENTINEL-M" / "app.overlay").unlink()
             result = self.run_check(root, "SENTINEL-M")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("app.overlay", result.stdout)
+
+    def test_toml_cannot_reintroduce_old_hal(self):
+        directory, root = self.fixture()
+        with directory:
+            declaration = root / "Robotconfig/HERO-M/RobotConfig.toml"
+            text = declaration.read_text(encoding="utf-8")
+            text = text.replace('shared_sources = [', 'shared_sources = ["shared/hal/BspCan.c", ')
+            declaration.write_text(text, encoding="utf-8")
+            result = self.run_check(root, "HERO-M")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("forbidden legacy entry", result.stdout)
 
     def test_unused_board_support_is_still_required(self):
         directory, root = self.fixture()

@@ -1,0 +1,130 @@
+/*
+ * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include "RobotConfig.h"
+#include "LowCmd.h"
+
+static uint8_t ConfigBlockActiveAlways(void)
+{
+    return 1u;
+}
+
+static uint8_t ConfigProfileModuleEnabled(RobotTaskModule module)
+{
+    const uint8_t count = g_config.profile.task_module_count;
+    const uint8_t limit = (count > ROBOT_TASK_MODULE_MAX) ? ROBOT_TASK_MODULE_MAX : count;
+
+    for (uint8_t i = 0u; i < limit; i++)
+    {
+        if ((RobotTaskModule)g_config.profile.task_modules[i] == module)
+        {
+            return 1u;
+        }
+    }
+
+    return 0u;
+}
+
+static uint8_t ConfigBlockActiveGimbalSingle(void)
+{
+    return (uint8_t)(ConfigProfileModuleEnabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
+                     ConfigProfileModuleEnabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u);
+}
+
+static uint8_t ConfigBlockActiveGimbalDual(void)
+{
+    return ConfigProfileModuleEnabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL);
+}
+
+static uint8_t ConfigBlockActiveLocomotionClassic(void)
+{
+    return ConfigProfileModuleEnabled(ROBOT_TASK_MODULE_CLASSIC_CHASSIS);
+}
+
+static uint8_t ConfigBlockActiveWheelLegServo(void)
+{
+    return ConfigProfileModuleEnabled(ROBOT_TASK_MODULE_WHEELLEG_SERVO);
+}
+
+static uint8_t ConfigBlockActiveWheelLegMit(void)
+{
+    return ConfigProfileModuleEnabled(ROBOT_TASK_MODULE_WHEELLEG_MIT);
+}
+
+static uint8_t ConfigBlockActiveShootRm(void)
+{
+    if (g_config.motor.trigger.can_id != 0u)
+    {
+        return 1u;
+    }
+
+    for (uint8_t i = 0u; i < 4u; i++)
+    {
+        if (g_config.motor.friction[i].can_id != 0u)
+        {
+            return 1u;
+        }
+    }
+
+    return 0u;
+}
+
+static uint8_t ConfigBlockActiveArm(void)
+{
+    return ConfigProfileModuleEnabled(ROBOT_TASK_MODULE_ARM);
+}
+
+static const ConfigBlockDesc g_config_blocks[] = {
+    {CONFIG_BLOCK_PROFILE, "profile", "", &g_config.profile, sizeof(g_config.profile), ConfigBlockActiveAlways},
+    {CONFIG_BLOCK_GIMBAL_SINGLE, "gimbal.single", "001-022,026-064,350-368", &g_config.gimbal, sizeof(g_config.gimbal), ConfigBlockActiveGimbalSingle},
+    {CONFIG_BLOCK_GIMBAL_DUAL, "gimbal.dual", "400-499", &g_config.dual_gimbal, sizeof(g_config.dual_gimbal), ConfigBlockActiveGimbalDual},
+    {CONFIG_BLOCK_LOCOMOTION_CLASSIC, "locomotion.classic", "066-075,081,086-092,098-106,245-248", &g_config.chassis, sizeof(g_config.chassis), ConfigBlockActiveLocomotionClassic},
+    {CONFIG_BLOCK_LOCOMOTION_WHEELLEG_SERVO, "locomotion.WheelLegServo", "500-599", &g_config.WheelLegServo, sizeof(g_config.WheelLegServo), ConfigBlockActiveWheelLegServo},
+    {CONFIG_BLOCK_LOCOMOTION_WHEELLEG_MIT, "locomotion.WheelLegMit", "600-699", &g_config.WheelLegMit, sizeof(g_config.WheelLegMit), ConfigBlockActiveWheelLegMit},
+    {CONFIG_BLOCK_SHOOT_RM, "shoot.rm", "113-121,127,130-133,139-142,145-160", &g_config.shoot, sizeof(g_config.shoot), ConfigBlockActiveShootRm},
+    {CONFIG_BLOCK_ARM_J0_UNITREE, "arm.j0_unitree", "800-803", &g_config.ArmJ0Unitree, sizeof(g_config.ArmJ0Unitree), ConfigBlockActiveArm},
+    {CONFIG_BLOCK_COMMON_POWER, "common.power", "161-166", &g_config.power, sizeof(g_config.power), ConfigBlockActiveAlways},
+    {CONFIG_BLOCK_COMMON_DETECT, "common.detect", "167-208,211", &g_config.detect, sizeof(g_config.detect), ConfigBlockActiveAlways},
+    {CONFIG_BLOCK_COMMON_IMU, "common.imu", "218-219", &g_config.imu, sizeof(g_config.imu), ConfigBlockActiveAlways},
+    {CONFIG_BLOCK_COMMON_VOLTAGE, "common.voltage", "221-223", &g_config.voltage, sizeof(g_config.voltage), ConfigBlockActiveAlways},
+    {CONFIG_BLOCK_COMMON_BUZZER, "common.buzzer", "224-237", &g_config.buzzer, sizeof(g_config.buzzer), ConfigBlockActiveAlways},
+    {CONFIG_BLOCK_COMMON_LED, "common.led", "238-240", &g_config.led, sizeof(g_config.led), ConfigBlockActiveAlways},
+    {CONFIG_BLOCK_COMMON_MANUAL_INPUT, "common.manual_input", "300-309,317-318,369-378", &g_config.manual_input, sizeof(g_config.manual_input), ConfigBlockActiveAlways},
+    {CONFIG_BLOCK_COMMON_INPUT, "common.input", "310-316,320-347", &g_config.input, sizeof(g_config.input), ConfigBlockActiveAlways},
+    {CONFIG_BLOCK_COMMON_AUX_TELEM, "common.AuxTelem", "241-243", &g_config.AuxTelem, sizeof(g_config.AuxTelem), ConfigBlockActiveAlways},
+    {CONFIG_BLOCK_COMMON_OPERATION, "common.operation", "244,250-253", &g_config.operation, sizeof(g_config.operation), ConfigBlockActiveAlways},
+    {CONFIG_BLOCK_COMMON_SDLOG, "common.sdlog", "249", &g_config.sdlog, sizeof(g_config.sdlog), ConfigBlockActiveAlways},
+};
+
+const ConfigBlockDesc *ConfigGetBlockTable(uint32_t *count)
+{
+    if (count != NULL)
+    {
+        *count = (uint32_t)(sizeof(g_config_blocks) / sizeof(g_config_blocks[0]));
+    }
+    return g_config_blocks;
+}
+
+const ConfigBlockDesc *ConfigFindBlock(ConfigBlockId id)
+{
+    for (uint32_t i = 0u; i < (uint32_t)(sizeof(g_config_blocks) / sizeof(g_config_blocks[0])); i++)
+    {
+        if (g_config_blocks[i].id == id)
+        {
+            return &g_config_blocks[i];
+        }
+    }
+    return NULL;
+}
+
+uint8_t ConfigBlockIsActive(ConfigBlockId id)
+{
+    const ConfigBlockDesc *block = ConfigFindBlock(id);
+    if (block == NULL)
+    {
+        return 0u;
+    }
+    return (block->is_active == NULL) ? 1u : block->is_active();
+}

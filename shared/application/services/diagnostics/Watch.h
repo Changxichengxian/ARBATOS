@@ -29,6 +29,12 @@
 #ifndef WATCH_ENABLE_GIMBAL_DUAL
 #define WATCH_ENABLE_GIMBAL_DUAL 1
 #endif
+#ifndef WATCH_ENABLE_CONTROL_CHASSIS
+#define WATCH_ENABLE_CONTROL_CHASSIS 0
+#endif
+#ifndef WATCH_ENABLE_CONTROL_GIMBAL
+#define WATCH_ENABLE_CONTROL_GIMBAL 0
+#endif
 #ifndef WATCH_ENABLE_SHOOT_RM
 #define WATCH_ENABLE_SHOOT_RM 1
 #endif
@@ -183,10 +189,10 @@ typedef struct
     WatchTaskDiagEntry default_task;
     WatchTaskDiagEntry DetectTask;
     WatchTaskDiagEntry imu_task;
-#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL || WATCH_ENABLE_CONTROL_GIMBAL
     WatchTaskDiagEntry GimbalControlTask;
 #endif
-#if WATCH_ENABLE_LOCOMOTION_CLASSIC
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC || WATCH_ENABLE_CONTROL_CHASSIS
     WatchTaskDiagEntry ChassisControlTask;
 #endif
     WatchTaskDiagEntry CanRxTask;
@@ -565,10 +571,10 @@ typedef struct
 
     // FreeRTOS uxTaskGetStackHighWaterMark() results (unit: words).
     uint32_t stack_default;
-#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL || WATCH_ENABLE_CONTROL_GIMBAL
     uint32_t stack_gimbal;
 #endif
-#if WATCH_ENABLE_LOCOMOTION_CLASSIC
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC || WATCH_ENABLE_CONTROL_CHASSIS
     uint32_t stack_chassis;
 #endif
     uint32_t stack_detect;

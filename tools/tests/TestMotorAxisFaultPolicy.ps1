@@ -2,6 +2,8 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $PSScriptRoot 'PrepareRobotConfig.ps1')
+$GeneratedConfig = Get-TestRobotConfig -Project 'SENTINEL-M'
 $Zig = Get-Command zig -ErrorAction SilentlyContinue
 if ($null -eq $Zig) {
     throw 'zig is required for the motor-axis fault-policy regression.'
@@ -24,7 +26,7 @@ $ConfigInclude = Join-Path $RepoRoot 'Robotconfig\SENTINEL-M'
 
 & $Zig.Source cc -std=c99 -Wall -Wextra -Werror -pedantic `
     "-I$MotorInclude" "-I$GimbalInclude" "-I$RobotInclude" "-I$SupportInclude" `
-    "-I$ControllerInclude" "-I$ConfigInclude" `
+    "-I$ControllerInclude" "-I$ConfigInclude" "-I$GeneratedConfig" `
     $Sources -o $Output
 if ($LASTEXITCODE -ne 0) {
     throw "motor-axis fault-policy regression compile failed with exit code $LASTEXITCODE"

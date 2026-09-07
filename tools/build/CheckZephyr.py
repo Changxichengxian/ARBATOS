@@ -10,24 +10,20 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Iterable
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from config.SourcePolicy import FORBIDDEN_SOURCE
 
-PROJECTS = {
-    "HERO-M": ("hero-m", "dm_mc02_h7"),
-    "SENTINEL-M": ("sentinel-m", "dm_mc02_h7"),
-    "MINIWHEELEG-M": ("miniwheeleg-m", "dm_mc02_h7"),
-}
+
 FORMAL_MODE_SYMBOLS = (
     "CONFIG_ARBATOS_MUSIC_ONLY",
     "CONFIG_ARBATOS_PREFLIGHT_ONLY",
     "CONFIG_ARBATOS_RECEIVE_ONLY",
-)
-FORBIDDEN_SOURCE = re.compile(
-    r"(?:^|/)(?:projects/[^/]+/(?:Core|Drivers|Middlewares|MDK-ARM)/|shared/hal/|.*(?:boardmain|boardfreertos|instask)[^/]*\.c$|"
-    r"boards/(?:DjiCF407|DjiAF427)/(?:bsp|devices)/|.*\.(?:s|lib)$)", re.IGNORECASE
 )
 SOURCE_TOKEN = re.compile(r"(?<![A-Za-z0-9_./-])([A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+\.(?:c|s|lib))(?![A-Za-z0-9_./-])")
 
@@ -53,7 +49,25 @@ class Check:
             return False
         return True
 
-    def check_presets(self, selected: Iterable[str]) -> None:
+    def targets(self) -> list[dict[str, object]]:
+        generator = self.root / "tools" / "config" / "RobotConfigGen.py"
+        if not self.require_file(generator):
+            return []
+        result = subprocess.run([sys.executable, "-X", "utf8", str(generator), "--root", str(self.root), "list", "--json"],
+                                text=True, encoding="utf-8", errors="replace", capture_output=True, check=False)
+        if result.returncode:
+            self.error("RobotConfigGen list failed: " + (result.stderr or result.stdout).strip())
+            return []
+        try:
+            entries = json.loads(result.stdout)
+        except json.JSONDecodeError as exc:
+            self.error(f"RobotConfigGen list returned invalid JSON: {exc.msg}")
+            return []
+        if not entries:
+            self.error("RobotConfigGen list returned no RobotConfig.toml target")
+        return entries
+
+    def check_presets(self, selected: Iterable[dict[str, object]]) -> None:
         presets_path = self.root / "projects" / "CMakePresets.json"
         if not self.require_file(presets_path):
             return
@@ -70,55 +84,54 @@ class Check:
             self.error("projects/CMakePresets.json: missing hidden zephyr-base preset")
 
         for project in selected:
-            preset_name, board = PROJECTS[project]
+            name, preset_name, board = str(project["name"]), str(project["preset"]), str(project["board"])
             preset = configure.get(preset_name)
             if not preset:
-                self.error(f"{project}: missing configure preset '{preset_name}'")
+                # 新车型无需改受跟踪 preset；由本地 CMakeUserPresets 生成。
                 continue
             if preset.get("inherits") != "zephyr-base":
-                self.error(f"{project}: preset must inherit zephyr-base")
+                self.error(f"{name}: preset must inherit zephyr-base")
             values = preset.get("cacheVariables", {})
-            if values.get("BOARD") != board:
-                self.error(f"{project}: BOARD must be {board}")
-            board_dir = self.root / "boards" / "DmMc02H7" / "zephyr"
+            if values.get("ARBATOS_ROBOT") != name:
+                self.error(f"{name}: preset must set ARBATOS_ROBOT to {name}")
+            if any(key in values for key in ("BOARD", "EXTRA_CONF_FILE", "DTC_OVERLAY_FILE")):
+                self.error(f"{name}: preset repeats generated board/configuration fields")
+            board_dir = self.root / "boards" / {"dm_mc02_h7": "DmMc02H7", "dji_a_f427": "DjiAF427", "dji_c_f407": "DjiCF407"}.get(board, "") / "zephyr"
             self.require_file(board_dir / f"{board}.yaml")
             self.require_file(board_dir / f"{board}_defconfig")
-            conf = values.get("EXTRA_CONF_FILE")
-            expected = f"${{sourceDir}}/{project}/prj.conf"
-            if conf != expected:
-                self.error(f"{project}: EXTRA_CONF_FILE must be {expected}")
-            overlay = values.get("DTC_OVERLAY_FILE")
-            if project == "SENTINEL-M":
-                expected_overlay = "${sourceDir}/SENTINEL-M/app.overlay"
-                if overlay != expected_overlay:
-                    self.error(f"{project}: DTC_OVERLAY_FILE must be {expected_overlay}")
-                self.require_file(self.root / "projects" / "SENTINEL-M" / "app.overlay")
-            elif overlay is not None:
-                self.error(f"{project}: formal preset must not set DTC_OVERLAY_FILE")
             if any(token in str(value).lower() for value in values.values()
                    for token in ("music", "preflight", "receive")):
-                self.error(f"{project}: formal preset references a dedicated test mode")
+                self.error(f"{name}: formal preset references a dedicated test mode")
             build = builds.get(preset_name)
             if not build or build.get("configurePreset") != preset_name:
-                self.error(f"{project}: missing matching build preset")
+                self.error(f"{name}: missing matching build preset")
 
-    def check_target_config(self, project: str) -> None:
-        preset_name, _ = PROJECTS[project]
-        path = self.root / "projects" / project / "prj.conf"
-        if not self.require_file(path):
-            return
-        text = path.read_text(encoding="utf-8")
-        config_lines = {line.strip() for line in text.splitlines()}
-        selected_symbol = "CONFIG_ARBATOS_TARGET_" + project.replace("-", "_")
-        enabled_targets = sorted(line.split("=", 1)[0] for line in config_lines
-                                 if re.fullmatch(r"CONFIG_ARBATOS_TARGET_[A-Z0-9_]+=y", line))
-        if enabled_targets != [selected_symbol]:
-            self.error(f"{self.rel(path)}: must enable exactly {selected_symbol}")
-        if "CONFIG_ARBATOS_LEGACY_SOURCES=y" not in config_lines:
-            self.error(f"{self.rel(path)}: formal target must enable CONFIG_ARBATOS_LEGACY_SOURCES")
-        for symbol in FORMAL_MODE_SYMBOLS:
-            if f"{symbol}=y" in config_lines:
-                self.error(f"{self.rel(path)}: formal target enables dedicated mode {symbol}")
+    def check_target_config(self, project: dict[str, object]) -> None:
+        name = str(project["name"])
+        generator = self.root / "tools" / "config" / "RobotConfigGen.py"
+        with tempfile.TemporaryDirectory(prefix="arbatos-check-") as output:
+            result = subprocess.run([sys.executable, "-X", "utf8", str(generator), "--root", str(self.root), "generate",
+                                     "--target", name, "--out", output], text=True, encoding="utf-8",
+                                    errors="replace", capture_output=True, check=False)
+            if result.returncode:
+                self.error(f"{name}: RobotConfigGen generate failed: {(result.stderr or result.stdout).strip()}")
+                return
+            generated = Path(output)
+            report = json.loads((generated / "robot-config.json").read_text(encoding="utf-8"))
+            for source in report.get("sources", []) + report.get("port_sources", []):
+                if FORBIDDEN_SOURCE.search(source):
+                    self.error(f"{name}: forbidden legacy entry: {source}")
+            for file_name in ("RobotTargetConfig.h", "RobotTargetProfile.inc", "RobotTargetTasks.inc",
+                              "RobotTarget.cmake", "robot-config.json", "robot.conf"):
+                self.require_file(generated / file_name)
+            conf = (generated / "robot.conf").read_text(encoding="utf-8")
+            if f'CONFIG_ARBATOS_ROBOT_NAME="{name}"' not in conf:
+                self.error(f"{name}: generated robot.conf does not select its robot name")
+            if "CONFIG_ARBATOS_LEGACY_SOURCES=y" not in conf:
+                self.error(f"{name}: generated robot.conf must enable legacy sources")
+            for symbol in FORMAL_MODE_SYMBOLS:
+                if f"{symbol}=y" in conf:
+                    self.error(f"{name}: generated robot.conf enables dedicated mode {symbol}")
 
     def check_source_graph(self) -> None:
         cmake = self.root / "projects" / "CMakeLists.txt"
@@ -139,7 +152,7 @@ class Check:
         if "src/main.c" not in text or "src/ArbatosTarget.c" not in text:
             self.error("projects/CMakeLists.txt: formal application entry sources are incomplete")
 
-    def run(self, selected: list[str]) -> None:
+    def run(self, selected: list[dict[str, object]]) -> None:
         for family, board in (("DjiAF427", "dji_a_f427"), ("DjiCF407", "dji_c_f407"), ("DmMc02H7", "dm_mc02_h7")):
             directory = self.root / "boards" / family / "zephyr"
             for name in ("board.yml", "board.cmake", f"{board}.dts", f"{board}-pinctrl.dtsi", f"{board}_defconfig"):
@@ -156,17 +169,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true", help="emit one JSON result object")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2], help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
-    requested = args.project.upper()
-    if requested == "ALL":
-        selected = list(PROJECTS)
-    elif requested in PROJECTS:
-        selected = [requested]
-    else:
-        parser.error("--project must be all or one of: " + ", ".join(PROJECTS))
-
     check = Check(args.root.resolve())
+    targets = check.targets()
+    requested = args.project.lower()
+    if requested == "all":
+        selected = targets
+    else:
+        selected = [item for item in targets if requested in (str(item["name"]).lower(), str(item["preset"]).lower())]
+        if not selected:
+            parser.error("--project must be all or one of: " + ", ".join(str(item["name"]) for item in targets))
     check.run(selected)
-    result = {"ok": not check.errors, "project": args.project, "checked_projects": selected,
+    result = {"ok": not check.errors, "project": args.project, "checked_projects": [item["name"] for item in selected],
               "errors": check.errors, "warnings": check.warnings}
     if args.json:
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))

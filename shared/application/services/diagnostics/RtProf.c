@@ -12,6 +12,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "RobotModule.h"
 #include "RobotTaskProfile.h"
 
 static const RtProfDesc sRtProfDesc[RtProfCount] = {
@@ -134,8 +135,16 @@ uint32_t RtProfPeriodMs(RtProfId id)
     switch (id)
     {
     case RtProfGimbalLoop:
+        if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_CONTROL_GIMBAL) != 0u)
+        {
+            return (uint32_t)ROBOT_CONTROL_GIMBAL_PERIOD_MS;
+        }
         return (uint32_t)RobotProfileGimbalControlPeriodMs();
     case RtProfChassisLoop:
+        if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_CONTROL_CHASSIS) != 0u)
+        {
+            return (uint32_t)ROBOT_CONTROL_CHASSIS_PERIOD_MS;
+        }
         return (uint32_t)RobotProfileChassisControlPeriodMs();
     case RtProfWheellegMitLoop:
         return (uint32_t)RobotProfileWheellegMitControlPeriodMs();
@@ -184,6 +193,17 @@ uint8_t RtProfActive(RtProfId id)
     if (desc == NULL)
     {
         return 0u;
+    }
+    if (id == RtProfGimbalLoop)
+    {
+        return (uint8_t)(RobotProfileModuleEnabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) ||
+                         RobotProfileModuleEnabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) ||
+                         RobotProfileModuleEnabled(ROBOT_TASK_MODULE_CONTROL_GIMBAL));
+    }
+    if (id == RtProfChassisLoop)
+    {
+        return (uint8_t)(RobotProfileModuleEnabled(ROBOT_TASK_MODULE_CLASSIC_CHASSIS) ||
+                         RobotProfileModuleEnabled(ROBOT_TASK_MODULE_CONTROL_CHASSIS));
     }
     if (desc->module == (uint8_t)ROBOT_TASK_MODULE_NONE &&
         desc->module_alt == (uint8_t)ROBOT_TASK_MODULE_NONE)

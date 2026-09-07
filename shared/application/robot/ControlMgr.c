@@ -43,6 +43,7 @@ typedef struct
     uint32_t transition_count;
     uint32_t reject_count;
     uint32_t reserved_claim_mask;
+    uint32_t reserved_actuator_mask;
     uint32_t authority_epoch;
     uint32_t cycle_seq;
     uint8_t update_in_progress;
@@ -129,6 +130,17 @@ static uint32_t control_reserved_claim_mask_locked(void)
     return mask;
 }
 
+static uint32_t control_reserved_actuator_mask_locked(void)
+{
+    uint32_t mask = 0u;
+
+    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
+    {
+        mask |= s_domain[i].reserved_actuator_mask;
+    }
+    return mask;
+}
+
 static uint32_t control_registered_actuator_mask_locked(void)
 {
     uint32_t mask = 0u;
@@ -161,6 +173,20 @@ static uint32_t control_active_actuator_mask_locked(void)
     for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
     {
         if (s_domain[i].active != NULL)
+        {
+            mask |= s_domain[i].active->actuator_mask;
+        }
+    }
+    return mask;
+}
+
+static uint32_t control_active_actuator_mask_without_domain_locked(ControlDomain domain)
+{
+    uint32_t mask = 0u;
+
+    for (uint8_t i = 0u; i < (uint8_t)ControlDomainCount; i++)
+    {
+        if (i != (uint8_t)domain && s_domain[i].active != NULL)
         {
             mask |= s_domain[i].active->actuator_mask;
         }
@@ -503,6 +529,8 @@ static ControlResult control_start_controller(const ControlController *next,
     control_domain_state_t *domain_state;
     uint32_t claims_without_domain;
     uint32_t reserved_claims;
+    uint32_t active_actuators_without_domain;
+    uint32_t reserved_actuators;
     ControlResult result;
 
     if (next == NULL)
@@ -528,8 +556,13 @@ static ControlResult control_start_controller(const ControlController *next,
         claims_without_domain &= ~domain_state->active->claim_mask;
     }
     reserved_claims = control_reserved_claim_mask_locked();
+    active_actuators_without_domain =
+        control_active_actuator_mask_without_domain_locked(next->domain);
+    reserved_actuators = control_reserved_actuator_mask_locked();
     if (domain_state->reserved_claim_mask != 0u ||
-        ((claims_without_domain | reserved_claims) & next->claim_mask) != 0u)
+        domain_state->reserved_actuator_mask != 0u ||
+        ((claims_without_domain | reserved_claims) & next->claim_mask) != 0u ||
+        ((active_actuators_without_domain | reserved_actuators) & next->actuator_mask) != 0u)
     {
         domain_state->last_result = ControlResultResourceBusy;
         domain_state->reject_count++;
@@ -538,6 +571,7 @@ static ControlResult control_start_controller(const ControlController *next,
         return ControlResultResourceBusy;
     }
     domain_state->reserved_claim_mask = next->claim_mask;
+    domain_state->reserved_actuator_mask = next->actuator_mask;
     CONTROL_MANAGER_EXIT_CRITICAL();
 
     if (domain_state->active != NULL)
@@ -553,6 +587,7 @@ static ControlResult control_start_controller(const ControlController *next,
                 control_pending_clear_locked(domain_state);
             }
             domain_state->reserved_claim_mask = 0u;
+            domain_state->reserved_actuator_mask = 0u;
             domain_state->reject_count++;
             CONTROL_MANAGER_EXIT_CRITICAL();
             return result;
@@ -564,6 +599,7 @@ static ControlResult control_start_controller(const ControlController *next,
                                  domain_state->pending_reason) != 0u)
     {
         domain_state->reserved_claim_mask = 0u;
+        domain_state->reserved_actuator_mask = 0u;
         domain_state->last_result = ControlResultResourceBusy;
         domain_state->reject_count++;
         s_diag.protectedRequestRejectCount++;
@@ -571,6 +607,7 @@ static ControlResult control_start_controller(const ControlController *next,
         return ControlResultResourceBusy;
     }
     domain_state->reserved_claim_mask = 0u;
+    domain_state->reserved_actuator_mask = 0u;
     domain_state->active = next;
     domain_state->grant_active = 0u;
     domain_state->state = ControlStateRunning;

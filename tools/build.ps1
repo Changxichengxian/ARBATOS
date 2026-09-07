@@ -1,8 +1,10 @@
 param(
-    [ValidateSet("build", "check", "probe", "sim", "flash", "debug")]
+    [ValidateSet("build", "check", "new", "presets", "probe", "sim", "flash", "debug")]
     [string]$Action = "build",
 
     [string]$Project = "HERO-M",
+
+    [string]$From = "HERO-M",
 
     [switch]$Pristine,
 
@@ -23,12 +25,6 @@ param(
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
-$ProjectMap = [ordered]@{
-    "HERO-M" = "hero-m"
-    "SENTINEL-M" = "sentinel-m"
-    "MINIWHEELEG-M" = "miniwheeleg-m"
-}
-
 function Find-Tool {
     param([string]$Name, [string[]]$PreferredPaths = @())
 
@@ -65,15 +61,34 @@ function Resolve-Tool {
 }
 
 function Resolve-ZephyrProject {
+    $targets = Get-RobotTargets
     if ($Project -ieq "all") {
         return "all"
     }
-    foreach ($key in $ProjectMap.Keys) {
-        if ($Project -ieq $key) {
-            return $ProjectMap[$key]
+    foreach ($entry in $targets) {
+        if ($Project -ieq $entry.name -or $Project -ieq $entry.preset) {
+            return $entry
         }
     }
-    throw "Unknown project: $Project. Use all or one of: $($ProjectMap.Keys -join ', ')."
+    throw "Unknown project: $Project. Use all or one of: $($targets.name -join ', ')."
+}
+
+function Get-RobotTargets {
+    $generator = Join-Path $RepoRoot "tools\config\RobotConfigGen.py"
+    if (-not (Test-Path -LiteralPath $generator -PathType Leaf)) {
+        throw "Cannot find robot configuration generator: $generator"
+    }
+    $localPython = Join-Path $RepoRoot "local\cache\zephyrproject\.venv\Scripts\python.exe"
+    $python = Resolve-Tool -Name "Python" -PreferredPaths @($localPython)
+    $json = & $python $generator list --json
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Robot configuration generator failed while listing targets.'
+    }
+    $targets = @($json | ConvertFrom-Json)
+    if ($targets.Count -eq 0) {
+        throw 'No RobotConfig.toml target is available under Robotconfig.'
+    }
+    return $targets
 }
 
 function Invoke-PythonTool {
@@ -120,7 +135,7 @@ function Get-ExistingZephyrBuild {
     if ([string]::IsNullOrWhiteSpace($BuildRoot)) {
         $BuildRoot = Join-Path $RepoRoot "local\build"
     }
-    $buildDir = [System.IO.Path]::GetFullPath((Join-Path $BuildRoot $target))
+    $buildDir = [System.IO.Path]::GetFullPath((Join-Path $BuildRoot $target.preset))
     $requiredFiles = @(
         (Join-Path $buildDir "CMakeCache.txt"),
         (Join-Path $buildDir "zephyr\runners.yaml"),
@@ -135,11 +150,8 @@ function Get-ExistingZephyrBuild {
     }
     $configPath = Join-Path $buildDir "zephyr\.config"
     $configLines = Get-Content -LiteralPath $configPath
-    $targetSymbol = "CONFIG_ARBATOS_TARGET_$($target.ToUpperInvariant().Replace('-', '_'))"
-    $enabledTargets = @($configLines | Where-Object { $_ -match '^CONFIG_ARBATOS_TARGET_[A-Z0-9_]+=y$' } |
-        ForEach-Object { $_.Split('=')[0] })
-    if ($enabledTargets.Count -ne 1 -or $enabledTargets[0] -ne $targetSymbol) {
-        throw "Build configuration $configPath does not select exactly $targetSymbol; refusing flash/debug."
+    if ($configLines -notcontains "CONFIG_ARBATOS_ROBOT_NAME=`"$($target.name)`"") {
+        throw "Build configuration $configPath does not select $($target.name); refusing flash/debug."
     }
     foreach ($modeSymbol in @('CONFIG_ARBATOS_MUSIC_ONLY', 'CONFIG_ARBATOS_PREFLIGHT_ONLY', 'CONFIG_ARBATOS_RECEIVE_ONLY')) {
         if ($configLines -contains "$modeSymbol=y") {
@@ -168,6 +180,16 @@ function Get-OpenOcdTools {
 }
 
 switch ($Action) {
+    "new" {
+        Invoke-PythonTool -ToolPath (Join-Path $RepoRoot "tools\config\RobotConfigGen.py") `
+            -Arguments @("new", "--target", $Project, "--from", $From)
+    }
+
+    "presets" {
+        Invoke-PythonTool -ToolPath (Join-Path $RepoRoot "tools\config\RobotConfigGen.py") `
+            -Arguments @("presets", "--target", $Project)
+    }
+
     "build" {
         $target = Resolve-ZephyrProject
         if ([string]::IsNullOrWhiteSpace($BuildRoot)) {
@@ -177,10 +199,10 @@ switch ($Action) {
         $westPath = Resolve-Tool -Value $West -Name "West" -PreferredPaths @(Join-Path $localVenv "west.exe")
         $ninjaPath = Resolve-Tool -Value $Ninja -Name "Ninja" -PreferredPaths @(Join-Path $localVenv "ninja.exe")
         if ($Pristine) {
-            & (Join-Path $RepoRoot "tools\build\build-matrix.ps1") -Target $target -BuildRoot $BuildRoot -West $westPath -Ninja $ninjaPath -Jobs $Jobs -Pristine
+            & (Join-Path $RepoRoot "tools\build\build-matrix.ps1") -Target $(if ($target -eq 'all') { 'all' } else { $target.name }) -BuildRoot $BuildRoot -West $westPath -Ninja $ninjaPath -Jobs $Jobs -Pristine
         }
         else {
-            & (Join-Path $RepoRoot "tools\build\build-matrix.ps1") -Target $target -BuildRoot $BuildRoot -West $westPath -Ninja $ninjaPath -Jobs $Jobs
+            & (Join-Path $RepoRoot "tools\build\build-matrix.ps1") -Target $(if ($target -eq 'all') { 'all' } else { $target.name }) -BuildRoot $BuildRoot -West $westPath -Ninja $ninjaPath -Jobs $Jobs
         }
         exit $LASTEXITCODE
     }
@@ -220,7 +242,7 @@ switch ($Action) {
         $simTool = Join-Path $RepoRoot "tools\sim\RobotSim.py"
         $projects = @()
         if ($Project -eq "all") {
-            $projects = @($ProjectMap.Keys)
+            $projects = @(Get-RobotTargets | ForEach-Object { $_.name })
         }
         else {
             $projects = @($Project)

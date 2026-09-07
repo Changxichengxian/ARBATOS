@@ -9,7 +9,7 @@
 ## 当前主线
 
 - 后续开发使用 `main`；`zephyr` 分支保留已经结束的迁移历史。
-- 当前整车目标为 HERO-M、SENTINEL-M、MINIWHEELEG-M，均使用 M 板。A、C、M 三种开发板支持独立保留，增加 A/C 板车辆时新建车型配置。
+- 当前整车目标为 HERO-M、SENTINEL-M、MINIWHEELEG-M，均使用 M 板。A、C 板定义独立保留，完整运行栈仍需迁移，不能仅新建车型配置就运行。
 - 使用 CLion、Zephyr 4.4、Zephyr SDK、CMake、Ninja、OpenOCD 和 ARM GDB；当前流程不需要 Keil 或 CubeCLT。
 - HERO-M 已有整车正常运动结果，包括底盘和云台俯仰；当前接线为 M 板 + V2 副板。旧 HERO-C 的接线和实测结论不适用于现车。
 - 2026-09-08 目录整理后的构建尚未再次上车。其他车辆、全部外设、长期负载、致命故障停机和 CLion 图形调试仍需分别验收，具体限制写在对应开发板、接口和测试说明中。
@@ -37,8 +37,9 @@ pwsh -NoProfile -File .\tools\build.ps1 -Project HERO-M
 
 | 要做什么 | 位置 |
 | --- | --- |
+| 选底盘、云台、服务，创建新车型 | `Robotconfig/<车型>/RobotConfig.toml` |
 | 改电机型号、编号、总线 | `Robotconfig/<车型>/ConfigHardware.inc` |
-| 改 PID、限幅、遥控输入、任务和运行模式 | `Robotconfig/<车型>/ConfigTuning.inc`、`ConfigInput.inc`、`ConfigOperation.inc` |
+| 改 PID、限幅、遥控输入和运行模式 | `Robotconfig/<车型>/ConfigTuning.inc`、`ConfigInput.inc`、`ConfigOperation.inc` |
 | 确认板子安装位置和方向 | `Robotconfig/<车型>/安装说明.md` |
 | 改开发板引脚和设备树 | `boards/` |
 | 改共用控制、通信、算法、日志与系统适配 | `shared/` |
@@ -47,7 +48,15 @@ pwsh -NoProfile -File .\tools\build.ps1 -Project HERO-M
 | 查独立测试的操作和结果 | `tests/` |
 | 本机环境、构建产物、日志和参考资料 | `local/`，不作为正式文档入口 |
 
-任务能否运行要同时看编译开关、车型任务表和启动映射；运行模式另行限制输出。具体关系见[开发与代码规范](manual/开发与代码规范.md)。`shared/hal/` 保留历史接口与实现参考，当前系统适配在 `shared/zephyr/`。
+编译开关、车型任务表和启动清单统一由 `RobotConfig.toml` 生成，运行模式另行限制输出。普通接车只改 `Robotconfig/`；新增一种可复用底盘或云台，在 `shared/controllers/` 写一次算法和声明，其他车型即可直接选用。具体操作见[车型配置](Robotconfig/README.md)和[可复用底盘与云台](shared/controllers/README.md)。
+
+## 为什么这样拆分
+
+车型配置回答“这台车装了什么、选哪种控制”；控制算法回答“给定输入和反馈，应该怎样运动”；共用执行流程负责绑定电机、检查失联、管理输出权限和发送命令。把这些职责分开，作者写新机构时就不用重新实现遥控解析、CAN 协议和急停逻辑。
+
+`ControlAlgorithm` 是只依赖标准 C 的算法接口，`ControlRuntime` 是执行它的共用流程；名字直接对应职责。现有控制权仍由 `ControlMgr` 管理，发送仍走 `MotorInst → LowCmd → CanTxTask`。现有经典底盘、单云台、双 yaw、轮腿控制保留原控制链；差速底盘和双轴转速云台示例用于验证新的扩展方式，尚未实车调参。
+
+任务入口、稳定编号、默认栈和优先级只在 `RobotTaskCatalog.def` 登记一次，生成器根据车型选择补齐依赖。`local/build/<车型>/generated/robotconfig/robot-config.json` 列出实际选择及原因，查问题时可直接顺着清单找到任务和算法。`shared/hal/` 保留历史接口，系统适配在 `shared/zephyr/`。
 
 ## 文档入口
 

@@ -1,0 +1,19 @@
+schema = 1
+board = "dm_mc02_h7"
+profile = "sentry"
+services = ["RC_SBUS", "HEALTH_MONITOR", "SDLOG", "HOST_LINK"]
+
+[controllers.chassis]
+type = "classic"
+
+[controllers.gimbal]
+type = "dual_yaw"
+
+[controllers.shoot]
+type = "rm"
+
+[build]
+sources = ["RobotConfig.c", "Mc02Compat.c", "DetectTask.c", "ArmMotorTable.c", "UsbHostLinkTask.c"]
+shared_sources = ["shared/application/comm/vision/VisionLink.c"]
+port_sources = ["shared/zephyr/port/subboard/SubBoardBringupZephyr.c"]
+overlay = "app.overlay"

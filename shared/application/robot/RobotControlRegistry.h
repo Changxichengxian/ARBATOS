@@ -9,10 +9,19 @@
 #include "CanReceive.h"
 #include "ControlActuatorPolicy.h"
 #include "ControlMgr.h"
+#include "ControlRuntime.h"
 #include "MotorInst.h"
 #include "RobotDeviceConfig.h"
 #include "RobotTaskBuildConfig.h"
 #include "RobotTaskProfile.h"
+#if defined(__has_include)
+#if __has_include("RobotControlSelection.h")
+#include "RobotControlSelection.h"
+#endif
+#endif
+#ifndef ROBOT_CONTROL_SELECTION_COUNT
+#define ROBOT_CONTROL_SELECTION_COUNT 0u
+#endif
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
 #include "CanTxTask.h"
 #endif
@@ -226,43 +235,63 @@ static inline uint32_t RobotControlResolveRawActuators(const uint8_t *ids,
     return mask;
 }
 
-static inline void RobotControlRegisterNamed(const ControlController *controller,
-                                             ControlActuatorAudit *audit)
+static inline ControlResult RobotControlRegisterNamed(const ControlController *controller,
+                                                       ControlActuatorAudit *audit)
 {
     if (controller != NULL)
     {
         ControlController resolved = *controller;
 
         resolved.actuator_mask = RobotControlResolveNamedActuators(controller, audit);
-        (void)ControlMgrRegister(&resolved);
-        return;
+        return ControlMgrRegister(&resolved);
     }
 
-    (void)ControlMgrRegister(controller);
+    return ControlMgrRegister(controller);
 }
 
-static inline void RobotControlRegisterIfEnabled(const ControlController *controller,
-                                                 RobotTaskModule module,
-                                                 ControlActuatorAudit *audit)
+static inline ControlResult RobotControlRegisterIfEnabled(const ControlController *controller,
+                                                           RobotTaskModule module,
+                                                           ControlActuatorAudit *audit)
 {
     if (RobotProfileModuleEnabled(module) == 0u)
     {
-        return;
+        return ControlResultOk;
     }
 
     /* 启用模块的空描述也交给 ControlMgr 记录，启动失败不能静默消失。 */
-    RobotControlRegisterNamed(controller, audit);
+    return RobotControlRegisterNamed(controller, audit);
 }
 
-static inline void RobotControlRegisterProfileDefaults(void)
+static inline uint8_t RobotControlRegisterProfileDefaults(void)
 {
     ControlActuatorAudit actuator_audit = {0};
+    uint8_t register_ok = 1u;
 
     /*
      * Registration only declares resources for diagnostics/arbitration.
      * Boot activation is handled by RobotControlStartProfileDefaults().
      */
     RobotControlAuditInventory(&actuator_audit);
+#if ROBOT_CONTROL_SELECTION_COUNT > 0u
+    if (ControlRuntimeConfigure(g_robot_control_modules,
+                                g_robot_control_module_count) == ControlResultOk)
+    {
+        for (uint8_t i = 0u; i < ControlRuntimeCount(); i++)
+        {
+            if (RobotControlRegisterNamed(ControlRuntimeController(i), &actuator_audit) !=
+                ControlResultOk)
+            {
+                register_ok = 0u;
+            }
+        }
+    }
+    else
+    {
+        /* 选中控制器无法绑定时禁止所有普通控制输出。 */
+        (void)LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_FAULT);
+        register_ok = 0u;
+    }
+#endif
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
     static const char *const single_gimbal_outputs[] = {
         "motor.yaw",
@@ -354,29 +383,32 @@ static inline void RobotControlRegisterProfileDefaults(void)
 #endif
 
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
-    RobotControlRegisterIfEnabled(ChassisCtrlDesc(),
-                                  ROBOT_TASK_MODULE_CLASSIC_CHASSIS,
-                                  &actuator_audit);
+    register_ok &= (uint8_t)(RobotControlRegisterIfEnabled(ChassisCtrlDesc(),
+                                                           ROBOT_TASK_MODULE_CLASSIC_CHASSIS,
+                                                           &actuator_audit) == ControlResultOk);
 #endif
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
-    RobotControlRegisterIfEnabled(&single_gimbal,
-                                  ROBOT_TASK_MODULE_SINGLE_GIMBAL,
-                                  &actuator_audit);
+    register_ok &= (uint8_t)(RobotControlRegisterIfEnabled(&single_gimbal,
+                                                           ROBOT_TASK_MODULE_SINGLE_GIMBAL,
+                                                           &actuator_audit) == ControlResultOk);
 #endif
 #if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
-    RobotControlRegisterIfEnabled(&DualYawGimbal,
-                                  ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL,
-                                  &actuator_audit);
+    register_ok &= (uint8_t)(RobotControlRegisterIfEnabled(&DualYawGimbal,
+                                                           ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL,
+                                                           &actuator_audit) == ControlResultOk);
 #endif
 #if ROBOT_TASK_BUILD_SHOOT_RM
     if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
         RobotProfileModuleEnabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
     {
-        RobotControlRegisterNamed(ShootCtrlDesc(), &actuator_audit);
+        register_ok &= (uint8_t)(RobotControlRegisterNamed(ShootCtrlDesc(), &actuator_audit) ==
+                                 ControlResultOk);
     }
 #endif
 #if ROBOT_TASK_BUILD_ARM
-    RobotControlRegisterIfEnabled(&arm, ROBOT_TASK_MODULE_ARM, &actuator_audit);
+    register_ok &= (uint8_t)(RobotControlRegisterIfEnabled(&arm,
+                                                           ROBOT_TASK_MODULE_ARM,
+                                                           &actuator_audit) == ControlResultOk);
 #endif
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
     if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_WHEELLEG_MIT) != 0u)
@@ -395,63 +427,99 @@ static inline void RobotControlRegisterProfileDefaults(void)
             wheelleg_actuators,
             (uint8_t)(sizeof(wheelleg_actuators) / sizeof(wheelleg_actuators[0])),
             &actuator_audit);
-        (void)ControlMgrRegister(&resolved);
+        register_ok &= (uint8_t)(ControlMgrRegister(&resolved) == ControlResultOk);
     }
 #endif
     (void)ControlMgrSetActuatorAudit(&actuator_audit);
+    return register_ok;
 }
 
-static inline void RobotControlStartProfileDefaults(void)
+static inline uint8_t RobotControlStartProfileDefaults(void)
 {
+    uint8_t start_ok = 1u;
+#if ROBOT_CONTROL_SELECTION_COUNT > 0u
+    if (ControlRuntimeCount() != g_robot_control_module_count ||
+        ControlRuntimeStartDefaults() != ControlResultOk)
+    {
+        (void)LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_FAULT);
+        start_ok = 0u;
+    }
+#endif
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
     if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_CLASSIC_CHASSIS) != 0u)
     {
-        (void)ControlMgrSwitch(ControlIdClassicChassis, ControlReasonProfile);
+        start_ok &= (uint8_t)(ControlMgrSwitch(ControlIdClassicChassis,
+                                                ControlReasonProfile) == ControlResultOk);
     }
 #endif
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
     if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u)
     {
-        (void)ControlMgrSwitch(ControlIdSingleGimbal, ControlReasonProfile);
+        start_ok &= (uint8_t)(ControlMgrSwitch(ControlIdSingleGimbal,
+                                                ControlReasonProfile) == ControlResultOk);
     }
 #endif
 #if ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
     if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
     {
-        (void)ControlMgrSwitch(ControlIdDualYawGimbal, ControlReasonProfile);
+        start_ok &= (uint8_t)(ControlMgrSwitch(ControlIdDualYawGimbal,
+                                                ControlReasonProfile) == ControlResultOk);
     }
 #endif
 #if ROBOT_TASK_BUILD_SHOOT_RM
     if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
         RobotProfileModuleEnabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
     {
-        (void)ControlMgrSwitch(ControlIdShoot, ControlReasonProfile);
+        start_ok &= (uint8_t)(ControlMgrSwitch(ControlIdShoot,
+                                                ControlReasonProfile) == ControlResultOk);
     }
 #endif
 #if ROBOT_TASK_BUILD_ARM
     if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_ARM) != 0u)
     {
-        (void)ControlMgrSwitch(ControlIdArmMotion, ControlReasonProfile);
+        start_ok &= (uint8_t)(ControlMgrSwitch(ControlIdArmMotion,
+                                                ControlReasonProfile) == ControlResultOk);
     }
 #endif
 #if ROBOT_TASK_BUILD_WHEELLEG_MIT
     if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_WHEELLEG_MIT) != 0u)
     {
-        (void)ControlMgrSwitch(ControlIdWheellegMitBalance, ControlReasonProfile);
+        start_ok &= (uint8_t)(ControlMgrSwitch(ControlIdWheellegMitBalance,
+                                                ControlReasonProfile) == ControlResultOk);
     }
 #endif
+    return start_ok;
 }
 
-static inline void RobotControlBootstrapProfileDefaults(void)
+static inline uint8_t RobotControlBootstrapProfileDefaults(void)
 {
+    ControlActuatorDiag actuator_diag;
+    uint8_t ok;
+
     MotorInstRefresh();
     CAN_rx_prepare_motor_measure_points();
     ControlMgrInit();
-    RobotControlRegisterProfileDefaults();
-    RobotControlStartProfileDefaults();
+    ok = RobotControlRegisterProfileDefaults();
+    if (ok != 0u)
+    {
+        if (ControlMgrGetActuatorDiag(&actuator_diag) != ControlResultOk ||
+            actuator_diag.crossDomainOverlapMask != 0u)
+        {
+            ok = 0u;
+        }
+    }
+    if (ok != 0u)
+    {
+        ok = RobotControlStartProfileDefaults();
+    }
+    if (ok == 0u)
+    {
+        (void)LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_FAULT);
+    }
 #if ROBOT_TASK_BUILD_CAN_COMMAND_TX
     CanTxEmergencyPrepare();
 #endif
+    return ok;
 }
 
 #endif

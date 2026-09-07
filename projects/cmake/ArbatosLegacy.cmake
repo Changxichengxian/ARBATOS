@@ -33,6 +33,9 @@ function(arbatos_add_legacy_sources target)
         shared/application/robot/FaultMgr.c
         shared/application/robot/ExternalMotionIntent.c
         shared/application/robot/ControlMgr.c
+        shared/application/robot/ControlRuntime.c
+        shared/application/robot/ControlRuntimeTask.c
+        shared/application/robot/RobotConfigBlocks.c
         shared/application/motors/MotorModelDb.c
         shared/application/motors/MotorInst.c
         shared/application/motors/MotorHealth.c
@@ -91,46 +94,17 @@ function(arbatos_add_legacy_sources target)
     list(REMOVE_ITEM ARBATOS_H7_CORE
         shared/components/algorithm/AhrsMiddleware.c)
 
-    # Source entries below are the maintained target-specific selections.
-    # Do not merge targets merely because their vehicle names sound similar.
-    if(CONFIG_ARBATOS_TARGET_HERO_M)
-        set(ARBATOS_TARGET_DIR HERO-M)
-        set(ARBATOS_BOARD_DIR boards/DmMc02H7)
-        set(ARBATOS_TARGET_SOURCES
-            ${ARBATOS_H7_CORE}
-            shared/application/comm/host/HostLinkTaskStub.c
-            Robotconfig/HERO-M/RobotConfig.c
-            Robotconfig/HERO-M/Mc02Compat.c
-            Robotconfig/HERO-M/DetectTask.c
-            Robotconfig/HERO-M/ArmMotorTable.c
-            Robotconfig/HERO-M/PitchCaliBuiltin.c
-        )
-    elseif(CONFIG_ARBATOS_TARGET_MINIWHEELEG_M)
-        set(ARBATOS_TARGET_DIR MINIWHEELEG-M)
-        set(ARBATOS_BOARD_DIR boards/DmMc02H7)
-        set(ARBATOS_TARGET_SOURCES
-            ${ARBATOS_H7_CORE}
-            shared/application/comm/host/HostLinkTaskStub.c
-            Robotconfig/MINIWHEELEG-M/RobotConfig.c
-            Robotconfig/MINIWHEELEG-M/Mc02Compat.c
-            Robotconfig/MINIWHEELEG-M/DetectTask.c
-            Robotconfig/MINIWHEELEG-M/ArmMotorTable.c
-        )
-    elseif(CONFIG_ARBATOS_TARGET_SENTINEL_M)
-        set(ARBATOS_TARGET_DIR SENTINEL-M)
-        set(ARBATOS_BOARD_DIR boards/DmMc02H7)
-        set(ARBATOS_TARGET_SOURCES
-            ${ARBATOS_H7_CORE}
-            shared/application/comm/vision/VisionLink.c
-            Robotconfig/SENTINEL-M/RobotConfig.c
-            Robotconfig/SENTINEL-M/Mc02Compat.c
-            Robotconfig/SENTINEL-M/DetectTask.c
-            Robotconfig/SENTINEL-M/ArmMotorTable.c
-            Robotconfig/SENTINEL-M/UsbHostLinkTask.c
-        )
-    else()
-        message(FATAL_ERROR "ARBATOS legacy sources need one ARBATOS_TARGET selection")
+    # 车型差异由 RobotConfig.toml 生成的 RobotTarget.cmake 提供。公共 H7
+    # 控制栈暂保留在这里，直到非 H7 端口也完成同样的迁移。
+    if(NOT DEFINED ARBATOS_TARGET_DIR OR NOT DEFINED ARBATOS_BOARD_DIR OR
+       NOT DEFINED ARBATOS_TARGET_SOURCES)
+        message(FATAL_ERROR "RobotTarget.cmake is incomplete; regenerate the selected Robotconfig")
     endif()
+    set(ARBATOS_TARGET_SOURCES
+        ${ARBATOS_H7_CORE}
+        ${ARBATOS_TARGET_SOURCES}
+        ${ARBATOS_TARGET_PORT_SOURCES}
+    )
 
     list(TRANSFORM ARBATOS_TARGET_SOURCES PREPEND "${ARBATOS_ROOT}/")
     target_sources(${target} PRIVATE ${ARBATOS_TARGET_SOURCES})
@@ -142,6 +116,7 @@ function(arbatos_add_legacy_sources target)
     file(GLOB_RECURSE ARBATOS_LEGACY_HEADERS CONFIGURE_DEPENDS
         "${ARBATOS_ROOT}/shared/application/*.h"
         "${ARBATOS_ROOT}/shared/components/*.h"
+        "${ARBATOS_ROOT}/shared/controllers/*.h"
         "${ARBATOS_ROOT}/shared/generated/*.h"
         "${ARBATOS_ROOT}/shared/hal/*.h"
         "${ARBATOS_ROOT}/shared/zephyr/*.h"

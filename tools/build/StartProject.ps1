@@ -3,7 +3,6 @@ param(
     [ValidateSet('Open', 'Build')]
     [string]$Action = 'Open',
 
-    [ValidateSet('HERO-M', 'SENTINEL-M', 'MINIWHEELEG-M')]
     [string]$Project,
 
     [string]$ClionPath = $env:CLION_EXE,
@@ -43,22 +42,34 @@ function FindClion {
 }
 
 function SelectProject {
+    $generator = Join-Path $repoPath 'tools\config\RobotConfigGen.py'
+    if (-not (Test-Path -LiteralPath $generator -PathType Leaf)) {
+        throw "找不到车型配置生成器：$generator"
+    }
+    $pythonPath = Join-Path $repoPath 'local\cache\zephyrproject\.venv\Scripts\python.exe'
+    if (-not (Test-Path -LiteralPath $pythonPath -PathType Leaf)) {
+        $python = Get-Command python -ErrorAction SilentlyContinue
+        if (-not $python) { throw '找不到 Python，无法读取 Robotconfig 车型列表。' }
+        $pythonPath = $python.Source
+    }
+    $targets = @((& $pythonPath $generator list --json) | ConvertFrom-Json)
+    if ($LASTEXITCODE -ne 0 -or $targets.Count -eq 0) { throw '读取 Robotconfig 车型列表失败。' }
     if ($Project) { return $Project }
-    if ($Check) { return 'HERO-M' }
+    if ($Check) { return $targets[0].name }
     Write-Host '选择要编译的车型：'
-    Write-Host '  1  HERO-M（默认）'
-    Write-Host '  2  SENTINEL-M'
-    Write-Host '  3  MINIWHEELEG-M'
+    for ($i = 0; $i -lt $targets.Count; $i++) {
+        Write-Host ('  {0}  {1}{2}' -f ($i + 1), $targets[$i].name, $(if ($i -eq 0) { '（默认）' } else { '' }))
+    }
     Write-Host '  Q  退出'
     while ($true) {
-        switch ((Read-Host '输入编号，直接回车选择 HERO-M').Trim()) {
-            '' { return 'HERO-M' }
-            '1' { return 'HERO-M' }
-            '2' { return 'SENTINEL-M' }
-            '3' { return 'MINIWHEELEG-M' }
-            'q' { return $null }
-            default { Write-Host '请输入 1、2、3 或 Q。' }
+        $choice = (Read-Host ('输入编号，直接回车选择 ' + $targets[0].name)).Trim()
+        if ($choice -eq '') { return $targets[0].name }
+        if ($choice -ieq 'q') { return $null }
+        $number = 0
+        if ([int]::TryParse($choice, [ref]$number) -and $number -ge 1 -and $number -le $targets.Count) {
+            return $targets[$number - 1].name
         }
+        Write-Host '请输入列表中的编号或 Q。'
     }
 }
 
@@ -71,7 +82,7 @@ try {
         $launcherPath = FindClion
         Write-Host "CLion：$launcherPath"
         Write-Host "工程：$projectPath"
-        Write-Host '三个车型共用这个工程；在 CLion 的 CMake 配置中选择对应车型。'
+        Write-Host '所有车型共用这个工程；在 CLion 的 CMake 配置中选择对应车型。'
         if (-not $Check) {
             Start-Process -FilePath $launcherPath -ArgumentList ('"{0}"' -f $projectPath) -WorkingDirectory $repoPath
         }

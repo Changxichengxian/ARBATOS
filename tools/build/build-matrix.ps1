@@ -1,11 +1,5 @@
 [CmdletBinding()]
 param(
-    [ValidateSet(
-        'all',
-        'hero-m',
-        'sentinel-m',
-        'miniwheeleg-m'
-    )]
     [string[]] $Target = @('all'),
 
     [switch] $Pristine,
@@ -50,16 +44,6 @@ if ((Test-Path -LiteralPath $localVenvScripts -PathType Container) -and
     $env:Path = "$localVenvScripts;$env:Path"
 }
 
-$targets = @{
-    'hero-m'        = @{ Board = 'dm_mc02_h7'; Config = 'HERO-M/prj.conf' }
-    'miniwheeleg-m' = @{ Board = 'dm_mc02_h7'; Config = 'MINIWHEELEG-M/prj.conf' }
-    'sentinel-m'    = @{
-        Board = 'dm_mc02_h7'
-        Config = 'SENTINEL-M/prj.conf'
-        Overlay = 'SENTINEL-M/app.overlay'
-    }
-}
-
 function Get-CommandPath {
     param([string] $Value, [string] $Name)
 
@@ -71,6 +55,23 @@ function Get-CommandPath {
         throw "Cannot find ${Name}: $Value. Install it or provide its executable path."
     }
     return $command.Source
+}
+
+function Get-RobotTargets {
+    $generator = Join-Path $repoRoot 'tools\config\RobotConfigGen.py'
+    if (-not (Test-Path -LiteralPath $generator -PathType Leaf)) {
+        throw "Cannot find robot configuration generator: $generator"
+    }
+    $python = Get-CommandPath -Value 'python' -Name 'Python'
+    $json = & $python $generator list --json
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Robot configuration generator failed while listing targets.'
+    }
+    $items = @($json | ConvertFrom-Json)
+    if ($items.Count -eq 0) {
+        throw 'No RobotConfig.toml target is available under Robotconfig.'
+    }
+    return $items
 }
 
 function Move-PreviousBuild {
@@ -122,26 +123,36 @@ if ($Ninja) {
     $Ninja = Get-CommandPath -Value $Ninja -Name 'Ninja'
 }
 
-$selectedTargets = New-Object System.Collections.Generic.List[string]
+$targets = @(Get-RobotTargets)
+$targetsByPreset = @{}
+foreach ($entry in $targets) {
+    if ([string]::IsNullOrWhiteSpace($entry.preset) -or [string]::IsNullOrWhiteSpace($entry.name)) {
+        throw 'Robot configuration list contains a target without name or preset.'
+    }
+    $targetsByPreset[$entry.preset.ToLowerInvariant()] = $entry
+    $targetsByPreset[$entry.name.ToLowerInvariant()] = $entry
+}
+
+$selectedTargets = New-Object System.Collections.Generic.List[object]
 foreach ($requestedName in $Target) {
     $requestedName = $requestedName.ToLowerInvariant()
     if ($requestedName -eq 'all') {
-        foreach ($targetName in $targets.Keys) {
-            if (-not $selectedTargets.Contains($targetName)) { $selectedTargets.Add($targetName) }
+        foreach ($entry in $targets) {
+            if (-not (@($selectedTargets | Where-Object { $_.name -eq $entry.name }).Count)) { $selectedTargets.Add($entry) }
         }
     }
-    elseif (-not $selectedTargets.Contains($requestedName)) {
-        $selectedTargets.Add($requestedName)
+    elseif (-not $targetsByPreset.ContainsKey($requestedName)) {
+        throw "Unknown target: $requestedName. Use all or one of: $($targets.name -join ', ')"
+    }
+    else {
+        $entry = $targetsByPreset[$requestedName]
+        if (-not (@($selectedTargets | Where-Object { $_.name -eq $entry.name }).Count)) { $selectedTargets.Add($entry) }
     }
 }
 
-foreach ($name in $selectedTargets) {
-    $entry = $targets[$name]
+foreach ($entry in $selectedTargets) {
+    $name = $entry.preset
     $buildDir = Join-Path $buildRootPath $name
-    $configPath = Join-Path $appRoot $entry.Config
-    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
-        throw "Cannot find target configuration: $configPath"
-    }
     if ($Pristine) {
         Move-PreviousBuild -TargetName $name -BuildDir $buildDir
     }
@@ -149,27 +160,18 @@ foreach ($name in $selectedTargets) {
         'build',
         '-s', $appRoot,
         '-d', $buildDir,
-        '-b', $entry.Board,
+        '-b', $entry.board,
         '-p', 'never'
     )
 
-    $configCmakePath = $configPath -replace '\\', '/'
-    $cmakeArgs = @("-DEXTRA_CONF_FILE=$configCmakePath")
+    $cmakeArgs = @("-DARBATOS_ROBOT=$($entry.name)")
     if ($Ninja) {
         $cmakeArgs += "-DCMAKE_MAKE_PROGRAM=$($Ninja -replace '\\', '/')"
-    }
-    if ($entry.ContainsKey('Overlay')) {
-        $overlayPath = Join-Path $appRoot $entry.Overlay
-        if (-not (Test-Path -LiteralPath $overlayPath -PathType Leaf)) {
-            throw "Cannot find target overlay: $overlayPath"
-        }
-        $overlayCmakePath = $overlayPath -replace '\\', '/'
-        $cmakeArgs += "-DDTC_OVERLAY_FILE=$overlayCmakePath"
     }
     $westArgs += '--'
     $westArgs += $cmakeArgs
 
-    Write-Host "==> Building $name ($($entry.Board)) -> $buildDir"
+    Write-Host "==> Building $($entry.name) ($($entry.board)) -> $buildDir"
     & $westPath @westArgs
     if ($LASTEXITCODE -ne 0) {
         throw "Target $name failed with exit code $LASTEXITCODE"

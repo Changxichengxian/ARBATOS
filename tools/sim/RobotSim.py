@@ -12,7 +12,9 @@ import argparse
 import json
 import math
 import re
+import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -283,27 +285,33 @@ def parse_define_text(text: str) -> dict[str, str]:
     return macros
 
 
-ZEPHYR_TARGET_BY_PROJECT = {
-    "HERO-M": "hero-m",
-    "SENTINEL-M": "sentinel-m",
-    "MINIWHEELEG-M": "miniwheeleg-m",
-}
-
-
-def parse_zephyr_config_defines(project: str) -> dict[str, str]:
-    target = ZEPHYR_TARGET_BY_PROJECT.get(project.upper())
-    if target is None:
-        allowed = ", ".join(ZEPHYR_TARGET_BY_PROJECT)
-        raise ValueError(f"unsupported Zephyr project {project!r}; use one of: {allowed}")
-
+def parse_zephyr_config_defines(project: str) -> tuple[dict[str, str], list[str]]:
+    generator = REPO_ROOT / "tools" / "config" / "RobotConfigGen.py"
+    with tempfile.TemporaryDirectory(prefix="arbatos-robotconfig-") as directory:
+        result = subprocess.run(
+            [sys.executable, str(generator), "generate", "--target", project, "--out", directory],
+            cwd=REPO_ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode:
+            raise ValueError(f"cannot generate Robotconfig/{project}: {result.stderr or result.stdout}")
+        config_paths = (REPO_ROOT / "projects" / "prj.conf", Path(directory) / "robot.conf")
+        target_header = Path(directory) / "RobotTargetConfig.h"
+        if not target_header.is_file():
+            raise FileNotFoundError(f"missing generated target header: {target_header}")
+        config_texts = [read_text(config_path) for config_path in config_paths]
+        target_macros = parse_define_text(strip_c_comments(read_text(target_header)))
+        profile_path = Path(directory) / "RobotTargetProfile.inc"
+        if not profile_path.is_file():
+            raise FileNotFoundError(f"missing generated task profile: {profile_path}")
+        target_modules = list(dict.fromkeys(re.findall(r"ROBOT_TASK_MODULE_[A-Z0-9_]+", read_text(profile_path))))
     defines: dict[str, str] = {}
-    for config_path in (
-        REPO_ROOT / "projects" / "prj.conf",
-        REPO_ROOT / "projects" / project / "prj.conf",
-    ):
-        if not config_path.is_file():
-            raise FileNotFoundError(f"missing Zephyr configuration: {config_path}")
-        for raw_line in read_text(config_path).splitlines():
+    for config_text in config_texts:
+        for raw_line in config_text.splitlines():
             line = raw_line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
@@ -316,7 +324,8 @@ def parse_zephyr_config_defines(project: str) -> dict[str, str]:
                 defines[name] = "0"
             else:
                 defines[name] = value
-    return defines
+    defines.update(target_macros)
+    return defines, target_modules
 
 
 def find_matching_brace(text: str, brace_index: int) -> int:
@@ -645,7 +654,7 @@ def load_project(project: str) -> ProjectConfig:
     can_tx_source_macros = parse_define_text(
         strip_c_comments(read_text(REPO_ROOT / "shared/application/comm/can/CanTxTask.c"))
     )
-    project_defines = parse_zephyr_config_defines(project)
+    project_defines, generated_modules = parse_zephyr_config_defines(project)
     project_macros = parse_define_text(strip_c_comments(read_text(config_h_path)))
     macros = dict(profile_defaults)
     macros.update(project_defines)
@@ -657,7 +666,7 @@ def load_project(project: str) -> ProjectConfig:
         project=project,
         config_dir=config_dir,
         macros=macros,
-        modules=parse_modules(config_c),
+        modules=generated_modules or parse_modules(config_c),
         motors=parse_motor_nodes(config_c, macros),
         periods_ms=parse_periods(config_c, macros),
         wheel_actuator_ids=parse_wheel_actuators(config_c, macros),
@@ -1221,7 +1230,7 @@ def print_report(report: dict[str, Any]) -> None:
 
 def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Simulate ARBATOS project CAN and CPU pressure.")
-    parser.add_argument("--project", required=True, help="Robotconfig/project name: HERO-M, SENTINEL-M, or MINIWHEELEG-M")
+    parser.add_argument("--project", required=True, help="Robotconfig directory name declared by RobotConfig.toml")
     parser.add_argument("--duration-ms", type=int, default=DEFAULT_DURATION_MS)
     parser.add_argument("--can-tx-period-ms", type=int, default=None, help="Override CAN command task period in sim only.")
     parser.add_argument("--motor-feedback-hz", type=float, default=1000.0, help="Default enabled CAN motor feedback rate.")

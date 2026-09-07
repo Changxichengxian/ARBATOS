@@ -2,6 +2,8 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $PSScriptRoot 'PrepareRobotConfig.ps1')
+$GeneratedConfig = Get-TestRobotConfig -Project 'HERO-M'
 $Zig = Get-Command zig -ErrorAction SilentlyContinue
 if ($null -eq $Zig) {
     throw '找不到 zig，无法运行控制管理器回归。'
@@ -39,6 +41,8 @@ $ActuatorPolicyOutput = Join-Path $BuildDir 'control-actuator-policy-regression.
 $ActuatorPolicyArgs = @(
     'cc', '-std=c11', '-Wall', '-Wextra', '-Werror',
     ('-I' + (Join-Path $RepoRoot 'shared\application\robot')),
+    ('-I' + (Join-Path $RepoRoot 'Robotconfig\HERO-M')),
+    ('-I' + $GeneratedConfig),
     ('-I' + (Join-Path $RepoRoot 'shared\components\support')),
     $ActuatorPolicySource,
     '-o', $ActuatorPolicyOutput
@@ -62,6 +66,7 @@ $AbiArgs = @(
     ('-I' + (Join-Path $RepoRoot 'shared\application\robot')),
     ('-I' + (Join-Path $RepoRoot 'shared\components\support')),
     ('-I' + (Join-Path $RepoRoot 'Robotconfig\HERO-M')),
+    ('-I' + $GeneratedConfig),
     '-o', $AbiOutput
 )
 
@@ -78,6 +83,7 @@ $ArmAbiArgs = @(
     ('-I' + (Join-Path $RepoRoot 'shared\application\robot')),
     ('-I' + (Join-Path $RepoRoot 'shared\components\support')),
     ('-I' + (Join-Path $RepoRoot 'Robotconfig\HERO-M')),
+    ('-I' + $GeneratedConfig),
     '-o', $ArmAbiOutput
 )
 

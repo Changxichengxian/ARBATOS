@@ -1,21 +1,5 @@
 // Included by RobotConfig.c inside g_config's initializer; do not compile directly.
-    .profile =
-        {
-            .task_module_count = 10u,
-            .task_modules =
-                {
-                    ROBOT_TASK_MODULE_RC_SBUS,
-                    ROBOT_TASK_MODULE_HEALTH_MONITOR,
-                    ROBOT_TASK_MODULE_SDLOG,
-                    ROBOT_TASK_MODULE_BATTERY_MONITOR,
-                    ROBOT_TASK_MODULE_CAN_COMMAND_TX,
-                    ROBOT_TASK_MODULE_CAN_FEEDBACK_RX,
-                    ROBOT_TASK_MODULE_REFEREE_RX,
-                    ROBOT_TASK_MODULE_CLASSIC_CHASSIS,
-                    ROBOT_TASK_MODULE_SINGLE_GIMBAL,
-                    ROBOT_TASK_MODULE_IMU,
-                },
-        },
+#include "RobotTargetProfile.inc"
 
     .operation =
         {
