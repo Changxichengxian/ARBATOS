@@ -122,4 +122,4 @@ git submodule update --init shared/third_party/ExpressLRS
 
 现有 `application/input/ElrsTask.c` 处理外置接收机的串口 CRSF 数据，未实现 SPI 射频驱动；HERO-M 的 `ROBOT_TASK_BUILD_ELRS_LINK` 仍为 0，当前显式源码清单也未加入该任务。未来需完成 SPI、BUSY 等待、中断、微秒定时、跳频同步、对频配置和断连判断，再把有效通道接到 `ManualInputUpdateElrsChannelsGuarded()`，保留现有手动输入选择和失联保护。不能只打开原串口任务来启用 SX1281。
 
-引入的 4.1.0 源码面向 ELRS 4.x；实际接收方案仍需按发射端版本和模式验证。先验证射频芯片通信、收包与失联，再在 SD 日志、IMU 和控制任务同时运行时测延迟。第三方源码保留 GPL-3.0 及各文件自己的声明，详见[第三方材料](../legal/README.md#第三方材料)。
+引入的 4.1.0 源码面向 ELRS 4.x；实际接收方案仍需按发射端版本和模式验证。先验证射频芯片通信、收包与失联，再在 SD 日志、IMU 和控制任务同时运行时测延迟。第三方源码保留 GPL-3.0 及各文件自己的声明，详见[第三方材料](../授权与贡献说明.md#第三方材料)。

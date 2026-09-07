@@ -26,7 +26,7 @@ import RobotSim  # type: ignore  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 BRIDGE_SOURCE = HERE / "WheelLegCoreBridge.c"
-DEFAULT_NATIVE_DIR = REPO_ROOT / "tmp" / "mujoco_wheelleg"
+DEFAULT_NATIVE_DIR = REPO_ROOT / "local" / "cache" / "mujoco_wheelleg"
 
 SIM_TOTAL_MASS_KG = 2.25
 SIM_BODY_MASS_KG = 1.81

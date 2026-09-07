@@ -61,12 +61,14 @@ pwsh -NoProfile -File .\tools\build.ps1 -Project HERO-M
 | 编译检查、日志、音频转换和自动调参工具 | [工具说明](tools/README.md) |
 | 配置仿真、轮腿物理仿真与计算参数 | [仿真说明](tools/仿真说明.md)、[轮腿参数计算报告](tools/WheelLegLqr/轮腿参数计算报告.md) |
 | A/C 板、SD 和音乐独立测试 | [测试说明](tests/README.md) |
-| 作者、商用、贡献和第三方材料 | [授权与贡献说明](legal/README.md) |
+| 作者、商用、贡献和第三方材料 | [授权与贡献说明](授权与贡献说明.md) |
 
 文档按用途合并维护，自写文件名和标题使用中文；保留 `README.md`、CLion、Zephyr 等惯用名称。接口或路径变更时同步修改对应说明和链接。实测结论保留日期、硬件与固件条件；未验证内容明确写出，不把编译结果推广为实车结果。
+
+`manual/` 和各目录的 README 是随代码提交的正式说明。`local/docs/` 只保留本机的 `厂商手册/` 与 `原厂资料包/`；旧参考工程放 `local/reference/`，运行日志放 `local/logs/`，下载缓存和仿真生成文件放 `local/cache/`，构建产物放 `local/build/`。`tools/` 保存可复用工具源码，正式说明和待办不在 `local/docs/` 再维护一份。
 
 旧 Keil/CubeMX 工程和已删除车型可在历史提交 `951857f` 或探索分支的 `6bdf19e` 查看。复现历史固件使用单独检出目录。
 
 ## 许可证
 
-ARBATOS 自有代码和文档采用 [Apache-2.0](LICENSE)。第三方内容按各自许可证执行，作者信息、商用说明及贡献条款见[授权与贡献说明](legal/README.md)。
+ARBATOS 自有代码和文档采用 [Apache-2.0](LICENSE)。第三方内容按各自许可证执行，作者信息、商用说明及贡献条款见[授权与贡献说明](授权与贡献说明.md)。

@@ -50,7 +50,7 @@ Robotconfig/<TARGET>/
 - 正式工程配置、显式源码清单和启动入口：放 `projects/`。
 - 某块板子的串口、CAN、IMU、蜂鸣器、按键、SD 卡适配：放 `boards/`。
 - 可复用控制逻辑、电机协议、输入链路、日志、诊断：放 `shared/`。
-- 厂商包、参考工程、临时材料：放 `local/docs/` 或 `local/`。
+- 厂商手册和资料包放 `local/docs/`，参考工程放 `local/reference/`，临时生成文件放 `local/cache/`。
 
 判断标准很简单：如果换一台同板子的机器人也要改它，它大概率属于 `Robotconfig/`；如果换一块板子才要改它，它大概率属于 `boards/`。
 

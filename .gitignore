@@ -30,7 +30,6 @@
 *.iex
 *.ini
 /tmp_*
-/tmp/mujoco_wheelleg/
 /build/
 /zephyr/build*/
 /zephyr/twister-out/
