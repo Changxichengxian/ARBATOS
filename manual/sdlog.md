@@ -37,19 +37,20 @@ SD 日志的目标不是“把所有东西都写下来”，而是让一次上�
 - `high_rate_div`
 - `compression_enabled`
 
-Keil 工程的 `BeforeMake` 会运行：
+当前 Zephyr 的 CMake 和 `tools/build.ps1` **不会自动刷新 Git 构建身份**。需要这份信息时，在构建前手动运行：
 
-```text
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\GenBuildInfo.ps1
+```powershell
+pwsh -NoProfile -File .\tools\GenBuildInfo.ps1
+pwsh -NoProfile -File .\tools\build.ps1 -Project HERO-M
 ```
 
-GCC/CMake 路线也会在 `tools/build.ps1 -Action gcc` 和 `tools/build.ps1 -Action gcc-build` 开始时运行同一个脚本。
+脚本生成 `shared/generated/build_info_autogen.h`，保存 16 位 Git 编号、已跟踪文件的工作区/暂存区改动标记及生成时间。该文件不提交 Git；`SdLog.c` 在文件存在时读取它。脚本运行后再改代码会使身份过期；遗留的本机生成文件也可能对应旧提交。
 
-它生成 `shared/generated/build_info_autogen.h`，这个文件被 `.gitignore` 忽略，不会把每次编译时间提交进 Git。日志里的 `git_sha` 保留 16 位 Git 编号，`build_dirty` 标记这次固件是不是来自带改动的工作区，配合 `config_crc32` 可以把“哪版代码、哪份配置、哪次构建”对上。
+因此日志存在 `BUILD_INFO` 不等于已准确标识当前固件。上车时同时留存实际 ELF/BIN、哈希、Git 状态与配置，检查日志身份是否一致。`build_dirty = 1` 表示生成信息时有已跟踪文件改动，需要记录具体差异。
 
-因此，只要 SD 日志能解析出 `BUILD_INFO`，这次固件就有基本发布追溯。`build_dirty = 1` 需要在复盘里说明，但它不是“仓库缺少发布纪律”的扣分点。
+## 重启证据的限制
 
-启动块还会写一条 `RESET_EVIDENCE`。它包含本次启动的 RCC 复位标志，以及上次致命复位前保存在备份 SRAM 的原因、参数、CPU 故障寄存器和异常栈 PC/LR。文件完成同步后，固件才确认并清除备份区的有效标记；SD 不可用时，证据会继续保留供 Watch 或遥测读取。
+日志支持 `RESET_EVIDENCE` 记录结构，但当前 Zephyr `BspResetEvidence.c` 只使用普通静态 SRAM，启动时清空。它不提供跨重启证据，也不能保证取得上次 RCC 复位标志或 CPU 异常栈。旧 HAL 备份 SRAM 的保留、同步后确认等保证不适用于当前实现。
 
 ## 查看日志
 

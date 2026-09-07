@@ -1,6 +1,6 @@
 # Zephyr M 板 SD 与歌曲播放
 
-使用正式 Zephyr HERO-M 的存储和蜂鸣器实现，附加音乐启动配置，首次上板不启动 CAN、底盘、云台、加热或舵机任务。完整 HERO-M 默认包含音乐服务。2026-09-06 用户已确认当前 M 板接线的 HERO 整车运动正常，包括俯仰，详见 [实车运行记录](NormalOutput-20260906.md)；音乐专用配置仍仅用于独立验证。
+使用正式 Zephyr HERO-M 的存储和蜂鸣器实现，附加音乐启动配置，首次上板不启动 CAN、底盘、云台、加热或舵机任务。完整 HERO-M 默认包含音乐服务。2026-09-06 用户已确认当前 M 板接线的 HERO 整车运动正常，包括俯仰，详见 [实车运行记录](Validation.md)；音乐专用配置仍仅用于独立验证。
 
 ## 使用
 
@@ -15,7 +15,7 @@
 
 M 板用 TIM5 定时采样，TIM12_CH2/PB15 输出 PWM，8 KiB 环形缓冲。静音中点为 128，音量围绕中点缩放；中断仅更新占空比。原来按系统节拍提交工作项的播放方式无法达到 12 kHz，已从 M 板实现中替换。
 
-H723 的 PB15 必须使用 AF2。2026-09-06 纠正原 AF9 配置后，用户确认实际听到歌曲；此前只有软件计数，不能算作声音验收。音乐测试版通过 UART8 输出启动和歌曲日志：115200、8N1，PE1/TX 接调试器 RX，PE0/RX 接调试器 TX，共地；本机对应 COM6。
+H723 的 PB15 必须使用 AF2。2026-09-06 纠正原 AF9 配置后，用户确认实际听到歌曲；此前只有软件计数，不能算作声音验收。音乐测试版通过 UART8 输出启动和歌曲日志：115200、8N1，PE1/TX 接调试器 RX，PE0/RX 接调试器 TX，共地；当时枚举为 COM6，重新连接时以设备管理器中的实际端口为准。
 
 ## 本机构建
 
@@ -24,11 +24,13 @@ H723 的 PB15 必须使用 AF2。2026-09-06 纠正原 AF9 配置后，用户确�
 ```powershell
 $env:ZEPHYR_BASE = 'D:/ARBATOS/local/cache/zephyrproject/zephyr'
 $env:ZEPHYR_SDK_INSTALL_DIR = 'D:/ARBATOS/local/cache/zephyr-sdk'
-$env:PATH = 'D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts;' + $env:PATH
-& 'D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts/west.exe' build -s projects -d local/cache/zephyr-hero-m-music -b dm_mc02_h7 -- '-DZephyr-sdk_DIR=D:/ARBATOS/local/cache/zephyr-sdk/cmake' '-DEXTRA_CONF_FILE=D:/ARBATOS/projects/HERO-M/prj.conf;D:/ARBATOS/projects/HERO-M/music.conf' '-DEXTRA_DTC_OVERLAY_FILE=D:/ARBATOS/projects/HERO-M/music.overlay' '-DCMAKE_MAKE_PROGRAM=D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts/ninja.exe'
+$env:PATH = 'C:/Program Files/CMake/bin;D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts;' + $env:PATH
+$env:CMAKE_BUILD_PARALLEL_LEVEL = '2'
+$env:ZEPHYR_TOOLCHAIN_VARIANT = 'zephyr'
+& 'D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts/west.exe' build -s projects -d local/build/hero-m-music -b dm_mc02_h7 -- '-DZephyr-sdk_DIR=D:/ARBATOS/local/cache/zephyr-sdk/cmake' '-DEXTRA_CONF_FILE=D:/ARBATOS/projects/HERO-M/prj.conf;D:/ARBATOS/projects/HERO-M/music.conf' '-DEXTRA_DTC_OVERLAY_FILE=D:/ARBATOS/projects/HERO-M/music.overlay' '-DCMAKE_MAKE_PROGRAM=D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts/ninja.exe'
 ```
 
-完整 HERO-M 使用 `hero-m.conf`，不附加 `hero-m-music.conf`，本次输出目录为 `local/cache/zephyr-hero-m-formal`。
+完整 HERO-M 使用 `projects/HERO-M/prj.conf`，不附加 `music.conf`；通过 `tools/build.ps1 -Project HERO-M` 构建，输出在 `local/build/hero-m`。音乐专用镜像与正式整车固件分目录保存；正式 `flash`/`debug` 入口会拒绝音乐、准备及只接收配置。
 
 ## 调试与结果
 
@@ -36,6 +38,6 @@ $env:PATH = 'D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts;' + $env:PATH
 
 调试符号：`SubBoardMusicDiagData`、`SubBoardMusicTracks`、`BuzzerPcmDiag`、`SdSpiPortDiag`、`SdSpiHighSpeedResult`、`ArbLogRam`。内存日志循环覆盖旧记录，无需连接串口或调试器才能继续运行。音乐模式保留芯片睡眠期间的调试访问。
 
-`BoardProbe.py` 默认按当前 64 首、384 字节路径解析歌曲表；读取旧版 32 首、128 字节路径的 ELF 时需传 `--track-capacity 32 --track-path-bytes 128`。`PinAudit.py --output <json>` 对照本机 STM32H723VGT6 官方引脚定义检查 38 个复用映射，不代表对应外设已经完成实物通信测试。
+`BoardProbe.py` 默认按当前 64 首、384 字节路径解析歌曲表；读取旧版 32 首、128 字节路径的 ELF 时需传 `--track-capacity 32 --track-path-bytes 128`。`PinAudit.py --output <json>` 对照本机 STM32H723VGT6 官方引脚定义检查当前设备树中的复用映射（最近一次记录为 47 项），不代表对应外设已经完成实物通信测试。
 
-实板记录见 [HardwareResult-20260905.md](HardwareResult-20260905.md)。`.u8` 已实板播放；WAV 目前完成编译和代码检查，尚未用实际 WAV 文件验收。
+实板记录见 [合并验证记录](Validation.md)。`.u8` 已实板播放；WAV 目前完成编译和代码检查，尚未用实际 WAV 文件验收。

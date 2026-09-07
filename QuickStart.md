@@ -1,235 +1,66 @@
-# 新手快速上手
+# 快速上手
 
-这份文档给刚接触 ARBATOS 的人看。它不追求把每个技术细节讲完，只回答一个问题：新接一辆车时，先改哪里，怎么一步步把车调起来。
+当前使用 CLion + Zephyr。A、C、M 开发板支持都保留，现有整车目标为 HERO-M、SENTINEL-M、MINIWHEELEG-M。
 
-如果你只是想知道仓库整体结构，看 `README.md`。如果你要真正接一辆新车、上车检查、调 PID 或看 SD 日志，直接看 `manual/README.md`。如果你已经在改某一层的代码，再看 `Robotconfig/README.md`、`boards/README.md` 和 `shared/README.md`。
+## 先打开工程
 
-## 先记住四个目录
+本机 CLion 和工具环境已准备。打开 `D:\ARBATOS\projects`，在 CMake 设置中只启用 `hero-m-local`，构建目标选 `zephyr_final`，点击构建。默认并行数为 2，平时使用增量构建。
 
-- `projects/`：正式的 Zephyr 4.4 工程，含三个现有车型配置和显式源码清单。
-- `Robotconfig/<TARGET>/`：这台车的配置，主要是 PID、电机 ID、输入映射、任务模块和安装坐标。
-- `boards/<BOARD>/`：这块控制板的外设适配，主要是 CAN、UART、SPI、IMU、按键、蜂鸣器。
-- `shared/`：多台车共用的控制逻辑、通信、输入、电机、诊断、日志。
-
-判断文件放哪很简单：
-
-- 换一台车就要改的参数，放 `Robotconfig/`。
-- 换一块板才要改的引脚和外设，放 `boards/`。
-- 能被多台车复用的控制逻辑，放 `shared/`。
-- 正式工程配置、源码清单和启动入口，放 `projects/`。
-
-## 新写一辆车的顺序
-
-### 1. 找最像的现有车
-
-先不要从零开始。找一台最接近的新车：
-
-- 当前只支持 DM MC02 H7：按用途优先看 `HERO-M`、`SENTINEL-M` 或 `MINIWHEELEG-M`。
-
-然后复制对应的 `Robotconfig/<TARGET>/`，再按 `projects/<TARGET>/` 和 CMake 预设补齐目标配置。
-
-### 2. 先配 profile 和任务模块
-
-在新目标的 `Robotconfig/<TARGET>/ConfigOperation.inc` 里先看 `.profile`：
-
-- `task_module_count`：这台车启用多少个模块。
-- `task_modules`：显式列出这台车要创建哪些任务，比如 `ROBOT_TASK_MODULE_CLASSIC_CHASSIS`、`ROBOT_TASK_MODULE_SINGLE_GIMBAL`。
-
-任务没开，后面的 PID 和电机配得再对也不会跑。现在任务创建只看 `task_modules`，所以新车先从少量模块开始，确认后再加。
-
-### 3. 先确认板子装在哪里
-
-在新目标的 `Robotconfig/<TARGET>/MountLayout.md` 里先写清楚：
-
-- 控制板固定在哪个机械部件上：底盘、大 yaw、小 yaw、云台、轮腿本体、机械臂某一级，还是其他位置。
-- 控制板 `+X/+Y/+Z` 分别朝这个部件的哪个方向。
-- INS 姿态主要代表谁：底盘、云台、大 yaw、轮腿本体，还是机械臂某一级。
-- 算法接口里的 `q[4]` 和 `frame=2` 在这台车上该怎么解释。
-
-这一步很重要，优先级和电机 ID 一样高。板子如果固定在云台上，姿态就不能当底盘姿态用；板子如果固定在机械臂上，也不能直接拿来当车体 yaw。没确认前就写“待实车确认”，不要把猜测写成结论。
-
-### 4. 再配电机装配
-
-看 `Robotconfig/<TARGET>/ConfigHardware.inc` 里的 `.motor`，先把每个轴的电机型号和 CAN ID 填对：
-
-- `chassis[]`：底盘轮子。
-- `yaw`、`pitch`：云台轴。
-- `friction[]`、`trigger`：摩擦轮和拨盘。
-- `arm[]`：机械臂或轮腿实验用的关节。
-
-不用的电机先把 `can_id` 设成 `0`。达妙、宇树和 RM 电机还要确认协议、控制模式、总线和限幅。新车第一次上电时，建议先只开一个子系统，不要一口气把所有电机都接上闭环。
-
-### 5. 配输入和安全档
-
-输入分两层：
-
-- `manual_input`：决定 DBUS/SBUS、ELRS、图传遥控这些输入源怎么选。
-- `input`：把遥控通道映射成“底盘前后、底盘左右、云台 yaw、云台 pitch、模式拨杆”这些语义输入。
-
-优先改 `Robotconfig/<TARGET>/ConfigInput.inc` 里的 `.input.axis` 和 `.input.sw`，控制任务里尽量不要直接写死遥控通道号。
-
-安全档位置在 `ConfigInput.inc` 的 `.manual_input.semantics` 里。现在 IMU 陀螺零偏微调也会看安全档：温度稳定后，遥控器未连接，或者云台和底盘都在安全档，才会采 3 秒静止数据做微调。
-
-### 6. 配检测项
-
-每个目标都有自己的 `DetectTask.c`。新车调试时先把关键设备配进去：
-
-- 遥控器或输入链路。
-- 底盘电机、云台电机、拨盘、摩擦轮。
-- 裁判系统、视觉、主机链路。
-- TF/SD 卡、IMU、板级外设。
-
-不要为了让灯变绿就关检测。检测项乱关，后面调车会很难判断到底是代码没跑、线没接，还是设备掉线。
-检测项要和 `task_modules` 对上：开了底盘模块就关心底盘电机，开了云台模块就关心云台电机和 IMU，开了日志或主机链路就能看到对应服务状态。
+换电脑时需要安装 CLion、Zephyr 4.4、SDK、Python/West、CMake、Ninja，并配置本机预设；SDK 不随仓库提交。完整说明见 [CLion 编译、下载和调试](manual/clion-zephyr.md)，当前不需要 CubeCLT。
 
 ## 编译和下载
 
-正式路线是 CLion + Zephyr 4.4 + OpenOCD。先按 [CLion 和 Zephyr 开发环境](manual/clion-zephyr.md) 准备环境；工程界面导入和硬件调试仍需分别验收。
-
-命令行默认构建 `HERO-M`：
+在仓库根目录的 PowerShell 运行：
 
 ```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1
+pwsh -NoProfile -File .\tools\build.ps1 -Action probe
+pwsh -NoProfile -File .\tools\build.ps1 -Project HERO-M
 ```
 
-指定目标、全量从干净目录构建，以及检查正式配置：
+产物在 `local/build/hero-m/zephyr/`。接好目标 M 板与 CMSIS-DAP 调试器，并让执行机构断电或卸载后下载：
 
 ```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project HERO-M -Pristine
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project all -Pristine
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check -Project all
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action flash -Project HERO-M
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action debug -Project HERO-M
+pwsh -NoProfile -File .\tools\build.ps1 -Action flash -Project HERO-M
 ```
 
-产物默认在 `local/build/<target>/`，不用提交。CLion 选择 `projects/CMakePresets.json` 对应预设后使用相同的构建配置；下载或调试会接触硬件，先确认对应板卡的 OpenOCD 配置、SWD 接线和实车状态。此工作流使用 Zephyr SDK，不需要 STM32CubeCLT。
+下载会复位并启动程序，不会自动编译。脚本只接受完整车型固件，音乐、准备和只接收测试镜像需要独立流程。调试入口：
 
-## 第一次上电怎么调
+```powershell
+pwsh -NoProfile -File .\tools\build.ps1 -Action debug -Project HERO-M
+```
 
-### 1. 先无动力确认程序在跑
+该命令不重复下载；先确认板上固件与当前 ELF 一致。CLion 的图形调试设置见上述手册，需要单独完成一次实物验证。
 
-先不装弹、不接摩擦轮电源，底盘最好架空。
+## 改代码先找哪个目录
 
-确认：
+| 要改的内容 | 位置 |
+| --- | --- |
+| 电机型号、CAN ID、总线、装配 | `Robotconfig/<车型>/ConfigHardware.inc` |
+| 输入通道与安全档 | `Robotconfig/<车型>/ConfigInput.inc` |
+| 任务模块与运行模式 | `Robotconfig/<车型>/ConfigOperation.inc` |
+| PID、方向与限幅 | `Robotconfig/<车型>/ConfigTuning.inc` |
+| 板子安装方向 | `Robotconfig/<车型>/MountLayout.md`，以及该车实际使用的安装变换 |
+| 在线检测 | `Robotconfig/<车型>/DetectTask.c` |
+| 开发板引脚、外设 | `boards/<板名>/` 和 `shared/zephyr/port/` |
+| 可复用控制、通信、算法 | `shared/` |
+| 工程配置、源码清单、启动 | `projects/` |
 
-- Zephyr 目标能从干净目录构建，下载配置与板卡匹配。
-- 状态灯有变化。
-- `g_watch` 能看到任务状态。
-- 遥控输入有变化。
-- CAN 收发统计不是全 0。
+配置任务时同时核对构建开关与 `.profile.task_modules`，缺少编译实现或启动映射的任务不会仅凭加入列表就运行。AUX 临时调参只改 RAM，重启后恢复配置文件默认值。
 
-### 2. 先看 IMU
+## 新写一辆车
 
-IMU 正常后再调云台和底盘。重点看：
+按 [新车接入流程](manual/new-target.md) 建立 `Robotconfig/<新车型>/`、`projects/<新车型>/`，补齐目标选择、源码清单、预设和脚本车型表。
 
-- 温度能升到目标值并稳定。
-- 姿态角不会明显跳变。
-- 静止时 gyro 接近 0。
-- 移动车体时角度方向符合预期。
+A 板可复用 `boards/DjiAF427`，C 板可复用 `boards/DjiCF407`；现有 M 板车型可作为业务配置参考，但接线、IMU、存储和外设能力必须按实际板子重新确认。删除旧车型不影响这两块板的支持。
 
-陀螺仪零偏有两种路径：
+## 第一次上车
 
-- 正常上电：温度稳定后，遥控器未连接或处于安全档，静止 3 秒后自动微调一次。
-- 专门校准：把 `g_config.operation.mode` 设成 `ROBOT_RUN_MODE_CALIBRATION`，`g_config.operation.cali_target` 设成 `ROBOT_CALI_TARGET_IMU_GYRO`，温度升到 40 度并稳定后，静止采 30 秒，然后保存到 Flash。
+1. 检查工程并编译：`pwsh -NoProfile -File .\tools\build.ps1 -Action check -Project all`。
+2. 无动力确认程序、遥控、设备状态和日志。
+3. 核对 IMU 安装方向、温度、零偏和 CAN 反馈 ID。
+4. 每次只让一个子系统低限幅动作，检查方向、限位、安全档和失联停机。
+5. 最后做联动，保存固件身份、接线、动作及日志记录。
 
-做专门校准时不要碰车，也不要让风扇、线束、桌面震动影响机体。
+M 板的 Flash 陀螺零偏保存仅在专用准备模式开放；正式固件只读校准，运行中保存返回 `-EPERM`。A/C 板持久校准尚未完成。不要只改运行模式就假定能够保存，见 [传感器说明](shared/zephyr/port/sensors/README.md)。
 
-### 3. 再看 CAN 反馈
-
-先确认反馈，再给输出：
-
-- 电机在线状态正常。
-- CAN ID 和反馈 ID 对得上。
-- 反馈转速和手转方向符合预期。
-- 电机型号和协议没有填错。
-
-如果反馈都不稳定，先别调 PID。
-
-### 4. 一个子系统一个子系统调
-
-推荐顺序：
-
-1. IMU 和输入。
-2. 云台 yaw 单轴。
-3. 云台 pitch 单轴。
-4. 底盘低速。
-5. 摩擦轮。
-6. 拨盘。
-7. 裁判、视觉、日志、遥测。
-
-每一步都先小输出、低限幅、架空或卸载。确认方向对、反馈对、限位对，再逐步提高参数。
-
-## 常见问题先看哪里
-
-### 任务没跑
-
-- 看 `ConfigOperation.inc` 里的 `.profile.task_modules` 是否开了对应任务。
-- 看 Zephyr 目标配置和启动映射是否接入了对应模块。
-- 看 `g_watch` 里的任务状态和运行计数。
-
-### 电机不动
-
-- 先看 `ConfigHardware.inc` 里的 `.motor` 型号、CAN ID、总线、反馈 ID。
-- 再看 CAN 收发统计和电机在线检测。
-- 确认控制任务是否真的写了执行器命令。
-- 最后再看 PID 输出和限幅。
-
-### 电机方向反了
-
-- 底盘轮子优先改 `ConfigTuning.inc` 里的 `.chassis.motor_dir`。
-- 云台方向优先改 `yaw_turn`、`pitch_turn` 或安装矩阵相关配置。
-- 不要靠换 CAN ID 来掩盖方向问题。
-
-### 遥控没反应
-
-- 看输入源是否在线。
-- 在调试器 Watch 中看 `s_watch_manual_input.activeSource`；启用控制摘要日志的目标也可看 `manual_source`。
-- 看同一快照里的 `control` 语义轴和语义开关有没有变化。
-- 检查 `ConfigInput.inc` 里的 `.input.axis`、`.input.sw` 映射。
-
-### 姿态漂或上电不准
-
-- 先确认 IMU 温控稳定。
-- 做一次 `ROBOT_RUN_MODE_CALIBRATION + ROBOT_CALI_TARGET_IMU_GYRO` 专门校准。
-- 正常上电后保持安全档和静止，等 3 秒微调完成。
-- 如果车一上电手还扶着，微调会因为检测到扰动而放弃。
-
-### AUX 调参改了没效果
-
-- 只有 `RobotConfig.c` 的 `g_config_blocks` 表里列出的字段能临时改。
-- `ConfigHardware.inc` 里的 `.motor` 这类装配信息默认不走 AUX 临时调参，改完要重新编译下载。
-- AUX 只改 RAM 里的当前值，重启会回到 `Config*.inc` 默认值。
-
-## 什么时候该改 shared
-
-先问自己一句：这个改动以后别的车会不会也要用？
-
-- 会复用：放 `shared/`。
-- 只是这台车的参数：放 `Robotconfig/`。
-- 只是这块板的引脚或外设：放 `boards/`。
-- 只是工程包含文件和启动入口：放 `projects/`。
-
-新手最容易犯的错是把参数写进共享控制任务里。短期看起来快，后面换车会非常痛苦。
-
-## 继续看
-
-更完整的操作步骤放在：
-
-- `manual/new-target.md`：新车接入流程。
-- `manual/coordinate-frames.md`：坐标系和安装基准。
-- `manual/bringup-checklist.md`：上车检查清单。
-- `manual/pid-tuning.md`：PID 调试流程。
-- `manual/sdlog.md`：SD 日志和复盘。
-
-## 最小交付清单
-
-新车能算“初步接起来”，至少要满足：
-
-- 目标 Zephyr 配置能从干净目录构建。
-- `ConfigOperation.inc`、`ConfigHardware.inc`、`MountLayout.md`、`ConfigInput.inc` 里的任务、电机、安装坐标、输入映射和安全档配置正确。
-- IMU 温控和零偏校准路径可用。
-- 遥控输入、CAN 反馈、状态灯、`g_watch` 都能观察。
-- 底盘、云台、射击每个子系统都能单独关闭或单独测试。
-- `DetectTask.c` 能反映关键设备在线状态。
-
-做到这些，再开始追求手感、性能和复杂功能。
+HERO-M 已有整车正常运动的 [实车记录](tests/ZephyrMusicM/Validation.md)。继续联调按 [上车检查清单](manual/bringup-checklist.md)、[PID 调试](manual/pid-tuning.md) 和 [SD 日志](manual/sdlog.md) 执行。

@@ -6,11 +6,10 @@
 
 下面这些位置里的内容，优先看各自的文件头、目录内 `LICENSE`、`COPYING`、`NOTICE` 或上游说明：
 
-- `projects/*/Drivers/`
-- `projects/MINIWHEELEG-M/Drivers/CMSIS/` 中随工程分发的 ARM CMSIS Core 与 ST STM32H7xx Device 头文件，许可证见目录内的 `LICENSE.txt` 和 `Package_license.md`
-- `projects/SENTINEL-M/Drivers/CMSIS/` 中随工程分发的 ARM CMSIS Core 与 ST STM32H7xx Device 头文件，许可证见目录内的 `LICENSE.txt` 和 `Package_license.md`
-- `projects/*/Middlewares/`
-- `shared/components/algorithm/*.lib`
+- `shared/components/support/fatfs/`：保留 FatFs 原作者与许可证声明
+- `shared/components/algorithm/Include/`：现存 CMSIS 等算法头文件，按各文件原始声明执行
+- `boards/`、`shared/hal/` 中带厂商版权头的驱动、寄存器或接口代码
+- `projects/west.yml` 引用的 Zephyr 及其模块、Zephyr SDK 和主机工具：分别遵守上游许可证；本机副本通常位于 `local/cache/`，不随本仓库自动分发
 - `tools/Mp3ToU8/ffmpeg.exe`
 - `tools/Mp3ToU8/FFMPEG_LICENSE.txt`
 - `local/reference/`

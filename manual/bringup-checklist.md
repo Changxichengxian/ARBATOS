@@ -5,14 +5,14 @@
 ## 0. 上车前准备
 
 - [ ] 确认当前代码分支、commit、是否 dirty。
-- [ ] `tools/build.ps1 -Action check -Project <TARGET>` 通过，并且对应 Zephyr 目标从干净目录构建通过；Keil/旧 GCC 检查只在明确维护 legacy 路线时附加执行。
+- [ ] `tools/build.ps1 -Action check -Project <TARGET>` 通过，并且对应 Zephyr 目标从干净目录构建通过。
 - [ ] SD 卡可写，插卡后能生成新日志。
 - [ ] 遥控器安全档位置确认。
 - [ ] 摩擦轮、拨盘、底盘、云台能单独断电或物理卸载。
 - [ ] 底盘架空，车轮离地。
 - [ ] 现场有人能立刻断电。
 
-如果 SD 日志里 `BUILD_INFO.build_dirty = 1`，记录这次上车是基于未提交代码。不是不能上车，但后面复盘时必须知道这一点。
+当前构建不会自动刷新 Git 身份。按 [日志说明](sdlog.md) 在构建前运行 `GenBuildInfo.ps1`，并留存实际固件和哈希；`build_dirty = 1` 时记录具体未提交改动。
 
 ## 1. 无动力确认
 
@@ -32,7 +32,7 @@
 - [ ] 静止时 gyro 接近 0。
 - [ ] 轻轻转动车体时 yaw / pitch / roll 方向符合预期。
 - [ ] 姿态没有明显跳变。
-- [ ] 正常上电微调或 `ROBOT_RUN_MODE_CALIBRATION + ROBOT_CALI_TARGET_IMU_GYRO` 路径明确。
+- [ ] 校准读取与保存路径明确：M 板 Flash 保存仅在专用准备模式开放，正式固件只读；A/C 板持久校准尚未完成。
 
 IMU 不可信时，不继续调云台、底盘和轮腿。轮腿尤其不要在 IMU 不可信时给站立或平衡输出。
 

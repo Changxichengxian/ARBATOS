@@ -11,10 +11,10 @@
 #define ARB_UART_AUX_NODE      DT_NODELABEL(usart1)
 #define ARB_UART_REFEREE_NODE  DT_NODELABEL(usart6)
 #define ARB_UART_RS485_0_NODE  DT_NODELABEL(usart2)
-#define ARB_UART_RS485_1_NODE  DT_NODELABEL(usart3)
+#define ARB_UART_RS485_1_NODE  DT_NODELABEL(uart4)
 ```
 
-外部角色宏优先于 DTS 别名，通常由目标专用配置头提供。未绑定角色会明确返回 `-ENODEV`；RC/裁判接收会保留错误诊断，绝不静默假装已启动。一个 UART 只能分给一个运行中的角色。
+上例只展示覆盖语法，不能直接套用三块板的接线。外部角色宏优先于 DTS 别名，通常由目标专用配置头提供。未绑定角色会明确返回 `-ENODEV`；RC/裁判接收会保留错误诊断，绝不静默假装已启动。一个 UART 只能分给一个运行中的角色，启用前核对实际设备树和引脚。
 
 ## 行为边界
 

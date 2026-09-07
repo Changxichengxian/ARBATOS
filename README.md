@@ -1,457 +1,92 @@
 # ARBATOS
 
-ARBATOS is an STM32 and Zephyr firmware workspace for RoboMaster-style robots.
-It focuses on reusable low-level robot control: chassis, gimbal, shooter, arm,
-wheel-leg experiments, input links, actuator output, diagnostics, telemetry, and
-SD-card logging.
+ARBATOS 是面向多种开发板、多种机器人的 STM32 / Zephyr 固件项目。共享底盘、云台、射击、机械臂、轮腿、输入、通信和日志代码，车型参数与开发板支持分开维护。
 
-The repository is organized as an open, contributor-facing firmware architecture:
-hardware boards, robot-specific configuration, reusable runtime code, build
-entry points, tools, manuals, and legal notes are separated so new robots can be
-added without copying the whole stack.
+**作者：** Xie Yuhan <2811158416@qq.com>
 
-**Author:** Xie Yuhan <2811158416@qq.com>  
-**Repository:** <https://github.com/Changxichengxian/ARBATOS.git>
+**仓库：** <https://github.com/Changxichengxian/ARBATOS.git>
 
-## Latest hardware milestone
+## 当前主线
 
-On 2026-09-06, the user confirmed normal whole-vehicle motion on HERO-M running
-Zephyr, including the chassis and gimbal pitch. This vehicle now uses M-board
-wiring throughout; the earlier HERO-C success applied to the old C-board wiring.
-See the [hardware milestone and validation limits](tests/ZephyrMusicM/NormalOutput-20260906.md).
+Zephyr 迁移已完成，后续开发统一提交到 `main`；`zephyr` 分支保留为已结束的探索记录。
 
-## Status
+- 正式工程在 `projects/`，使用 Zephyr 4.4、Zephyr SDK、CMake 和 Ninja，CLion 打开该目录。
+- 下载和调试使用 OpenOCD 与 ARM GDB。当前流程不需要 Keil 或 STM32CubeCLT。
+- A、C、M 三种开发板支持全部保留；目前有 HERO-M、SENTINEL-M、MINIWHEELEG-M 三个整车目标。
+- 旧 HERO-C、MINIWHEELEG-C、INFANTRY-A、CARRIER-A 车型已移除。新建 A/C 板车辆时复用板级支持，按新车的接线和装配建立配置。
 
-The current codebase is beyond a basic STM32 port. It includes:
+2026-09-06 HERO-M 实车运行成功，用户在次日明确确认：**整车运动正常，包括底盘和云台俯仰**。现在 HERO 全部采用 M 板和 V2 副板接线，旧 HERO-C 成功记录对应的 C 板接线已不适用。
 
-- Three firmware targets: `HERO-M`, `SENTINEL-M`, and `MINIWHEELEG-M`.
-- DJI A F427, DJI C F407, and DM MC02 H7 board support, independent of vehicle targets.
-- `g_config.profile.task_modules` 显式选择的业务任务由兼容层接入 Zephyr 线程启动。
-- Multiple manual input sources: DBUS/SBUS, ELRS/CRSF, image-transmission remote
-  control, USB-reserved input, and board keys.
-- A unified actuator command path. Control tasks write transport-independent
-  commands; the transmit task maps those commands to RM, DM, MIT-style, or
-  Unitree protocols.
-- Runtime motor instances, a device table, controller registry, and
-  `watch.runtime` observation for moving away from hard-coded robot roles.
-- Diagnostics and logging through `g_watch`, `RtProf`, TF/SD binary logs,
-  build identity records, runtime device records, AUX telemetry, and temporary
-  AUX parameter tuning.
-- Zephyr 4.4 firmware builds, source-list checks, SD log tools, a PID autotune
-  tool, and a configuration pressure simulator.
+迁移成功表示开发路线已切换且 HERO-M 有实车运行依据。其他车辆、全部外设、长期负载、致命故障停机和 CLion 图形调试仍按各自范围验收，见 [验证记录](tests/ZephyrMusicM/Validation.md) 和 [运行层边界](manual/runtime-architecture.md)。
 
-Important limits are also documented here:
-
-- `main` 是唯一继续提交的分支；`zephyr` 分支保留为已结束的探索记录。
-- 三个现有车型的正式构建入口是 `projects/`，使用 Zephyr 4.4、CMake、Ninja 和
-  OpenOCD。它使用仓库内的显式源码清单，不读取 `.uvprojx`。
-- 已移除的旧 Keil、CubeMX、FreeRTOS 工程和旧工具如需恢复，使用
-  `git show 951857f:<path>` 或查看 `zephyr` 分支的 `6bdf19e`。
-- High-rate control paths should read configuration through cached or snapshot
-  views instead of repeatedly walking `g_config`; local checks guard the main
-  high-rate boundaries.
-- Dual-yaw gimbal and MIT wheel-leg control paths are wired. Subsystem-level
-  protection already exists, while real-robot validation and a more unified
-  safety policy are still active work.
-
-## License
-
-ARBATOS original code and documentation are licensed under the Apache License
-2.0 unless a file or directory has its own license notice.
-
-Apache-2.0 is a permissive open source license. It allows use, modification,
-distribution, private use, and commercial use, while requiring preservation of
-license and attribution notices. It also includes an explicit patent grant from
-contributors.
-
-See:
-
-- `LICENSE`
-- `legal/ThirdParty.md`
-- `legal/CONTRIBUTING.md`
-- `legal/CLA.md`
-
-Third-party components, vendor SDKs, libraries, and reference code keep their own
-licenses.
-
-## Repository Layout
+## 目录怎么分
 
 ```text
 ARBATOS/
-|-- boards/        # A、C、M 板支持包、引脚和系统板级定义
-|-- projects/        # 工程入口、三个现有车型的构建配置
-|-- Robotconfig/   # Robot target parameters and target-specific glue
-|-- shared/        # Reusable runtime, control, communication, HAL, and components
-|-- manual/        # Bring-up, tuning, logging, and integration manuals
-|-- tools/         # Local checks, manifest tools, log tools, simulation, utilities
-|-- legal/         # License, contribution, commercial-use, and third-party notes
-|-- local/         # Local-only notes, logs, and private working files
-`-- .github/       # CI workflow for repository checks
+├─ boards/          A、C、M 板支持、引脚、设备树和调试配置
+├─ shared/          共用控制、通信、算法、外设和 Zephyr 适配
+├─ projects/        工程入口、车型构建配置、源码清单和启动代码
+├─ Robotconfig/     每台车的任务、设备、电机、PID、输入和安装方向
+├─ manual/          接车、开发、调试和日志手册
+├─ tools/           构建入口、检查、日志解析和离线工具
+├─ tests/           独立测试源码与验证记录
+├─ legal/           许可证、贡献和第三方说明
+└─ local/           本机环境、缓存、日志；新构建统一输出到 local/build/
 ```
 
-The important separation is:
+换板子的引脚和外设改 `boards/`；换车的参数改 `Robotconfig/`；可复用逻辑改 `shared/`；构建和启动配置改 `projects/`。`shared/hal/` 保留历史接口与实现参考，当前系统适配在 `shared/zephyr/`。
 
-- `projects/` answers "how is this firmware built and started?"
-- `Robotconfig/<TARGET>/` answers "how is this robot configured?"
-- `boards/<BOARD>/` answers "how does this control board connect to hardware?"
-- `shared/` answers "what logic can multiple robots reuse?"
-- `manual/` answers "how do I bring up, tune, or debug the robot?"
+| 开发板 | MCU | Zephyr 板名 | 当前整车目标 |
+| --- | --- | --- | --- |
+| DJI A（DjiAF427） | STM32F427II | `dji_a_f427` | 待新增，板级支持保留 |
+| DJI C（DjiCF407） | STM32F407 | `dji_c_f407` | 待新增，板级支持保留 |
+| DM MC02（DmMc02H7） | STM32H723 | `dm_mc02_h7` | HERO-M、SENTINEL-M、MINIWHEELEG-M |
 
-## Architecture
+A/C 板独立构建检查见 [tests/Boards](tests/Boards/README.md)，A 板引脚核对与尚未实现的接口见 [原理图核对记录](boards/DjiAF427/PinAudit.md)。板级编译通过不能代替新车实测。
 
-ARBATOS uses a four-layer firmware layout.
+## 编译、下载、调试
 
-```text
-projects/
-  正式 Zephyr 4.4 工程、三车型 CMake 预设和显式源码清单。
-  构建不读取 Keil 工程文件。
-
-Robotconfig/<TARGET>/
-  Robot profile, task module list, device table, motor mounting, PID, input,
-  detection, telemetry, logging, and target-specific stubs
-
-boards/<BOARD>/
-  Board ports, pin and peripheral mapping, IMU integration, board startup,
-  Zephyr board definitions and legacy driver references
-
-shared/
-  Cross-target control tasks, input links, host links, actuator command layer,
-  motor protocol support, diagnostics, SD logging, HAL wrappers, and algorithms
-```
-
-This layout keeps reusable logic out of target folders. A new robot should mostly
-need a new `Robotconfig/<TARGET>/` and Zephyr target configuration, plus board work
-only when the hardware changes.
-
-## Supported Boards
-
-| Board | MCU | Notes |
-|---|---:|---|
-| `DjiAF427` | STM32F427II | A 板；板级支持保留，旧车型已移除 |
-| `DjiCF407` | STM32F407 | C 板；板级支持保留，旧车型已移除 |
-| `DmMc02H7` | STM32H723 | M 板；当前三个整车目标 |
-
-## Firmware Targets
-
-| Target | Robotconfig | Board |
-|---|---|---|
-| `HERO-M` | `Robotconfig/HERO-M` | `boards/DmMc02H7` |
-| `SENTINEL-M` | `Robotconfig/SENTINEL-M` | `boards/DmMc02H7` |
-| `MINIWHEELEG-M` | `Robotconfig/MINIWHEELEG-M` | `boards/DmMc02H7` |
-
-## Runtime Flow
-
-当前固件由 Zephyr 启动线程；原有 `g_config.profile.task_modules` 和业务任务通过兼容层继续使用。
-
-Known task module IDs are defined in
-`shared/application/robot/RobotConfigSchema.h`, and their names and helper
-functions live in `shared/application/robot/RobotTaskProfile.h`.
-
-Current modules include:
-
-The `task.*` strings are profile/config identifiers. They are kept stable as
-data keys even when the C files and functions use readable PascalCase names.
-
-| Module name | Purpose |
-|---|---|
-| `task.startup_service` | startup services, including delayed USB setup |
-| `task.calibration` | calibration services |
-| `task.imu` | IMU fusion and temperature control |
-| `task.classic_chassis` | classic wheeled chassis control |
-| `task.wheelleg_mit` | MIT-style wheel-leg experiment control |
-| `task.single_gimbal` | single-yaw gimbal control |
-| `task.DualYawGimbal` | dual-yaw gimbal control |
-| `task.arm` | arm control task |
-| `task.can_feedback_rx` | drains CAN RX queues and updates motor feedback |
-| `task.can_command_tx` | sends unified actuator commands to CAN/RS485 protocols |
-| `task.rc_sbus` | DBUS/SBUS input parsing |
-| `task.elrs_link` | ELRS/CRSF input parsing |
-| `task.host_link` | USB/AUX host link, vision, telemetry, and tuning |
-| `task.referee_rx` | RoboMaster referee protocol parsing |
-| `task.battery_monitor` | battery and voltage monitoring |
-| `task.servo` | servo output |
-| `task.health_monitor` | online detection and runtime status summary |
-| `task.status_led` | status LED and prompt output |
-| `task.sdlog` | low-priority SD-card log flush task |
-
-## Control and Actuator Path
-
-Manual input sources are merged before control tasks read them:
-
-```text
-DBUS/SBUS       ELRS/CRSF       image remote       board keys
-   |               |                 |                 |
-   +---------------+-----------------+-----------------+
-                           |
-                    ManualInput
-                           |
-                    ControlInput
-                           |
-        +------------------+------------------+
-        |                  |                  |
- ChassisControlTask  GimbalControlTask  Shoot / Arm / WheelLeg
-        |                  |                  |
-        +------------------+------------------+
-                           |
-                    LowCmd
-                           |
-                  CanTxTask
-                           |
-                    CAN / RS485 output
-```
-
-Feedback is handled separately:
-
-```text
-CAN interrupt
-  |
-BspCan RX ring buffer
-  |
-CanRxTask
-  |
-CanReceive / MotorInst
-  |
-LowState and legacy motor feedback structs
-  |
-control tasks / g_watch / sdlog
-```
-
-Control tasks should write actuator commands by role or actuator ID, not by raw
-CAN frame details. Motor model, protocol, bus, CAN ID, limits, and feedback
-format are resolved through configuration, the motor model database, motor
-instances, and the unified transmit task.
-
-## Shared Runtime Code
-
-Useful entry points:
-
-| Area | Main files |
-|---|---|
-| Manual input | `shared/application/input/ManualInput.c` |
-| Logical input mapping | `shared/application/input/ControlInput.c` |
-| Image remote input | `shared/application/input/ImageRemoteLink.c` |
-| ELRS/CRSF input | `shared/application/input/ElrsTask.c` |
-| Host link | `shared/application/comm/host/HostLinkTask.c` |
-| Vision link | `shared/application/comm/vision/VisionLink.c` |
-| Referee link | `shared/application/comm/referee/RefereeRxTask.c` |
-| External motion intent | `shared/application/robot/ExternalMotionIntent.c` |
-| Actuator commands | `shared/application/robot/LowCmd.c` |
-| Device configuration view | `shared/application/robot/RobotDeviceConfig.h` |
-| Runtime state store | `shared/application/robot/StateStore.c`, `RobotState.h` |
-| Controller manager | `shared/application/robot/ControlMgr.c` |
-| Motor instances | `shared/application/motors/MotorInst.c` |
-| Motor model database | `shared/application/motors/MotorModelDb.c` |
-| CAN feedback | `shared/application/comm/can/CanRxTask.c`, `CanReceive.c` |
-| CAN commands | `shared/application/comm/can/CanTxTask.c` |
-| Chassis control | `shared/application/chassis/ChassisControlTask.c` |
-| Gimbal control | `shared/application/gimbal/GimbalControlTask.c` |
-| Shooter control | `shared/application/shoot/Shoot.c` |
-| Arm motion | `shared/application/arm/ArmMotion.c` |
-| Wheel-leg control | `shared/application/wheelleg/WheelLegMitTask.c` |
-| Battery monitor | `shared/application/services/battery/BatteryMonitorTask.c` |
-| Calibration | `shared/application/services/calibration/` |
-| Diagnostics | `shared/application/services/diagnostics/Watch.c`, `RtProf.c` |
-| SD logging | `shared/application/services/storage/SdLog.c`, `SdLogTask.c` |
-
-## Configuration Model
-
-Each target owns a `Robotconfig/<TARGET>/RobotConfig.h` and `RobotConfig.c`.
-
-The main runtime object is `g_config`. It contains:
-
-- `profile`: explicit task module selection.
-- `devices`: runtime device table used by motor instances and diagnostics.
-- `motor`: motor mounting and protocol configuration.
-- `gimbal`, `dual_gimbal`, `chassis`, `wheelleg_mit`, `shoot`, `arm_j0_unitree`:
-  subsystem parameters.
-- `manual_input` and `input`: input source policy and logical channel mapping.
-- `AuxTelem`: AUX telemetry signal selection.
-- `detect`: online detection rules.
-- `imu`, `voltage`, `power`, `buzzer`, `led`, `sdlog`, and `test`: common
-  services and debug configuration.
-
-Temporary AUX tuning is limited to fields listed in each target's
-`g_config_blocks` table. Motor mounting is intentionally not treated as a normal
-runtime tuning field; changing motor wiring or model usually requires editing
-`Robotconfig/<TARGET>/RobotConfig.c`, rebuilding, and reflashing.
-
-## Build and Local Checks
-
-Install Zephyr 4.4 and its SDK, then ensure `west`, CMake, Ninja and OpenOCD are
-available to the terminal. The exact CLion setup, CMake preset selection and
-OpenOCD download configuration are in [the CLion and Zephyr guide](manual/clion-zephyr.md).
-CLion 已安装；工程界面导入和硬件调试仍需分别验收，不能由命令行构建代替。
-
-Build the default target (`HERO-M`) from PowerShell:
+本机已准备好工具环境。首次使用或换电脑先看 [环境说明](manual/clion-zephyr.md)。在仓库根目录运行：
 
 ```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1
+# 检查工程文件，不编译
+pwsh -NoProfile -File .\tools\build.ps1 -Action check -Project all
+# 编译英雄，默认 2 个并行任务
+pwsh -NoProfile -File .\tools\build.ps1 -Project HERO-M
+# 接好目标板并准备好车辆后，下载并校验
+pwsh -NoProfile -File .\tools\build.ps1 -Action flash -Project HERO-M
+# 板上固件与 ELF 一致时进入调试，不重复下载
+pwsh -NoProfile -File .\tools\build.ps1 -Action debug -Project HERO-M
 ```
 
-Build one target or start all three from clean build directories:
+产物在 `local/build/hero-m/zephyr/`，包括 `zephyr.elf`、`.bin`、`.hex` 和 `.map`。下载不会自动编译；改代码后先 build，再 flash。普通断点会暂停控制任务，带动力调试前先卸载或断开执行机构动力。
 
-```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project SENTINEL-M -Pristine
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project all -Pristine
-```
+CLion 打开 `D:\ARBATOS\projects`，启用 `hero-m-local`，构建目标选 `zephyr_final`。每次只启用需要的车型预设。详细界面设置和其他车型入口见 [CLion 编译、下载和调试](manual/clion-zephyr.md)。
 
-The normal output location is `local/build/<target>/`; it is ignored by Git. Run
-the source/configuration check separately:
+## 运行代码入口
 
-```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check -Project all
-```
+- `projects/src/main.c`、`ArbatosTarget.c`、`ArbatosRuntime.c`：系统启动、目标选择和任务创建。
+- `Robotconfig/<车型>/Config*.inc`：任务模块、设备装配、输入映射和控制参数。
+- `shared/application/`：输入与控制任务；命令经 `LowCmd`、`CanTxTask` 发送，反馈经 `CanRxTask` 更新。
+- `shared/application/robot/`：设备表、电机实例、控制器管理和状态快照。
+- `shared/zephyr/port/`：CAN、UART、传感器、存储、平台和副板适配。
 
-`check` validates the Zephyr source list, formal target configuration and syntax
-paths. It does not claim a firmware build or real-board result.
+新增车型见 [新车接入](manual/new-target.md)，新增任务见 [模块声明](manual/module-system.md)，运行层结构和当前限制见 [运行层说明](manual/runtime-architecture.md)。
 
-## Tools
+## 文档入口
 
-| Tool | Purpose |
-|---|---|
-| `tools/build.ps1` | Zephyr check and build entry point; default is `HERO-M` |
-| `tools/CheckZephyr.py` | Zephyr source-list and formal-configuration check |
-| `tools/GenBuildInfo.ps1` | generates `shared/generated/build_info_autogen.h` for firmware logs |
-| `tools/sim/RobotSim.py` | estimates CAN and CPU pressure from current configuration |
-| `tools/sdlog/SdLogViewer.py` | opens the SD log web viewer and exports records |
-| `tools/sdlog/SdLogDecompress.py` | removes LZ4 block compression from current log files |
-| `tools/PidAutotune/arbatos_PidAutotune.py` | PID autotune helper |
-| `tools/Mp3ToU8/` | converts MP3 files to unsigned 8-bit PCM `.U8` files for buzzer playback |
+| 内容 | 文档 |
+| --- | --- |
+| 第一次使用 | [快速上手](QuickStart.md) |
+| 按任务查操作步骤 | [手册索引](manual/README.md) |
+| 配置、板级、共享代码 | [Robotconfig](Robotconfig/README.md)、[boards](boards/README.md)、[shared](shared/README.md) |
+| 上车前确认 | [检查清单](manual/bringup-checklist.md) |
+| 日志与固件身份 | [SD 日志](manual/sdlog.md) |
+| 脚本和离线测试 | [工具说明](tools/README.md) |
+| 上位机算法通信 | [算法接入协议](AlgorithmAccessProtocol.md) |
 
-Example simulator usage:
+被移除的 Keil/CubeMX 工程、旧车型和旧构建工具可在历史提交 `951857f` 或探索分支的 `6bdf19e` 查看。复现历史固件时使用单独检出目录，避免覆盖当前工程。
 
-```powershell
-python .\tools\sim\RobotSim.py --project HERO-M
-python .\tools\sim\RobotSim.py --project MINIWHEELEG-M --json
-```
+## 许可证
 
-The simulator is a configuration pressure check, not a physics simulator.
-
-## Diagnostics and Logging
-
-Main diagnostics surfaces:
-
-- `g_watch`: watch-window friendly runtime state.
-- `Watch.c`: task, device, actuator, controller, and fault summary.
-- `RtProf.c`: loop timing, maximum time, and over-budget counters.
-- `DetectTask.c`: target-specific online detection and status aggregation.
-- `SdLog.c` and `SdLogTask.c`: TF/SD binary logging through an in-memory ring
-  buffer and a low-priority file flush task.
-- `BUILD_INFO`: target, board, 16-character Git commit prefix, dirty flag, build
-  time, config CRC, and schema information written into logs.
-- `HostLinkTask.c`: AUX telemetry and temporary parameter tuning.
-
-High-rate tasks may call `SdLogWrite()`, but that still copies payload data and
-enters a short critical section. New high-rate logs should be added carefully,
-with frequency, payload size, and worst-case loop cost checked through real
-`RtProf` data.
-
-See `manual/sdlog.md` for log usage, decompression, baseline retention, and tag
-rules. See `manual/evaluation-boundaries.md` for SD release discipline and the
-CAN hardware boundary used when evaluating the repository.
-
-## Quick Start
-
-For a new user:
-
-1. 按 [CLion 和 Zephyr 开发环境](manual/clion-zephyr.md) 准备 Zephyr 4.4、SDK、CMake、Ninja 和 OpenOCD。
-2. 在 CLion 中打开 `projects/` 目录，选择 `projects/CMakePresets.json` 中的目标预设；工程界面导入和硬件调试仍需分别验收。
-3. Check `Robotconfig/<TARGET>/RobotConfig.c`, especially `g_config.profile`,
-   `task_modules`, `g_config.devices`, `g_config.motor`, input mapping, and safe
-   switch positions.
-4. Check `boards/<BOARD>/` for UART, CAN, IMU, buzzer, key, SD card, and port
-   assignments.
-5. 构建固件，并按 CLion 手册中对应板卡的 OpenOCD 配置下载。
-6. Before enabling full power, confirm input, IMU, CAN feedback, task status,
-   `g_watch`, AUX telemetry, and SD logs.
-7. Bring up subsystems in this order: IMU, CAN feedback, single subsystem
-   control, then whole-robot integration.
-
-For detailed workflows, start with `QuickStart.md` and `manual/README.md`.
-
-## Adding a Robot Target
-
-1. Copy the closest existing `Robotconfig/<TARGET>/`.
-2. 在 `projects/<TARGET>/`、Zephyr 板级定义和 CMake 预设中加入目标。
-3. Update include paths so the project references exactly one
-   `Robotconfig/<TARGET>`.
-4. Set target identity macros in `RobotConfig.h`: `ARBATOS_TARGET_NAME`,
-   `ARBATOS_BOARD_NAME`, `ROBOT_PROFILE_KIND`, `ROBOT_BOARD_KIND`,
-   `ROBOT_BOARD_CPU_HZ`, `ROBOT_BOARD_CAN_BUS_COUNT`, and `ROBOT_BOARD_HAS_FPU`.
-5. Configure `g_config.profile.task_modules`.
-6. Configure `g_config.devices` and `g_config.motor`.
-7. Configure input mapping, safe switches, detection items, telemetry, and logs.
-8. Add target stubs or target-specific files only when shared code cannot cover
-   the target.
-9. 运行 `tools/build.ps1 -Action check -Project <TARGET>`，再从干净目录构建该 Zephyr 目标。
-
-## Adding a Board
-
-1. Create `boards/<BOARD>/`.
-2. Add board port configuration for CAN, UART, SPI, I2C, IMU, key, buzzer, SD
-   card, USB, PWM, and other board peripherals.
-3. 在 Zephyr 板级定义、`projects/<TARGET>/` 和启动配置中加入该板的正式入口。
-
-## Adding a Motor Model or Protocol
-
-1. Add the model enum in the target-compatible `RobotConfig.h`.
-2. Add the model entry, protocol capability, feedback format, limits, reduction
-   ratio, and control range in `shared/application/motors/MotorModelDb.c`.
-3. Add or extend protocol drivers if the existing RM, DM, MIT-style, or Unitree
-   paths do not cover the model.
-4. Wire receive parsing through `CanReceive.c` and transmit formatting through
-   `CanTxTask.c`.
-5. Mount the model through `g_config.motor` in the relevant Robotconfig.
-
-## Adding a Task Module
-
-1. Add a `ROBOT_TASK_MODULE_*` value in
-   `shared/application/robot/RobotConfigSchema.h`.
-2. Add the module name in `RobotProfileKnownModules()` in
-   `shared/application/robot/RobotTaskProfile.h`.
-3. Add the module to the relevant target's `g_config.profile.task_modules`.
-4. 把任务源码加入 Zephyr 显式清单，并在 Zephyr 启动映射中接入该模块。
-5. Add diagnostics, log fields, and a minimal validation path.
-6. 更新 Zephyr 源清单检查所需的目标或模块声明。
-
-## Documentation
-
-- `QuickStart.md`: first-pass bring-up guide.
-- `manual/README.md`: manual index.
-- `manual/clion-zephyr.md`: CLion、Zephyr 4.4 和 OpenOCD 的正式工作流。
-- `manual/new-target.md`: adding a new target.
-- `manual/bringup-checklist.md`: real-robot bring-up checklist.
-- `manual/pid-tuning.md`: PID tuning flow.
-- `manual/sdlog.md`: SD logging and replay.
-- `manual/evaluation-boundaries.md`: SD release discipline and CAN scoring
-  boundary.
-- `manual/coding-style.md`: project coding style, Chinese comment rules, and
-  legacy-style handling.
-- `manual/runtime-architecture.md`: direction for device and controller instance
-  based runtime evolution.
-- `AlgorithmAccessProtocol.md`: compact algorithm link protocol and external
-  chassis-motion command path.
-- `Robotconfig/README.md`: robot configuration layer details.
-- `boards/README.md`: board support layer details.
-- `shared/README.md`: shared runtime layer details.
-- `tools/README.md`: local tool details.
-- `legal/README.md`: legal document index.
-
-## Contributing
-
-Before sending a patch or pull request:
-
-- Read `legal/CONTRIBUTING.md` and `legal/CLA.md`.
-- Make sure you have the right to contribute the code, data, or documentation.
-- Keep target parameters in `Robotconfig/`, board ports in `boards/`, reusable
-  logic and OS adaptation in `shared/`, and build entry changes in `projects/`.
-- Explain which targets, boards, or shared modules are affected.
-- List any new third-party dependency and its license.
-- Run:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check
-```
-
-The GitHub workflow at `.github/workflows/check-all.yml` runs the same local
-check path.
+ARBATOS 自有代码和文档采用 [Apache-2.0](LICENSE)，允许商业使用，需保留许可证及署名等要求。第三方代码和工具继续遵守各自许可证，见 [第三方说明](legal/ThirdParty.md)、[贡献说明](legal/CONTRIBUTING.md) 和 [CLA](legal/CLA.md)。

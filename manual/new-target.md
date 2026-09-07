@@ -8,10 +8,13 @@
 
 | 新目标条件 | 优先复制 |
 |---|---|
+| DJI A F427 / DJI C F407 | 复用 `boards/DjiAF427` / `boards/DjiCF407`，按机构参考现有车型业务配置 |
 | DM MC02 H7 | `HERO-M`、`SENTINEL-M` 或 `MINIWHEELEG-M` |
 | 经典底盘 + 单云台 | `HERO-M` |
 | 双 yaw 云台 | `SENTINEL-M` |
 | MIT 轮腿实验 | `MINIWHEELEG-M` |
+
+A/C 板的 IMU、存储、串口、输出能力与 M 板不同，不能直接照搬 M 板引脚或安装方向。板级缺项见各板 README；新目标初期先使用已经实现的接口。
 
 默认先复制 `Robotconfig/<OLD>/` 到 `Robotconfig/<NEW>/`，再在 `projects/<TARGET>/`、板级定义、CMake 预设和 `projects/cmake/ArbatosLegacy.cmake` 的显式清单中补齐该目标。正式构建不读取 `.uvprojx`。
 
@@ -52,7 +55,7 @@
 几个规则：
 
 - `task_module_count` 必须等于下面实际列出来的模块数量。
-- 列了模块，任务入口才会创建对应任务；没列就视为这台车不用它。
+- 模块需同时具备编译实现和启动映射，加入列表后才会创建对应业务任务；没有列出的业务模块不启用。
 - 底盘二选一：经典底盘用 `ROBOT_TASK_MODULE_CLASSIC_CHASSIS`，MIT 轮腿用 `ROBOT_TASK_MODULE_WHEELLEG_MIT`。
 - 云台二选一：单云台用 `ROBOT_TASK_MODULE_SINGLE_GIMBAL`，双 yaw 云台用 `ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL`。
 - 通信和服务类任务也要显式列，比如 `RC_SBUS`、`HOST_LINK`、`ELRS_LINK`、`REFEREE_RX`、`SDLOG`。
@@ -129,14 +132,16 @@
 
 ## 8. 配 Zephyr 工程入口
 
-在 `zephyr/` 中确认：
+在 `projects/` 及工具入口补齐以下内容：
 
-- `targets/<target>.conf`、需要时的 overlay 与目标板卡匹配。
-- `CMakePresets.json` 中有目标预设，且目标名与 `Robotconfig/<TARGET>` 对应。
-- `cmake/ArbatosLegacy.cmake` 的显式源码清单只包含实际需要的源码，不读取 `.uvprojx`。
-- Zephyr 启动映射只接入一个 `Robotconfig/<TARGET>`，没有混入其他目标的 `RobotConfig.c`。
+1. 新建 `<TARGET>/prj.conf`，需要改默认引脚或串口用途时增加 `app.overlay`；公共配置在 `projects/prj.conf`。
+2. 在 `projects/Kconfig` 增加目标选项，在 `projects/src/ArbatosTarget.c` 增加对应的目标选择。当前选择器对未识别目标会报错。
+3. 在 `projects/cmake/ArbatosLegacy.cmake` 增加源码和头文件目录，只接入本车的 `RobotConfig.c`、检测和板级实现，不读取 `.uvprojx`。
+4. 在 `projects/CMakePresets.json` 增加配置/构建预设；A、C、M 板分别选 `dji_a_f427`、`dji_c_f407`、`dm_mc02_h7`。本机绝对路径写进不提交的 `CMakeUserPresets.json`。
+5. 更新 `tools/build.ps1`、`tools/build-matrix.ps1`、`tools/CheckZephyr.py` 的车型表和对应板名；下载时也要使用该板的 OpenOCD 配置。
+6. 增加新的业务任务时，补 `RobotTaskBuildConfig.h` 的编译选择，以及 `projects/src/ArbatosRuntime.c` 的固定栈、创建函数和模块映射，详见 [模块声明](module-system.md)。
 
-需要核对已移除的旧构建信息流程时，使用 `git show 951857f:<path>` 或查看 `zephyr` 分支的 `6bdf19e`。
+独立板级验证可先使用 [tests/Boards](../tests/Boards/README.md)，不必恢复已经删除的 A/C 旧车型。
 
 ## 9. 第一次检查
 
@@ -155,7 +160,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action 
 
 - `tools/build.ps1 -Action check -Project <TARGET>` 通过。
 - 对应 Zephyr 目标从干净目录构建通过。
-- SD 日志 `BUILD_INFO` 能显示正确 target、board、Git、编译时间。
+- SD 日志的 target、board 和配置正确；需记录 Git 身份时，构建前手动刷新 `GenBuildInfo.ps1`，并留存 ELF/BIN 与哈希，见 [日志说明](sdlog.md)。
 - `g_watch` 能看到任务状态和主要设备状态。
 - 遥控输入、CAN 反馈、IMU 姿态都能观察。
 - 每个子系统都能单独关闭或单独测试。

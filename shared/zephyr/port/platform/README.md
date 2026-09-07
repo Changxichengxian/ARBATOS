@@ -1,9 +1,16 @@
 # Zephyr 平台端口
 
-本目录承接旧 `shared/hal` 的板级边界。板子必须提供 `/arbatos_platform` 属性；端口不会猜测 GPIO、ADC 或 PWM 的接线。缺少启动所需资源时，`ArbatosPlatformInit()` 返回错误，调用方应进入安全状态。
+本目录承接 `shared/hal` 的板级接口。板子通过 `/arbatos_platform` 声明 GPIO 和 PWM 资源，属性以 `boards/dts/bindings/arbatos,platform.yaml` 为准：`key-gpios`、`led0-gpios`、`buzzer-pwms`、`servo-pwms`、`shoot-trig-gpios`。不要填写绑定中不存在的 ADC 属性。
 
-建议属性：`key-gpios`、`led0-gpios`、`buzzer-pwms`、`servo-pwms`、`shoot-trig-gpios`、`adc`、`battery-channel`、`hardware-version-channel`。ADC 量程、分压比与温度换算必须随实板原理图补齐。
-当前三块板没有足够证据填写 ADC 映射，所以端口返回无效值；电池任务会把它明确
-转换成 `0 V / 0%` 并保持低压告警，避免把未知状态显示成满电。
+## ADC 与输出
 
-Zephyr 没有可跨所有 STM32 板保证等价的“致命异常后备份 SRAM 证据”接口；在板级确认 backup SRAM、复位标志与缓存维护前，重启证据只能视作未支持。USB CDC 兼容实现位于 `port/usb/`，使用 Zephyr 4.4 新 USB 设备栈；这里的 `BspUsbDeviceInit()` 只负责调用该后端的初始化入口。
+- M 板选择 `BspAdcM.c`，读取 ADC1 通道 4、19，16 位采样，按标称 3.3 V 换算；电池电压取索引 0 的通道电压乘 11。精度仍需按实板 VDDA 和分压校准。
+- 未启动、通道无效、中断上下文或采样失败时，电压接口返回 `NAN`；芯片温度未实现，返回 `NAN`，硬件版本返回 `0xff`。
+- A/C 板通用 ADC 后端尚无可用测量，不能把占位值当成真实电池电压。报警策略还受车型配置影响，不能保证所有车型都以同一方式报警。
+- M 板已有供电 GPIO、蜂鸣器和舵机适配；是否实际接入、是否完成负载验证，以车型配置和实测记录为准。
+
+## 启动与诊断
+
+`ArbatosPlatformInit()` 初始化板级资源，缺少必需资源时返回错误，调用方需处理失败。USB CDC 的实现位于 `../usb/`，`BspUsbDeviceInit()` 调用其初始化入口。
+
+`BspResetEvidence.c` 使用普通静态 SRAM，启动时清空，不提供跨重启的故障证据；旧 HAL 备份 SRAM 保留方案不属于当前 Zephyr 功能。完整边界见 [运行层说明](../../../../manual/runtime-architecture.md)。

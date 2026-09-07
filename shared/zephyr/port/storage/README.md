@@ -12,8 +12,14 @@
 
 ## 集成约束
 
-仓库 `shared/components/support/fatfs/ff.c` 与本目录的 `BspZephyrDiskio.c` 是一组：应启用它们，且不要同时启用 Zephyr 自己的 FatFs 适配层，否则 `f_*` 或 `disk_*` 符号会重复。此目录不修改 CMake、Kconfig 或 DTS。
+仓库 `shared/components/support/fatfs/ff.c` 与本目录的 `BspZephyrDiskio.c` 是一组：应启用它们，且不要同时启用 Zephyr 自己的 FatFs 适配层，否则 `f_*` 或 `disk_*` 符号会重复。源码选择由 `projects/CMakeLists.txt` 和显式清单负责，设备绑定由板级设备树及车型 overlay 提供。
 
-缓存和协议层均为固定大小静态内存；SPI 读收发用 64 字节虚拟发送块分段。SD 卡移除或任意传输错误会清除初始化状态，后续 `disk_initialize()` 可重试。
+缓存和协议层均为固定大小静态内存；SPI 接口调用同步 Zephyr SPI API，接收用虚拟发送块：M 板每块 512 字节，其他板每块 64 字节。这里并未启用异步 DMA。SD 卡移除或任意传输错误会清除初始化状态，后续 `disk_initialize()` 可重试。
 
 Zephyr 同步 SPI API 没有逐次传输超时参数，因此旧 `timeout_ms` 接口保留但由驱动完成时间决定；对总线卡死的恢复仍需要板级复位或看门狗策略。
+
+## M 板频率和已测范围
+
+SPI3 在初始化阶段请求 400 kHz，96 MHz 内核时钟下实际为 375 kHz；普通模式为 24 MHz，仅 CMD6 高速查询和切换成功后使用 48 MHz。同步接口仍依赖底层驱动实现，不能只凭请求频率推断实际吞吐。
+
+当前 HERO-M 有 Zephyr SD 日志与歌曲播放实测，见 [验证记录](../../../../tests/ZephyrMusicM/Validation.md)。`tests/SdBenchM` 的 152 MiB、约 3.5 MB/s 数据来自旧 HAL 独立固件，不能作为当前 Zephyr 固件的吞吐率。

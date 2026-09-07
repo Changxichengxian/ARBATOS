@@ -92,11 +92,11 @@ quit
 
 图形界面的 OpenOCD Download & Run 与终端 debug 二选一使用。前者提供 CLion 的断点和变量窗口，后者直接进入 GDB 命令界面。
 
-## 本次清理与验证边界
+## 当前迁移状态与验证范围
 
-删除 Keil 项目文件、CubeMX 生成副本、ARMCC 二进制库、旧构建转换器、旧检查入口，以及四个 A/C 板车型。姿态解算和数学函数源码已转入 Zephyr，当前仍使用的 `shared/`、M 板头文件及业务模块保留。旧 SD 台架固件的结果和测试源码保留，Keil 构建器从主线移除。
+Keil 项目、CubeMX 工程副本、ARMCC 二进制库、旧转换工具和四个旧车型已移除。A、C、M 板的设备树、板级头文件和现用适配全部保留；共享算法在 `shared/zephyr/port/algorithm/`。工程统一在 `projects/`，新产物统一在 `local/build/`，根目录不再保留旧 `build`、`out`、`zephyr` 或 `Open*.cmd`。
 
-本次只在后台清理和检查，不连接车辆、不烧录、不自动操作 CLion。CLion 的工程和个人预设已准备；图形界面下载/调试仍需按上面的步骤完成一次实物验证。
+目录整理后 HERO-M 正式构建与本机 CMake 预设构建通过，A/C 独立板级工程编译链接通过，工程检查的 5 项回归通过。这些是软件验证。HERO-M 先前整车运动和外设的实测范围见 [验证记录](../tests/ZephyrMusicM/Validation.md)；CLion 图形界面下载/调试仍需按上面的步骤完成一次实物验证。
 
 ## 官方参考
 

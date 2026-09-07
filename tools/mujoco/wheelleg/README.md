@@ -92,7 +92,7 @@ This runner is good for checking:
 - five-bar closed-chain geometry and basic wheel-ground contact;
 - bench PID/VMC output without needing the body to balance;
 - diamond and core five-bar initialization branches;
-- whether the reusable core can run outside FreeRTOS.
+- whether the reusable core can run outside the firmware scheduler.
 
 It is still not a final calibrated robot model. Geometry and control gains come
 from `Robotconfig/<project>/RobotConfig.c`, and the default mass assumptions come

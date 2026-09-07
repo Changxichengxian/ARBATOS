@@ -30,7 +30,7 @@ shared/zephyr/port/usb/BspZephyrUsbCdc.c
 shared/zephyr/port/usb
 ```
 
-`BspUsbDeviceInit()` 应改为调用：
+`BspUsbDeviceInit()` 当前调用：
 
 ```c
 (void)BspUsbCdcInit();
@@ -74,13 +74,15 @@ VID/PID 只供测试，不能直接当作量产设备身份。
 变化。这组标识属于 ST；若固件作为独立产品发布，必须替换为产品方合法取得的
 VID/PID 和厂商字符串。
 
-## 已做编译验证
+## 验证范围
 
-使用 Zephyr 4.4 和 Zephyr SDK 1.0.1，`_smoke` 示例已在以下目标完成编译和链接：
+迁移阶段使用 Zephyr 4.4 和 Zephyr SDK 1.0.1，`_smoke` 示例曾在以下目标完成编译和链接：
 
 - `dm_mc02_h7/stm32h723xx`
 - `dji_c_f407/stm32f407xx`
 - `dji_a_f427/stm32f427xx`
+
+当前公共工程配置已包含 USB 栈，M 板设备树保留 CDC 节点；实际初始化还受任务编译选择和启动路径影响。HERO-M 实车运动结果不能作为 USB 枚举和收发验收，需要使用时单独核对配置并验证。
 
 ## 实机检查
 

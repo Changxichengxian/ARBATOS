@@ -1,252 +1,51 @@
-# 运行层当前状态和演进方向
+# 当前运行层
 
-这份文档按当前代码状态记录 ARBATOS 从 RoboMaster 多车型工程，往更通用机器人控制运行层演进的方向。
+ARBATOS 由开发板支持、车型配置、共享控制逻辑和工程入口组成。调度保持静态，设备、电机、控制器使用固定容量的配置与实例表；当前仍保留业务任务和兼容接口。
 
-目标不是把更多机器人硬塞进“云台、底盘、射击”这些固定概念里，而是让新机器人由下面几类东西组合出来：
+## 启动和任务
 
-- 设备实例：电机、IMU、编码器、串口链路、传感器。
-- 控制器实例：平衡、轨迹、关节、轮式运动、云台指向、机构动作。
-- 数据连接：控制器读哪些输入，写哪些输出。
-- 调度属性：周期、优先级、超时、安全策略。
-- 观察接口：状态、诊断、日志、遥测。
+`projects/src/main.c` 进入 Zephyr 应用，`ArbatosTarget.c` 选择车型，`ArbatosRuntime.c` 完成运行初始化和任务创建。旧业务代码通过 `shared/zephyr/compat/` 使用任务、延时等兼容接口，实际由 Zephyr 调度。
 
-## 当前代码状态
+任务同时受两层配置约束：
 
-当前代码已经不只是“先在电机侧补一层实例名”，运行层的几块基础已经接上：
+1. 工程 Kconfig、显式源码清单及 `RobotTaskBuildConfig.h` 决定哪些实现编入固件。
+2. `g_config.profile.task_modules` 决定启动映射中哪些业务任务启用。
 
-- `g_config.profile.task_modules` 是任务创建的入口。`AppTaskBootstrap.h` 会按配置表创建启用任务。
-- `g_config.devices` 已经进入配置层，`RobotDeviceConfig.h` 负责统一解析设备条目。
-- `MotorInstRefresh()` 已经从设备表生成电机实例，控制任务可以按稳定实例名绑定输出。
-- `LowCmd` 是控制任务到执行器发送任务之间的统一命令缓存。底盘、云台、射击等高频任务已经使用预绑定输出，循环里按绑定写电流。
-- `ControlMgr` 已经提供控制域、控制器注册、资源声明、切换、停止和故障状态。默认控制器由 `RobotControlRegistry.h` 按 profile 注册。
-- `watch.runtime` 已经能按任务、设备、电机、控制器、控制域收集运行实例。SD 日志启动记录也会写设备条目。
-- 底盘、云台、CAN 发送、轮腿和 watch 等大任务入口已经拆成“主 `.c` + 私有 `.inc` 实现块”。原 `.c` 仍是唯一编译单元，私有块用于把日志、快照、调参、协议打包和控制辅助分开阅读。
-- 安全保护已经存在，但当前主要分布在各任务和控制环里，例如安全档、运行编排、离线检测、限幅、轮腿 fault。后续仍在往控制器或调度策略收束。
+`ArbatosRuntime.c` 以 `ARB_STATIC_THREAD(...)` 分配固定栈，在 `ArbCreateModuleTasks()` 的 `moduleTasks[]` 中关联模块、句柄和创建函数，再调用 `AppCreateEnabledModuleTasks()`。新增任务必须补齐这些位置，见 [模块说明](module-system.md)。
 
-当前仍保留兼容层。旧代码可以继续按固定 actuator id 写命令：
+模块声明中的周期、预算、资源和默认栈用于描述与观察，尚未全面替代实际任务创建参数。Zephyr 专用服务及准备/接收/音乐测试模式也有独立启动分支，不能只用车型任务表推断所有线程。
 
-```c
-Motor4
-Motor6
-LowCmdSetCurrent(Motor4, yaw_current);
+## 输入、控制和输出
+
+```text
+DBUS/SBUS、ELRS/CRSF、图传遥控等
+  → ManualInput → ControlInput → 控制任务 / 控制器
+  → LowCmd → CanTxTask → CAN / RS485 执行器
+
+CAN 中断 → 接收队列 → CanRxTask → CanReceive / MotorInst
+  → 状态快照、控制任务、Watch、SD 日志
 ```
 
-新代码可以逐步改成按实例查询：
+控制任务写语义命令或已绑定执行器命令，协议层处理电机型号、总线、ID、帧格式和发送限额。高频循环优先读取缓存或快照，初始化时把设备名解析成 ID，避免反复查询整份配置。
 
-```c
-const MotorInst *m = MotorInstFindByName("motor.yaw");
-MotorId id = MotorInstId(m);
-```
+## 设备和控制器
 
-如果只是发命令或读反馈，也可以直接按实例名走薄包装：
+- `g_config.devices` 描述设备实例，`RobotDeviceConfig.h` 统一读取；`g_config.motor.*` 仍承载具体电机参数。
+- `MotorInstRefresh()` 依据配置建立电机实例。可用 `MotorInstFindByName()` 查询，再通过绑定 ID 发命令、读反馈。
+- `ControlMgr` 管理控制域、注册、资源占用、切换、停止和故障状态。默认控制器由 `RobotControlRegistry.h` 按车型配置注册。
+- 底盘、云台、射击等仍有各自任务循环和状态机；不能把已有控制器接口理解为所有调度已统一。
+- `g_watch.runtime` 按任务、设备、电机、控制器和控制域提供观测；SD 启动记录包含配置和设备信息，固件身份的限制见 [日志说明](sdlog.md)。
 
-```c
-MotorInstSetCurrent("motor.yaw", yaw_current);
-MotorInstGetFeedback("motor.yaw", &feedback);
-```
+新增硬件优先补设备与驱动，新增算法优先复用控制器和输入输出接口，新增机器人优先改车型配置。确需独立周期或栈时再添加任务模块。
 
-如果一个控制器要同时管多个执行器，可以先把名字解析成 `MotorId`，后面循环里直接按 id 批量发命令：
+## 故障和验证边界
 
-```c
-static const char *const yaw_outputs[] = {
-    "motor.yaw0",
-    "motor.yaw1",
-    "motor.yaw2",
-};
+当前有安全档、输入超时、离线检测、限幅、局部故障与输出锁等保护，具体动作仍由对应控制任务和协议实现决定。实车必须逐项验证断输入、断反馈、异常恢复及停机行为。
 
-static MotorId yaw_ids[3];
+Zephyr CAN 后端的 `BspCanFaultTx()` 当前返回失败，`BspCanZephyrFaultTxSupported()` 为 0。普通运行中的输出锁不构成“CPU 致命异常后仍能直接发停机帧”的保证。需要这项能力时，要补充经过审查和实测的芯片专用实现，并结合硬件断能措施。
 
-void bind_outputs(void)
-{
-    if (MotorInstResolveIds(yaw_outputs, 3, yaw_ids, 3) != 3)
-    {
-        return;
-    }
-}
+`BspResetEvidence.c` 当前只使用普通静态 SRAM，启动时清空；它不保存跨重启的致命故障证据，也未提供可靠的上次 RCC/异常栈快照。不要把旧 HAL 备份 SRAM 方案写成当前 Zephyr 已实现的功能。
 
-void run_outputs(void)
-{
-    int16_t current[3] = {yaw0_current, yaw1_current, yaw2_current};
+CAN 异常需区分配置、解析、队列、任务延时、调试暂停、总线负载和物理接线。仅凭丢帧计数不能断定硬件或软件根因。电脑上的检查与逻辑测试可验证部分代码行为，实际总线、温升、机械动作和断能效果需实物确认。
 
-    (void)MotorInstSetCurrentIds(yaw_ids, current, 3);
-}
-```
-
-这样后续控制器不需要只认识 `yaw`、`pitch`、`chassis0` 这类固定角色，可以先绑定到一个稳定的设备实例名。等配置层改成真正的设备表后，这些名字可以从配置来，而不是写死在代码里。
-
-## 迁移原则
-
-1. 旧接口先保留。
-   现有车要能继续编译和上车，不为了架构升级打断当前调试。
-
-2. 新接口先旁路接入。
-   新机器人、新机构、新实验任务优先用实例表和控制器表；只有确实需要新的调度周期或独立任务栈时，才新增 `ROBOT_TASK_MODULE_XXX` 或项目私有模块。
-
-3. 先统一执行器，再统一控制器。
-   执行器是所有控制器最终写入的地方，先把这里从固定角色过渡到实例表，收益最大。
-
-4. 调度保持静态。
-   不做运行时动态加载，不引入堆分配。控制器注册、设备表、实例数量仍然用固定数组和编译期上限。
-
-5. 日志和诊断按实例遍历。
-   以后看到几个电机、几个控制器，就记录几个实例的状态，而不是为每种机器人形态单独写一套日志字段。
-
-## 推荐路线
-
-### 阶段 1：执行器实例化
-
-- 保留 `MotorId`。
-- 给 `MotorInst` 补稳定实例名。
-- 提供按名字查找、取 actuator id、发命令、取电机配置、取反馈的接口。
-- 提供一组名字解析、一组电流命令、一组反馈读取的接口，减少多电机控制器里的重复代码。
-- 新代码优先从 `MotorInstFindByName()` 或后续配置绑定表拿执行器。
-
-### 阶段 2：设备表进入配置
-
-把当前这种固定字段：
-
-```c
-g_config.motor.yaw
-g_config.motor.pitch
-g_config.motor.arm[0]
-```
-
-逐步过渡成设备表：
-
-```c
-g_config.devices.motor[i] = {
-    .name = "motor.left_front_joint",
-    .model = ...,
-    .can_bus = ...,
-    .can_id = ...,
-}
-```
-
-旧字段可以先由设备表生成，或者继续作为兼容层存在一段时间。
-
-当前已经补了 `g_config.devices` 设备表，并由 `RobotDeviceConfig.h` 统一读取。旧的 `g_config.motor.*` 字段还保留给具体电机参数；设备表负责说明“有哪些设备实例”，旧字段负责说明“这个电机怎么配置”。
-
-```c
-RobotConfigDevice device;
-
-for (uint8_t i = 0; i < RobotConfigDeviceCount(); i++)
-{
-    if (RobotConfigDeviceGet(i, &device))
-    {
-        /* device.name / device.kind / device.config */
-    }
-}
-```
-
-电机仍然有 `RobotConfigMotorDevice` 这种更具体的读取方式，`MotorInstRefresh()` 已经改成从这层读取。后面扩展传感器、链路或非电机执行器时，优先扩展设备表和 `RobotDeviceConfig.h`，电机实例和控制器不用跟着大改。
-
-控制器也可以直接按自己的输入/输出名字解析设备：
-
-```c
-RobotConfigDeviceBinding devices;
-
-if (RobotConfigDeviceBindController(controller, &devices))
-{
-    /* devices.inputs[i] / devices.outputs[i] */
-}
-```
-
-### 阶段 3：控制器实例化
-
-控制器不再按“云台任务、底盘任务”扩张，而是按实例描述：
-
-```c
-static const char *const triple_yaw_outputs[] = {
-    "motor.yaw0",
-    "motor.yaw1",
-    "motor.yaw2",
-};
-
-static const ControlController triple_yaw_controller = {
-    .id = ControlIdCustomBase,
-    .domain = ControlDomainGimbal,
-    .name = "controller.triple_yaw",
-    .meta = {
-        .period_ms = 1,
-        .output_count = 3,
-        .outputs = triple_yaw_outputs,
-    },
-    .enter = triple_yaw_enter,
-    .update = triple_yaw_update,
-};
-```
-
-控制器进入时把输出名字绑定成 id，运行时只发一组命令：
-
-```c
-static MotorId triple_yaw_ids[3];
-
-static ControlResult triple_yaw_enter(const ControlController *controller,
-                                         ControlCtx *context)
-{
-    (void)context;
-
-    if (MotorInstResolveControllerOutputs(controller, triple_yaw_ids, 3) !=
-        controller->meta.output_count)
-    {
-        return ControlResultBadArgument;
-    }
-
-    return ControlResultOk;
-}
-
-static ControlResult triple_yaw_update(const ControlController *controller,
-                                          ControlCtx *context)
-{
-    int16_t current[3];
-
-    (void)controller;
-    (void)context;
-
-    current[0] = yaw0_current;
-    current[1] = yaw1_current;
-    current[2] = yaw2_current;
-
-    return MotorInstSetCurrentIds(triple_yaw_ids, current, 3) ?
-           ControlResultOk :
-           ControlResultBadArgument;
-}
-```
-
-切换控制器也可以按名字走：
-
-```c
-(void)ControlMgrSwitchByName("controller.triple_yaw",
-                                             ControlReasonModeSwitch);
-```
-
-控制器代码只关心它拿到的输入和输出，不关心这台机器人是不是 RoboMaster。
-
-这一步当前已经有 `ControlMgr`、控制器元信息、注册表、按名字切换、按周期更新和运行时观察。旧的底盘、云台、射击任务仍然保留自己的主循环和状态机，新控制器优先声明输入、输出、周期和资源占用。
-
-### 阶段 4：调度和观察统一
-
-- 当前 `watch.runtime` 已经按设备表和控制器表遍历运行实例。
-- 当前 SD 日志启动记录会写 build info、原始配置和运行时设备条目。
-- 后续少量周期调度任务负责跑控制器实例，逐步减少“一个机构一套任务主循环”的写法。
-- 后续安全策略继续往控制器或调度层集中，保留各子系统必要的本地限幅和故障处理。
-- RoboMaster 相关逻辑保留为一组控制器和配置，不作为整个项目结构的中心。
-
-`watch` 里的通用运行时块 `runtime.instances` 会按实例收集：
-
-- 当前目标启用的任务模块名字。
-- 电机实例数量、启用数量、名字、角色、bus 和 actuator id。
-- 配置设备数量，统一条目表里的设备项来自 `RobotConfigDeviceGet()`。
-- 控制器实例数量、名字、周期、输入输出数量和激活状态。
-- 每个控制域当前激活的控制器、待处理请求和统计计数。
-- 一张统一条目表：任务、设备、控制器、控制分组都用 `RuntimeInstanceRef` 表示，上位机可以先按名字和状态遍历。
-
-这一步的价值是后续新增机器人时，观察和诊断可以先看“有哪些实例在跑”，不需要为每种机器人重新写一套观察字段。
-
-## 判断一项新改动放哪里
-
-- 新硬件：先抽象成设备实例。
-- 新控制算法：先抽象成控制器实例。
-- 新机器人形态：优先改配置和实例绑定表。
-- 新协议：放到设备驱动或传输层。
-- 新安全规则：优先放到控制器或调度策略里；迁移没完成前，可以先放在对应子系统任务里，但不要散到具体车型代码里。
+HERO-M 的整车运动、音乐、校准、RTC 和 SD 测试范围见 [验证记录](../tests/ZephyrMusicM/Validation.md)。迁移后 A/C 板有独立编译入口，其外设缺项按各板 README 和原理图核对记录处理。

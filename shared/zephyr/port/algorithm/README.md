@@ -7,17 +7,9 @@
 
 实现已完整移入 `AhrsZephyr.c` 和 `ArmMathZephyr.c`，不再依赖已删除的 GCC 转换工具目录。
 
-## 历史迁移覆盖（其中 A/C 车型现已删除，板级支持保留）
+## 当前实现
 
-| 目标 | 历史工程依赖 | Zephyr 兼容方式 |
-| --- | --- | --- |
-| HERO-C | AHRS.lib、arm_cortexM4lf_math.lib | 两个包装源 |
-| MINIWHEELEG-C | AHRS.lib、arm_cortexM4lf_math.lib | 两个包装源 |
-| CARRIER-A | AHRS.lib、arm_cortexM4lf_math.lib | 两个包装源 |
-| INFANTRY-A | AHRS.lib、arm_cortexM4lf_math.lib | 两个包装源 |
-| HERO-M | Mc02Compat.c 弱 sin/cos | `ArmMathZephyr.c` 提供同语义弱符号；AHRS 包装可统一编译 |
-| MINIWHEELEG-M | Mc02Compat.c 弱 sin/cos | 同上 |
-| SENTINEL-M | Mc02Compat.c 弱 sin/cos | 同上 |
+A、C、M 板共用这两个源码实现，新增车型不需要恢复已删除的 ARMCC 二进制库。
 
 共享与目标源码的实际 CMSIS-DSP 调用只有：
 
@@ -56,16 +48,9 @@ shared/components/support
 
 不要链接 ARMCC `.lib`，也不要从 Git 历史重复加入同一算法的旧实现。
 
-## 已做编译验证
+## 编译验证
 
-迁移阶段使用 Zephyr 4.4 和 Zephyr SDK 1.0.1，`_smoke` 示例已在以下目标完成编译和链接：
-
-- `dm_mc02_h7/stm32h723xx`
-- `dji_c_f407/stm32f407xx`
-- `dji_a_f427/stm32f427xx`
-
-示例同时编入共享 `AhrsMiddleware.c`。H7 验证还编入 `HERO-M/Mc02Compat.c`，确认
-两处同语义弱 `arm_sin_f32()`/`arm_cos_f32()` 实现可以共同链接。
+迁移阶段三板算法 `_smoke` 工程曾编译链接通过；当前板级独立入口见 [tests/Boards](../../../../tests/Boards/README.md)，HERO-M 使用正式工程构建。历史编译结果不代替每次改动后的验证。
 
 ## 数值验证边界
 

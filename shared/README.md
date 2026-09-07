@@ -22,11 +22,11 @@ shared/
 `-- components/    # 算法、控制器、设备驱动、基础支持库和通用类型
 ```
 
-`shared/hal/` 和 `boards/<BOARD>/bsp/` 的边界：前者放多块板共用的 CAN、UART、USB、PWM 等实现；后者放某块板子的引脚、端口、设备安装方式和少量强板子相关代码。
+`shared/zephyr/port/` 放当前系统上的共用外设适配；`shared/hal/` 保留接口与历史实现参考。`boards/<BOARD>/` 放具体板子的引脚、设备树、端口和传感器选择，车型安装方向放 `Robotconfig/`。
 
 ## 常用服务入口
 
-- `application/services/calibration/`：校准服务。`GyroZeroCali.h` 放陀螺仪零偏采样状态机，板级 INS 只负责传入旋转函数、保存函数和安全条件；`CalibrateTask.c` 负责传统设备校准和 Flash 保存；`PitchCali.c` 负责 pitch 补偿校准。
+- `application/services/calibration/`：校准服务。`GyroZeroCali.h` 放陀螺仪零偏采样状态机，板级 INS 只负责传入旋转函数、保存函数和安全条件；`CalibrateTask.c` 保留传统设备校准流程，持久保存能力取决于当前板级后端；`PitchCali.c` 负责 pitch 补偿校准。
 - `application/services/diagnostics/`：运行观察和故障状态。优先看 `Watch.c`、`RtProf.c`。
 - `application/services/storage/`：TF/SD 日志。高频任务写日志前要先考虑频率和数据量；使用和留样规则见 `../manual/sdlog.md`。
 - `application/services/startup/`：启动期服务、状态灯和提示输出。
@@ -44,7 +44,7 @@ shared/
 
 - 能被多台车复用的控制任务：底盘、云台、双 yaw 云台、射击、轮腿、机械臂运动抽象。
 - 输入链路：DBUS/SBUS、ELRS/CRSF、图传遥控、语义输入映射。
-- 外部运动意图：算法、主机或后续链路给底盘的 `vx/vy/wz` 目标先统一进 `application/robot/external_motion_intent.*`，底盘不要直接依赖具体串口包。
+- 外部运动意图：算法、主机或后续链路给底盘的 `vx/vy/wz` 目标先统一进 `application/robot/ExternalMotionIntent.c`，底盘不要直接依赖具体串口包。
 - 执行器和电机协议：`LowCmd`、`MotorInst`、`MotorModelDb`、CAN/MIT/Unitree 驱动。
 - 主机通信、视觉链路、裁判系统、日志、诊断观察。
 - 通用算法、校准状态机和控制器：PID、滤波、AHRS、陀螺零偏采样、功率限制等。
@@ -53,6 +53,6 @@ shared/
 
 - 具体车型的默认参数和电机装配：放 `Robotconfig/`。
 - 某块板子的引脚和端口分配：放 `boards/`。
-- 正式工程配置、显式源码清单和启动入口：放 `zephyr/`。
+- 正式工程配置、显式源码清单和启动入口：放 `projects/`。
 
 如果共享代码里必须区分车型，优先通过 `g_config`、任务模块选择或电机能力表传进来，不要在共享逻辑里写死目标名。

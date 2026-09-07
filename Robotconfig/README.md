@@ -6,7 +6,7 @@
 
 | 配置 | 说明 | 主要文件 |
 |---|---|---|
-| `HERO-M` | 英雄机器人临时接 MC02 H7 板 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`PitchCaliBuiltin.c` |
+| `HERO-M` | 英雄机器人，已完整改用 MC02 H7 和 V2 副板接线 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`PitchCaliBuiltin.c` |
 | `SENTINEL-M` | 哨兵机器人接 MC02 H7 板 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`Mc02Compat.c` |
 | `MINIWHEELEG-M` | H7 接板和机械臂实验 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`ArmMotorTable.c` |
 
@@ -45,7 +45,7 @@ Robotconfig/<TARGET>/
 
 ## 不应该放这里
 
-- 正式工程配置、显式源码清单和启动入口：放 `zephyr/`。
+- 正式工程配置、显式源码清单和启动入口：放 `projects/`。
 - 某块板子的串口、CAN、IMU、蜂鸣器、按键、SD 卡适配：放 `boards/`。
 - 可复用控制逻辑、电机协议、输入链路、日志、诊断：放 `shared/`。
 - 厂商包、参考工程、临时材料：放 `local/docs/` 或 `local/`。
@@ -81,6 +81,6 @@ Robotconfig/<TARGET>/
 5. `ConfigTuning.inc`：底盘、云台、射击、功率、IMU 等参数先保守限幅，再逐步调手感。
 6. `ConfigDiagnostics.inc` 和 `DetectTask.c`：按已启用模块补在线检测；设备拔掉能报错、插回能恢复，才算检测有效。
 
-常用做法是先用 `operation` 开单任务或单电机，再回到全任务正常运行做整车联调。陀螺仪零偏校准使用 `ROBOT_RUN_MODE_CALIBRATION + ROBOT_CALI_TARGET_IMU_GYRO`：温度升到 40 度并稳定后，静止采 30 秒并保存。
+常用做法是先用 `operation` 开单任务或单电机，再回到全任务正常运行做整车联调。运行模式只决定业务行为，不会自动开放 Flash 写入。M 板陀螺零偏保存仅允许专用准备模式，正式固件只读；A/C 板持久校准尚未完成。详见 [传感器说明](../shared/zephyr/port/sensors/README.md)。
 
 完整新车接入步骤见 `../manual/new-target.md`，上车检查见 `../manual/bringup-checklist.md`。

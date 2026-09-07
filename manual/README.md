@@ -1,43 +1,26 @@
-# ARBATOS 手册入口
+# ARBATOS 手册
 
-这里放需要跟代码一起走的正式操作文档。根目录 `README.md` 负责讲项目是什么，这个目录负责讲怎么接车、怎么上车、怎么调、怎么留日志。
+这里记录当前项目的操作流程。项目总览见 [README](../README.md)，第一次使用见 [快速上手](../QuickStart.md)。
 
-`local/docs/` 仍然保留给本机资料、厂商包、临时记录和不会提交的参考材料。以后能指导别人重复操作的内容，优先沉淀到这里。
+| 要做什么 | 文档 |
+| --- | --- |
+| 编译、下载、调试或配置 CLion | [CLion 和 Zephyr](clion-zephyr.md) |
+| 查看工程与开发板分层 | [工程入口](../projects/README.md)、[开发板](../boards/README.md) |
+| 新增 A、C、M 或其他板的车型 | [新车接入](new-target.md) |
+| 新增任务模块 | [模块声明](module-system.md) |
+| 理解控制、设备、任务与故障边界 | [运行层说明](runtime-architecture.md) |
+| 确认安装与坐标 | [坐标系和安装基准](coordinate-frames.md) |
+| 第一次上电、换硬件、联调 | [上车检查清单](bringup-checklist.md) |
+| 调控制参数 | [PID 调试](pid-tuning.md) |
+| 查看日志、确认固件身份 | [SD 日志](sdlog.md) |
+| 写代码、处理命名和注释 | [代码风格](coding-style.md) |
+| 查看 HERO-M 已测结果与未完成项 | [验证记录](../tests/ZephyrMusicM/Validation.md) |
 
-## 先看哪份
+## 文档维护
 
-| 你要做什么 | 先看 |
-|---|---|
-| 判断 project、Robotconfig、board 怎么对应 | [工程目标对应表](project-map.md) |
-| 新接一辆车或复制一个新目标 | [新车接入流程](new-target.md) |
-| 新接一台机器人或新增模块 | [新机器人和新模块接入模板](new-robot-runtime-template.md) |
-| 解释底盘、云台、场地、开发板坐标 | [坐标系和安装基准](coordinate-frames.md) |
-| 新增或评审机器人模块边界 | [机器人模块声明](module-system.md) |
-| 第一次上车、上电、联调前检查 | [上车检查清单](bringup-checklist.md) |
-| 配置 CLion、Zephyr 4.4、CMake 预设和 OpenOCD 下载 | [CLion 和 Zephyr 开发环境](clion-zephyr.md) |
-| 调云台、底盘、射击 PID | [PID 调试流程](pid-tuning.md) |
-| 看 SD 日志、留基线日志、改日志 tag | [SD 日志和复盘](sdlog.md) |
-| 说明 SD 发布纪律、CAN 硬件边界和评分口径 | [评分边界](evaluation-boundaries.md) |
-| 写代码、补注释、处理旧风格 | [代码风格](coding-style.md) |
-| 了解后续通用机器人运行层方向 | [运行层演进方向](runtime-architecture.md) |
-| 跟踪架构收束阶段和每版验收要求 | [架构收束与分阶段验收](architecture-convergence.md) |
-
-## 文档分层
-
-- `README.md`：项目总览和当前主线状态。
-- `QuickStart.md`：非常短的入门路径，适合第一次打开仓库。
-- `manual/`：正式操作手册，按具体任务组织。
-- `zephyr/`：正式构建工程；使用 Zephyr 4.4、CMake、Ninja 和 OpenOCD。
-- `Robotconfig/README.md`：目标配置层，只讲车型参数、装配和检测。
-- `boards/README.md`：板级适配层，只讲芯片、外设和端口。
-- `shared/README.md`：共享代码层，只讲复用逻辑和边界。
-- `tools/README.md`：本地脚本和离线工具。
-- `local/docs/`：本机资料，不进 Git，不作为当前代码的唯一说明。
-
-## 维护规则
-
-1. 代码行为变了，优先更新离它最近的 README，再更新这里的操作手册。
-2. 新车接入、上车记录、PID 调试经验，如果别人以后会复用，就从 `local/docs/` 搬到 `manual/`。
-3. 厂商 SDK、PDF、参考工程继续留在 `local/docs/` 或 `local/reference/`，不要混进正式手册。
-4. 文档里出现旧路径时，优先改成当前结构：`zephyr/`、`Robotconfig/`、`boards/`、`shared/`。
-5. 不确定某段内容是否还对时，写明“待实测”或“只适用于某目标”，不要写成通用结论。
+- `boards/` 记录开发板支持；A、C、M 板独立于车型保留。
+- `projects/` 记录构建和启动，`Robotconfig/` 记录车型装配和参数，`shared/` 记录共享实现。
+- 接口或路径变更时同步更新相邻 README 和相关操作手册，避免保留两份互相矛盾的步骤。
+- 已结束的迁移规划不再作为操作入口；实测结论保留日期、固件、硬件条件及限制。
+- `local/docs/`、`local/reference/` 和本机日志不提交 Git。能指导复现的结论写进正式文档。
+- 编译、电脑上的逻辑测试和实车测试分别说明；尚未验证的项目写明范围，不推广为全板、全车结论。

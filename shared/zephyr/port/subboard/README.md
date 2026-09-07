@@ -1,6 +1,6 @@
-# SENTINEL-M 子板初始化（Zephyr）
+# M 板副板服务（Zephyr）
 
-此端口替换 `Robotconfig/SENTINEL-M/SubBoardBringup.c`，保留 `SubBoardBringupRunOnce()`、`SubBoardBringupPoll()` 和 `SdLogRtcNow()` 公共接口。它通过 Zephyr I2C 读取 PCF8563 的 0x02..0x08 时间寄存器，不直接触碰 STM32 HAL、GPIO 复用或时钟配置。
+本目录供 M 板车型复用。`SubBoardBringupZephyr.c` 承接历史副板初始化，保留 `SubBoardBringupRunOnce()`、`SubBoardBringupPoll()` 和 `SdLogRtcNow()` 公共接口。它通过 Zephyr I2C 读取 PCF8563 的 0x02..0x08 时间寄存器，不直接触碰 STM32 HAL、GPIO 复用或时钟配置。
 
 ## DTS 绑定
 
@@ -30,4 +30,6 @@ aliases {
 
 ## 接入
 
-构建中应以本目录的 `SubBoardBringupZephyr.c` 替换旧的 `Robotconfig/SENTINEL-M/SubBoardBringup.c`，并加入本目录到头文件搜索路径。启用 I2C 驱动及 I2C1 的 DTS/pinctrl；不需要也不应引入 STM32 HAL 的时钟重配代码。
+当前工程选择本目录的 `SubBoardBringupZephyr.c`，并加入相应头文件目录。启用 I2C 驱动及 I2C1 的 DTS/pinctrl；不需要也不应引入 STM32 HAL 的时钟重配代码。
+
+`SubBoardMusic.c` 提供 SD 歌曲与按钮服务，`MPreflight.c` 和 `MReceiveCheck.c` 为独立准备/只接收模式。HERO-M 当前包含音乐服务；用法见 [音乐说明](../../../../tests/ZephyrMusicM/README.md)，实测范围见 [验证记录](../../../../tests/ZephyrMusicM/Validation.md)。

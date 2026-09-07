@@ -1,7 +1,7 @@
 # ARBATOS simulation tools
 
-`RobotSim.py` reads the current `Robotconfig/<PROJECT>` files, Keil project
-defines, and shared profile defaults. It estimates:
+`RobotSim.py` reads `projects/prj.conf`, `projects/<PROJECT>/prj.conf`,
+the current `Robotconfig/<PROJECT>` files, and shared profile defaults. It estimates:
 
 - simulated motor traffic and CAN bus placement;
 - 1000 Hz motor feedback pressure;
@@ -57,7 +57,7 @@ five-bar leg constraints are modeled.
 ## Control core simulation path
 
 Physics simulators such as MuJoCo should call the reusable control core instead
-of the FreeRTOS task entry points. Firmware tasks read sensors/manual input and
+of the firmware task entry points. Firmware tasks read sensors/manual input and
 write actuator commands; simulation runners should provide the same core input
 from simulator state and apply the returned `MotorCmd` outputs to the
 simulator actuators.
