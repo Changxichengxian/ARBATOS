@@ -672,6 +672,10 @@ static int ArbUartTxStart(ArbUartPort *port, const uint8_t *data, uint16_t len, 
     int ret;
     k_spinlock_key_t key;
 
+#if defined(CONFIG_ARBATOS_RECEIVE_ONLY)
+    /* 接收版不允许辅助串口或RS485向外发送。 */
+    return -EPERM;
+#endif
     if (data == NULL || len == 0u || len > max_len)
     {
         return -EMSGSIZE;

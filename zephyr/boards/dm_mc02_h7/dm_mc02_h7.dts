@@ -16,6 +16,7 @@
 		zephyr,dtcm = &dtcm;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
+		zephyr,code-partition = &application_partition;
 		zephyr,canbus = &fdcan1;
 	};
 
@@ -30,6 +31,8 @@
 		uart-rs485-0 = &usart2;
 		uart-rs485-1 = &usart3;
 		sd-spi = &sd_spi;
+		buzzer-sample-timer = &buzzer_sample_timer;
+		subboard-rtc = &subboard_rtc;
 	};
 
 	keys {
@@ -54,42 +57,87 @@
 	arbatos_platform: arbatos-platform {
 		compatible = "arbatos,platform";
 		key-gpios = <&gpioa 15 GPIO_ACTIVE_LOW>;
-		buzzer-pwms = <&pwm12 2 PWM_USEC(100) PWM_POLARITY_NORMAL>;
+		buzzer-pwms = <&pwm12 2 PWM_USEC(25) PWM_POLARITY_NORMAL>;
+		/* 下标依厂家 P11 顺序：PA0、PA2、PE9、PE13。 */
+		servo-pwms = <&pwm2 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+			<&pwm2 3 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+			<&pwm1 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+			<&pwm1 3 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		application_partition: partition@0 {
+			label = "application";
+			reg = <0x0 0xc0000>;
+		};
+		/* 两个独立的 128 KiB 擦除扇区，交替保存校准记录。 */
+		imu_cal_partition: partition@c0000 {
+			label = "imu-calibration";
+			reg = <0xc0000 0x40000>;
+		};
 	};
 };
 
 &clk_lsi { status = "okay"; };
 &clk_hsi48 { status = "okay"; };
 &clk_hse { clock-frequency = <DT_FREQ_M(24)>; status = "okay"; };
-&pll { div-m = <2>; mul-n = <40>; div-p = <1>; div-q = <4>; div-r = <2>; clocks = <&clk_hse>; status = "okay"; };
+&pll { div-m = <2>; mul-n = <40>; div-p = <1>; div-q = <5>; div-r = <2>; clocks = <&clk_hse>; status = "okay"; };
 &pll2 { div-m = <3>; mul-n = <10>; div-p = <1>; div-q = <1>; div-r = <1>; clocks = <&clk_hse>; status = "okay"; };
 &rcc { clocks = <&pll>; clock-frequency = <DT_FREQ_M(480)>; d1cpre = <1>; hpre = <2>; d1ppre = <2>; d2ppre1 = <2>; d2ppre2 = <2>; d3ppre = <2>; };
 &pwr { power-supply = "ldo"; };
 
+&adc1 {
+	pinctrl-0 = <&adc1_inp4_pc4 &adc1_inp19_pa5>;
+	pinctrl-names = "default";
+	clocks = <&rcc STM32_CLOCK(AHB1, 5)>, <&rcc STM32_SRC_PLL2_P ADC_SEL(0)>;
+	clock-names = "adcx", "adc_ker";
+	st,adc-clock-source = "ASYNC";
+	st,adc-prescaler = <4>;
+	vref-mv = <3300>;
+	status = "okay";
+};
+
+&i2c1 {
+	pinctrl-0 = <&i2c1_scl_pb8 &i2c1_sda_pb9>;
+	pinctrl-names = "default";
+	clock-frequency = <100000>;
+	status = "okay";
+	subboard_rtc: rtc@51 { compatible = "nxp,pcf8563"; reg = <0x51>; };
+};
+
 &usart1 { pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
-&usart2 { pinctrl-0 = <&usart2_de_pd4 &usart2_tx_pd5 &usart2_rx_pd6>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
-&usart3 { pinctrl-0 = <&usart3_de_pb14 &usart3_tx_pd8 &usart3_rx_pd9>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
+&usart2 { pinctrl-0 = <&usart2_de_pd4 &usart2_tx_pd5 &usart2_rx_pd6>; pinctrl-names = "default"; current-speed = <115200>; de-enable; status = "okay"; };
+&usart3 { pinctrl-0 = <&usart3_de_pb14 &usart3_tx_pd8 &usart3_rx_pd9>; pinctrl-names = "default"; current-speed = <115200>; de-enable; status = "okay"; };
 &uart5 { pinctrl-0 = <&uart5_rx_pd2>; pinctrl-names = "default"; current-speed = <100000>; status = "okay"; };
 &uart7 { pinctrl-0 = <&uart7_tx_pe8 &uart7_rx_pe7>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
 &usart10 { pinctrl-0 = <&usart10_rx_pe2 &usart10_tx_pe3>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
 &fdcan1 { pinctrl-0 = <&fdcan1_rx_pd0 &fdcan1_tx_pd1>; pinctrl-names = "default"; clocks = <&rcc STM32_CLOCK(APB1_2, 8)>, <&rcc STM32_SRC_PLL2_Q FDCAN_SEL(2)>; status = "okay"; };
 &fdcan2 { pinctrl-0 = <&fdcan2_rx_pb5 &fdcan2_tx_pb6>; pinctrl-names = "default"; clocks = <&rcc STM32_CLOCK(APB1_2, 8)>, <&rcc STM32_SRC_PLL2_Q FDCAN_SEL(2)>; status = "okay"; };
 &fdcan3 { pinctrl-0 = <&fdcan3_rx_pd12 &fdcan3_tx_pd13>; pinctrl-names = "default"; clocks = <&rcc STM32_CLOCK(APB1_2, 8)>, <&rcc STM32_SRC_PLL2_Q FDCAN_SEL(2)>; status = "okay"; };
-&spi1 { pinctrl-0 = <&spi1_sck_pb3 &spi1_mosi_pd7>; pinctrl-names = "default"; status = "okay"; };
-&spi2 { pinctrl-0 = <&spi2_sck_pb13 &spi2_miso_pc2 &spi2_mosi_pc1>; pinctrl-names = "default"; status = "okay"; };
+&spi1 { pinctrl-0 = <&spi1_sck_pb3 &spi1_miso_pb4 &spi1_mosi_pd7>; pinctrl-names = "default"; cs-gpios = <&gpioe 15 GPIO_ACTIVE_LOW>; st,soft-nss; status = "okay"; };
+&i2c2 { pinctrl-0 = <&i2c2_scl_pb10 &i2c2_sda_pb11>; pinctrl-names = "default"; clock-frequency = <100000>; status = "okay"; };
+/* BMI088 的两个片选由传感器端口手动控制。 */
+&spi2 { pinctrl-0 = <&spi2_sck_pb13 &spi2_miso_pc2 &spi2_mosi_pc1>; pinctrl-names = "default"; st,soft-nss; status = "okay"; };
 &spi3 {
 	pinctrl-0 = <&spi3_sck_pc10 &spi3_miso_pc11 &spi3_mosi_pc12>;
 	pinctrl-names = "default";
 	cs-gpios = <&gpioe 14 GPIO_ACTIVE_LOW>;
+	/* SD 协议层跨命令和数据阶段手动保持片选。 */
+	st,soft-nss;
 	status = "okay";
 
 	sd_spi: sd-card@0 {
 		compatible = "arbatos,sd-spi";
 		reg = <0>;
-		spi-max-frequency = <8000000>;
+		spi-max-frequency = <48000000>;
 	};
 };
-/* SPI3 and SPI6 share PC12. Keep SPI6 disabled until the LCD and SD wiring is selected. */
+/* SPI6 的 SCK 与 SD 共用 PC12；板载 2812 使用 PA7，暂不启用此总线。 */
 &spi6 { status = "disabled"; };
 zephyr_udc0: &usbotg_hs {
 	pinctrl-0 = <&usb_otg_hs_dm_pa11 &usb_otg_hs_dp_pa12>;
@@ -103,4 +151,8 @@ zephyr_udc0: &usbotg_hs {
 };
 
 &timers3 { status = "okay"; pwm3: pwm { status = "okay"; pinctrl-0 = <&tim3_ch4_pb1>; pinctrl-names = "default"; }; };
+&timers1 { status = "okay"; pwm1: pwm { status = "okay"; pinctrl-0 = <&tim1_ch1_pe9 &tim1_ch3_pe13>; pinctrl-names = "default"; }; };
+&timers2 { status = "okay"; pwm2: pwm { status = "okay"; pinctrl-0 = <&tim2_ch1_pa0 &tim2_ch3_pa2>; pinctrl-names = "default"; }; };
+/* 独立 TIM5 计时，避免音乐改变外接舵机的 TIM2 周期。 */
+&timers5 { status = "okay"; st,prescaler = <0>; buzzer_sample_timer: counter { status = "okay"; }; };
 &timers12 { status = "okay"; pwm12: pwm { status = "okay"; pinctrl-0 = <&tim12_ch2_pb15>; pinctrl-names = "default"; }; };

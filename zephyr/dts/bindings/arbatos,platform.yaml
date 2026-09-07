@@ -7,3 +7,6 @@ properties:
     type: phandle-array
     specifier-space: pwm
   shoot-trig-gpios: {type: phandle-array}
+  servo-pwms:
+    type: phandle-array
+    specifier-space: pwm

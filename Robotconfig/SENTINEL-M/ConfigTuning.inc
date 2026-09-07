@@ -337,8 +337,10 @@
     .voltage =
         {
             .full_battery_voltage = 25.2f, // [221] 满电电压
-            .low_battery_voltage = 22.2f,  // [222] 低电阈值
+            .low_battery_voltage = 21.6f,  // [222] 低电阈值
             .voltage_drop = 0.0f,          // [223] 压降补偿
+            .lowAlarmDelayMs = 3000u,
+            .lowAlarmEnabled = 1u,
         },
 
     // 蜂鸣器配置

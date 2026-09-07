@@ -296,6 +296,8 @@ typedef struct
     fp32 full_battery_voltage; // 满电电压
     fp32 low_battery_voltage;  // 低电阈值
     fp32 voltage_drop;         // 线路压降补偿
+    uint16_t lowAlarmDelayMs;  // 连续低压确认时间，避免短时负载触发
+    uint8_t lowAlarmEnabled;   // 仅控制低压提示，不影响电压采样
 } voltage_config_t;
 
 // Buzzer PCM playback config (PWM+DMA, u8 samples on TF/SD).

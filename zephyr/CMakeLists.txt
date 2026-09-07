@@ -9,6 +9,7 @@ target_sources(app PRIVATE
     src/main.c
     src/ArbatosTarget.c
 )
+target_sources_ifdef(CONFIG_ARBATOS_LOG_RAM app PRIVATE port/platform/ArbLogRam.c)
 
 target_sources_ifdef(CONFIG_ARBATOS_LEGACY_SOURCES app PRIVATE
     src/ArbatosRuntime.c
@@ -23,8 +24,6 @@ target_sources_ifdef(CONFIG_ARBATOS_LEGACY_SOURCES app PRIVATE
     port/storage/BspZephyrDiskio.c
     port/storage/BspZephyrSdSpiPort.c
     port/platform/ArbatosPlatform.c
-    port/platform/BspAdc.c
-    port/platform/BspBuzzer.c
     port/platform/BspFlash.c
     port/platform/BspKey.c
     port/platform/BspLed.c
@@ -37,6 +36,19 @@ target_sources_ifdef(CONFIG_ARBATOS_LEGACY_SOURCES app PRIVATE
 
 if(CONFIG_ARBATOS_LEGACY_SOURCES)
     zephyr_linker_sources(SECTIONS linker/arbatos-legacy-ram.ld)
+
+    if(CONFIG_BOARD_DM_MC02_H7)
+        target_sources(app PRIVATE port/platform/BspBuzzerM.c port/platform/MBoardIo.c
+            port/platform/BspAdcM.c port/sensors/ImuCalStore.c)
+    else()
+        target_sources(app PRIVATE port/platform/BspBuzzer.c port/platform/BspAdc.c)
+    endif()
+    target_sources_ifdef(CONFIG_ARBATOS_SUBBOARD_MUSIC app PRIVATE
+        port/subboard/SubBoardMusic.c)
+    target_sources_ifdef(CONFIG_ARBATOS_PREFLIGHT_ONLY app PRIVATE
+        port/subboard/MPreflight.c)
+    target_sources_ifdef(CONFIG_ARBATOS_RECEIVE_ONLY app PRIVATE
+        port/subboard/MReceiveCheck.c)
 
     if((CONFIG_ARBATOS_TARGET_HERO_C OR CONFIG_ARBATOS_TARGET_MINIWHEELEG_C) AND
        NOT CONFIG_BOARD_DJI_C_F407)

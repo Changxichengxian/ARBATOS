@@ -18,7 +18,7 @@
                 },
             .yaw = {MOTOR_MODEL_6020, 2u},
             .yaw_upper = {MOTOR_MODEL_6020, 0u},
-            .pitch = {MOTOR_MODEL_3510, 3u},
+            .pitch = {MOTOR_MODEL_3510, 5u, .can_bus = 2u},
             .trigger = {MOTOR_MODEL_3510, 4u},
             .arm = {0},
         },

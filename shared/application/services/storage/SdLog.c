@@ -109,6 +109,7 @@
 #define SDLOG_RESTART_REASON_STOP 6u
 
 static FIL sdlog_fp;
+static char sdlog_path[96];
 static volatile uint8_t sdlog_active = 0u;
 static volatile uint32_t sdlog_dropped = 0u;
 static uint32_t sdlog_last_sync_ms = 0u;
@@ -1174,6 +1175,7 @@ static int sdlog_open_next_file(void)
             sdlog_head = 0u;
             sdlog_tail = 0u;
             sdlog_last_tick_ms = hdr.boot_tick_ms;
+            memcpy(sdlog_path, path, strlen(path) + 1u);
             sdlog_active = 1u;
             taskEXIT_CRITICAL();
             return 0;
@@ -1430,5 +1432,20 @@ void SdLogGetStats(SdLogStats *out)
     out->bytes_flushed = sdlog_bytes_flushed;
     out->last_sync_ms = sdlog_last_sync_ms;
     out->last_error = sdlog_last_error;
+    taskEXIT_CRITICAL();
+}
+
+void SdLogGetPath(char *out, uint32_t capacity)
+{
+    if (out == NULL || capacity == 0u) {
+        return;
+    }
+    taskENTER_CRITICAL();
+    uint32_t n = (uint32_t)strlen(sdlog_path);
+    if (n >= capacity) {
+        n = capacity - 1u;
+    }
+    memcpy(out, sdlog_path, n);
+    out[n] = '\0';
     taskEXIT_CRITICAL();
 }

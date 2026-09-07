@@ -43,7 +43,19 @@
 #define ARB_STORAGE_SPI_INIT_HZ 400000u
 #endif
 #ifndef ARB_STORAGE_SPI_FAST_HZ
+#if defined(ARB_STORAGE_SPI_NODE) && DT_PROP(ARB_STORAGE_SPI_NODE, spi_max_frequency) >= 48000000
+#define ARB_STORAGE_SPI_FAST_HZ 24000000u
+#else
 #define ARB_STORAGE_SPI_FAST_HZ 8000000u
+#endif
+#endif
+
+#ifndef ARB_STORAGE_SPI_HIGH_SPEED_HZ
+#if defined(ARB_STORAGE_SPI_NODE) && DT_PROP(ARB_STORAGE_SPI_NODE, spi_max_frequency) >= 48000000
+#define ARB_STORAGE_SPI_HIGH_SPEED_HZ 48000000u
+#else
+#define ARB_STORAGE_SPI_HIGH_SPEED_HZ 0u
+#endif
 #endif
 
 #endif

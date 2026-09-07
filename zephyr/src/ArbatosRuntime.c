@@ -21,6 +21,9 @@
 #include "RobotControlRegistry.h"
 #include "RobotTaskBuildConfig.h"
 #include "Watch.h"
+#if defined(CONFIG_ARBATOS_SUBBOARD_MUSIC)
+#include "SubBoardMusic.h"
+#endif
 
 #if ROBOT_TASK_BUILD_STARTUP_SERVICE
 #include "StartupServiceTask.h"
@@ -452,6 +455,31 @@ ArbatosRuntimeStatus ArbatosRuntimeStart(void)
     }
     attempted = 1u;
 
+#if defined(CONFIG_ARBATOS_PREFLIGHT_ONLY)
+    /* 静态准备只启动采样与记录，不创建任何电机或外接舵机任务。 */
+    extern int MPreflightStart(void);
+    RobotControlBootstrapProfileDefaults();
+    ManualInputInit();
+    if (MPreflightStart() != 0) {
+        result = ARBATOS_RUNTIME_MODULE_TASK_FAILED;
+    }
+    return result;
+#endif
+
+#if defined(CONFIG_ARBATOS_MUSIC_ONLY)
+    /* HERO-M 运动映射尚待实车核对；音乐验证不初始化总线和控制输出。 */
+    extern int BspBuzzerPlatformInit(void);
+    if (BspBuzzerPlatformInit() != 0) {
+        result = ARBATOS_RUNTIME_PLATFORM_INIT_FAILED;
+        return result;
+    }
+    BuzzerSetEnable(1u);
+    if (SubBoardMusicStart() != 0) {
+        result = ARBATOS_RUNTIME_MODULE_TASK_FAILED;
+    }
+    return result;
+#endif
+
     if (ArbatosPlatformInit() != 0)
     {
         result = ARBATOS_RUNTIME_PLATFORM_INIT_FAILED;
@@ -482,6 +510,12 @@ ArbatosRuntimeStatus ArbatosRuntimeStart(void)
         result = ARBATOS_RUNTIME_MODULE_TASK_FAILED;
         return result;
     }
+
+#if defined(CONFIG_ARBATOS_SUBBOARD_MUSIC)
+    if (SubBoardMusicStart() != 0) {
+        result = ARBATOS_RUNTIME_MODULE_TASK_FAILED;
+    }
+#endif
 
     return result;
 }

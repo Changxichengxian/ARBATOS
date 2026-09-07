@@ -43,6 +43,8 @@
 #define SD_SPI_CMD12 (12u)  // STOP_TRANSMISSION
 #define SD_SPI_CMD16 (16u)  // SET_BLOCKLEN
 #define SD_SPI_CMD17 (17u)  // READ_SINGLE_BLOCK
+#define SD_SPI_CMD18 (18u)  // READ_MULTIPLE_BLOCK
+#define SD_SPI_CMD6  (6u)   // SWITCH_FUNC
 #define SD_SPI_CMD24 (24u)  // WRITE_BLOCK
 #define SD_SPI_CMD25 (25u)  // WRITE_MULTIPLE_BLOCK
 #define SD_SPI_CMD55 (55u)  // APP_CMD
@@ -70,6 +72,19 @@ static uint8_t SdSpiDummyRx[SD_SPI_SECTOR_SIZE];
 
 static uint8_t SdSpiInited = 0u;
 static uint8_t SdSpiType = 0u;
+
+#if defined(__ZEPHYR__)
+volatile int SdSpiHighSpeedResult = SD_SPI_BENCH_HS_NOT_READY;
+#endif
+
+#if defined(SD_BENCH_TEST)
+static uint8_t SdSpiBenchMultiRead = 0u;
+static uint8_t SdSpiBenchCrc16 = 0u;
+#endif
+
+#if defined(SD_BENCH_TEST) || defined(__ZEPHYR__)
+static int SdSpiHighSpeedSwitch(void);
+#endif
 
 static void SdSpiLock(void)
 {
@@ -209,6 +224,43 @@ static uint8_t SdSpiSendAcmd(uint8_t acmd, uint32_t arg)
     return SdSpiSendCmd(acmd, arg);
 }
 
+static uint16_t SdSpiCrc16(const uint8_t *buf, uint32_t len)
+{
+    uint16_t crc = 0u;
+
+    while (len--)
+    {
+        crc ^= (uint16_t)(*buf++) << 8u;
+        for (uint8_t bit = 0u; bit < 8u; bit++)
+        {
+            crc = (crc & 0x8000u) ? (uint16_t)((crc << 1u) ^ 0x1021u) : (uint16_t)(crc << 1u);
+        }
+    }
+    return crc;
+}
+
+static uint8_t SdSpiUseMultiRead(void)
+{
+#if defined(SD_BENCH_TEST)
+    return SdSpiBenchMultiRead;
+#elif defined(__ZEPHYR__)
+    return SdSpiPortUseMultiRead();
+#else
+    return 0u;
+#endif
+}
+
+static uint8_t SdSpiVerifyReadCrc(void)
+{
+#if defined(SD_BENCH_TEST)
+    return SdSpiBenchCrc16;
+#elif defined(__ZEPHYR__)
+    return SdSpiPortVerifyReadCrc();
+#else
+    return 0u;
+#endif
+}
+
 static int SdSpiRecvData(uint8_t *buf, uint32_t len, uint32_t timeout_ms)
 {
     const uint32_t start = SdSpiPortTickMs();
@@ -236,8 +288,13 @@ static int SdSpiRecvData(uint8_t *buf, uint32_t len, uint32_t timeout_ms)
     {
         return -2;
     }
-    (void)SdSpiTxrx(0xFFu);
-    (void)SdSpiTxrx(0xFFu);
+    const uint16_t crc_high = SdSpiTxrx(0xFFu);
+    const uint16_t crc_low = SdSpiTxrx(0xFFu);
+    const uint16_t card_crc = (crc_high << 8u) | crc_low;
+    if (SdSpiVerifyReadCrc() && SdSpiCrc16(buf, len) != card_crc)
+    {
+        return -3;
+    }
     return 0;
 }
 
@@ -289,6 +346,9 @@ int SdSpiInit(void)
 
     SdSpiInited = 0u;
     SdSpiType = 0u;
+#if defined(__ZEPHYR__)
+    SdSpiHighSpeedResult = SD_SPI_BENCH_HS_NOT_READY;
+#endif
 
     SdSpiSetSpeed(SD_SPI_SPEED_INIT);
     SdSpiCsHigh();
@@ -457,6 +517,25 @@ int SdSpiInit(void)
     }
 
     SdSpiSetSpeed(SD_SPI_SPEED_FAST);
+
+#if defined(__ZEPHYR__)
+    if ((SdSpiType & (SD_SPI_TYPE_SDSC | SD_SPI_TYPE_SDHC)) != 0u && SdSpiPortHasHighSpeed() != 0u)
+    {
+        SdSpiHighSpeedResult = SdSpiHighSpeedSwitch();
+        if (SdSpiHighSpeedResult == SD_SPI_BENCH_HS_OK)
+        {
+            if (SdSpiPortEnableHighSpeed() != 0)
+            {
+                SdSpiHighSpeedResult = SD_SPI_BENCH_HS_PORT_SPEED;
+                SdSpiSetSpeed(SD_SPI_SPEED_FAST);
+            }
+        }
+    }
+    else if ((SdSpiType & (SD_SPI_TYPE_SDSC | SD_SPI_TYPE_SDHC)) == 0u)
+    {
+        SdSpiHighSpeedResult = SD_SPI_BENCH_HS_NOT_SD;
+    }
+#endif
     SdSpiInited = 1u;
 
     SdSpiUnlock();
@@ -508,11 +587,86 @@ int SdSpiSync(void)
     return ready ? 0 : -3;
 }
 
+#if defined(SD_BENCH_TEST)
+void SdSpiBenchSetMultiRead(uint8_t enabled)
+{
+    SdSpiLock();
+    SdSpiBenchMultiRead = enabled ? 1u : 0u;
+    SdSpiUnlock();
+}
+
+int SdSpiBenchSetCrc16(uint8_t enabled)
+{
+    SdSpiLock();
+    SdSpiBenchCrc16 = enabled ? 1u : 0u;
+    SdSpiUnlock();
+    return 0;
+}
+#endif
+
+static uint8_t SdSpiStopRead(void)
+{
+    return SdSpiSendCmd(SD_SPI_CMD12, 0u);
+}
+
+static int SdSpiReadMulti(uint8_t *buf, uint32_t addr, uint32_t count)
+{
+    int ret = 0;
+
+    SdSpiLock();
+    if (!SdSpiSelect())
+    {
+        SdSpiUnlock();
+        return -2;
+    }
+
+    if (SdSpiSendCmd(SD_SPI_CMD18, addr) != 0u)
+    {
+        SdSpiDeselect();
+        SdSpiUnlock();
+        return -3;
+    }
+
+    for (uint32_t i = 0u; i < count; i++)
+    {
+        if (SdSpiRecvData(buf, SD_SPI_SECTOR_SIZE, 200u) != 0)
+        {
+            ret = -4;
+            break;
+        }
+        buf += SD_SPI_SECTOR_SIZE;
+    }
+
+    const uint8_t stop = SdSpiStopRead();
+    if (ret == 0 && stop != 0u)
+    {
+        ret = -5;
+    }
+    if (!SdSpiWaitReady(SD_SPI_SELECT_READY_TIMEOUT_MS) && ret == 0)
+    {
+        ret = -6;
+    }
+
+    SdSpiDeselect();
+    SdSpiUnlock();
+    return ret;
+}
+
 int SdSpiRead(uint8_t *buf, uint32_t sector, uint32_t count)
 {
     if (!SdSpiInited || buf == NULL || count == 0u)
     {
         return -1;
+    }
+
+    if (SdSpiUseMultiRead() && count > 1u)
+    {
+        uint32_t addr = sector;
+        if ((SdSpiType & SD_SPI_TYPE_SDHC) == 0u)
+        {
+            addr *= SD_SPI_SECTOR_SIZE;
+        }
+        return SdSpiReadMulti(buf, addr, count);
     }
 
     SdSpiLock();
@@ -554,6 +708,110 @@ int SdSpiRead(uint8_t *buf, uint32_t sector, uint32_t count)
     SdSpiUnlock();
     return 0;
 }
+
+#if defined(SD_BENCH_TEST) || defined(__ZEPHYR__)
+static int SdSpiBenchSwitchFunc(uint32_t arg, uint8_t *status)
+{
+    if (!SdSpiSelect())
+    {
+        return -1;
+    }
+
+    const uint8_t r = SdSpiSendCmd(SD_SPI_CMD6, arg);
+    if (r != 0u)
+    {
+        SdSpiDeselect();
+        return r == 0x04u ? -4 : -2;
+    }
+
+    const int ret = SdSpiRecvData(status, 64u, 200u);
+    SdSpiDeselect();
+    return ret == 0 ? 0 : -3;
+}
+
+static int SdSpiBenchHighSpeedStatus(const uint8_t *status, uint8_t result)
+{
+    const uint8_t version = status[17];
+    if (version > 1u)
+    {
+        return SD_SPI_BENCH_HS_STATUS_VERSION;
+    }
+    if (version == 1u && (status[29] & 0x02u) != 0u)
+    {
+        return result ? SD_SPI_BENCH_HS_SWITCH_BUSY : SD_SPI_BENCH_HS_CHECK_BUSY;
+    }
+    if ((status[16] & 0x0Fu) != 1u)
+    {
+        return result ? SD_SPI_BENCH_HS_SWITCH_SELECTION : SD_SPI_BENCH_HS_CHECK_SELECTION;
+    }
+    return SD_SPI_BENCH_HS_OK;
+}
+
+static int SdSpiHighSpeedSwitch(void)
+{
+    uint8_t status[64];
+    int ret = SdSpiBenchSwitchFunc(0x00FFFFF1u, status);
+    if (ret == -4)
+    {
+        ret = SD_SPI_BENCH_HS_UNSUPPORTED;
+    }
+    else if (ret == -1)
+    {
+        ret = SD_SPI_BENCH_HS_CHECK_CMD;
+    }
+    else if (ret == -2)
+    {
+        ret = SD_SPI_BENCH_HS_CHECK_CMD;
+    }
+    else if (ret != 0)
+    {
+        ret = SD_SPI_BENCH_HS_CHECK_DATA;
+    }
+    if (ret == 0 && (status[13] & 0x02u) == 0u)
+    {
+        ret = SD_SPI_BENCH_HS_UNSUPPORTED;
+    }
+    if (ret == 0)
+    {
+        ret = SdSpiBenchHighSpeedStatus(status, 0u);
+    }
+    if (ret == 0)
+    {
+        ret = SdSpiBenchSwitchFunc(0x80FFFFF1u, status);
+        if (ret == -1 || ret == -2 || ret == -4)
+        {
+            ret = SD_SPI_BENCH_HS_SWITCH_CMD;
+        }
+        else if (ret != 0)
+        {
+            ret = SD_SPI_BENCH_HS_SWITCH_DATA;
+        }
+    }
+    if (ret == 0)
+    {
+        ret = SdSpiBenchHighSpeedStatus(status, 1u);
+    }
+
+    return ret;
+}
+
+int SdSpiBenchHighSpeed(void)
+{
+    if (!SdSpiInited)
+    {
+        return SD_SPI_BENCH_HS_NOT_READY;
+    }
+    if ((SdSpiType & (SD_SPI_TYPE_SDSC | SD_SPI_TYPE_SDHC)) == 0u)
+    {
+        return SD_SPI_BENCH_HS_NOT_SD;
+    }
+
+    SdSpiLock();
+    const int ret = SdSpiHighSpeedSwitch();
+    SdSpiUnlock();
+    return ret;
+}
+#endif
 
 int SdSpiWrite(const uint8_t *buf, uint32_t sector, uint32_t count)
 {

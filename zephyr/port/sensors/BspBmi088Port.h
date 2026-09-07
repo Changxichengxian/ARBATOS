@@ -15,5 +15,6 @@ void BMI088_ACCEL_NS_H(void);
 void BMI088_GYRO_NS_L(void);
 void BMI088_GYRO_NS_H(void);
 uint8_t BMI088_read_write_byte(uint8_t txdata);
+uint32_t Bmi088PortErrorCount(void);
 
 #endif

@@ -13,12 +13,35 @@
 #include "Watch.h"
 #include "main.h"
 
+#if defined(SUB_BOARD_FACTORY_TEST)
+#include "SubBoardBringup.h"
+#endif
+
 static volatile uint32_t s_fault_entry_active;
 static BspResetEvidenceRecord s_fault_record;
 
 #define ROBOT_FAULT_CFSR_STACK_ERROR_MASK 0x00003838u
 
 static void RobotFaultResetNow(void);
+
+#if defined(SUB_BOARD_FACTORY_TEST)
+static void RobotFaultFactoryHalt(uint32_t reason, uint32_t arg0, uint32_t arg1)
+{
+    __disable_irq();
+    g_sub_board_factory_test.magic = SUB_BOARD_FACTORY_TEST_MAGIC;
+    g_sub_board_factory_test.version = SUB_BOARD_FACTORY_TEST_VERSION;
+    g_sub_board_factory_test.size = (uint16_t)sizeof(g_sub_board_factory_test);
+    g_sub_board_factory_test.error = -110;
+    g_sub_board_factory_test.fault_reason = reason;
+    g_sub_board_factory_test.fault_arg0 = arg0;
+    g_sub_board_factory_test.fault_arg1 = arg1;
+    g_sub_board_factory_test.phase = SUB_BOARD_FACTORY_PHASE_FAILED;
+    while (1)
+    {
+        __NOP();
+    }
+}
+#endif
 
 static uint8_t RobotFaultRangeContains(uint32_t begin,
                                        uint32_t end,
@@ -189,6 +212,12 @@ void RobotFaultTaskAndReset(uint32_t reason,
                             TaskHandle_t task,
                             const char *task_name)
 {
+#if defined(SUB_BOARD_FACTORY_TEST)
+    (void)task;
+    (void)task_name;
+    RobotFaultFactoryHalt(reason, arg0, arg1);
+    return;
+#else
     const uint32_t task_handle = (uint32_t)(uintptr_t)task;
 
     if (RobotFaultEnterOnce() == 0u)
@@ -210,6 +239,7 @@ void RobotFaultTaskAndReset(uint32_t reason,
         (void)LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_FAULT);
     }
     RobotFaultResetNow();
+#endif
 }
 
 static void RobotFaultResetNow(void)
@@ -235,6 +265,12 @@ static void RobotFaultResetFromExceptionFrame(uint32_t reason,
                                               uint32_t *stack,
                                               uint32_t exc_return)
 {
+#if defined(SUB_BOARD_FACTORY_TEST)
+    (void)stack;
+    (void)exc_return;
+    RobotFaultFactoryHalt(reason, arg0, arg1);
+    return;
+#else
     if (RobotFaultEnterOnce() == 0u)
     {
         RobotFaultNestedReset();
@@ -244,6 +280,7 @@ static void RobotFaultResetFromExceptionFrame(uint32_t reason,
     RobotFaultPersist(reason, arg0, arg1, 0u, stack, exc_return);
     CanTxEmergencyStopNow();
     RobotFaultResetNow();
+#endif
 }
 
 void RobotFaultResetFromException(uint32_t reason,

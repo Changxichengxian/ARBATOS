@@ -128,6 +128,7 @@ static uint8_t CanRxNextBus = 1u;
 static TaskHandle_t CanRxTaskHandle;
 static atomic_t CanFaultLocked;
 static atomic_t CanInitState;
+volatile uint32_t BspCanReceiveOnlyBlocked;
 K_MUTEX_DEFINE(CanTxSubmitLock);
 
 static BspCanZephyrBus *BspCanBusGet(uint8_t bus)
@@ -658,6 +659,13 @@ static int BspCanTxFlagsInternal(uint8_t busNumber,
     {
         *tracked = 0u;
     }
+#if defined(CONFIG_ARBATOS_RECEIVE_ONLY)
+    /* 接收检查保留硬件ACK，但任何调用者都不能提交应用报文。 */
+    unsigned int blockKey = irq_lock();
+    BspCanReceiveOnlyBlocked++;
+    irq_unlock(blockKey);
+    return BSP_CAN_STATUS_ERROR;
+#endif
     if (bus == NULL || data == NULL || dlc > 8u ||
         stdId > CAN_STD_ID_MASK ||
         (flags & (uint8_t)~(BSP_CAN_FLAG_FD | BSP_CAN_FLAG_BRS)) != 0u ||

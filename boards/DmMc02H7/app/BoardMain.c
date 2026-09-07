@@ -20,6 +20,10 @@
 #include "RobotFaultGuard.h"
 #include "Watch.h"
 
+#if defined(SUB_BOARD_FACTORY_TEST)
+#include "SubBoardBringup.h"
+#endif
+
 void SystemClock_Config(void);
 void MX_FREERTOS_Init(void);
 void ExitRun0Mode(void);
@@ -30,6 +34,45 @@ void ExitRun0Mode(void)
 
 int main(void)
 {
+#if defined(SUB_BOARD_FACTORY_TEST)
+    const osThreadAttr_t factory_thread_attr = {
+        .name = "sub_factory",
+        .stack_size = 4096u,
+        .priority = osPriorityNormal,
+    };
+    osThreadId_t factory_thread;
+
+    HAL_Init();
+    SystemClock_Config();
+    g_sub_board_factory_test.magic = SUB_BOARD_FACTORY_TEST_MAGIC;
+    g_sub_board_factory_test.version = SUB_BOARD_FACTORY_TEST_VERSION;
+    g_sub_board_factory_test.size = (uint16_t)sizeof(g_sub_board_factory_test);
+    if (osKernelInitialize() != osOK)
+    {
+        g_sub_board_factory_test.error = -101;
+        g_sub_board_factory_test.phase = SUB_BOARD_FACTORY_PHASE_FAILED;
+        while (1)
+        {
+        }
+    }
+    factory_thread = osThreadNew(SubBoardFactoryTestTask, NULL, &factory_thread_attr);
+    if (factory_thread == NULL)
+    {
+        g_sub_board_factory_test.error = -102;
+        g_sub_board_factory_test.phase = SUB_BOARD_FACTORY_PHASE_FAILED;
+        while (1)
+        {
+        }
+    }
+    if (osKernelStart() != osOK)
+    {
+        g_sub_board_factory_test.error = -103;
+        g_sub_board_factory_test.phase = SUB_BOARD_FACTORY_PHASE_FAILED;
+    }
+    while (1)
+    {
+    }
+#else
     BspResetEvidenceCaptureBoot();
     HAL_Init();
     WatchDiagSetBootStage(WATCH_BOOT_STAGE_HAL_INIT_DONE);
@@ -85,6 +128,7 @@ int main(void)
     while (1)
     {
     }
+#endif
 }
 
 void SystemClock_Config(void)
@@ -108,7 +152,12 @@ void SystemClock_Config(void)
     RCC_OscInitStruct.PLL.PLLM = 2;
     RCC_OscInitStruct.PLL.PLLN = 40;
     RCC_OscInitStruct.PLL.PLLP = 1;
+#if defined(SUB_BOARD_FACTORY_TEST)
+    /* 96 MHz 的 PLL1Q 可为 SPI3 提供 6/12/24 MHz 三个不超规格的测试档。 */
+    RCC_OscInitStruct.PLL.PLLQ = 5;
+#else
     RCC_OscInitStruct.PLL.PLLQ = 4;
+#endif
     RCC_OscInitStruct.PLL.PLLR = 2;
     RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
     RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
@@ -147,7 +196,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 void Error_Handler(void)
 {
+#if defined(SUB_BOARD_FACTORY_TEST)
+    __disable_irq();
+    g_sub_board_factory_test.magic = SUB_BOARD_FACTORY_TEST_MAGIC;
+    g_sub_board_factory_test.version = SUB_BOARD_FACTORY_TEST_VERSION;
+    g_sub_board_factory_test.size = (uint16_t)sizeof(g_sub_board_factory_test);
+    g_sub_board_factory_test.error = -100;
+    g_sub_board_factory_test.phase = SUB_BOARD_FACTORY_PHASE_FAILED;
+    while (1)
+    {
+        __NOP();
+    }
+#else
     RobotFaultRecordAndReset((uint32_t)ROBOT_FAULT_REASON_ERROR_HANDLER, 0u, 0u);
+#endif
 }
 
 #ifdef USE_FULL_ASSERT

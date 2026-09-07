@@ -8,6 +8,7 @@
 
 
 #include "BatteryMonitorTask.h"
+#include "BatteryAlarmPolicy.h"
 #include "cmsis_os.h"
 
 #include "BspAdc.h"
@@ -19,7 +20,6 @@
 static const voltage_config_t *const voltage_cfg = &g_config.voltage;
 
 #define BATTERY_MONITOR_PERIOD_MS             100u
-#define BATTERY_LOW_EXIT_HYSTERESIS_V         0.5f
 #define BATTERY_ALARM_BEEP_FREQ_HZ            2600u
 #define BATTERY_ALARM_BEEP_VOLUME             180u
 #define BATTERY_ALARM_BEEP_ON_MS              120u
@@ -35,6 +35,7 @@ static uint8_t BatteryLowAlarm;
 static uint8_t BatteryAlarmBeepOn;
 static uint16_t BatteryAlarmBeepElapsedMs;
 static uint8_t BatteryVoltageValidState;
+static BatteryAlarmState BatteryAlarm;
 
 /**
   * @brief          power ADC and calculate electricity percentage
@@ -151,21 +152,11 @@ uint8_t BatteryMonitorIsLowAlarm(void)
 
 static void BatteryLowAlarmUpdate(void)
 {
-    const fp32 low_voltage = voltage_cfg->low_battery_voltage;
     const uint8_t was_alarm = BatteryLowAlarm;
 
-    if (BatteryVoltageValidState == 0u)
-    {
-        BatteryLowAlarm = 1u;
-    }
-    else if (BatteryVoltage <= low_voltage)
-    {
-        BatteryLowAlarm = 1u;
-    }
-    else if (BatteryVoltage > (low_voltage + BATTERY_LOW_EXIT_HYSTERESIS_V))
-    {
-        BatteryLowAlarm = 0u;
-    }
+    BatteryLowAlarm = BatteryAlarmUpdate(&BatteryAlarm, voltage_cfg->lowAlarmEnabled,
+        BatteryVoltageValidState, BatteryVoltage, voltage_cfg->low_battery_voltage,
+        voltage_cfg->lowAlarmDelayMs, BATTERY_MONITOR_PERIOD_MS);
 
     if (BatteryLowAlarm == 0u)
     {

@@ -47,6 +47,56 @@ config ARBATOS_BOOT_BANNER
     bool "Print target name at startup"
     default y
 
+config ARBATOS_M_BOARD_IO
+    bool
+    default y if BOARD_DM_MC02_H7 && ARBATOS_LEGACY_SOURCES
+    select ADC
+    select CRC
+    select FLASH
+    select FLASH_MAP
+
+config ARBATOS_LOG_RAM
+    bool "Keep Zephyr messages in debugger-readable RAM"
+    depends on LOG && !LOG_MODE_MINIMAL
+    select LOG_OUTPUT
+    default y
+    help
+      Supplies a log backend when no UART console is available. Old messages
+      are overwritten without waiting for a connected debugger.
+
+config ARBATOS_SUBBOARD_MUSIC
+    bool "M subboard SD music and track buttons"
+    depends on BOARD_DM_MC02_H7 && ARBATOS_LEGACY_SOURCES
+    default y if ARBATOS_TARGET_HERO_M
+    help
+      Play SD PCM music using the V2 subboard buttons PD14 and PD15.
+
+config ARBATOS_MUSIC_ONLY
+    bool "Start only the SD music service"
+    depends on ARBATOS_SUBBOARD_MUSIC
+    default n
+    help
+      Bench startup for validating the formal Zephyr storage and audio ports.
+      Does not initialize CAN or start robot control, heater or servo tasks.
+
+config ARBATOS_PREFLIGHT_ONLY
+    bool "Run stationary M board checks without motor tasks"
+    depends on BOARD_DM_MC02_H7 && ARBATOS_LEGACY_SOURCES
+    depends on !ARBATOS_MUSIC_ONLY
+    default n
+    help
+      Starts only IMU acquisition, its bounded heater and SD logging checks.
+      CAN transmit, robot control and external servo tasks remain inactive.
+
+config ARBATOS_RECEIVE_ONLY
+    bool "HERO-M receive checks with command transmission blocked"
+    depends on ARBATOS_PREFLIGHT_ONLY && ARBATOS_TARGET_HERO_M
+    default n
+    help
+      Receive CAN feedback and remote input alongside preflight IMU checks.
+      CAN hardware acknowledges frames, but application CAN and UART sends
+      are rejected. No motion task is started; diagnostics use debug RAM.
+
 config ARBATOS_FREERTOS_MAX_TASKS
     int "Maximum legacy task count"
     default 32

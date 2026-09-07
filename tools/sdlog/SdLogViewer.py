@@ -58,6 +58,7 @@ TAG_NAMES: dict[int, str] = {
     0x0052: "RUNTIME_DEVICE",
     0x0053: "WHEELLEG_MIT_MOTOR_DIAG",
     0x0054: "RESET_EVIDENCE",
+    0x0055: "RECEIVE_CHECK",
 }
 
 ROBOT_FAULT_REASON_NAMES: dict[int, str] = {
@@ -932,6 +933,25 @@ def _extract_wheelleg_mit_motor_diag(name: str, payload: bytes) -> list[tuple[st
 
 def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, Any]]] | None:
     name = sdlog_tag_name(tag)
+
+    if tag == 0x0055:  # RECEIVE_CHECK，接收固件的180字节诊断头
+        if len(payload) != 180:
+            return None
+        values = struct.unpack_from("<14I", payload)
+        if values[0] != 0x4D525843:
+            return None
+        keys = ("magic", "sequence", "tick_ms", "ready", "route_conflicts",
+                "rc_frames", "rc_rejected", "rc_online", "rc_age_ms",
+                "rc_uart_errors", "rc_bad_size", "rc_dropped", "table_full", "tx_blocked")
+        fields = dict(zip(keys, values))
+        for index, value in enumerate(struct.unpack_from("<5i", payload, 56)):
+            fields[f"rc_ch{index}"] = value
+        bus_keys = ("received", "dropped", "tx_requests", "tx_failed", "last_error",
+                    "rx_errors", "tx_errors", "bus_off")
+        for bus in range(3):
+            bus_values = struct.unpack_from("<8I", payload, 84 + bus * 32)
+            fields.update({f"can{bus + 1}_{key}": value for key, value in zip(bus_keys, bus_values)})
+        return [(name, name, fields)]
 
     if tag == 0x0000:  # META
         v = _unpack_exact("<III", payload)

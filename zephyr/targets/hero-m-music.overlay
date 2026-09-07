@@ -1,0 +1,25 @@
+/* 音乐测试专用串口，PE1 接调试器 RX，PE0 接调试器 TX。 */
+/ {
+    chosen {
+        zephyr,console = &uart8;
+        zephyr,shell-uart = &uart8;
+    };
+};
+
+&pinctrl {
+    uart8_tx_pe1: uart8_tx_pe1 {
+        pinmux = <STM32_PINMUX('E', 1, AF8)>;
+        drive-push-pull;
+    };
+    uart8_rx_pe0: uart8_rx_pe0 {
+        pinmux = <STM32_PINMUX('E', 0, AF8)>;
+        bias-pull-up;
+    };
+};
+
+&uart8 {
+    pinctrl-0 = <&uart8_tx_pe1 &uart8_rx_pe0>;
+    pinctrl-names = "default";
+    current-speed = <115200>;
+    status = "okay";
+};

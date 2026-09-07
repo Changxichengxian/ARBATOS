@@ -130,6 +130,7 @@ typedef enum
     SDLOG_TAG_RUNTIME_DEVICE = 0x0052u,
     SDLOG_TAG_WHEELLEG_MIT_MOTOR_DIAG = 0x0053u,
     SDLOG_TAG_RESET_EVIDENCE = 0x0054u, // payload: BspResetEvidenceBoot
+    SDLOG_TAG_RECEIVE_CHECK = 0x0055u, // payload: MReceiveStatus头部，magic和sequence后为接收诊断
 } sdlog_tag_e;
 
 typedef enum
@@ -1000,6 +1001,9 @@ void SdLogWriteIsr(uint16_t tag, const void *payload, uint16_t len);
 
 // Read-only stats snapshot (thread-safe, lightweight).
 void SdLogGetStats(SdLogStats *out);
+
+/* 获取最近一次成功打开的日志路径，便于实板回读验证。 */
+void SdLogGetPath(char *out, uint32_t capacity);
 
 // Runtime divider for high-rate streams. Returns 1, 2, or 4.
 uint8_t SdLogHighRateDiv(void);

@@ -20,6 +20,9 @@ static const struct spi_config Bmi088SpiCfg = {
     .frequency = DT_PROP_OR(ARBATOS_SENSORS_NODE, bmi088_spi_hz, 8000000),
     .operation = SPI_WORD_SET(8) | SPI_TRANSFER_MSB | SPI_MODE_CPOL | SPI_MODE_CPHA,
 };
+static volatile uint32_t Bmi088PortErrors;
+
+uint32_t Bmi088PortErrorCount(void) { return Bmi088PortErrors; }
 
 void BMI088_GPIO_init(void)
 {
@@ -45,5 +48,10 @@ uint8_t BMI088_read_write_byte(uint8_t txdata)
     struct spi_buf rx = {.buf = &rxdata, .len = 1};
     struct spi_buf_set txSet = {.buffers = &tx, .count = 1};
     struct spi_buf_set rxSet = {.buffers = &rx, .count = 1};
-    return spi_transceive(Bmi088Spi, &Bmi088SpiCfg, &txSet, &rxSet) == 0 ? rxdata : 0;
+    int ret = spi_transceive(Bmi088Spi, &Bmi088SpiCfg, &txSet, &rxSet);
+    if (ret != 0) {
+        Bmi088PortErrors++;
+        return 0;
+    }
+    return rxdata;
 }

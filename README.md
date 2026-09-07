@@ -13,6 +13,13 @@ added without copying the whole stack.
 **Author:** Xie Yuhan <2811158416@qq.com>  
 **Repository:** <https://github.com/Changxichengxian/ARBATOS.git>
 
+## Latest hardware milestone
+
+On 2026-09-06, the user confirmed normal whole-vehicle motion on HERO-M running
+Zephyr, including the chassis and gimbal pitch. This vehicle now uses M-board
+wiring throughout; the earlier HERO-C success applied to the old C-board wiring.
+See the [hardware milestone and validation limits](tests/ZephyrMusicM/NormalOutput-20260906.md).
+
 ## Status
 
 The current codebase is beyond a basic STM32 port. It includes:

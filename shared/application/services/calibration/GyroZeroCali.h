@@ -93,7 +93,8 @@ static __inline bool_t GyroZeroCaliTempStableUpdate(GyroZeroCaliTempState *state
         return 0;
     }
 
-    if (heater_stable == 0u || fabsf(temp_c - target_temp_c) > GYRO_ZERO_CALI_TEMP_ERR_C)
+    if (heater_stable == 0u || !isfinite(temp_c) || !isfinite(target_temp_c) ||
+        fabsf(temp_c - target_temp_c) > GYRO_ZERO_CALI_TEMP_ERR_C)
     {
         state->stable_since_ms = 0u;
         return 0;
@@ -119,7 +120,8 @@ static __inline bool_t GyroZeroCaliCollectSample(GyroZeroCaliSampleState *state,
     }
 
     const fp32 move_limit_rad = GYRO_ZERO_CALI_MOVING_LIMIT_DPS * GYRO_ZERO_CALI_DEG_TO_RAD;
-    if (fabsf(gyro_rot[0]) > move_limit_rad ||
+    if (!isfinite(gyro_rot[0]) || !isfinite(gyro_rot[1]) || !isfinite(gyro_rot[2]) ||
+        fabsf(gyro_rot[0]) > move_limit_rad ||
         fabsf(gyro_rot[1]) > move_limit_rad ||
         fabsf(gyro_rot[2]) > move_limit_rad)
     {
@@ -130,7 +132,7 @@ static __inline bool_t GyroZeroCaliCollectSample(GyroZeroCaliSampleState *state,
     const fp32 accel_norm = sqrtf(accel_rot[0] * accel_rot[0] +
                                   accel_rot[1] * accel_rot[1] +
                                   accel_rot[2] * accel_rot[2]);
-    if (accel_norm < 1.0e-3f)
+    if (!isfinite(accel_norm) || accel_norm < 1.0e-3f)
     {
         GyroZeroCaliSampleReset(state);
         return 0;
