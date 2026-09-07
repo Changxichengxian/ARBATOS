@@ -28,7 +28,6 @@
 - `QuickStart.md`：非常短的入门路径，适合第一次打开仓库。
 - `manual/`：正式操作手册，按具体任务组织。
 - `zephyr/`：正式构建工程；使用 Zephyr 4.4、CMake、Ninja 和 OpenOCD。
-- `projects/README.md`：legacy Keil/CubeMX 工程说明，只作历史参考。
 - `Robotconfig/README.md`：目标配置层，只讲车型参数、装配和检测。
 - `boards/README.md`：板级适配层，只讲芯片、外设和端口。
 - `shared/README.md`：共享代码层，只讲复用逻辑和边界。
@@ -40,5 +39,5 @@
 1. 代码行为变了，优先更新离它最近的 README，再更新这里的操作手册。
 2. 新车接入、上车记录、PID 调试经验，如果别人以后会复用，就从 `local/docs/` 搬到 `manual/`。
 3. 厂商 SDK、PDF、参考工程继续留在 `local/docs/` 或 `local/reference/`，不要混进正式手册。
-4. 文档里出现旧路径时，优先改成当前四层结构：`projects/`、`Robotconfig/`、`boards/`、`shared/`。
+4. 文档里出现旧路径时，优先改成当前结构：`zephyr/`、`Robotconfig/`、`boards/`、`shared/`。
 5. 不确定某段内容是否还对时，写明“待实测”或“只适用于某目标”，不要写成通用结论。

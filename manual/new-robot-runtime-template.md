@@ -116,12 +116,13 @@ static const ControlController triple_yaw_controller = {
 ## 完成前检查
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\CheckAll.ps1
-powershell -ExecutionPolicy Bypass -File tools\CheckAll.ps1 -AllText
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check -Project all
 git diff --check
 ```
 
 如果新增了设备、控制器、任务，至少确认：
+
+`check` 只覆盖 Zephyr 源清单、目标和板级配置；设备、控制器和任务的独立语义仍要手工核对，并运行对应主机回归。
 
 - `watch.runtime` 能看到对应实例。
 - SD 日志启动记录里有设备条目。

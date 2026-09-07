@@ -18,12 +18,8 @@ from typing import Iterable
 
 PROJECTS = {
     "HERO-M": ("hero-m", "dm_mc02_h7"),
-    "HERO-C": ("hero-c", "dji_c_f407"),
     "SENTINEL-M": ("sentinel-m", "dm_mc02_h7"),
-    "INFANTRY-A": ("infantry-a", "dji_a_f427"),
-    "CARRIER-A": ("carrier-a", "dji_a_f427"),
     "MINIWHEELEG-M": ("miniwheeleg-m", "dm_mc02_h7"),
-    "MINIWHEELEG-C": ("miniwheeleg-c", "dji_c_f407"),
 }
 FORMAL_MODE_SYMBOLS = (
     "CONFIG_ARBATOS_MUSIC_ONLY",

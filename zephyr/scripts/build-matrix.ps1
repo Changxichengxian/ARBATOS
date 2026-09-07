@@ -2,13 +2,9 @@
 param(
     [ValidateSet(
         'all',
-        'hero-c',
         'hero-m',
-        'infantry-a',
         'sentinel-m',
-        'carrier-a',
-        'miniwheeleg-m',
-        'miniwheeleg-c'
+        'miniwheeleg-m'
     )]
     [string[]] $Target = @('all'),
 
@@ -55,10 +51,6 @@ if ((Test-Path -LiteralPath $localVenvScripts -PathType Container) -and
 }
 
 $targets = @{
-    'hero-c'        = @{ Board = 'dji_c_f407'; Config = 'hero-c.conf' }
-    'miniwheeleg-c' = @{ Board = 'dji_c_f407'; Config = 'miniwheeleg-c.conf' }
-    'infantry-a'    = @{ Board = 'dji_a_f427'; Config = 'infantry-a.conf' }
-    'carrier-a'     = @{ Board = 'dji_a_f427'; Config = 'carrier-a.conf' }
     'hero-m'        = @{ Board = 'dm_mc02_h7'; Config = 'hero-m.conf' }
     'miniwheeleg-m' = @{ Board = 'dm_mc02_h7'; Config = 'miniwheeleg-m.conf' }
     'sentinel-m'    = @{

@@ -13,11 +13,11 @@ defines, and shared profile defaults. It estimates:
 Run from the repository root:
 
 ```powershell
-.\tools\build.ps1 -Action sim -Project MINIWHEELEG-C
+.\tools\build.ps1 -Action sim -Project MINIWHEELEG-M
 .\tools\build.ps1 -Action sim -Project all
-python .\tools\sim\RobotSim.py --project HERO-C
-python .\tools\sim\RobotSim.py --project MINIWHEELEG-C
-python .\tools\sim\RobotSim.py --project HERO-C --json
+python .\tools\sim\RobotSim.py --project HERO-M
+python .\tools\sim\RobotSim.py --project MINIWHEELEG-M
+python .\tools\sim\RobotSim.py --project HERO-M --json
 ```
 
 Useful options:
@@ -41,9 +41,9 @@ can emit zero-current group frames for configured RM motors.
 The first wheel-leg MuJoCo entry lives under:
 
 ```powershell
-python .\tools\mujoco\wheelleg\RunWheelLeg.py --check --project MINIWHEELEG-C
-python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-C --duration-s 5
-python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-C --viewer --realtime
+python .\tools\mujoco\wheelleg\RunWheelLeg.py --check --project MINIWHEELEG-M
+python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-M --duration-s 5
+python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-M --viewer --realtime
 ```
 
 `--check` only validates the MJCF file and project configuration. A real run

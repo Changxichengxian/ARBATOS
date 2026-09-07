@@ -1069,7 +1069,7 @@ def run_sim(args: argparse.Namespace) -> None:
 
 def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", default="MINIWHEELEG-C")
+    parser.add_argument("--project", default="MINIWHEELEG-M")
     parser.add_argument("--model", type=Path, default=None, help="Use a custom MJCF file instead of generated five-bar.")
     parser.add_argument("--native-dir", type=Path, default=DEFAULT_NATIVE_DIR)
     parser.add_argument("--duration-s", type=float, default=5.0)

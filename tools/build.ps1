@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("build", "check", "probe", "sim", "legacy-check", "legacy-manifest", "legacy-gcc", "legacy-gcc-build")]
+    [ValidateSet("build", "check", "probe", "sim", "flash", "debug")]
     [string]$Action = "build",
 
     [string]$Project = "HERO-M",
@@ -17,8 +17,6 @@ param(
 
     [switch]$Json,
 
-    [switch]$FailOnGccBlockers,
-
     [switch]$FailOnRisk
 )
 
@@ -26,13 +24,9 @@ $ErrorActionPreference = "Stop"
 
 $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $ProjectMap = [ordered]@{
-    "HERO-C" = "hero-c"
     "HERO-M" = "hero-m"
-    "INFANTRY-A" = "infantry-a"
     "SENTINEL-M" = "sentinel-m"
-    "CARRIER-A" = "carrier-a"
     "MINIWHEELEG-M" = "miniwheeleg-m"
-    "MINIWHEELEG-C" = "miniwheeleg-c"
 }
 
 function Find-Tool {
@@ -97,32 +91,6 @@ function Invoke-PythonTool {
     exit $LASTEXITCODE
 }
 
-function Show-Tool {
-    param(
-        [string]$Name,
-        [string[]]$VersionArgs
-    )
-
-    $command = Get-Command $Name -ErrorAction SilentlyContinue
-    if ($null -eq $command) {
-        Write-Host ("{0}: missing" -f $Name)
-        return
-    }
-
-    Write-Host ("{0}: {1}" -f $Name, $command.Source)
-    if ($VersionArgs.Count -gt 0) {
-        try {
-            $version = & $command.Source @VersionArgs 2>&1 | Select-Object -First 1
-            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($version)) {
-                Write-Host ("  {0}" -f $version)
-            }
-        }
-        catch {
-            Write-Host ("  version check failed: {0}" -f $_.Exception.Message)
-        }
-    }
-}
-
 function Show-ResolvedTool {
     param([string]$Name, [string]$Path, [string[]]$VersionArgs = @())
 
@@ -144,55 +112,59 @@ function Show-ResolvedTool {
     }
 }
 
-function Require-Tool {
-    param(
-        [string]$Name
+function Get-ExistingZephyrBuild {
+    $target = Resolve-ZephyrProject
+    if ($target -eq "all") {
+        throw "flash/debug require one formal project. Project all is not allowed."
+    }
+    if ([string]::IsNullOrWhiteSpace($BuildRoot)) {
+        $BuildRoot = Join-Path $RepoRoot "out\zephyr"
+    }
+    $buildDir = [System.IO.Path]::GetFullPath((Join-Path $BuildRoot $target))
+    $requiredFiles = @(
+        (Join-Path $buildDir "CMakeCache.txt"),
+        (Join-Path $buildDir "zephyr\runners.yaml"),
+        (Join-Path $buildDir "zephyr\.config"),
+        (Join-Path $buildDir "zephyr\zephyr.elf"),
+        (Join-Path $buildDir "zephyr\zephyr.hex"),
+        (Join-Path $buildDir "zephyr\zephyr.bin")
     )
-
-    $command = Get-Command $Name -ErrorAction SilentlyContinue
-    if ($null -eq $command) {
-        Write-Error ("{0} is not available. Run tools\build.ps1 -Action probe to inspect the toolchain." -f $Name)
+    $missing = @($requiredFiles | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
+    if ($missing.Count -gt 0) {
+        throw "No complete Zephyr build exists for $Project at $buildDir. Build it first with -Action build. Missing: $($missing -join ', ')"
     }
-
-    return $command.Source
+    $configPath = Join-Path $buildDir "zephyr\.config"
+    $configLines = Get-Content -LiteralPath $configPath
+    $targetSymbol = "CONFIG_ARBATOS_TARGET_$($target.ToUpperInvariant().Replace('-', '_'))"
+    $enabledTargets = @($configLines | Where-Object { $_ -match '^CONFIG_ARBATOS_TARGET_[A-Z0-9_]+=y$' } |
+        ForEach-Object { $_.Split('=')[0] })
+    if ($enabledTargets.Count -ne 1 -or $enabledTargets[0] -ne $targetSymbol) {
+        throw "Build configuration $configPath does not select exactly $targetSymbol; refusing flash/debug."
+    }
+    foreach ($modeSymbol in @('CONFIG_ARBATOS_MUSIC_ONLY', 'CONFIG_ARBATOS_PREFLIGHT_ONLY', 'CONFIG_ARBATOS_RECEIVE_ONLY')) {
+        if ($configLines -contains "$modeSymbol=y") {
+            throw "Build configuration $configPath enables dedicated mode $modeSymbol; refusing flash/debug."
+        }
+    }
+    return $buildDir
 }
 
-function Get-SelectedGccProjects {
-    if ($Project -eq "all") {
-        return @(Get-ChildItem -Path (Join-Path $RepoRoot "build\gcc") -Directory |
-            Sort-Object Name |
-            ForEach-Object { $_.Name })
+function Get-OpenOcdTools {
+    $localVenv = Join-Path $RepoRoot "local\cache\zephyrproject\.venv\Scripts"
+    $localZephyrBase = Join-Path $RepoRoot "local\cache\zephyrproject\zephyr"
+    if (-not $env:ZEPHYR_BASE -and (Test-Path -LiteralPath $localZephyrBase -PathType Container)) {
+        $env:ZEPHYR_BASE = $localZephyrBase
     }
-
-    return @($Project)
-}
-
-function Invoke-GccGenerator {
-    $arguments = New-Object System.Collections.Generic.List[string]
-    if ($Project -eq "all") {
-        $arguments.Add("--all")
+    if (-not $env:ZEPHYR_BASE) {
+        throw "ZEPHYR_BASE is not configured and local Zephyr source is missing: $localZephyrBase"
     }
-    else {
-        $arguments.Add("--project")
-        $arguments.Add($Project)
-    }
-
-    if ($Json) {
-        $arguments.Add("--json")
-    }
-
-    $python = Require-Tool "python"
-    & $python (Join-Path $RepoRoot "tools\build\GccProject.py") @($arguments.ToArray())
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
-}
-
-function Update-BuildInfo {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "tools\GenBuildInfo.ps1")
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
+    $westPath = Resolve-Tool -Value $West -Name "West" -PreferredPaths @(Join-Path $localVenv "west.exe")
+    $sdkRoot = if ($env:ZEPHYR_SDK_INSTALL_DIR) { $env:ZEPHYR_SDK_INSTALL_DIR } else { Join-Path $RepoRoot "local\cache\zephyr-sdk" }
+    $openOcd = Join-Path $sdkRoot "hosttools\openocd\bin\openocd.exe"
+    $gdb = Join-Path $sdkRoot "gnu\arm-zephyr-eabi\bin\arm-zephyr-eabi-gdb.exe"
+    if (-not (Test-Path -LiteralPath $openOcd -PathType Leaf)) { throw "SDK OpenOCD is missing: $openOcd" }
+    if (-not (Test-Path -LiteralPath $gdb -PathType Leaf)) { throw "SDK ARM GDB is missing: $gdb" }
+    return @{ West = $westPath; OpenOcd = $openOcd; Gdb = $gdb }
 }
 
 switch ($Action) {
@@ -221,71 +193,20 @@ switch ($Action) {
         Invoke-PythonTool -ToolPath (Join-Path $RepoRoot "tools\CheckZephyr.py") -Arguments $arguments
     }
 
-    "legacy-check" {
-        & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "tools\CheckAll.ps1")
+    "flash" {
+        $buildDir = Get-ExistingZephyrBuild
+        $tools = Get-OpenOcdTools
+        Write-Host "Flashing $Project from $buildDir with OpenOCD, then verifying the written image."
+        & $tools.West flash -d $buildDir -r openocd --no-rebuild --gdb $tools.Gdb --openocd $tools.OpenOcd -- --no-erase --verify
         exit $LASTEXITCODE
     }
 
-    "legacy-manifest" {
-        $arguments = New-Object System.Collections.Generic.List[string]
-        if ($Project -eq "all") {
-            $arguments.Add("--all")
-        }
-        else {
-            $arguments.Add("--project")
-            $arguments.Add($Project)
-        }
-
-        if ($Json) {
-            $arguments.Add("--json")
-        }
-        if ($FailOnGccBlockers) {
-            $arguments.Add("--fail-on-gcc-blockers")
-        }
-
-        Invoke-PythonTool -ToolPath (Join-Path $RepoRoot "tools\build\ProjectManifest.py") -Arguments $arguments.ToArray()
-    }
-
-    "legacy-gcc" {
-        Update-BuildInfo
-        Invoke-GccGenerator
-        exit 0
-    }
-
-    "legacy-gcc-build" {
-        Update-BuildInfo
-        Invoke-GccGenerator
-        $cmake = Require-Tool "cmake"
-        $ninja = Require-Tool "ninja"
-        Require-Tool "arm-none-eabi-gcc" | Out-Null
-
-        $exitCode = 0
-        foreach ($projectName in Get-SelectedGccProjects) {
-            $sourceDir = Join-Path $RepoRoot ("build\gcc\{0}" -f $projectName)
-            $buildDir = Join-Path $sourceDir "build"
-            $toolchainFile = Join-Path $sourceDir "arm-none-eabi-gcc.cmake"
-            $cacheFile = Join-Path $buildDir "CMakeCache.txt"
-
-            Write-Host ""
-            Write-Host ("[legacy-gcc-build] {0}: configure" -f $projectName)
-            if (Test-Path $cacheFile) {
-                & $cmake -S $sourceDir -B $buildDir -G Ninja
-            }
-            else {
-                & $cmake -S $sourceDir -B $buildDir -G Ninja "-DCMAKE_TOOLCHAIN_FILE=$toolchainFile" "-DCMAKE_MAKE_PROGRAM=$ninja"
-            }
-            if ($LASTEXITCODE -ne 0) {
-                $exitCode = $LASTEXITCODE
-                continue
-            }
-
-            Write-Host ("[legacy-gcc-build] {0}: build" -f $projectName)
-            & $cmake --build $buildDir
-            if ($LASTEXITCODE -ne 0) {
-                $exitCode = $LASTEXITCODE
-            }
-        }
-        exit $exitCode
+    "debug" {
+        $buildDir = Get-ExistingZephyrBuild
+        $tools = Get-OpenOcdTools
+        Write-Host "Starting OpenOCD and SDK ARM GDB for $Project from $buildDir."
+        & $tools.West debug -d $buildDir -r openocd --no-rebuild --gdb $tools.Gdb --openocd $tools.OpenOcd -- --no-load
+        exit $LASTEXITCODE
     }
 
     "sim" {
@@ -299,9 +220,7 @@ switch ($Action) {
         $simTool = Join-Path $RepoRoot "tools\sim\RobotSim.py"
         $projects = @()
         if ($Project -eq "all") {
-            $projects = @(Get-ChildItem -Path (Join-Path $RepoRoot "Robotconfig") -Directory |
-                Sort-Object Name |
-                ForEach-Object { $_.Name })
+            $projects = @($ProjectMap.Keys)
         }
         else {
             $projects = @($Project)

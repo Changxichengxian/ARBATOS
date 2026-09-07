@@ -3,26 +3,22 @@
 这张表回答三个问题：
 
 - `zephyr/`：当前从哪里配置、构建和下载固件。
-- `projects/`：旧 Keil/CubeMX 工程的历史参考入口。
 - `Robotconfig/`：这份固件使用哪台机器人的参数和装配。
 - `boards/`：这份固件按哪块硬件板适配。
 
 每个 `Robotconfig/<TARGET>/MountLayout.md` 记录这台车的控制板固定位置、开发板正方向和 INS 姿态含义；坐标总口径见 [坐标系和安装基准](coordinate-frames.md)。
 
-| Zephyr target | Robotconfig | Board | legacy Keil 工程 | 当前用途 |
-|---|---|---|---|---|
-| `hero-c` | `Robotconfig/HERO-C` | `boards/DjiCF407` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | 英雄 C 板 Zephyr 目标 |
-| `hero-m` | `Robotconfig/HERO-M` | `boards/DmMc02H7` | `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` | 英雄 H7 Zephyr 目标 |
-| `infantry-a` | `Robotconfig/INFANTRY-A` | `boards/DjiAF427` | `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx` | 步兵 A 板 Zephyr 目标 |
-| `sentinel-m` | `Robotconfig/SENTINEL-M` | `boards/DmMc02H7` | `projects/SENTINEL-M/MDK-ARM/SENTINEL-M.uvprojx` | 哨兵 H7 Zephyr 目标 |
-| `carrier-a` | `Robotconfig/CARRIER-A` | `boards/DjiAF427` | `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx` | 工程 A 板 Zephyr 目标 |
-| `miniwheeleg-m` | `Robotconfig/MINIWHEELEG-M` | `boards/DmMc02H7` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | H7 轮腿 Zephyr 目标 |
-| `miniwheeleg-c` | `Robotconfig/MINIWHEELEG-C` | `boards/DjiCF407` | `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx` | C 板小轮腿 Zephyr 目标 |
+| Zephyr target | Robotconfig | Board | 当前用途 |
+|---|---|---|---|
+| `hero-m` | `Robotconfig/HERO-M` | `boards/DmMc02H7` | 英雄 H7 Zephyr 目标 |
+| `sentinel-m` | `Robotconfig/SENTINEL-M` | `boards/DmMc02H7` | 哨兵 H7 Zephyr 目标 |
+| `miniwheeleg-m` | `Robotconfig/MINIWHEELEG-M` | `boards/DmMc02H7` | H7 轮腿 Zephyr 目标 |
 
 ## 分工
 
 - 改 `zephyr/`：通常是在改正式目标配置、板级定义、启动映射和显式源码清单。
-- 改 `projects/`：只在维护 legacy Keil/CubeMX 工程、旧启动入口或编译前命令时修改。
+
+已移除的旧 Keil/CubeMX 工程只用于历史恢复：`git show 951857f:<path>` 或 `zephyr` 分支的 `6bdf19e`。
 - 改 `Robotconfig/`：通常是在改车型参数、电机装配、输入映射、在线检测、目标身份。
 - 改 `boards/`：通常是在改硬件板引脚、串口、CAN、IMU、按键、蜂鸣器、SD 卡。
 - 改 `shared/`：通常是在改可复用控制逻辑、协议、诊断、日志、离线解析参考结构。

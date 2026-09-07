@@ -1,18 +1,14 @@
 ﻿# Robotconfig
 
-`Robotconfig/` 放“这台机器人是谁”的内容。这里描述目标本身，不描述 Keil 工程怎么编译，也不描述某块开发板有哪些引脚。
+`Robotconfig/` 放“这台机器人是谁”的内容。这里描述目标本身，不描述 Zephyr 工程怎么编译，也不描述某块开发板有哪些引脚。
 
 ## 当前机器人配置
 
 | 配置 | 说明 | 主要文件 |
 |---|---|---|
-| `HERO-C` | 英雄机器人 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`PitchCaliBuiltin.c` |
 | `HERO-M` | 英雄机器人临时接 MC02 H7 板 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`PitchCaliBuiltin.c` |
-| `INFANTRY-A` | 步兵机器人 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`UsbTaskStub.c` |
 | `SENTINEL-M` | 哨兵机器人接 MC02 H7 板 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`Mc02Compat.c` |
-| `CARRIER-A` | 工程机器人 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`UsbTaskStub.c` |
 | `MINIWHEELEG-M` | H7 接板和机械臂实验 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`ArmMotorTable.c` |
-| `MINIWHEELEG-C` | 小轮腿临时接 DJI C 板 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`ArmMotorTable.c` |
 
 目标目录采用扁平结构：
 
@@ -45,11 +41,11 @@ Robotconfig/<TARGET>/
 - 机械安装坐标：控制板固定在底盘、云台、大 yaw、轮腿本体还是其他部件上，开发板 `+X/+Y/+Z` 朝哪里。
 - 目标在线检测：这台车关心哪些设备、哪些离线算故障。
 - 目标私有的小补丁：例如某个目标不接 USB 主机链路，就放对应空实现。
-- 目标专属装配表：例如 `MINIWHEELEG-M`、`MINIWHEELEG-C` 的机械臂关节表。
+- 目标专属装配表：例如 `MINIWHEELEG-M` 的机械臂关节表。
 
 ## 不应该放这里
 
-- Keil 工程、CubeMX 生成的 `Core/`、`Drivers/`、`Middlewares/`：放 `projects/`。
+- 正式工程配置、显式源码清单和启动入口：放 `zephyr/`。
 - 某块板子的串口、CAN、IMU、蜂鸣器、按键、SD 卡适配：放 `boards/`。
 - 可复用控制逻辑、电机协议、输入链路、日志、诊断：放 `shared/`。
 - 厂商包、参考工程、临时材料：放 `local/docs/` 或 `local/`。

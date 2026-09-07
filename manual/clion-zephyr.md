@@ -1,115 +1,106 @@
-# CLion、Zephyr 与 OpenOCD 工作流
+# M 板：CLion 编译、下载和调试
 
-## 当前主线
+当前仅保留 HERO-M、SENTINEL-M、MINIWHEELEG-M，主板均为 DM MC02 H7 / STM32H723。后续开发提交到 main。旧 Keil 工程、GCC 转换器与 A/C 板车型已从主线移除，历史保存在提交 951857f 和 zephyr 分支中。
 
-从 2026-09-07 起，开发和后续提交统一在 `main`。`zephyr` 分支停留在 `6bdf19e`，保留探索与实车适配历史；HERO-M 的成果已快进合入 `main`。当前实车是 M 板与第二版副板，旧 HERO-C 接线不适用。
+## 还要安装什么
 
-正式构建直接读取 `zephyr/CMakeLists.txt`、`zephyr/cmake/ArbatosLegacy.cmake` 和 `zephyr/targets/`，不解析 `.uvprojx`，不要求安装 Keil、ARMCC 或 Keil 设备包。文件名中的 Legacy 表示复用原有机器人业务代码，不表示构建仍依赖 Keil。
+这台电脑已有 CLion 2026.2.2（用户已完成非商业激活）、Zephyr 4.4、Zephyr SDK、Python/West、CMake、Ninja、OpenOCD 和 ARM GDB。当前流程不需要 STM32CubeCLT、CubeMX、CubeIDE 或 Keil。CubeCLT 是 ST 提供的另一套编译/烧录工具包；这里直接使用现有 Zephyr SDK。
 
-本次先解除正常开发入口对 Keil 的依赖。旧 `projects/`、板级参考代码、Keil 工程和离线诊断工具仍留在 Git 中；正式工作流不使用它们的工程清单。清理历史文件需另行核对仍被 Zephyr 引用的头文件和共享代码。
-
-## 几种工具分别负责什么
-
-| 层次 | 本项目现在使用什么 | 作用 |
-| --- | --- | --- |
-| 编辑和工程界面 | CLion | 写代码、补全、管理构建配置、查看调试结果；与 Keil uVision 属于同一层 |
-| 固件平台 | Zephyr 4.4 | 在主控上提供线程、驱动和运行环境 |
-| 构建入口 | West、CMake、Ninja | 选择车型与源码，组织编译；CLion 可以调用它们 |
-| 编译和链接 | Zephyr SDK 中的 GNU 工具链 | 把 C/C++ 源码变成 ELF、HEX、BIN 固件 |
-| 烧录和调试连接 | OpenOCD + GDB | OpenOCD 接调试器和芯片；GDB 处理断点、单步、变量等调试命令 |
-| 调试硬件 | 当前 CMSIS-DAP | 通过 SWD 连接电脑与 M 板 |
-
-CLion 与 Keil 是可选的工程界面；OpenOCD 可以被 CLion 或命令行共同调用。CLI 只是命令行界面的缩写，不是另一种 IDE。
-
-## 工程已经准备了什么
-
-- `zephyr/CMakePresets.json`：七个正式车型的共享 CMake 配置，不包含个人安装路径。
-- `zephyr/CMakeUserPresets.json`：本机生成、Git 忽略的 `hero-m-local` 配置，已填入现有 SDK、Python 和 Ninja 路径。
-- `tools/build.ps1`：CLion 外部工具或终端均可调用的构建、检查和工具探测入口。
-- `zephyr/boards/dm_mc02_h7/support/openocd.cfg`：M 板 CMSIS-DAP、SWD、500 kHz 配置，不内置烧录、擦除或启动命令；M 板默认 runner 已选择 OpenOCD。
-- 编译输出在 `out/zephyr/<target>/`，与旧实测证据及旧构建目录分开。CLion 的 `.idea`、个人预设和输出目录均不提交。
-
-本机已安装 CLion 2026.2.2，并由用户完成非商业激活。工程已导入；个人配置已启用 `hero-m-local`、停用初始桌面 `Debug` 配置。七个车型通过实际构建，HERO-M 另通过新入口的全新构建，OpenOCD 配置解析通过。CLion 内点击构建及硬件断点、烧录尚未验收。
-
-## 先验证工具和构建
-
-在仓库根目录运行：
+先在 PowerShell 中检查一次工具路径：
 
 ```powershell
+cd D:\ARBATOS
 pwsh -NoProfile -File .\tools\build.ps1 -Action probe
+```
+
+还需要接好现有 CMSIS-DAP 调试器：USB 接电脑，SWDIO、SWCLK、GND、目标电压参考与 M 板匹配，M 板正常供电。Windows 能识别 CMSIS-DAP 即可，不必因为使用 CLion 再装一遍驱动；只有 OpenOCD 报找不到调试器时才检查 USB 线和实际驱动。
+
+本机工具目录是 `local/cache/` 下的本地环境，未提交 Git。以后换电脑需按 [Zephyr 官方安装说明](https://docs.zephyrproject.org/latest/develop/getting_started/index.html)准备 Zephyr 4.4、SDK 和 Python 依赖，再创建本机 CMakeUserPresets.json；只克隆此仓库不会自动带上 SDK。
+
+## 在 CLion 里编译
+
+1. 打开 `D:\ARBATOS\zephyr`，使用现有 CMake 工程入口。
+2. 设置 → 构建、执行、部署 → CMake：启用 `hero-m-local`，停用自动生成的 `Debug`。如果刚改了预设，执行重新加载 CMake 项目。
+3. 在构建目标中选择 `zephyr_final` 或全部目标，点击“构建项目”。不要用 Run/Debug 按钮代替编译按钮。
+4. 成功后产物在 `D:\ARBATOS\out\zephyr\hero-m\zephyr\`：`zephyr.elf` 带调试符号，`.hex`/`.bin` 是烧录镜像。
+
+个人预设已设置本机 SDK、Python、Ninja 路径。CLion 的初始普通 `Debug` 配置找不到 Zephyr，并不表示这些工具尚未安装。工程编译器由 Zephyr SDK 选择，不需要改用 CubeCLT 的编译器。
+
+另外两个车型分别使用 `sentinel-m-local`、`miniwheeleg-m-local`，输出目录分别为 `out/zephyr/sentinel-m`、`out/zephyr/miniwheeleg-m`。一次只启用当前需要的配置。
+
+默认构建并行数为 2。若 CLion 自己的 Build options 中指定了更大的 `-j`，改为 `-j2`，避免界面设置覆盖限制。正常修改只用增量构建，不需要每次清缓存或重编所有车型。
+
+## 最短的编译、下载流程
+
+也可以直接在 CLion 下方的 PowerShell 终端运行同一份脚本：
+
+```powershell
+cd D:\ARBATOS
+# 检查三个目标的工程文件，不编译
 pwsh -NoProfile -File .\tools\build.ps1 -Action check -Project all
+# 编译当前英雄车，默认并行数为 2
 pwsh -NoProfile -File .\tools\build.ps1 -Action build -Project HERO-M
-pwsh -NoProfile -File .\tools\build.ps1 -Action build -Project all -BuildRoot .\out\zephyr-all
+# 接好 M 板与 CMSIS-DAP 后，下载刚编好的固件并校验
+pwsh -NoProfile -File .\tools\build.ps1 -Action flash -Project HERO-M
 ```
 
-默认 `build` 使用正式 HERO-M 配置，不附加音乐专用、静态准备或只接收测试配置。默认并行数为 2，可用 `-Jobs` 调整。`-Pristine` 会将旧输出移到该构建根目录的 `.pristine-backups` 后重新构建；也可选择新的 `-BuildRoot`。
+`flash` 就是把固件写进主控。此操作会暂停/复位主控并启动新程序，先断开执行机构动力或按台架条件准备。它不自动重新编译，所以改代码后先执行 build，再执行 flash。
 
-只检查工程不编译可直接运行 `python tools/CheckZephyr.py --project all`。它检查 Zephyr 源清单、目标/板级配置及 SENTINEL-M 的 overlay 引用；不覆盖原 `CheckAll.ps1` 的全部检查。默认 CI 运行此检查及独立回归；历史检查可手动选择，当前仍有旧路径命名规则与 Zephyr 文件名不兼容的问题。控制逻辑回归与真实编译应另行运行。
+脚本固定使用 OpenOCD 和当前 M 板配置：CMSIS-DAP、SWD、500 kHz。只允许单个车型，拒绝 `flash -Project all`。按镜像所在扇区更新，不执行全片擦除；HERO-M 从 `0x080C0000` 起的校准区须保留。
 
-## CLion 工程配置
+换车型时把 `HERO-M` 改为 `SENTINEL-M` 或 `MINIWHEELEG-M`，其余步骤相同。`-BuildRoot` 可指定另外的输出根目录；编译和下载必须使用同一个根目录。
 
-本机已准备可重复的 CMake 预设入口：
+## 在 CLion 图形界面下载和调试
 
-1. 在 CLion 中打开 `D:\ARBATOS\zephyr`，选择作为 CMake 工程打开。
-2. 在 CMake 配置里启用 `hero-m-local`、停用自动生成的 `Debug`。该配置来自不提交的个人预设；其他机器可配置自己的环境后启用共享 `hero-m`。首次打开时默认 `Debug` 找不到 Zephyr，不代表 SDK 缺失。
-3. 构建目标选 `zephyr_final` 或默认全部目标。不要在运行配置中选择旧 `projects/HERO-C/MDK-ARM` 工程。
-4. 固件与符号文件为 `D:\ARBATOS\out\zephyr\hero-m\zephyr\zephyr.elf`，同时生成 `.bin` 和 `.hex`。`compile_commands.json` 在构建目录，可供代码索引使用。
+这是一次性配置，后续直接选它运行：
 
-需要复现预设时，在 `zephyr` 目录执行：
+1. 设置 → 构建、执行、部署 → 嵌入式开发：把 OpenOCD 可执行文件指向下面表中的 `openocd.exe`。
+2. 在所选工具链的 Debugger 项中选择自定义 GDB，填写下面的 ARM GDB 路径。
+3. 运行 → 编辑配置 → 添加 **OpenOCD Download & Run**。
+4. 名称可填 `HERO-M / CMSIS-DAP`，构建目标选 `zephyr_final`，对应 `hero-m-local`；ELF 使用下面列出的英雄车文件，Board config 使用仓库的 `openocd.cfg`。
+5. 编译通过、接板并准备好之后，点 Run 下载运行，或点 Debug 下载并进入调试。可以在源码左侧加断点，用 Continue、Step Over、Step Into 查看变量和执行流程。
 
-```powershell
-cmake --preset hero-m-local
-cmake --build --preset hero-m-local
-```
-
-共享预设需要 `ZEPHYR_BASE` 指向 Zephyr 源码，`ZEPHYR_SDK_INSTALL_DIR` 指向 SDK，Python、CMake 和 Ninja 可被找到。本机个人预设已填入这些信息；不把个人路径提交给其他人。
-
-CLion 2026.2 也提供内置 West 支持。可按官方说明把同一 `zephyr/CMakeLists.txt` 转为 West 工程，选择板 `dm_mc02_h7`、本机 `west.exe` 和上述构建目录，并保持 `EXTRA_CONF_FILE` 指向 `zephyr/targets/hero-m.conf`。本次使用 CMake 预设入口，未配置原生 West 界面。
-
-## 本机工具路径
-
-| 工具 | 当前已准备路径 |
+| 设置 | 本机路径 |
 | --- | --- |
-| West | `D:\ARBATOS\local\cache\zephyrproject\.venv\Scripts\west.exe` |
-| Python | `D:\ARBATOS\local\cache\zephyrproject\.venv\Scripts\python.exe` |
-| Ninja | `D:\ARBATOS\local\cache\zephyrproject\.venv\Scripts\ninja.exe` |
-| Zephyr 源码 | `D:\ARBATOS\local\cache\zephyrproject\zephyr` |
-| Zephyr SDK | `D:\ARBATOS\local\cache\zephyr-sdk` |
-| C 编译器 | `D:\ARBATOS\local\cache\zephyr-sdk\gnu\arm-zephyr-eabi\bin\arm-zephyr-eabi-gcc.exe` |
-| C++ 编译器 | `D:\ARBATOS\local\cache\zephyr-sdk\gnu\arm-zephyr-eabi\bin\arm-zephyr-eabi-g++.exe` |
-| GDB | `D:\ARBATOS\local\cache\zephyr-sdk\gnu\arm-zephyr-eabi\bin\arm-zephyr-eabi-gdb.exe` |
 | OpenOCD | `D:\ARBATOS\local\cache\zephyr-sdk\hosttools\openocd\bin\openocd.exe` |
+| ARM GDB | `D:\ARBATOS\local\cache\zephyr-sdk\gnu\arm-zephyr-eabi\bin\arm-zephyr-eabi-gdb.exe` |
+| Board config | `D:\ARBATOS\zephyr\boards\dm_mc02_h7\support\openocd.cfg` |
+| HERO-M ELF | `D:\ARBATOS\out\zephyr\hero-m\zephyr\zephyr.elf` |
+| OpenOCD 脚本搜索目录 | `D:\ARBATOS\local\cache\zephyr-sdk\hosttools\openocd\share\openocd\scripts` |
 
-CLion 的代码编辑功能不要求固件使用它自带的桌面编译器；此工程应使用 Zephyr SDK 提供的 ARM 工具链。
+如果 OpenOCD 报 `Can't find interface/cmsis-dap.cfg`，为 OpenOCD 设置 `OPENOCD_SCRIPTS` 环境变量指向表中的脚本搜索目录。若默认 GDB 端口 3333 被占用，先结束另一份正在使用同一调试器的会话。CLion、Keil、pyOCD 等不要同时占用同一调试器。
 
-## 后续烧录和调试
+普通断点会暂停主控上的控制任务；电机带载运行时不要随意打断点。当前新下载配置还没有连接实物验收，无线调试链路的断点可靠性也未验证。
 
-构建按钮只生成文件。CLion 的 Run/Debug、OpenOCD Download & Run 或 West 的 flash/debug 会连接硬件，并可能暂停、复位、烧录或启动主控，不能当作单纯的代码检查。
+## 从终端调试
 
-本轮不运行下面的硬件命令。后续确认接的是当前 M 板、关闭遥控并按实车条件准备后，可显式执行：
+已经执行过 flash、板上固件与本次 ELF 一致时：
 
 ```powershell
-# 由 West 写入镜像后校验；不要追加全片擦除选项。
-west flash -d .\out\zephyr\hero-m --runner openocd --verify
-west debug -d .\out\zephyr\hero-m --runner openocd
+pwsh -NoProfile -File .\tools\build.ps1 -Action debug -Project HERO-M
 ```
 
-CLion 的 OpenOCD 配置使用上述 `openocd.exe`、SDK GDB、本工程的 `.cfg` 和实际 `.elf`。原生 West 配置的 Flash options 可填 `--runner openocd --verify`，Debug options 可填 `--runner openocd`。
+这个入口启动 OpenOCD 与 SDK 的 ARM GDB，不重复下载，但可能复位/暂停主控。进入 GDB 后可输入：
 
-500 kHz 来自当前无线调试链路的成功记录。新模板尚未做实物回归；此前批量调试访问出现过失真，不能仅凭配置可解析认定无线连接或实时断点可靠。普通断点会暂停整块主控的控制任务。
+```text
+break main
+continue
+next
+print 变量名
+quit
+```
 
-HERO-M 的校准区从 `0x080C0000` 起。正式固件必须保持分区边界；不使用 `mass_erase` 或全片擦除。当前模板没有内置擦除动作，具体写入由 West/CLion 对所选镜像发起。
+图形界面的 OpenOCD Download & Run 与终端 debug 二选一使用。前者提供 CLion 的断点和变量窗口，后者直接进入 GDB 命令界面。
 
-## 保留的旧工具
+## 本次清理与验证边界
 
-- `legacy-check`：原 `tools/CheckAll.ps1`，仍针对旧工程检查，不能拿它替代 Zephyr 构建结果。
-- `legacy-manifest`、`legacy-gcc`、`legacy-gcc-build`：显式调用旧 `.uvprojx` 解析与 GCC 转换流程。
-- `tests/SdBenchM/Build.py`：旧独立 SD 测试固件仍使用 Keil，仅用于复现该次测试；正式 HERO-M 编译不调用它。
+删除 Keil 项目文件、CubeMX 生成副本、ARMCC 二进制库、旧构建转换器、旧检查入口，以及四个 A/C 板车型。姿态解算和数学函数源码已转入 Zephyr，当前仍使用的 `shared/`、M 板头文件及业务模块保留。旧 SD 台架固件的结果和测试源码保留，Keil 构建器从主线移除。
 
-这些历史入口的保留不要求日常安装 Keil。后续删除历史工程前，需继续核对工具和公共头文件引用。
+本次只在后台清理和检查，不连接车辆、不烧录、不自动操作 CLion。CLion 的工程和个人预设已准备；图形界面下载/调试仍需按上面的步骤完成一次实物验证。
 
-## 参考
+## 官方参考
 
-- [JetBrains：Zephyr 与 West](https://www.jetbrains.com/help/clion/zephyr.html)
-- [JetBrains：CMake Presets](https://www.jetbrains.com/help/clion/cmake-presets.html)
-- [JetBrains：OpenOCD](https://www.jetbrains.com/help/clion/openocd-support.html)
+- [JetBrains：Zephyr](https://www.jetbrains.com/help/clion/zephyr.html)
+- [JetBrains：OpenOCD Download & Run](https://www.jetbrains.com/help/clion/openocd-support.html)
+- [JetBrains：CMake 预设](https://www.jetbrains.com/help/clion/cmake-presets.html)
+- [ST：STM32CubeCLT](https://www.st.com/en/development-tools/stm32cubeclt.html)

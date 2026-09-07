@@ -1,7 +1,7 @@
 # ARBATOS Zephyr 4.4 迁移工程
 
-这里是 ARBATOS 七套机器人固件的正式构建入口。后续开发和提交统一在 `main`，`zephyr` 分支保留探索历史。
-正式源码清单由这里的 CMake 维护，不读取旧 Keil 工程，也不要求安装 Keil；旧工程保留作历史参考。
+这里是 ARBATOS 三套 M 板机器人固件的正式构建入口：`HERO-M`、`SENTINEL-M` 和 `MINIWHEELEG-M`。后续开发和提交统一在 `main`，`zephyr` 分支保留探索历史。
+正式源码清单由这里的 CMake 维护。
 
 CLion 导入、共享预设、工具路径及 OpenOCD 使用方式见 [CLion 工作流](../manual/clion-zephyr.md)。
 
@@ -14,39 +14,27 @@ CLion 导入、共享预设、工具路径及 OpenOCD 使用方式见 [CLion 工
 
 ## 当前结论
 
-迁移初期七个目标已把原 `Robotconfig/` 和共享业务源码接进 Zephyr，并完成全新构建。2026-09-06 22:22，用户确认 **HERO-M 整车运动正常，包括底盘和云台俯仰**，并于次日澄清该反馈范围。当前 HERO 已彻底改成 M 板与第二版副板接线，旧 HERO-C 上车通过的记录只适用于旧 C 板接线。
+迁移初期的工作已将当前三目标所需的 `Robotconfig/` 和共享业务源码接进 Zephyr。2026-09-06 实车测试后，用户确认 **HERO-M 整车运动正常，包括底盘和云台俯仰**。当前 HERO 使用 M 板与第二版副板接线；旧 C 板记录仅作历史例子，不能套用到当前接线。
 
 本次还完成 M 板 SD 高速读取与歌曲播放、安装坐标修正、IMU 校准保存和 HERO 报警/按键调整。详见 [本次实车节点及历史硬件区分](../tests/ZephyrMusicM/NormalOutput-20260906.md)。其他车型的整车实测不能由 HERO-M 的结果代替；新版音乐实体按钮、故障停机与高负载等未完成项仍按各自记录验收。
 
-下表保留迁移初期的七目标内存用量，属于历史构建快照，不代表本次代码的全量重建结果。
-
-| 目标 | Zephyr 板 | 芯片 | FLASH | 主 RAM | CCM/DTCM |
-|---|---|---|---:|---:|---:|
-| HERO-C | `dji_c_f407` | STM32F407 | 518,164 B / 1 MB，49.42% | 123,076 B / 128 KB，93.90% | 56,976 B / 64 KB，86.94% |
-| HERO-M | `dm_mc02_h7` | STM32H723 | 508,440 B / 1 MB，48.49% | 187,588 B / 320 KB，57.25% | 56,024 B / 128 KB，42.74% |
-| INFANTRY-A | `dji_a_f427` | STM32F427 | 504,404 B / 2 MB，24.05% | 111,300 B / 192 KB，56.61% | 48,272 B / 64 KB，73.66% |
-| SENTINEL-M | `dm_mc02_h7` | STM32H723 | 502,336 B / 1 MB，47.91% | 180,036 B / 320 KB，54.94% | 55,896 B / 128 KB，42.65% |
-| CARRIER-A | `dji_a_f427` | STM32F427 | 402,156 B / 2 MB，19.18% | 92,356 B / 192 KB，46.97% | 40,720 B / 64 KB，62.13% |
-| MINIWHEELEG-M | `dm_mc02_h7` | STM32H723 | 478,672 B / 1 MB，45.65% | 178,628 B / 320 KB，54.51% | 50,776 B / 128 KB，38.74% |
-| MINIWHEELEG-C | `dji_c_f407` | STM32F407 | 486,960 B / 1 MB，46.44% | 113,732 B / 128 KB，86.77% | 51,856 B / 64 KB，79.13% |
-
-F407 容量最紧。任务栈、任务登记表和 CAN 的纯 CPU 状态已经放进 CCM；SD、USB、
-UART 等可能参与外设传输的缓冲仍留在主 RAM，避免 DMA 访问不到 CCM。七个目标均
-启用硬件单精度浮点和线程间浮点上下文共享。
+三目标此前均已编译通过；本次删除旧工程后重新编译 HERO-M，通过后占用 FLASH 533,136 B / 768 KiB、RAM 238,660 B / 320 KiB。其他两车型本轮做配置和源码检查，未重新进行整车实测。
 
 ## 怎么构建
 
 在仓库根目录运行，默认使用当前正式 HERO-M：
 
 ```powershell
-pwsh -NoProfile -File .\tools\build.ps1 -Action build -Project HERO-M
-pwsh -NoProfile -File .\tools\build.ps1 -Action build -Project all
+pwsh -NoProfile -File .\tools\build.ps1
+pwsh -NoProfile -File .\tools\build.ps1 -Action build -Project all -Pristine
 pwsh -NoProfile -File .\tools\build.ps1 -Action check -Project all
+pwsh -NoProfile -File .\tools\build.ps1 -Action flash -Project HERO-M
+pwsh -NoProfile -File .\tools\build.ps1 -Action debug -Project HERO-M
 ```
 
 脚本优先使用项目本地 Zephyr 环境，也允许通过 `-West`、`-Ninja` 和环境变量覆盖。默认输出在 `out/zephyr/<target>/`；使用新的 `-BuildRoot` 可保留旧构建。`-Pristine` 用于重新生成选定构建目录，不是烧录操作。
 
-CLion 可打开此目录，导入 `CMakePresets.json` 中的正式目标。共享预设要求已经配置 Zephyr 环境，本机 `CMakeUserPresets.json` 已准备 `hero-m-local`，个人文件不提交。
+CLion 可打开此目录，导入 `CMakePresets.json` 中的正式目标。共享预设要求已经配置 Zephyr 环境，本机 `CMakeUserPresets.json` 已准备三个 `*-local` 配置，个人文件不提交。
 
 主要产物为 `zephyr.elf`、`zephyr.bin`、`zephyr.hex` 和 `zephyr.map`。SENTINEL-M 的副板 overlay 由构建脚本和预设自动带入。当前 M 板已配置 OpenOCD runner，构建不会自动烧录，详见 [CLion 与 OpenOCD](../manual/clion-zephyr.md)。
 
@@ -54,8 +42,8 @@ CLion 可打开此目录，导入 `CMakePresets.json` 中的正式目标。共�
 
 ```text
 zephyr/
-├─ boards/                  三块自定义板：F407、F427、H723
-├─ targets/                 七个机器人目标配置；Sentinel 另有 RTC 叠加配置
+├─ boards/                  DM MC02 H723 自定义板
+├─ targets/                 三个 M 板目标配置；Sentinel 另有 RTC 叠加配置
 ├─ cmake/                   每个目标复用旧源码的显式清单
 ├─ compat/                  FreeRTOS、CMSIS-RTOS2、少量 STM32 兼容接口
 ├─ port/
@@ -68,7 +56,7 @@ zephyr/
 │  ├─ subboard/             Sentinel PCF8563 RTC
 │  └─ platform/             蜂鸣器、按键、灯、ADC、Flash 等板级边界
 ├─ src/                     Zephyr main 和七目标任务启动
-└─ scripts/build-matrix.ps1 七目标构建入口
+└─ scripts/build-matrix.ps1 三目标构建入口
 ```
 
 `cmake/ArbatosLegacy.cmake` 使用显式源码清单，不会扫描整个仓库。它保留

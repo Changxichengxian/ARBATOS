@@ -1,6 +1,6 @@
 # tools
 
-`tools/` 放本地辅助脚本。正式入口是 Zephyr 4.4 的检查和构建；它不替代实车调试。Keil 和旧 GCC/CMake 脚本仍保留，但必须显式选择 `legacy` 动作才会运行。
+`tools/` 放本地辅助脚本。正式入口是 Zephyr 4.4 的检查、构建、下载和调试；它不替代实车调试。
 
 ## 正式构建和检查
 
@@ -15,6 +15,8 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1
 ```powershell
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project SENTINEL-M
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project all -Pristine
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action flash -Project HERO-M
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action debug -Project HERO-M
 ```
 
 `-Action check` 调用 `CheckZephyr.py`，检查 Zephyr 的 CMake 源码清单、正式目标、板级配置和 overlay 引用；它不读取 `.uvprojx`，不要求安装 Keil，也不代替编译或实车验证：
@@ -23,45 +25,9 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check -Project all
 ```
 
-构建可指定 `-BuildRoot <目录>`、`-West <west 路径>`、`-Ninja <ninja 路径>` 和 `-Jobs <并行数>`；默认并行数为 2。CLion 预设和 OpenOCD 下载配置见 `../manual/clion-zephyr.md`；界面构建和硬件调试仍需分别验收。
+构建可指定 `-BuildRoot <目录>`、`-West <west 路径>`、`-Ninja <ninja 路径>` 和 `-Jobs <并行数>`；默认并行数为 2。`flash` 和 `debug` 会连接、复位或写入硬件。CLion 预设和 OpenOCD 使用方式见 `../manual/clion-zephyr.md`；界面构建和硬件调试仍需分别验收。
 
-## legacy 构建信息
-
-Keil 工程的 `BeforeMake` 会调用：
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\GenBuildInfo.ps1
-```
-
-这个脚本生成 `shared/generated/build_info_autogen.h`，把 Git 提交、dirty 状态和编译时间带进固件。生成文件被 `.gitignore` 忽略，不需要手工提交。
-
-## legacy 检查
-
-在仓库根目录运行：
-
-```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action legacy-check
-```
-
-当前会检查：
-
-- 所有 `projects/*/MDK-ARM/*.uvprojx` 能被解析。
-- Keil 工程里列出的源码文件是否真实存在。
-- Include Path 里本地目录是否存在；Keil Pack 提供的目录如果仓库里没有，会先作为警告。
-- 每个工程是否只引用自己的 `Robotconfig/<TARGET>`。
-- `Robotconfig/<TARGET>/RobotConfig.c` 里的 profile 是否和工程包含的任务源码、任务创建入口匹配。
-- `tools/**/*.py` 是否有 Python 语法错误。
-- 文档里是否还残留几类已经确认过时的路径或 MIT 轮腿描述。
-
-它不会真的调用 Keil Rebuild，也不会默认跑完整 GCC 编译。这些检查不参与正式 Zephyr 流程。
-
-这是 legacy 检查；正式 CI 使用 Zephyr 检查，不把 Keil 工程、设备包或 `.uvprojx` 当作前提。
-
-如果想连未跟踪的本地文档也扫一遍，可以加 `-AllText`：
-
-```powershell
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\CheckAll.ps1 -AllText
-```
+已移除的旧工具、工程检查和构建脚本如需恢复，使用 `git show 951857f:<path>` 或查看 `zephyr` 分支的 `6bdf19e`。
 
 ## 输入与裁判协议回归
 
@@ -122,30 +88,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestChassisCtrl.ps
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\TestShootCtrl.ps1
 ```
 
-Zig 目前只是这些本地主机测试的可选依赖，常规
-`CheckAll.ps1` 和 GitHub 检查不会静默增加这个要求；未安装时脚本会明确报错。
-
-## legacy 工具入口
-
-统一入口是：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action legacy-check
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action legacy-manifest -Project HERO-C
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action probe
-```
-
-KEIL 路线仍然直接打开 `projects/<TARGET>/MDK-ARM/<TARGET>.uvprojx`。这条路线用于本地调试、下载和继续使用 uVision 工程。
-
-GCC/CMake 路线从同一个 `.uvprojx` 生成，不单独手写一套工程清单：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action legacy-gcc -Project HERO-C
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action legacy-gcc-build -Project HERO-C
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action legacy-gcc-build -Project all
-```
-
-生成内容放在 `build/gcc/<TARGET>/`，包括 CMake 工程、GNU 启动文件和链接脚本。这个目录被 Git 忽略，源码、头文件路径、宏、启动文件和 scatter 文件变化后重新生成即可，不要手改生成出来的 CMake 文件。
+Zig 目前只是这些本地主机测试的可选依赖；未安装时相应脚本会明确报错。
 
 ## SD 日志工具
 

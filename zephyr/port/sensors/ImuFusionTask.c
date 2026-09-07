@@ -13,7 +13,6 @@
 #include "GyroZeroCali.h"
 #include "ImuFrame.h"
 #include "ManualInputSnapshot.h"
-#include "Mpu6500.h"
 #include "RobotConfig.h"
 #include "RobotMode.h"
 #include "UserLib.h"
@@ -166,7 +165,6 @@ static void ImuHeaterUpdate(float temp)
     imu_pwm_set(InsHeaterPwm);
 }
 
-#if !defined(CONFIG_ARBATOS_TARGET_INFANTRY_A) && !defined(CONFIG_ARBATOS_TARGET_CARRIER_A)
 static int ImuReadBmi(fp32 gyro_raw[3], fp32 accel_raw[3], fp32 *temp)
 {
     uint32_t errors = Bmi088PortErrorCount();
@@ -175,21 +173,6 @@ static int ImuReadBmi(fp32 gyro_raw[3], fp32 accel_raw[3], fp32 *temp)
     BMI088_get_diag(&diag);
     return diag.gyro_read_ok != 0u && Bmi088PortErrorCount() == errors ? 0 : -1;
 }
-#endif
-
-#if defined(CONFIG_ARBATOS_TARGET_INFANTRY_A) || defined(CONFIG_ARBATOS_TARGET_CARRIER_A)
-static int ImuReadMpu(fp32 gyro_raw[3], fp32 accel_raw[3], fp32 *temp)
-{
-    mpu6500_raw_t raw;
-    if (mpu6500_read_raw(&raw) != 0) return -1;
-    for (int i = 0; i < 3; ++i) {
-        gyro_raw[i] = (fp32)raw.gyro[i] * (IMU_DEG_TO_RAD / 32.8f);
-        accel_raw[i] = (fp32)raw.accel[i] * (IMU_G / 4096.0f);
-    }
-    *temp = mpu6500_temp_c(raw.temp);
-    return 0;
-}
-#endif
 
 static void ImuApplyGyroOffset(const fp32 offset[3])
 {
@@ -277,21 +260,13 @@ void ImuFusionTask(void const *pvParameters)
     k_msleep(g_config.imu.task_init_time_ms);
     WatchImuSetStage(WATCH_IMU_STAGE_INIT_DELAY_DONE);
 
-#if defined(CONFIG_ARBATOS_TARGET_INFANTRY_A) || defined(CONFIG_ARBATOS_TARGET_CARRIER_A)
-    init = mpu6500_init();
-#else
     WatchImuSetStage(WATCH_IMU_STAGE_BMI088_INIT_TRY);
     init = BMI088_init();
-#endif
     while (init != 0) {
         WatchTaskError(WATCH_TASK_IMU);
         k_msleep(100);
-#if defined(CONFIG_ARBATOS_TARGET_INFANTRY_A) || defined(CONFIG_ARBATOS_TARGET_CARRIER_A)
-        init = mpu6500_init();
-#else
         WatchImuSetStage(WATCH_IMU_STAGE_BMI088_INIT_RETRY);
         init = BMI088_init();
-#endif
     }
     mahony_imu_init(&InsMahony, 0.002f);
     GyroZeroCaliRuntimeReset(&InsGyroCaliState);
@@ -307,11 +282,7 @@ void ImuFusionTask(void const *pvParameters)
     for (;;) {
         fp32 gyro_raw[3] = {0};
         fp32 accel_raw[3] = {0};
-#if defined(CONFIG_ARBATOS_TARGET_INFANTRY_A) || defined(CONFIG_ARBATOS_TARGET_CARRIER_A)
-        const int read = ImuReadMpu(gyro_raw, accel_raw, &InsTemp);
-#else
         const int read = ImuReadBmi(gyro_raw, accel_raw, &InsTemp);
-#endif
         if (read != 0) {
             /* 读失败不能继续沿用加热占空比，也不能把未初始化值发布为姿态。 */
             InsHeaterPwm = 0u;

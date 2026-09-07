@@ -8,16 +8,14 @@
 
 | 新目标条件 | 优先复制 |
 |---|---|
-| DJI C 板 | `HERO-C` 或 `MINIWHEELEG-C` |
-| DJI A 板 | `INFANTRY-A` 或 `CARRIER-A` |
 | DM MC02 H7 | `HERO-M`、`SENTINEL-M` 或 `MINIWHEELEG-M` |
-| 经典底盘 + 单云台 | `HERO-C` / `INFANTRY-A` |
+| 经典底盘 + 单云台 | `HERO-M` |
 | 双 yaw 云台 | `SENTINEL-M` |
-| MIT 轮腿实验 | `MINIWHEELEG-M` / `MINIWHEELEG-C` |
+| MIT 轮腿实验 | `MINIWHEELEG-M` |
 
 默认先复制 `Robotconfig/<OLD>/` 到 `Robotconfig/<NEW>/`，再在 `zephyr/targets/`、板级定义、CMake 预设和 `zephyr/cmake/ArbatosLegacy.cmake` 的显式清单中补齐该目标。正式构建不读取 `.uvprojx`。
 
-`projects/<TARGET>/` 的 Keil/CubeMX 工程和生成式 GCC/CMake 路线仍可保留作 legacy 历史参考；只有明确维护旧路线时才同步复制和修改它们。
+已移除的旧工程如需核对，使用 `git show 951857f:<path>` 或查看 `zephyr` 分支的 `6bdf19e`，不要把它们作为新目标入口。
 
 ## 2. 填目标身份
 
@@ -25,7 +23,7 @@
 
 ```c
 #define ARBATOS_TARGET_NAME "NEW-TARGET"
-#define ARBATOS_BOARD_NAME "DjiCF407"
+#define ARBATOS_BOARD_NAME "DmMc02H7"
 ```
 
 这两个值会进入 SD 日志的 `BUILD_INFO`。以后只拿到一张 SD 卡，也能知道日志来自哪台车、哪块板。
@@ -138,7 +136,7 @@
 - `cmake/ArbatosLegacy.cmake` 的显式源码清单只包含实际需要的源码，不读取 `.uvprojx`。
 - Zephyr 启动映射只接入一个 `Robotconfig/<TARGET>`，没有混入其他目标的 `RobotConfig.c`。
 
-旧 `BeforeMake` 和 `GenBuildInfo.ps1` 只属于 legacy Keil 路线。
+需要核对已移除的旧构建信息流程时，使用 `git show 951857f:<path>` 或查看 `zephyr` 分支的 `6bdf19e`。
 
 ## 9. 第一次检查
 
@@ -149,7 +147,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action 
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action build -Project <TARGET> -Pristine
 ```
 
-前者检查 Zephyr 源清单、正式配置和语法路径；后者从干净目录构建目标。它们不等价于实车验收。旧 Keil/GCC 检查仅在维护 legacy 路线时执行。
+前者检查 Zephyr 源清单、正式配置和语法路径；后者从干净目录构建目标。它们不等价于实车验收。
 
 ## 最小验收
 
@@ -157,7 +155,6 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action 
 
 - `tools/build.ps1 -Action check -Project <TARGET>` 通过。
 - 对应 Zephyr 目标从干净目录构建通过。
-- 如果明确维护 legacy 路线，再补 Keil Rebuild 与旧 GCC 验证。
 - SD 日志 `BUILD_INFO` 能显示正确 target、board、Git、编译时间。
 - `g_watch` 能看到任务状态和主要设备状态。
 - 遥控输入、CAN 反馈、IMU 姿态都能观察。

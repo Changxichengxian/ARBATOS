@@ -37,12 +37,8 @@ target_sources_ifdef(CONFIG_ARBATOS_LEGACY_SOURCES app PRIVATE
 if(CONFIG_ARBATOS_LEGACY_SOURCES)
     zephyr_linker_sources(SECTIONS linker/arbatos-legacy-ram.ld)
 
-    if(CONFIG_BOARD_DM_MC02_H7)
-        target_sources(app PRIVATE port/platform/BspBuzzerM.c port/platform/MBoardIo.c
-            port/platform/BspAdcM.c port/sensors/ImuCalStore.c)
-    else()
-        target_sources(app PRIVATE port/platform/BspBuzzer.c port/platform/BspAdc.c)
-    endif()
+    target_sources(app PRIVATE port/platform/BspBuzzerM.c port/platform/MBoardIo.c
+        port/platform/BspAdcM.c port/sensors/ImuCalStore.c)
     target_sources_ifdef(CONFIG_ARBATOS_SUBBOARD_MUSIC app PRIVATE
         port/subboard/SubBoardMusic.c)
     target_sources_ifdef(CONFIG_ARBATOS_PREFLIGHT_ONLY app PRIVATE
@@ -50,31 +46,11 @@ if(CONFIG_ARBATOS_LEGACY_SOURCES)
     target_sources_ifdef(CONFIG_ARBATOS_RECEIVE_ONLY app PRIVATE
         port/subboard/MReceiveCheck.c)
 
-    if((CONFIG_ARBATOS_TARGET_HERO_C OR CONFIG_ARBATOS_TARGET_MINIWHEELEG_C) AND
-       NOT CONFIG_BOARD_DJI_C_F407)
-        message(FATAL_ERROR "HERO-C and MINIWHEELEG-C require board dji_c_f407")
-    elseif((CONFIG_ARBATOS_TARGET_INFANTRY_A OR CONFIG_ARBATOS_TARGET_CARRIER_A) AND
-           NOT CONFIG_BOARD_DJI_A_F427)
-        message(FATAL_ERROR "INFANTRY-A and CARRIER-A require board dji_a_f427")
-    elseif((CONFIG_ARBATOS_TARGET_HERO_M OR
-            CONFIG_ARBATOS_TARGET_SENTINEL_M OR
-            CONFIG_ARBATOS_TARGET_MINIWHEELEG_M) AND
-           NOT CONFIG_BOARD_DM_MC02_H7)
+    if(NOT CONFIG_BOARD_DM_MC02_H7)
         message(FATAL_ERROR "HERO-M, SENTINEL-M and MINIWHEELEG-M require board dm_mc02_h7")
     endif()
 
-    if(CONFIG_ARBATOS_TARGET_HERO_C OR CONFIG_ARBATOS_TARGET_MINIWHEELEG_C)
-        target_sources(app PRIVATE
-            port/sensors/BspBmi088Port.c
-            port/sensors/BspIst8310Port.c
-        )
-    elseif(CONFIG_ARBATOS_TARGET_INFANTRY_A OR CONFIG_ARBATOS_TARGET_CARRIER_A)
-        target_sources(app PRIVATE port/sensors/Mpu6500.c)
-    elseif(CONFIG_ARBATOS_TARGET_HERO_M OR
-           CONFIG_ARBATOS_TARGET_SENTINEL_M OR
-           CONFIG_ARBATOS_TARGET_MINIWHEELEG_M)
-        target_sources(app PRIVATE port/sensors/BspBmi088Port.c)
-    endif()
+    target_sources(app PRIVATE port/sensors/BspBmi088Port.c)
 
     if(CONFIG_ARBATOS_TARGET_SENTINEL_M)
         target_sources(app PRIVATE port/subboard/SubBoardBringupZephyr.c)

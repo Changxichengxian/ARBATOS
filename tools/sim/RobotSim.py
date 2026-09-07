@@ -13,7 +13,6 @@ import json
 import math
 import re
 import sys
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -284,34 +283,39 @@ def parse_define_text(text: str) -> dict[str, str]:
     return macros
 
 
-def parse_uvprojx_defines(project: str) -> dict[str, str]:
-    project_root = REPO_ROOT / "projects" / project
+ZEPHYR_TARGET_BY_PROJECT = {
+    "HERO-M": "hero-m",
+    "SENTINEL-M": "sentinel-m",
+    "MINIWHEELEG-M": "miniwheeleg-m",
+}
+
+
+def parse_zephyr_config_defines(project: str) -> dict[str, str]:
+    target = ZEPHYR_TARGET_BY_PROJECT.get(project.upper())
+    if target is None:
+        allowed = ", ".join(ZEPHYR_TARGET_BY_PROJECT)
+        raise ValueError(f"unsupported Zephyr project {project!r}; use one of: {allowed}")
+
     defines: dict[str, str] = {}
-    for uvprojx in project_root.rglob("*.uvprojx"):
-        try:
-            root = ET.parse(uvprojx).getroot()
-        except ET.ParseError:
-            continue
-
-        for define_node in root.iter("Define"):
-            if not define_node.text:
+    for config_path in (
+        REPO_ROOT / "zephyr" / "prj.conf",
+        REPO_ROOT / "zephyr" / "targets" / f"{target}.conf",
+    ):
+        if not config_path.is_file():
+            raise FileNotFoundError(f"missing Zephyr configuration: {config_path}")
+        for raw_line in read_text(config_path).splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
                 continue
-            for raw_token in re.split(r"[,;\s]+", define_node.text):
-                token = raw_token.strip()
-                if not token:
-                    continue
-                if "=" in token:
-                    name, value = token.split("=", 1)
-                else:
-                    name, value = token, "1"
-                if name:
-                    defines[name] = value
-
-        for misc_node in root.iter("MiscControls"):
-            if not misc_node.text:
+            name, value = (part.strip() for part in line.split("=", 1))
+            if not re.fullmatch(r"CONFIG_[A-Za-z0-9_]+", name):
                 continue
-            for match in re.finditer(r"(?:-D|--define)\s*([A-Za-z_][A-Za-z0-9_]*)(?:=([^\s]+))?", misc_node.text):
-                defines[match.group(1)] = match.group(2) or "1"
+            if value == "y":
+                defines[name] = "1"
+            elif value == "n":
+                defines[name] = "0"
+            else:
+                defines[name] = value
     return defines
 
 
@@ -641,7 +645,7 @@ def load_project(project: str) -> ProjectConfig:
     can_tx_source_macros = parse_define_text(
         strip_c_comments(read_text(REPO_ROOT / "shared/application/comm/can/CanTxTask.c"))
     )
-    project_defines = parse_uvprojx_defines(project)
+    project_defines = parse_zephyr_config_defines(project)
     project_macros = parse_define_text(strip_c_comments(read_text(config_h_path)))
     macros = dict(profile_defaults)
     macros.update(project_defines)
@@ -1217,7 +1221,7 @@ def print_report(report: dict[str, Any]) -> None:
 
 def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Simulate ARBATOS project CAN and CPU pressure.")
-    parser.add_argument("--project", required=True, help="Robotconfig/project name, e.g. HERO-C")
+    parser.add_argument("--project", required=True, help="Robotconfig/project name: HERO-M, SENTINEL-M, or MINIWHEELEG-M")
     parser.add_argument("--duration-ms", type=int, default=DEFAULT_DURATION_MS)
     parser.add_argument("--can-tx-period-ms", type=int, default=None, help="Override CAN command task period in sim only.")
     parser.add_argument("--motor-feedback-hz", type=float, default=1000.0, help="Default enabled CAN motor feedback rate.")

@@ -21,7 +21,18 @@ class CheckZephyrTest(unittest.TestCase):
     def fixture(self):
         directory = tempfile.TemporaryDirectory()
         root = Path(directory.name) / "ARBATOS"
-        shutil.copytree(REPO / "zephyr", root / "zephyr")
+        tracked = subprocess.check_output(
+            ["git", "-C", str(REPO), "ls-files", "-z", "zephyr", "shared", "Robotconfig", "boards"],
+        ).decode("utf-8").split("\0")
+        for relative in filter(None, tracked):
+            source = REPO / relative
+            if not source.is_file():
+                continue
+            destination = root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+        baseline = self.run_check(root)
+        self.assertEqual(baseline.returncode, 0, baseline.stderr + baseline.stdout)
         return directory, root
 
     def test_repository_all_targets_pass(self):
@@ -29,7 +40,7 @@ class CheckZephyrTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         payload = json.loads(result.stdout)
         self.assertTrue(payload["ok"])
-        self.assertEqual(len(payload["checked_projects"]), 7)
+        self.assertEqual(len(payload["checked_projects"]), 3)
 
     def test_missing_formal_config_fails(self):
         directory, root = self.fixture()

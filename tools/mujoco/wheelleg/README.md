@@ -35,7 +35,7 @@ writes generated MJCF files to `tmp/mujoco_wheelleg/`.
 This check does not require the MuJoCo Python package or a C compiler:
 
 ```powershell
-python .\tools\mujoco\wheelleg\RunWheelLeg.py --check --project MINIWHEELEG-C
+python .\tools\mujoco\wheelleg\RunWheelLeg.py --check --project MINIWHEELEG-M
 ```
 
 ## Run
@@ -43,25 +43,25 @@ python .\tools\mujoco\wheelleg\RunWheelLeg.py --check --project MINIWHEELEG-C
 Bench PID output:
 
 ```powershell
-python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-C --bench --leg-branch diamond --viewer --realtime
+python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-M --bench --leg-branch diamond --viewer --realtime
 ```
 
 Bench VMC output:
 
 ```powershell
-python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-C --bench --vmc --leg-branch diamond --viewer --realtime
+python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-M --bench --vmc --leg-branch diamond --viewer --realtime
 ```
 
 Print the parameters used by the generated model:
 
 ```powershell
-python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-C --print-params
+python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-M --print-params
 ```
 
 Keyboard control in the viewer:
 
 ```powershell
-python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-C --bench --keyboard --viewer --realtime
+python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-M --bench --keyboard --viewer --realtime
 ```
 
 Keys:
@@ -79,7 +79,7 @@ old initialization branch.
 Use a custom MJCF instead of the generated five-bar model:
 
 ```powershell
-python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-C --model .\tools\mujoco\wheelleg\WheelLegMinimal.xml
+python .\tools\mujoco\wheelleg\RunWheelLeg.py --project MINIWHEELEG-M --model .\tools\mujoco\wheelleg\WheelLegMinimal.xml
 ```
 
 ## Current limits

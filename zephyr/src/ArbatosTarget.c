@@ -15,20 +15,12 @@ LOG_MODULE_DECLARE(arbatos);
 
 const char *ArbatosTargetName(void)
 {
-#if CONFIG_ARBATOS_TARGET_HERO_C
-    return "HERO-C";
-#elif CONFIG_ARBATOS_TARGET_HERO_M
+#if CONFIG_ARBATOS_TARGET_HERO_M
     return "HERO-M";
-#elif CONFIG_ARBATOS_TARGET_INFANTRY_A
-    return "INFANTRY-A";
 #elif CONFIG_ARBATOS_TARGET_SENTINEL_M
     return "SENTINEL-M";
-#elif CONFIG_ARBATOS_TARGET_CARRIER_A
-    return "CARRIER-A";
 #elif CONFIG_ARBATOS_TARGET_MINIWHEELEG_M
     return "MINIWHEELEG-M";
-#elif CONFIG_ARBATOS_TARGET_MINIWHEELEG_C
-    return "MINIWHEELEG-C";
 #else
 #error "No ARBATOS robot target selected"
 #endif

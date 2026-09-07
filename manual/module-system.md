@@ -20,8 +20,8 @@ ARBATOS 这里的模块，只覆盖机器人下位机常见模块：输入、通
 2. 在 `shared/application/robot/RobotTaskProfile.h` 的 `RobotProfileKnownModules()` 里补旧任务名。
 3. 在 `shared/application/robot/RobotModule.h` 里补模块声明和资源数组。
 4. 在目标的 `Robotconfig/<target>/RobotConfig.c` 里把模块加入 `task_modules`。
-5. 如果这个模块确实创建 FreeRTOS 任务，在项目或板级启动文件的 `module_tasks` 里补创建函数。
-6. 跑 `tools/CheckAll.ps1`，让脚本检查枚举、任务名、模块声明和资源名是否一致。
+5. 如果这个模块确实创建线程，在 Zephyr 启动映射里补创建函数。
+6. 手工核对枚举、任务名、模块声明和资源名是否一致；`tools/CheckZephyr.py` 只检查 Zephyr 源清单、目标和板级配置，不覆盖这些模块语义。
 
 ## 当前边界
 

@@ -7,12 +7,6 @@ on:
       - master
   pull_request:
   workflow_dispatch:
-    inputs:
-      run_legacy_checks:
-        description: Run the historical Keil-project consistency checks
-        required: false
-        default: false
-        type: boolean
 
 jobs:
   zephyr-checks:
@@ -29,15 +23,3 @@ jobs:
       - name: Run Zephyr checker regressions
         shell: powershell
         run: python -m unittest .\tools\tests\TestCheckZephyr.py
-
-  legacy-checks:
-    if: github.event_name == 'workflow_dispatch' && inputs.run_legacy_checks
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Run historical Keil-project consistency checks
-        shell: powershell
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\CheckAll.ps1

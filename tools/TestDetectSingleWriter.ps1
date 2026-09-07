@@ -13,7 +13,7 @@ $Output = Join-Path $BuildDir 'detect-single-writer-regression.exe'
 $Source = Join-Path $RepoRoot 'tools\tests\DetectSingleWriterRegression.c'
 $Args = @(
     'cc', '-std=c11', '-Wall', '-Wextra', '-Werror',
-    ('-I' + (Join-Path $RepoRoot 'Robotconfig\CARRIER-A')),
+    ('-I' + (Join-Path $RepoRoot 'Robotconfig\HERO-M')),
     ('-I' + (Join-Path $RepoRoot 'shared\application\services\diagnostics')),
     ('-I' + (Join-Path $RepoRoot 'shared\application\robot')),
     ('-I' + (Join-Path $RepoRoot 'shared\components\support')),

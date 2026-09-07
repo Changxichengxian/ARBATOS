@@ -37,24 +37,11 @@
 
 完整一轮最多写 152 MiB 并全部读回；同一时刻最大临时文件 32 MiB。启动时要求至少 64 MiB 空间。不格式化，不覆盖已有同名文件，不直接写裸扇区。成功的测试文件会删除；任何读写、底层传输或校验错误都会停止并保留文件及 RAM 现场，不继续在异常链路上清理目录。重新复位会开始新一轮。
 
-## 构建
+## 历史构建
 
-在仓库根目录执行：
+该独立测试使用的 Keil 生成器和工程模板已从主线删除。保留这里的测试源码、协议检查和实测结果供查阅；要重现 2026-09-05 的独立固件，请在另一份检出目录使用历史提交 `951857f`，其中有 `tests/SdBenchM/Build.py` 及 `projects/`。不要把历史测试固件当作当前 HERO-M 固件。
 
-```powershell
-& 'C:\Users\28111\AppData\Local\Programs\Python\Python311\python.exe' -X utf8 'D:\ARBATOS\tests\SdBenchM\Build.py'
-```
-
-默认输出到 `D:\ARBATOS\local\cache\sd-bench-m`：
-
-- `Objects\SD-BENCH-M.hex`：烧录文件。
-- `Objects\SD-BENCH-M.axf`：带符号的调试文件。
-- `SD-BENCH-M.uvprojx`：生成的独立 Keil 工程，可直接打开。
-- `build.log`：本次编译日志，脚本要求 0 错误、0 警告。
-- `firmware.json`：从本次 AXF 提取的诊断地址、大小和文件哈希。
-- `sources.json`：本次编译源文件清单及哈希。
-
-构建脚本只提取模板中的白名单依赖，关闭原工程的构建前后脚本，不改正式工程文件。SD 优化由 `SD_BENCH_TEST` 宏控制，正常固件默认不启用；正式时钟配置也没有提高。
+以下结果读取说明依赖当时生成的 `local/cache/sd-bench-m/firmware.json`，不属于当前固件的编译入口。
 
 ## 接板后读取结果
 

@@ -24,9 +24,8 @@ See the [hardware milestone and validation limits](tests/ZephyrMusicM/NormalOutp
 
 The current codebase is beyond a basic STM32 port. It includes:
 
-- Seven firmware targets: `HERO-C`, `HERO-M`, `INFANTRY-A`, `SENTINEL-M`,
-  `CARRIER-A`, `MINIWHEELEG-M`, and `MINIWHEELEG-C`.
-- Three board support layers: DJI C board, DJI A board, and DM MC02 H7 board.
+- Three firmware targets: `HERO-M`, `SENTINEL-M`, and `MINIWHEELEG-M`.
+- DM MC02 H7 board support.
 - `g_config.profile.task_modules` 显式选择的业务任务由兼容层接入 Zephyr 线程启动。
 - Multiple manual input sources: DBUS/SBUS, ELRS/CRSF, image-transmission remote
   control, USB-reserved input, and board keys.
@@ -46,8 +45,8 @@ Important limits are also documented here:
 - `main` 是唯一继续提交的分支；`zephyr` 分支保留为已结束的探索记录。
 - 七个目标的正式构建入口是 `zephyr/`，使用 Zephyr 4.4、CMake、Ninja 和
   OpenOCD。它使用仓库内的显式源码清单，不读取 `.uvprojx`。
-- `projects/` 中的 Keil、CubeMX、FreeRTOS 工程和旧 GCC 生成工具只作为
-  显式 `legacy` 历史参考；当前构建、检查和 CI 不要求安装 Keil。
+- 已移除的旧 Keil、CubeMX、FreeRTOS 工程和旧工具如需恢复，使用
+  `git show 951857f:<path>` 或查看 `zephyr` 分支的 `6bdf19e`。
 - High-rate control paths should read configuration through cached or snapshot
   views instead of repeatedly walking `g_config`; local checks guard the main
   high-rate boundaries.
@@ -79,9 +78,8 @@ licenses.
 
 ```text
 ARBATOS/
-|-- boards/        # Board support packages and board-specific ports
+|-- boards/        # M 板支持包和板级端口
 |-- zephyr/        # 正式 Zephyr 4.4 工程、七目标配置和板级定义
-|-- projects/      # 旧 Keil/CubeMX 工程，仅作 legacy 历史参考
 |-- Robotconfig/   # Robot target parameters and target-specific glue
 |-- shared/        # Reusable runtime, control, communication, HAL, and components
 |-- manual/        # Bring-up, tuning, logging, and integration manuals
@@ -93,7 +91,7 @@ ARBATOS/
 
 The important separation is:
 
-- `projects/<TARGET>/` answers "how is this firmware built and started?"
+- `zephyr/` answers "how is this firmware built and started?"
 - `Robotconfig/<TARGET>/` answers "how is this robot configured?"
 - `boards/<BOARD>/` answers "how does this control board connect to hardware?"
 - `shared/` answers "what logic can multiple robots reuse?"
@@ -107,9 +105,6 @@ ARBATOS uses a four-layer firmware layout.
 zephyr/
   正式 Zephyr 4.4 工程、七目标 CMake 预设、板级定义、端口和显式源码清单。
   构建不读取 Keil 工程文件。
-
-projects/<TARGET>/
-  旧 Keil/CubeMX/FreeRTOS 工程，保留给历史对照和有意继续维护旧路线的人。
 
 Robotconfig/<TARGET>/
   Robot profile, task module list, device table, motor mounting, PID, input,
@@ -125,52 +120,26 @@ shared/
 ```
 
 This layout keeps reusable logic out of target folders. A new robot should mostly
-need a new `Robotconfig/<TARGET>/` and `projects/<TARGET>/`, plus board work only
-when the hardware changes.
+need a new `Robotconfig/<TARGET>/` and Zephyr target configuration, plus board work
+only when the hardware changes.
 
 ## Supported Boards
 
 | Board | MCU | Notes |
 |---|---:|---|
-| `DjiCF407` | STM32F407 | DJI C board support |
-| `DjiAF427` | STM32F427 | DJI A board support |
-| `DmMc02H7` | STM32H723 | DM MC02 H7 board support |
+| `DmMc02H7` | STM32H723 | 当前正式支持板卡 |
 
 ## Firmware Targets
 
-| Target | Keil project | Robotconfig | Board |
-|---|---|---|---|
-| `HERO-C` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | `Robotconfig/HERO-C` | `boards/DjiCF407` |
-| `HERO-M` | `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` | `Robotconfig/HERO-M` | `boards/DmMc02H7` |
-| `INFANTRY-A` | `projects/INFANTRY-A/MDK-ARM/INFANTRY-A.uvprojx` | `Robotconfig/INFANTRY-A` | `boards/DjiAF427` |
-| `SENTINEL-M` | `projects/SENTINEL-M/MDK-ARM/SENTINEL-M.uvprojx` | `Robotconfig/SENTINEL-M` | `boards/DmMc02H7` |
-| `CARRIER-A` | `projects/CARRIER-A/MDK-ARM/CARRIER-A.uvprojx` | `Robotconfig/CARRIER-A` | `boards/DjiAF427` |
-| `MINIWHEELEG-M` | `projects/MINIWHEELEG-M/MDK-ARM/MINIWHEELEG-M.uvprojx` | `Robotconfig/MINIWHEELEG-M` | `boards/DmMc02H7` |
-| `MINIWHEELEG-C` | `projects/MINIWHEELEG-C/MDK-ARM/MINIWHEELEG-C.uvprojx` | `Robotconfig/MINIWHEELEG-C` | `boards/DjiCF407` |
+| Target | Robotconfig | Board |
+|---|---|---|
+| `HERO-M` | `Robotconfig/HERO-M` | `boards/DmMc02H7` |
+| `SENTINEL-M` | `Robotconfig/SENTINEL-M` | `boards/DmMc02H7` |
+| `MINIWHEELEG-M` | `Robotconfig/MINIWHEELEG-M` | `boards/DmMc02H7` |
 
 ## Runtime Flow
 
-当前固件由 Zephyr 启动线程；原有 `g_config.profile.task_modules` 和业务任务通过兼容层继续使用。下面的 FreeRTOS 路径仅说明 `projects/` 中保留的 legacy 工程：
-
-```text
-main.c
-  |
-  +-- HAL and CubeMX peripheral initialization
-  +-- board and shared module initialization
-  +-- ManualInputInit()
-  +-- osKernelStart()
-        |
-        +-- MX_FREERTOS_Init()
-              |
-              +-- ControlMgrInit()
-              +-- create static tasks
-              +-- create enabled modules from g_config.profile.task_modules
-```
-
-legacy F4 工程主要在 `projects/<TARGET>/Core/Src/freertos.c` 创建任务。
-legacy DM MC02 H7 工程还有板级入口：
-`boards/DmMc02H7/app/BoardMain.c` and
-`boards/DmMc02H7/app/BoardFreertos.c`.
+当前固件由 Zephyr 启动线程；原有 `g_config.profile.task_modules` 和业务任务通过兼容层继续使用。
 
 Known task module IDs are defined in
 `shared/application/robot/RobotConfigSchema.h`, and their names and helper
@@ -340,9 +309,6 @@ paths. It does not claim a firmware build or real-board result.
 |---|---|
 | `tools/build.ps1` | Zephyr check and build entry point; default is `HERO-M` |
 | `tools/CheckZephyr.py` | Zephyr source-list and formal-configuration check |
-| `tools/CheckAll.ps1` | legacy Keil/project check, invoked only with `-Action legacy-check` |
-| `tools/build/ProjectManifest.py` | legacy Keil project manifest tool |
-| `tools/build/GccProject.py` | legacy generated GCC/CMake tool |
 | `tools/GenBuildInfo.ps1` | generates `shared/generated/build_info_autogen.h` for firmware logs |
 | `tools/sim/RobotSim.py` | estimates CAN and CPU pressure from current configuration |
 | `tools/sdlog/SdLogViewer.py` | opens the SD log web viewer and exports records |
@@ -353,8 +319,8 @@ paths. It does not claim a firmware build or real-board result.
 Example simulator usage:
 
 ```powershell
-python .\tools\sim\RobotSim.py --project HERO-C
-python .\tools\sim\RobotSim.py --project MINIWHEELEG-C --json
+python .\tools\sim\RobotSim.py --project HERO-M
+python .\tools\sim\RobotSim.py --project MINIWHEELEG-M --json
 ```
 
 The simulator is a configuration pressure check, not a physics simulator.
@@ -403,8 +369,8 @@ For detailed workflows, start with `QuickStart.md` and `manual/README.md`.
 
 ## Adding a Robot Target
 
-1. Copy the closest existing `Robotconfig/<TARGET>/` and `projects/<TARGET>/`.
-2. 在 `zephyr/targets/`、Zephyr 板级定义和 CMake 预设中加入目标；`projects/` 只有确需维护 legacy 路线时才同步。
+1. Copy the closest existing `Robotconfig/<TARGET>/`.
+2. 在 `zephyr/targets/`、Zephyr 板级定义和 CMake 预设中加入目标。
 3. Update include paths so the project references exactly one
    `Robotconfig/<TARGET>`.
 4. Set target identity macros in `RobotConfig.h`: `ARBATOS_TARGET_NAME`,
@@ -423,7 +389,6 @@ For detailed workflows, start with `QuickStart.md` and `manual/README.md`.
 2. Add board port configuration for CAN, UART, SPI, I2C, IMU, key, buzzer, SD
    card, USB, PWM, and other board peripherals.
 3. 在 Zephyr 板级定义、`zephyr/targets/` 和启动配置中加入该板的正式入口。
-4. 只有明确维护 legacy 路线时，才更新 `projects/<TARGET>/` 和 Keil 工程路径。
 
 ## Adding a Motor Model or Protocol
 
@@ -443,11 +408,9 @@ For detailed workflows, start with `QuickStart.md` and `manual/README.md`.
 2. Add the module name in `RobotProfileKnownModules()` in
    `shared/application/robot/RobotTaskProfile.h`.
 3. Add the module to the relevant target's `g_config.profile.task_modules`.
-4. 把任务源码加入 Zephyr 显式清单，并在 Zephyr 启动映射中接入该模块；旧
-   FreeRTOS 任务入口只有维护 legacy 路线时才同步修改。
+4. 把任务源码加入 Zephyr 显式清单，并在 Zephyr 启动映射中接入该模块。
 5. Add diagnostics, log fields, and a minimal validation path.
-6. Update `tools/CheckAll.ps1` if the module requires source or task-creation
-   consistency checks.
+6. 更新 Zephyr 源清单检查所需的目标或模块声明。
 
 ## Documentation
 
@@ -466,7 +429,6 @@ For detailed workflows, start with `QuickStart.md` and `manual/README.md`.
   based runtime evolution.
 - `AlgorithmAccessProtocol.md`: compact algorithm link protocol and external
   chassis-motion command path.
-- `projects/README.md`: project layer details.
 - `Robotconfig/README.md`: robot configuration layer details.
 - `boards/README.md`: board support layer details.
 - `shared/README.md`: shared runtime layer details.
@@ -480,7 +442,7 @@ Before sending a patch or pull request:
 - Read `legal/CONTRIBUTING.md` and `legal/CLA.md`.
 - Make sure you have the right to contribute the code, data, or documentation.
 - Keep target parameters in `Robotconfig/`, board ports in `boards/`, reusable
-  logic in `shared/`, and build entry changes in `projects/`.
+  logic in `shared/`, and build entry changes in `zephyr/`.
 - Explain which targets, boards, or shared modules are affected.
 - List any new third-party dependency and its license.
 - Run:

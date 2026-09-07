@@ -61,7 +61,7 @@ $AbiArgs = @(
     ('-I' + (Join-Path $RepoRoot 'shared\application\services\diagnostics')),
     ('-I' + (Join-Path $RepoRoot 'shared\application\robot')),
     ('-I' + (Join-Path $RepoRoot 'shared\components\support')),
-    ('-I' + (Join-Path $RepoRoot 'Robotconfig\HERO-C')),
+    ('-I' + (Join-Path $RepoRoot 'Robotconfig\HERO-M')),
     '-o', $AbiOutput
 )
 
@@ -72,35 +72,16 @@ if ($LASTEXITCODE -ne 0) {
 
 $ArmAbiOutput = Join-Path $BuildDir 'control-mgr-abi-arm32-regression.obj'
 $ArmAbiArgs = @(
-    'cc', '-target', 'arm-freestanding-eabi', '-mcpu=cortex_m4', '-mfloat-abi=hard',
+    'cc', '-target', 'arm-freestanding-eabi', '-mcpu=cortex_m7', '-mfloat-abi=hard',
     '-std=c11', '-Wall', '-Wextra', '-Werror', '-c', $AbiSource,
     ('-I' + (Join-Path $RepoRoot 'shared\application\services\diagnostics')),
     ('-I' + (Join-Path $RepoRoot 'shared\application\robot')),
     ('-I' + (Join-Path $RepoRoot 'shared\components\support')),
-    ('-I' + (Join-Path $RepoRoot 'Robotconfig\HERO-C')),
+    ('-I' + (Join-Path $RepoRoot 'Robotconfig\HERO-M')),
     '-o', $ArmAbiOutput
 )
 
 & $Zig.Source @ArmAbiArgs
 if ($LASTEXITCODE -ne 0) {
     throw "控制管理器 ARM32 ABI 回归编译失败，退出码 $LASTEXITCODE"
-}
-
-# ARMCC5 可能用窄枚举，和 clang/zig 的 ARM ABI 不能互相替代。
-$Armcc = Get-Command armcc -ErrorAction SilentlyContinue
-if ($null -ne $Armcc) {
-    $ArmccAbiOutput = Join-Path $BuildDir 'control-mgr-abi-armcc5-regression.o'
-    $ArmccAbiArgs = @(
-        '--c99', '--cpu', 'Cortex-M4.fp.sp', '-c', $AbiSource,
-        ('-I' + (Join-Path $RepoRoot 'shared\application\services\diagnostics')),
-        ('-I' + (Join-Path $RepoRoot 'shared\application\robot')),
-        ('-I' + (Join-Path $RepoRoot 'shared\components\support')),
-        ('-I' + (Join-Path $RepoRoot 'Robotconfig\HERO-C')),
-        '-o', $ArmccAbiOutput
-    )
-
-    & $Armcc.Source @ArmccAbiArgs
-    if ($LASTEXITCODE -ne 0) {
-        throw "控制管理器 ARMCC5 ABI 回归编译失败，退出码 $LASTEXITCODE"
-    }
 }

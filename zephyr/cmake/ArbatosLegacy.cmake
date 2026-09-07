@@ -1,6 +1,6 @@
 # ARBATOS Zephyr source manifest for shared robot control.
 #
-# This maintained list is the source of truth for the seven Zephyr targets.
+# This maintained list is the source of truth for the three Zephyr targets.
 # It was initially transcribed from the old projects, but configure/build
 # never reads a Keil project or requires an installed Keil toolchain.
 #
@@ -64,40 +64,6 @@ function(arbatos_add_legacy_sources target)
         shared/components/support/Crc8Crc16.c
     )
 
-    set(ARBATOS_FULL_FEATURE_CORE
-        ${ARBATOS_COMMON_CORE}
-        shared/application/services/calibration/CalibrateTask.c
-        shared/application/services/calibration/PitchCali.c
-        shared/application/services/diagnostics/CpuUsage.c
-        shared/application/comm/referee/RefereeRxTask.c
-        shared/application/services/startup/StartupServiceTask.c
-        shared/application/input/ElrsTask.c
-        shared/application/comm/host/HostLinkTask.c
-        shared/application/comm/host/AuxPort.c
-        shared/application/comm/host/AuxTune.c
-        shared/application/comm/host/AuxParam.c
-        shared/application/comm/host/AuxAutotune.c
-        shared/application/comm/host/AuxTelem.c
-        shared/application/comm/host/HostTuneBridge.c
-        shared/application/comm/vision/VisionLink.c
-        shared/application/input/ImageRemoteLink.c
-        shared/application/services/battery/BatteryMonitorTask.c
-        shared/application/services/startup/StatusLedTask.c
-        shared/application/services/servo/ServoControlTask.c
-        shared/application/services/storage/SdCard.c
-        shared/application/services/storage/SdLog.c
-        shared/application/services/storage/SdLogTask.c
-        shared/components/devices/Bmi088Driver.c
-        shared/components/devices/Ist8310Driver.c
-        shared/components/devices/SdSpi.c
-        shared/components/support/Fifo.c
-        shared/components/support/MemMang4.c
-        shared/components/support/fatfs/ff.c
-        shared/components/support/fatfs/ffsystem.c
-        shared/components/support/fatfs/ffunicode.c
-        shared/components/controller/PidAdvanced.c
-    )
-
     set(ARBATOS_H7_CORE
         ${ARBATOS_COMMON_CORE}
         shared/application/arm/ArmTask.c
@@ -126,67 +92,7 @@ function(arbatos_add_legacy_sources target)
 
     # Source entries below are the maintained target-specific selections.
     # Do not merge targets merely because their vehicle names sound similar.
-    if(CONFIG_ARBATOS_TARGET_HERO_C)
-        set(ARBATOS_TARGET_DIR HERO-C)
-        set(ARBATOS_BOARD_DIR boards/DjiCF407)
-        set(ARBATOS_TARGET_SOURCES
-            ${ARBATOS_FULL_FEATURE_CORE}
-            Robotconfig/HERO-C/RobotConfig.c
-            Robotconfig/HERO-C/DetectTask.c
-            Robotconfig/HERO-C/PitchCaliBuiltin.c
-        )
-    elseif(CONFIG_ARBATOS_TARGET_MINIWHEELEG_C)
-        set(ARBATOS_TARGET_DIR MINIWHEELEG-C)
-        set(ARBATOS_BOARD_DIR boards/DjiCF407)
-        set(ARBATOS_TARGET_SOURCES
-            ${ARBATOS_FULL_FEATURE_CORE}
-            Robotconfig/MINIWHEELEG-C/RobotConfig.c
-            Robotconfig/MINIWHEELEG-C/DetectTask.c
-        )
-    elseif(CONFIG_ARBATOS_TARGET_CARRIER_A)
-        set(ARBATOS_TARGET_DIR CARRIER-A)
-        set(ARBATOS_BOARD_DIR boards/DjiAF427)
-        set(ARBATOS_TARGET_SOURCES
-            ${ARBATOS_COMMON_CORE}
-            shared/application/services/calibration/PitchCali.c
-            shared/application/services/storage/SdCard.c
-            shared/application/services/storage/SdLog.c
-            shared/application/services/storage/SdLogTask.c
-            shared/application/comm/host/HostLinkTaskStub.c
-            shared/components/support/MemMang4.c
-            shared/components/support/fatfs/ff.c
-            shared/components/support/fatfs/ffsystem.c
-            shared/components/support/fatfs/ffunicode.c
-            Robotconfig/CARRIER-A/RobotConfig.c
-            Robotconfig/CARRIER-A/DetectTask.c
-        )
-    elseif(CONFIG_ARBATOS_TARGET_INFANTRY_A)
-        set(ARBATOS_TARGET_DIR INFANTRY-A)
-        set(ARBATOS_BOARD_DIR boards/DjiAF427)
-        set(ARBATOS_TARGET_SOURCES
-            ${ARBATOS_COMMON_CORE}
-            shared/application/services/calibration/PitchCali.c
-            shared/application/services/storage/SdCard.c
-            shared/application/services/storage/SdLog.c
-            shared/application/services/storage/SdLogTask.c
-            shared/application/input/ElrsTask.c
-            shared/application/comm/host/HostLinkTask.c
-            shared/application/comm/host/AuxPort.c
-            shared/application/comm/host/AuxTune.c
-            shared/application/comm/host/AuxParam.c
-            shared/application/comm/host/AuxAutotune.c
-            shared/application/comm/host/AuxTelem.c
-            shared/application/comm/host/HostTuneBridge.c
-            shared/application/comm/vision/VisionLink.c
-            shared/application/input/ImageRemoteLink.c
-            shared/components/support/MemMang4.c
-            shared/components/support/fatfs/ff.c
-            shared/components/support/fatfs/ffsystem.c
-            shared/components/support/fatfs/ffunicode.c
-            Robotconfig/INFANTRY-A/RobotConfig.c
-            Robotconfig/INFANTRY-A/DetectTask.c
-        )
-    elseif(CONFIG_ARBATOS_TARGET_HERO_M)
+    if(CONFIG_ARBATOS_TARGET_HERO_M)
         set(ARBATOS_TARGET_DIR HERO-M)
         set(ARBATOS_BOARD_DIR boards/DmMc02H7)
         set(ARBATOS_TARGET_SOURCES
@@ -247,7 +153,6 @@ function(arbatos_add_legacy_sources target)
     # board coverage, but must be reimplemented through Zephyr drivers rather
     # than compiled beside them:
     # - shared/hal/*.c (STM32 HAL, CMSIS-RTOS, CubeMX handles)
-    # - boards/DjiCF407/{bsp,devices}/**/*.c and boards/DjiAF427/{bsp,devices}/**/*.c
     # - boards/DmMc02H7/app/{BoardMain,BoardFreertos,InsTask}.c and bsp/**/*.c
     # - shared/components/algorithm/{AHRS,arm_cortexM4lf_math}.lib
     # - projects/*/{Core,Drivers,Middlewares,USB_DEVICE}/** and startup *.s
