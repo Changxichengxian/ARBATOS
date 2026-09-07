@@ -8,6 +8,7 @@ import hashlib
 import re
 import shutil
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -184,6 +185,7 @@ def write_if_changed(output: Path, content: str) -> bool:
 
 
 def main() -> int:
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     parser = argparse.ArgumentParser(description="生成 ARBATOS 构建版本头")
     parser.add_argument("--repo", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--output", type=Path, required=True)

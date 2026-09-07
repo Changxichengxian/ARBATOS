@@ -118,6 +118,7 @@ def task_catalog(root):
 
 
 def targets(root):
+    root = Path(root).resolve()
     result = []
     seen = set()
     for path in sorted((root / "Robotconfig").glob("*/RobotConfig.toml")):
@@ -133,6 +134,7 @@ def targets(root):
 
 
 def plugins(root):
+    root = Path(root).resolve()
     result = {}
     symbols = set()
     for path in sorted((root / "shared/controllers").glob("*/Controller.toml")):
@@ -171,6 +173,8 @@ def plugins(root):
 
 
 def resolve(root, requested):
+    # 文件检查会解析真实路径；仓库根目录也须统一，兼容 Windows 短路径和 ..。
+    root = Path(root).resolve()
     found = [t for t in targets(root) if t["name"].lower() == requested.lower()]
     require(len(found) == 1, f"找不到车型 {requested}，需要 Robotconfig/<车型>/RobotConfig.toml")
     target = found[0]
@@ -474,6 +478,7 @@ def write_plugin_parameters(root, out):
 
 
 def create_robot(root, name, source):
+    root = Path(root).resolve()
     require(TARGET_NAME.fullmatch(name) is not None and name.lower() != "all", "新车型名字无效")
     base = resolve(root, source)
     destination = root / "Robotconfig" / name
@@ -499,6 +504,7 @@ def create_robot(root, name, source):
 
 
 def update_presets(root, requested):
+    root = Path(root).resolve()
     path = root / "projects/CMakeUserPresets.json"
     data = json.loads(path.read_text(encoding="utf-8-sig")) if path.exists() else {"version": 3}
     configure = data.setdefault("configurePresets", [])

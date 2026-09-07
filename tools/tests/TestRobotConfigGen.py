@@ -88,6 +88,24 @@ max = 2.0
         self.assertIn("NEW", {x["name"] for x in GEN.targets(self.root)})
         self.assertEqual(self.resolve("NEW")["name"], "NEW")
 
+    def test_repository_root_accepts_noncanonical_paths(self):
+        self.plugin()
+        canonical = self.root.resolve()
+        alias = self.root / ".." / self.root.name
+        self.assertEqual(GEN.targets(alias), GEN.targets(canonical))
+        self.assertEqual(GEN.plugins(alias), GEN.plugins(canonical))
+        target = GEN.resolve(alias, "BASE")
+        self.assertEqual(target, GEN.resolve(canonical, "BASE"))
+        self.assertEqual(target["sources"], ["Robotconfig/BASE/RobotConfig.c"])
+        out = self.root / "alias-out"
+        GEN.generate(alias, target, out)
+        self.assertTrue((out / "DemoControllerParams.h").is_file())
+        created = GEN.create_robot(alias, "NEW", "BASE")
+        self.assertEqual(Path(created["path"]), canonical / "Robotconfig/NEW")
+        presets = GEN.update_presets(alias, "NEW")
+        self.assertEqual(Path(presets["path"]), canonical / "projects/CMakeUserPresets.json")
+        self.assertEqual(presets["added"], ["new-local"])
+
     def test_controller_manifest_rejects_ambiguous_symbols_and_invalid_outputs(self):
         self.plugin()
         manifest = self.root / "shared/controllers/demo/Controller.toml"

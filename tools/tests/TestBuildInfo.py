@@ -105,6 +105,20 @@ class GenBuildInfoTest(unittest.TestCase):
         env["PATH"] = ""
         self.assertIn('ARBATOS_GIT_SHA "unknown"', self.generate(env))
 
+    def test_cli_uses_utf8_for_chinese_output_path(self):
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "cp1252"
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--repo", str(self.repo), "--output", str(self.output)],
+            check=False,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", errors="replace"))
+        output = result.stdout.decode("utf-8")
+        self.assertIn(str(self.output.resolve()), output)
+
     def test_submodule_revision_and_dirty_state(self):
         child = Path(self.temp.name) / "child"
         child.mkdir()
