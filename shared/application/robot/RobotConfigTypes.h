@@ -300,6 +300,15 @@ typedef struct
     uint8_t lowAlarmEnabled;   // 仅控制低压提示，不影响电压采样
 } voltage_config_t;
 
+// CAN 功率计。电流原值按无符号量保存，方向语义待实车协议确认。
+typedef struct
+{
+    uint8_t enable;
+    uint8_t canBus;
+    uint16_t canId;
+    uint16_t freshTimeoutMs;
+} PowerMeterConfig;
+
 // Buzzer PCM playback config (PWM+DMA, u8 samples on TF/SD).
 // Music mode scans TF/SD root for *.U8 files; file names are not configured here.
 
@@ -1057,6 +1066,7 @@ typedef struct
     DetectConfig detect;
     imu_config_t imu;
     voltage_config_t voltage;
+    PowerMeterConfig powerMeter;
     BuzzerConfig buzzer;
     led_config_t led;
     ManualInputConfig manual_input;

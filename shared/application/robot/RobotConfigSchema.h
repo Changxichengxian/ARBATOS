@@ -51,7 +51,7 @@ typedef struct
 #endif
 
 #ifndef ROBOT_DEFAULT_DEVICE_EXTRA_COUNT
-#define ROBOT_DEFAULT_DEVICE_EXTRA_COUNT 5u
+#define ROBOT_DEFAULT_DEVICE_EXTRA_COUNT 6u
 #endif
 
 #define ROBOT_DEFAULT_MOTOR_DEVICE_COUNT (12u + MOTOR_ARM_JOINT_COUNT)
@@ -74,6 +74,7 @@ typedef struct
 #define ROBOT_DEVICE_ROLE_BATTERY 3u
 #define ROBOT_DEVICE_ROLE_AUX_TELEM 4u
 #define ROBOT_DEVICE_ROLE_SDLOG 5u
+#define ROBOT_DEVICE_ROLE_POWER_METER 6u
 #define ROBOT_DEVICE_ROLE_CUSTOM_BASE 128u
 
 #define ROBOT_DEVICE_MOTOR_ROLE_CHASSIS 0u
@@ -156,6 +157,7 @@ typedef struct
             ROBOT_DEVICE_ENTRY_SENSOR("sensor.imu", ROBOT_DEVICE_ROLE_IMU, 0u, imu), \
             ROBOT_DEVICE_ENTRY_INPUT("input.manual", ROBOT_DEVICE_ROLE_MANUAL_INPUT, 0u, manual_input), \
             ROBOT_DEVICE_ENTRY_SENSOR("sensor.battery", ROBOT_DEVICE_ROLE_BATTERY, 0u, voltage), \
+            ROBOT_DEVICE_ENTRY_SENSOR("sensor.power_meter", ROBOT_DEVICE_ROLE_POWER_METER, 0u, powerMeter), \
             ROBOT_DEVICE_ENTRY_COMM("link.AuxTelem", ROBOT_DEVICE_ROLE_AUX_TELEM, 0u, AuxTelem), \
             ROBOT_DEVICE_ENTRY_SERVICE("service.sdlog", ROBOT_DEVICE_ROLE_SDLOG, 0u, sdlog), \
         }, \

@@ -12,6 +12,9 @@
 #include "RobotLifecycle.h"
 #include "Watch.h"
 #include "main.h"
+#if defined(__ZEPHYR__)
+#include "RobotFaultZephyr.h"
+#endif
 
 #if defined(SUB_BOARD_FACTORY_TEST)
 #include "SubBoardBringup.h"
@@ -212,6 +215,9 @@ void RobotFaultTaskAndReset(uint32_t reason,
                             TaskHandle_t task,
                             const char *task_name)
 {
+#if defined(__ZEPHYR__)
+    RobotFaultZephyrReset(reason, arg0, arg1);
+#endif
 #if defined(SUB_BOARD_FACTORY_TEST)
     (void)task;
     (void)task_name;
@@ -265,6 +271,9 @@ static void RobotFaultResetFromExceptionFrame(uint32_t reason,
                                               uint32_t *stack,
                                               uint32_t exc_return)
 {
+#if defined(__ZEPHYR__)
+    RobotFaultZephyrReset(reason, arg0, arg1);
+#endif
 #if defined(SUB_BOARD_FACTORY_TEST)
     (void)stack;
     (void)exc_return;

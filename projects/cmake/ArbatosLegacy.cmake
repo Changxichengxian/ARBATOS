@@ -38,6 +38,7 @@ function(arbatos_add_legacy_sources target)
         shared/application/motors/MotorHealth.c
         shared/application/comm/can/CanReceive.c
         shared/application/comm/can/CanRxTask.c
+        shared/application/comm/can/PowerMeter.c
         shared/application/comm/can/CanTxTask.c
         shared/application/motors/CanMitMotorDriver.c
         shared/application/wheelleg/WheelLegMitTask.c

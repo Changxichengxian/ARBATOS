@@ -488,6 +488,7 @@ static void BspCanRxPushCommon(uint8_t bus, uint16_t std_id, uint8_t dlc, const 
     dst->dlc = dlc;
     dst->flags = flags;
     dst->std_id = std_id;
+    dst->rxTickMs = HAL_GetTick();
     for (uint8_t i = 0u; i < (uint8_t)sizeof(dst->data); i++)
     {
         dst->data[i] = data[i];

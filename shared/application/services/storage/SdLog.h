@@ -131,6 +131,9 @@ typedef enum
     SDLOG_TAG_WHEELLEG_MIT_MOTOR_DIAG = 0x0053u,
     SDLOG_TAG_RESET_EVIDENCE = 0x0054u, // payload: BspResetEvidenceBoot
     SDLOG_TAG_RECEIVE_CHECK = 0x0055u, // payload: MReceiveStatus头部，magic和sequence后为接收诊断
+    SDLOG_TAG_POWER_METER = 0x0056u,
+    SDLOG_TAG_CHASSIS_POWER_MODEL = 0x0057u,
+    SDLOG_TAG_SOURCE_STATE = 0x0058u, // payload: UTF-8 源码状态字符串，不含末尾 NUL
 } sdlog_tag_e;
 
 typedef enum
@@ -185,6 +188,45 @@ typedef struct __attribute__((packed))
 } sdlog_vision_to_gimbal_t;
 
 typedef char _check_sdlog_vision_to_gimbal_size[(sizeof(sdlog_vision_to_gimbal_t) == 29) ? 1 : -1];
+
+#define SDLOG_POWER_METER_VERSION 1u
+#define SDLOG_POWER_METER_MAX_SAMPLES 16u
+typedef struct __attribute__((packed))
+{
+    uint32_t rxTickMs;
+    uint32_t sequence;
+    uint16_t rawVoltage;
+    uint16_t rawCurrent;
+    float voltageV;
+    float currentA;
+    float powerW;
+} sdlog_power_meter_sample_t;
+
+typedef struct __attribute__((packed))
+{
+    uint8_t version;
+    uint8_t count;
+    uint8_t canBus;
+    uint8_t reserved8;
+    uint16_t canId;
+    uint16_t reserved16;
+    uint32_t canQueueDropCount;
+    uint32_t logDropCount;
+    sdlog_power_meter_sample_t sample[SDLOG_POWER_METER_MAX_SAMPLES];
+} sdlog_power_meter_batch_t;
+
+#define SDLOG_CHASSIS_POWER_MODEL_VERSION 1u
+typedef struct __attribute__((packed))
+{
+    uint8_t version;
+    uint8_t modelValid;
+    uint16_t reserved16;
+    uint32_t tickMs;
+    uint32_t sequence;
+    int32_t currentCmd[4];
+    float wheelRpm[4];
+    float estimatedPowerW;
+} sdlog_chassis_power_model_t;
 
 // Aux tuning command record: [u32 seq][ASCII bytes...][0]
 typedef struct __attribute__((packed))
@@ -994,6 +1036,7 @@ int SdLogStart(void);
 void SdLogStop(void);
 
 // Append one record into the RAM ring buffer (non-blocking, drops if full).
+uint8_t SdLogTryWrite(uint16_t tag, const void *payload, uint16_t len);
 void SdLogWrite(uint16_t tag, const void *payload, uint16_t len);
 
 // Same as SdLogWrite(), but callable from ISR context.

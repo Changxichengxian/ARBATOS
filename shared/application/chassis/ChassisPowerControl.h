@@ -9,6 +9,7 @@
 
 #ifndef CHASSIS_POWER_CONTROL_H
 #define CHASSIS_POWER_CONTROL_H
+#include <stdint.h>
 #include "ChassisControlTask.h"
 #include "main.h"
 
@@ -26,5 +27,18 @@
   */
 extern void ChassisPowerControl(ChassisMove *ChassisPowerControl, uint32_t activeMotorMask);
 extern void ChassisPowerControlApplySpeedLimit(ChassisMove *ChassisPowerControl);
+
+typedef struct
+{
+    uint32_t tickMs;
+    uint32_t sequence;
+    uint32_t activeMotorMask;
+    int32_t currentCmd[4];
+    float wheelRpm[4];
+    float estimatedPowerW;
+    uint8_t modelValid;
+} ChassisPowerModelSnapshot;
+
+uint8_t ChassisPowerModelReadSnapshot(ChassisPowerModelSnapshot *out);
 
 #endif

@@ -2,6 +2,7 @@
 #include "BspUsart.h"
 #include "BspRc.h"
 #include "BspZephyrUartConfig.h"
+#include "BspRs485FaultPort.h"
 
 #include <errno.h>
 #include <string.h>
@@ -921,7 +922,7 @@ static int ArbRs485Tx(uint8_t index, const uint8_t *data, uint16_t len)
     {
         return -ENODEV;
     }
-    if (k_is_in_isr() || k_is_pre_kernel())
+    if (k_is_in_isr() || k_is_pre_kernel() || __get_PRIMASK() != 0u || __get_BASEPRI() != 0u)
     {
         return -EWOULDBLOCK;
     }
@@ -980,14 +981,7 @@ void BspUsart3RxItStop(void) { ArbRs485RxStop(1u); }
 #if defined(STM32H723xx)
 uint8_t BspRs485FaultBaudPrepare(uint8_t port, uint32_t baudrate, uint32_t *out_brr)
 {
-    ARG_UNUSED(port);
-    ARG_UNUSED(baudrate);
-    if (out_brr != NULL)
-    {
-        *out_brr = 0u;
-    }
-    /* Zephyr's public UART API cannot reserve a register-level fault path. */
-    return 0u;
+    return BspRs485FaultPortPrepare(port, baudrate, out_brr);
 }
 
 void BspRs485FaultLock(void)
@@ -997,7 +991,7 @@ void BspRs485FaultLock(void)
      * 直接走复位。正常任务上下文则和最终驱动提交共用互斥量，锁函数返回后
      * 不会再出现新的普通 RS485 提交。
      */
-    if (k_is_in_isr() || k_is_pre_kernel())
+    if (k_is_in_isr() || k_is_pre_kernel() || __get_PRIMASK() != 0u || __get_BASEPRI() != 0u)
     {
         atomic_set(&ArbRs485FaultLockedState, 1);
         return;
@@ -1019,13 +1013,11 @@ int BspRs485FaultTx(uint8_t port,
                     const uint8_t *data,
                     uint16_t len)
 {
-    ARG_UNUSED(port);
     ARG_UNUSED(baudrate);
-    ARG_UNUSED(brr);
-    ARG_UNUSED(data);
-    ARG_UNUSED(len);
-    /* Never claim that emergency output was delivered when it was not. */
-    return -ENOTSUP;
+    if (BspRs485FaultLocked() == 0u) {
+        return -EPERM;
+    }
+    return BspRs485FaultPortSend(port, brr, data, len);
 }
 
 uint8_t BspRs485FaultLocked(void)

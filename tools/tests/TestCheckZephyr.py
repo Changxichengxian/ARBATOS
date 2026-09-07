@@ -22,7 +22,8 @@ class CheckZephyrTest(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         root = Path(directory.name) / "ARBATOS"
         tracked = subprocess.check_output(
-            ["git", "-C", str(REPO), "ls-files", "-z", "projects", "shared", "Robotconfig", "boards"],
+            ["git", "-C", str(REPO), "ls-files", "--cached", "--others", "--exclude-standard",
+             "-z", "projects", "shared", "Robotconfig", "boards"],
         ).decode("utf-8").split("\0")
         for relative in filter(None, tracked):
             source = REPO / relative

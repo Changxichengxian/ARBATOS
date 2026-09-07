@@ -59,6 +59,9 @@ TAG_NAMES: dict[int, str] = {
     0x0053: "WHEELLEG_MIT_MOTOR_DIAG",
     0x0054: "RESET_EVIDENCE",
     0x0055: "RECEIVE_CHECK",
+    0x0056: "POWER_METER",
+    0x0057: "CHASSIS_POWER_MODEL",
+    0x0058: "SOURCE_STATE",
 }
 
 ROBOT_FAULT_REASON_NAMES: dict[int, str] = {
@@ -574,6 +577,27 @@ def _extract_imu_base_stream_records(payload: bytes) -> list[tuple[int, str, str
 
 
 def extract_records(tick_ms: int, tag: int, payload: bytes) -> list[tuple[int, str, str, dict[str, Any]]] | None:
+    if tag == 0x0056:
+        if len(payload) < 16:
+            return None
+        version, count, bus, _res8, can_id, _res16, can_drop, log_drop = struct.unpack_from("<BBBBHHII", payload)
+        sample_size = struct.calcsize("<IIHHfff")
+        if version != 1 or count == 0 or count > 16 or len(payload) != 16 + count * sample_size:
+            return None
+        rows = []
+        for i in range(count):
+            rx_tick, seq, raw_v, raw_i, voltage, current, power = struct.unpack_from("<IIHHfff", payload, 16 + i * sample_size)
+            rows.append((rx_tick, "POWER_METER", "POWER_METER", {
+                "version": version, "bus": bus, "can_id": can_id, "can_queue_drop_count": can_drop,
+                "log_drop_count": log_drop, "seq": seq, "raw_voltage": raw_v, "raw_current": raw_i,
+                "voltage_v": voltage, "current_a": current, "power_w": power,
+            }))
+        return rows
+    if tag == 0x0057:
+        rows = extract_series(tag, payload)
+        if rows is None:
+            return None
+        return [(int(values["tick_ms"]), key, name, values) for key, name, values in rows]
     if tag == 0x004B:
         return _extract_chassis_base_stream_records(payload)
     if tag == 0x004C:
@@ -933,6 +957,19 @@ def _extract_wheelleg_mit_motor_diag(name: str, payload: bytes) -> list[tuple[st
 
 def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, Any]]] | None:
     name = sdlog_tag_name(tag)
+
+    if tag == 0x0057:
+        v = _unpack_exact("<BBHII4i4ff", payload)
+        if v is None:
+            return None
+        version, valid, active_mask, tick, seq, *values = v
+        if version != 1 or valid not in (0, 1):
+            return None
+        fields = {"version": version, "model_valid": bool(valid), "active_mask": active_mask, "tick_ms": tick, "seq": seq}
+        fields.update({f"current_cmd_{i}": values[i] for i in range(4)})
+        fields.update({f"wheel_rpm_{i}": values[4 + i] for i in range(4)})
+        fields["estimated_power_w"] = values[8]
+        return [(name, name, fields)]
 
     if tag == 0x0055:  # RECEIVE_CHECK，接收固件的180字节诊断头
         if len(payload) != 180:
@@ -1678,6 +1715,15 @@ def extract_series(tag: int, payload: bytes) -> list[tuple[str, str, dict[str, A
 
     if tag == 0x0053:  # WHEELLEG_MIT_MOTOR_DIAG
         return _extract_wheelleg_mit_motor_diag(name, payload)
+
+    if tag == 0x0058:  # SOURCE_STATE
+        if not payload or len(payload) > 480 or b"\0" in payload:
+            return None
+        try:
+            state = payload.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+        return [(name, name, {"source_state": state})]
 
     if tag == 0x0054:  # RESET_EVIDENCE
         v = _unpack_exact("<33I", payload)

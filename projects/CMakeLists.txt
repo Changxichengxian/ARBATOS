@@ -7,6 +7,10 @@ list(APPEND DTS_ROOT ${ARBATOS_ROOT}/boards)
 find_package(Zephyr 4.4 REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(arbatos)
 
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ArbatosBuildInfo.cmake)
+arbatos_add_build_info(app)
+
 target_sources(app PRIVATE
     src/main.c
     src/ArbatosTarget.c
@@ -20,7 +24,9 @@ target_sources_ifdef(CONFIG_ARBATOS_LEGACY_SOURCES app PRIVATE
     ${ARBATOS_ROOT}/shared/zephyr/port/algorithm/AhrsZephyr.c
     ${ARBATOS_ROOT}/shared/zephyr/port/algorithm/ArmMathZephyr.c
     ${ARBATOS_ROOT}/shared/zephyr/port/can/BspCanZephyr.c
+    ${ARBATOS_ROOT}/shared/zephyr/port/can/BspCanFaultPort.c
     ${ARBATOS_ROOT}/shared/zephyr/port/uart/BspZephyrUart.c
+    ${ARBATOS_ROOT}/shared/zephyr/port/uart/BspRs485FaultPort.c
     ${ARBATOS_ROOT}/shared/zephyr/port/sensors/BspImuPwm.c
     ${ARBATOS_ROOT}/shared/zephyr/port/sensors/ImuFusionTask.c
     ${ARBATOS_ROOT}/shared/zephyr/port/storage/BspZephyrDiskio.c
@@ -30,6 +36,7 @@ target_sources_ifdef(CONFIG_ARBATOS_LEGACY_SOURCES app PRIVATE
     ${ARBATOS_ROOT}/shared/zephyr/port/platform/BspKey.c
     ${ARBATOS_ROOT}/shared/zephyr/port/platform/BspLed.c
     ${ARBATOS_ROOT}/shared/zephyr/port/platform/BspResetEvidence.c
+    ${ARBATOS_ROOT}/shared/zephyr/port/platform/RobotFaultZephyr.c
     ${ARBATOS_ROOT}/shared/zephyr/port/platform/BspServoPwm.c
     ${ARBATOS_ROOT}/shared/zephyr/port/platform/BspShootTrig.c
     ${ARBATOS_ROOT}/shared/zephyr/port/platform/BspUsb.c
@@ -37,6 +44,16 @@ target_sources_ifdef(CONFIG_ARBATOS_LEGACY_SOURCES app PRIVATE
 )
 
 if(CONFIG_ARBATOS_LEGACY_SOURCES)
+    # 两个异常单元仍有不受 FAULT_DUMP 控制的打印；仅它们禁用日志，
+    # 避免可恢复判断完成前或未处理 IRQ 路径重入日志锁，不改 SDK 源码。
+    set_property(SOURCE "${ZEPHYR_BASE}/arch/arm/core/cortex_m/fault.c"
+        TARGET_DIRECTORY arch__arm__core__cortex_m APPEND PROPERTY COMPILE_OPTIONS
+        "-include" "${ARBATOS_ROOT}/shared/zephyr/include/ArbFaultLogConfig.h")
+    set_property(SOURCE "${ZEPHYR_BASE}/arch/arm/core/fatal.c"
+        TARGET_DIRECTORY arch__arm__core APPEND PROPERTY COMPILE_OPTIONS
+        "-include" "${ARBATOS_ROOT}/shared/zephyr/include/ArbFaultLogConfig.h")
+    # 保存 Zephyr 清除故障标志前的快照；可恢复异常仍由内核原流程处理。
+    zephyr_link_libraries(-Wl,--wrap=z_arm_fault -Wl,--wrap=z_fatal_error)
     zephyr_linker_sources(SECTIONS ${ARBATOS_ROOT}/shared/zephyr/linker/arbatos-legacy-ram.ld)
 
     if(CONFIG_BOARD_DM_MC02_H7)

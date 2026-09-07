@@ -22,6 +22,7 @@ typedef struct
     uint8_t flags;
     uint16_t std_id;
     uint8_t data[8];
+    uint32_t rxTickMs; // MCU 收到帧的时刻，避免用任务排队后的时刻做测量对齐。
 } BspCanFrame;
 
 typedef struct BspCanTxTicket

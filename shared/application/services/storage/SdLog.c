@@ -30,8 +30,8 @@
 #include "RobotDeviceConfig.h"
 #include "RobotTaskProfile.h"
 
-#if defined(__CC_ARM)
-#include "../../../generated/build_info_autogen.h"
+#if defined(ARBATOS_BUILD_INFO_AUTOGEN_AVAILABLE)
+#include "build_info_autogen.h"
 #elif defined(__has_include)
 #if __has_include("../../../generated/build_info_autogen.h")
 #include "../../../generated/build_info_autogen.h"
@@ -96,6 +96,11 @@
 #ifndef ARBATOS_BUILD_DATE
 #define ARBATOS_BUILD_DATE __DATE__
 #endif
+
+#ifndef ARBATOS_SOURCE_STATE
+#define ARBATOS_SOURCE_STATE "unknown"
+#endif
+_Static_assert(sizeof(ARBATOS_SOURCE_STATE) <= 481u, "source state exceeds SD metadata capacity");
 
 #ifndef ARBATOS_BUILD_TIME
 #define ARBATOS_BUILD_TIME __TIME__
@@ -1124,6 +1129,19 @@ static int sdlog_open_next_file(void)
                 return -4;
             }
 
+            /* 独立元数据块，保持旧 BUILD_INFO 布局，并避免挤占设备清单空间。 */
+            raw_len = 0u;
+            append_status = sdlog_append_record_bytes(
+                raw, (uint32_t)sizeof(raw), &raw_len, 0u, SDLOG_TAG_SOURCE_STATE,
+                ARBATOS_SOURCE_STATE, (uint16_t)(sizeof(ARBATOS_SOURCE_STATE) - 1u));
+            if (append_status != 0 || SdLogWrite_block(raw, raw_len) != 0)
+            {
+                sdlog_remember_error(SDLOG_RESTART_REASON_STARTUP_BLOCK, sdlog_last_error);
+                (void)f_close(&sdlog_fp);
+                SdcardUnmount();
+                return -4;
+            }
+
             if (reset_evidence_ready != 0u)
             {
                 raw_len = 0u;
@@ -1232,11 +1250,11 @@ void SdLogStop(void)
     (void)f_close(&sdlog_fp);
 }
 
-void SdLogWrite(uint16_t tag, const void *payload, uint16_t len)
+uint8_t SdLogTryWrite(uint16_t tag, const void *payload, uint16_t len)
 {
     if (!sdlog_active || payload == NULL || len == 0u)
     {
-        return;
+        return 0u;
     }
 
     const uint64_t write_start_us = RtProfBegin();
@@ -1261,7 +1279,7 @@ void SdLogWrite(uint16_t tag, const void *payload, uint16_t len)
     {
         taskEXIT_CRITICAL();
         RtProfEnd(RtProfSdLogWrite, write_start_us);
-        return;
+        return 0u;
     }
 
     if (sdlog_free_bytes(head, tail) < total)
@@ -1269,7 +1287,7 @@ void SdLogWrite(uint16_t tag, const void *payload, uint16_t len)
         sdlog_dropped++;
         taskEXIT_CRITICAL();
         RtProfEnd(RtProfSdLogWrite, write_start_us);
-        return;
+        return 0u;
     }
 
     sdlog_last_tick_ms = now_ms;
@@ -1277,6 +1295,12 @@ void SdLogWrite(uint16_t tag, const void *payload, uint16_t len)
     sdlog_ring_write_bytes_locked((const uint8_t *)payload, (uint32_t)len);
     taskEXIT_CRITICAL();
     RtProfEnd(RtProfSdLogWrite, write_start_us);
+    return 1u;
+}
+
+void SdLogWrite(uint16_t tag, const void *payload, uint16_t len)
+{
+    (void)SdLogTryWrite(tag, payload, len);
 }
 
 void SdLogWriteIsr(uint16_t tag, const void *payload, uint16_t len)

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include <stdint.h>
 #include "ArbatosDt.h"
+#include "RobotFaultZephyr.h"
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/kernel.h>
 
@@ -19,7 +20,7 @@ void ServoPwmSet(uint16_t pwm, uint8_t i)
         ServoPwmLastError = -EINVAL;
         return;
     }
-    if (IS_ENABLED(CONFIG_ARBATOS_PREFLIGHT_ONLY) && pwm != 0u) {
+    if ((IS_ENABLED(CONFIG_ARBATOS_PREFLIGHT_ONLY) || RobotFaultZephyrBootLocked() != 0u) && pwm != 0u) {
         ServoPwmLastError = -EPERM;
         return;
     }

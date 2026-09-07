@@ -5,6 +5,7 @@
 
 #include "BspCan.h"
 #include "BspCanZephyr.h"
+#include "BspCanFaultPort.h"
 
 #include <errno.h>
 #include <string.h>
@@ -369,6 +370,7 @@ static void BspCanRxCallback(const struct device *dev,
     BspCanFrame *out = &bus->rxRing[bus->rxHead];
     out->bus = bus->bus;
     out->std_id = (uint16_t)frame->id;
+    out->rxTickMs = k_uptime_get_32();
     out->dlc = length;
     out->flags = 0u;
     if ((frame->flags & CAN_FRAME_FDF) != 0u)
@@ -914,9 +916,12 @@ void BspCanFaultLock(void)
      * 锁定并标记已预约帧，随后上层直接复位。正常任务上下文才使用提交互斥量，
      * 保证本函数返回后没有普通帧越过最终 can_send() 边界。
      */
-    if (k_is_in_isr() || k_is_pre_kernel())
+    if (k_is_in_isr() || k_is_pre_kernel() || __get_PRIMASK() != 0u || __get_BASEPRI() != 0u)
     {
         BspCanFaultInvalidatePending();
+        if (__get_PRIMASK() != 0u) {
+            BspCanFaultPortAbort();
+        }
         return;
     }
     if (k_mutex_lock(&CanTxSubmitLock, K_FOREVER) != 0)
@@ -938,34 +943,26 @@ int BspCanFaultTx(uint8_t bus,
                   const uint8_t data[8],
                   uint8_t dlc)
 {
-    ARG_UNUSED(bus);
-    ARG_UNUSED(stdId);
-    ARG_UNUSED(data);
-    ARG_UNUSED(dlc);
-
-    /*
-     * fail-closed：公共 can_send() 依赖驱动锁和中断回调，无法满足致命异常环境
-     * 的“原始寄存器直发且有界确认”约束。不能把入队成功伪装成安全帧发送成功。
-     */
-    return BSP_CAN_STATUS_ERROR;
+    if (BspCanFaultLocked() == 0u) {
+        return BSP_CAN_STATUS_ERROR;
+    }
+    return BspCanFaultPortSend(bus, stdId, data, dlc);
 }
 
 void BspCanFaultWaitTxIdle(void)
 {
-    /*
-     * 公共 API 没有查询所有 TX 邮箱空闲或等待硬件完成的无锁接口。这里不阻塞，
-     * 调用者必须通过 BspCanZephyrFaultTxSupported() 预先选择外部断能路径。
-     */
+    /* 每个故障帧已独立完成有界确认；这里不再叠加等待。 */
 }
 
 uint8_t BspCanZephyrFaultTxSupported(void)
 {
-    return 0u;
+    return BspCanFaultPortSupported();
 }
 
 const char *BspCanZephyrFaultTxReason(void)
 {
-    return "Zephyr CAN public API cannot guarantee raw fault-context TX";
+    return BspCanFaultPortSupported() ? "STM32H723 raw CAN TX with bounded completion check" :
+                                       "No raw fault CAN port for this board";
 }
 
 int BspCanFdSetDataBitrate(uint8_t busNumber, uint32_t dataBitrate)

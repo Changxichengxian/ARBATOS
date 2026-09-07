@@ -17,6 +17,9 @@
 #include "SdLog.h"
 #include "ChassisPowerLimiter.h"
 #include "RobotTaskProfile.h"
+#include "BspTime.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 #define CHASSIS_POWER_BUFFER_FILTER_TAU_S      0.08f
 #define CHASSIS_POWER_LIMIT_FILTER_TAU_S       0.12f
@@ -42,6 +45,20 @@ typedef struct
 } ChassisPowerRuntimeState;
 
 static ChassisPowerRuntimeState s_chassis_power_runtime = {0};
+static ChassisPowerModelSnapshot s_chassis_power_model = {0};
+static uint32_t s_chassis_power_model_last_tick_ms = 0u;
+
+uint8_t ChassisPowerModelReadSnapshot(ChassisPowerModelSnapshot *out)
+{
+    if (out == NULL)
+    {
+        return 0u;
+    }
+    taskENTER_CRITICAL();
+    *out = s_chassis_power_model;
+    taskEXIT_CRITICAL();
+    return (out->sequence != 0u) ? 1u : 0u;
+}
 
 static fp32 ChassisPowerClamp(fp32 value, fp32 min_value, fp32 max_value)
 {
@@ -564,5 +581,74 @@ void ChassisPowerControl(ChassisMove *ChassisPowerControl, uint32_t activeMotorM
     for (uint8_t i = 0u; i < 4u; i++)
     {
         ChassisPowerControl->motor_speed_pid[i].out = currents[i];
+    }
+
+    if (g_config.powerMeter.enable != 0u)
+    {
+        const uint32_t now_ms = BspTimeGetTickMs();
+        if ((uint32_t)(now_ms - s_chassis_power_model_last_tick_ms) >= 10u)
+        {
+            ChassisPowerModelSnapshot sample = {0};
+            fp32 model_currents[4] = {0};
+            uint32_t feedback_mask = 0u;
+            uint8_t inputs_finite = 1u;
+            uint8_t valid;
+
+            s_chassis_power_model_last_tick_ms = now_ms;
+            sample.tickMs = now_ms;
+            sample.activeMotorMask = activeMotorMask;
+            for (uint8_t i = 0u; i < 4u; i++)
+            {
+                if ((activeMotorMask & (1u << i)) != 0u &&
+                    ChassisPowerControl->motor_chassis[i].measureValid != 0u)
+                {
+                    feedback_mask |= (1u << i);
+                }
+                if (!isfinite(currents[i]))
+                {
+                    inputs_finite = 0u;
+                    sample.currentCmd[i] = 0;
+                }
+                else if (currents[i] >= 2147483648.0f)
+                {
+                    sample.currentCmd[i] = INT32_MAX;
+                }
+                else if (currents[i] < -2147483648.0f)
+                {
+                    sample.currentCmd[i] = INT32_MIN;
+                }
+                else
+                {
+                    sample.currentCmd[i] = (int32_t)currents[i];
+                }
+                sample.wheelRpm[i] = (float)wheel_rpm[i];
+                model_currents[i] = currents[i] * (fp32)g_config.chassis.motor_dir[i];
+            }
+            valid = (uint8_t)(inputs_finite != 0u && feedback_mask == activeMotorMask &&
+                              ChassisPowerLimiterIsPowerModelReady(g_config.motor.chassis, activeMotorMask) != 0u);
+            sample.modelValid = valid;
+            if (valid != 0u)
+            {
+                (void)ChassisPowerLimiterScaleCurrentsByPowerModel(model_currents,
+                                                                     g_config.motor.chassis,
+                                                                     wheel_rpm,
+                                                                     activeMotorMask,
+                                                                     FLT_MAX,
+                                                                     &sample.estimatedPowerW);
+                if (!isfinite(sample.estimatedPowerW))
+                {
+                    sample.modelValid = 0u;
+                    sample.estimatedPowerW = NAN;
+                }
+            }
+            else
+            {
+                sample.estimatedPowerW = NAN;
+            }
+            taskENTER_CRITICAL();
+            sample.sequence = s_chassis_power_model.sequence + 1u;
+            s_chassis_power_model = sample;
+            taskEXIT_CRITICAL();
+        }
     }
 }

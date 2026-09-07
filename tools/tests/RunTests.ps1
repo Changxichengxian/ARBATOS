@@ -10,39 +10,37 @@ New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 
 $PowerShellTests = @(Get-ChildItem -LiteralPath $PSScriptRoot -File -Filter 'Test*.ps1' |
     Sort-Object Name)
-$PythonTest = Get-Item -LiteralPath (Join-Path $PSScriptRoot 'TestCheckZephyr.py')
+$PythonTests = @(Get-ChildItem -LiteralPath $PSScriptRoot -File -Filter 'Test*.py' |
+    Sort-Object Name)
 
 if ($List) {
     Write-Host '可运行的主机测试：'
     foreach ($Test in $PowerShellTests) {
         Write-Host "  $($Test.BaseName)"
     }
-    Write-Host '  TestCheckZephyr'
+    foreach ($Test in $PythonTests) {
+        Write-Host "  $($Test.BaseName)"
+    }
     exit 0
 }
 
 $SelectedTests = @()
 if ([string]::IsNullOrWhiteSpace($Name)) {
     $SelectedTests = $PowerShellTests
-    $RunPython = $true
+    $SelectedPythonTests = $PythonTests
 }
 else {
     $NormalizedName = [IO.Path]::GetFileNameWithoutExtension($Name)
-    if ($NormalizedName -in @('TestCheckZephyr', 'CheckZephyr')) {
-        $RunPython = $true
+    $ExpectedName = if ($NormalizedName.StartsWith('Test')) {
+        $NormalizedName
     }
     else {
-        $ExpectedName = if ($NormalizedName.StartsWith('Test')) {
-            $NormalizedName + '.ps1'
-        }
-        else {
-            'Test' + $NormalizedName + '.ps1'
-        }
-        $SelectedTests = @($PowerShellTests | Where-Object { $_.Name -ieq $ExpectedName })
-        $RunPython = $false
-        if ($SelectedTests.Count -eq 0) {
-            throw "找不到测试 [$($Name)]。请先运行 .\RunTests.ps1 -List 查看可用名称。"
-        }
+        'Test' + $NormalizedName
+    }
+    $SelectedTests = @($PowerShellTests | Where-Object { $_.BaseName -ieq $ExpectedName })
+    $SelectedPythonTests = @($PythonTests | Where-Object { $_.BaseName -ieq $ExpectedName })
+    if ($SelectedTests.Count -eq 0 -and $SelectedPythonTests.Count -eq 0) {
+        throw "找不到测试 [$($Name)]。请先运行 .\RunTests.ps1 -List 查看可用名称。"
     }
 }
 
@@ -76,9 +74,9 @@ try {
         }
     }
 
-    if ($RunPython) {
+    foreach ($PythonTest in $SelectedPythonTests) {
         Write-Host ''
-        Write-Host '[运行] TestCheckZephyr'
+        Write-Host "[运行] $($PythonTest.BaseName)"
         try {
             $VenvPython = Join-Path $RepoRoot 'local\cache\zephyrproject\.venv\Scripts\python.exe'
             if (Test-Path -LiteralPath $VenvPython) {
@@ -91,15 +89,15 @@ try {
                 }
                 $Python = $PythonCommand.Source
             }
-            & $Python $PythonTest.FullName
+            & $Python -X utf8 $PythonTest.FullName
             if ($LASTEXITCODE -ne 0) {
                 throw "退出码 $LASTEXITCODE"
             }
-            Write-Host '[通过] TestCheckZephyr'
+            Write-Host "[通过] $($PythonTest.BaseName)"
         }
         catch {
-            $Failures += "TestCheckZephyr: $($_.Exception.Message)"
-            Write-Host "[失败] TestCheckZephyr: $($_.Exception.Message)" -ForegroundColor Red
+            $Failures += "$($PythonTest.BaseName): $($_.Exception.Message)"
+            Write-Host "[失败] $($PythonTest.BaseName): $($_.Exception.Message)" -ForegroundColor Red
         }
     }
 

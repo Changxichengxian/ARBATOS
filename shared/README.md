@@ -38,7 +38,7 @@ shared/zephyr/port/algorithm/ArmMathZephyr.c
 
 `BspCanTx*()` 返回 0 只代表 Zephyr 接受帧并分配邮箱。发送完成回调才生成 `BspCanTxCompletion`：0 为 `Complete`，停止或取消为 `Aborted`，已定义错误为 `Failed`，其他驱动错误为 `Unknown`。中断回调只更新状态、写固定环形队列并通知接收任务，不分配内存；完成队列满时终态先留在发送槽，之后由轮询接口搬运。
 
-Zephyr 4.4 没有已保证的路径，可在致命异常中绕过内核锁、撤销指定邮箱并有界确认紧急发送。因此 `BspCanFaultTx()` 目前明确失败，`BspCanZephyrFaultTxSupported()` 为 0，`BspCanFaultWaitTxIdle()` 不会伪造完成。投入实车故障停机前，必须有独立硬件断能，或另行实现、审计并实测 bxCAN/FDCAN 原始寄存器紧急发送。`LastErrorCode`、`DataLastErrorCode`、控制器 activity 与 FDCAN error logging count 暂无公共 API，当前返回 0；错误计数和控制器状态来自 `can_get_state()`。
+H723 的 `BspCanFaultPort.c` 为当前 `st,stm32h7-fdcan` 驱动提供原始寄存器紧急发送：异常锁住普通输出，申请取消旧发送，核对设备树 MRAM/邮箱配置后，以有限轮询确认安全帧发送结果。此路径要求中断已关闭，不调用 CAN 驱动锁；A/C 板尚无对应实现，明确返回不支持。时钟故障、Bus-Off、无 ACK 或无法取消旧帧会返回失败，不能保证执行器实际停止，仍须实测独立断能措施。`LastErrorCode`、`DataLastErrorCode`、控制器 activity 与 FDCAN error logging count 暂无公共 API，当前返回 0；普通运行的错误计数和控制器状态来自 `can_get_state()`。
 
 仍需验证多路满载的回调归属与顺序、Classic/FD/BRS、无 ACK/仲裁丢失/Bus-Off、RX 与完成队列满、速率重配中的票据终态，以及断电、看门狗、HardFault 时执行器能由 CAN 外的措施可靠断能。
 
@@ -61,7 +61,7 @@ Zephyr 4.4 没有已保证的路径，可在致命异常中绕过内核锁、撤
 - RC 只接受当前共享解析器使用的 18 字节 DJI DBUS 帧，25 字节 SBUS 需先改解析器。
 - 发送先复制进本端缓冲，常规长度上限 512 字节，RS485 为 40 字节，超限返回 `-EMSGSIZE`。
 - AUX 缓冲写满后的短暂重启窗口不适合未经实测的持续高速流；需要零间隙时应选 async DMA 驱动并测实际吞吐。
-- H7 故障锁只能阻止普通任务后续发送，原始紧急发送仍未支持。
+- H723 的 `BspRs485FaultPort.c` 在正常初始化时预计算并校验波特率分频，异常时直接接管 USART2/3，清旧发送并有限等待 8N1 安全帧完成后关闭发送器；不进入 UART 驱动锁。主机模拟通过，实物时序与执行器响应仍待验证。
 
 ## USB CDC
 
@@ -86,7 +86,7 @@ CONFIG_UART_LINE_CTRL=y
 
 ## 平台资源与传感器
 
-`zephyr/port/platform/` 通过 `/arbatos_platform` 描述 GPIO/PWM，属性以 `boards/dts/bindings/arbatos,platform.yaml` 为准：`key-gpios`、`led0-gpios`、`buzzer-pwms`、`servo-pwms`、`shoot-trig-gpios`。`ArbatosPlatformInit()` 缺资源会返回错误，调用者必须处理。M 板 ADC1 通道 4、19 用 16 位和标称 3.3 V 换算，电池电压是索引 0 通道乘 11，精度还需按 VDDA 与分压校准；采样失败返回 `NAN`。A/C 通用 ADC 后端还不能提供真实测量，芯片温度未实现，硬件版本返回 `0xff`。M 板的供电 GPIO、蜂鸣器和舵机是否带载可用仍取决于车型和实测。`BspResetEvidence.c` 使用普通 SRAM，重启会清空，不能提供跨重启的故障证据。
+`zephyr/port/platform/` 通过 `/arbatos_platform` 描述 GPIO/PWM，属性以 `boards/dts/bindings/arbatos,platform.yaml` 为准：`key-gpios`、`led0-gpios`、`buzzer-pwms`、`servo-pwms`、`shoot-trig-gpios`。`ArbatosPlatformInit()` 缺资源会返回错误，调用者必须处理。M 板 ADC1 通道 4、19 用 16 位和标称 3.3 V 换算，电池电压是索引 0 通道乘 11，精度还需按 VDDA 与分压校准；采样失败返回 `NAN`。A/C 通用 ADC 后端还不能提供真实测量，芯片温度未实现，硬件版本返回 `0xff`。M 板的供电 GPIO、蜂鸣器和舵机是否带载可用仍取决于车型和实测。`BspResetEvidence.c` 在 H723 使用备份 SRAM，保存致命摘要并在下次启动读出；SD 同步成功才清除，备份域失电的保留能力取决于供电。故障后的输出锁和恢复步骤见[日志说明](../manual/调试与日志.md#异常停机与重启记录)。
 
 `/arbatos_platform` 当前只绑定上述按键、灯、蜂鸣器、舵机和射击触发资源，**没有 ADC 属性**；不能在该节点填写不存在的 ADC 属性来配置通道。
 

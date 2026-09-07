@@ -29,7 +29,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action 
 
 默认并行数为 2，可用 `-BuildRoot`、`-West`、`-Ninja` 指定本机路径，用 `-Jobs` 指定并行数。`-Action check` 调用 `build/CheckZephyr.py`，检查 Zephyr 的 CMake 源码清单、正式目标、板级配置和 overlay 引用；它不读取 `.uvprojx`，不需要 Keil，也不代替编译或实车验证。`flash` 与 `debug` 会连接、复位或写入硬件；CLion 预设和 OpenOCD 的用法见[CLion 开发指南](../manual/CLion开发指南.md)。
 
-`build/build-matrix.ps1` 是 `build.ps1` 调用的实际编译实现。`build/GenBuildInfo.ps1` 用来手动生成固件 Git 身份，目前不会随编译自动执行，使用条件见[日志说明](../manual/调试与日志.md#日志与复盘)。
+`build/build-matrix.ps1` 是 `build.ps1` 调用的实际编译实现。CMake 自动调用 `build/GenBuildInfo.py`，为每个构建目录刷新固件版本和源码指纹；不变时不重写版本头。`build/GenBuildInfo.ps1` 仅保留手动兼容入口，使用条件见[日志说明](../manual/调试与日志.md#日志与复盘)。
 
 已移除的旧工具、工程检查和构建脚本可用 `git show 951857f:<path>` 或 `zephyr` 分支的 `6bdf19e` 查阅。
 
@@ -53,6 +53,8 @@ pwsh -NoProfile -File .\tools\tests\TestLowCmd.ps1
 | 底盘、云台反馈、轮腿输出、射击控制 | 各控制模块的计算、反馈和输出限制 |
 | 宇树电机策略 | 宇树驱动相关的控制策略 |
 | `TestCheckZephyr.py` | 工程检查器能否识别缺文件、错误车型和非法源码引用 |
+| `TestBuildInfo.py`、`TestSdLogViewerPowerMeter.py` | 版本变化、子模块、无变化增量构建，以及功率计/模型/源码状态解码 |
+| `PowerMeter`、`CanFaultPort`、`Rs485FaultPort`、`ResetEvidencePort`、`RobotFaultZephyr` | 功率计协议与队列，以及真实异常处理源码在模拟寄存器下的行为 |
 
 C 回归脚本要求 Zig 提供编译器；统一入口也能找到 WinGet 安装但尚未加入当前 PATH 的 Zig。工程检查器回归使用 Python。缺少依赖或测试失败会返回失败，不跳过后冒充通过。测试源码和模拟接口也在 `tests/`，删除它们会让对应入口失效。
 

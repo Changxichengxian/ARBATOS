@@ -5,7 +5,6 @@
 
 #include <stdint.h>
 
-#include <zephyr/drivers/hwinfo.h>
 #include <zephyr/kernel.h>
 
 #include "BspCrc32.h"
@@ -14,9 +13,10 @@
 #include "BspFric.h"
 #include "BspPwr.h"
 #include "BspTime.h"
+#include "BspResetEvidence.h"
+#include "RobotFaultZephyr.h"
 
 static uint8_t ArbDwtReady;
-static uint32_t ArbResetCause;
 
 void delay_init(void)
 {
@@ -77,7 +77,9 @@ uint8_t BSP_DWT_IsReady(void)
 
 uint32_t BspTimeGetTickMs(void)
 {
-    return k_uptime_get_32();
+    const uint32_t now = k_uptime_get_32();
+    RobotFaultZephyrObserveTime(now);
+    return now;
 }
 
 uint32_t BspTimeGetTickUs(void)
@@ -132,10 +134,10 @@ void append_crc32_check_sum(uint32_t *data, uint32_t len)
 void BspPwrPvdInit(void)
 {
     /*
-     * Zephyr 4.4 还没有 STM32 PVD 的通用设备接口。复位原因改由 hwinfo
-     * 获取；低压位保持保守的“当前不可用”，由 ADC 电池监测承担运行期判断。
+     * 复位原因由早期启动保存；低压位保持“当前不可用”，
+     * 由 ADC 电池监测承担运行期判断。
      */
-    (void)hwinfo_get_reset_cause(&ArbResetCause);
+    BspResetEvidenceCaptureBoot();
 }
 
 uint8_t BspPwrPvdVddLow(void)
@@ -145,8 +147,8 @@ uint8_t BspPwrPvdVddLow(void)
 
 uint32_t BspPwrRccCsr(void)
 {
-    (void)hwinfo_get_reset_cause(&ArbResetCause);
-    return ArbResetCause;
+    BspResetEvidenceBoot boot;
+    return (BspResetEvidenceGetBoot(&boot) != 0u) ? boot.resetFlags : 0u;
 }
 
 void fric_off(void)

@@ -22,3 +22,10 @@
             .trigger = {MOTOR_MODEL_3510, 4u},
             .arm = {0},
         },
+    .powerMeter =
+        {
+            .enable = 1u,
+            .canBus = 1u,
+            .canId = 0x212u,
+            .freshTimeoutMs = 20u,
+        },

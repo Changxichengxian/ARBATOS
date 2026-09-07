@@ -56,7 +56,7 @@ typedef struct
     BspResetEvidenceRecord evidence;
 } BspResetEvidenceBoot;
 
-/* 必须在 HAL_Init() 前调用；接口幂等，WatchInit 也会做一次兜底。 */
+/* 早于清复位标志调用；Zephyr 在 PRE_KERNEL_1 自动调用，接口幂等。 */
 void BspResetEvidenceCaptureBoot(void);
 uint8_t BspResetEvidenceGetBoot(BspResetEvidenceBoot *out);
 
