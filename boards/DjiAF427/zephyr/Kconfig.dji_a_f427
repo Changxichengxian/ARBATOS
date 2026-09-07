@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_DJI_A_F427
+	select SOC_STM32F427XX

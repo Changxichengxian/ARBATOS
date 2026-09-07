@@ -298,8 +298,8 @@ def parse_zephyr_config_defines(project: str) -> dict[str, str]:
 
     defines: dict[str, str] = {}
     for config_path in (
-        REPO_ROOT / "zephyr" / "prj.conf",
-        REPO_ROOT / "zephyr" / "targets" / f"{target}.conf",
+        REPO_ROOT / "projects" / "prj.conf",
+        REPO_ROOT / "projects" / project / "prj.conf",
     ):
         if not config_path.is_file():
             raise FileNotFoundError(f"missing Zephyr configuration: {config_path}")

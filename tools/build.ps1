@@ -118,7 +118,7 @@ function Get-ExistingZephyrBuild {
         throw "flash/debug require one formal project. Project all is not allowed."
     }
     if ([string]::IsNullOrWhiteSpace($BuildRoot)) {
-        $BuildRoot = Join-Path $RepoRoot "out\zephyr"
+        $BuildRoot = Join-Path $RepoRoot "local\build"
     }
     $buildDir = [System.IO.Path]::GetFullPath((Join-Path $BuildRoot $target))
     $requiredFiles = @(
@@ -171,16 +171,16 @@ switch ($Action) {
     "build" {
         $target = Resolve-ZephyrProject
         if ([string]::IsNullOrWhiteSpace($BuildRoot)) {
-            $BuildRoot = Join-Path $RepoRoot "out\zephyr"
+            $BuildRoot = Join-Path $RepoRoot "local\build"
         }
         $localVenv = Join-Path $RepoRoot "local\cache\zephyrproject\.venv\Scripts"
         $westPath = Resolve-Tool -Value $West -Name "West" -PreferredPaths @(Join-Path $localVenv "west.exe")
         $ninjaPath = Resolve-Tool -Value $Ninja -Name "Ninja" -PreferredPaths @(Join-Path $localVenv "ninja.exe")
         if ($Pristine) {
-            & (Join-Path $RepoRoot "zephyr\scripts\build-matrix.ps1") -Target $target -BuildRoot $BuildRoot -West $westPath -Ninja $ninjaPath -Jobs $Jobs -Pristine
+            & (Join-Path $RepoRoot "tools\build-matrix.ps1") -Target $target -BuildRoot $BuildRoot -West $westPath -Ninja $ninjaPath -Jobs $Jobs -Pristine
         }
         else {
-            & (Join-Path $RepoRoot "zephyr\scripts\build-matrix.ps1") -Target $target -BuildRoot $BuildRoot -West $westPath -Ninja $ninjaPath -Jobs $Jobs
+            & (Join-Path $RepoRoot "tools\build-matrix.ps1") -Target $target -BuildRoot $BuildRoot -West $westPath -Ninja $ninjaPath -Jobs $Jobs
         }
         exit $LASTEXITCODE
     }

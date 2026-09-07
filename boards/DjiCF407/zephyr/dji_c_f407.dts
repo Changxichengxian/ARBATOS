@@ -1,0 +1,120 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/dts-v1/;
+#include <st/f4/stm32f407Xg.dtsi>
+#include "dji_c_f407-pinctrl.dtsi"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+/ {
+	model = "DJI C Board with STM32F407";
+	compatible = "arbatos,dji-c-f407";
+
+	chosen {
+		zephyr,console = &usart1;
+		zephyr,shell-uart = &usart1;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,dtcm = &ccm0;
+		zephyr,canbus = &can1;
+	};
+
+	aliases {
+		sw0 = &user_key;
+		can-primary = &can1;
+		can-secondary = &can2;
+		uart-rc = &usart3;
+		uart-aux = &usart1;
+		uart-referee = &usart6;
+		sd-spi = &sd_spi;
+	};
+
+	keys {
+		compatible = "gpio-keys";
+		user_key: key_0 {
+			label = "KEY";
+			gpios = <&gpiog 0 GPIO_ACTIVE_LOW>;
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	arbatos_sensors {
+		compatible = "arbatos,sensors";
+		bmi088-spi = <&spi1>;
+		bmi088-accel-cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
+		bmi088-gyro-cs-gpios = <&gpiob 0 GPIO_ACTIVE_LOW>;
+		bmi088-spi-hz = <8000000>;
+		ist8310-i2c = <&i2c3>;
+		ist8310-reset-gpios = <&gpiog 6 GPIO_ACTIVE_LOW>;
+		imu-heater-pwms = <&pwm10 1 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
+		imu-heater-period-cycles = <5000>;
+	};
+
+	arbatos_platform: arbatos-platform {
+		compatible = "arbatos,platform";
+		key-gpios = <&gpiog 0 GPIO_ACTIVE_LOW>;
+		buzzer-pwms = <&pwm4 3 PWM_USEC(100) PWM_POLARITY_NORMAL>;
+	};
+};
+
+&clk_lsi { status = "okay"; };
+&clk_lse { status = "okay"; };
+&clk_hse { clock-frequency = <DT_FREQ_M(12)>; status = "okay"; };
+
+&pll {
+	div-m = <12>;
+	mul-n = <336>;
+	div-p = <2>;
+	div-q = <7>;
+	clocks = <&clk_hse>;
+	status = "okay";
+};
+
+&rcc {
+	clocks = <&pll>;
+	clock-frequency = <DT_FREQ_M(168)>;
+	ahb-prescaler = <1>;
+	apb1-prescaler = <4>;
+	apb2-prescaler = <2>;
+};
+
+&usart1 { pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pb7>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
+&usart3 { pinctrl-0 = <&usart3_tx_pc10 &usart3_rx_pc11>; pinctrl-names = "default"; current-speed = <100000>; status = "okay"; };
+&usart6 { pinctrl-0 = <&usart6_tx_pg14 &usart6_rx_pg9>; pinctrl-names = "default"; current-speed = <115200>; status = "okay"; };
+&can1 { pinctrl-0 = <&can1_rx_pd0 &can1_tx_pd1>; pinctrl-names = "default"; status = "okay"; };
+&can2 { pinctrl-0 = <&can2_rx_pb5 &can2_tx_pb6>; pinctrl-names = "default"; status = "okay"; };
+&spi1 { pinctrl-0 = <&spi1_sck_pb3 &spi1_miso_pb4 &spi1_mosi_pa7>; pinctrl-names = "default"; status = "okay"; };
+&spi2 {
+	pinctrl-0 = <&spi2_sck_pb13 &spi2_miso_pb14 &spi2_mosi_pb15>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpiob 12 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	sd_spi: sd-card@0 {
+		compatible = "arbatos,sd-spi";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+	};
+};
+&i2c1 { pinctrl-0 = <&i2c1_scl_pb8 &i2c1_sda_pb9>; pinctrl-names = "default"; clock-frequency = <I2C_BITRATE_FAST>; status = "okay"; };
+&i2c3 { pinctrl-0 = <&i2c3_scl_pa8 &i2c3_sda_pc9>; pinctrl-names = "default"; clock-frequency = <I2C_BITRATE_FAST>; status = "okay"; };
+
+zephyr_udc0: &usbotg_fs {
+	pinctrl-0 = <&usb_otg_fs_dm_pa11 &usb_otg_fs_dp_pa12>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+
+&timers4 {
+	status = "okay";
+	pwm4: pwm { status = "okay"; pinctrl-0 = <&tim4_ch3_pd14>; pinctrl-names = "default"; };
+};
+
+&timers10 {
+	status = "okay";
+	pwm10: pwm { status = "okay"; pinctrl-0 = <&tim10_ch1_pf6>; pinctrl-names = "default"; };
+};

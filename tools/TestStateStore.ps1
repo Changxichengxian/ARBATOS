@@ -12,7 +12,7 @@ if (Select-String -LiteralPath $StateStoreSource -SimpleMatch 'vTaskSuspendAll')
     throw 'StateStore 不应在复制快照时暂停整个任务调度器。'
 }
 
-$BuildDir = Join-Path $RepoRoot 'build\host-tests'
+$BuildDir = Join-Path $RepoRoot 'local\build\host-tests'
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 $Output = Join-Path $BuildDir 'state-store-regression.exe'
 $TestSource = Join-Path $RepoRoot 'tools\tests\StateStoreRegression.c'

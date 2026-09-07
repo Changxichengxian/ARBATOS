@@ -1,6 +1,6 @@
-# M 板：CLion 编译、下载和调试
+# CLion 编译、下载和调试
 
-当前仅保留 HERO-M、SENTINEL-M、MINIWHEELEG-M，主板均为 DM MC02 H7 / STM32H723。后续开发提交到 main。旧 Keil 工程、GCC 转换器与 A/C 板车型已从主线移除，历史保存在提交 951857f 和 zephyr 分支中。
+当前整车目标为 HERO-M、SENTINEL-M、MINIWHEELEG-M，主板均为 DM MC02 H7 / STM32H723。A、C、M 三种开发板支持都保留在 boards，与车型分开管理。后续开发提交到 main。旧 Keil 工程、GCC 转换器与 A/C 板车型已从主线移除，历史保存在提交 951857f 和 zephyr 分支中。
 
 ## 还要安装什么
 
@@ -19,14 +19,14 @@ pwsh -NoProfile -File .\tools\build.ps1 -Action probe
 
 ## 在 CLion 里编译
 
-1. 打开 `D:\ARBATOS\zephyr`，使用现有 CMake 工程入口。
+1. 打开 `D:\ARBATOS\projects`，使用现有 CMake 工程入口。
 2. 设置 → 构建、执行、部署 → CMake：启用 `hero-m-local`，停用自动生成的 `Debug`。如果刚改了预设，执行重新加载 CMake 项目。
 3. 在构建目标中选择 `zephyr_final` 或全部目标，点击“构建项目”。不要用 Run/Debug 按钮代替编译按钮。
-4. 成功后产物在 `D:\ARBATOS\out\zephyr\hero-m\zephyr\`：`zephyr.elf` 带调试符号，`.hex`/`.bin` 是烧录镜像。
+4. 成功后产物在 `D:\ARBATOS\local\build\hero-m\zephyr\`：`zephyr.elf` 带调试符号，`.hex`/`.bin` 是烧录镜像。
 
 个人预设已设置本机 SDK、Python、Ninja 路径。CLion 的初始普通 `Debug` 配置找不到 Zephyr，并不表示这些工具尚未安装。工程编译器由 Zephyr SDK 选择，不需要改用 CubeCLT 的编译器。
 
-另外两个车型分别使用 `sentinel-m-local`、`miniwheeleg-m-local`，输出目录分别为 `out/zephyr/sentinel-m`、`out/zephyr/miniwheeleg-m`。一次只启用当前需要的配置。
+另外两个车型分别使用 `sentinel-m-local`、`miniwheeleg-m-local`，输出目录分别为 `local/build/sentinel-m`、`local/build/miniwheeleg-m`。一次只启用当前需要的配置。
 
 默认构建并行数为 2。若 CLion 自己的 Build options 中指定了更大的 `-j`，改为 `-j2`，避免界面设置覆盖限制。正常修改只用增量构建，不需要每次清缓存或重编所有车型。
 
@@ -64,8 +64,8 @@ pwsh -NoProfile -File .\tools\build.ps1 -Action flash -Project HERO-M
 | --- | --- |
 | OpenOCD | `D:\ARBATOS\local\cache\zephyr-sdk\hosttools\openocd\bin\openocd.exe` |
 | ARM GDB | `D:\ARBATOS\local\cache\zephyr-sdk\gnu\arm-zephyr-eabi\bin\arm-zephyr-eabi-gdb.exe` |
-| Board config | `D:\ARBATOS\zephyr\boards\dm_mc02_h7\support\openocd.cfg` |
-| HERO-M ELF | `D:\ARBATOS\out\zephyr\hero-m\zephyr\zephyr.elf` |
+| Board config | `D:\ARBATOS\boards\DmMc02H7\zephyr\support\openocd.cfg` |
+| HERO-M ELF | `D:\ARBATOS\local\build\hero-m\zephyr\zephyr.elf` |
 | OpenOCD 脚本搜索目录 | `D:\ARBATOS\local\cache\zephyr-sdk\hosttools\openocd\share\openocd\scripts` |
 
 如果 OpenOCD 报 `Can't find interface/cmsis-dap.cfg`，为 OpenOCD 设置 `OPENOCD_SCRIPTS` 环境变量指向表中的脚本搜索目录。若默认 GDB 端口 3333 被占用，先结束另一份正在使用同一调试器的会话。CLion、Keil、pyOCD 等不要同时占用同一调试器。

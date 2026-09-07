@@ -25,7 +25,7 @@ See the [hardware milestone and validation limits](tests/ZephyrMusicM/NormalOutp
 The current codebase is beyond a basic STM32 port. It includes:
 
 - Three firmware targets: `HERO-M`, `SENTINEL-M`, and `MINIWHEELEG-M`.
-- DM MC02 H7 board support.
+- DJI A F427, DJI C F407, and DM MC02 H7 board support, independent of vehicle targets.
 - `g_config.profile.task_modules` 显式选择的业务任务由兼容层接入 Zephyr 线程启动。
 - Multiple manual input sources: DBUS/SBUS, ELRS/CRSF, image-transmission remote
   control, USB-reserved input, and board keys.
@@ -43,7 +43,7 @@ The current codebase is beyond a basic STM32 port. It includes:
 Important limits are also documented here:
 
 - `main` 是唯一继续提交的分支；`zephyr` 分支保留为已结束的探索记录。
-- 七个目标的正式构建入口是 `zephyr/`，使用 Zephyr 4.4、CMake、Ninja 和
+- 三个现有车型的正式构建入口是 `projects/`，使用 Zephyr 4.4、CMake、Ninja 和
   OpenOCD。它使用仓库内的显式源码清单，不读取 `.uvprojx`。
 - 已移除的旧 Keil、CubeMX、FreeRTOS 工程和旧工具如需恢复，使用
   `git show 951857f:<path>` 或查看 `zephyr` 分支的 `6bdf19e`。
@@ -78,8 +78,8 @@ licenses.
 
 ```text
 ARBATOS/
-|-- boards/        # M 板支持包和板级端口
-|-- zephyr/        # 正式 Zephyr 4.4 工程、七目标配置和板级定义
+|-- boards/        # A、C、M 板支持包、引脚和系统板级定义
+|-- projects/        # 工程入口、三个现有车型的构建配置
 |-- Robotconfig/   # Robot target parameters and target-specific glue
 |-- shared/        # Reusable runtime, control, communication, HAL, and components
 |-- manual/        # Bring-up, tuning, logging, and integration manuals
@@ -91,7 +91,7 @@ ARBATOS/
 
 The important separation is:
 
-- `zephyr/` answers "how is this firmware built and started?"
+- `projects/` answers "how is this firmware built and started?"
 - `Robotconfig/<TARGET>/` answers "how is this robot configured?"
 - `boards/<BOARD>/` answers "how does this control board connect to hardware?"
 - `shared/` answers "what logic can multiple robots reuse?"
@@ -102,8 +102,8 @@ The important separation is:
 ARBATOS uses a four-layer firmware layout.
 
 ```text
-zephyr/
-  正式 Zephyr 4.4 工程、七目标 CMake 预设、板级定义、端口和显式源码清单。
+projects/
+  正式 Zephyr 4.4 工程、三车型 CMake 预设和显式源码清单。
   构建不读取 Keil 工程文件。
 
 Robotconfig/<TARGET>/
@@ -112,7 +112,7 @@ Robotconfig/<TARGET>/
 
 boards/<BOARD>/
   Board ports, pin and peripheral mapping, IMU integration, board startup,
-  board-specific FreeRTOS task creation when needed
+  Zephyr board definitions and legacy driver references
 
 shared/
   Cross-target control tasks, input links, host links, actuator command layer,
@@ -127,7 +127,9 @@ only when the hardware changes.
 
 | Board | MCU | Notes |
 |---|---:|---|
-| `DmMc02H7` | STM32H723 | 当前正式支持板卡 |
+| `DjiAF427` | STM32F427II | A 板；板级支持保留，旧车型已移除 |
+| `DjiCF407` | STM32F407 | C 板；板级支持保留，旧车型已移除 |
+| `DmMc02H7` | STM32H723 | M 板；当前三个整车目标 |
 
 ## Firmware Targets
 
@@ -286,14 +288,14 @@ Build the default target (`HERO-M`) from PowerShell:
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1
 ```
 
-Build one target or start all seven from clean build directories:
+Build one target or start all three from clean build directories:
 
 ```powershell
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project SENTINEL-M -Pristine
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project all -Pristine
 ```
 
-The normal output location is `out/zephyr/<target>/`; it is ignored by Git. Run
+The normal output location is `local/build/<target>/`; it is ignored by Git. Run
 the source/configuration check separately:
 
 ```powershell
@@ -353,7 +355,7 @@ CAN hardware boundary used when evaluating the repository.
 For a new user:
 
 1. 按 [CLion 和 Zephyr 开发环境](manual/clion-zephyr.md) 准备 Zephyr 4.4、SDK、CMake、Ninja 和 OpenOCD。
-2. 在 CLion 中打开仓库根目录，选择 `zephyr/CMakePresets.json` 中的目标预设；工程界面导入和硬件调试仍需分别验收。
+2. 在 CLion 中打开 `projects/` 目录，选择 `projects/CMakePresets.json` 中的目标预设；工程界面导入和硬件调试仍需分别验收。
 3. Check `Robotconfig/<TARGET>/RobotConfig.c`, especially `g_config.profile`,
    `task_modules`, `g_config.devices`, `g_config.motor`, input mapping, and safe
    switch positions.
@@ -370,7 +372,7 @@ For detailed workflows, start with `QuickStart.md` and `manual/README.md`.
 ## Adding a Robot Target
 
 1. Copy the closest existing `Robotconfig/<TARGET>/`.
-2. 在 `zephyr/targets/`、Zephyr 板级定义和 CMake 预设中加入目标。
+2. 在 `projects/<TARGET>/`、Zephyr 板级定义和 CMake 预设中加入目标。
 3. Update include paths so the project references exactly one
    `Robotconfig/<TARGET>`.
 4. Set target identity macros in `RobotConfig.h`: `ARBATOS_TARGET_NAME`,
@@ -388,7 +390,7 @@ For detailed workflows, start with `QuickStart.md` and `manual/README.md`.
 1. Create `boards/<BOARD>/`.
 2. Add board port configuration for CAN, UART, SPI, I2C, IMU, key, buzzer, SD
    card, USB, PWM, and other board peripherals.
-3. 在 Zephyr 板级定义、`zephyr/targets/` 和启动配置中加入该板的正式入口。
+3. 在 Zephyr 板级定义、`projects/<TARGET>/` 和启动配置中加入该板的正式入口。
 
 ## Adding a Motor Model or Protocol
 
@@ -442,7 +444,7 @@ Before sending a patch or pull request:
 - Read `legal/CONTRIBUTING.md` and `legal/CLA.md`.
 - Make sure you have the right to contribute the code, data, or documentation.
 - Keep target parameters in `Robotconfig/`, board ports in `boards/`, reusable
-  logic in `shared/`, and build entry changes in `zephyr/`.
+  logic and OS adaptation in `shared/`, and build entry changes in `projects/`.
 - Explain which targets, boards, or shared modules are affected.
 - List any new third-party dependency and its license.
 - Run:

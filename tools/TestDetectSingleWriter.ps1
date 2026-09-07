@@ -7,7 +7,7 @@ if ($null -eq $Zig) {
     throw '找不到 zig，无法运行 Detect 单写者主机回归。'
 }
 
-$BuildDir = Join-Path $RepoRoot 'build\host-tests'
+$BuildDir = Join-Path $RepoRoot 'local\build\host-tests'
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 $Output = Join-Path $BuildDir 'detect-single-writer-regression.exe'
 $Source = Join-Path $RepoRoot 'tools\tests\DetectSingleWriterRegression.c'

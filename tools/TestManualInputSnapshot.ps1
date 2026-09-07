@@ -7,7 +7,7 @@ if ($null -eq $Zig) {
     throw '找不到 zig，无法运行统一手动输入快照回归。'
 }
 
-$BuildDir = Join-Path $RepoRoot 'build\host-tests'
+$BuildDir = Join-Path $RepoRoot 'local\build\host-tests'
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 $Output = Join-Path $BuildDir 'manual-input-snapshot-regression.exe'
 $Source = Join-Path $RepoRoot 'tools\tests\ManualInputSnapshotRegression.c'

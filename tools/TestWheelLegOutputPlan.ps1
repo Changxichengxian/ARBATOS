@@ -7,7 +7,7 @@ if ($null -eq $Zig) {
     throw 'zig is required for the WheelLeg output plan host regression.'
 }
 
-$BuildDir = Join-Path $RepoRoot 'build\host-tests'
+$BuildDir = Join-Path $RepoRoot 'local\build\host-tests'
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 $Output = Join-Path $BuildDir 'wheelleg-output-plan-regression.exe'
 $TestSource = Join-Path $RepoRoot 'tools\tests\WheelLegOutputPlanRegression.c'

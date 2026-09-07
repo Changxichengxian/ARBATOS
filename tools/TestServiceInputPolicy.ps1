@@ -41,7 +41,7 @@ if ($CalibrateSource -notmatch 'manualInput\.online\s*==\s*0u') {
     throw 'CalibrateTask.c is missing its same-frame offline guard.'
 }
 
-$BuildDir = Join-Path $RepoRoot 'build\host-tests'
+$BuildDir = Join-Path $RepoRoot 'local\build\host-tests'
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 $Output = Join-Path $BuildDir 'service-input-policy-regression.exe'
 $Source = Join-Path $RepoRoot 'tools\tests\ServiceInputPolicyRegression.c'

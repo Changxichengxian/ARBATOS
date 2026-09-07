@@ -15,8 +15,8 @@ def main():
     expected = dict(re.findall(pattern, reference.read_text(encoding="utf-8")))
     aliases = {"spi2_miso_pc2": "spi2_miso_pc2_c"}
     rows = []
-    for name in ["zephyr/boards/dm_mc02_h7/dm_mc02_h7-pinctrl.dtsi",
-                 "zephyr/targets/hero-m-music.overlay"]:
+    for name in ["boards/DmMc02H7/zephyr/dm_mc02_h7-pinctrl.dtsi",
+                 "projects/HERO-M/music.overlay"]:
         for label, actual in re.findall(pattern, (root / name).read_text(encoding="utf-8")):
             wanted = expected.get(aliases.get(label, label))
             rows.append({"file": name, "pin": label, "actual": actual, "expected": wanted,

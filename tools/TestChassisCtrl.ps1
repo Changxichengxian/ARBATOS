@@ -7,7 +7,7 @@ if ($null -eq $Zig) {
     throw '找不到 zig，无法运行底盘控制域生命周期回归。'
 }
 
-$BuildDir = Join-Path $RepoRoot 'build\host-tests'
+$BuildDir = Join-Path $RepoRoot 'local\build\host-tests'
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 $Output = Join-Path $BuildDir 'chassis-ctrl-regression.exe'
 $Sources = @(

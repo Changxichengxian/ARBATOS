@@ -1,0 +1,16 @@
+identifier: dji_a_f427
+name: DJI A Board STM32F427
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+ram: 192
+flash: 2048
+supported:
+  - can
+  - gpio
+  - pwm
+  - sdmmc
+  - spi
+  - usb_device
+vendor: arbatos

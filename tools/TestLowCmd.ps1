@@ -7,7 +7,7 @@ if ($null -eq $Zig) {
     throw '找不到 zig，无法运行 LowCmd 主机回归。此测试不属于常规 CheckAll 的强制依赖。'
 }
 
-$BuildDir = Join-Path $RepoRoot 'build\host-tests'
+$BuildDir = Join-Path $RepoRoot 'local\build\host-tests'
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 $Output = Join-Path $BuildDir 'lowcmd-regression.exe'
 $TestSource = Join-Path $RepoRoot 'tools\tests\LowCmdRegression.c'

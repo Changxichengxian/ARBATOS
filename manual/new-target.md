@@ -13,7 +13,7 @@
 | 双 yaw 云台 | `SENTINEL-M` |
 | MIT 轮腿实验 | `MINIWHEELEG-M` |
 
-默认先复制 `Robotconfig/<OLD>/` 到 `Robotconfig/<NEW>/`，再在 `zephyr/targets/`、板级定义、CMake 预设和 `zephyr/cmake/ArbatosLegacy.cmake` 的显式清单中补齐该目标。正式构建不读取 `.uvprojx`。
+默认先复制 `Robotconfig/<OLD>/` 到 `Robotconfig/<NEW>/`，再在 `projects/<TARGET>/`、板级定义、CMake 预设和 `projects/cmake/ArbatosLegacy.cmake` 的显式清单中补齐该目标。正式构建不读取 `.uvprojx`。
 
 已移除的旧工程如需核对，使用 `git show 951857f:<path>` 或查看 `zephyr` 分支的 `6bdf19e`，不要把它们作为新目标入口。
 

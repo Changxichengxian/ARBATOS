@@ -1,0 +1,16 @@
+identifier: dji_c_f407
+name: DJI C Board STM32F407
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+ram: 192
+flash: 1024
+supported:
+  - can
+  - gpio
+  - i2c
+  - pwm
+  - spi
+  - usb_device
+vendor: arbatos

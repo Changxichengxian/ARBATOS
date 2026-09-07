@@ -82,6 +82,7 @@ codex-rule/
 
 # Zephyr and CLion local build state
 /out/
+/local/build/
 **/.idea/
 **/CMakeUserPresets.json
 **/cmake-build-*/

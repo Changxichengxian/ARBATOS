@@ -1,0 +1,6 @@
+board:
+  name: dji_a_f427
+  full_name: DJI A Board STM32F427
+  vendor: arbatos
+  socs:
+    - name: stm32f427xx

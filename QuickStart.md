@@ -6,7 +6,7 @@
 
 ## 先记住四个目录
 
-- `zephyr/`：正式的 Zephyr 4.4 工程，含三个 M 板目标配置、板级定义和显式源码清单。
+- `projects/`：正式的 Zephyr 4.4 工程，含三个现有车型配置和显式源码清单。
 - `Robotconfig/<TARGET>/`：这台车的配置，主要是 PID、电机 ID、输入映射、任务模块和安装坐标。
 - `boards/<BOARD>/`：这块控制板的外设适配，主要是 CAN、UART、SPI、IMU、按键、蜂鸣器。
 - `shared/`：多台车共用的控制逻辑、通信、输入、电机、诊断、日志。
@@ -16,7 +16,7 @@
 - 换一台车就要改的参数，放 `Robotconfig/`。
 - 换一块板才要改的引脚和外设，放 `boards/`。
 - 能被多台车复用的控制逻辑，放 `shared/`。
-- 正式工程配置、源码清单和启动入口，放 `zephyr/`。
+- 正式工程配置、源码清单和启动入口，放 `projects/`。
 
 ## 新写一辆车的顺序
 
@@ -26,7 +26,7 @@
 
 - 当前只支持 DM MC02 H7：按用途优先看 `HERO-M`、`SENTINEL-M` 或 `MINIWHEELEG-M`。
 
-然后复制对应的 `Robotconfig/<TARGET>/`，再按 `zephyr/targets/` 和 CMake 预设补齐目标配置。
+然后复制对应的 `Robotconfig/<TARGET>/`，再按 `projects/<TARGET>/` 和 CMake 预设补齐目标配置。
 
 ### 2. 先配 profile 和任务模块
 
@@ -102,7 +102,7 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action 
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action debug -Project HERO-M
 ```
 
-产物默认在 `out/zephyr/<target>/`，不用提交。CLion 选择 `zephyr/CMakePresets.json` 对应预设后使用相同的构建配置；下载或调试会接触硬件，先确认对应板卡的 OpenOCD 配置、SWD 接线和实车状态。此工作流使用 Zephyr SDK，不需要 STM32CubeCLT。
+产物默认在 `local/build/<target>/`，不用提交。CLion 选择 `projects/CMakePresets.json` 对应预设后使用相同的构建配置；下载或调试会接触硬件，先确认对应板卡的 OpenOCD 配置、SWD 接线和实车状态。此工作流使用 Zephyr SDK，不需要 STM32CubeCLT。
 
 ## 第一次上电怎么调
 
@@ -207,7 +207,7 @@ IMU 正常后再调云台和底盘。重点看：
 - 会复用：放 `shared/`。
 - 只是这台车的参数：放 `Robotconfig/`。
 - 只是这块板的引脚或外设：放 `boards/`。
-- 只是工程包含文件和启动入口：放 `zephyr/`。
+- 只是工程包含文件和启动入口：放 `projects/`。
 
 新手最容易犯的错是把参数写进共享控制任务里。短期看起来快，后面换车会非常痛苦。
 

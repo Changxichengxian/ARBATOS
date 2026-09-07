@@ -2,8 +2,7 @@
 """Portable consistency checks for the formal ARBATOS Zephyr presets.
 
 This verifies the checked-in source graph only.  It deliberately does not
-configure Zephyr, compile firmware, access a debugger, or replace CheckAll.ps1
-and its legacy Keil-project checks.
+configure Zephyr, compile firmware, or access a debugger.
 """
 
 from __future__ import annotations
@@ -27,7 +26,7 @@ FORMAL_MODE_SYMBOLS = (
     "CONFIG_ARBATOS_RECEIVE_ONLY",
 )
 FORBIDDEN_SOURCE = re.compile(
-    r"(?:^|/)(?:projects/|shared/hal/|.*(?:boardmain|boardfreertos|instask)[^/]*\.c$|"
+    r"(?:^|/)(?:projects/[^/]+/(?:Core|Drivers|Middlewares|MDK-ARM)/|shared/hal/|.*(?:boardmain|boardfreertos|instask)[^/]*\.c$|"
     r"boards/(?:DjiCF407|DjiAF427)/(?:bsp|devices)/|.*\.(?:s|lib)$)", re.IGNORECASE
 )
 SOURCE_TOKEN = re.compile(r"(?<![A-Za-z0-9_./-])([A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+\.(?:c|s|lib))(?![A-Za-z0-9_./-])")
@@ -55,20 +54,20 @@ class Check:
         return True
 
     def check_presets(self, selected: Iterable[str]) -> None:
-        presets_path = self.root / "zephyr" / "CMakePresets.json"
+        presets_path = self.root / "projects" / "CMakePresets.json"
         if not self.require_file(presets_path):
             return
         try:
             presets = json.loads(presets_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
-            self.error(f"invalid JSON: zephyr/CMakePresets.json: {exc.msg}")
+            self.error(f"invalid JSON: projects/CMakePresets.json: {exc.msg}")
             return
 
         configure = {item.get("name"): item for item in presets.get("configurePresets", [])}
         builds = {item.get("name"): item for item in presets.get("buildPresets", [])}
         base = configure.get("zephyr-base")
         if not base or not base.get("hidden"):
-            self.error("zephyr/CMakePresets.json: missing hidden zephyr-base preset")
+            self.error("projects/CMakePresets.json: missing hidden zephyr-base preset")
 
         for project in selected:
             preset_name, board = PROJECTS[project]
@@ -81,19 +80,19 @@ class Check:
             values = preset.get("cacheVariables", {})
             if values.get("BOARD") != board:
                 self.error(f"{project}: BOARD must be {board}")
-            board_dir = self.root / "zephyr" / "boards" / board
+            board_dir = self.root / "boards" / "DmMc02H7" / "zephyr"
             self.require_file(board_dir / f"{board}.yaml")
             self.require_file(board_dir / f"{board}_defconfig")
             conf = values.get("EXTRA_CONF_FILE")
-            expected = f"${{sourceDir}}/targets/{preset_name}.conf"
+            expected = f"${{sourceDir}}/{project}/prj.conf"
             if conf != expected:
                 self.error(f"{project}: EXTRA_CONF_FILE must be {expected}")
             overlay = values.get("DTC_OVERLAY_FILE")
             if project == "SENTINEL-M":
-                expected_overlay = "${sourceDir}/targets/sentinel-m.overlay"
+                expected_overlay = "${sourceDir}/SENTINEL-M/app.overlay"
                 if overlay != expected_overlay:
                     self.error(f"{project}: DTC_OVERLAY_FILE must be {expected_overlay}")
-                self.require_file(self.root / "zephyr" / "targets" / "sentinel-m.overlay")
+                self.require_file(self.root / "projects" / "SENTINEL-M" / "app.overlay")
             elif overlay is not None:
                 self.error(f"{project}: formal preset must not set DTC_OVERLAY_FILE")
             if any(token in str(value).lower() for value in values.values()
@@ -105,7 +104,7 @@ class Check:
 
     def check_target_config(self, project: str) -> None:
         preset_name, _ = PROJECTS[project]
-        path = self.root / "zephyr" / "targets" / f"{preset_name}.conf"
+        path = self.root / "projects" / project / "prj.conf"
         if not self.require_file(path):
             return
         text = path.read_text(encoding="utf-8")
@@ -122,10 +121,10 @@ class Check:
                 self.error(f"{self.rel(path)}: formal target enables dedicated mode {symbol}")
 
     def check_source_graph(self) -> None:
-        cmake = self.root / "zephyr" / "CMakeLists.txt"
-        manifest = self.root / "zephyr" / "cmake" / "ArbatosLegacy.cmake"
-        required = (cmake, manifest, self.root / "zephyr" / "src" / "main.c",
-                    self.root / "zephyr" / "src" / "ArbatosTarget.c", self.root / "zephyr" / "Kconfig")
+        cmake = self.root / "projects" / "CMakeLists.txt"
+        manifest = self.root / "projects" / "cmake" / "ArbatosLegacy.cmake"
+        required = (cmake, manifest, self.root / "projects" / "src" / "main.c",
+                    self.root / "projects" / "src" / "ArbatosTarget.c", self.root / "projects" / "Kconfig")
         if not all(self.require_file(path) for path in required):
             return
         text = cmake.read_text(encoding="utf-8") + "\n" + manifest.read_text(encoding="utf-8")
@@ -134,13 +133,17 @@ class Check:
             if FORBIDDEN_SOURCE.search(normalized):
                 self.error(f"Zephyr source graph includes forbidden legacy entry: {normalized}")
                 continue
-            candidate = self.root / normalized if normalized.startswith(("shared/", "Robotconfig/", "boards/")) else self.root / "zephyr" / normalized
+            candidate = self.root / normalized if normalized.startswith(("shared/", "Robotconfig/", "boards/")) else self.root / "projects" / normalized
             if not candidate.is_file():
                 self.error(f"Zephyr source graph references missing source: {normalized}")
         if "src/main.c" not in text or "src/ArbatosTarget.c" not in text:
-            self.error("zephyr/CMakeLists.txt: formal application entry sources are incomplete")
+            self.error("projects/CMakeLists.txt: formal application entry sources are incomplete")
 
     def run(self, selected: list[str]) -> None:
+        for family, board in (("DjiAF427", "dji_a_f427"), ("DjiCF407", "dji_c_f407"), ("DmMc02H7", "dm_mc02_h7")):
+            directory = self.root / "boards" / family / "zephyr"
+            for name in ("board.yml", "board.cmake", f"{board}.dts", f"{board}-pinctrl.dtsi", f"{board}_defconfig"):
+                self.require_file(directory / name)
         self.check_source_graph()
         self.check_presets(selected)
         for project in selected:

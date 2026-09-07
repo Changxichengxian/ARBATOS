@@ -25,7 +25,7 @@ H723 的 PB15 必须使用 AF2。2026-09-06 纠正原 AF9 配置后，用户确�
 $env:ZEPHYR_BASE = 'D:/ARBATOS/local/cache/zephyrproject/zephyr'
 $env:ZEPHYR_SDK_INSTALL_DIR = 'D:/ARBATOS/local/cache/zephyr-sdk'
 $env:PATH = 'D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts;' + $env:PATH
-& 'D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts/west.exe' build -s zephyr -d local/cache/zephyr-hero-m-music -b dm_mc02_h7 -- '-DZephyr-sdk_DIR=D:/ARBATOS/local/cache/zephyr-sdk/cmake' '-DEXTRA_CONF_FILE=D:/ARBATOS/zephyr/targets/hero-m.conf;D:/ARBATOS/zephyr/targets/hero-m-music.conf' '-DEXTRA_DTC_OVERLAY_FILE=D:/ARBATOS/zephyr/targets/hero-m-music.overlay' '-DCMAKE_MAKE_PROGRAM=D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts/ninja.exe'
+& 'D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts/west.exe' build -s projects -d local/cache/zephyr-hero-m-music -b dm_mc02_h7 -- '-DZephyr-sdk_DIR=D:/ARBATOS/local/cache/zephyr-sdk/cmake' '-DEXTRA_CONF_FILE=D:/ARBATOS/projects/HERO-M/prj.conf;D:/ARBATOS/projects/HERO-M/music.conf' '-DEXTRA_DTC_OVERLAY_FILE=D:/ARBATOS/projects/HERO-M/music.overlay' '-DCMAKE_MAKE_PROGRAM=D:/ARBATOS/local/cache/zephyrproject/.venv/Scripts/ninja.exe'
 ```
 
 完整 HERO-M 使用 `hero-m.conf`，不附加 `hero-m-music.conf`，本次输出目录为 `local/cache/zephyr-hero-m-formal`。

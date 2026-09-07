@@ -9,7 +9,7 @@ vcvars = r"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Aux
 for name in ("hero-m", "legacy"):
     exe = out / (name + ".exe")
     args = ["cl", "/nologo", "/std:c11", "/utf-8", "/W3", "/WX",
-            "/Izephyr/port/sensors", "/IRobotconfig/HERO-M",
+            "/Ishared/zephyr/port/sensors", "/IRobotconfig/HERO-M",
             "/Fo" + str(out / (name + ".obj")), "/Fe" + str(exe)]
     if name == "hero-m":
         args += ["/DCONFIG_ARBATOS_TARGET_HERO_M=1"]

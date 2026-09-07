@@ -1,5 +1,0 @@
-name: arbatos
-
-build:
-  cmake: module
-  kconfig: Kconfig

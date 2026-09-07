@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+config APP_LINK_WITH_ARBATOS_PORT
+    bool "Use ARBATOS compatibility headers"
+    default y

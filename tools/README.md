@@ -4,7 +4,7 @@
 
 ## 正式构建和检查
 
-默认构建 `HERO-M`；默认输出目录是 `out/zephyr/<target>/`：
+默认构建 `HERO-M`；默认输出目录是 `local/build/<target>/`：
 
 ```powershell
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1
