@@ -137,8 +137,13 @@ function(arbatos_add_legacy_sources target)
     # The old projects use headers with no uniform include root.  Header
     # discovery is restricted to the selected target and its actual board,
     # which keeps one vehicle from silently relying on another vehicle's API.
+    # 只扫描项目使用的目录，避免暂存的第三方源码污染头文件搜索路径。
     file(GLOB_RECURSE ARBATOS_LEGACY_HEADERS CONFIGURE_DEPENDS
-        "${ARBATOS_ROOT}/shared/*.h"
+        "${ARBATOS_ROOT}/shared/application/*.h"
+        "${ARBATOS_ROOT}/shared/components/*.h"
+        "${ARBATOS_ROOT}/shared/generated/*.h"
+        "${ARBATOS_ROOT}/shared/hal/*.h"
+        "${ARBATOS_ROOT}/shared/zephyr/*.h"
         "${ARBATOS_ROOT}/Robotconfig/${ARBATOS_TARGET_DIR}/*.h"
         "${ARBATOS_ROOT}/${ARBATOS_BOARD_DIR}/*.h")
     set(ARBATOS_LEGACY_INCLUDE_DIRS "")

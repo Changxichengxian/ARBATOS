@@ -504,7 +504,7 @@ def print_model_params(args: argparse.Namespace, config: BridgeConfig, model_pat
         f"max_joint_torque={float(config.max_joint_torque_nm):.2f}"
     )
     print(f"leg_mass_kg_from_config={read_project_scalar(args.project, 'leg_mass_kg'):.3f}")
-    print("lqr_mass_source=tools/WheelLegLqr/Small3510LqrReport.md")
+    print("lqr_mass_source=tools/WheelLegLqr/轮腿参数计算报告.md")
     print(
         "lqr_mass_assumption="
         f"total={SIM_TOTAL_MASS_KG:.3f}, "

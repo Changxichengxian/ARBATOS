@@ -7,7 +7,7 @@
 #define ARBATOS_SENSORS_NODE DT_PATH(arbatos_sensors)
 
 #if !DT_NODE_EXISTS(ARBATOS_SENSORS_NODE)
-#error "缺少 /arbatos_sensors。请按 shared/zephyr/port/sensors/README.md 为本板补齐传感器设备树属性。"
+#error "缺少 /arbatos_sensors。请按 shared/README.md 的传感器说明为本板补齐传感器设备树属性。"
 #endif
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2026 Xie Yuhan <2811158416@qq.com>
+ * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
  * SPDX-License-Identifier: Apache-2.0
  *
  * Private implementation chunk included by ChassisControlTask.c.

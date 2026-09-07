@@ -1,10 +1,10 @@
-# CLion 编译、下载和调试
+# CLion 开发指南
 
 当前整车目标为 HERO-M、SENTINEL-M、MINIWHEELEG-M，主板均为 DM MC02 H7 / STM32H723。A、C、M 三种开发板支持都保留在 boards，与车型分开管理。后续开发提交到 main。旧 Keil 工程、GCC 转换器与 A/C 板车型已从主线移除，历史保存在提交 951857f 和 zephyr 分支中。
 
 ## 还要安装什么
 
-这台电脑已有 CLion 2026.2.2（用户已完成非商业激活）、Zephyr 4.4、Zephyr SDK、Python/West、CMake、Ninja、OpenOCD 和 ARM GDB。当前流程不需要 STM32CubeCLT、CubeMX、CubeIDE 或 Keil。CubeCLT 是 ST 提供的另一套编译/烧录工具包；这里直接使用现有 Zephyr SDK。
+这台电脑已有 CLion 2026.2.2、Zephyr 4.4、Zephyr SDK、Python/West、CMake、Ninja、OpenOCD 和 ARM GDB。当前流程不需要 STM32CubeCLT、CubeMX、CubeIDE 或 Keil。CubeCLT 是 ST 提供的另一套编译/烧录工具包；这里直接使用现有 Zephyr SDK。
 
 先在 PowerShell 中检查一次工具路径：
 
@@ -96,7 +96,7 @@ quit
 
 Keil 项目、CubeMX 工程副本、ARMCC 二进制库、旧转换工具和四个旧车型已移除。A、C、M 板的设备树、板级头文件和现用适配全部保留；共享算法在 `shared/zephyr/port/algorithm/`。工程统一在 `projects/`，新产物统一在 `local/build/`，根目录不再保留旧 `build`、`out`、`zephyr` 或 `Open*.cmd`。
 
-目录整理后 HERO-M 正式构建与本机 CMake 预设构建通过，A/C 独立板级工程编译链接通过，工程检查的 5 项回归通过。这些是软件验证。HERO-M 先前整车运动和外设的实测范围见 [验证记录](../tests/ZephyrMusicM/Validation.md)；CLion 图形界面下载/调试仍需按上面的步骤完成一次实物验证。
+目录整理后 HERO-M 正式构建与本机 CMake 预设构建通过，A/C 独立板级工程编译链接通过，工程检查的 5 项回归通过。这些是软件验证。HERO-M 先前有整车运动实测；目录整理后的固件未再次上车，CLion 图形界面下载/调试也仍待实物验证。
 
 ## 官方参考
 
@@ -104,3 +104,31 @@ Keil 项目、CubeMX 工程副本、ARMCC 二进制库、旧转换工具和四�
 - [JetBrains：OpenOCD Download & Run](https://www.jetbrains.com/help/clion/openocd-support.html)
 - [JetBrains：CMake 预设](https://www.jetbrains.com/help/clion/cmake-presets.html)
 - [ST：STM32CubeCLT](https://www.st.com/en/development-tools/stm32cubeclt.html)
+
+## 工程目录
+
+`projects/` 负责构建和启动，车型参数与板级支持分别保留。
+
+```text
+boards/
+  DjiAF427/zephyr/       A 板设备树、引脚、调试配置
+  DjiCF407/zephyr/       C 板设备树、引脚、调试配置
+  DmMc02H7/zephyr/       M 板设备树、引脚、调试配置
+  dts/                  共用设备树属性
+shared/
+  application/          共用机器人控制逻辑
+  components/           算法、协议、设备
+  zephyr/               共用系统适配、外设接口、兼容层
+projects/
+  CMakeLists.txt        统一工程入口
+  CMakePresets.json     CLion 与命令行共用预设
+  cmake/                显式源码清单
+  src/                  main 与任务启动
+  HERO-M/prj.conf       英雄构建配置；测试模式也在此目录
+  SENTINEL-M/           哨兵构建配置与副板配置
+  MINIWHEELEG-M/        小轮腿构建配置
+Robotconfig/            车型参数、控制配置、安装方向
+local/build/            所有新编译产物，不提交 Git
+```
+
+新增车型时，按[车型配置](../Robotconfig/README.md#新增车型)补齐目标选择、源码清单、预设和工具车型表。A/C 独立编译检查见[测试说明](../tests/README.md)。板级支持与当前外设缺项见[开发板说明](../boards/README.md)。
