@@ -1,21 +1,20 @@
 # projects
 
-`projects/` 放可以直接打开、编译、下载的固件工程入口。这里回答的是“怎么编译这份固件”，不是“这台车参数是什么”，也不是“这块板子有哪些引脚”。
+`projects/` 保留旧 Keil/CubeMX/FreeRTOS 工程，供历史对照或明确维护 legacy 路线时使用。正式构建入口已迁到 `zephyr/`，这里不再回答“当前怎么编译这份固件”。
 
-## 当前入口
+## 当前正式入口
 
-对外统一先走根目录的 `tools/build.ps1`：
+对外统一先走根目录的 `tools/build.ps1`，默认构建 `HERO-M`：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project HERO-C
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project HERO-C
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action probe
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project all -Pristine
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check -Project all
 ```
 
-Keil 工程仍是可直接编译和下载的完整入口，也是工程清单来源。GCC/CMake 路线会从 `.uvprojx` 生成 `build/gcc/<TARGET>/`，不单独维护第二套手写工程列表。
+正式工程清单位于 `zephyr/cmake/ArbatosLegacy.cmake`，它是显式清单，只转录所需源码，不读取 `.uvprojx`。CLion、Zephyr 4.4 和 OpenOCD 的操作见 `../manual/clion-zephyr.md`。`projects/` 中的内容只能按 `legacy` 路线使用。
 
-| Project | Keil 工程 | 使用的 Robotconfig | 使用的 board |
+| Target | legacy Keil 工程 | 使用的 Robotconfig | 使用的 board |
 |---|---|---|---|
 | `HERO-C` | `projects/HERO-C/MDK-ARM/HERO-C.uvprojx` | `Robotconfig/HERO-C` | `boards/DjiCF407` |
 | `HERO-M` | `projects/HERO-M/MDK-ARM/HERO-M.uvprojx` | `Robotconfig/HERO-M` | `boards/DmMc02H7` |
@@ -27,7 +26,7 @@ Keil 工程仍是可直接编译和下载的完整入口，也是工程清单来
 
 更完整的对应表见 `../manual/project-map.md`。
 
-## 这一层负责什么
+## legacy 这一层负责什么
 
 - 统一脚本入口：`../tools/build.ps1`。
 - 工程清单解析：`../tools/build/ProjectManifest.py`。
@@ -38,13 +37,13 @@ Keil 工程仍是可直接编译和下载的完整入口，也是工程清单来
 - HAL、CMSIS、FreeRTOS、USB 等工程内依赖：`Drivers/`、`Middlewares/`、`USB_DEVICE/`。
 - 最终固件入口如何把 `Robotconfig/`、`boards/`、`shared/` 编进来。
 
-## 这一层不负责什么
+## legacy 这一层不负责什么
 
 - 车型参数、电机装配、输入映射：放 `Robotconfig/<TARGET>/`。
 - 板级端口和硬件适配：放 `boards/<BOARD>/`。
 - 可复用控制任务、电机协议、输入链路、日志、诊断：放 `shared/`。
 
-## 和 Robotconfig / boards 的关系
+## legacy 工程和 Robotconfig / boards 的关系
 
 现在大部分目录是同名 1 对 1，例如 `projects/HERO-C` 使用 `Robotconfig/HERO-C`。但这只是当前安排，不是概念绑定。
 
@@ -56,9 +55,9 @@ Keil 工程仍是可直接编译和下载的完整入口，也是工程清单来
 
 判断文件该不该放 `projects/`：如果它影响“工程怎么编译和启动”，放这里；如果它影响“机器人怎么控制”，多数时候不该放这里。
 
-## 新建工程入口
+## 新建 legacy 工程入口
 
-新车如果复用已有板卡，优先复制最接近的 `projects/<TARGET>/`：
+新车只有在明确需要维护旧 Keil 路线时，才复制最接近的 `projects/<TARGET>/`：
 
 1. 修改 Keil 工程名和输出名。
 2. Include Path 改到新的 `Robotconfig/<TARGET>`，保留对应 `boards/<BOARD>` 和 `shared/` 路径。
@@ -68,8 +67,8 @@ Keil 工程仍是可直接编译和下载的完整入口，也是工程清单来
 6. 如果新目标也要支持 GCC/CMake，运行：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project <TARGET> -FailOnGccBlockers
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project <TARGET>
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action legacy-manifest -Project <TARGET> -FailOnGccBlockers
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action legacy-gcc-build -Project <TARGET>
 ```
 
 根目录的 `QuickStart.md` 写的是入门路径；完整新车接入流程见 `../manual/new-target.md`。这里主要负责工程入口本身。

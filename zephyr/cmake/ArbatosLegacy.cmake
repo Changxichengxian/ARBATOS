@@ -1,8 +1,8 @@
-# ARBATOS legacy source manifest.
+# ARBATOS Zephyr source manifest for shared robot control.
 #
-# This is intentionally an explicit transcription of the seven Keil projects,
-# not a recursive source glob.  It makes a target's ownership auditable while
-# Zephyr progressively replaces the STM32/FreeRTOS boundary.
+# This maintained list is the source of truth for the seven Zephyr targets.
+# It was initially transcribed from the old projects, but configure/build
+# never reads a Keil project or requires an installed Keil toolchain.
 #
 # Do not add generated CubeMX files, startup assembly, FreeRTOS, STM32 HAL,
 # legacy BSP implementations, or ARMCC .lib files here.  Zephyr owns those
@@ -20,8 +20,7 @@ function(arbatos_add_legacy_sources target)
     # running, so preserve this file's location at include time above.
     set(ARBATOS_ROOT "${ARBATOS_LEGACY_CMAKE_DIR}/../..")
 
-    # All source paths in this section appear in at least one project under
-    # projects/*/MDK-ARM/*.uvprojx.  Any old platform calls they make are
+    # Shared robot sources are selected here. Old platform calls are
     # supplied by the Zephyr compatibility layer, never by old startup,
     # FreeRTOS, STM32 HAL, or ARMCC binary-library source entries.
     set(ARBATOS_COMMON_CORE
@@ -125,7 +124,7 @@ function(arbatos_add_legacy_sources target)
     list(REMOVE_ITEM ARBATOS_H7_CORE
         shared/components/algorithm/AhrsMiddleware.c)
 
-    # Source entries below are target-specific deltas from the Keil manifest.
+    # Source entries below are the maintained target-specific selections.
     # Do not merge targets merely because their vehicle names sound similar.
     if(CONFIG_ARBATOS_TARGET_HERO_C)
         set(ARBATOS_TARGET_DIR HERO-C)

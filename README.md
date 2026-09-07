@@ -1,6 +1,6 @@
 # ARBATOS
 
-ARBATOS is an STM32 and FreeRTOS firmware workspace for RoboMaster-style robots.
+ARBATOS is an STM32 and Zephyr firmware workspace for RoboMaster-style robots.
 It focuses on reusable low-level robot control: chassis, gimbal, shooter, arm,
 wheel-leg experiments, input links, actuator output, diagnostics, telemetry, and
 SD-card logging.
@@ -27,7 +27,7 @@ The current codebase is beyond a basic STM32 port. It includes:
 - Seven firmware targets: `HERO-C`, `HERO-M`, `INFANTRY-A`, `SENTINEL-M`,
   `CARRIER-A`, `MINIWHEELEG-M`, and `MINIWHEELEG-C`.
 - Three board support layers: DJI C board, DJI A board, and DM MC02 H7 board.
-- Explicit FreeRTOS task selection through `g_config.profile.task_modules`.
+- `g_config.profile.task_modules` 显式选择的业务任务由兼容层接入 Zephyr 线程启动。
 - Multiple manual input sources: DBUS/SBUS, ELRS/CRSF, image-transmission remote
   control, USB-reserved input, and board keys.
 - A unified actuator command path. Control tasks write transport-independent
@@ -38,18 +38,16 @@ The current codebase is beyond a basic STM32 port. It includes:
 - Diagnostics and logging through `g_watch`, `RtProf`, TF/SD binary logs,
   build identity records, runtime device records, AUX telemetry, and temporary
   AUX parameter tuning.
-- Local checks, Keil project manifest extraction, generated GCC/CMake firmware
-  builds, SD log tools, a PID autotune tool, and a configuration pressure
-  simulator.
+- Zephyr 4.4 firmware builds, source-list checks, SD log tools, a PID autotune
+  tool, and a configuration pressure simulator.
 
 Important limits are also documented here:
 
-- Keil MDK-ARM projects are still the build source of truth.
-- GCC/CMake builds are generated from the Keil project manifests and are
-  currently buildable for all seven targets with `arm-none-eabi-gcc`, CMake, and
-  Ninja. Generated files live under `build/gcc/` and are not maintained by hand.
-- Command-line Keil builds still depend on the local UV4 path and installed
-  device packs. The repository check does not run a real Keil Rebuild.
+- `main` 是唯一继续提交的分支；`zephyr` 分支保留为已结束的探索记录。
+- 七个目标的正式构建入口是 `zephyr/`，使用 Zephyr 4.4、CMake、Ninja 和
+  OpenOCD。它使用仓库内的显式源码清单，不读取 `.uvprojx`。
+- `projects/` 中的 Keil、CubeMX、FreeRTOS 工程和旧 GCC 生成工具只作为
+  显式 `legacy` 历史参考；当前构建、检查和 CI 不要求安装 Keil。
 - High-rate control paths should read configuration through cached or snapshot
   views instead of repeatedly walking `g_config`; local checks guard the main
   high-rate boundaries.
@@ -82,7 +80,8 @@ licenses.
 ```text
 ARBATOS/
 |-- boards/        # Board support packages and board-specific ports
-|-- projects/      # Buildable firmware projects; Keil is the source manifest
+|-- zephyr/        # 正式 Zephyr 4.4 工程、七目标配置和板级定义
+|-- projects/      # 旧 Keil/CubeMX 工程，仅作 legacy 历史参考
 |-- Robotconfig/   # Robot target parameters and target-specific glue
 |-- shared/        # Reusable runtime, control, communication, HAL, and components
 |-- manual/        # Bring-up, tuning, logging, and integration manuals
@@ -105,10 +104,12 @@ The important separation is:
 ARBATOS uses a four-layer firmware layout.
 
 ```text
+zephyr/
+  正式 Zephyr 4.4 工程、七目标 CMake 预设、板级定义、端口和显式源码清单。
+  构建不读取 Keil 工程文件。
+
 projects/<TARGET>/
-  Keil project, CubeMX Core files, middleware, startup, and build entry point.
-  The generated GCC/CMake route reads these Keil project files instead of
-  keeping a second hand-written project list.
+  旧 Keil/CubeMX/FreeRTOS 工程，保留给历史对照和有意继续维护旧路线的人。
 
 Robotconfig/<TARGET>/
   Robot profile, task module list, device table, motor mounting, PID, input,
@@ -149,7 +150,7 @@ when the hardware changes.
 
 ## Runtime Flow
 
-Startup follows the usual STM32 and FreeRTOS path:
+当前固件由 Zephyr 启动线程；原有 `g_config.profile.task_modules` 和业务任务通过兼容层继续使用。下面的 FreeRTOS 路径仅说明 `projects/` 中保留的 legacy 工程：
 
 ```text
 main.c
@@ -166,8 +167,8 @@ main.c
               +-- create enabled modules from g_config.profile.task_modules
 ```
 
-F4 targets mainly create tasks in `projects/<TARGET>/Core/Src/freertos.c`.
-The DM MC02 H7 board also has board-level entry points in
+legacy F4 工程主要在 `projects/<TARGET>/Core/Src/freertos.c` 创建任务。
+legacy DM MC02 H7 工程还有板级入口：
 `boards/DmMc02H7/app/BoardMain.c` and
 `boards/DmMc02H7/app/BoardFreertos.c`.
 
@@ -305,70 +306,43 @@ runtime tuning field; changing motor wiring or model usually requires editing
 
 ## Build and Local Checks
 
-Install:
+Install Zephyr 4.4 and its SDK, then ensure `west`, CMake, Ninja and OpenOCD are
+available to the terminal. The exact CLion setup, CMake preset selection and
+OpenOCD download configuration are in [the CLion and Zephyr guide](manual/clion-zephyr.md).
+CLion 已安装；工程界面导入和硬件调试仍需分别验收，不能由命令行构建代替。
 
-- Keil MDK-ARM v5 and the required STM32F4 / STM32H7 device packs for the Keil
-  route.
-- Python 3 for repository tools.
-- `arm-none-eabi-gcc`, CMake, and Ninja for the GCC/CMake route.
-
-Open and build a target from Keil, for example:
-
-```text
-projects/HERO-C/MDK-ARM/HERO-C.uvprojx
-```
-
-Build the same target through the generated GCC/CMake route:
+Build the default target (`HERO-M`) from PowerShell:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project HERO-C
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project all
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1
 ```
 
-This route reads the Keil `.uvprojx`, writes generated CMake files under
-`build/gcc/<TARGET>/`, translates the startup and linker files, swaps in GCC
-FreeRTOS ports and compatibility sources, then builds `.elf`, `.hex`, and `.bin`
-outputs. The generated build directory is ignored by Git.
-Before generation or build, the route refreshes
-`shared/generated/build_info_autogen.h`, matching the Keil `BeforeMake` path so
-GCC-built firmware records the same SD log build identity.
-The generated GCC/CMake route is kept warning-clean; new compiler warnings
-should be fixed in source instead of filtered from the build output.
-
-Run repository checks from PowerShell:
+Build one target or start all seven from clean build directories:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project SENTINEL-M -Pristine
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project all -Pristine
 ```
 
-Inspect the Keil project manifest:
+The normal output location is `out/zephyr/<target>/`; it is ignored by Git. Run
+the source/configuration check separately:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project HERO-C
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project all -Json
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project all -FailOnGccBlockers
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check -Project all
 ```
 
-Probe local command-line tool availability:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action probe
-```
-
-The check script validates project references, Robotconfig coverage, task module
-mapping, profile identity macros, profiler descriptors, Python tool syntax,
-simulation smoke tests, build manifest extraction, stale text patterns, and
-high-rate API boundaries. It does not run a real Keil Rebuild or a full
-GCC/CMake compile; use `-Action gcc-build` when compiler verification is needed.
+`check` validates the Zephyr source list, formal target configuration and syntax
+paths. It does not claim a firmware build or real-board result.
 
 ## Tools
 
 | Tool | Purpose |
 |---|---|
-| `tools/build.ps1` | top-level check, manifest, tool-probe, GCC generation, and GCC build entry point |
-| `tools/CheckAll.ps1` | local and CI validation script |
-| `tools/build/ProjectManifest.py` | extracts Keil project metadata and GCC readiness notes |
-| `tools/build/GccProject.py` | generates CMake/GCC build files from Keil project metadata |
+| `tools/build.ps1` | Zephyr check and build entry point; default is `HERO-M` |
+| `tools/CheckZephyr.py` | Zephyr source-list and formal-configuration check |
+| `tools/CheckAll.ps1` | legacy Keil/project check, invoked only with `-Action legacy-check` |
+| `tools/build/ProjectManifest.py` | legacy Keil project manifest tool |
+| `tools/build/GccProject.py` | legacy generated GCC/CMake tool |
 | `tools/GenBuildInfo.ps1` | generates `shared/generated/build_info_autogen.h` for firmware logs |
 | `tools/sim/RobotSim.py` | estimates CAN and CPU pressure from current configuration |
 | `tools/sdlog/SdLogViewer.py` | opens the SD log web viewer and exports records |
@@ -412,14 +386,14 @@ CAN hardware boundary used when evaluating the repository.
 
 For a new user:
 
-1. Install Keil MDK-ARM v5 and the required STM32 device packs.
-2. Open a target project such as `projects/HERO-C/MDK-ARM/HERO-C.uvprojx`.
+1. 按 [CLion 和 Zephyr 开发环境](manual/clion-zephyr.md) 准备 Zephyr 4.4、SDK、CMake、Ninja 和 OpenOCD。
+2. 在 CLion 中打开仓库根目录，选择 `zephyr/CMakePresets.json` 中的目标预设；工程界面导入和硬件调试仍需分别验收。
 3. Check `Robotconfig/<TARGET>/RobotConfig.c`, especially `g_config.profile`,
    `task_modules`, `g_config.devices`, `g_config.motor`, input mapping, and safe
    switch positions.
 4. Check `boards/<BOARD>/` for UART, CAN, IMU, buzzer, key, SD card, and port
    assignments.
-5. Build and flash the firmware.
+5. 构建固件，并按 CLion 手册中对应板卡的 OpenOCD 配置下载。
 6. Before enabling full power, confirm input, IMU, CAN feedback, task status,
    `g_watch`, AUX telemetry, and SD logs.
 7. Bring up subsystems in this order: IMU, CAN feedback, single subsystem
@@ -430,7 +404,7 @@ For detailed workflows, start with `QuickStart.md` and `manual/README.md`.
 ## Adding a Robot Target
 
 1. Copy the closest existing `Robotconfig/<TARGET>/` and `projects/<TARGET>/`.
-2. Rename the Keil project and output target.
+2. 在 `zephyr/targets/`、Zephyr 板级定义和 CMake 预设中加入目标；`projects/` 只有确需维护 legacy 路线时才同步。
 3. Update include paths so the project references exactly one
    `Robotconfig/<TARGET>`.
 4. Set target identity macros in `RobotConfig.h`: `ARBATOS_TARGET_NAME`,
@@ -441,19 +415,15 @@ For detailed workflows, start with `QuickStart.md` and `manual/README.md`.
 7. Configure input mapping, safe switches, detection items, telemetry, and logs.
 8. Add target stubs or target-specific files only when shared code cannot cover
    the target.
-9. Run `tools/build.ps1 -Action check`, then build in Keil. If the target should
-   support the command-line route too, also run
-   `tools/build.ps1 -Action gcc-build -Project <TARGET>`.
+9. 运行 `tools/build.ps1 -Action check -Project <TARGET>`，再从干净目录构建该 Zephyr 目标。
 
 ## Adding a Board
 
 1. Create `boards/<BOARD>/`.
 2. Add board port configuration for CAN, UART, SPI, I2C, IMU, key, buzzer, SD
    card, USB, PWM, and other board peripherals.
-3. Add board startup or board-level FreeRTOS code only if the project needs a
-   board-owned entry point.
-4. Create or update `projects/<TARGET>/` so the Keil project includes the new
-   board paths.
+3. 在 Zephyr 板级定义、`zephyr/targets/` 和启动配置中加入该板的正式入口。
+4. 只有明确维护 legacy 路线时，才更新 `projects/<TARGET>/` 和 Keil 工程路径。
 
 ## Adding a Motor Model or Protocol
 
@@ -473,8 +443,8 @@ For detailed workflows, start with `QuickStart.md` and `manual/README.md`.
 2. Add the module name in `RobotProfileKnownModules()` in
    `shared/application/robot/RobotTaskProfile.h`.
 3. Add the module to the relevant target's `g_config.profile.task_modules`.
-4. Add the task source file and task creation entry in the target project or
-   board-level FreeRTOS file.
+4. 把任务源码加入 Zephyr 显式清单，并在 Zephyr 启动映射中接入该模块；旧
+   FreeRTOS 任务入口只有维护 legacy 路线时才同步修改。
 5. Add diagnostics, log fields, and a minimal validation path.
 6. Update `tools/CheckAll.ps1` if the module requires source or task-creation
    consistency checks.
@@ -483,6 +453,7 @@ For detailed workflows, start with `QuickStart.md` and `manual/README.md`.
 
 - `QuickStart.md`: first-pass bring-up guide.
 - `manual/README.md`: manual index.
+- `manual/clion-zephyr.md`: CLion、Zephyr 4.4 和 OpenOCD 的正式工作流。
 - `manual/new-target.md`: adding a new target.
 - `manual/bringup-checklist.md`: real-robot bring-up checklist.
 - `manual/pid-tuning.md`: PID tuning flow.

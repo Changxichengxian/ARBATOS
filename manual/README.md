@@ -14,6 +14,7 @@
 | 解释底盘、云台、场地、开发板坐标 | [坐标系和安装基准](coordinate-frames.md) |
 | 新增或评审机器人模块边界 | [机器人模块声明](module-system.md) |
 | 第一次上车、上电、联调前检查 | [上车检查清单](bringup-checklist.md) |
+| 配置 CLion、Zephyr 4.4、CMake 预设和 OpenOCD 下载 | [CLion 和 Zephyr 开发环境](clion-zephyr.md) |
 | 调云台、底盘、射击 PID | [PID 调试流程](pid-tuning.md) |
 | 看 SD 日志、留基线日志、改日志 tag | [SD 日志和复盘](sdlog.md) |
 | 说明 SD 发布纪律、CAN 硬件边界和评分口径 | [评分边界](evaluation-boundaries.md) |
@@ -26,7 +27,8 @@
 - `README.md`：项目总览和当前主线状态。
 - `QuickStart.md`：非常短的入门路径，适合第一次打开仓库。
 - `manual/`：正式操作手册，按具体任务组织。
-- `projects/README.md`：工程入口层，只讲 Keil 工程和启动入口。
+- `zephyr/`：正式构建工程；使用 Zephyr 4.4、CMake、Ninja 和 OpenOCD。
+- `projects/README.md`：legacy Keil/CubeMX 工程说明，只作历史参考。
 - `Robotconfig/README.md`：目标配置层，只讲车型参数、装配和检测。
 - `boards/README.md`：板级适配层，只讲芯片、外设和端口。
 - `shared/README.md`：共享代码层，只讲复用逻辑和边界。

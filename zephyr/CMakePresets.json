@@ -1,0 +1,123 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "zephyr-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/../out/zephyr/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true
+      },
+      "environment": {
+        "CMAKE_BUILD_PARALLEL_LEVEL": "2"
+      }
+    },
+    {
+      "name": "hero-m",
+      "inherits": "zephyr-base",
+      "displayName": "HERO-M / Zephyr",
+      "cacheVariables": {
+        "BOARD": "dm_mc02_h7",
+        "EXTRA_CONF_FILE": "${sourceDir}/targets/hero-m.conf"
+      }
+    },
+    {
+      "name": "hero-c",
+      "inherits": "zephyr-base",
+      "displayName": "HERO-C / Zephyr",
+      "cacheVariables": {
+        "BOARD": "dji_c_f407",
+        "EXTRA_CONF_FILE": "${sourceDir}/targets/hero-c.conf"
+      }
+    },
+    {
+      "name": "sentinel-m",
+      "inherits": "zephyr-base",
+      "displayName": "SENTINEL-M / Zephyr",
+      "cacheVariables": {
+        "BOARD": "dm_mc02_h7",
+        "EXTRA_CONF_FILE": "${sourceDir}/targets/sentinel-m.conf",
+        "DTC_OVERLAY_FILE": "${sourceDir}/targets/sentinel-m.overlay"
+      }
+    },
+    {
+      "name": "infantry-a",
+      "inherits": "zephyr-base",
+      "displayName": "INFANTRY-A / Zephyr",
+      "cacheVariables": {
+        "BOARD": "dji_a_f427",
+        "EXTRA_CONF_FILE": "${sourceDir}/targets/infantry-a.conf"
+      }
+    },
+    {
+      "name": "carrier-a",
+      "inherits": "zephyr-base",
+      "displayName": "CARRIER-A / Zephyr",
+      "cacheVariables": {
+        "BOARD": "dji_a_f427",
+        "EXTRA_CONF_FILE": "${sourceDir}/targets/carrier-a.conf"
+      }
+    },
+    {
+      "name": "miniwheeleg-m",
+      "inherits": "zephyr-base",
+      "displayName": "MINIWHEELEG-M / Zephyr",
+      "cacheVariables": {
+        "BOARD": "dm_mc02_h7",
+        "EXTRA_CONF_FILE": "${sourceDir}/targets/miniwheeleg-m.conf"
+      }
+    },
+    {
+      "name": "miniwheeleg-c",
+      "inherits": "zephyr-base",
+      "displayName": "MINIWHEELEG-C / Zephyr",
+      "cacheVariables": {
+        "BOARD": "dji_c_f407",
+        "EXTRA_CONF_FILE": "${sourceDir}/targets/miniwheeleg-c.conf"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "hero-m",
+      "configurePreset": "hero-m",
+      "jobs": 2
+    },
+    {
+      "name": "hero-c",
+      "configurePreset": "hero-c",
+      "jobs": 2
+    },
+    {
+      "name": "sentinel-m",
+      "configurePreset": "sentinel-m",
+      "jobs": 2
+    },
+    {
+      "name": "infantry-a",
+      "configurePreset": "infantry-a",
+      "jobs": 2
+    },
+    {
+      "name": "carrier-a",
+      "configurePreset": "carrier-a",
+      "jobs": 2
+    },
+    {
+      "name": "miniwheeleg-m",
+      "configurePreset": "miniwheeleg-m",
+      "jobs": 2
+    },
+    {
+      "name": "miniwheeleg-c",
+      "configurePreset": "miniwheeleg-c",
+      "jobs": 2
+    }
+  ]
+}

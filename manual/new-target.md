@@ -15,14 +15,9 @@
 | 双 yaw 云台 | `SENTINEL-M` |
 | MIT 轮腿实验 | `MINIWHEELEG-M` / `MINIWHEELEG-C` |
 
-复制时通常要复制两块：
+默认先复制 `Robotconfig/<OLD>/` 到 `Robotconfig/<NEW>/`，再在 `zephyr/targets/`、板级定义、CMake 预设和 `zephyr/cmake/ArbatosLegacy.cmake` 的显式清单中补齐该目标。正式构建不读取 `.uvprojx`。
 
-- `Robotconfig/<OLD>/` 到 `Robotconfig/<NEW>/`
-- `projects/<OLD>/` 到 `projects/<NEW>/`
-
-然后改 Keil 工程名、输出名、include path、source group 里的 Robotconfig 路径。
-
-GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 `.uvprojx` 生成 `build/gcc/<TARGET>/`，所以先把 Keil 工程里的文件列表、宏、头文件路径、启动文件和 scatter 文件改对。
+`projects/<TARGET>/` 的 Keil/CubeMX 工程和生成式 GCC/CMake 路线仍可保留作 legacy 历史参考；只有明确维护旧路线时才同步复制和修改它们。
 
 ## 2. 填目标身份
 
@@ -134,52 +129,35 @@ GCC/CMake 路线不需要单独复制一套工程清单。它会从新目标的 
 
 不要把还没接线的设备硬塞进检测表。实物没接就先不列对应任务模块或不启用对应检测；等接线确定后再补。这样上车时红灯才有意义。
 
-## 8. 配工程入口
+## 8. 配 Zephyr 工程入口
 
-在 `projects/<TARGET>/MDK-ARM/<TARGET>.uvprojx` 里确认：
+在 `zephyr/` 中确认：
 
-- Include Path 只指向一个 `Robotconfig/<TARGET>`。
-- Source Group 里没有混进别的目标的 `RobotConfig.c`。
-- 目标使用的 board 路径正确。
-- `BeforeMake` 里有构建信息生成脚本：
+- `targets/<target>.conf`、需要时的 overlay 与目标板卡匹配。
+- `CMakePresets.json` 中有目标预设，且目标名与 `Robotconfig/<TARGET>` 对应。
+- `cmake/ArbatosLegacy.cmake` 的显式源码清单只包含实际需要的源码，不读取 `.uvprojx`。
+- Zephyr 启动映射只接入一个 `Robotconfig/<TARGET>`，没有混入其他目标的 `RobotConfig.c`。
 
-```text
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\..\..\tools\GenBuildInfo.ps1
-```
-
-这个脚本会生成 `shared/generated/build_info_autogen.h`，让 SD 日志里带 Git 提交、编译时间和 dirty 状态。
-
-如果这个目标也要支持 GCC/CMake，不要手写第二套 CMake 文件。确认 `.uvprojx` 后用生成脚本检查：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action manifest -Project <TARGET> -FailOnGccBlockers
-```
+旧 `BeforeMake` 和 `GenBuildInfo.ps1` 只属于 legacy Keil 路线。
 
 ## 9. 第一次检查
 
 在仓库根目录先跑：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\CheckAll.ps1
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check -Project <TARGET>
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action build -Project <TARGET> -Pristine
 ```
 
-这个脚本不会替代 Keil 编译，也不会默认跑完整 GCC 编译，但能先抓出工程引用、缺文件、profile 和任务创建不匹配、Python 工具语法这类低级问题。
-
-然后再用 Keil 做一次 Rebuild，确认固件能从干净状态编出来。
-
-如果要确认 GCC/CMake 路线也可用，再跑：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project <TARGET>
-```
+前者检查 Zephyr 源清单、正式配置和语法路径；后者从干净目录构建目标。它们不等价于实车验收。旧 Keil/GCC 检查仅在维护 legacy 路线时执行。
 
 ## 最小验收
 
 新目标至少满足这些，才算初步接起来：
 
-- `tools/CheckAll.ps1` 通过。
-- Keil Rebuild 通过。
-- 如果目标承诺支持 GCC/CMake，`tools/build.ps1 -Action gcc-build -Project <TARGET>` 通过。
+- `tools/build.ps1 -Action check -Project <TARGET>` 通过。
+- 对应 Zephyr 目标从干净目录构建通过。
+- 如果明确维护 legacy 路线，再补 Keil Rebuild 与旧 GCC 验证。
 - SD 日志 `BUILD_INFO` 能显示正确 target、board、Git、编译时间。
 - `g_watch` 能看到任务状态和主要设备状态。
 - 遥控输入、CAN 反馈、IMU 姿态都能观察。

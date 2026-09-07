@@ -79,3 +79,9 @@ codex-rule/
 
 # Mp3ToU8 generated audio payloads
 /tools/Mp3ToU8/U8/
+
+# Zephyr and CLion local build state
+/out/
+**/.idea/
+**/CMakeUserPresets.json
+**/cmake-build-*/

@@ -6,7 +6,8 @@
 
 ## 先记住四个目录
 
-- `projects/<TARGET>/`：能打开、编译、下载的 Keil 工程，也是 GCC/CMake 生成路线的工程清单来源。
+- `zephyr/`：正式的 Zephyr 4.4 工程，含七个目标配置、板级定义和显式源码清单。
+- `projects/<TARGET>/`：旧 Keil/CubeMX 工程，只在明确维护 legacy 历史路线时参考。
 - `Robotconfig/<TARGET>/`：这台车的配置，主要是 PID、电机 ID、输入映射、任务模块和安装坐标。
 - `boards/<BOARD>/`：这块控制板的外设适配，主要是 CAN、UART、SPI、IMU、按键、蜂鸣器。
 - `shared/`：多台车共用的控制逻辑、通信、输入、电机、诊断、日志。
@@ -28,7 +29,7 @@
 - 用 DJI A 板：优先看 `INFANTRY-A` 或 `CARRIER-A`。
 - 用 DM MC02 H7：优先看 `HERO-M`、`SENTINEL-M` 或 `MINIWHEELEG-M`。
 
-然后复制对应的 `Robotconfig/<TARGET>/` 和 `projects/<TARGET>/`，再改名字和工程包含路径。
+然后复制对应的 `Robotconfig/<TARGET>/`，再按 `zephyr/targets/` 和 CMake 预设补齐目标配置。旧 `projects/<TARGET>/` 不再是新目标的默认入口。
 
 ### 2. 先配 profile 和任务模块
 
@@ -84,35 +85,27 @@
 不要为了让灯变绿就关检测。检测项乱关，后面调车会很难判断到底是代码没跑、线没接，还是设备掉线。
 检测项要和 `task_modules` 对上：开了底盘模块就关心底盘电机，开了云台模块就关心云台电机和 IMU，开了日志或主机链路就能看到对应服务状态。
 
-## 编译路线怎么选
+## 编译和下载
 
-常用路线有两条：
+正式路线是 CLion + Zephyr 4.4 + OpenOCD。先按 [CLion 和 Zephyr 开发环境](manual/clion-zephyr.md) 准备环境；工程界面导入和硬件调试仍需分别验收。
 
-- 用 KEIL：直接打开 `projects/<TARGET>/MDK-ARM/<TARGET>.uvprojx`，适合本地调试、下载和继续用 uVision。
-- 用 GCC/CMake：从同一个 `.uvprojx` 生成命令行构建文件，适合没有 KEIL 的人做编译验证，或者接 VS Code、CLion 这类工具。
-
-先检查本机工具：
+命令行默认构建 `HERO-M`：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action probe
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1
 ```
 
-跑仓库检查：
+指定目标、全量从干净目录构建，以及检查正式配置：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project HERO-C -Pristine
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Project all -Pristine
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action check -Project all
 ```
 
-用 GCC/CMake 编一个目标或全部目标：
+产物默认在 `out/zephyr/<target>/`，不用提交。CLion 选择 `zephyr/CMakePresets.json` 对应预设后使用相同的构建配置；下载前确认对应板卡的 OpenOCD 配置和接线。
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project HERO-C
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action gcc-build -Project all
-```
-
-生成的构建文件在 `build/gcc/<TARGET>/`，不用提交。改了 KEIL 工程里的文件列表、宏、头文件路径、启动文件或 scatter 文件后，重新跑 `gcc-build` 就会刷新。
-
-GCC/CMake 路线按 warning-clean（没有编译警告）维护。看到新的编译警告，优先改源码，不要只忽略构建输出。
+Keil 和生成式 GCC/CMake 仍保留在仓库中，但都属于显式 `legacy` 流程，不是当前构建、检查或 CI 的前提。
 
 ## 第一次上电怎么调
 
@@ -122,7 +115,7 @@ GCC/CMake 路线按 warning-clean（没有编译警告）维护。看到新的�
 
 确认：
 
-- Keil 能编译下载。
+- Zephyr 目标能从干净目录构建，下载配置与板卡匹配。
 - 状态灯有变化。
 - `g_watch` 能看到任务状态。
 - 遥控输入有变化。
@@ -235,7 +228,7 @@ IMU 正常后再调云台和底盘。重点看：
 
 新车能算“初步接起来”，至少要满足：
 
-- 目标 Keil 工程能从干净状态编译。
+- 目标 Zephyr 配置能从干净目录构建。
 - `ConfigOperation.inc`、`ConfigHardware.inc`、`MountLayout.md`、`ConfigInput.inc` 里的任务、电机、安装坐标、输入映射和安全档配置正确。
 - IMU 温控和零偏校准路径可用。
 - 遥控输入、CAN 反馈、状态灯、`g_watch` 都能观察。

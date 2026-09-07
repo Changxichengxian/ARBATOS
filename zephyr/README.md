@@ -1,7 +1,9 @@
 # ARBATOS Zephyr 4.4 迁移工程
 
-这里是 ARBATOS 七套机器人固件的 Zephyr 入口。它和原来的
-Keil、CubeMX、FreeRTOS 工程并存，不改旧工程的启动文件和工程文件。
+这里是 ARBATOS 七套机器人固件的正式构建入口。后续开发和提交统一在 `main`，`zephyr` 分支保留探索历史。
+正式源码清单由这里的 CMake 维护，不读取旧 Keil 工程，也不要求安装 Keil；旧工程保留作历史参考。
+
+CLion 导入、共享预设、工具路径及 OpenOCD 使用方式见 [CLion 工作流](../manual/clion-zephyr.md)。
 
 当前固定使用 Zephyr `v4.4.0`。`west.yml` 直接锁定该标签，构建系统还会要求
 找到 4.4，避免工作区版本悄悄漂移。当前本机验证组合是：
@@ -34,62 +36,19 @@ UART 等可能参与外设传输的缓冲仍留在主 RAM，避免 DMA 访问不
 
 ## 怎么构建
 
-准备一个已安装 Zephyr 4.4 模块和 SDK 的 west 工作区，并设置：
+在仓库根目录运行，默认使用当前正式 HERO-M：
 
 ```powershell
-$env:ZEPHYR_BASE = 'D:\path\to\zephyrproject\zephyr'
-$env:ZEPHYR_SDK_INSTALL_DIR = 'D:\path\to\zephyr-sdk'
+pwsh -NoProfile -File .\tools\build.ps1 -Action build -Project HERO-M
+pwsh -NoProfile -File .\tools\build.ps1 -Action build -Project all
+pwsh -NoProfile -File .\tools\build.ps1 -Action check -Project all
 ```
 
-构建全部七个目标：
+脚本优先使用项目本地 Zephyr 环境，也允许通过 `-West`、`-Ninja` 和环境变量覆盖。默认输出在 `out/zephyr/<target>/`；使用新的 `-BuildRoot` 可保留旧构建。`-Pristine` 用于重新生成选定构建目录，不是烧录操作。
 
-```powershell
-pwsh -File D:\ARBATOS\zephyr\scripts\build-matrix.ps1 -Pristine
-```
+CLion 可打开此目录，导入 `CMakePresets.json` 中的正式目标。共享预设要求已经配置 Zephyr 环境，本机 `CMakeUserPresets.json` 已准备 `hero-m-local`，个人文件不提交。
 
-只构建一个或多个目标：
-
-```powershell
-pwsh -File D:\ARBATOS\zephyr\scripts\build-matrix.ps1 `
-    -Target hero-c,sentinel-m `
-    -Pristine
-```
-
-若 `west` 或 Ninja 不在当前终端的 `PATH`，可显式传入：
-
-```powershell
-pwsh -File D:\ARBATOS\zephyr\scripts\build-matrix.ps1 `
-    -Target hero-c `
-    -Pristine `
-    -West D:\path\to\west.exe `
-    -Ninja D:\path\to\ninja.exe
-```
-
-产物位于 `zephyr/build-<目标>/zephyr/`，主要文件有：
-
-- `zephyr.elf`：调试和符号分析
-- `zephyr.bin`：裸二进制
-- `zephyr.hex`：Intel HEX
-- `zephyr.map`：内存和链接分析
-
-也可以直接使用 west：
-
-```powershell
-west build `
-    -s D:\ARBATOS\zephyr `
-    -d D:\ARBATOS\zephyr\build-hero-c `
-    -b dji_c_f407 `
-    -p always `
-    -- -DEXTRA_CONF_FILE=D:/ARBATOS/zephyr/targets/hero-c.conf
-```
-
-SENTINEL-M 还要带上：
-
-```text
--DDTC_OVERLAY_FILE=D:/ARBATOS/zephyr/targets/sentinel-m.overlay
-```
-
-构建脚本已经自动处理该叠加配置。
+主要产物为 `zephyr.elf`、`zephyr.bin`、`zephyr.hex` 和 `zephyr.map`。SENTINEL-M 的副板 overlay 由构建脚本和预设自动带入。当前 M 板已配置 OpenOCD runner，构建不会自动烧录，详见 [CLion 与 OpenOCD](../manual/clion-zephyr.md)。
 
 ## 工程结构
 
