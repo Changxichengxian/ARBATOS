@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include "Types.h"
+#include "ServoConfig.h"
 
 // Common configuration data. Target RobotConfig.h keeps identity/build macros;
 // RobotConfig.c keeps default values.
@@ -128,6 +129,8 @@ typedef struct
 
     uint8_t yaw_turn;             // YAW 方向翻转标志
     uint8_t pitch_turn;           // PITCH 方向翻转标志
+    uint16_t pitch_middle_ecd; // pitch 机械中位编码器值；校准文件存在时仍由原校准流程接管
+    uint8_t pitch_middle_ecd_enable; // 未显式配置时保留车型头文件的旧中位
 } GimbalConfig;
 
 typedef enum
@@ -427,6 +430,7 @@ typedef struct
     uint16_t rx_timeout_ms; // RS485 offline timeout, 0=driver/default
     uint16_t feedback_id; // explicit CAN feedback ID when enabled
     uint8_t feedback_id_enable; // 1=use feedback_id, even when feedback_id is 0
+    fp32 external_reduction_ratio; // 外置减速比；0/1 为直连，不包含型号内置减速器
 } motor_node_param_t;
 
 #ifndef MOTOR_ARM_JOINT_COUNT
@@ -1074,6 +1078,7 @@ typedef struct
     AuxTelemConfig AuxTelem;
     operation_config_t operation;
     sdlog_config_t sdlog;
+    ServoConfig servo;
 } Config;
 
 extern Config g_config;

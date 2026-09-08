@@ -133,6 +133,12 @@ void ElrsLinkTask(void const *argument)
     (void)argument;
 
     ElrsLinkTaskHandle = xTaskGetCurrentTaskHandle();
+#if defined(__ZEPHYR__)
+    BspElrsLinkSetRxEventCb(ElrsLinkOnRxEvent);
+    BspElrsLinkSetRxByteCb(ElrsLinkOnItByte);
+    BspElrsLinkSetErrorCb(ElrsLinkOnUartError);
+    ElrsLinkRxStart();
+#endif
 
     // Drain any notifications posted before the task handle is ready.
     taskENTER_CRITICAL();
@@ -157,7 +163,7 @@ static void ElrsLinkTaskRunOnce(void)
     ElrsLinkTaskWait(&bits);
     ElrsLinkExpireStats();
 
-    if (BspAuxLinkGetBaudrate() != ELRS_LINK_BAUD)
+    if (BspElrsLinkGetBaudrate() != ELRS_LINK_BAUD)
     {
         return;
     }
@@ -178,7 +184,7 @@ static void ElrsLinkTaskRunOnce(void)
     }
     if ((bits & ELRS_LINK_NOTIFY_RX) != 0u)
     {
-        if (BspAuxLinkRxHasDma() == 0u)
+        if (BspElrsLinkRxHasDma() == 0u)
         {
             ElrsLinkItDrain();
             return;
@@ -249,7 +255,7 @@ void ElrsLinkStop(void)
     ElrsLinkItRxTail = 0u;
     ElrsLinkItRxOverflow = 0u;
     taskEXIT_CRITICAL();
-    BspAuxLinkRxItStop();
+    BspElrsLinkRxItStop();
     ManualInputInvalidateSource(MANUAL_INPUT_SRC_ELRS);
 }
 
@@ -273,7 +279,7 @@ void ElrsLinkGetStats(ElrsLinkStats *out)
 
 void ElrsLinkOnRxEvent(uint16_t Size, BspAuxLinkRxEvent evt)
 {
-    if (BspAuxLinkGetBaudrate() != ELRS_LINK_BAUD || !ElrsLinkDmaActive)
+    if (BspElrsLinkGetBaudrate() != ELRS_LINK_BAUD || !ElrsLinkDmaActive)
     {
         return;
     }
@@ -304,7 +310,7 @@ void ElrsLinkOnItByte(uint8_t b)
         (uint16_t)((head + 1u) & (uint16_t)(ELRS_LINK_IT_RX_RING_SIZE - 1u));
     const uint8_t was_empty = (head == ElrsLinkItRxTail) ? 1u : 0u;
 
-    if (BspAuxLinkGetBaudrate() != ELRS_LINK_BAUD || ElrsLinkDmaActive == 0u)
+    if (BspElrsLinkGetBaudrate() != ELRS_LINK_BAUD || ElrsLinkDmaActive == 0u)
     {
         return;
     }
@@ -346,13 +352,13 @@ static void ElrsLinkRxStartInternal(void)
 {
     ElrsLinkStop();
 
-    if (!BspAuxLinkRxHasDma())
+    if (!BspElrsLinkRxHasDma())
     {
         ElrsLinkItRxHead = 0u;
         ElrsLinkItRxTail = 0u;
         ElrsLinkItRxOverflow = 0u;
         ElrsLinkDmaActive = 1u;
-        if (BspAuxLinkRxItStart() != 0)
+        if (BspElrsLinkRxItStart() != 0)
         {
             ElrsLinkDmaActive = 0u;
             WatchTaskError(WATCH_TASK_ELRS);
@@ -361,7 +367,7 @@ static void ElrsLinkRxStartInternal(void)
         return;
     }
 
-    if (BspAuxLinkRxToIdleDmaStart(ElrsLinkRx.dma, (uint16_t)ELRS_LINK_DMA_RX_BUF_SIZE) != 0)
+    if (BspElrsLinkRxToIdleDmaStart(ElrsLinkRx.dma, (uint16_t)ELRS_LINK_DMA_RX_BUF_SIZE) != 0)
     {
         WatchTaskError(WATCH_TASK_ELRS);
         /* 备用输入链路启动失败只撤销 ELRS，不能复位仍可由 DBUS/Image 控制的整机。 */
@@ -424,7 +430,7 @@ static uint8_t ElrsLinkBatchContextCurrent(uint32_t session_gen)
                         ElrsLinkBatchSessionGen == session_gen &&
                         ElrsLinkBatchTransportEpoch == ElrsLinkTransportEpoch);
     taskEXIT_CRITICAL();
-    if (current != 0u && BspAuxLinkGetBaudrate() != ELRS_LINK_BAUD)
+    if (current != 0u && BspElrsLinkGetBaudrate() != ELRS_LINK_BAUD)
     {
         current = 0u;
     }
@@ -571,7 +577,7 @@ static void ElrsLinkBatchCommit(void)
     }
 
     publish_result = ElrsLinkPublishRc(ElrsLinkPendingRc.channel, session_gen);
-    const uint8_t baud_ok = (BspAuxLinkGetBaudrate() == ELRS_LINK_BAUD) ? 1u : 0u;
+    const uint8_t baud_ok = (BspElrsLinkGetBaudrate() == ELRS_LINK_BAUD) ? 1u : 0u;
     taskENTER_CRITICAL();
     if (baud_ok != 0u &&
         ElrsLinkDmaActive != 0u &&

@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include "ArbatosDt.h"
 #include "RobotFaultZephyr.h"
+#include "RobotLifecycle.h"
+#include "RobotMode.h"
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/kernel.h>
 
@@ -20,12 +22,17 @@ void ServoPwmSet(uint16_t pwm, uint8_t i)
         ServoPwmLastError = -EINVAL;
         return;
     }
-    if ((IS_ENABLED(CONFIG_ARBATOS_PREFLIGHT_ONLY) || RobotFaultZephyrBootLocked() != 0u) && pwm != 0u) {
-        ServoPwmLastError = -EPERM;
+    if (!pwm_is_ready_dt(&Servo[i])) {
+        ServoPwmLastError = -ENODEV;
         return;
     }
-    ServoPwmLastError = pwm_is_ready_dt(&Servo[i]) ?
-        pwm_set_dt(&Servo[i], Servo[i].period, PWM_USEC(pwm)) : -ENODEV;
+    // STM32 PWM 写寄存器不等待；许可检查与写入共用中断锁，不能在锁定后提交旧脉宽。
+    const unsigned int key = irq_lock();
+    const uint8_t allowed = (uint8_t)(!IS_ENABLED(CONFIG_ARBATOS_PREFLIGHT_ONLY) &&
+        RobotFaultZephyrBootLocked() == 0u && RobotLifecycleOutputAllowed() != 0u &&
+        (robot_mode_current() == ROBOT_RUN_MODE_FULL || robot_mode_is_single_task(ROBOT_TASK_MODULE_SERVO) != 0u));
+    ServoPwmLastError = pwm_set_dt(&Servo[i], Servo[i].period, PWM_USEC(allowed != 0u ? pwm : 0u));
+    irq_unlock(key);
 }
 #else
 void ServoPwmSet(uint16_t pwm, uint8_t i) { (void)pwm; (void)i; }

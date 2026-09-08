@@ -5,6 +5,7 @@ get_filename_component(ARBATOS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 set(ARBATOS_ROBOT "HERO-M" CACHE STRING "Robotconfig target name")
 file(GLOB_RECURSE ARBATOS_ROBOT_CONFIG_INPUTS CONFIGURE_DEPENDS
     "${ARBATOS_ROOT}/Robotconfig/*/RobotConfig.toml"
+    "${ARBATOS_ROOT}/boards/*/PortCatalog.toml"
     "${ARBATOS_ROOT}/shared/controllers/*/Controller.toml")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${ARBATOS_ROOT}/tools/config/RobotConfigGen.py"

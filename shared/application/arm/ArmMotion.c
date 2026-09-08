@@ -591,6 +591,8 @@ static void ArmCopyMitFeedback(uint8_t index)
     MotorState fb;
     MotorId actuator_id;
     const ArmMotorEntry *entry;
+    const motor_node_param_t *node;
+    fp32 external_ratio;
 
     if (index >= ARM_MOTOR_COUNT)
     {
@@ -598,6 +600,8 @@ static void ArmCopyMitFeedback(uint8_t index)
     }
 
     entry = &g_arm_motor_table[index];
+    node = ArmEntryNode(entry);
+    external_ratio = MotorCfgExternalReductionRatio(node);
     src = &g_arm_mit_feedback[index];
     dst = &g_arm_feedback[index];
 
@@ -606,9 +610,9 @@ static void ArmCopyMitFeedback(uint8_t index)
     dst->rx_id = src->rx_id;
     dst->rx_count = src->rx_count;
     dst->last_rx_tick = src->last_rx_tick;
-    dst->position = src->position;
-    dst->velocity = src->velocity;
-    dst->torque = src->torque;
+    dst->position = MotorTransPositionToOutput(src->position, external_ratio);
+    dst->velocity = MotorTransVelocityToOutput(src->velocity, external_ratio);
+    dst->torque = MotorTransTorqueToOutput(src->torque, external_ratio);
 
     actuator_id = ArmActuatorId(index);
     if ((uint32_t)actuator_id < (uint32_t)MotorCount)
@@ -623,9 +627,9 @@ static void ArmCopyMitFeedback(uint8_t index)
         fb.rxId = src->rx_id;
         fb.rxCount = src->rx_count;
         fb.lastRxTick = src->last_rx_tick;
-        fb.q = src->position;
-        fb.dq = src->velocity;
-        fb.tauEst = src->torque;
+        fb.q = dst->position;
+        fb.dq = dst->velocity;
+        fb.tauEst = dst->torque;
         LowStateUpdateMotor(actuator_id, &fb);
     }
 }
@@ -657,12 +661,7 @@ static fp32 ArmJ0UnitreeRatioSafe(const ArmMotorEntry *entry)
     if (entry != NULL)
     {
         const motor_node_param_t *node = ArmEntryNode(entry);
-        const MotorModelParam *model = (node != NULL) ? MotorCfgModel(node->model) : NULL;
-
-        if (model != NULL && model->reduction_ratio > 0.0f)
-        {
-            return model->reduction_ratio;
-        }
+        return MotorCfgTotalReductionRatio(node);
     }
     return 1.0f;
 }
@@ -672,6 +671,7 @@ static void ArmSyncJ0UnitreeState(void)
     const ArmMotorEntry *entry = ArmJ0Entry();
     UnitreeMotorState state;
     const fp32 ratio = ArmJ0UnitreeRatioSafe(entry);
+    const fp32 external_ratio = MotorCfgExternalReductionRatio(ArmEntryNode(entry));
 
     if (UnitreeMotorGetStateCopy(&state) == 0u)
     {
@@ -696,9 +696,11 @@ static void ArmSyncJ0UnitreeState(void)
     g_arm_j0_unitree_state.last_rx_tick_ms = state.last_rx_tick_ms;
     g_arm_j0_unitree_state.cmd_output_speed_rad_s = state.cmd_speed_rad_s / ratio;
     g_arm_j0_unitree_state.cmd_output_kd = state.cmd_kd * ratio * ratio;
-    g_arm_j0_unitree_state.torque_nm = state.torque_nm;
-    g_arm_j0_unitree_state.joint_speed_rad_s = state.joint_speed_rad_s;
-    g_arm_j0_unitree_state.joint_position_rad = state.joint_position_rad;
+    g_arm_j0_unitree_state.torque_nm = MotorTransTorqueToOutput(state.torque_nm, external_ratio);
+    g_arm_j0_unitree_state.joint_speed_rad_s =
+        MotorTransVelocityToOutput(state.joint_speed_rad_s, external_ratio);
+    g_arm_j0_unitree_state.joint_position_rad =
+        MotorTransPositionToOutput(state.joint_position_rad, external_ratio);
 }
 
 static void ArmReadJ0Unitree(const ArmMotorEntry *entry)

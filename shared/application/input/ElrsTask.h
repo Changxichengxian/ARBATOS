@@ -12,7 +12,7 @@
 
 #include <stdint.h>
 
-#include "BspUsart.h"
+#include "BspElrsUart.h"
 
 // ELRS/CRSF baud rate on the aux link port.
 #define ELRS_LINK_BAUD 420000u

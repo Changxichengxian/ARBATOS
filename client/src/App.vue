@@ -10,8 +10,11 @@ import {
 import { rpc } from "./api";
 import RobotConfigPanel from "./components/RobotConfigPanel.vue";
 import TelemetryChart from "./components/TelemetryChart.vue";
+import ConfigValuesPanel, { type ConfigValues } from "./components/ConfigValuesPanel.vue";
+import ToolsPanel from "./components/ToolsPanel.vue";
+import PortConfigPanel, { type PortOptions } from "./components/PortConfigPanel.vue";
 
-type Tab = "overview" | "robot" | "files" | "serial" | "build";
+type Tab = "overview" | "robot" | "parameters" | "files" | "serial" | "tools" | "build";
 type Summary = {
     root: string;
     targets: { name: string; board: string; preset: string }[];
@@ -90,6 +93,8 @@ const icon = (name: string) =>
         files: '<path d="M4 3h10l6 6v12H4V3Zm10 0v6h6M8 14h8M8 18h5"/>',
         serial: '<path d="M6 3v4m12-4v4M8 7h8v5a4 4 0 0 1-8 0V7Zm4 9v5m-3 0h6"/>',
         build: '<path d="m14 4 6 6-9 9H5v-6l9-9Zm-2 2 6 6M4 21h16"/>',
+        parameters: '<path d="M5 3v18M12 3v18M19 3v18M2 8h6m1 8h6m1-10h6"/>',
+        tools: '<path d="M4 4h16v16H4V4Zm4 3v6m4-4v8m4-5v5"/>',
         refresh: '<path d="M20 11a8 8 0 1 0 2 5M20 4v7h-7"/>',
         search: '<circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/>',
         save: '<path d="M5 3h12l3 3v15H4V3h1Zm2 0v6h8V3m-8 18h10v-8H7v8Z"/>',
@@ -110,11 +115,22 @@ const pendingTab = ref<Tab | null>(null);
 const pendingFile = ref("");
 const dirtyConfig = ref(false);
 const configDraft = ref<Record<string, unknown>>({});
+const portOptions = ref<PortOptions | null>(null);
+let portPreviewTimer: number | undefined;
+let portPreviewSeq = 0;
 const validationPreview = ref<{ ok: boolean; errors: string[] } | null>(null);
 const selectedFile = ref("");
 const file = ref<FileData | null>(null);
 const fileText = ref("");
 const dirtyFile = ref(false);
+const configValues = ref<ConfigValues | null>(null);
+const valuesLoading = ref(false);
+let valuesRequestSeq = 0;
+const valueChanges = ref<Record<string, unknown>>({});
+const dirtyValues = computed(() => Object.keys(valueChanges.value).length > 0);
+const toolsBusy = ref(false);
+const anyDirty = computed(() => dirtyConfig.value || dirtyFile.value || dirtyValues.value);
+const interfaceBusy = computed(() => busy.value || toolsBusy.value || valuesLoading.value);
 const query = ref("");
 const editor = ref<HTMLTextAreaElement | null>(null);
 const lineNumbers = ref<HTMLPreElement | null>(null);
@@ -160,9 +176,11 @@ const targetSelect = ref<HTMLSelectElement | null>(null);
 
 const nav: { key: Tab; label: string; hint: string }[] = [
     { key: "overview", label: "工程概览", hint: "工作区与车型" },
-    { key: "robot", label: "车型配置", hint: "控制器与服务" },
+    { key: "robot", label: "车型与接口", hint: "控制器、服务、串口分配" },
+    { key: "parameters", label: "参数与设备", hint: "PID、中位、电机、遥控器" },
     { key: "files", label: "文件编辑", hint: "车型现有文件" },
     { key: "serial", label: "串口与曲线", hint: "真实串口数据" },
+    { key: "tools", label: "日志与音频", hint: "日志解析、歌曲转 u8" },
     { key: "build", label: "编译与烧录", hint: "检查、构建、下载" },
 ];
 const currentTarget = computed(() =>
@@ -225,12 +243,17 @@ async function loadRobot() {
         if (id !== requestId || result.name !== target.value) return;
         robot.value = result;
         configDraft.value = JSON.parse(JSON.stringify(result.config ?? {}));
+        portOptions.value = null;
+        loadPortOptions();
         validationPreview.value = null;
         dirtyConfig.value = false;
         selectedFile.value = "";
         file.value = null;
         fileText.value = "";
         dirtyFile.value = false;
+        configValues.value = null;
+        valueChanges.value = {};
+        if (activeTab.value === "parameters") await loadValues();
     } catch (e) {
         if (id === requestId) fail(e);
     } finally {
@@ -238,9 +261,9 @@ async function loadRobot() {
     }
 }
 async function chooseTarget(name: string) {
-    if (busy.value) return;
+    if (interfaceBusy.value) return;
     if (name === target.value) return;
-    if (dirtyConfig.value || dirtyFile.value) {
+    if (anyDirty.value) {
         pendingTarget.value = name;
         await nextTick();
         if (targetSelect.value) targetSelect.value.value = target.value;
@@ -259,12 +282,12 @@ function cancelUnsaved() {
     });
 }
 function leaveUnsaved(save: boolean) {
-    if (busy.value) return;
+    if (interfaceBusy.value) return;
     const next = pendingTarget.value;
     const tab = pendingTab.value;
     const name = pendingFile.value;
     if (save) {
-        const operation = dirtyFile.value ? saveFile() : saveConfig();
+        const operation = dirtyValues.value ? saveValues() : dirtyFile.value ? saveFile() : saveConfig();
         operation.then((ok) => {
             if (ok) {
                 pendingTarget.value = "";
@@ -282,6 +305,8 @@ function leaveUnsaved(save: boolean) {
         );
     dirtyFile.value = false;
     dirtyConfig.value = false;
+    valueChanges.value = {};
+    loadPortOptions();
     validationPreview.value = null;
     error.value = "";
     pendingTarget.value = "";
@@ -298,9 +323,9 @@ function proceed(next: string, tab: Tab | null, name = "") {
     if (name) openFile(name);
 }
 function switchTab(tab: Tab) {
-    if (busy.value) return;
+    if (interfaceBusy.value) return;
     if (tab === activeTab.value) return;
-    if (dirtyConfig.value || dirtyFile.value) {
+    if (anyDirty.value) {
         pendingTab.value = tab;
         return;
     }
@@ -311,6 +336,57 @@ function changeConfig(value: Record<string, unknown>) {
     dirtyConfig.value = true;
     validationPreview.value = null;
     error.value = "";
+    if (portPreviewTimer) window.clearTimeout(portPreviewTimer);
+    portPreviewTimer = window.setTimeout(loadPortOptions, 300);
+}
+async function loadPortOptions() {
+    const seq = ++portPreviewSeq;
+    const expected = target.value;
+    if (!expected) return;
+    try {
+        const result = await rpc<PortOptions>("ports.get", { target: expected, config: configDraft.value });
+        if (seq === portPreviewSeq && expected === target.value) portOptions.value = result;
+    } catch (e) {
+        if (!portOptions.value && seq === portPreviewSeq) fail(e);
+    }
+}
+async function loadValues() {
+    const expectedTarget = target.value;
+    if (!expectedTarget || dirtyValues.value) return;
+    const seq = ++valuesRequestSeq;
+    valuesLoading.value = true;
+    try {
+        const result = await rpc<ConfigValues>("config.get", { target: expectedTarget });
+        if (target.value !== expectedTarget || seq !== valuesRequestSeq || disposed || dirtyValues.value) return;
+        configValues.value = result;
+        valueChanges.value = {};
+    } catch (e) { if (seq === valuesRequestSeq && !disposed) fail(e); }
+    finally { if (seq === valuesRequestSeq) valuesLoading.value = false; }
+}
+function changeValue(id: string, value: unknown) {
+    if (interfaceBusy.value) return;
+    const original = configValues.value?.groups.flatMap(group => group.fields).find(field => field.id === id);
+    if (!original || original.editable === false) return;
+    const next = { ...valueChanges.value };
+    if (Object.is(value, original.value)) delete next[id];
+    else next[id] = value;
+    valueChanges.value = next;
+    error.value = "";
+}
+async function saveValues(): Promise<boolean> {
+    if (!configValues.value || !dirtyValues.value) return false;
+    busy.value = true;
+    try {
+        configValues.value = await rpc<ConfigValues>("config.update", {
+            target: target.value, revision: configValues.value.revision, changes: valueChanges.value,
+        });
+        valueChanges.value = {};
+        error.value = "";
+        await refreshSummary();
+        showToast("参数已保存到车型文件，重新编译后生效。");
+        return true;
+    } catch (e) { fail(e); return false; }
+    finally { busy.value = false; }
 }
 async function saveConfig(): Promise<boolean> {
     if (!robot.value) return false;
@@ -327,6 +403,7 @@ async function saveConfig(): Promise<boolean> {
                 JSON.stringify(updated.config ?? {}),
             );
             dirtyConfig.value = false;
+            loadPortOptions();
             validationPreview.value = null;
             error.value = "";
             showToast("车型配置已保存。");
@@ -410,6 +487,7 @@ async function saveFile(): Promise<boolean> {
         const updated = await rpc<Robot>("robot.get", { target: target.value });
         robot.value = updated;
         configDraft.value = JSON.parse(JSON.stringify(updated.config ?? {}));
+        loadPortOptions();
         validationPreview.value = null;
         showToast("文件已保存。");
         return true;
@@ -422,7 +500,7 @@ async function saveFile(): Promise<boolean> {
 }
 async function startJob(action: Job["action"]) {
     if (!target.value) return;
-    if (dirtyConfig.value || dirtyFile.value) {
+    if (anyDirty.value) {
         showToast("请先保存或放弃当前修改，再编译，避免构建旧文件内容。");
         return;
     }
@@ -441,7 +519,7 @@ async function startJob(action: Job["action"]) {
 }
 async function planFlash() {
     if (busy.value) return;
-    if (dirtyConfig.value || dirtyFile.value) {
+    if (anyDirty.value) {
         showToast("请先保存或放弃当前修改，再检查烧录产物。");
         return;
     }
@@ -704,6 +782,7 @@ watch(target, () => {
 });
 watch(activeTab, (tab) => {
     window.scrollTo(0, 0);
+    if (tab === "parameters") loadValues();
     if (tab === "serial") {
         refreshPorts();
         rpc<SerialStatus>("serial.status")
@@ -716,8 +795,8 @@ watch(paused, (value) => {
 });
 function preventUnload(event: BeforeUnloadEvent) {
     if (
-        dirtyConfig.value ||
-        dirtyFile.value ||
+        anyDirty.value ||
+        toolsBusy.value ||
         job.value?.status === "running"
     ) {
         event.preventDefault();
@@ -736,6 +815,7 @@ onBeforeUnmount(() => {
     window.removeEventListener("beforeunload", preventUnload);
     if (jobTimer) window.clearTimeout(jobTimer);
     if (serialTimer) window.clearTimeout(serialTimer);
+    if (portPreviewTimer) window.clearTimeout(portPreviewTimer);
 });
 </script>
 
@@ -791,7 +871,7 @@ onBeforeUnmount(() => {
                 <label>当前车型</label
                 ><select
                     ref="targetSelect"
-                    :disabled="busy"
+                    :disabled="interfaceBusy"
                     :value="target"
                     @change="
                         chooseTarget(($event.target as HTMLSelectElement).value)
@@ -810,7 +890,7 @@ onBeforeUnmount(() => {
                 <button
                     v-for="item in nav"
                     :key="item.key"
-                    :disabled="busy"
+                    :disabled="interfaceBusy"
                     class="nav-item"
                     :class="{ active: activeTab === item.key }"
                     @click="switchTab(item.key)"
@@ -999,9 +1079,34 @@ onBeforeUnmount(() => {
                     :disabled="busy"
                     @update:model-value="changeConfig"
                 />
+                <PortConfigPanel :model-value="configDraft" :data="portOptions" :disabled="busy"
+                    @update:model-value="changeConfig" />
                 <p class="muted tuning-note">
                     调参只写入离线配置；可先用“检查”验证修改。串口已实现，在线参数保存和控制输出通路尚未接入。
                 </p>
+            </section>
+            <section v-else-if="activeTab === 'parameters'" class="view">
+                <div class="title-row">
+                    <div>
+                        <p class="eyebrow">参数与设备</p>
+                        <h1>{{ target }}</h1>
+                        <p>直接编辑本车的参数文件。保存后重新编译，参数才会进入固件。</p>
+                    </div>
+                    <div class="title-actions">
+                        <button class="button" :disabled="interfaceBusy || dirtyValues" @click="loadValues">重新读取</button>
+                        <button class="button primary" :disabled="interfaceBusy || !dirtyValues || job?.status === 'running'" @click="saveValues">
+                            {{ Object.keys(valueChanges).length ? `保存 ${Object.keys(valueChanges).length} 项修改` : '暂无修改' }}
+                        </button>
+                    </div>
+                </div>
+                <ConfigValuesPanel :data="configValues" :changes="valueChanges"
+                    :disabled="interfaceBusy || job?.status === 'running'" @change="changeValue" />
+            </section>
+            <section v-else-if="activeTab === 'tools'" class="view">
+                <div class="title-row">
+                    <div><p class="eyebrow">本机工具</p><h1>日志与音频</h1><p>解析机器人日志，或把歌曲转换为副板可播放的 u8 文件。</p></div>
+                </div>
+                <ToolsPanel :disabled="busy || job?.status === 'running'" @error="fail" @busy="toolsBusy = $event; if ($event) error = ''" />
             </section>
             <section v-else-if="activeTab === 'files'" class="view files-view">
                 <div class="title-row">

@@ -13,6 +13,7 @@ const props = defineProps<{
     samples: Sample[];
     channels: number;
     offline?: boolean;
+    offlineLabel?: string;
 }>();
 
 const colors = [
@@ -248,7 +249,7 @@ watch(windowSize, () => resetWindowStart());
             <div>
                 <h2>采样曲线</h2>
                 <p class="muted">
-                    {{ offline ? "本机 CSV 离线回放" : "实时串口采样" }} ·
+                    {{ offline ? offlineLabel ?? "本机 CSV 离线回放" : "实时串口采样" }} ·
                     {{ windowDescription }}
                 </p>
             </div>
@@ -320,7 +321,7 @@ watch(windowSize, () => resetWindowStart());
             <p v-if="!windowSamples.length">
                 {{
                     offline
-                        ? "CSV 中没有可绘制的数值行。"
+                        ? "文件中没有可绘制的数值行。"
                         : "尚未收到数值采样。"
                 }}
             </p>

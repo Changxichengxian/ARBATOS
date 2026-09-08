@@ -175,7 +175,10 @@ static void ChassisFeedbackUpdate(ChassisMove *ChassisMoveUpdate, const ChassisR
                                    snapshot->motor_health[i].healthy != 0u) ?
                                       motor->measure.speed_rpm :
                                       0;
-        ChassisMoveUpdate->motor_chassis[i].speed = rpm_to_vector * speed_rpm * (fp32)motor_dir;
+        const fp32 external_ratio = (snapshot != NULL) ?
+                                        MotorCfgExternalReductionRatio(snapshot->motor_cfg[i]) : 1.0f;
+        ChassisMoveUpdate->motor_chassis[i].speed =
+            MotorTransVelocityToOutput(rpm_to_vector * speed_rpm, external_ratio) * (fp32)motor_dir;
         ChassisMoveUpdate->motor_chassis[i].accel = ChassisMoveUpdate->motor_speed_pid[i].Dbuf[0] * control_hz;
     }
 

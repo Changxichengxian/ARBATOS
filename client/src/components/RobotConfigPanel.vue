@@ -53,6 +53,7 @@ const controllerNames: Record<string, string> = {
     rm: "常规发射机构",
 };
 const serviceNames: Record<string, string> = {
+    SERVO: "PWM 舵机",
     RC_SBUS: "SBUS 遥控接收",
     HEALTH_MONITOR: "运行健康检查",
     SDLOG: "SD 卡日志",
@@ -194,8 +195,7 @@ const featureNames = computed(() =>
                     </select></label
                 >
                 <p v-if="selectedSpec(domain)?.builtin" class="muted wide">
-                    使用现有控制链。调节参数请在文件编辑中打开
-                    ConfigTuning.inc。
+                    使用现有控制链。PID、中位和限幅可在“参数与设备”页修改。
                 </p>
                 <template v-else-if="selectedSpec(domain)">
                     <label
@@ -331,7 +331,7 @@ const featureNames = computed(() =>
                     ></label
                 >
                 <p class="muted">
-                    接线、安装参数和更多声明可在“文件编辑”中调整。
+                    接线、电机和遥控映射可在“参数与设备”页修改；原文件仍可直接编辑。
                 </p>
             </section>
         </div>

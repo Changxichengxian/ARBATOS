@@ -8,16 +8,32 @@
 #include <zephyr/kernel.h>
 
 #if defined(CONFIG_SOC_STM32H723XX)
+#ifdef ARB_UART_RS485_0_NODE
 static const struct stm32_pclken Rs485Clocks0[] = STM32_DT_CLOCKS(ARB_UART_RS485_0_NODE);
+#endif
+#ifdef ARB_UART_RS485_1_NODE
 static const struct stm32_pclken Rs485Clocks1[] = STM32_DT_CLOCKS(ARB_UART_RS485_1_NODE);
+#endif
 static USART_TypeDef *const Rs485Registers[] = {
+#ifdef ARB_UART_RS485_0_NODE
     (USART_TypeDef *)DT_REG_ADDR(ARB_UART_RS485_0_NODE),
+#else
+    NULL,
+#endif
+#ifdef ARB_UART_RS485_1_NODE
     (USART_TypeDef *)DT_REG_ADDR(ARB_UART_RS485_1_NODE),
+#else
+    NULL,
+#endif
 };
 
 static uint8_t Rs485FaultClockOn(uint8_t port)
 {
-    const uint32_t mask = (port == 0u) ? RCC_APB1LENR_USART2EN : RCC_APB1LENR_USART3EN;
+    if (port > 1u || Rs485Registers[port] == NULL) {
+        return 0u;
+    }
+    const uint32_t mask = (Rs485Registers[port] == USART2) ? RCC_APB1LENR_USART2EN :
+                          (Rs485Registers[port] == USART3) ? RCC_APB1LENR_USART3EN : 0u;
     return (uint8_t)((RCC->APB1LENR & mask) != 0u);
 }
 
@@ -28,11 +44,19 @@ uint8_t BspRs485FaultPortPrepare(uint8_t port, uint32_t baud, uint32_t *brr)
     }
     *brr = 0u;
     /* 只在正常初始化时查询时钟，异常时仅使用预先计算并纳入路由校验的 BRR。 */
-    const struct stm32_pclken *clock = (port == 0u) ?
-        &Rs485Clocks0[ARRAY_SIZE(Rs485Clocks0) - 1u] :
-        &Rs485Clocks1[ARRAY_SIZE(Rs485Clocks1) - 1u];
+    const struct stm32_pclken *clock = NULL;
+#ifdef ARB_UART_RS485_0_NODE
+    if (port == 0u) {
+        clock = &Rs485Clocks0[ARRAY_SIZE(Rs485Clocks0) - 1u];
+    }
+#endif
+#ifdef ARB_UART_RS485_1_NODE
+    if (port == 1u) {
+        clock = &Rs485Clocks1[ARRAY_SIZE(Rs485Clocks1) - 1u];
+    }
+#endif
     uint32_t rate = 0u;
-    if (clock_control_get_rate(DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE),
+    if (clock == NULL || clock_control_get_rate(DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE),
                                (clock_control_subsys_t)clock, &rate) != 0 || rate == 0u) {
         return 0u;
     }
@@ -52,7 +76,8 @@ uint8_t BspRs485FaultPortPrepare(uint8_t port, uint32_t baud, uint32_t *brr)
 
 int BspRs485FaultPortSend(uint8_t port, uint32_t brr, const uint8_t *data, uint16_t len)
 {
-    if (__get_PRIMASK() == 0u || port > 1u || brr < 16u || brr > 65535u ||
+    if (__get_PRIMASK() == 0u || port > 1u || Rs485Registers[port] == NULL ||
+        brr < 16u || brr > 65535u ||
         data == NULL || len == 0u || len > 64u || Rs485FaultClockOn(port) == 0u) {
         return -1;
     }

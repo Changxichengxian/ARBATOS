@@ -326,7 +326,9 @@ static inline int16_t CanTxProcessAxis(uint8_t fallback_bus,
 static void CanTxClampAppliedMit(const MotorRoute *route, MotorApplied *applied)
 {
     const CanMitMotorLimits *limits = (route != NULL) ? route->mitLimits : NULL;
-    fp32 old_value;
+    fp32 motor_value;
+    fp32 limited_value;
+    fp32 ratio;
 
     if (route == NULL ||
         applied == NULL ||
@@ -337,33 +339,39 @@ static void CanTxClampAppliedMit(const MotorRoute *route, MotorApplied *applied)
         return;
     }
 
-    old_value = applied->q;
-    applied->q = CanTxClampFp32(applied->q, -limits->position_max, limits->position_max);
-    if (applied->q != old_value)
+    ratio = MotorCfgExternalReductionRatio(route->node);
+    motor_value = MotorTransPositionToMotor(applied->q, ratio);
+    limited_value = CanTxClampFp32(motor_value, -limits->position_max, limits->position_max);
+    applied->q = MotorTransPositionToOutput(limited_value, ratio);
+    if (limited_value != motor_value)
     {
         applied->flags |= (uint8_t)MotorAppliedFlagLimited;
     }
-    old_value = applied->dq;
-    applied->dq = CanTxClampFp32(applied->dq, -limits->velocity_max, limits->velocity_max);
-    if (applied->dq != old_value)
+    motor_value = MotorTransVelocityToMotor(applied->dq, ratio);
+    limited_value = CanTxClampFp32(motor_value, -limits->velocity_max, limits->velocity_max);
+    applied->dq = MotorTransVelocityToOutput(limited_value, ratio);
+    if (limited_value != motor_value)
     {
         applied->flags |= (uint8_t)MotorAppliedFlagLimited;
     }
-    old_value = applied->kp;
-    applied->kp = CanTxClampFp32(applied->kp, 0.0f, limits->kp_max);
-    if (applied->kp != old_value)
+    motor_value = MotorTransGainToMotor(applied->kp, ratio);
+    limited_value = CanTxClampFp32(motor_value, 0.0f, limits->kp_max);
+    applied->kp = MotorTransGainToOutput(limited_value, ratio);
+    if (limited_value != motor_value)
     {
         applied->flags |= (uint8_t)MotorAppliedFlagLimited;
     }
-    old_value = applied->kd;
-    applied->kd = CanTxClampFp32(applied->kd, 0.0f, limits->kd_max);
-    if (applied->kd != old_value)
+    motor_value = MotorTransGainToMotor(applied->kd, ratio);
+    limited_value = CanTxClampFp32(motor_value, 0.0f, limits->kd_max);
+    applied->kd = MotorTransGainToOutput(limited_value, ratio);
+    if (limited_value != motor_value)
     {
         applied->flags |= (uint8_t)MotorAppliedFlagLimited;
     }
-    old_value = applied->tau;
-    applied->tau = CanTxClampFp32(applied->tau, -limits->torque_max, limits->torque_max);
-    if (applied->tau != old_value)
+    motor_value = MotorTransTorqueToMotor(applied->tau, ratio);
+    limited_value = CanTxClampFp32(motor_value, -limits->torque_max, limits->torque_max);
+    applied->tau = MotorTransTorqueToOutput(limited_value, ratio);
+    if (limited_value != motor_value)
     {
         applied->flags |= (uint8_t)MotorAppliedFlagLimited;
     }
@@ -418,7 +426,9 @@ static void CanTxUpdateApplied(const MotorRoute *route,
         route->mitLimits != NULL &&
         applied.mode == (uint8_t)MotorModeCurrent)
     {
-        applied.tau = CanTxCurrentToMitTorque(route->node, current, route->mitLimits);
+        applied.tau = MotorTransTorqueToOutput(
+            CanTxCurrentToMitTorque(route->node, current, route->mitLimits),
+            MotorCfgExternalReductionRatio(route->node));
     }
 
     if (route->transport == (uint8_t)MotorTransportCAN && route->isRmGroup == 0u)

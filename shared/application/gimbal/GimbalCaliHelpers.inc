@@ -95,7 +95,9 @@ static void GimbalCalcCali(const GimbalStepCali *GimbalCali, uint16_t *yaw_offse
     const uint32_t yaw_ecd_range = MotorCfgEncoderRange(g_config.motor.yaw.model);
     const uint32_t pitch_ecd_range = MotorCfgEncoderRange(g_config.motor.pitch.model);
     const int32_t pitch_half_ecd_range = (int32_t)(pitch_ecd_range / 2u);
-    const fp32 pitch_ecd_to_rad = GIMBAL_ENCODER_TWO_PI / (fp32)pitch_ecd_range;
+    const fp32 pitch_ecd_to_rad = MotorTransPositionToOutput(
+        GIMBAL_ENCODER_TWO_PI / (fp32)pitch_ecd_range,
+        MotorCfgExternalReductionRatio(&g_config.motor.pitch));
 
     if (YAW_TURN)
     {

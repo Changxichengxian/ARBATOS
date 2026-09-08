@@ -410,6 +410,7 @@ static uint8_t N6014bBuildCmdFromActuator(const motor_node_param_t *node,
                                               fp32 *torque)
 {
     const MotorModelMitLimits *limits = MotorCfgMitLimits(node);
+    const fp32 external_ratio = MotorCfgExternalReductionRatio(node);
     uint8_t active_cmd;
     MotorMode cmd_mode = MotorModeCurrent;
 
@@ -452,17 +453,17 @@ static uint8_t N6014bBuildCmdFromActuator(const motor_node_param_t *node,
 
     if (active_cmd != 0u && N6014bCmdModeUsesPosition(cmd_mode) != 0u)
     {
-        *position = cmd->q;
-        *velocity = cmd->dq;
-        *kp = cmd->kp;
-        *kd = cmd->kd;
-        *torque = cmd->tau;
+        *position = MotorTransPositionToMotor(cmd->q, external_ratio);
+        *velocity = MotorTransVelocityToMotor(cmd->dq, external_ratio);
+        *kp = MotorTransGainToMotor(cmd->kp, external_ratio);
+        *kd = MotorTransGainToMotor(cmd->kd, external_ratio);
+        *torque = MotorTransTorqueToMotor(cmd->tau, external_ratio);
     }
     else if (active_cmd != 0u && N6014bCmdModeUsesVelocity(cmd_mode) != 0u)
     {
-        *velocity = cmd->dq;
-        *kd = cmd->kd;
-        *torque = cmd->tau;
+        *velocity = MotorTransVelocityToMotor(cmd->dq, external_ratio);
+        *kd = MotorTransGainToMotor(cmd->kd, external_ratio);
+        *torque = MotorTransTorqueToMotor(cmd->tau, external_ratio);
     }
     else
     {
@@ -996,6 +997,7 @@ static void N6014bRecordTxResult(MotorId id, int ret)
 static void N6014bRefreshFeedback(MotorId id, const motor_node_param_t *node)
 {
     const MotorModelMitLimits *limits = MotorCfgMitLimits(node);
+    const fp32 external_ratio = MotorCfgExternalReductionRatio(node);
     N6014bAxisSlot *slot;
     N6014bMotorState state;
     MotorState previous;
@@ -1051,9 +1053,9 @@ static void N6014bRefreshFeedback(MotorId id, const motor_node_param_t *node)
     fb.rxId = state.motor_id;
     fb.rxCount = state.rx_frame_count;
     fb.lastRxTick = state.last_rx_tick_ms;
-    fb.q = state.position_rad;
-    fb.dq = state.speed_rad_s;
-    fb.tauEst = state.torque_nm;
+    fb.q = MotorTransPositionToOutput(state.position_rad, external_ratio);
+    fb.dq = MotorTransVelocityToOutput(state.speed_rad_s, external_ratio);
+    fb.tauEst = MotorTransTorqueToOutput(state.torque_nm, external_ratio);
     fb.ecd = N6014bPositionToEcd(state.position_rad);
     new_sample = MotorFeedbackEcdResolve(previous_feedback,
                                          fb.rxCount,
@@ -1094,6 +1096,7 @@ static void N6014bUpdateApplied(MotorId id,
                                    uint8_t safe_substituted)
 {
     MotorApplied applied;
+    const fp32 external_ratio = MotorCfgExternalReductionRatio(node);
 
     if (N6014bActuatorIdValid(id) == 0u)
     {
@@ -1112,11 +1115,11 @@ static void N6014bUpdateApplied(MotorId id,
     applied.txId = motor_id;
     applied.tick = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
     applied.current = current;
-    applied.q = position;
-    applied.dq = velocity;
-    applied.kp = kp;
-    applied.kd = kd;
-    applied.tau = torque;
+    applied.q = MotorTransPositionToOutput(position, external_ratio);
+    applied.dq = MotorTransVelocityToOutput(velocity, external_ratio);
+    applied.kp = MotorTransGainToOutput(kp, external_ratio);
+    applied.kd = MotorTransGainToOutput(kd, external_ratio);
+    applied.tau = MotorTransTorqueToOutput(torque, external_ratio);
     if (mode == N6014B_MODE_LOCK)
     {
         applied.mode = (uint8_t)MotorModeDisable;

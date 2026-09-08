@@ -269,6 +269,7 @@ static void CanRxUpdateLowStateFromMeasure(MotorId actuator_id,
     MotorState fb;
     uint32_t prev_rx_count = 0u;
     const uint32_t ecd_range = CanRxNodeEcdRange(node);
+    const fp32 external_ratio = MotorCfgExternalReductionRatio(node);
 
     if ((uint32_t)actuator_id >= (uint32_t)MotorCount || measure == NULL)
     {
@@ -293,8 +294,12 @@ static void CanRxUpdateLowStateFromMeasure(MotorId actuator_id,
     fb.speedRpm = measure->speed_rpm;
     fb.current = measure->given_current;
     fb.temperature = measure->temperate;
-    fb.q = ((fp32)measure->ecd) * CAN_RX_TWO_PI / (fp32)ecd_range;
-    fb.dq = ((fp32)measure->speed_rpm) * CAN_RX_RPM_TO_RADPS;
+    fb.q = MotorTransPositionToOutput(
+        ((fp32)measure->ecd) * CAN_RX_TWO_PI / (fp32)ecd_range,
+        external_ratio);
+    fb.dq = MotorTransVelocityToOutput(
+        ((fp32)measure->speed_rpm) * CAN_RX_RPM_TO_RADPS,
+        external_ratio);
     fb.tauEst = (fp32)measure->given_current;
     LowStateUpdateMotor(actuator_id, &fb);
 }
@@ -329,6 +334,7 @@ static uint8_t CanRxProcessMitNodeFrame(motor_measure_t *measure,
                                              uint8_t use_detect)
 {
     const CanMitMotorLimits *limits;
+    const fp32 external_ratio = MotorCfgExternalReductionRatio(node);
     CanMitMotorFeedback mit;
     MotorState prev;
     MotorState fb;
@@ -371,9 +377,9 @@ static uint8_t CanRxProcessMitNodeFrame(motor_measure_t *measure,
         fb.rxId = std_id;
         fb.rxCount = MotorFeedbackRxCountNext(prev_rx_count);
         fb.lastRxTick = mit.last_rx_tick;
-        fb.q = mit.position;
-        fb.dq = mit.velocity;
-        fb.tauEst = mit.torque;
+        fb.q = MotorTransPositionToOutput(mit.position, external_ratio);
+        fb.dq = MotorTransVelocityToOutput(mit.velocity, external_ratio);
+        fb.tauEst = MotorTransTorqueToOutput(mit.torque, external_ratio);
         if (measure != NULL)
         {
             fb.lastEcd = (uint16_t)measure->last_ecd;

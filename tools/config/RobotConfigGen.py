@@ -41,6 +41,7 @@ BUILTINS = {
 PRIORITIES = {"Low", "Normal", "AboveNormal", "High", "Realtime"}
 IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 TARGET_NAME = re.compile(r"[A-Za-z][A-Za-z0-9_-]*\Z")
+PORT_ID = re.compile(r"[a-z][a-z0-9_]*\Z")
 
 
 class ConfigError(ValueError):
@@ -142,6 +143,277 @@ def targets(root):
     return result
 
 
+def port_catalog(root, board):
+    """读取板级真实接口清单，返回可直接交给客户端的 JSON 数据。"""
+    root = Path(root).resolve()
+    require(board in BOARDS, f"未支持的开发板 {board}")
+    path = root / BOARDS[board]["directory"] / "PortCatalog.toml"
+    require(path.is_file(), f"{board}: 缺少板级接口元数据 {path}")
+    data = read_toml(path)
+    keys(data, {"schema", "board", "roles", "ports", "resources", "legacy"}, str(path))
+    require(data.get("schema") == 1, f"{path}: schema 必须为 1")
+    require(data.get("board") == board, f"{path}: board 必须为 {board}")
+
+    roles = []
+    role_ids = set()
+    for role in data.get("roles", []):
+        keys(role, {"id", "label", "service", "required_when_service", "default_baud",
+                    "baud_editable", "protocols", "required_capabilities", "supported", "note"},
+             f"{path}: roles")
+        role_id = role.get("id")
+        require(isinstance(role_id, str) and PORT_ID.fullmatch(role_id) and role_id not in role_ids,
+                f"{path}: 接口角色无效或重复 {role_id}")
+        role_ids.add(role_id)
+        protocols = string_list(role.get("protocols", []), f"{role_id}.protocols")
+        capabilities = string_list(role.get("required_capabilities", []),
+                                   f"{role_id}.required_capabilities")
+        supported = role.get("supported", True)
+        require(type(supported) is bool, f"{role_id}.supported 必须为 true/false")
+        require(isinstance(role.get("label"), str) and role["label"], f"{role_id}.label 不能为空")
+        if "service" in role:
+            require(isinstance(role["service"], str) and IDENTIFIER.fullmatch(role["service"]),
+                    f"{role_id}.service 无效")
+        if "required_when_service" in role:
+            require(type(role["required_when_service"]) is bool,
+                    f"{role_id}.required_when_service 必须为 true/false")
+        number(role.get("default_baud"), f"{role_id}.default_baud", 1200, 6000000, integer=True)
+        require(type(role.get("baud_editable")) is bool, f"{role_id}.baud_editable 必须为 true/false")
+        roles.append(dict(role))
+
+    ports = []
+    port_ids = set()
+    nodes = set()
+    for port in data.get("ports", []):
+        keys(port, {"id", "node", "label", "pins", "capabilities", "reservations", "note"},
+             f"{path}: ports")
+        port_id = port.get("id")
+        node = port.get("node")
+        require(isinstance(port_id, str) and PORT_ID.fullmatch(port_id) and port_id not in port_ids,
+                f"{path}: 串口编号无效或重复 {port_id}")
+        require(isinstance(node, str) and PORT_ID.fullmatch(node) and node not in nodes,
+                f"{path}: 设备树节点无效或重复 {node}")
+        require(isinstance(port.get("label"), str) and port["label"], f"{port_id}.label 不能为空")
+        port_ids.add(port_id)
+        nodes.add(node)
+        string_list(port.get("pins", []), f"{port_id}.pins")
+        string_list(port.get("capabilities", []), f"{port_id}.capabilities")
+        string_list(port.get("reservations", []), f"{port_id}.reservations")
+        ports.append(dict(port))
+
+    resources = []
+    resource_ids = set()
+    for resource in data.get("resources", []):
+        keys(resource, {"id", "label", "pins", "severity", "note"}, f"{path}: resources")
+        resource_id = resource.get("id")
+        require(isinstance(resource_id, str) and PORT_ID.fullmatch(resource_id) and
+                resource_id not in resource_ids, f"{path}: 保留资源无效或重复 {resource_id}")
+        resource_ids.add(resource_id)
+        string_list(resource.get("pins", []), f"{resource_id}.pins")
+        require(resource.get("severity") in {"warning", "error"}, f"{resource_id}.severity 无效")
+        resources.append(dict(resource))
+
+    legacy = data.get("legacy", {})
+    keys(legacy, role_ids, f"{path}: legacy")
+    for role_id, assignment in legacy.items():
+        require(isinstance(assignment, dict), f"legacy.{role_id} 必须是表")
+        keys(assignment, {"port", "baud", "protocol"}, f"legacy.{role_id}")
+        require(assignment.get("port") in port_ids, f"legacy.{role_id}.port 无效")
+    return dict(schema=1, board=board, roles=roles, ports=ports, resources=resources,
+                legacy=legacy, source=path.relative_to(root).as_posix())
+
+
+def _port_draft(data, catalog):
+    raw = data.get("ports")
+    explicit = raw is not None
+    errors = []
+    assignments = {}
+    roles = {role["id"]: role for role in catalog["roles"]}
+    ports = {port["id"]: port for port in catalog["ports"]}
+    if raw is None:
+        raw = catalog.get("legacy", {})
+    if not isinstance(raw, dict):
+        return explicit, assignments, ["ports 必须是表"]
+    for role_id, value in raw.items():
+        if role_id not in roles:
+            errors.append(f"ports 有未知角色: {role_id}")
+            continue
+        if isinstance(value, str):
+            value = {"port": value}
+        if not isinstance(value, dict):
+            errors.append(f"ports.{role_id} 必须是串口名或表")
+            continue
+        unknown = set(value) - {"port", "baud", "protocol"}
+        if unknown:
+            errors.append(f"ports.{role_id} 有未知字段: {', '.join(sorted(unknown))}")
+        port_id = value.get("port")
+        if port_id not in ports:
+            errors.append(f"ports.{role_id}.port 未知: {port_id}")
+            continue
+        role = roles[role_id]
+        baud = value.get("baud", role["default_baud"])
+        if type(baud) is not int or not 1200 <= baud <= 6000000:
+            errors.append(f"ports.{role_id}.baud 必须在 1200 到 6000000 之间")
+            baud = role["default_baud"]
+        protocol = value.get("protocol")
+        if protocol is None and role["protocols"]:
+            protocol = role["protocols"][0]
+        assignments[role_id] = dict(port=port_id, node=ports[port_id]["node"], baud=baud,
+                                    protocol=protocol, implicit=not explicit)
+    return explicit, assignments, errors
+
+
+def _port_role_active(role, assignments, services):
+    if role["id"] not in assignments:
+        return False
+    service = role.get("service")
+    return service in services if service else True
+
+
+def _port_view(catalog, explicit, assignments, services, draft_errors):
+    role_by_id = {role["id"]: role for role in catalog["roles"]}
+    port_by_id = {port["id"]: port for port in catalog["ports"]}
+    active = {role_id for role_id, role in role_by_id.items()
+              if _port_role_active(role, assignments, services)}
+    warnings = []
+    roles = []
+    for role in catalog["roles"]:
+        role_id = role["id"]
+        options = []
+        for port in catalog["ports"]:
+            reasons = []
+            missing = sorted(set(role["required_capabilities"]) - set(port["capabilities"]))
+            if missing:
+                reasons.append("缺少能力: " + ", ".join(missing))
+            if not role.get("supported", True):
+                reasons.append(role.get("note", "固件尚未支持此角色"))
+            for other_id in sorted(active):
+                if other_id != role_id and assignments[other_id]["port"] == port["id"]:
+                    reasons.append(f"已由 {other_id} 占用")
+            for other_id in sorted(active):
+                if other_id == role_id:
+                    continue
+                other_port = port_by_id[assignments[other_id]["port"]]
+                overlap = sorted(set(port["pins"]) & set(other_port["pins"]))
+                if overlap and assignments[other_id]["port"] != port["id"]:
+                    reasons.append(f"与 {other_id} 引脚冲突: {', '.join(overlap)}")
+            reservation_notes = []
+            for reservation in port.get("reservations", []):
+                resource = next((item for item in catalog["resources"] if item["id"] == reservation), None)
+                if resource is not None:
+                    reservation_notes.append(resource.get("note", resource["label"]))
+            options.append(dict(port=port["id"], node=port["node"], label=port["label"],
+                                pins=port["pins"], capabilities=port["capabilities"],
+                                available=not reasons, reasons=reasons, reservations=reservation_notes))
+        roles.append(dict(id=role_id, label=role["label"], active=role_id in active,
+                          selected=assignments.get(role_id), default_baud=role["default_baud"],
+                          baud_editable=role["baud_editable"], protocols=role["protocols"],
+                          supported=role.get("supported", True), note=role.get("note", ""), options=options))
+    for role_id in sorted(active):
+        port = port_by_id[assignments[role_id]["port"]]
+        for reservation in port.get("reservations", []):
+            resource = next((item for item in catalog["resources"] if item["id"] == reservation), None)
+            if resource is not None:
+                warnings.append(f"{role_id} 使用 {port['id']}：{resource.get('note', resource['label'])}")
+    return dict(schema=1, board=catalog["board"], explicit=explicit, assignments=assignments,
+                active_roles=sorted(active), roles=roles, ports=catalog["ports"],
+                resources=catalog["resources"], warnings=warnings, errors=draft_errors)
+
+
+def port_options(root, requested, config_text=None):
+    """给未保存草稿返回尽量完整的选项；格式错误放在 errors，不让界面变空。"""
+    root = Path(root).resolve()
+    target = target_identity(root, requested)
+    path = root / target["path"]
+    errors = []
+    try:
+        data = read_toml_text(config_text, path) if config_text is not None else read_toml(path)
+    except ConfigError as exc:
+        data = read_toml(path)
+        errors.append(str(exc))
+    board = data.get("board")
+    if board not in BOARDS:
+        board = read_toml(path).get("board")
+        errors.append(f"未支持的开发板 {data.get('board')}")
+    catalog = port_catalog(root, board)
+    explicit, assignments, draft_errors = _port_draft(data, catalog)
+    errors.extend(draft_errors)
+    services = set(data.get("services", [])) if isinstance(data.get("services", []), list) else set()
+    if explicit and "external_imu" in assignments and "IMU" not in services:
+        errors.append("ports.external_imu 已选择时必须启用 IMU 服务")
+    result = _port_view(catalog, explicit, assignments, services, errors)
+    result["target"] = target["name"]
+    return result
+
+
+def resolve_port_config(root, target, data, selected):
+    path = Path(root) / BOARDS[target["board"]]["directory"] / "PortCatalog.toml"
+    if not path.is_file() and "ports" not in data:
+        # 单元测试构造的最小仓库可以不带板级元数据；真实板目录必须提供。
+        return dict(schema=1, board=target["board"], explicit=False, assignments={},
+                    active_roles=[], roles=[], ports=[], resources=[], warnings=[], errors=[])
+    catalog = port_catalog(root, target["board"])
+    role_by_id = {role["id"]: role for role in catalog["roles"]}
+    port_by_id = {port["id"]: port for port in catalog["ports"]}
+    explicit, assignments, errors = _port_draft(data, catalog)
+    require(not errors, "; ".join(errors))
+    services = set(selected)
+
+    if explicit and "external_imu" in assignments:
+        require("IMU" in services, "ports.external_imu 已选择时必须启用 IMU 服务")
+
+    for role in catalog["roles"]:
+        service = role.get("service")
+        if explicit and role.get("required_when_service", False) and service in services:
+            require(role["id"] in assignments,
+                    f"{service} 已启用，必须在 ports.{role['id']} 选择物理串口")
+    if "ELRS_LINK" in services:
+        require(explicit and "elrs_crsf" in assignments,
+                "ELRS_LINK 只表示外置串口 CRSF；请先在 ports.elrs_crsf 选择物理串口")
+
+    active = []
+    used_ports = {}
+    used_pins = {}
+    for role_id, assignment in assignments.items():
+        role = role_by_id[role_id]
+        port = port_by_id[assignment["port"]]
+        if explicit:
+            require(role.get("supported", True), role.get("note", f"{role_id} 尚未支持"))
+            missing = sorted(set(role["required_capabilities"]) - set(port["capabilities"]))
+            require(not missing, f"ports.{role_id} 不能使用 {port['id']}，缺少能力: {', '.join(missing)}")
+            require(role["baud_editable"] or assignment["baud"] == role["default_baud"],
+                    f"ports.{role_id}.baud 固定为 {role['default_baud']}")
+            require(assignment["protocol"] in role["protocols"],
+                    f"ports.{role_id}.protocol 不支持: {assignment['protocol']}")
+        if not _port_role_active(role, assignments, services):
+            continue
+        require(port["id"] not in used_ports,
+                f"串口 {port['id']} 被 {used_ports.get(port['id'])} 和 {role_id} 重复占用")
+        overlap = sorted(set(port["pins"]) & set(used_pins))
+        if overlap:
+            require(False,
+                    f"{role_id} 与 {used_pins.get(overlap[0])} 引脚冲突: {', '.join(overlap)}")
+        used_ports[port["id"]] = role_id
+        for pin in port["pins"]:
+            used_pins[pin] = role_id
+        active.append(role_id)
+
+    for role_id in active:
+        port = port_by_id[assignments[role_id]["port"]]
+        for resource in catalog["resources"]:
+            overlap = sorted(set(port["pins"]) & set(resource["pins"]))
+            if not overlap or resource["id"] in port.get("reservations", []):
+                continue
+            require(resource["severity"] != "error",
+                    f"ports.{role_id} 与 {resource['label']} 引脚冲突: {', '.join(overlap)}")
+
+    require("rs485_1" not in active or "rs485_0" in active,
+            "ports.rs485_1 不能在 rs485_0 未分配时单独启用")
+
+    result = _port_view(catalog, explicit, assignments, services, [])
+    result["active_roles"] = sorted(active)
+    return result
+
+
 def target_identity(root, requested):
     """只按目录定位车型，不解析其他车型的 TOML。"""
     root = Path(root).resolve()
@@ -205,7 +477,7 @@ def resolve(root, requested, config_text=None):
     path = root / target["path"]
     # 桌面端保存前传入 config_text，在内存中做完整校验，不能借真实文件绕过检查。
     data = read_toml_text(config_text, path) if config_text is not None else read_toml(path)
-    keys(data, {"schema", "board", "profile", "services", "controllers", "build", "features", "tasks"}, str(path))
+    keys(data, {"schema", "board", "profile", "services", "controllers", "build", "features", "tasks", "ports"}, str(path))
     require(data.get("schema") == 1, f"{path}: schema 必须为 1")
     require(data.get("board") in BOARDS, f"{target['name']}: 未支持的开发板 {data.get('board')}")
     target["board"] = data["board"]
@@ -235,7 +507,9 @@ def resolve(root, requested, config_text=None):
         reasons[symbol] = [reason]
 
     for service in string_list(data.get("services", []), "services"):
-        require(service in catalog and catalog[service]["kind"] != "Control", f"{service} 请在 controllers 选择控制器")
+        require(service in catalog and
+                (catalog[service]["kind"] != "Control" or service == "SERVO"),
+                f"{service} 请在 controllers 选择控制器")
         add(service, "services 明确选择")
     controllers = data.get("controllers", {})
     keys(controllers, BUILTINS, "controllers")
@@ -291,6 +565,8 @@ def resolve(root, requested, config_text=None):
     for group in conflicts:
         chosen = set(group) & set(selected)
         require(len(chosen) <= 1, f"控制输出冲突: {', '.join(sorted(chosen))}")
+    require(target["board"] == "dm_mc02_h7" or "SERVO" not in selected,
+            "SERVO 需要 M 板 P11 的四路 servo-pwms；当前开发板没有该资源")
     if any(c["domain"] == "shoot" and c["type"] == "rm" for c in resolved_controls):
         require(bool({"SINGLE_GIMBAL", "DUAL_YAW_GIMBAL"} & set(selected)),
                 "shoot.rm 当前由 single/dual_yaw 云台任务调用；其他机构请关闭 shoot，不能只选择却没有执行入口")
@@ -319,6 +595,7 @@ def resolve(root, requested, config_text=None):
     require(not features.get("subboard_music") or target["board"] == "dm_mc02_h7", "副板音乐需要 MC02 H7")
     if features.get("imu_mount"):
         inside(path.parent, "ImuMount.h", {".h"})
+    port_config = resolve_port_config(root, target, data, selected)
     build = data.get("build", {})
     keys(build, {"sources", "shared_sources", "port_sources", "overlay"}, "build")
     target_sources = [inside(path.parent, x, {".c", ".cpp"}).relative_to(root).as_posix()
@@ -331,11 +608,35 @@ def resolve(root, requested, config_text=None):
                       for x in build.get("shared_sources", [])]
     port_sources = [inside(root, x, {".c", ".cpp"}).relative_to(root).as_posix()
                     for x in build.get("port_sources", [])]
+    if "external_imu" in port_config["active_roles"]:
+        port_sources.append(inside(root, "shared/zephyr/port/sensors/Hi14Parser.c", {".c"})
+                            .relative_to(root).as_posix())
+    tuning_aux_active = (port_config["explicit"] and
+                         "tuning_aux" in port_config["active_roles"])
+    if tuning_aux_active:
+        # 显式选择调参 AUX 时，使用真正的 AuxPort/AuxTune 任务实现，并移除车型占位实现。
+        target_sources = [source for source in target_sources
+                          if not source.endswith("/UsbHostLinkTask.c")]
+        shared_sources = [source for source in shared_sources
+                          if not source.endswith("/HostLinkTaskStub.c")]
+        shared_sources.extend([
+            "shared/application/comm/host/HostLinkTask.c",
+            "shared/application/comm/host/AuxAutotune.c",
+            "shared/application/comm/host/AuxParam.c",
+            "shared/application/comm/host/AuxPort.c",
+            "shared/application/comm/host/AuxTelem.c",
+            "shared/application/comm/host/AuxTune.c",
+            "shared/application/comm/host/HostTuneBridge.c",
+            "shared/application/comm/vision/VisionLink.c",
+            "shared/application/input/ImageRemoteLink.c",
+        ])
     for task in task_rows:
         source = task["source"]
         if not source:
             require(False, f"{task['symbol']} 尚未迁移实现源，不能选择")
         if source.startswith("@target/"):
+            if task["symbol"] == "HOST_LINK" and tuning_aux_active:
+                continue
             require(any(path.endswith("/" + source[8:]) for path in target_sources),
                     f"{task['symbol']} 需要车型实现 {source[8:]}")
             continue
@@ -354,12 +655,15 @@ def resolve(root, requested, config_text=None):
     overlay = str(inside(path.parent, build["overlay"])) if build.get("overlay") else ""
     target.update(profile=profile, tasks=task_rows, controllers=resolved_controls, reasons=reasons,
                   features=features, board_info=board, sources=sorted(set(target_sources + shared_sources)),
-                  port_sources=port_sources, overlay=overlay, catalog=catalog)
+                  port_sources=port_sources, overlay=overlay, ports=port_config, catalog=catalog)
     config_bytes = config_text.encode("utf-8") if config_text is not None else path.read_bytes()
     fingerprint = hashlib.sha256(config_bytes + (root / CATALOG).read_bytes())
     for control in resolved_controls:
         if not control["builtin"]:
             fingerprint.update((root / control["plugin"]["manifest"]).read_bytes())
+    port_catalog_path = root / board["directory"] / "PortCatalog.toml"
+    if port_catalog_path.is_file():
+        fingerprint.update(port_catalog_path.read_bytes())
     target["fingerprint"] = fingerprint.hexdigest()
     return target
 
@@ -376,9 +680,50 @@ def c_string(value):
     return json.dumps(str(value), ensure_ascii=True)
 
 
+def write_port_generation(target, out, header):
+    config = target["ports"]
+    if not config.get("explicit"):
+        return ""
+    macro_by_role = {
+        "rc_sbus": "RC",
+        "elrs_crsf": "ELRS",
+        "tuning_aux": "AUX",
+        "external_imu": "IMU",
+        "referee": "REFEREE",
+        "rs485_0": "RS485_0",
+        "rs485_1": "RS485_1",
+    }
+    active = set(config["active_roles"])
+    header.append("#define ARB_UART_ROLES_EXPLICIT 1")
+    for role_id, macro in macro_by_role.items():
+        if role_id not in active:
+            header.append(f"#define ARB_UART_{macro}_DISABLED 1")
+            continue
+        assignment = config["assignments"][role_id]
+        header.append(f"#define ARB_UART_{macro}_NODE DT_NODELABEL({assignment['node']})")
+        header.append(f"#define ARB_UART_{macro}_BAUD {assignment['baud']}u")
+
+    overlay_lines = ["/* 自动生成：显式 ports 分配及启动波特率。 */"]
+    emitted = set()
+    for role_id in config["active_roles"]:
+        assignment = config["assignments"][role_id]
+        if assignment["node"] in emitted:
+            continue
+        emitted.add(assignment["node"])
+        overlay_lines.extend([f"&{assignment['node']} {{", f"    current-speed = <{assignment['baud']}>;",
+                              '    status = "okay";', "};"])
+    path = out / "RobotTargetPorts.overlay"
+    write_changed(path, "\n".join(overlay_lines) + "\n")
+    return str(path.resolve())
+
+
 def generate(root, target, out):
     board, catalog = target["board_info"], target["catalog"]
     selected = {row["symbol"]: row for row in target["tasks"]}
+    rs485_count = board["rs485_ports"]
+    if target["ports"].get("explicit"):
+        active_roles = set(target["ports"]["active_roles"])
+        rs485_count = int("rs485_0" in active_roles) + int("rs485_1" in active_roles)
     header = ["/* 自动生成：修改 Robotconfig 中的 RobotConfig.toml，然后重新构建。 */", "#pragma once",
               f'#define ARBATOS_TARGET_NAME {c_string(target["name"])}',
               f'#define ARBATOS_BOARD_NAME {c_string(Path(board["directory"]).name)}',
@@ -386,7 +731,7 @@ def generate(root, target, out):
               f'#define ROBOT_BOARD_KIND ROBOT_BOARD_KIND_{board["kind"]}',
               f'#define ROBOT_BOARD_CPU_HZ {board["cpu_hz"]}u',
               f'#define ROBOT_BOARD_CAN_BUS_COUNT {board["can_buses"]}u',
-              f'#define ROBOT_BOARD_RS485_PORT_COUNT {board["rs485_ports"]}u',
+              f'#define ROBOT_BOARD_RS485_PORT_COUNT {rs485_count}u',
               f'#define ROBOT_BOARD_HAS_FPU {board["fpu"]}u',
               f'#define ROBOT_RUNTIME_DEFAULT_STACK_WORDS {board["stack"]}u',
               f'#define ROBOT_IMU_MOUNT_CONFIGURED {int(target["features"].get("imu_mount", False))}',
@@ -417,6 +762,11 @@ def generate(root, target, out):
         header.append(f"#define WATCH_ENABLE_{watch_name} {int(module in selected)}")
     header.extend([f'#define WATCH_ENABLE_GIMBAL_SINGLE {int(bool({"SINGLE_GIMBAL", "DUAL_YAW_GIMBAL"} & selected.keys()))}',
                    f"#define WATCH_ENABLE_SHOOT_RM {int(shoot)}"])
+    external_imu = target["ports"]["assignments"].get("external_imu")
+    external_hi14 = ("external_imu" in target["ports"]["active_roles"] and
+                     external_imu is not None and external_imu.get("protocol") == "hipnuc_hi14")
+    header.append(f"#define ROBOT_EXTERNAL_IMU_HI14 {int(external_hi14)}")
+    port_overlay = write_port_generation(target, out, header)
     write_changed(out / "RobotTargetConfig.h", "\n".join(header) + "\n")
     profile = ["/* 此运行任务表与编译开关来自同一份车型声明。 */", "    .profile = {",
                f'        .task_module_count = {len(selected)}u,', "        .task_modules = {"]
@@ -429,10 +779,13 @@ def generate(root, target, out):
     write_changed(out / "RobotTargetTasks.inc", "/* 供运行入口多次展开，不加 include guard。 */\n" + "".join(
         f'ROBOT_RUNTIME_TASK({r["symbol"]}, {r["entry"]}, robotTask{r["id"]}, osPriority{r["priority"]}, {r["stack_words"]}u)\n'
         for r in rows))
+    overlays = [target["overlay"]] if target["overlay"] else []
+    if port_overlay:
+        overlays.append(port_overlay)
     variables = {"ARBATOS_TARGET_DIR": target["name"], "ARBATOS_BOARD_DIR": board["directory"],
-                 "ARBATOS_BOARD": target["board"], "ARBATOS_TARGET_SOURCES": target["sources"],
-                 "ARBATOS_TARGET_PORT_SOURCES": target["port_sources"], "ARBATOS_TARGET_OVERLAY": target["overlay"],
-                 "ARBATOS_TARGET_GENERATED_DIR": out.as_posix()}
+                  "ARBATOS_BOARD": target["board"], "ARBATOS_TARGET_SOURCES": target["sources"],
+                  "ARBATOS_TARGET_PORT_SOURCES": target["port_sources"], "ARBATOS_TARGET_OVERLAY": overlays,
+                  "ARBATOS_TARGET_GENERATED_DIR": out.as_posix()}
     cmake = ["# 自动生成；路径来自已校验的车型声明。"]
     for name, values in variables.items():
         if not isinstance(values, list):
@@ -576,7 +929,7 @@ def main(argv=None):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["list", "generate", "check", "new", "presets"])
+    parser.add_argument("command", choices=["list", "ports", "generate", "check", "new", "presets"])
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--target", default="all")
     parser.add_argument("--out", type=Path)
@@ -587,6 +940,9 @@ def main(argv=None):
     try:
         if args.command == "list":
             result = targets(root)
+        elif args.command == "ports":
+            require(args.target.lower() != "all", "ports 需要 --target 指定一个车型")
+            result = port_options(root, args.target)
         elif args.command == "new":
             result = create_robot(root, args.target, args.source)
         elif args.command == "presets":
@@ -597,7 +953,7 @@ def main(argv=None):
         else:
             require(args.out is not None, "generate 需要 --out 构建输出目录")
             result = generate(root, resolve(root, args.target), args.out.resolve())
-        if args.json or args.command in {"list", "new", "presets"}:
+        if args.json or args.command in {"list", "ports", "new", "presets"}:
             print(json.dumps(result, ensure_ascii=False))
         else:
             print(f"车型配置检查通过: {args.target}")

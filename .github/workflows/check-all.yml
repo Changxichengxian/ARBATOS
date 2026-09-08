@@ -53,6 +53,18 @@ jobs:
             shared/controllers/speed_gimbal/SpeedGimbal.c \
             -lm -o "$RUNNER_TEMP/controller-tests"
           "$RUNNER_TEMP/controller-tests"
+          cc -std=c11 -Wall -Wextra -Werror \
+            -Ishared/application/robot -Ishared/application/services/servo \
+            tools/tests/ServoOutputRegression.c -o "$RUNNER_TEMP/servo-tests"
+          "$RUNNER_TEMP/servo-tests"
+          cc -std=c99 -Wall -Wextra -Werror \
+            -Ishared/components/support -Ishared/application/motors \
+            tools/tests/MotorTransmissionRegression.c -o "$RUNNER_TEMP/transmission-tests"
+          "$RUNNER_TEMP/transmission-tests"
+          cc -std=c99 -Wall -Wextra -Werror -Ishared/zephyr/port/sensors \
+            tools/tests/Hi14ParserRegression.c shared/zephyr/port/sensors/Hi14Parser.c \
+            -lm -o "$RUNNER_TEMP/hi14-tests"
+          "$RUNNER_TEMP/hi14-tests"
 
   client-checks:
     runs-on: windows-latest

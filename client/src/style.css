@@ -121,6 +121,8 @@ body {
 }
 nav {
     padding: 10px 8px;
+    overflow-y: auto;
+    min-height: 0;
 }
 .nav-item {
     width: 100%;

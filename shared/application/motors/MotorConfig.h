@@ -11,6 +11,7 @@
 
 #include "RobotConfig.h"
 #include "MotorModelDb.h"
+#include "MotorTransmission.h"
 
 static inline const MotorModelDbEntry *MotorCfgModelDb(MotorModel model);
 static inline const MotorModelRxDesc *MotorCfgRxDesc(MotorModel model);
@@ -241,6 +242,36 @@ static inline fp32 MotorCfgReductionRatio(MotorModel model)
 {
     const MotorModelParam *m = MotorCfgModel(model);
     return (m != NULL) ? m->reduction_ratio : 1.0f;
+}
+
+// 取轴外置减速比；0、1 和越界值按直连处理，不包含型号自带减速器。
+static inline fp32 MotorCfgExternalReductionRatio(const motor_node_param_t *node)
+{
+    return MotorTransRatioSafe((node != NULL) ? node->external_reduction_ratio : 0.0f);
+}
+
+// 仅供协议明确使用转子侧量的路径；普通 RM 编码器和转速不能重复套用型号内置比。
+static inline fp32 MotorCfgTotalReductionRatio(const motor_node_param_t *node)
+{
+    fp32 modelRatio;
+    fp32 externalRatio;
+
+    if (node == NULL)
+    {
+        return 1.0f;
+    }
+
+    modelRatio = MotorCfgReductionRatio(node->model);
+    if (modelRatio <= 0.0f)
+    {
+        modelRatio = 1.0f;
+    }
+    externalRatio = MotorCfgExternalReductionRatio(node);
+    if (externalRatio == 1.0f)
+    {
+        return modelRatio;
+    }
+    return modelRatio * externalRatio;
 }
 
 // 取共享电机能力表，里面放协议、MIT 限幅、反馈解析这些跨目标信息。

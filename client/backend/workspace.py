@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import os
 import subprocess
+import sys
 import tempfile
 import threading
 import tomllib
@@ -19,6 +20,11 @@ _spec = importlib.util.spec_from_file_location("arbatos_robot_config_gen", REPO 
 GEN = importlib.util.module_from_spec(_spec)
 assert _spec.loader is not None
 _spec.loader.exec_module(GEN)
+_config_spec = importlib.util.spec_from_file_location("arbatos_configedit", Path(__file__).with_name("configedit.py"))
+CONFIGEDIT = importlib.util.module_from_spec(_config_spec)
+assert _config_spec.loader is not None
+sys.modules[_config_spec.name] = CONFIGEDIT
+_config_spec.loader.exec_module(CONFIGEDIT)
 
 TEXT_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".inc", ".toml", ".md", ".overlay"}
 MAX_TEXT_BYTES = 1024 * 1024
@@ -36,6 +42,7 @@ class Workspace:
         except ValueError as exc:
             raise ValueError("Robotconfig 目录不能指向工作区外") from exc
         self._lock = threading.RLock()
+        self._config_editor = CONFIGEDIT.ConfigEditor(self)
 
     def dispatch(self, method, params):
         if not isinstance(params, dict):
@@ -46,6 +53,9 @@ class Workspace:
             "robot.update": self.robot_update,
             "robot.create": self.robot_create,
             "robot.validate": self.robot_validate,
+            "config.get": self.config_get,
+            "config.update": self.config_update,
+            "ports.get": self.ports_get,
             "file.read": self.file_read,
             "file.write": self.file_write,
         }
@@ -212,7 +222,7 @@ class Workspace:
         services = [{"symbol": item["symbol"], "name": item["task"],
                      "dependencies": list(item["dependencies"]),
                      "available": item["entry"] != "None" and bool(item["header"]) and bool(item["source"])}
-                    for item in catalog.values() if item["kind"] != "Control"]
+                    for item in catalog.values() if item["kind"] != "Control" or item["symbol"] == "SERVO"]
         return {"root": str(self.root), "targets": self._target_entries(),
                 "controllers": sorted(controllers, key=lambda row: (row["domain"], row["name"])),
                 "services": services, "git": self._git_info()}
@@ -231,6 +241,25 @@ class Workspace:
 
     def robot_get(self, target):
         return self._robot_detail(target)
+
+    def config_get(self, target):
+        return self._config_editor.public_get(target)
+
+    def config_update(self, target, revision, changes):
+        return self._config_editor.update(target, revision, changes)
+
+    def ports_get(self, target, config=None):
+        config_text = tomlkit.dumps(config) if isinstance(config, dict) else None
+        if config is not None and not isinstance(config, dict):
+            raise ValueError("车型配置必须是对象")
+        if not hasattr(GEN, "port_options"):
+            raise ValueError("当前配置生成器尚未提供端口选项")
+        try:
+            return GEN.port_options(self.root, target, config_text=config_text)
+        except TypeError:
+            if config_text is not None:
+                raise
+            return GEN.port_options(self.root, target)
 
     @staticmethod
     def _apply_toml(existing, incoming):

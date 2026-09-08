@@ -44,20 +44,24 @@ H723 的 `BspCanFaultPort.c` 为当前 `st,stm32h7-fdcan` 驱动提供原始寄�
 
 ## UART 与 RS485
 
-`zephyr/port/uart/` 提供 `BspRc`、`BspUsart`，全部缓冲固定，不用堆内存。可用别名 `uart-rc`、`uart-aux`、`uart-referee`、`uart-rs485-0`、`uart-rs485-1`，或由目标配置覆盖：
+`zephyr/port/uart/` 提供 `BspRc`、`BspUsart`、外置 ELRS 和外置 IMU 接收接口，全部缓冲固定，不用堆内存。没有 `[ports]` 的旧车型继续使用 `uart-rc`、`uart-aux`、`uart-referee`、`uart-rs485-0`、`uart-rs485-1` 别名；新车型在 `RobotConfig.toml` 选择角色，生成器再写设备树 overlay 和 `ARB_UART_*` 宏：
 
-```c
-#define ARB_UART_RC_NODE       DT_NODELABEL(usart3)
-#define ARB_UART_AUX_NODE      DT_NODELABEL(usart1)
-#define ARB_UART_REFEREE_NODE  DT_NODELABEL(usart6)
-#define ARB_UART_RS485_0_NODE  DT_NODELABEL(usart2)
-#define ARB_UART_RS485_1_NODE  DT_NODELABEL(uart4)
+```toml
+[ports]
+rc_sbus = "uart5"
+elrs_crsf = { port = "usart10", baud = 420000, protocol = "crsf" }
+tuning_aux = { port = "usart1", baud = 230400, protocol = "arbatos_aux" }
+referee = "uart7"
+rs485_0 = "usart2"
+rs485_1 = "usart3"
 ```
 
-示例只说明写法，实际节点和引脚以目标设备树为准：
+这组示例对应 M 板：UART5 只有 PD2 接收线；USART10 为 PE2/PE3；UART7 为 PE7/PE8；USART1 为 PA10/PA9，且板级控制台选择了本口；USART2、USART3 分别带专用 DE 引脚，供两路 RS485 使用。外置 IMU 也要占一个带接收能力的普通串口，因此不能在上述六个端口已全部占用时再同时加入。接口清单描述板上已经接出的复用关系，不表示 STM32 任意管脚都能由车型配置改成 UART。A、C 板目前没有 `PortCatalog.toml`，客户端不能为它们选择这些 M 板端口。
+
+生成器按板级能力、活动角色、设备节点和引脚检查重复占用；USART1 的控制台保留会给出提示，SPI1/SPI2/SPI3 和 P11 舵机 PWM 的固定管脚也在资源清单中参与冲突检查。只有当前任务集合真正启用的角色才占口，例如未启用 `RC_SBUS` 时，草稿里保留的 `rc_sbus` 不会挡住别的接收角色。还要注意：
 
 - 一个 UART 同时只能承担一个角色；角色缺失返回 `-ENODEV`，不会假装启动成功。
-- 优先使用 Zephyr async UART；不可用时，AUX、RS485 退回 IRQ 逐字节接收，RC 与裁判用固定双缓冲，静默 `ARB_UART_IDLE_TIMEOUT_US` 后提交。
+- 优先使用 Zephyr async UART；不可用时，AUX、外置 ELRS、外置 IMU 和 RS485 退回 IRQ 接收，RC 与裁判用固定缓冲。
 - RC 只接受当前共享解析器使用的 18 字节 DJI DBUS 帧，25 字节 SBUS 需先改解析器。
 - 发送先复制进本端缓冲，常规长度上限 512 字节，RS485 为 40 字节，超限返回 `-EMSGSIZE`。
 - AUX 缓冲写满后的短暂重启窗口不适合未经实测的持续高速流；需要零间隙时应选 async DMA 驱动并测实际吞吐。
@@ -120,6 +124,8 @@ git submodule update --init shared/third_party/ExpressLRS
 
 后续移植主要从 `src/lib/SX1280Driver/`（SX128x 驱动）、`src/lib/FHSS/`（跳频）、`src/lib/OTA/`（空中数据格式）和 `src/src/rx_main.cpp`（接收流程）查看。SX1281 可沿用 SX128x 路线，依据为[上游维护者说明](https://github.com/ExpressLRS/ExpressLRS/discussions/3371)；这不代表已有 H723/Zephyr 成品端口。硬件接线和现有引脚冲突见[开发板说明](../boards/README.md#sx1281-副板与-lcd-口)。
 
-现有 `application/input/ElrsTask.c` 处理外置接收机的串口 CRSF 数据，未实现 SPI 射频驱动；HERO-M 的 `ROBOT_TASK_BUILD_ELRS_LINK` 仍为 0，当前显式源码清单也未加入该任务。未来需完成 SPI、BUSY 等待、中断、微秒定时、跳频同步、对频配置和断连判断，再把有效通道接到 `ManualInputUpdateElrsChannelsGuarded()`，保留现有手动输入选择和失联保护。不能只打开原串口任务来启用 SX1281。
+现有 `application/input/ElrsTask.c` 处理普通外置接收机的串口 CRSF 数据。车型启用 `ELRS_LINK` 并在 `ports.elrs_crsf` 选择实际串口后，生成器会加入任务源、生成 420000 波特率的端口绑定，并继续通过 `ManualInputUpdateElrsChannelsGuarded()` 进入原手动输入链。当前只接收 CRSF 0x14 链路统计和 0x16 通道帧，不向接收机发送遥测；接线和整机失联行为仍需实测。
+
+这条 UART 接收路径不等于 SPI 射频驱动。未来仍需完成 SPI、BUSY 等待、中断、微秒定时、跳频同步、对频配置和断连判断，才能使用板载 SX1281；不能只打开串口任务来启用 SX1281。
 
 引入的 4.1.0 源码面向 ELRS 4.x；实际接收方案仍需按发射端版本和模式验证。先验证射频芯片通信、收包与失联，再在 SD 日志、IMU 和控制任务同时运行时测延迟。第三方源码保留 GPL-3.0 及各文件自己的声明，详见[第三方材料](../授权与贡献说明.md#第三方材料)。

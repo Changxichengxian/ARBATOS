@@ -1,6 +1,8 @@
 /* Zephyr 4.4 implementation of the legacy ARBATOS serial BSP. */
 #include "BspUsart.h"
 #include "BspRc.h"
+#include "BspElrsUart.h"
+#include "BspExternalImuUart.h"
 #include "BspZephyrUartConfig.h"
 #include "BspRs485FaultPort.h"
 
@@ -75,23 +77,30 @@ typedef struct
 } ArbRcFrame;
 
 #ifdef ARB_UART_RC_NODE
-static const struct device *const ArbRcDev = DEVICE_DT_GET(ARB_UART_RC_NODE);
+static ArbUartPort ArbRcPort = {.dev = DEVICE_DT_GET(ARB_UART_RC_NODE)};
 #else
-static const struct device *const ArbRcDev;
+static ArbUartPort ArbRcPort = {.dev = NULL};
 #endif
 #ifdef ARB_UART_AUX_NODE
-static const struct device *const ArbAuxDev = DEVICE_DT_GET(ARB_UART_AUX_NODE);
+static ArbUartPort ArbAuxPort = {.dev = DEVICE_DT_GET(ARB_UART_AUX_NODE)};
 #else
-static const struct device *const ArbAuxDev;
+static ArbUartPort ArbAuxPort = {.dev = NULL};
 #endif
 #ifdef ARB_UART_REFEREE_NODE
-static const struct device *const ArbRefereeDev = DEVICE_DT_GET(ARB_UART_REFEREE_NODE);
+static ArbUartPort ArbRefereePort = {.dev = DEVICE_DT_GET(ARB_UART_REFEREE_NODE)};
 #else
-static const struct device *const ArbRefereeDev;
+static ArbUartPort ArbRefereePort = {.dev = NULL};
 #endif
-static ArbUartPort ArbRcPort = {.dev = ArbRcDev};
-static ArbUartPort ArbAuxPort = {.dev = ArbAuxDev};
-static ArbUartPort ArbRefereePort = {.dev = ArbRefereeDev};
+#ifdef ARB_UART_ELRS_NODE
+static ArbUartPort ArbElrsPort = {.dev = DEVICE_DT_GET(ARB_UART_ELRS_NODE)};
+#else
+static ArbUartPort ArbElrsPort = {.dev = NULL};
+#endif
+#ifdef ARB_UART_IMU_NODE
+static ArbUartPort ArbExternalImuPort = {.dev = DEVICE_DT_GET(ARB_UART_IMU_NODE)};
+#else
+static ArbUartPort ArbExternalImuPort = {.dev = NULL};
+#endif
 static ArbUartPort ArbRs485Ports[2] = {
 #ifdef ARB_UART_RS485_0_NODE
     {.dev = DEVICE_DT_GET(ARB_UART_RS485_0_NODE)},
@@ -255,7 +264,7 @@ static uint8_t ArbUartCallError(ArbUartPort *port)
     byte_cb = port->error_cb;
     k_spin_unlock(&port->lock, key);
 
-    if (port == &ArbAuxPort)
+    if (port == &ArbAuxPort || port == &ArbElrsPort || port == &ArbExternalImuPort)
     {
         return (aux_cb != NULL && aux_cb() != 0u) ? 1u : 0u;
     }
@@ -275,7 +284,7 @@ static void ArbUartDeliverByte(ArbUartPort *port, uint8_t byte)
     rs485_cb = port->byte_cb;
     k_spin_unlock(&port->lock, key);
 
-    if (port == &ArbAuxPort)
+    if (port == &ArbAuxPort || port == &ArbElrsPort || port == &ArbExternalImuPort)
     {
         if (aux_cb != NULL)
         {
@@ -907,6 +916,128 @@ int BspAuxLinkRxToIdleDmaStart(uint8_t *buf, uint16_t len)
 }
 void usart1_tx_dma_init(void) { (void)ArbUartPrepare(&ArbAuxPort); }
 void usart1_tx_dma_enable(uint8_t *data, uint16_t len) { (void)BspAuxLinkTxDma(data, len); }
+
+/* ===== 独立外置 ELRS / CRSF 接收 ===== */
+void BspElrsLinkSetRxEventCb(BspAuxLinkRxEventCb cb)
+{
+    k_spinlock_key_t key = k_spin_lock(&ArbElrsPort.lock);
+    ArbElrsPort.aux_event_cb = cb;
+    k_spin_unlock(&ArbElrsPort.lock, key);
+}
+void BspElrsLinkSetRxByteCb(BspAuxLinkRxByteCb cb)
+{
+    k_spinlock_key_t key = k_spin_lock(&ArbElrsPort.lock);
+    ArbElrsPort.aux_byte_cb = cb;
+    k_spin_unlock(&ArbElrsPort.lock, key);
+}
+void BspElrsLinkSetErrorCb(BspAuxLinkErrorCb cb)
+{
+    k_spinlock_key_t key = k_spin_lock(&ArbElrsPort.lock);
+    ArbElrsPort.aux_error_cb = cb;
+    k_spin_unlock(&ArbElrsPort.lock, key);
+}
+uint32_t BspElrsLinkGetBaudrate(void) { return ArbElrsPort.baudrate; }
+uint8_t BspElrsLinkRxHasDma(void)
+{
+    return (ArbUartPrepare(&ArbElrsPort) == 0 && ArbElrsPort.async_ok != 0u) ? 1u : 0u;
+}
+int BspElrsLinkRxItStart(void)
+{
+    ArbElrsPort.rx_mode = ArbUartRxAuxByte;
+    ArbElrsPort.rx_buf = &ArbElrsPort.rx_byte;
+    ArbElrsPort.rx_len = 1u;
+    if (ArbElrsPort.dev != NULL)
+    {
+        (void)uart_rx_disable(ArbElrsPort.dev);
+    }
+    return ArbUartStartRx(&ArbElrsPort);
+}
+void BspElrsLinkRxItStop(void)
+{
+    ArbElrsPort.rx_mode = ArbUartRxOff;
+    if (ArbElrsPort.dev != NULL)
+    {
+        (void)uart_rx_disable(ArbElrsPort.dev);
+        uart_irq_rx_disable(ArbElrsPort.dev);
+    }
+}
+int BspElrsLinkRxToIdleDmaStart(uint8_t *buf, uint16_t len)
+{
+    if (buf == NULL || len == 0u)
+    {
+        return -EINVAL;
+    }
+    if (ArbUartPrepare(&ArbElrsPort) != 0 || ArbElrsPort.async_ok == 0u)
+    {
+        return -ENOTSUP;
+    }
+    ArbElrsPort.rx_mode = ArbUartRxAuxStream;
+    ArbElrsPort.rx_buf = buf;
+    ArbElrsPort.rx_len = len;
+    (void)uart_rx_disable(ArbElrsPort.dev);
+    return ArbUartStartRx(&ArbElrsPort);
+}
+
+/* ===== 外置 UART IMU 接收 ===== */
+void BspExternalImuLinkSetRxEventCb(BspAuxLinkRxEventCb cb)
+{
+    k_spinlock_key_t key = k_spin_lock(&ArbExternalImuPort.lock);
+    ArbExternalImuPort.aux_event_cb = cb;
+    k_spin_unlock(&ArbExternalImuPort.lock, key);
+}
+void BspExternalImuLinkSetRxByteCb(BspAuxLinkRxByteCb cb)
+{
+    k_spinlock_key_t key = k_spin_lock(&ArbExternalImuPort.lock);
+    ArbExternalImuPort.aux_byte_cb = cb;
+    k_spin_unlock(&ArbExternalImuPort.lock, key);
+}
+void BspExternalImuLinkSetErrorCb(BspAuxLinkErrorCb cb)
+{
+    k_spinlock_key_t key = k_spin_lock(&ArbExternalImuPort.lock);
+    ArbExternalImuPort.aux_error_cb = cb;
+    k_spin_unlock(&ArbExternalImuPort.lock, key);
+}
+uint32_t BspExternalImuLinkGetBaudrate(void) { return ArbExternalImuPort.baudrate; }
+uint8_t BspExternalImuLinkRxHasDma(void)
+{
+    return (ArbUartPrepare(&ArbExternalImuPort) == 0 && ArbExternalImuPort.async_ok != 0u) ? 1u : 0u;
+}
+int BspExternalImuLinkRxItStart(void)
+{
+    ArbExternalImuPort.rx_mode = ArbUartRxAuxByte;
+    ArbExternalImuPort.rx_buf = &ArbExternalImuPort.rx_byte;
+    ArbExternalImuPort.rx_len = 1u;
+    if (ArbExternalImuPort.dev != NULL)
+    {
+        (void)uart_rx_disable(ArbExternalImuPort.dev);
+    }
+    return ArbUartStartRx(&ArbExternalImuPort);
+}
+void BspExternalImuLinkRxItStop(void)
+{
+    ArbExternalImuPort.rx_mode = ArbUartRxOff;
+    if (ArbExternalImuPort.dev != NULL)
+    {
+        (void)uart_rx_disable(ArbExternalImuPort.dev);
+        uart_irq_rx_disable(ArbExternalImuPort.dev);
+    }
+}
+int BspExternalImuLinkRxToIdleDmaStart(uint8_t *buf, uint16_t len)
+{
+    if (buf == NULL || len == 0u)
+    {
+        return -EINVAL;
+    }
+    if (ArbUartPrepare(&ArbExternalImuPort) != 0 || ArbExternalImuPort.async_ok == 0u)
+    {
+        return -ENOTSUP;
+    }
+    ArbExternalImuPort.rx_mode = ArbUartRxAuxStream;
+    ArbExternalImuPort.rx_buf = buf;
+    ArbExternalImuPort.rx_len = len;
+    (void)uart_rx_disable(ArbExternalImuPort.dev);
+    return ArbUartStartRx(&ArbExternalImuPort);
+}
 
 /* ===== RS485 ===== */
 static ArbUartPort *ArbRs485Port(uint8_t index) { return (index < ARRAY_SIZE(ArbRs485Ports)) ? &ArbRs485Ports[index] : NULL; }

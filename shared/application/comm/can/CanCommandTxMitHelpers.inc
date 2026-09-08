@@ -341,6 +341,7 @@ static inline void CanTxBuildMitCmdFromActuator(const motor_node_param_t *node,
                                                       mit_motor_cmd_t *out)
 {
     uint8_t mode = (uint8_t)MotorModeCurrent;
+    const fp32 external_ratio = MotorCfgExternalReductionRatio(node);
 
     if (out == NULL)
     {
@@ -359,17 +360,17 @@ static inline void CanTxBuildMitCmdFromActuator(const motor_node_param_t *node,
 
     if (CanTxCmdModeUsesPositionFeedback((MotorMode)mode) != 0u)
     {
-        out->position = (src != NULL) ? src->q : 0.0f;
-        out->velocity = (src != NULL) ? src->dq : 0.0f;
-        out->kp = (src != NULL) ? src->kp : 0.0f;
-        out->kd = (src != NULL) ? src->kd : 0.0f;
-        out->torque = (src != NULL) ? src->tau : 0.0f;
+        out->position = (src != NULL) ? MotorTransPositionToMotor(src->q, external_ratio) : 0.0f;
+        out->velocity = (src != NULL) ? MotorTransVelocityToMotor(src->dq, external_ratio) : 0.0f;
+        out->kp = (src != NULL) ? MotorTransGainToMotor(src->kp, external_ratio) : 0.0f;
+        out->kd = (src != NULL) ? MotorTransGainToMotor(src->kd, external_ratio) : 0.0f;
+        out->torque = (src != NULL) ? MotorTransTorqueToMotor(src->tau, external_ratio) : 0.0f;
     }
     else if (CanTxCmdModeUsesVelocityFeedback((MotorMode)mode) != 0u)
     {
-        out->velocity = (src != NULL) ? src->dq : 0.0f;
-        out->kd = (src != NULL) ? src->kd : 0.0f;
-        out->torque = (src != NULL) ? src->tau : 0.0f;
+        out->velocity = (src != NULL) ? MotorTransVelocityToMotor(src->dq, external_ratio) : 0.0f;
+        out->kd = (src != NULL) ? MotorTransGainToMotor(src->kd, external_ratio) : 0.0f;
+        out->torque = (src != NULL) ? MotorTransTorqueToMotor(src->tau, external_ratio) : 0.0f;
     }
     else
     {

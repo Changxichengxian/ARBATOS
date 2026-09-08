@@ -147,7 +147,8 @@ static void GimbalInit(GimbalControl *init)
     s_dual_yaw_imu_center = 0.0f;
     s_dual_yaw_output_allowed_prev = 0u;
     init->GimbalYawMotor.offset_ecd = g_config.gimbal.yaw_middle_ecd;
-    init->GimbalPitchMotor.offset_ecd = GIMBAL_PITCH_MIDDLE_ECD;
+    init->GimbalPitchMotor.offset_ecd = g_config.gimbal.pitch_middle_ecd_enable != 0u ?
+        g_config.gimbal.pitch_middle_ecd : GIMBAL_PITCH_MIDDLE_ECD;
 
     {
         GimbalRuntimeSnapshot snapshot;
@@ -334,7 +335,9 @@ static fp32 motor_ecd_to_angle_change(uint16_t ecd,
                                       MotorCfgEncoderRange(node->model) :
                                       8192u;
 
-    return GimbalEncoderAngleRad(ecd, offset_ecd, encoderRange);
+    return MotorTransPositionToOutput(
+        GimbalEncoderAngleRad(ecd, offset_ecd, encoderRange),
+        MotorCfgExternalReductionRatio(node));
 }
 
 static void GimbalFeedbackFromEncoder(GimbalMotor *motor,
@@ -351,7 +354,9 @@ static void GimbalFeedbackFromEncoder(GimbalMotor *motor,
     }
 
     angle = motor_ecd_to_angle_change(measure->ecd, motor->offset_ecd, node);
-    speed = (fp32)measure->speed_rpm * 0.104719755f;
+    speed = MotorTransVelocityToOutput(
+        (fp32)measure->speed_rpm * 0.104719755f,
+        MotorCfgExternalReductionRatio(node));
 
     if (turn != 0u)
     {

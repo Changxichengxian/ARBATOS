@@ -20,15 +20,18 @@ from urllib.parse import unquote, urlsplit
 from jobs import Jobs
 from serialio import SerialService
 from workspace import Workspace
+from converters import ConverterService
 
 
 WORKSPACE_METHODS = {
     "workspace.summary", "robot.get", "robot.validate", "robot.update", "robot.create", "file.read", "file.write",
+    "config.get", "config.update", "ports.get",
 }
 JOB_METHODS = {"job.start", "job.get", "job.cancel", "job.plan_flash"}
 SERIAL_METHODS = {"serial.ports", "serial.open", "serial.close", "serial.status", "serial.read", "serial.send"}
-WRITE_METHODS = {"robot.update", "robot.create", "file.write"}
-MAX_BODY = 4 * 1024 * 1024
+WRITE_METHODS = {"robot.update", "robot.create", "file.write", "config.update"}
+TOOLS_METHODS = {"tools.capabilities", "tools.sdlog", "tools.audio"}
+MAX_BODY = 34 * 1024 * 1024
 
 
 class Application:
@@ -36,6 +39,7 @@ class Application:
         self.workspace = Workspace(root)
         self.jobs = Jobs(root)
         self.serial = SerialService()
+        self.converters = ConverterService(root)
         self.operations = threading.RLock()
         self.stopping = False
 
@@ -46,6 +50,8 @@ class Application:
         with self.operations:
             if self.stopping:
                 raise ValueError("客户端正在关闭")
+            if method in TOOLS_METHODS:
+                return self.converters.dispatch(method, params)
             if method in WORKSPACE_METHODS:
                 if method in WRITE_METHODS and self.jobs.is_busy():
                     raise ValueError("编译或烧录正在运行，结束后再修改工程文件")

@@ -10,7 +10,19 @@
 
 #include "AuxTune.h"
 #include "BspUsart.h"
+#if defined(__ZEPHYR__)
+#include "RobotTargetConfig.h"
+#endif
+
+/* 旧 HAL 始终保留 AUX 复用；Zephyr 只在任务实际进入构建时保留该引用。 */
+#if !defined(__ZEPHYR__)
+#define AUX_PORT_LEGACY_ELRS 1
+#elif !defined(ARB_UART_ROLES_EXPLICIT) && ROBOT_TASK_BUILD_ELRS_LINK
+#define AUX_PORT_LEGACY_ELRS 1
+#endif
+#if defined(AUX_PORT_LEGACY_ELRS)
 #include "ElrsTask.h"
+#endif
 #include "ImageRemoteLink.h"
 
 void AuxPortInit(void)
@@ -19,6 +31,7 @@ void AuxPortInit(void)
 
     AuxPortStop();
 
+#if defined(AUX_PORT_LEGACY_ELRS)
     if (AuxPortIsElrsMode(baud))
     {
         BspAuxLinkSetRxEventCb(ElrsLinkOnRxEvent);
@@ -26,7 +39,9 @@ void AuxPortInit(void)
         BspAuxLinkSetErrorCb(ElrsLinkOnUartError);
         ElrsLinkRxStart();
     }
-    else if (AuxPortIsTuneMode(baud))
+    else
+#endif
+    if (AuxPortIsTuneMode(baud))
     {
         AuxTuneRxStart();
     }
@@ -57,7 +72,9 @@ void AuxPortPoll(void)
 void AuxPortStop(void)
 {
     ImageRemoteLinkStop();
+#if defined(AUX_PORT_LEGACY_ELRS)
     ElrsLinkStop();
+#endif
     AuxTuneResetRx();
 
     BspAuxLinkSetRxEventCb(NULL);
@@ -68,9 +85,11 @@ void AuxPortStop(void)
 
 bool_t AuxPortApplyBaud(uint32_t baud)
 {
-    if (!AuxPortIsTuneMode(baud) &&
-        !AuxPortIsElrsMode(baud) &&
-        !AuxPortIsImageMode(baud))
+    if (!AuxPortIsTuneMode(baud) && !AuxPortIsImageMode(baud)
+#if defined(AUX_PORT_LEGACY_ELRS)
+        && !AuxPortIsElrsMode(baud)
+#endif
+    )
     {
         return 0;
     }
@@ -96,7 +115,12 @@ bool_t AuxPortApplyBaud(uint32_t baud)
 
 uint8_t AuxPortIsElrsMode(uint32_t baud)
 {
+#if defined(AUX_PORT_LEGACY_ELRS)
     return (baud == ELRS_LINK_BAUD) ? 1u : 0u;
+#else
+    (void)baud;
+    return 0u;
+#endif
 }
 
 uint8_t AuxPortIsImageMode(uint32_t baud)

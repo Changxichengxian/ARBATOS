@@ -186,6 +186,8 @@ def lz4_decompress_block(src: bytes, raw_len: int) -> bytes:
 
         if i + lit_len > len(src):
             raise ValueError("LZ4: truncated literals")
+        if len(out) + lit_len > raw_len:
+            raise ValueError("LZ4: literals exceed declared raw length")
         if lit_len:
             out.extend(src[i : i + lit_len])
             i += lit_len
@@ -211,6 +213,8 @@ def lz4_decompress_block(src: bytes, raw_len: int) -> bytes:
                 if s != 255:
                     break
         match_len += 4
+        if len(out) + match_len > raw_len:
+            raise ValueError("LZ4: match exceeds declared raw length")
 
         copy_start = len(out) - offset
         while match_len:

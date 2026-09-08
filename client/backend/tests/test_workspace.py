@@ -60,7 +60,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertNotEqual(repaired["revision"], raw["revision"])
         self.assertTrue(self.get()["validation"]["ok"])
 
-    def test_validate_rejects_candidate_board_and_unmigrated_service(self):
+    def test_validate_rejects_candidate_board_and_reports_external_elrs(self):
         detail = self.get()
         invalid_board = dict(detail["config"])
         invalid_board["board"] = "bad-board"
@@ -71,7 +71,7 @@ class WorkspaceTest(unittest.TestCase):
         (self.root / "Robotconfig/SENTINEL-M/RobotConfig.toml").write_text("[broken\n", encoding="utf-8")
         self.assertTrue(self.workspace.dispatch("robot.validate", {"target": "HERO-M", "config": detail["config"]})["ok"])
         summary = self.workspace.dispatch("workspace.summary", {})
-        self.assertFalse(next(item for item in summary["services"] if item["symbol"] == "ELRS_LINK")["available"])
+        self.assertTrue(next(item for item in summary["services"] if item["symbol"] == "ELRS_LINK")["available"])
 
     def test_comment_bom_and_crlf_are_preserved(self):
         path = self.root / "Robotconfig/HERO-M/RobotConfig.toml"

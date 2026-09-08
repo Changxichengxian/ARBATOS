@@ -422,7 +422,7 @@ static uint8_t UnitreeMotorBuildCmdFromActuator(const motor_node_param_t *node,
 
     if (active_cmd != 0u && mode != MotorModeCurrent)
     {
-        if (UnitreeMotorMapLowCmd(&src, MotorCfgReductionRatio(node->model), out) == 0u)
+        if (UnitreeMotorMapLowCmd(&src, MotorCfgTotalReductionRatio(node), out) == 0u)
         {
             *applied_mode = MotorModeDisable;
             return 1u;
@@ -969,6 +969,7 @@ uint8_t UnitreeMotorNodeSupported(const motor_node_param_t *node)
 static void UnitreeMotorRefreshFeedback(MotorId actuator_id, const motor_node_param_t *node)
 {
     const MotorModelMitLimits *limits = MotorCfgMitLimits(node);
+    const fp32 external_ratio = MotorCfgExternalReductionRatio(node);
     UnitreeMotorState state;
     motor_measure_t *measure;
     MotorState previous;
@@ -999,9 +1000,9 @@ static void UnitreeMotorRefreshFeedback(MotorId actuator_id, const motor_node_pa
     fb.rxId = state.motor_id;
     fb.rxCount = state.rx_frame_count;
     fb.lastRxTick = state.last_rx_tick_ms;
-    fb.q = state.joint_position_rad;
-    fb.dq = state.joint_speed_rad_s;
-    fb.tauEst = state.torque_nm;
+    fb.q = MotorTransPositionToOutput(state.joint_position_rad, external_ratio);
+    fb.dq = MotorTransVelocityToOutput(state.joint_speed_rad_s, external_ratio);
+    fb.tauEst = MotorTransTorqueToOutput(state.torque_nm, external_ratio);
     fb.ecd = UnitreeMotorPositionToEcd(state.joint_position_rad);
     new_sample = MotorFeedbackEcdResolve(previous_feedback,
                                          fb.rxCount,
@@ -1055,7 +1056,7 @@ static void UnitreeMotorUpdateApplied(MotorId actuator_id,
     applied.current = current;
     if (cmd != NULL)
     {
-        UnitreeMotorMapAppliedOutput(cmd, MotorCfgReductionRatio(node->model), &output_cmd);
+        UnitreeMotorMapAppliedOutput(cmd, MotorCfgTotalReductionRatio(node), &output_cmd);
         applied.q = output_cmd.position_rad;
         applied.dq = output_cmd.speed_rad_s;
         applied.kp = output_cmd.kp;

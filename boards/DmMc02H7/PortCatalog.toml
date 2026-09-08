@@ -1,0 +1,157 @@
+schema = 1
+board = "dm_mc02_h7"
+
+[[roles]]
+id = "rc_sbus"
+label = "SBUS / DBUS 接收机"
+service = "RC_SBUS"
+required_when_service = true
+default_baud = 100000
+baud_editable = false
+protocols = ["sbus"]
+required_capabilities = ["rx", "sbus"]
+note = "现有解析链使用 100000、偶校验、2 个停止位。"
+
+[[roles]]
+id = "elrs_crsf"
+label = "外置 ELRS / CRSF 接收机"
+service = "ELRS_LINK"
+required_when_service = true
+default_baud = 420000
+baud_editable = false
+protocols = ["crsf"]
+required_capabilities = ["rx", "crsf"]
+note = "复用现有 CRSF 解析链；当前只接收 0x14/0x16 帧，不发送接收机遥测。"
+
+[[roles]]
+id = "tuning_aux"
+label = "调参 AUX"
+service = "HOST_LINK"
+default_baud = 230400
+baud_editable = false
+protocols = ["arbatos_aux"]
+required_capabilities = ["rx", "tx", "aux"]
+note = "使用现有 AuxPort/AuxTune 参数协议，需要同时启用 HOST_LINK。"
+
+[[roles]]
+id = "external_imu"
+label = "外置 IMU"
+service = "IMU"
+default_baud = 115200
+baud_editable = false
+protocols = ["hipnuc_hi14"]
+required_capabilities = ["rx", "imu"]
+supported = true
+note = "支持超核电子 HI14，使用 3.3V TTL、默认 115200 8N1；不表示兼容其他厂商 UART IMU。"
+
+[[roles]]
+id = "referee"
+label = "裁判系统"
+service = "REFEREE_RX"
+required_when_service = true
+default_baud = 115200
+baud_editable = false
+protocols = ["rm_referee"]
+required_capabilities = ["rx", "tx", "referee"]
+note = "使用现有裁判拆帧和发送接口。"
+
+[[roles]]
+id = "rs485_0"
+label = "RS485-1"
+default_baud = 115200
+baud_editable = true
+protocols = ["unitree", "n6014b"]
+required_capabilities = ["rx", "tx", "rs485", "de"]
+note = "波特率最终仍由具体电机配置设置。"
+
+[[roles]]
+id = "rs485_1"
+label = "RS485-2"
+default_baud = 115200
+baud_editable = true
+protocols = ["unitree", "n6014b"]
+required_capabilities = ["rx", "tx", "rs485", "de"]
+note = "波特率最终仍由具体电机配置设置。"
+
+[[ports]]
+id = "uart5"
+node = "uart5"
+label = "UART5 / PD2 RX"
+pins = ["PD2"]
+capabilities = ["rx", "async", "sbus", "crsf", "imu"]
+note = "板上只有接收线，适合 SBUS 或仅接收的 CRSF。"
+
+[[ports]]
+id = "usart10"
+node = "usart10"
+label = "USART10 / PE2 RX, PE3 TX"
+pins = ["PE2", "PE3"]
+capabilities = ["rx", "tx", "async", "sbus", "crsf", "aux", "referee", "imu"]
+
+[[ports]]
+id = "uart7"
+node = "uart7"
+label = "UART7 / PE7 RX, PE8 TX"
+pins = ["PE7", "PE8"]
+capabilities = ["rx", "tx", "async", "sbus", "crsf", "aux", "referee", "imu"]
+
+[[ports]]
+id = "usart1"
+node = "usart1"
+label = "USART1 / PA10 RX, PA9 TX"
+pins = ["PA9", "PA10"]
+capabilities = ["rx", "tx", "async", "sbus", "crsf", "aux", "referee", "imu"]
+reservations = ["console"]
+note = "板级 chosen console 指向本口；正式配置关闭串口日志时可显式复用。"
+
+[[ports]]
+id = "usart2"
+node = "usart2"
+label = "USART2 RS485 / PD6 RX, PD5 TX, PD4 DE"
+pins = ["PD4", "PD5", "PD6"]
+capabilities = ["rx", "tx", "async", "rs485", "de"]
+
+[[ports]]
+id = "usart3"
+node = "usart3"
+label = "USART3 RS485 / PD9 RX, PD8 TX, PB14 DE"
+pins = ["PB14", "PD8", "PD9"]
+capabilities = ["rx", "tx", "async", "rs485", "de"]
+
+[[resources]]
+id = "console"
+label = "板级 UART 控制台"
+pins = ["PA9", "PA10"]
+severity = "warning"
+note = "普通正式固件已关闭 UART 日志；准备/测试配置重新启用时会与所选角色冲突。"
+
+[[resources]]
+id = "spi1_lcd_or_sx1281"
+label = "SPI1 LCD / SX1281 候选口"
+pins = ["PB3", "PB4", "PD7", "PE15"]
+severity = "error"
+
+[[resources]]
+id = "spi2_bmi088"
+label = "SPI2 板载 BMI088"
+pins = ["PB13", "PC2", "PC1", "PC0", "PC3"]
+severity = "error"
+
+[[resources]]
+id = "spi3_sd"
+label = "SPI3 SD 卡"
+pins = ["PC10", "PC11", "PC12", "PE14"]
+severity = "error"
+
+[[resources]]
+id = "servo_pwm"
+label = "P11 四路舵机 PWM"
+pins = ["PA0", "PA2", "PE9", "PE13"]
+severity = "error"
+
+[legacy]
+rc_sbus = { port = "uart5", baud = 100000, protocol = "sbus" }
+tuning_aux = { port = "usart1", baud = 115200, protocol = "legacy_auto" }
+referee = { port = "uart7", baud = 115200, protocol = "rm_referee" }
+rs485_0 = { port = "usart2", baud = 115200, protocol = "unitree" }
+rs485_1 = { port = "usart3", baud = 115200, protocol = "unitree" }

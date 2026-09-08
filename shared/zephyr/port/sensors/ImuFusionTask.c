@@ -5,23 +5,35 @@
  */
 #include "InsTask.h"
 #include "Ahrs.h"
+#include "RobotTargetConfig.h"
+
+#ifndef ROBOT_EXTERNAL_IMU_HI14
+#define ROBOT_EXTERNAL_IMU_HI14 0
+#endif
+
+#if ROBOT_EXTERNAL_IMU_HI14
+#include "BspExternalImuUart.h"
+#include "Hi14Parser.h"
+#else
 #include "Bmi088Driver.h"
 #include "BspBmi088Port.h"
-#include "BspImuPwm.h"
 #include "CalibrateTask.h"
 #include "ControlInput.h"
 #include "GyroZeroCali.h"
 #include "ImuFrame.h"
 #include "ManualInputSnapshot.h"
 #include "Mpu6500.h"
-#include "RobotConfig.h"
 #include "RobotMode.h"
 #include "UserLib.h"
-#include "Watch.h"
-#include "SdLog.h"
 #if defined(CONFIG_BOARD_DM_MC02_H7)
 #include "ImuCalStore.h"
 #endif
+#endif
+
+#include "BspImuPwm.h"
+#include "RobotConfig.h"
+#include "Watch.h"
+#include "SdLog.h"
 
 #include <math.h>
 #include <string.h>
@@ -41,10 +53,12 @@ static fp32 InsMag[3];
 static fp32 InsTemp;
 static uint16_t InsHeaterPwm;
 static fp32 InsHeaterPidOut;
+#if !ROBOT_EXTERNAL_IMU_HI14
 static mahony_imu_t InsMahony;
 static fp32 InsGyroOffset[3];
 static GyroZeroCaliRuntimeState InsGyroCaliState;
 static uint8_t InsHeaterStable;
+#endif
 
 __weak int8_t get_control_temperature(void)
 {
@@ -66,6 +80,7 @@ static void ImuEulerUpdate(void)
     get_angle(InsQuat, &INS_angle[0], &INS_angle[2], &INS_angle[1]);
 }
 
+#if !ROBOT_EXTERNAL_IMU_HI14
 static bool_t ImuAccelHealthy(const fp32 a[3])
 {
     const float g2 = (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]) / (IMU_G * IMU_G);
@@ -267,9 +282,238 @@ static void ImuGyroCalibrationUpdate(const fp32 gyro_raw[3],
     };
     GyroZeroCaliRuntimeUpdate(&InsGyroCaliState, &cfg, gyro_raw, accel_raw);
 }
+#endif
+
+#if ROBOT_EXTERNAL_IMU_HI14
+#define HI14_LINK_BAUD 115200u
+#define HI14_DMA_RX_SIZE 256u
+
+static struct k_spinlock Hi14Lock;
+static Hi14ByteRing Hi14RxRing;
+static Hi14Parser Hi14TaskParser;
+static Hi14SampleGate Hi14TaskGate;
+static uint8_t Hi14DmaRx[HI14_DMA_RX_SIZE];
+static uint8_t Hi14TaskBytes[64];
+static uint32_t Hi14TaskReceiveTicksMs[64];
+static uint16_t Hi14DmaLastPos;
+static volatile uint8_t Hi14LinkActive;
+static volatile uint8_t Hi14DmaActive;
+
+static void Hi14LinkOnRxEvent(uint16_t size, BspAuxLinkRxEvent event)
+{
+    if (Hi14LinkActive == 0u || Hi14DmaActive == 0u)
+    {
+        return;
+    }
+    if (size > HI14_DMA_RX_SIZE)
+    {
+        k_spinlock_key_t invalid_key = k_spin_lock(&Hi14Lock);
+        Hi14ByteRingDiscard(&Hi14RxRing);
+        Hi14DmaLastPos = 0u;
+        k_spin_unlock(&Hi14Lock, invalid_key);
+        return;
+    }
+    /* Zephyr 串口在满缓冲事件后可能再报告一次 size==capacity 的 IDLE。 */
+    if (event == BSP_AUX_LINK_RXEVENT_IDLE && size == HI14_DMA_RX_SIZE)
+    {
+        return;
+    }
+
+    const uint32_t receive_tick_ms = k_uptime_get_32();
+    k_spinlock_key_t key = k_spin_lock(&Hi14Lock);
+    uint16_t begin = Hi14DmaLastPos;
+    if (size < begin)
+    {
+        Hi14ByteRingDiscard(&Hi14RxRing);
+        begin = 0u;
+    }
+    if (size > begin)
+    {
+        (void)Hi14ByteRingPush(&Hi14RxRing,
+                               &Hi14DmaRx[begin],
+                               (size_t)(size - begin),
+                               receive_tick_ms);
+    }
+    Hi14DmaLastPos = (event == BSP_AUX_LINK_RXEVENT_TC || size == HI14_DMA_RX_SIZE)
+                            ? 0u
+                            : size;
+    k_spin_unlock(&Hi14Lock, key);
+}
+
+static void Hi14LinkOnRxByte(uint8_t byte)
+{
+    if (Hi14LinkActive == 0u || Hi14DmaActive != 0u)
+    {
+        return;
+    }
+    const uint32_t receive_tick_ms = k_uptime_get_32();
+    k_spinlock_key_t key = k_spin_lock(&Hi14Lock);
+    (void)Hi14ByteRingPush(&Hi14RxRing, &byte, 1u, receive_tick_ms);
+    k_spin_unlock(&Hi14Lock, key);
+}
+
+static uint8_t Hi14LinkOnError(void)
+{
+    k_spinlock_key_t key = k_spin_lock(&Hi14Lock);
+    Hi14ByteRingDiscard(&Hi14RxRing);
+    Hi14DmaLastPos = 0u;
+    k_spin_unlock(&Hi14Lock, key);
+    /* 返回 0，让串口端口执行原有的接收重启。 */
+    return 0u;
+}
+
+static int Hi14LinkStart(void)
+{
+    const uint8_t dma_available = BspExternalImuLinkRxHasDma();
+    if (BspExternalImuLinkGetBaudrate() != HI14_LINK_BAUD)
+    {
+        return -1;
+    }
+
+    Hi14LinkActive = 0u;
+    Hi14DmaActive = 0u;
+    Hi14DmaLastPos = 0u;
+    if (dma_available != 0u &&
+        BspExternalImuLinkRxToIdleDmaStart(Hi14DmaRx, HI14_DMA_RX_SIZE) == 0)
+    {
+        Hi14DmaActive = 1u;
+        Hi14LinkActive = 1u;
+        return 0;
+    }
+    if (BspExternalImuLinkRxItStart() == 0)
+    {
+        Hi14LinkActive = 1u;
+        return 0;
+    }
+    return -1;
+}
+
+static size_t Hi14TakeBytes(uint8_t *bytes,
+                            uint32_t *receive_ticks_ms,
+                            size_t capacity,
+                            uint32_t *epoch)
+{
+    k_spinlock_key_t key = k_spin_lock(&Hi14Lock);
+    const size_t count = Hi14ByteRingPop(&Hi14RxRing,
+                                         bytes,
+                                         receive_ticks_ms,
+                                         capacity,
+                                         epoch);
+    k_spin_unlock(&Hi14Lock, key);
+    return count;
+}
+
+static uint32_t Hi14RingEpoch(void)
+{
+    k_spinlock_key_t key = k_spin_lock(&Hi14Lock);
+    const uint32_t epoch = Hi14RxRing.epoch;
+    k_spin_unlock(&Hi14Lock, key);
+    return epoch;
+}
+
+static void Hi14Publish(const Hi14Sample *sample, uint32_t now_ms)
+{
+    /*
+     * 外置 HI14 使用模块默认正装坐标。它已经输出 body->world 的 WXYZ
+     * 四元数，不能再套用 HERO 板载 IMU 的 ImuFrame 安装旋转。
+     */
+    for (int i = 0; i < 3; ++i)
+    {
+        InsAccel[i] = sample->accel_g[i] * IMU_G;
+        InsGyro[i] = sample->gyro_dps[i] * IMU_DEG_TO_RAD;
+        InsMag[i] = sample->mag_ut[i];
+    }
+    memcpy(InsQuat, sample->quat, sizeof(InsQuat));
+    InsTemp = (fp32)sample->temperature_c;
+    ImuEulerUpdate();
+    InsSnapshotPublishCurrent(now_ms, InsTemp);
+
+#if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY)
+    static uint32_t last_log_ms;
+    if (now_ms - last_log_ms >= 10u)
+    {
+        sdlog_imu_t log_sample;
+        memcpy(log_sample.quat, InsQuat, sizeof(log_sample.quat));
+        memcpy(log_sample.gyro, InsGyro, sizeof(log_sample.gyro));
+        memcpy(log_sample.accel, InsAccel, sizeof(log_sample.accel));
+        log_sample.temp = InsTemp;
+        SdLogWrite(SDLOG_TAG_IMU, &log_sample, sizeof(log_sample));
+        last_log_ms = now_ms;
+    }
+#endif
+}
+#endif
 
 void ImuFusionTask(void const *pvParameters)
 {
+#if ROBOT_EXTERNAL_IMU_HI14
+    ARG_UNUSED(pvParameters);
+    WatchImuSetStage(WATCH_IMU_STAGE_ENTER);
+    WatchTaskWait(WATCH_TASK_IMU);
+    k_msleep(g_config.imu.task_init_time_ms);
+    WatchImuSetStage(WATCH_IMU_STAGE_INIT_DELAY_DONE);
+
+    /* 外置姿态源不使用板载加热和零偏保存。 */
+    InsHeaterPwm = 0u;
+    InsHeaterPidOut = 0.0f;
+    imu_pwm_set(0u);
+    Hi14ByteRingInit(&Hi14RxRing);
+    BspExternalImuLinkSetRxEventCb(Hi14LinkOnRxEvent);
+    BspExternalImuLinkSetRxByteCb(Hi14LinkOnRxByte);
+    BspExternalImuLinkSetErrorCb(Hi14LinkOnError);
+    while (Hi14LinkStart() != 0)
+    {
+        WatchTaskError(WATCH_TASK_IMU);
+        k_msleep(100);
+    }
+    WatchImuSetStage(WATCH_IMU_STAGE_BMI088_INIT_OK);
+
+    uint32_t parser_epoch = 0u;
+    Hi14ParserInit(&Hi14TaskParser);
+    Hi14SampleGateInit(&Hi14TaskGate);
+    for (;;)
+    {
+        uint32_t batch_epoch = parser_epoch;
+        const size_t count = Hi14TakeBytes(Hi14TaskBytes,
+                                           Hi14TaskReceiveTicksMs,
+                                           sizeof(Hi14TaskBytes),
+                                           &batch_epoch);
+        if (batch_epoch != parser_epoch)
+        {
+            Hi14ParserInit(&Hi14TaskParser);
+            parser_epoch = batch_epoch;
+        }
+
+        Hi14Sample sample;
+        uint32_t sample_receive_tick_ms = 0u;
+        uint8_t sample_ready = 0u;
+        for (size_t i = 0u; i < count; ++i)
+        {
+            if (Hi14ParserFeedByte(&Hi14TaskParser, Hi14TaskBytes[i], &sample))
+            {
+                sample_receive_tick_ms = Hi14TaskReceiveTicksMs[i];
+                sample_ready = 1u;
+            }
+        }
+
+        const uint32_t current_epoch = Hi14RingEpoch();
+        if (current_epoch != batch_epoch)
+        {
+            /* 环形缓冲出现缺口后，丢弃本批结果并从新字节重新找帧头。 */
+            Hi14ParserInit(&Hi14TaskParser);
+            parser_epoch = current_epoch;
+            sample_ready = 0u;
+        }
+        if (sample_ready != 0u && Hi14SampleGateAccept(&Hi14TaskGate, &sample))
+        {
+            Hi14Publish(&sample, sample_receive_tick_ms);
+            WatchImuSetStage(WATCH_IMU_STAGE_FUSION_LOOP);
+        }
+        /* 无新帧时不重复发布，快照年龄会自然反映链路超时。 */
+        WatchTaskBeat(WATCH_TASK_IMU);
+        k_sleep(K_MSEC(1));
+    }
+#else
     int init;
     ARG_UNUSED(pvParameters);
     WatchImuSetStage(WATCH_IMU_STAGE_ENTER);
@@ -358,6 +602,7 @@ void ImuFusionTask(void const *pvParameters)
         WatchTaskBeat(WATCH_TASK_IMU);
         k_sleep(K_MSEC(1));
     }
+#endif
 }
 
 void InsTask(void const *pvParameters) { ImuFusionTask(pvParameters); }
@@ -370,6 +615,41 @@ fp32 ins_get_imu_temperature_c(void) { return InsTemp; }
 uint16_t ins_get_imu_heater_pwm(void) { return InsHeaterPwm; }
 uint8_t ins_get_imu_heater_mode(void) { return InsHeaterPwm > 0 ? 1u : 0u; }
 fp32 ins_get_imu_heater_pid_out(void) { return InsHeaterPidOut; }
+#if ROBOT_EXTERNAL_IMU_HI14
+__weak bool_t CalibrateGyroOffsetSave(const fp32 offset[3])
+{
+    ARG_UNUSED(offset);
+    return 0u;
+}
+
+void INS_cali_gyro(fp32 cali_scale[3], fp32 cali_offset[3], uint16_t *time_count)
+{
+    ARG_UNUSED(cali_scale);
+    ARG_UNUSED(cali_offset);
+    ARG_UNUSED(time_count);
+}
+
+void INS_set_cali_gyro(fp32 cali_scale[3], fp32 cali_offset[3])
+{
+    ARG_UNUSED(cali_scale);
+    ARG_UNUSED(cali_offset);
+}
+
+bool_t ins_is_gyro_boot_calibrated(void)
+{
+    return 1u;
+}
+
+bool_t ins_is_gyro_boot_calibrating(void)
+{
+    return 0u;
+}
+
+ins_gyro_boot_init_result_e ins_get_gyro_boot_initial_result(void)
+{
+    return INS_GYRO_BOOT_INIT_SUCCESS;
+}
+#else
 void INS_cali_gyro(fp32 cali_scale[3], fp32 cali_offset[3], uint16_t *time_count)
 {
     if (cali_scale == NULL || cali_offset == NULL || time_count == NULL)
@@ -406,3 +686,4 @@ ins_gyro_boot_init_result_e ins_get_gyro_boot_initial_result(void)
 {
     return (ins_gyro_boot_init_result_e)GyroZeroCaliRuntimeResult(&InsGyroCaliState);
 }
+#endif
