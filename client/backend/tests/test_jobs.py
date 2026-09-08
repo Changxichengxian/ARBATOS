@@ -129,7 +129,7 @@ class JobsTest(unittest.TestCase):
             {"seq": 2, "text": "第二行"}
         ])
         self.assertEqual(calls[0][0][-5:], ["build", "-Project", "HERO-M", "-Jobs", "2"])
-        self.assertEqual(calls[0][1], self.root)
+        self.assertEqual(calls[0][1], self.root.resolve())
         jobs.shutdown()
 
     def test_only_one_job_and_cancel_waits_for_runner(self):
