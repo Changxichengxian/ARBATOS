@@ -65,6 +65,15 @@ def read_toml(path):
         raise ConfigError(f"{path}: {exc}") from exc
 
 
+def read_toml_text(text, path):
+    """解析尚未写入磁盘的候选车型声明。"""
+    try:
+        require(isinstance(text, str), "候选配置必须是文本")
+        return tomllib.loads(text.removeprefix("\ufeff"))
+    except tomllib.TOMLDecodeError as exc:
+        raise ConfigError(f"{path}: {exc}") from exc
+
+
 def inside(base, value, suffix=None):
     require(isinstance(value, str) and value, "路径必须是非空字符串")
     path = (base / value).resolve()
@@ -133,6 +142,23 @@ def targets(root):
     return result
 
 
+def target_identity(root, requested):
+    """只按目录定位车型，不解析其他车型的 TOML。"""
+    root = Path(root).resolve()
+    require(isinstance(requested, str) and requested, "车型名字不能为空")
+    matches = []
+    for directory in (root / "Robotconfig").glob("*"):
+        if not directory.is_dir() or directory.name.lower() != requested.lower():
+            continue
+        require(TARGET_NAME.fullmatch(directory.name), f"车型目录名无效: {directory.name}")
+        path = directory / "RobotConfig.toml"
+        require(path.is_file(), f"找不到车型 {requested}，需要 Robotconfig/<车型>/RobotConfig.toml")
+        matches.append(dict(name=directory.name, preset=directory.name.lower(),
+                            path=path.relative_to(root).as_posix()))
+    require(len(matches) == 1, f"找不到车型 {requested}，需要 Robotconfig/<车型>/RobotConfig.toml")
+    return matches[0]
+
+
 def plugins(root):
     root = Path(root).resolve()
     result = {}
@@ -172,18 +198,19 @@ def plugins(root):
     return result
 
 
-def resolve(root, requested):
+def resolve(root, requested, config_text=None):
     # 文件检查会解析真实路径；仓库根目录也须统一，兼容 Windows 短路径和 ..。
     root = Path(root).resolve()
-    found = [t for t in targets(root) if t["name"].lower() == requested.lower()]
-    require(len(found) == 1, f"找不到车型 {requested}，需要 Robotconfig/<车型>/RobotConfig.toml")
-    target = found[0]
-    require(target["board"] == "dm_mc02_h7",
-            f"{target['board']}: 板级定义保留，但完整机器人运行栈尚未迁移；当前仅支持 dm_mc02_h7")
+    target = target_identity(root, requested)
     path = root / target["path"]
-    data = read_toml(path)
+    # 桌面端保存前传入 config_text，在内存中做完整校验，不能借真实文件绕过检查。
+    data = read_toml_text(config_text, path) if config_text is not None else read_toml(path)
     keys(data, {"schema", "board", "profile", "services", "controllers", "build", "features", "tasks"}, str(path))
     require(data.get("schema") == 1, f"{path}: schema 必须为 1")
+    require(data.get("board") in BOARDS, f"{target['name']}: 未支持的开发板 {data.get('board')}")
+    target["board"] = data["board"]
+    require(target["board"] == "dm_mc02_h7",
+            f"{target['board']}: 板级定义保留，但完整机器人运行栈尚未迁移；当前仅支持 dm_mc02_h7")
     profile = data.get("profile", "custom")
     require(profile in {"hero", "infantry", "wheelleg", "sentry", "carrier", "custom"}, "未知 profile")
     catalog = task_catalog(root)
@@ -328,7 +355,8 @@ def resolve(root, requested):
     target.update(profile=profile, tasks=task_rows, controllers=resolved_controls, reasons=reasons,
                   features=features, board_info=board, sources=sorted(set(target_sources + shared_sources)),
                   port_sources=port_sources, overlay=overlay, catalog=catalog)
-    fingerprint = hashlib.sha256(path.read_bytes() + (root / CATALOG).read_bytes())
+    config_bytes = config_text.encode("utf-8") if config_text is not None else path.read_bytes()
+    fingerprint = hashlib.sha256(config_bytes + (root / CATALOG).read_bytes())
     for control in resolved_controls:
         if not control["builtin"]:
             fingerprint.update((root / control["plugin"]["manifest"]).read_bytes())

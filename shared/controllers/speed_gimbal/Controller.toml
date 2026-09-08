@@ -9,23 +9,28 @@ outputs = 2
 
 # 两轴转速控制示例，使用 RM 电机反馈 rpm；不提供姿态保持。
 [parameters.yaw_speed_rpm]
+description = "水平轴最大电机转速"
 default = 60.0
 min = 0.0
 max = 3000.0
 unit = "rpm"
 
 [parameters.pitch_speed_rpm]
+description = "俯仰轴最大电机转速"
 default = 30.0
 min = 0.0
 max = 3000.0
 unit = "rpm"
 
 [parameters.speed_kp]
+description = "转速环比例增益"
+unit = "RM command/rpm"
 default = 10.0
 min = 0.0
 max = 1000.0
 
 [parameters.max_current]
+description = "电流命令上限（协议原始值，不是安培）"
 default = 2000.0
 min = 0.0
 max = 32767.0

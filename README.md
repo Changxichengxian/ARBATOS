@@ -33,6 +33,10 @@ pwsh -NoProfile -File .\tools\build.ps1 -Project HERO-M
 
 产物在 `local/build/hero-m/zephyr/`。下载、调试和环境配置见 [CLion 开发指南](manual/CLion开发指南.md)。下载不会自动编译；断点会暂停控制任务，连接实车前按[调试与日志](manual/调试与日志.md#上车检查)准备。
 
+### 桌面客户端
+
+双击 [打开客户端.cmd](打开客户端.cmd) 可启动本机车型配置、串口曲线和编译工具。它会自动检查首次所需的 Python 与 npm 依赖，再启动本机服务和桌面窗口；功能边界、CSV 格式、烧录确认和实际测试状态见 [客户端说明](client/README.md)。
+
 ## 改东西先找哪里
 
 | 要做什么 | 位置 |
@@ -45,6 +49,7 @@ pwsh -NoProfile -File .\tools\build.ps1 -Project HERO-M
 | 改共用控制、通信、算法、日志与系统适配 | `shared/` |
 | 改构建、源码清单和启动 | `projects/`，启动从 `projects/src/main.c` 进入 |
 | 查构建、日志、仿真和其他离线工具 | `tools/` |
+| 使用本机车型配置、串口曲线和构建桌面工具 | `client/` |
 | 查独立测试的操作和结果 | `tests/` |
 | 本机环境、构建产物、日志和参考资料 | `local/`，不作为正式文档入口 |
 
@@ -71,6 +76,7 @@ pwsh -NoProfile -File .\tools\build.ps1 -Project HERO-M
 | A/C/M 板引脚、能力和限制 | [开发板说明](boards/README.md) |
 | 共用代码与 Zephyr 外设接口 | [共享代码与接口](shared/README.md) |
 | 编译检查、日志、音频转换和自动调参工具 | [工具说明](tools/README.md) |
+| 本机配置、串口曲线、编译与烧录客户端 | [客户端说明](client/README.md) |
 | 配置仿真、轮腿物理仿真与计算参数 | [仿真说明](tools/仿真说明.md)、[轮腿参数计算报告](tools/WheelLegLqr/轮腿参数计算报告.md) |
 | A/C 板、SD 和音乐独立测试 | [测试说明](tests/README.md) |
 | 作者、商用、贡献和第三方材料 | [授权与贡献说明](授权与贡献说明.md) |

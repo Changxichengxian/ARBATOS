@@ -8,36 +8,49 @@ requires = ["CAN_COMMAND_TX", "CAN_FEEDBACK_RX"]
 outputs = 2
 
 [parameters.track_width_m]
+description = "轮距：左右轮接地点之间的距离"
+unit = "m"
 default = 0.4
 min = 0.01
 max = 10.0
 
 [parameters.wheel_radius_m]
+description = "车轮半径"
+unit = "m"
 default = 0.076
 min = 0.005
 max = 1.0
 
 [parameters.gear_ratio]
+description = "减速比：电机转速与车轮转速之比"
 default = 19.0
 min = 0.01
 max = 500.0
 
 [parameters.max_speed_mps]
+description = "最大前进速度"
+unit = "m/s"
 default = 2.0
 min = 0.0
 max = 20.0
 
 [parameters.max_yaw_rate_radps]
+description = "最大旋转角速度"
+unit = "rad/s"
 default = 4.0
 min = 0.0
 max = 50.0
 
 [parameters.speed_kp]
+description = "转速环比例增益"
+unit = "RM command/rpm"
 default = 8.0
 min = 0.0
 max = 1000.0
 
 [parameters.max_current]
+description = "电流命令上限（协议原始值，不是安培）"
+unit = "RM command"
 default = 12000.0
 min = 0.0
 max = 32767.0

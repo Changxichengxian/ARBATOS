@@ -1,0 +1,25 @@
+{
+    "name": "arbatos-client",
+    "version": "0.1.0",
+    "private": true,
+    "description": "ARBATOS 配置、串口曲线与固件工具",
+    "type": "module",
+    "main": "desktop/main.cjs",
+    "scripts": {
+        "dev": "vite --host 127.0.0.1",
+        "build": "vue-tsc --noEmit && vite build",
+        "start": "electron .",
+        "setup:desktop": "install-electron",
+        "test:backend": "node scripts/test-backend.mjs"
+    },
+    "dependencies": {
+        "vue": "3.5.42"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-vue": "6.0.8",
+        "electron": "44.2.0",
+        "typescript": "5.9.3",
+        "vite": "8.2.2",
+        "vue-tsc": "3.3.11"
+    }
+}

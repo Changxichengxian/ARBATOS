@@ -84,3 +84,11 @@ codex-rule/
 **/.idea/
 **/CMakeUserPresets.json
 **/cmake-build-*/
+
+# Desktop client dependencies and generated files
+/client/node_modules/
+/client/dist/
+/client/.vite/
+/client/.playwright-cli/
+/output/playwright/
+/.playwright-cli/
