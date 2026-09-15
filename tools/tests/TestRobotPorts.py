@@ -1,4 +1,5 @@
 import importlib.util
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,6 +18,7 @@ class RobotPortsTest(unittest.TestCase):
         start = text.index("services = ")
         end = text.index("\n", start)
         text = text[:start] + "services = [" + ", ".join(f'\"{item}\"' for item in services) + "]" + text[end:]
+        text = re.sub(r"(?ms)^\[ports\]\n.*?(?=^\[|\Z)", "", text)
         return text + "\n[ports]\n" + ports + "\n"
 
     def test_catalog_exposes_real_ports_and_hi14_uart_imu(self):
@@ -49,7 +51,19 @@ rs485_1 = "usart3"
         self.assertIn("#define ARB_UART_ELRS_BAUD 420000u", header)
         self.assertIn("&usart10", overlay)
         self.assertIn("current-speed = <420000>;", overlay)
+        self.assertIn("fifo-enable;", overlay.split("&usart10 {", 1)[1].split("};", 1)[0])
+        self.assertNotIn("fifo-enable;", overlay.split("&uart7 {", 1)[1].split("};", 1)[0])
         self.assertIn("RobotTargetPorts.overlay", cmake)
+
+    def test_elrs_fifo_follows_role_when_moved_to_uart7(self):
+        text = self.hero_text(["RC_SBUS", "ELRS_LINK", "HEALTH_MONITOR", "SDLOG", "BATTERY_MONITOR"],
+                              'rc_sbus = "uart5"\nelrs_crsf = "uart7"')
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            GEN.generate(REPO, GEN.resolve(REPO, "HERO-M", text), out)
+            overlay = (out / "RobotTargetPorts.overlay").read_text(encoding="utf-8")
+        self.assertIn("fifo-enable;", overlay.split("&uart7 {", 1)[1].split("};", 1)[0])
+        self.assertEqual(overlay.count("fifo-enable;"), 1)
 
     def test_invalid_duplicate_draft_keeps_options_but_strict_resolve_rejects(self):
         services = ["RC_SBUS", "ELRS_LINK", "HEALTH_MONITOR", "SDLOG", "BATTERY_MONITOR", "REFEREE_RX"]

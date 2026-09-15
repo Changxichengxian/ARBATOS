@@ -14,6 +14,7 @@
 
 #define MANUAL_INPUT_DBUS_FRAME_LENGTH       18u
 #define MANUAL_INPUT_DBUS_CHANNEL_COUNT      5u
+#define MANUAL_INPUT_DBUS_STICK_COUNT        4u
 #define MANUAL_INPUT_DBUS_CHANNEL_OFFSET     1024u
 #define MANUAL_INPUT_DBUS_CHANNEL_ERROR_ABS  700u
 #define MANUAL_INPUT_DBUS_SWITCH_UP          1u
@@ -44,7 +45,8 @@ static __inline uint8_t ManualInputDbusDecode(const uint8_t *frame, ManualInputD
                                   ((uint16_t)frame[3] << 2) |
                                   ((uint16_t)frame[4] << 10)) & 0x07FFu);
     data.channel[3] = (uint16_t)((((uint16_t)frame[4] >> 1) | ((uint16_t)frame[5] << 7)) & 0x07FFu);
-    data.channel[4] = (uint16_t)((uint16_t)frame[16] | ((uint16_t)frame[17] << 8));
+    /* 老 DBUS 遥控器的 CH5 可能缺失或损坏；固定中立，避免误拒整帧或产生控制量。 */
+    data.channel[4] = MANUAL_INPUT_DBUS_CHANNEL_OFFSET;
     data.sw[0] = (uint8_t)((frame[5] >> 4) & 0x03u);
     data.sw[1] = (uint8_t)((frame[5] >> 6) & 0x03u);
     data.mouse[0] = (int16_t)((uint16_t)frame[6] | ((uint16_t)frame[7] << 8));
@@ -67,7 +69,7 @@ static __inline uint8_t ManualInputDbusValid(const ManualInputDbusData *data)
         return 0u;
     }
 
-    for (i = 0u; i < (uint8_t)MANUAL_INPUT_DBUS_CHANNEL_COUNT; i++)
+    for (i = 0u; i < (uint8_t)MANUAL_INPUT_DBUS_STICK_COUNT; i++)
     {
         const int32_t centered = (int32_t)data->channel[i] - (int32_t)MANUAL_INPUT_DBUS_CHANNEL_OFFSET;
         if (centered < -(int32_t)MANUAL_INPUT_DBUS_CHANNEL_ERROR_ABS ||

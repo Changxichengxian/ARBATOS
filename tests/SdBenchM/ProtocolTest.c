@@ -7,6 +7,7 @@
 #include <string.h>
 
 #define SD_BENCH_TEST
+#define SD_SPI_ENABLE_MULTI_BLOCK_WRITE 1u
 #include "../../shared/components/devices/SdSpi.c"
 
 #define TEST_RX_CAPACITY 4096u
@@ -33,6 +34,16 @@ static uint8_t TestCmd18FailAfter;
 static Cmd6Case TestCmd6Case;
 static uint32_t TestCmdCount[64];
 static uint8_t TestCorruptCrc;
+static uint8_t TestInitMode;
+static uint8_t TestRejectCrcOn;
+static uint8_t TestCommandCrc[64];
+static uint8_t TestWritePhase;
+static uint8_t TestWriteMulti;
+static uint8_t TestRejectWrite;
+static uint16_t TestWrittenCrc;
+static uint32_t TestWrittenBytes;
+static uint32_t TestCmd55EndTick;
+static uint32_t TestAcmdSpacing;
 
 static void TestQueueByte(uint8_t value)
 {
@@ -92,8 +103,39 @@ static void TestHandleCommand(void)
                          ((uint32_t)TestCmd[3] << 8u) |
                          (uint32_t)TestCmd[4];
     TestCmdCount[cmd]++;
+    TestCommandCrc[cmd] = TestCmd[5];
+    if (cmd == 55u) { TestCmd55EndTick = TestTick; }
+    if (cmd == 41u) { TestAcmdSpacing = TestTick - TestCmd55EndTick; }
 
-    if (cmd == 17u)
+    if (TestInitMode && (cmd == 0u || cmd == 55u))
+    {
+        TestQueueByte(1u);
+    }
+    else if (TestInitMode && cmd == 8u)
+    {
+        TestQueueByte(1u);
+        TestQueueByte(0u); TestQueueByte(0u); TestQueueByte(1u); TestQueueByte(0xAAu);
+    }
+    else if (TestInitMode && cmd == 41u)
+    {
+        TestQueueByte(0u);
+    }
+    else if (TestInitMode && cmd == 58u)
+    {
+        TestQueueByte(0u);
+        TestQueueByte(0x40u); TestQueueByte(0u); TestQueueByte(0u); TestQueueByte(0u);
+    }
+    else if (TestInitMode && cmd == 59u)
+    {
+        TestQueueByte(TestRejectCrcOn ? 0x05u : 1u);
+    }
+    else if (cmd == 24u || cmd == 25u)
+    {
+        TestQueueByte(0u);
+        TestWritePhase = 1u;
+        TestWriteMulti = cmd == 25u;
+    }
+    else if (cmd == 17u)
     {
         TestQueueByte(0u);
         TestQueueBlock((uint8_t)arg);
@@ -141,9 +183,20 @@ static void TestReset(void)
     TestCmd18FailAfter = 0xFFu;
     TestCmd6Case = CMD6_UNSUPPORTED;
     TestCorruptCrc = 0u;
+    TestInitMode = 0u;
+    TestRejectCrcOn = 0u;
+    memset(TestCommandCrc, 0, sizeof(TestCommandCrc));
+    TestWritePhase = 0u;
+    TestWriteMulti = 0u;
+    TestRejectWrite = 0u;
+    TestWrittenCrc = 0u;
+    TestWrittenBytes = 0u;
+    TestCmd55EndTick = 0u;
+    TestAcmdSpacing = 0u;
 
     SdSpiInited = 1u;
     SdSpiType = SD_SPI_TYPE_SDHC;
+    SdSpiCrcEnabled = 0u;
     SdSpiBenchMultiRead = 0u;
     SdSpiBenchCrc16 = 0u;
 }
@@ -166,6 +219,27 @@ uint8_t SdSpiPortTxrx(uint8_t data)
     if (TestRxHead < TestRxTail)
     {
         response = TestRx[TestRxHead++];
+    }
+
+    if (TestWritePhase == 3u)
+    {
+        TestWrittenCrc = (uint16_t)data << 8u;
+        TestWritePhase = 4u;
+        return response;
+    }
+    if (TestWritePhase == 4u)
+    {
+        TestWrittenCrc |= data;
+        /* 独立固定向量：512 个 0x01 的 CRC16 为 0xE3AE。 */
+        TestQueueByte(TestWrittenCrc == 0xE3AEu && !TestRejectWrite ? 0x05u : 0x0Bu);
+        TestWritePhase = TestWriteMulti ? 1u : 0u;
+        return response;
+    }
+    if (TestWritePhase == 1u)
+    {
+        if (data == 0xFEu || data == 0xFCu) { TestWritePhase = 2u; }
+        else if (data == 0xFDu) { TestWritePhase = 0u; }
+        return response;
     }
 
     if (TestCmdLen != 0u || (data & 0xC0u) == 0x40u)
@@ -207,10 +281,15 @@ int SdSpiPortReceive(uint8_t *buf, uint16_t len, uint32_t timeout_ms)
 
 int SdSpiPortTransmit(const uint8_t *buf, uint16_t len, uint32_t timeout_ms)
 {
-    (void)buf;
-    (void)len;
     (void)timeout_ms;
-    return -1;
+    if (TestWritePhase != 2u) { return -1; }
+    for (uint16_t i = 0u; i < len; i++)
+    {
+        if (buf[i] != 1u) { return -1; }
+    }
+    TestWrittenBytes += len;
+    TestWritePhase = 3u;
+    return 0;
 }
 
 void SdSpiPortSetSpeed(SdSpiPortSpeed speed)
@@ -373,6 +452,42 @@ static int TestCrc(void)
     return failed;
 }
 
+static int TestCardCrcProtection(void)
+{
+    uint8_t data[1024];
+    memset(data, 1, sizeof(data));
+    TestReset();
+    TestInitMode = 1u;
+    int failed = TestAssert(SdSpiInit() == 0 && SdSpiCrcEnabled, "initialization requires card CRC");
+    /* 模拟卡立即返回 R1；之后还必须有一字节间隔，再发送六字节 ACMD41。 */
+    failed |= TestAssert(TestAcmdSpacing >= 8u, "CMD55 response has idle clocks before ACMD41");
+    failed |= TestAssert(TestCommandCrc[0] == 0x95u && TestCommandCrc[8] == 0x87u &&
+                         TestCommandCrc[59] == 0x83u && TestCommandCrc[55] == 0x65u &&
+                         TestCommandCrc[41] == 0x77u, "CRC7 independent command vectors");
+    failed |= TestAssert(SdSpiWrite(data, 10u, 1u) == 0 && TestWrittenBytes == 512u &&
+                         TestWrittenCrc == 0xE3AEu && TestCommandCrc[24] == 0xDBu,
+                         "CMD24 sends data and command CRC");
+    TestReset();
+    failed |= TestAssert(SdSpiWrite(data, 10u, 2u) == 0 && TestWrittenBytes == 1024u &&
+                         TestCommandCrc[25] == 0xB7u && TestWritePhase == 0u,
+                         "CMD25 validates each block and terminates stream");
+    TestReset();
+    TestRejectWrite = 1u;
+    failed |= TestAssert(SdSpiWrite(data, 10u, 2u) != 0 && TestWrittenBytes == 512u &&
+                         TestCsLow == 0u, "card CRC rejection stops further writes");
+    TestReset();
+    TestInitMode = 1u;
+    TestRejectCrcOn = 1u;
+    failed |= TestAssert(SdSpiInit() != 0 && !SdSpiIsReady() && !SdSpiCrcEnabled,
+                         "CRC enable rejection prevents mounting for writes");
+    TestReset();
+    SdSpiCrcEnabled = 1u;
+    TestCorruptCrc = 1u;
+    failed |= TestAssert(SdSpiRead(data, 1u, 1u) != 0,
+                         "card CRC requires read verification at default speed");
+    return failed;
+}
+
 int main(void)
 {
     int failed = 0;
@@ -386,6 +501,7 @@ int main(void)
     failed += TestCmd6SelectionReject();
     failed += TestCmd6SwitchSelectionReject();
     failed += TestCrc();
+    failed += TestCardCrcProtection();
 
     if (failed == 0)
     {

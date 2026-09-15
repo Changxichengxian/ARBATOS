@@ -176,10 +176,19 @@ static void CanTxEmitRmGroupIfNeeded(uint8_t bus,
     taskEXIT_CRITICAL();
 }
 
-static void CanTxEmitRmFrames(sdlog_actuator_current_t *log)
+static void CanTxEmitRmFrames(sdlog_actuator_current_t *log, uint8_t output_locked)
 {
-    CanTxEmitRmGroupIfNeeded(1u, (uint16_t)CAN_RM_GROUP_0X200_ID, s_can_tx_can1_200, log);
-    CanTxEmitRmGroupIfNeeded(1u, (uint16_t)CAN_RM_GROUP_0X1FF_ID, s_can_tx_can1_1ff, log);
-    CanTxEmitRmGroupIfNeeded(2u, (uint16_t)CAN_RM_GROUP_0X200_ID, s_can_tx_can2_200, log);
-    CanTxEmitRmGroupIfNeeded(2u, (uint16_t)CAN_RM_GROUP_0X1FF_ID, s_can_tx_can2_1ff, log);
+    for (uint8_t bus = 0u; bus < 2u; bus++) {
+        for (uint8_t group = 0u; group < CanTxRmGroupCount; group++) {
+            if (CanTxRmGroupHasConfig((uint8_t)(bus + 1u), s_can_tx_rm_group_ids[group]) == 0u &&
+                CanTxRmFrameHasOutput(s_can_tx_rm_frames[bus][group]) == 0u) {
+                continue;
+            }
+            vTaskSuspendAll();
+            CanTxRefreshRmGroup((uint8_t)(bus + 1u), s_can_tx_rm_group_ids[group], log, output_locked);
+            CanTxEmitRmGroupIfNeeded((uint8_t)(bus + 1u), s_can_tx_rm_group_ids[group],
+                                    s_can_tx_rm_frames[bus][group], log);
+            (void)xTaskResumeAll();
+        }
+    }
 }

@@ -1250,6 +1250,80 @@ void SdLogStop(void)
     (void)f_close(&sdlog_fp);
 }
 
+int SdLogQuiesce(void)
+{
+    if (!sdlog_active)
+    {
+        return 0;
+    }
+
+    /* 和记录生产者共用临界区，返回后不会再有越过停写点的记录。 */
+    taskENTER_CRITICAL();
+    sdlog_active = 0u;
+    taskEXIT_CRITICAL();
+
+    while (1)
+    {
+        uint32_t head;
+        uint32_t tail;
+        uint32_t used;
+        uint32_t chunk;
+        uint32_t first;
+        uint32_t second;
+
+        taskENTER_CRITICAL();
+        head = sdlog_head;
+        tail = sdlog_tail;
+        used = sdlog_used_bytes(head, tail);
+        if (used == 0u)
+        {
+            taskEXIT_CRITICAL();
+            break;
+        }
+
+        chunk = used;
+        if (chunk > SDLOG_FLUSH_CHUNK_MAX)
+        {
+            chunk = SDLOG_FLUSH_CHUNK_MAX;
+        }
+        const uint32_t to_end = SDLOG_BUF_SIZE - tail;
+        first = (chunk <= to_end) ? chunk : to_end;
+        second = chunk - first;
+        taskEXIT_CRITICAL();
+
+        memcpy(&sdlog_flush_in[0], &sdlog_buf[tail], first);
+        if (second != 0u)
+        {
+            memcpy(&sdlog_flush_in[first], &sdlog_buf[0], second);
+        }
+
+        if (SdLogWrite_block(sdlog_flush_in, chunk) != 0)
+        {
+            (void)sdlog_sync_profiled();
+            (void)f_close(&sdlog_fp);
+            SdcardUnmount();
+            return -1;
+        }
+
+        taskENTER_CRITICAL();
+        sdlog_tail = (sdlog_tail + chunk) % SDLOG_BUF_SIZE;
+        taskEXIT_CRITICAL();
+    }
+
+    const FRESULT sync_result = sdlog_sync_profiled();
+    const FRESULT close_result = f_close(&sdlog_fp);
+    if (sync_result != FR_OK || close_result != FR_OK)
+    {
+        sdlog_last_error = (int32_t)((sync_result != FR_OK) ? sync_result : close_result);
+        sdlog_remember_error(SDLOG_RESTART_REASON_STOP, sdlog_last_error);
+        SdcardUnmount();
+        return -1;
+    }
+
+    sdlog_last_tick_ms = 0u;
+    return 0;
+}
+
 uint8_t SdLogTryWrite(uint16_t tag, const void *payload, uint16_t len)
 {
     if (!sdlog_active || payload == NULL || len == 0u)
@@ -1263,6 +1337,12 @@ uint8_t SdLogTryWrite(uint16_t tag, const void *payload, uint16_t len)
     uint32_t total = 0u;
 
     taskENTER_CRITICAL();
+    if (!sdlog_active)
+    {
+        taskEXIT_CRITICAL();
+        RtProfEnd(RtProfSdLogWrite, write_start_us);
+        return 0u;
+    }
     const uint32_t head = sdlog_head;
     const uint32_t tail = sdlog_tail;
 
@@ -1316,6 +1396,11 @@ void SdLogWriteIsr(uint16_t tag, const void *payload, uint16_t len)
 
     UBaseType_t uxSavedInterruptStatus;
     uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
+    if (!sdlog_active)
+    {
+        taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
+        return;
+    }
     const uint32_t head = sdlog_head;
     const uint32_t tail = sdlog_tail;
 

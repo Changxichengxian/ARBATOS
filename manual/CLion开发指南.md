@@ -1,11 +1,11 @@
 # CLion 开发指南
 
-当前整车目标为 HERO-M、SENTINEL-M、MINIWHEELEG-M，主板均为 DM MC02 H7 / STM32H723。A、C、M 三种开发板支持都保留在 boards，与车型分开管理。后续开发提交到 main。旧 Keil 工程、GCC 转换器与 A/C 板车型已从主线移除，历史保存在提交 951857f 和 zephyr 分支中。
+当前车型包括 M 板的 HERO-M、SENTINEL-M、MINIWHEELEG-M，以及 DJI A F427 的 INFANTRY-TIAN-A。A 板车型当前只开放基础控制链，默认未放行电机且未上板。A、C、M 三种开发板支持都保留在 boards，与车型分开管理。后续开发提交到 main。旧 Keil 工程、GCC 转换器与旧 A/C 板车型已从主线移除，历史保存在提交 951857f 和 zephyr 分支中。
 
 ## 根目录快速入口
 
 - 双击 `打开工程.cmd`：自动查找 PATH 或 JetBrains 安装记录中的 CLion，打开 `projects`；保留 IDE 当前配置，本机目前启用 `hero-m-local`。
-- 双击 `编译固件.cmd`：选择 HERO-M、SENTINEL-M 或 MINIWHEELEG-M，回车默认 HERO-M；结束后窗口保留编译结果。也可在终端运行 `.\编译固件.cmd -Project SENTINEL-M`。
+- 双击 `编译固件.cmd`：按菜单选择车型，回车默认 HERO-M；结束后窗口保留编译结果。也可在终端运行 `.\编译固件.cmd -Project INFANTRY-TIAN-A`。
 
 三个车型共享一个 CMake 工程，不必为每台车复制一份 CLion 工程。单独编译某车型不会修改 IDE 当前选择；在 CLion 中切换时使用下面对应的 `*-local` 配置。入口按 [CLion 官方命令行用法](https://www.jetbrains.com/help/clion/opening-files-from-command-line.html)传入项目目录，不改 `.idea` 或本机预设。
 
@@ -49,15 +49,18 @@ cd D:\ARBATOS
 pwsh -NoProfile -File .\tools\build.ps1 -Action check -Project all
 # 编译当前英雄车，默认并行数为 2
 pwsh -NoProfile -File .\tools\build.ps1 -Action build -Project HERO-M
-# 接好 M 板与 CMSIS-DAP 后，下载刚编好的固件并校验
-pwsh -NoProfile -File .\tools\build.ps1 -Action flash -Project HERO-M
+# 接好 M 板与 CMSIS-DAP 后，指定板上当前固件对应的旧 ELF，再下载刚编好的固件并校验
+pwsh -NoProfile -File .\tools\build.ps1 -Action flash -Project HERO-M `
+    -RunningElf D:\固件存档\上次烧录\zephyr.elf -ProbeSerial 你的CMSIS-DAP序列号
 ```
 
 `flash` 就是把固件写进主控。此操作会暂停/复位主控并启动新程序，先断开执行机构动力或按台架条件准备。它不自动重新编译，所以改代码后先执行 build，再执行 flash。
 
-脚本固定使用 OpenOCD 和当前 M 板配置：CMSIS-DAP、SWD、500 kHz。只允许单个车型，拒绝 `flash -Project all`。按镜像所在扇区更新，不执行全片擦除；HERO-M 从 `0x080C0000` 起的校准区须保留。
+HERO-M 的正式入口会从 `-RunningElf` 取得停写邮箱地址和 256 位构建指纹。运行中只读取 4 字节邮箱标识和 32 字节构建指纹；两者都匹配后才请求日志任务写完内存记录、同步并关闭文件。收到成功确认后先暂停主控，再完整核对板上旧固件，核对通过后才烧录。旧固件没有构建指纹或停写邮箱时，先物理移除 SD 卡，再明确使用 `-SdRemoved`。脚本不会退化成只检查邮箱标识，也不会把“旧固件没有邮箱”推断成“没有插卡”。SENTINEL-M、MINIWHEELEG-M 尚未接入这套邮箱，也必须物理移除 SD 卡并传 `-SdRemoved` 才允许从正式入口烧录。
 
-换车型时把 `HERO-M` 改为 `SENTINEL-M` 或 `MINIWHEELEG-M`，其余步骤相同。`-BuildRoot` 可指定另外的输出根目录；编译和下载必须使用同一个根目录。
+脚本固定使用 OpenOCD 和当前 M 板配置：CMSIS-DAP、SWD、500 kHz。只允许单个车型，拒绝 `flash -Project all`。HERO-M 的保护流程会保存烧录前后的校准区并完整回读程序区；结果默认放在带时间的 `local/flash/hero-m-*` 目录。HERO-M 从 `0x080C0000` 起的校准区须保持不变。`-RunningElf` 必须是板上当前正在运行固件的原始 ELF，且要包含与板上固件一致的构建指纹，不能拿准备烧入的新 ELF 代替。单独调用 `quiesce_running_firmware(...)` 只执行短身份核对和日志停写确认，主控继续运行，供取卡前检查；它不会在运行中批量读取 Flash。
+
+换车型时把 `HERO-M` 改为所需车型名。`INFANTRY-TIAN-A` 的本机预设通过 `tools/build.ps1 -Action presets -Project INFANTRY-TIAN-A` 生成，名称为 `infantry-tian-a-local`；该 A 板目标本次只做软件验证。`-BuildRoot` 可指定另外的输出根目录；编译和下载必须使用同一个根目录。
 
 ## 在 CLion 图形界面下载和调试
 
@@ -68,6 +71,8 @@ pwsh -NoProfile -File .\tools\build.ps1 -Action flash -Project HERO-M
 3. 运行 → 编辑配置 → 添加 **OpenOCD Download & Run**。
 4. 名称可填 `HERO-M / CMSIS-DAP`，构建目标选 `zephyr_final`，对应 `hero-m-local`；ELF 使用下面列出的英雄车文件，Board config 使用仓库的 `openocd.cfg`。
 5. 编译通过、接板并准备好之后，点 Run 下载运行，或点 Debug 下载并进入调试。可以在源码左侧加断点，用 Continue、Step Over、Step Into 查看变量和执行流程。
+
+CLion 自带的 **OpenOCD Download & Run** 目前不会请求 SD 日志任务停写。M 板只在 SD 卡已物理移除时使用这个下载入口；插卡运行时从终端调用上面的受保护 `flash` 流程。
 
 | 设置 | 本机路径 |
 | --- | --- |

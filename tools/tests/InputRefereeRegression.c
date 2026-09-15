@@ -127,6 +127,38 @@ static int TestDbusCodec(void)
     return TestCheck(ManualInputDbusValid(&data) == 0u, "invalid DBUS mouse button is rejected");
 }
 
+static int TestDbusIgnoredCh5(void)
+{
+    /* 现场原始帧：四轴居中，拨杆中/上，旧接收机 CH5 始终为 0。 */
+    uint8_t frame[MANUAL_INPUT_DBUS_FRAME_LENGTH] = {
+        0x00u, 0x04u, 0x20u, 0x00u, 0x01u, 0x78u,
+        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+    };
+    ManualInputDbusData data;
+
+    for (uint32_t value = 0u; value <= UINT16_MAX; value++)
+    {
+        frame[16] = (uint8_t)value;
+        frame[17] = (uint8_t)(value >> 8);
+        if (!TestCheck(ManualInputDbusDecode(frame, &data) != 0u &&
+                       ManualInputDbusValid(&data) != 0u &&
+                       data.channel[4] == MANUAL_INPUT_DBUS_CHANNEL_OFFSET,
+                       "DBUS CH5 任意原始值均不拒收，且解码后固定中立")) return 0;
+    }
+
+    for (uint8_t axis = 0u; axis < MANUAL_INPUT_DBUS_STICK_COUNT; axis++)
+    {
+        data.channel[axis] = 323u;
+        if (!TestCheck(ManualInputDbusValid(&data) == 0u,
+                       "忽略 CH5 后仍拒绝四轴下越界")) return 0;
+        data.channel[axis] = 1725u;
+        if (!TestCheck(ManualInputDbusValid(&data) == 0u,
+                       "忽略 CH5 后仍拒绝四轴上越界")) return 0;
+        data.channel[axis] = MANUAL_INPUT_DBUS_CHANNEL_OFFSET;
+    }
+    return 1;
+}
+
 static uint16_t RefereeMakeFrame(uint8_t frame[REF_PROTOCOL_FRAME_MAX_SIZE],
                                  uint16_t cmd,
                                  const uint8_t *payload,
@@ -231,7 +263,7 @@ static int TestRefereeParser(void)
 
 int main(void)
 {
-    if (!TestDbusCodec() || !TestRefereeParser())
+    if (!TestDbusCodec() || !TestDbusIgnoredCh5() || !TestRefereeParser())
     {
         return 1;
     }

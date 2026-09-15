@@ -163,6 +163,7 @@ typedef struct
     fp32 ChassisPitch;
     fp32 ChassisRoll;
     ChassisControlSnapshot fast;
+    uint8_t spinTranslationInGimbalFrame; // 手动小陀螺先按云台方向限速，再转换到底盘坐标。
 } ChassisMove;
 
 extern void ChassisControlTask(void const *pvParameters);

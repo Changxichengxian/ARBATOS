@@ -254,38 +254,26 @@ static uint8_t CanTxRmGroupIndex(uint16_t group_id, uint8_t *out)
     {
         return 0u;
     }
-    if (group_id == (uint16_t)CAN_RM_GROUP_0X200_ID)
-    {
-        *out = 0u;
-        return 1u;
-    }
-    if (group_id == (uint16_t)CAN_RM_GROUP_0X1FF_ID)
-    {
-        *out = 1u;
-        return 1u;
+    for (uint8_t i = 0u; i < CanTxRmGroupCount; i++) {
+        if (group_id == s_can_tx_rm_group_ids[i]) {
+            *out = i;
+            return 1u;
+        }
     }
     return 0u;
 }
 
-static void CanTxMarkRmGroupConfigured(uint8_t bus, uint16_t can_id)
+static void CanTxMarkRmGroupConfigured(uint8_t bus, const motor_node_param_t *node)
 {
     uint8_t bus_index = 0u;
     uint8_t group_index = 0u;
 
-    if (can_id >= 0x201u && can_id <= 0x204u)
-    {
-        group_index = 0u;
-    }
-    else if (can_id >= 0x205u && can_id <= 0x208u)
-    {
-        group_index = 1u;
-    }
-    else
-    {
-        return;
-    }
+    uint16_t group_id = 0u;
+    uint8_t slot = 0u;
 
-    if (CanTxBusIndex(bus, &bus_index) == 0u)
+    if (MotorCfgRmTxSlot(node, &group_id, &slot) == 0u ||
+        CanTxRmGroupIndex(group_id, &group_index) == 0u ||
+        CanTxBusIndex(bus, &bus_index) == 0u)
     {
         return;
     }
@@ -314,6 +302,6 @@ static void CanTxCacheRmGroups(void)
             continue;
         }
 
-        CanTxMarkRmGroupConfigured(route->bus, can_id);
+        CanTxMarkRmGroupConfigured(route->bus, route->node);
     }
 }

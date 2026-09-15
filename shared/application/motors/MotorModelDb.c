@@ -50,6 +50,7 @@ static const MotorModelDbEntry s_MotorModelDb[MOTOR_MODEL__COUNT] =
 {
     [MOTOR_MODEL_3508] =
         {
+            .rm_tx = {.current_group = {0x200u, 0x1FFu}, .node_count = 8u},
             .base = {.can_id_base = 0x200u, .max_current = 16384, .reduction_ratio = 19.0f},
             .rx_format = MOTOR_MODEL_RX_FMT_RM_STD,
             .default_protocol = (uint8_t)MOTOR_PROTOCOL_RM_GROUP,
@@ -61,6 +62,7 @@ static const MotorModelDbEntry s_MotorModelDb[MOTOR_MODEL__COUNT] =
         },
     [MOTOR_MODEL_3510] =
         {
+            .rm_tx = {.current_group = {0x200u, 0x1FFu}, .node_count = 8u},
             .base = {.can_id_base = 0x200u, .max_current = 16000, .reduction_ratio = 19.0f},
             .rx_format = MOTOR_MODEL_RX_FMT_820R,
             .default_protocol = (uint8_t)MOTOR_PROTOCOL_RM_GROUP,
@@ -72,6 +74,7 @@ static const MotorModelDbEntry s_MotorModelDb[MOTOR_MODEL__COUNT] =
         },
     [MOTOR_MODEL_2006] =
         {
+            .rm_tx = {.current_group = {0x200u, 0x1FFu}, .node_count = 8u},
             .base = {.can_id_base = 0x200u, .max_current = 10000, .reduction_ratio = 25.0f},
             .rx_format = MOTOR_MODEL_RX_FMT_RM_STD,
             .default_protocol = (uint8_t)MOTOR_PROTOCOL_RM_GROUP,
@@ -83,17 +86,34 @@ static const MotorModelDbEntry s_MotorModelDb[MOTOR_MODEL__COUNT] =
         },
     [MOTOR_MODEL_6020] =
         {
-            .base = {.can_id_base = 0x204u, .max_current = 16384, .reduction_ratio = 1.0f},
+            // DJI GM6020 说明书 v1.4（2023.10）第 6-7 页；电流环需电机端另行启用。
+            .base = {.can_id_base = 0x204u, .max_current = 25000, .reduction_ratio = 1.0f},
             .rx_format = MOTOR_MODEL_RX_FMT_RM_STD,
             .default_protocol = (uint8_t)MOTOR_PROTOCOL_RM_GROUP,
-            .default_control_mode = (uint8_t)MOTOR_CONTROL_MODE_CURRENT,
+            .default_control_mode = (uint8_t)MOTOR_CONTROL_MODE_VOLTAGE,
             .caps = 0u,
+            .rm_tx = {
+                .current_group = {0x1FEu, 0x2FEu},
+                .voltage_group = {0x1FFu, 0x2FFu},
+                .voltage_range_abs = 25000,
+                .node_count = 7u,
+            },
+            .specs = {
+                .encoder_bits = 13u,
+                .rated_torque_nm = 1.2f,
+                .max_no_load_speed_rpm_24v = 320.0f,
+                .rated_current_a = 1.62f,
+                .phase_resistance_mohm = 1800.0f,
+                .phase_inductance_uh = 5780.0f,
+                .weight_g = 468.0f,
+            },
             .cmd_current_range_abs = 16384,
             .torque_current_range_a = 3.0f,
             .fb_current_meas_range_abs = 0,
         },
     [MOTOR_MODEL_6623] =
         {
+            .rm_tx = {.current_group = {0x1FFu, 0u}, .node_count = 4u},
             .base = {.can_id_base = 0x204u, .max_current = 5000, .reduction_ratio = 1.0f},
             .rx_format = MOTOR_MODEL_RX_FMT_6623,
             .default_protocol = (uint8_t)MOTOR_PROTOCOL_RM_GROUP,

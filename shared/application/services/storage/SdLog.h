@@ -1035,6 +1035,12 @@ int SdLogStart(void);
 // Stop logging and close the current log file (safe to call even if inactive).
 void SdLogStop(void);
 
+/*
+ * 停止接收新记录，写完内存中已有记录，再同步并关闭文件。
+ * 只能由 SdLogTask 调用；返回 0 才表示后续不会再写卡且文件已成功关闭。
+ */
+int SdLogQuiesce(void);
+
 // Append one record into the RAM ring buffer (non-blocking, drops if full).
 uint8_t SdLogTryWrite(uint16_t tag, const void *payload, uint16_t len);
 void SdLogWrite(uint16_t tag, const void *payload, uint16_t len);

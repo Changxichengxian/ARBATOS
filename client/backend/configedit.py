@@ -7,6 +7,7 @@ import math
 import os
 import re
 import tempfile
+import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -416,7 +417,7 @@ class ConfigEditor:
         target_name, sources = self._sources(target)
         groups, fields = self._build(sources)
         return {"target": target_name, "revision": self._revision(sources), "groups": groups,
-                "models": self._model_meta()}, fields, sources
+                "models": self._model_meta(), "chassis": self._chassis_meta(sources, fields)}, fields, sources
 
     def public_get(self, target):
         result, _fields, _sources = self.get(target)
@@ -471,6 +472,9 @@ class ConfigEditor:
                 public = {"id": field_id, "label": label, "value": value,
                           "type": "number", "editable": True}
                 if desc: public["description"] = desc
+                if re.fullmatch(r"tuning\.chassis\.motor_dir\[\d+\]", field_id):
+                    public.update({"min": -1, "max": 1, "step": 1,
+                                   "description": (desc + "；" if desc else "") + "底盘轮方向只能为 -1 或 1。"})
                 internal = InternalField(public, source["path"].name, start, end, text[start:end],
                                          scale=0 if kind == "integer" else 1)
                 output.append(public); fields[field_id] = internal
@@ -544,9 +548,12 @@ class ConfigEditor:
                 auto_feedback_id = model_meta[model]["can_id_base"] + can_id_value
                 effective_feedback_id = feedback_override if feedback_enable else master_id or auto_feedback_id
                 feedback_editable = True
+                feedback_automatic = feedback_enable == 0 and master_id == 0
                 feedback_description = ("当前为显式反馈 ID；填写 -1 恢复按型号和电机 ID 自动计算。" if
                                         feedback_enable or master_id else
                                         "当前按型号和电机 ID 自动计算；填写 0..2047 可设显式反馈 ID。")
+            if is_rs:
+                feedback_automatic = False
             group_fields = []
             specs = [
                 ("model", "电机型号", model, "enum", [{"value": key, "label": MODEL_LABELS.get(key, key)} for key in model_meta]),
@@ -574,7 +581,7 @@ class ConfigEditor:
                                                  f"{feedback_override}。填写非零设备 ID 后会规范化配置并启用。")
                 if member == "feedback_id":
                     public.update({"min": -1 if feedback_editable else 0, "max": 0x7FF, "step": 1,
-                                   "description": feedback_description})
+                                   "description": feedback_description, "automatic": feedback_automatic})
                 if member == "external_reduction_ratio":
                     public.update({"min": 0, "max": 10000, "step": 0.01,
                                    "description": "0 或 1 表示直连；减速传动比应大于 1，且不超过 10000。"})
@@ -588,8 +595,49 @@ class ConfigEditor:
                                                      span[0] if span else None, span[1] if span else None,
                                                      source["text"][span[0]:span[1]] if span else None,
                                                      motor=axis, member=member, node=node)
-            groups.append({"id": f"motor.{axis}", "label": AXIS_LABELS[axis], "category": "motors",
+            groups.append({"id": f"motor.{axis}", "label": self._motor_group_label(axis, fields), "category": "motors",
                            "fields": group_fields})
+
+    @staticmethod
+    def _motor_group_label(axis, fields):
+        if not axis.startswith("chassis["):
+            return AXIS_LABELS[axis]
+        try:
+            index = int(axis[len("chassis["):-1])
+        except ValueError:
+            return AXIS_LABELS[axis]
+        wheel_type = fields.get("tuning.chassis.wheel_type")
+        value = wheel_type.public["value"] if wheel_type is not None else None
+        labels = ("底盘左前", "底盘右前", "底盘右后", "底盘左后") \
+            if value == "CHASSIS_WHEEL_TYPE_XDRIVE" else \
+            ("底盘左前", "底盘右前", "底盘左后", "底盘右后")
+        return labels[index] if 0 <= index < len(labels) else AXIS_LABELS[axis]
+
+    def _chassis_meta(self, sources, fields):
+        wheel_type_field = fields.get("tuning.chassis.wheel_type")
+        wheel_value = wheel_type_field.public["value"] if wheel_type_field is not None else None
+        layouts = {
+            "CHASSIS_WHEEL_TYPE_MECANUM": ("mecanum", (
+                ("front-left", "底盘左前"), ("front-right", "底盘右前"),
+                ("rear-left", "底盘左后"), ("rear-right", "底盘右后"),
+            )),
+            "CHASSIS_WHEEL_TYPE_XDRIVE": ("xdrive", (
+                ("front-left", "底盘左前"), ("front-right", "底盘右前"),
+                ("rear-right", "底盘右后"), ("rear-left", "底盘左后"),
+            )),
+        }
+        wheel_type, layout = layouts.get(wheel_value, ("unknown", ()))
+        config_path = sources["ConfigHardware.inc"]["path"].with_name("RobotConfig.toml")
+        try:
+            config = tomllib.loads(config_path.read_text(encoding="utf-8-sig"))
+            classic = config.get("controllers", {}).get("chassis", {}).get("type") == "classic"
+        except (OSError, tomllib.TOMLDecodeError):
+            classic = False
+        has_four_wheels = all(f"motor.chassis[{index}].id" in fields for index in range(4))
+        wheels = [{"index": index, "position": position, "label": label}
+                  for index, (position, label) in enumerate(layout)]
+        return {"supported": bool(classic and has_four_wheels and len(wheels) == 4),
+                "wheelType": wheel_type, "wheels": wheels}
 
     def _motor_nodes(self, source, motor):
         fallback_map = {"chassis": 1, "friction": 2, "yaw": 1, "yaw_upper": 1, "pitch": 1, "trigger": 1, "arm": 1}
@@ -681,7 +729,8 @@ class ConfigEditor:
             base = re.search(r"\.can_id_base\s*=\s*(0[xX][0-9a-fA-F]+|\d+)u?", block)
             result[name] = {"ratio": value, "transport": "RS485" if name in RS485_MODELS else "CAN",
                             "encoder_bits": int(bits.group(1)) if bits else 13,
-                            "can_id_base": int(base.group(1), 0) if base else 0}
+                            "can_id_base": int(base.group(1), 0) if base else 0,
+                            "id_max": _motor_id_max(name)}
         if not result:
             raise ValueError("无法读取共享电机型号表")
         return result
@@ -828,6 +877,7 @@ class ConfigEditor:
     def update(self, target, revision, changes):
         if not isinstance(revision, str) or not revision: raise ValueError("配置修订号不能为空")
         if not isinstance(changes, dict) or not changes: raise ValueError("配置变更必须是非空对象")
+        self._validate_chassis_direction_changes(changes)
         with self.workspace._lock:
             _result, fields, sources = self.get(target)
             if self._revision(sources) != revision:
@@ -874,6 +924,14 @@ class ConfigEditor:
                 raise ValueError("配置已被外部修改，请重新读取后再保存")
             self._commit(sources, candidates)
             return self.public_get(target)
+
+    @staticmethod
+    def _validate_chassis_direction_changes(changes):
+        for field_id, value in changes.items():
+            if not re.fullmatch(r"tuning\.chassis\.motor_dir\[\d+\]", field_id):
+                continue
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or value not in {-1, 1}:
+                raise ValueError(f"{field_id} 只能为 -1 或 1")
 
     @staticmethod
     def _format_field(item, value):

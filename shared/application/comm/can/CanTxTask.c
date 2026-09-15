@@ -76,14 +76,14 @@ static uint8_t s_can_tx_unlock_barrier_pending;
 static uint8_t s_can_tx_unlock_barrier_active;
 static uint8_t s_can_tx_output_was_locked = 1u;
 
-static int16_t s_can_tx_can1_200[4];
-static int16_t s_can_tx_can1_1ff[4];
-static int16_t s_can_tx_can2_200[4];
-static int16_t s_can_tx_can2_1ff[4];
-static MotorId s_can_tx_rm_motor[2][2][4];
+enum { CanTxRmGroupCount = 5u };
+static const uint16_t s_can_tx_rm_group_ids[CanTxRmGroupCount] = {
+    0x200u, 0x1FFu, 0x2FFu, 0x1FEu, 0x2FEu};
+static int16_t s_can_tx_rm_frames[2][CanTxRmGroupCount][4];
+static MotorId s_can_tx_rm_motor[2][CanTxRmGroupCount][4];
 static uint32_t s_can_tx_mit_budget_tick_ms;
 static uint8_t s_can_tx_mit_budget_used;
-static uint8_t s_can_tx_rm_group_configured[2][2];
+static uint8_t s_can_tx_rm_group_configured[2][CanTxRmGroupCount];
 static uint8_t s_can_tx_route_start_index;
 static uint32_t s_can_tx_mit_enable_tx_count[MotorCount];
 static uint32_t s_can_tx_mit_cmd_tx_count[MotorCount];
@@ -111,7 +111,7 @@ typedef struct
 
 static CanTxEmergencyMitRoute s_can_tx_emergency_mit[MotorCount];
 static volatile uint8_t s_can_tx_emergency_mit_count;
-static uint8_t s_can_tx_emergency_rm_group[3][2];
+static uint8_t s_can_tx_emergency_rm_group[3][CanTxRmGroupCount];
 #if defined(STM32H723xx)
 static CanTxEmergencyRs485Route s_can_tx_emergency_rs485[MotorCount];
 static volatile uint8_t s_can_tx_emergency_rs485_count;
@@ -120,7 +120,7 @@ static volatile uint32_t s_can_tx_emergency_hash;
 static volatile uint32_t s_can_tx_emergency_magic;
 static volatile uint32_t s_can_tx_emergency_magic_inv;
 
-static void CanTxEmitRmFrames(sdlog_actuator_current_t *log);
+static void CanTxEmitRmFrames(sdlog_actuator_current_t *log, uint8_t output_locked);
 static void CanTxForceDisabledCmd(MotorId id);
 
 #include "CanCommandTxCommonHelpers.inc"
@@ -255,8 +255,9 @@ static uint32_t CanTxEmergencyTableHash(uint8_t mit_count, uint8_t rs485_count)
 
     for (uint8_t bus_index = 0u; bus_index < 3u; bus_index++)
     {
-        hash = CanTxEmergencyHashByte(hash, s_can_tx_emergency_rm_group[bus_index][0]);
-        hash = CanTxEmergencyHashByte(hash, s_can_tx_emergency_rm_group[bus_index][1]);
+        for (uint8_t group = 0u; group < CanTxRmGroupCount; group++) {
+            hash = CanTxEmergencyHashByte(hash, s_can_tx_emergency_rm_group[bus_index][group]);
+        }
     }
 
     for (uint8_t i = 0u; i < mit_count; i++)
@@ -315,10 +316,10 @@ static uint8_t CanTxEmergencyTableValid(uint8_t *out_mit_count, uint8_t *out_rs4
 
     for (uint8_t bus_index = 0u; bus_index < 3u; bus_index++)
     {
-        if (s_can_tx_emergency_rm_group[bus_index][0] > 1u ||
-            s_can_tx_emergency_rm_group[bus_index][1] > 1u)
-        {
-            return 0u;
+        for (uint8_t group = 0u; group < CanTxRmGroupCount; group++) {
+            if (s_can_tx_emergency_rm_group[bus_index][group] > 1u) {
+                return 0u;
+            }
         }
     }
 
@@ -477,13 +478,12 @@ void CanTxEmergencyPrepare(void)
 
         if (route->isRmGroup != 0u)
         {
-            if (route->canId >= 0x201u && route->canId <= 0x204u)
-            {
-                s_can_tx_emergency_rm_group[route->bus - 1u][0] = 1u;
-            }
-            else if (route->canId >= 0x205u && route->canId <= 0x208u)
-            {
-                s_can_tx_emergency_rm_group[route->bus - 1u][1] = 1u;
+            uint16_t group_id;
+            uint8_t group_index;
+            uint8_t slot;
+            if (MotorCfgRmTxSlot(route->node, &group_id, &slot) != 0u &&
+                CanTxRmGroupIndex(group_id, &group_index) != 0u) {
+                s_can_tx_emergency_rm_group[route->bus - 1u][group_index] = 1u;
             }
             continue;
         }
@@ -524,29 +524,22 @@ void CanTxEmergencyStopNow(void)
 
     if (CanTxEmergencyTableValid(&mit_count, &rs485_count) == 0u)
     {
-        /* 启动早期尚未发过电机命令，仍尽力给两条经典 CAN 发 RM 零电流。 */
-        (void)BspCanFaultTx(1u, (uint16_t)CAN_RM_GROUP_0X200_ID, rm_zero, 8u);
-        (void)BspCanFaultTx(1u, (uint16_t)CAN_RM_GROUP_0X1FF_ID, rm_zero, 8u);
-        (void)BspCanFaultTx(2u, (uint16_t)CAN_RM_GROUP_0X200_ID, rm_zero, 8u);
-        (void)BspCanFaultTx(2u, (uint16_t)CAN_RM_GROUP_0X1FF_ID, rm_zero, 8u);
+        /* 路由表不可用时，尽力覆盖所有支持的 RM 电压/电流零给定。 */
+        for (uint8_t bus = 1u; bus <= 2u; bus++) {
+            for (uint8_t group = 0u; group < CanTxRmGroupCount; group++) {
+                (void)BspCanFaultTx(bus, s_can_tx_rm_group_ids[group], rm_zero, 8u);
+            }
+        }
         return;
     }
 
     for (uint8_t bus_index = 0u; bus_index < 3u; bus_index++)
     {
-        if (s_can_tx_emergency_rm_group[bus_index][0] != 0u)
-        {
-            (void)BspCanFaultTx((uint8_t)(bus_index + 1u),
-                                (uint16_t)CAN_RM_GROUP_0X200_ID,
-                                rm_zero,
-                                8u);
-        }
-        if (s_can_tx_emergency_rm_group[bus_index][1] != 0u)
-        {
-            (void)BspCanFaultTx((uint8_t)(bus_index + 1u),
-                                (uint16_t)CAN_RM_GROUP_0X1FF_ID,
-                                rm_zero,
-                                8u);
+        for (uint8_t group = 0u; group < CanTxRmGroupCount; group++) {
+            if (s_can_tx_emergency_rm_group[bus_index][group] != 0u) {
+                (void)BspCanFaultTx((uint8_t)(bus_index + 1u),
+                                    s_can_tx_rm_group_ids[group], rm_zero, 8u);
+            }
         }
     }
 

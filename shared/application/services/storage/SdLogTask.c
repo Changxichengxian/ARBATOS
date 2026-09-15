@@ -19,6 +19,9 @@
 #include "RobotMode.h"
 #include "PowerMeter.h"
 #include "ChassisPowerControl.h"
+#if defined(ARBATOS_BUILD_INFO_AUTOGEN_AVAILABLE)
+#include "build_info_autogen.h"
+#endif
 #if defined(__ZEPHYR__)
 #include "RobotFaultZephyr.h"
 #endif
@@ -34,6 +37,43 @@
 
 static uint32_t s_power_meter_log_drop_count = 0u;
 static uint32_t s_chassis_power_model_sequence = 0u;
+static uint8_t s_flash_pause_latched = 0u;
+
+const volatile uint32_t g_sdLogFlashMailboxGuard = SDLOG_FLASH_MAILBOX_GUARD;
+#if defined(ARBATOS_BUILD_INFO_AUTOGEN_AVAILABLE)
+const uint8_t g_sdLogFlashBuildFingerprint[SDLOG_FLASH_BUILD_FINGERPRINT_SIZE]
+    __attribute__((used, aligned(4))) = ARBATOS_BUILD_FINGERPRINT_BYTES;
+#endif
+/* DTCM 不经过数据缓存，调试器和任务能直接看到彼此写入的状态。 */
+__attribute__((section("DTCM"))) volatile uint32_t g_sdLogFlashPauseRequest;
+__attribute__((section("DTCM"))) volatile uint32_t g_sdLogFlashPauseReady;
+
+static uint8_t SdLogHandleFlashPause(void)
+{
+#if defined(ARBATOS_BUILD_INFO_AUTOGEN_AVAILABLE)
+    const volatile uint8_t *fingerprint = g_sdLogFlashBuildFingerprint;
+    if (fingerprint[0] != ARBATOS_BUILD_FINGERPRINT_FIRST_BYTE)
+    {
+        return 0u;
+    }
+#endif
+    if (g_sdLogFlashMailboxGuard != SDLOG_FLASH_MAILBOX_GUARD)
+    {
+        return 0u;
+    }
+
+    if (g_sdLogFlashPauseRequest == SDLOG_FLASH_PAUSE_REQUEST)
+    {
+        s_flash_pause_latched = 1u;
+        if (g_sdLogFlashPauseReady == 0u)
+        {
+            g_sdLogFlashPauseReady = (SdLogQuiesce() == 0) ?
+                SDLOG_FLASH_PAUSE_READY : SDLOG_FLASH_PAUSE_FAILED;
+        }
+    }
+
+    return s_flash_pause_latched;
+}
 
 static uint8_t SdLogEntertainPause(void)
 {
@@ -176,12 +216,20 @@ static void sdlog_wait_boot_delay_ms(uint32_t delay_ms)
 void SdLogTask(void const *argument)
 {
     (void)argument;
+    g_sdLogFlashPauseRequest = 0u;
+    g_sdLogFlashPauseReady = 0u;
 
     // Wait for TF/SD ready (mount may be done by StartupServiceTask).
     uint32_t retry_ms = SDLOG_TASK_MOUNT_RETRY_START_MS;
     uint32_t next_start_ms = 0u;
     while (!SdcardIsMounted())
     {
+        if (SdLogHandleFlashPause() != 0u)
+        {
+            osDelay(SDLOG_TASK_IDLE_DELAY_MS);
+            continue;
+        }
+
         const int m = SdcardMount();
         if (m == 0)
         {
@@ -204,6 +252,12 @@ void SdLogTask(void const *argument)
 
     while (1)
     {
+        if (SdLogHandleFlashPause() != 0u)
+        {
+            osDelay(SDLOG_TASK_IDLE_DELAY_MS);
+            continue;
+        }
+
         if (SdLogEntertainPause() != 0u)
         {
             SdLogStop();
@@ -272,6 +326,11 @@ void SdLogTask(void const *argument)
         while (1)
         {
             SdLogStats stats = {0};
+
+            if (SdLogHandleFlashPause() != 0u)
+            {
+                break;
+            }
 
             SdLogPoll();
             SdLogGetStats(&stats);

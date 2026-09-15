@@ -13,6 +13,7 @@ export type ConfigField = {
     step?: number | string;
     unit?: string;
     description?: string;
+    automatic?: boolean;
 };
 export type ConfigGroup = {
     id: string;
@@ -26,7 +27,8 @@ export type ConfigValues = {
     revision: string;
     groups: ConfigGroup[];
     warnings?: string[];
-    models?: Record<string, { ratio: number; encoder_bits: number; transport: string; can_id_base: number }>;
+    models?: Record<string, { ratio: number; encoder_bits: number; transport: string; can_id_base: number; id_max?: number }>;
+    chassis?: { supported: boolean; wheelType: string; wheels: { index: number; position: string; label: string }[] };
 };
 const props = defineProps<{
     data: ConfigValues | null;

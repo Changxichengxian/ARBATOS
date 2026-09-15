@@ -16,7 +16,7 @@
                     {MOTOR_MODEL_3510, 3u},
                     {MOTOR_MODEL_3510, 4u},
                 },
-            .yaw = {MOTOR_MODEL_6020, 2u},
+            .yaw = {MOTOR_MODEL_6020, 2u, .control_mode = MOTOR_CONTROL_MODE_VOLTAGE, .command_limit_abs = 16384},
             .yaw_upper = {MOTOR_MODEL_6020, 0u},
             .pitch = {MOTOR_MODEL_3510, 5u, .can_bus = 2u},
             .trigger = {MOTOR_MODEL_3510, 4u},

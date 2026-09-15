@@ -56,7 +56,7 @@ typedef enum
     MotorModeNone = 0u,
     MotorModeDisable,
     MotorModeDamping,
-    MotorModeCurrent,
+    MotorModeCurrent, // 兼容原始驱动给定；RM 电压/电流量纲由轴的 control_mode 决定
     MotorModeStateTorque, // q/dq/kp/kd/tau, transport-independent
     MotorModePosVel,
     MotorModeSpeed,

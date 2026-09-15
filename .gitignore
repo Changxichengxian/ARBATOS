@@ -52,7 +52,9 @@ local/sdlogs/**
 !local/sdlogs/.gitkeep
 local/reference/
 local/cache/
+local/diagnostics/
 **/__pycache__/
+**/.pytest_cache/
 *.pyc
 /shared/generated/build_info_autogen.h
 

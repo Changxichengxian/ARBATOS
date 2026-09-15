@@ -116,6 +116,7 @@ static ArbUartPort ArbRs485Ports[2] = {
 
 static uint8_t ArbRcRxBuf[BSP_RC_SBUS_FRAME_LENGTH];
 static volatile BspRcDiag ArbRcDiagState;
+static volatile BspElrsUartDiag ArbElrsDiag;
 static ArbRcFrame ArbRcRing[ARB_RC_RX_RING_SIZE];
 static struct k_spinlock ArbRcRingLock;
 static uint16_t ArbRcHead;
@@ -273,6 +274,17 @@ static uint8_t ArbUartCallError(ArbUartPort *port)
         return (byte_cb() != 0u) ? 1u : 0u;
     }
     return 0u;
+}
+
+static void ArbUartRecordError(ArbUartPort *port, uint32_t error)
+{
+    if (port != &ArbElrsPort) return;
+    ArbElrsDiag.errors++;
+    ArbElrsDiag.lastError = error;
+    if ((error & UART_ERROR_OVERRUN) != 0u) ArbElrsDiag.overrun++;
+    if ((error & UART_ERROR_FRAMING) != 0u) ArbElrsDiag.framing++;
+    if ((error & UART_ERROR_PARITY) != 0u) ArbElrsDiag.parity++;
+    if ((error & UART_ERROR_NOISE) != 0u) ArbElrsDiag.noise++;
 }
 
 static void ArbUartDeliverByte(ArbUartPort *port, uint8_t byte)
@@ -529,6 +541,7 @@ static void ArbUartAsyncCallback(const struct device *dev, struct uart_event *ev
         }
         break;
     case UART_RX_STOPPED:
+        ArbUartRecordError(port, (uint32_t)evt->data.rx_stop.reason);
         if (port == &ArbRcPort)
         {
             ArbRcDiagState.uart_error_cnt++;
@@ -565,6 +578,7 @@ static void ArbUartIrqCallback(const struct device *dev, void *user_data)
     error = uart_err_check(dev);
     if (error != 0)
     {
+        ArbUartRecordError(port, (uint32_t)error);
         if (port == &ArbRcPort)
         {
             ArbRcDiagState.uart_error_cnt++;
@@ -582,6 +596,7 @@ static void ArbUartIrqCallback(const struct device *dev, void *user_data)
     {
         while ((count = uart_fifo_read(dev, &byte, 1)) > 0)
         {
+            if (port == &ArbElrsPort) ArbElrsDiag.irqBytes++;
             if (port->rx_mode == ArbUartRxRc || port->rx_mode == ArbUartRxReferee)
             {
                 ArbUartIrqStoreByte(port, byte);
@@ -666,7 +681,7 @@ static int ArbRcConfigureSbus(void)
     }
     config.baudrate = 100000u;
     config.parity = UART_CFG_PARITY_EVEN;
-    config.stop_bits = UART_CFG_STOP_BITS_2;
+    /* 停止位沿用板级声明，避免把 DBUS 的 8E1 强制覆盖为 8E2。 */
     config.data_bits = UART_CFG_DATA_BITS_8;
     config.flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
     ret = uart_configure(ArbRcPort.dev, &config);
@@ -918,6 +933,14 @@ void usart1_tx_dma_init(void) { (void)ArbUartPrepare(&ArbAuxPort); }
 void usart1_tx_dma_enable(uint8_t *data, uint16_t len) { (void)BspAuxLinkTxDma(data, len); }
 
 /* ===== 独立外置 ELRS / CRSF 接收 ===== */
+void BspElrsLinkGetDiag(BspElrsUartDiag *out)
+{
+    if (out == NULL) return;
+    const unsigned int key = irq_lock();
+    *out = ArbElrsDiag;
+    irq_unlock(key);
+}
+
 void BspElrsLinkSetRxEventCb(BspAuxLinkRxEventCb cb)
 {
     k_spinlock_key_t key = k_spin_lock(&ArbElrsPort.lock);

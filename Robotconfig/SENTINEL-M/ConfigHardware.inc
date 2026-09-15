@@ -25,8 +25,8 @@
                     .control_mode = MOTOR_CONTROL_MODE_MIT,
                     .transport = MOTOR_TRANSPORT_CAN,
                 },
-            .yaw_upper = {.model = MOTOR_MODEL_6020, .can_id = 1u, .can_bus = 2u},
-            .pitch = {.model = MOTOR_MODEL_6020, .can_id = 2u, .can_bus = 2u},
+            .yaw_upper = {.model = MOTOR_MODEL_6020, .can_id = 1u, .can_bus = 2u, .control_mode = MOTOR_CONTROL_MODE_VOLTAGE, .command_limit_abs = 16384},
+            .pitch = {.model = MOTOR_MODEL_6020, .can_id = 2u, .can_bus = 2u, .control_mode = MOTOR_CONTROL_MODE_VOLTAGE, .command_limit_abs = 16384},
             .trigger = {.model = MOTOR_MODEL_2006, .can_id = 5u, .can_bus = 1u},
             .arm =
                 {

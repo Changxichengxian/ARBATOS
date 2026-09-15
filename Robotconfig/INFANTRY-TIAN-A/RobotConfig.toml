@@ -1,0 +1,22 @@
+# 车型能力唯一入口；参数、接线和输入映射仍在同目录 Config*.inc。
+schema = 1
+board = "dji_a_f427"
+profile = "infantry"
+services = ["RC_SBUS", "HEALTH_MONITOR"]
+
+[controllers.chassis]
+type = "classic"
+
+[controllers.gimbal]
+type = "single"
+
+[controllers.shoot]
+type = "rm"
+
+[features]
+subboard_music = false
+imu_mount = true
+
+[build]
+sources = ["RobotConfig.c", "DetectTask.c", "ArmMotorTable.c", "InfantryDiag.c"]
+shared_sources = ["shared/application/comm/host/HostLinkTaskStub.c"]

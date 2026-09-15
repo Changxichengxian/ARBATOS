@@ -87,6 +87,14 @@ config ARBATOS_RECEIVE_ONLY
       CAN hardware acknowledges frames, but application CAN and UART sends
       are rejected. No motion task is started; diagnostics use debug RAM.
 
+config ARBATOS_BENCH_TELEMETRY
+    bool "Stream stationary IMU and receiver diagnostics"
+    depends on BOARD_DM_MC02_H7 && ARBATOS_LEGACY_SOURCES && LOG_BACKEND_UART
+    default n
+    help
+      Adds deferred UART logging for bench measurements without halting the
+      IMU task. This does not disable motor outputs in the normal firmware.
+
 config ARBATOS_FREERTOS_MAX_TASKS
     int "Maximum legacy task count"
     default 32

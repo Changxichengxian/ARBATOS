@@ -192,10 +192,46 @@ static inline uint16_t MotorCfgFeedbackId(const motor_node_param_t *node)
     return MotorCfgCanId(node);
 }
 
-// 判断这个轴是否走大疆一组四电机的电流帧格式。
+// 判断这个轴是否走大疆一组四电机的原始命令帧格式。
 static inline uint8_t MotorCfgIsRmGroupProtocol(const motor_node_param_t *node)
 {
     return (MotorCfgProtocol(node) == MOTOR_PROTOCOL_RM_GROUP) ? 1u : 0u;
+}
+
+// 发送组和槽位由型号与控制模式决定，不能再由反馈 ID 猜测。
+static inline uint8_t MotorCfgRmTxSlot(const motor_node_param_t *node,
+                                      uint16_t *groupId, uint8_t *slot)
+{
+    const MotorModelDbEntry *entry;
+    const uint16_t *groups;
+    motor_control_mode_e mode;
+    uint8_t index;
+
+    if (node == NULL || groupId == NULL || slot == NULL ||
+        MotorCfgTransport(node) != MOTOR_TRANSPORT_CAN ||
+        MotorCfgIsRmGroupProtocol(node) == 0u) {
+        return 0u;
+    }
+    entry = MotorCfgModelDb(node->model);
+    if (entry == NULL || node->can_id == 0u ||
+        node->can_id > entry->rm_tx.node_count || node->can_id > 8u) {
+        return 0u;
+    }
+    mode = MotorCfgControlMode(node);
+    if (mode == MOTOR_CONTROL_MODE_VOLTAGE) {
+        groups = entry->rm_tx.voltage_group;
+    } else if (mode == MOTOR_CONTROL_MODE_CURRENT) {
+        groups = entry->rm_tx.current_group;
+    } else {
+        return 0u;
+    }
+    index = (uint8_t)(node->can_id - 1u);
+    if (groups[index / 4u] == 0u) {
+        return 0u;
+    }
+    *groupId = groups[index / 4u];
+    *slot = (uint8_t)(index % 4u);
+    return 1u;
 }
 
 // 按绝对值限幅电流；max_abs<=0 表示不限制。
@@ -230,11 +266,42 @@ static inline int16_t MotorCfgLimitCurrentModel(MotorModel model, int16_t curren
 // 按轴上配置的电机型号限幅，业务控制只需要把轴节点传进来。
 static inline int16_t MotorCfgLimitCurrentNode(const motor_node_param_t *node, int16_t current)
 {
+    const MotorModelDbEntry *entry;
+    int16_t limit;
+
     if (node == NULL)
     {
         return current;
     }
-    return MotorCfgLimitCurrentModel(node->model, current);
+    entry = MotorCfgModelDb(node->model);
+    if (entry == NULL) {
+        return 0;
+    }
+    limit = entry->base.max_current;
+    if (MotorCfgIsRmGroupProtocol(node) != 0u) {
+        uint16_t groupId;
+        uint8_t slot;
+        if (MotorCfgRmTxSlot(node, &groupId, &slot) == 0u) {
+            return 0;
+        }
+        if (MotorCfgControlMode(node) == MOTOR_CONTROL_MODE_VOLTAGE) {
+            limit = entry->rm_tx.voltage_range_abs;
+        } else if (entry->cmd_current_range_abs > 0 &&
+                   (limit <= 0 || entry->cmd_current_range_abs < limit)) {
+            limit = entry->cmd_current_range_abs;
+        }
+        if (limit <= 0) {
+            return 0;
+        }
+    }
+    if (node->command_limit_abs < 0) {
+        return 0;
+    }
+    if (node->command_limit_abs > 0 &&
+        (limit <= 0 || node->command_limit_abs < limit)) {
+        limit = node->command_limit_abs;
+    }
+    return MotorCfgLimitCurrentAbs(current, limit);
 }
 
 // 取电机减速比；型号无效时按 1.0 处理，避免上层除零或出错。

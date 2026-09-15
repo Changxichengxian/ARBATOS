@@ -165,6 +165,7 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
     uint8_t configured[CHASSIS_MOTOR_COUNT];
     uint8_t bound[CHASSIS_MOTOR_COUNT];
     uint8_t feedbackReadOk;
+    uint32_t feedbackNowMs;
 
     if (snapshot == NULL)
     {
@@ -223,6 +224,8 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
                          LowStateGetMotorMany(readPlan.id,
                                               s_chassisMotorReadFeedback,
                                               readPlan.count);
+    /* 先复制反馈再取时，避免帧内抢占使新反馈比帧起点更晚，被误判为超时。 */
+    feedbackNowMs = BspTimeGetTickMs();
 
     for (uint8_t i = 0u; i < CHASSIS_MOTOR_COUNT; i++)
     {
@@ -260,7 +263,7 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
 
         if (MotorHealthEval(id,
                             &s_chassisMotorReadFeedback[i],
-                            snapshot->tick_ms,
+                            feedbackNowMs,
                             ChassisMotorFeedbackTimeoutMs(axis),
                             &snapshot->motor_health[axis]) == 0u)
         {

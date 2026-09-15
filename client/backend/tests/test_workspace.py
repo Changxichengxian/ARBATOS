@@ -17,6 +17,9 @@ class WorkspaceTest(unittest.TestCase):
         self.root = Path(self.tmp.name) / "repo"
         shutil.copytree(REPO / "Robotconfig", self.root / "Robotconfig")
         shutil.copytree(REPO / "shared", self.root / "shared")
+        catalog = self.root / "boards" / "DmMc02H7" / "PortCatalog.toml"
+        catalog.parent.mkdir(parents=True)
+        shutil.copy2(REPO / "boards" / "DmMc02H7" / "PortCatalog.toml", catalog)
         self.workspace = WORKSPACE.Workspace(self.root)
 
     def tearDown(self):

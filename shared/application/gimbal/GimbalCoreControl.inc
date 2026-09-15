@@ -512,6 +512,7 @@ static fp32 GimbalYawChassisSpinFfCurrent(const GimbalMotor *yaw_motor)
 {
     ChassisState chassis;
     static uint8_t was_spin_active = 0u;
+    static uint8_t exit_active = 0u;
     static uint32_t exit_start_ms = 0u;
     static fp32 exit_yaw_err = 0.0f;
 
@@ -519,12 +520,17 @@ static fp32 GimbalYawChassisSpinFfCurrent(const GimbalMotor *yaw_motor)
         ChassisStateRead(&chassis) == 0u ||
         chassis.valid == 0u)
     {
+        was_spin_active = 0u;
+        exit_active = 0u;
         return 0.0f;
     }
 
     const fp32 wz_set = chassis.wz_set;
     const fp32 wz_meas = chassis.wz;
-    const fp32 yaw_dir = YAW_TURN ? 1.0f : -1.0f;
+    // 负系数只反转底盘转速补偿；yaw 位置误差的纠偏方向保持不变。
+    const fp32 gain = (fabsf(g_config.gimbal.yaw_spin_ff_gain) > 0.0f) ?
+                          g_config.gimbal.yaw_spin_ff_gain : GIMBAL_YAW_CHASSIS_SPIN_FF_CURRENT_PER_RADPS;
+    const fp32 yaw_dir = (YAW_TURN ? 1.0f : -1.0f) * ((gain < 0.0f) ? -1.0f : 1.0f);
     const uint32_t now_ms = BspTimeGetTickMs();
     const uint8_t spin_active =
         (chassis.mode == CHASSIS_STATE_MODE_NO_FOLLOW_YAW &&
@@ -535,28 +541,26 @@ static fp32 GimbalYawChassisSpinFfCurrent(const GimbalMotor *yaw_motor)
     if (spin_active != 0u)
     {
         was_spin_active = 1u;
-        exit_start_ms = 0u;
+        exit_active = 0u;
 
-        const fp32 ff = yaw_dir * wz_set * GIMBAL_YAW_CHASSIS_SPIN_FF_CURRENT_PER_RADPS;
-        return fp32_constrain(ff,
-                              -GIMBAL_YAW_CHASSIS_SPIN_FF_MAX_CURRENT,
-                              GIMBAL_YAW_CHASSIS_SPIN_FF_MAX_CURRENT);
+        // 用实际底盘转速补偿，避免刚切小陀螺、车体尚未转动时提前推云台。
+        const fp32 limit = (g_config.gimbal.yaw_spin_ff_limit > 0.0f) ?
+                               g_config.gimbal.yaw_spin_ff_limit : GIMBAL_YAW_CHASSIS_SPIN_FF_MAX_CURRENT;
+        const fp32 ff = yaw_dir * wz_meas * fabsf(gain);
+        return fp32_constrain(ff, -limit, limit);
     }
 
     if (was_spin_active != 0u)
     {
         was_spin_active = 0u;
+        exit_active = 1u;
         exit_start_ms = now_ms;
         exit_yaw_err = rad_format(yaw_motor->angle_set - yaw_motor->angle);
     }
 
     fp32 ff = 0.0f;
-    if (fabsf(wz_meas) >= GIMBAL_YAW_CHASSIS_SPIN_FF_MIN_WZ_RADPS)
-    {
-        ff += yaw_dir * wz_meas * GIMBAL_YAW_CHASSIS_SPIN_EXIT_RATE_CURRENT_PER_RADPS;
-    }
-
-    if (exit_start_ms != 0u)
+    // 只有刚退出小陀螺时才补偿；普通回中和停机恢复不能沿用旧补偿。
+    if (exit_active != 0u)
     {
         const uint32_t elapsed_ms = now_ms - exit_start_ms;
         if (elapsed_ms < GIMBAL_YAW_CHASSIS_SPIN_EXIT_FF_TIME_MS)
@@ -564,11 +568,15 @@ static fp32 GimbalYawChassisSpinFfCurrent(const GimbalMotor *yaw_motor)
             const fp32 decay = 1.0f - ((fp32)elapsed_ms / (fp32)GIMBAL_YAW_CHASSIS_SPIN_EXIT_FF_TIME_MS);
             const fp32 yaw_err_now = rad_format(yaw_motor->angle_set - yaw_motor->angle);
             const fp32 yaw_err_blend = decay * exit_yaw_err + (1.0f - decay) * yaw_err_now;
+            if (fabsf(wz_meas) >= GIMBAL_YAW_CHASSIS_SPIN_FF_MIN_WZ_RADPS)
+            {
+                ff += yaw_dir * wz_meas * GIMBAL_YAW_CHASSIS_SPIN_EXIT_RATE_CURRENT_PER_RADPS * decay;
+            }
             ff += yaw_err_blend * GIMBAL_YAW_CHASSIS_SPIN_EXIT_ERR_CURRENT_PER_RAD * decay;
         }
         else
         {
-            exit_start_ms = 0u;
+            exit_active = 0u;
         }
     }
 
@@ -605,6 +613,7 @@ static void GimbalControlLoop(GimbalControl *control_loop)
 
     if (control_loop->GimbalYawMotor.mode == GIMBAL_MOTOR_RAW)
     {
+        (void)GimbalYawChassisSpinFfCurrent(NULL);
         GimbalMotorRawAngleControl(&control_loop->GimbalYawMotor);
     }
     else if (control_loop->GimbalYawMotor.mode == GIMBAL_MOTOR_ENCODER)

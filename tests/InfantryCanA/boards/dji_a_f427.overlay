@@ -1,0 +1,12 @@
+/* 这个诊断工程只保留 CAN1、CAN2 和 UART6。 */
+&usart1 { status = "disabled"; };
+&usart3 { status = "disabled"; };
+&uart8 { status = "disabled"; };
+&spi5 { status = "disabled"; };
+&sdmmc1 { status = "disabled"; };
+&timers3 { status = "disabled"; };
+&timers12 { status = "disabled"; };
+&zephyr_udc0 { status = "disabled"; };
+&pwm3 { status = "disabled"; };
+&pwm12 { status = "disabled"; };
+&cdc_acm_uart0 { status = "disabled"; };

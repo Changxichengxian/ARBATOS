@@ -49,6 +49,7 @@
 #define SD_SPI_CMD25 (25u)  // WRITE_MULTIPLE_BLOCK
 #define SD_SPI_CMD55 (55u)  // APP_CMD
 #define SD_SPI_CMD58 (58u)  // READ_OCR
+#define SD_SPI_CMD59 (59u)  // CRC_ON_OFF
 
 #define SD_SPI_ACMD41 (41u) // SD_SEND_OP_COND
 
@@ -72,6 +73,7 @@ static uint8_t SdSpiDummyRx[SD_SPI_SECTOR_SIZE];
 
 static uint8_t SdSpiInited = 0u;
 static uint8_t SdSpiType = 0u;
+static uint8_t SdSpiCrcEnabled = 0u;
 
 #if defined(__ZEPHYR__)
 volatile int SdSpiHighSpeedResult = SD_SPI_BENCH_HS_NOT_READY;
@@ -170,26 +172,33 @@ static uint8_t SdSpiSelect(void)
     return 1u;
 }
 
+static uint8_t SdSpiCrc7(const uint8_t *buf, uint32_t len)
+{
+    uint8_t crc = 0u;
+
+    while (len--) {
+        uint8_t value = *buf++;
+        for (uint8_t bit = 0u; bit < 8u; bit++) {
+            crc <<= 1u;
+            if (((value ^ crc) & 0x80u) != 0u) {
+                crc ^= 0x09u;
+            }
+            value <<= 1u;
+        }
+    }
+    return crc & 0x7Fu;
+}
+
 static uint8_t SdSpiSendCmd(uint8_t cmd, uint32_t arg)
 {
     uint8_t buf[6];
-    uint8_t crc = 0x01u;
-
-    if (cmd == SD_SPI_CMD0)
-    {
-        crc = 0x95u;
-    }
-    else if (cmd == SD_SPI_CMD8)
-    {
-        crc = 0x87u;
-    }
 
     buf[0] = (uint8_t)(0x40u | cmd);
     buf[1] = (uint8_t)(arg >> 24u);
     buf[2] = (uint8_t)(arg >> 16u);
     buf[3] = (uint8_t)(arg >> 8u);
     buf[4] = (uint8_t)(arg);
-    buf[5] = crc;
+    buf[5] = (uint8_t)((SdSpiCrc7(buf, 5u) << 1u) | 1u);
 
     if (cmd == SD_SPI_CMD12)
     {
@@ -221,6 +230,8 @@ static uint8_t SdSpiSendAcmd(uint8_t acmd, uint32_t arg)
     {
         return r;
     }
+    /* 两条命令之间补足 8 个空闲时钟，避免卡仍在结束 CMD55 的响应。 */
+    (void)SdSpiTxrx(0xFFu);
     return SdSpiSendCmd(acmd, arg);
 }
 
@@ -252,6 +263,9 @@ static uint8_t SdSpiUseMultiRead(void)
 
 static uint8_t SdSpiVerifyReadCrc(void)
 {
+    if (SdSpiCrcEnabled != 0u) {
+        return 1u;
+    }
 #if defined(SD_BENCH_TEST)
     return SdSpiBenchCrc16;
 #elif defined(__ZEPHYR__)
@@ -279,7 +293,7 @@ static int SdSpiRecvData(uint8_t *buf, uint32_t len, uint32_t timeout_ms)
         return -1;
     }
 
-    // Receive data and discard CRC
+    /* 开启卡端校验后，所有读取速度都校验接收数据。 */
     if (len <= SD_SPI_SECTOR_SIZE && SdSpiTxrxDma(SdSpiDummyTx, buf, (uint16_t)len, timeout_ms) == 0)
     {
         // ok
@@ -316,9 +330,10 @@ static int SdSpiXmitDataToken(const uint8_t *buf, uint32_t len, uint8_t token)
         return -2;
     }
 
-    // Dummy CRC
-    (void)SdSpiTxrx(0xFFu);
-    (void)SdSpiTxrx(0xFFu);
+    /* 让卡拒收传输损坏的数据，不能把未校验的元数据提交给文件系统。 */
+    const uint16_t crc = SdSpiCrc16(buf, len);
+    (void)SdSpiTxrx((uint8_t)(crc >> 8u));
+    (void)SdSpiTxrx((uint8_t)crc);
 
     const uint8_t resp = SdSpiTxrx(0xFFu);
     if ((resp & 0x1Fu) != 0x05u)
@@ -346,6 +361,7 @@ int SdSpiInit(void)
 
     SdSpiInited = 0u;
     SdSpiType = 0u;
+    SdSpiCrcEnabled = 0u;
 #if defined(__ZEPHYR__)
     SdSpiHighSpeedResult = SD_SPI_BENCH_HS_NOT_READY;
 #endif
@@ -376,6 +392,19 @@ int SdSpiInit(void)
         SdSpiUnlock();
         return -1;
     }
+
+    /* 卡进入空闲态后立即开启校验，初始化余下命令也受保护。 */
+    if (!SdSpiSelect()) {
+        SdSpiUnlock();
+        return -13;
+    }
+    r = SdSpiSendCmd(SD_SPI_CMD59, 1u);
+    SdSpiDeselect();
+    if (r != 0x01u) {
+        SdSpiUnlock();
+        return -14;
+    }
+    SdSpiCrcEnabled = 1u;
 
     // Check SD version via CMD8
     uint8_t ocr[4] = {0};

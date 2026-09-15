@@ -635,6 +635,11 @@ static void ChassisAlgorithmMoveOverride(fp32 *vx_set, fp32 *vy_set, fp32 *angle
         return;
     }
 
+    if (ChassisMoveRcToVector->spinTranslationInGimbalFrame != 0u) {
+        // 外部指令的起始斜坡仍使用底盘坐标，保留原有坐标和限速约定。
+        ChassisAlgorithmGimbalToChassis(ChassisMoveRcToVector, *vx_set, *vy_set, vx_set, vy_set);
+        ChassisMoveRcToVector->spinTranslationInGimbalFrame = 0u;
+    }
     const fp32 start_vx = *vx_set;
     const fp32 start_vy = *vy_set;
     const fp32 start_wz = *angle_set;
@@ -890,6 +895,7 @@ void ChassisBehaviourControlSet(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, Cha
         return;
     }
 
+    ChassisMoveRcToVector->spinTranslationInGimbalFrame = 0u;
     if (ChassisBehaviourMode == CHASSIS_ZERO_FORCE)
     {
         ChassisZeroForceControl(vx_set, vy_set, angle_set, ChassisMoveRcToVector);
@@ -1245,19 +1251,13 @@ static void ChassisGyroSpinControl(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, Cha
         return;
     }
 
-    // 1) Read translation command as usual (RC/keyboard), then rotate it into gimbal frame.
+    // 保留云台坐标的平移指令，由 ChassisSetControl 先限速、再旋转，避免朝向改变时反复截断。
     const ChassisControlSnapshot *fast = &ChassisMoveRcToVector->fast;
     ChassisRcToControlVector(vx_set, vy_set, ChassisMoveRcToVector);
     const fp32 vx_raw = *vx_set;
     const fp32 vy_raw = *vy_set;
 
-    const fp32 yaw_relative_meas = ChassisGetGimbalYawRelativeAngle(ChassisMoveRcToVector);
-    fp32 yaw_frame = yaw_relative_meas;
-    (void)ChassisGimbalTurnaroundGetFrameYawRelative(ChassisMoveRcToVector, &yaw_frame);
-    const fp32 sin_yaw = arm_sin_f32(-yaw_frame);
-    const fp32 cos_yaw = arm_cos_f32(-yaw_frame);
-    *vx_set = cos_yaw * vx_raw + sin_yaw * vy_raw;
-    *vy_set = -sin_yaw * vx_raw + cos_yaw * vy_raw;
+    ChassisMoveRcToVector->spinTranslationInGimbalFrame = 1u;
 
     // 2) Constant spin rate (wz) like WH's "小陀螺" mode.
     // Use two presets so tuning can keep stability while moving.

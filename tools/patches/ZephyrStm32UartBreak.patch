@@ -1,0 +1,20 @@
+diff --git a/drivers/serial/uart_stm32.c b/drivers/serial/uart_stm32.c
+index 39c38103..cfeb087b 100644
+--- a/drivers/serial/uart_stm32.c
++++ b/drivers/serial/uart_stm32.c
+@@ -642,6 +642,15 @@ static int uart_stm32_parameters_set(const struct device *dev,
+ 		}
+ 	}
+ 
++#if defined(USART_CR2_LBDL) && defined(IS_UART_LIN_INSTANCE) && \
++	defined(STM32_USART_DATAWIDTH_9_BIT)
++	/* 9 位硬件字符的全零数据可连续低 10 位，不能按 10 位 break 丢弃。 */
++	if (IS_UART_LIN_INSTANCE(config->usart)) {
++		LL_USART_SetLINBrkDetectionLen(config->usart,
++			databits == STM32_USART_DATAWIDTH_9_BIT ? USART_CR2_LBDL : 0U);
++	}
++#endif
++
+ 	return 0;
+ }
+ 

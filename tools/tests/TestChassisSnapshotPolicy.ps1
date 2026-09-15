@@ -12,7 +12,23 @@ New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 $Output = Join-Path $BuildDir 'chassis-snapshot-policy-regression.exe'
 $TestSource = Join-Path $RepoRoot 'tools\tests\ChassisSnapshotPolicyRegression.c'
 $MotorHealthSource = Join-Path $RepoRoot 'shared\application\motors\MotorHealth.c'
+$SnapshotSource = Join-Path $RepoRoot 'shared\application\chassis\ChassisSnapshotHelpers.inc'
+$SnapshotText = [System.IO.File]::ReadAllText($SnapshotSource, [System.Text.Encoding]::UTF8)
+# 直接编译生产采集段，测试只替代反馈来源和时钟，避免另写一份采集顺序。
+$BatchMatch = [regex]::Match($SnapshotText,
+    '(?ms)^    ChassisMotorReadPlanBuild\(axisId, configured, bound, &readPlan\);.*?(?=^    if \(control != NULL\))')
+$UnavailableMatch = [regex]::Match($SnapshotText,
+    '(?ms)^static void ChassisMotorHealthUnavailable\(.*?(?=^static uint32_t ChassisMotorFeedbackTimeoutMs\()')
+if (-not $BatchMatch.Success -or -not $UnavailableMatch.Success) {
+    throw '生产快照采集段边界已变化，请更新回归测试抽取入口。'
+}
+$BatchInclude = Join-Path $BuildDir 'ChassisSnapshotBatchUnderTest.inc'
+$UnavailableInclude = Join-Path $BuildDir 'ChassisSnapshotUnavailableUnderTest.inc'
+$Utf8 = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($BatchInclude, $BatchMatch.Value, $Utf8)
+[System.IO.File]::WriteAllText($UnavailableInclude, $UnavailableMatch.Value, $Utf8)
 $IncludeDirs = @(
+    $BuildDir,
     (Join-Path $RepoRoot 'shared\components\support'),
     (Join-Path $RepoRoot 'shared\components\controller'),
     (Join-Path $RepoRoot 'shared\application\robot'),

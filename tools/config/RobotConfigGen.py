@@ -26,8 +26,8 @@ CATALOG = "shared/application/robot/RobotTaskCatalog.def"
 BOARDS = {
     "dm_mc02_h7": {"directory": "boards/DmMc02H7", "kind": "STM32H7", "cpu_hz": 500000000,
                    "can_buses": 2, "rs485_ports": 2, "fpu": 1, "stack": 1024},
-    "dji_a_f427": {"directory": "boards/DjiAF427", "kind": "STM32F427", "cpu_hz": 180000000,
-                   "can_buses": 2, "rs485_ports": 0, "fpu": 1, "stack": 256},
+    "dji_a_f427": {"directory": "boards/DjiAF427", "kind": "STM32F427", "cpu_hz": 168000000,
+                   "can_buses": 2, "rs485_ports": 0, "fpu": 1, "stack": 1024},
     "dji_c_f407": {"directory": "boards/DjiCF407", "kind": "STM32F407", "cpu_hz": 168000000,
                    "can_buses": 2, "rs485_ports": 0, "fpu": 1, "stack": 256},
 }
@@ -42,6 +42,18 @@ PRIORITIES = {"Low", "Normal", "AboveNormal", "High", "Realtime"}
 IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 TARGET_NAME = re.compile(r"[A-Za-z][A-Za-z0-9_-]*\Z")
 PORT_ID = re.compile(r"[a-z][a-z0-9_]*\Z")
+
+# F427 已有 CAN、DBUS、MPU6500 和经典控制链的 Zephyr 适配；其余整车
+# 服务还没有逐项完成实板迁移，不能因能通过生成就被意外启用。
+A_F427_ALLOWED_TASKS = {
+    "RC_SBUS",
+    "HEALTH_MONITOR",
+    "CAN_COMMAND_TX",
+    "CAN_FEEDBACK_RX",
+    "CLASSIC_CHASSIS",
+    "SINGLE_GIMBAL",
+    "IMU",
+}
 
 
 class ConfigError(ValueError):
@@ -481,8 +493,8 @@ def resolve(root, requested, config_text=None):
     require(data.get("schema") == 1, f"{path}: schema 必须为 1")
     require(data.get("board") in BOARDS, f"{target['name']}: 未支持的开发板 {data.get('board')}")
     target["board"] = data["board"]
-    require(target["board"] == "dm_mc02_h7",
-            f"{target['board']}: 板级定义保留，但完整机器人运行栈尚未迁移；当前仅支持 dm_mc02_h7")
+    require(target["board"] != "dji_c_f407",
+            "dji_c_f407: 板级定义保留，但完整机器人运行栈尚未迁移")
     profile = data.get("profile", "custom")
     require(profile in {"hero", "infantry", "wheelleg", "sentry", "carrier", "custom"}, "未知 profile")
     catalog = task_catalog(root)
@@ -565,6 +577,11 @@ def resolve(root, requested, config_text=None):
     for group in conflicts:
         chosen = set(group) & set(selected)
         require(len(chosen) <= 1, f"控制输出冲突: {', '.join(sorted(chosen))}")
+    if target["board"] == "dji_a_f427":
+        unsupported = sorted(set(selected) - A_F427_ALLOWED_TASKS)
+        require(not unsupported,
+                "dji_a_f427 当前只支持 DBUS、健康检测、经典底盘、单云台和 RM 射击控制链；"
+                "未迁移模块: " + ", ".join(unsupported))
     require(target["board"] == "dm_mc02_h7" or "SERVO" not in selected,
             "SERVO 需要 M 板 P11 的四路 servo-pwms；当前开发板没有该资源")
     if any(c["domain"] == "shoot" and c["type"] == "rm" for c in resolved_controls):
@@ -590,9 +607,10 @@ def resolve(root, requested, config_text=None):
         require(row["priority"] in PRIORITIES, f"{symbol}: 未知优先级")
         task_rows.append(row)
     features = data.get("features", {})
-    keys(features, {"subboard_music", "imu_mount"}, "features")
+    keys(features, {"subboard_music", "imu_mount", "external_5v"}, "features")
     require(all(type(x) is bool for x in features.values()), "features 只能为 true/false")
     require(not features.get("subboard_music") or target["board"] == "dm_mc02_h7", "副板音乐需要 MC02 H7")
+    require(not features.get("external_5v") or target["board"] == "dm_mc02_h7", "受控外供 5 V 需要 MC02 H7")
     if features.get("imu_mount"):
         inside(path.parent, "ImuMount.h", {".h"})
     port_config = resolve_port_config(root, target, data, selected)
@@ -710,8 +728,11 @@ def write_port_generation(target, out, header):
         if assignment["node"] in emitted:
             continue
         emitted.add(assignment["node"])
-        overlay_lines.extend([f"&{assignment['node']} {{", f"    current-speed = <{assignment['baud']}>;",
-                              '    status = "okay";', "};"])
+        overlay_lines.extend([f"&{assignment['node']} {{", f"    current-speed = <{assignment['baud']}>;"])
+        # H7 的硬件缓冲吸收短暂中断延迟，避免 420 kbaud 接收只剩一个字节余量。
+        if target["board"] == "dm_mc02_h7" and role_id == "elrs_crsf":
+            overlay_lines.append("    fifo-enable;")
+        overlay_lines.extend(['    status = "okay";', "};"])
     path = out / "RobotTargetPorts.overlay"
     write_changed(path, "\n".join(overlay_lines) + "\n")
     return str(path.resolve())
@@ -735,6 +756,7 @@ def generate(root, target, out):
               f'#define ROBOT_BOARD_HAS_FPU {board["fpu"]}u',
               f'#define ROBOT_RUNTIME_DEFAULT_STACK_WORDS {board["stack"]}u',
               f'#define ROBOT_IMU_MOUNT_CONFIGURED {int(target["features"].get("imu_mount", False))}',
+              f'#define ROBOT_EXTERNAL_5V_ENABLED {int(target["features"].get("external_5v", False))}',
               '#define ROBOT_SUBBOARD_RTC_SERVICE ' + str(int(
                   "shared/zephyr/port/subboard/SubBoardBringupZephyr.c" in target["port_sources"])),
               f'#define ROBOT_CONFIG_FINGERPRINT "{target["fingerprint"]}"',

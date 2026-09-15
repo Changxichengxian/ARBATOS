@@ -10,6 +10,9 @@ import time
 from collections import deque
 from typing import Any, Callable, Iterable
 
+from motor_observation import MotorObservation
+from receiver import ReceiverTelemetry
+
 try:
     import serial
     from serial.tools import list_ports
@@ -37,6 +40,7 @@ class SerialService:
         max_line_bytes: int = 4096,
         max_send_bytes: int = 1024,
         max_sends_per_second: int = 20,
+        clock: Callable[[], float] | None = None,
     ) -> None:
         self._serial_factory = serial_factory or (serial.Serial if serial is not None else None)
         self._port_provider = port_provider or (list_ports.comports if list_ports is not None else None)
@@ -44,6 +48,9 @@ class SerialService:
         self._max_line_bytes = max(64, int(max_line_bytes))
         self._max_send_bytes = max(1, int(max_send_bytes))
         self._max_sends_per_second = max(1, int(max_sends_per_second))
+        self._clock = clock or time.time
+        self._motors = MotorObservation(self._clock)
+        self._receiver = ReceiverTelemetry(self._clock)
         self._lock = threading.RLock()
         self._write_lock = threading.Lock()
         self._stop = threading.Event()
@@ -65,6 +72,7 @@ class SerialService:
         self._samples: deque[dict[str, Any]] = deque(maxlen=self._max_records)
         self._dropped_through = 0
         self._buffer = bytearray()
+        self._discard_text_line = False
         self._send_times: deque[float] = deque()
 
     def dispatch(self, method: str, params: dict[str, Any] | None = None) -> Any:
@@ -191,7 +199,10 @@ class SerialService:
         self._samples.clear()
         self._dropped_through = 0
         self._buffer.clear()
+        self._discard_text_line = False
         self._send_times.clear()
+        self._receiver.reset()
+        self._motors.reset()
 
     def _close(self) -> dict[str, Any]:
         with self._lock:
@@ -204,6 +215,8 @@ class SerialService:
             self._reader = None
         error = self._finish_handle(handle, reader)
         with self._lock:
+            self._receiver.reset()
+            self._motors.reset()
             if error:
                 self._error = error
             return self._status_locked()
@@ -233,6 +246,8 @@ class SerialService:
             "rxBytes": self._rx_bytes,
             "txBytes": self._tx_bytes,
             "error": self._error,
+            "receiver": self._receiver.snapshot(),
+            "motors": self._motors.snapshot(),
         }
 
     def _read(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -246,6 +261,8 @@ class SerialService:
                 "samples": [dict(item) for item in self._samples if item["seq"] > after],
                 "cursor": self._seq,
                 "dropped": after < self._dropped_through,
+                "receiver": self._receiver.snapshot(),
+                "motors": self._motors.snapshot(),
             }
 
     def _send(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -315,6 +332,8 @@ class SerialService:
                 self._error = str(exc)
                 self._connected = False
                 self._stop.set()
+                self._receiver.reset()
+                self._motors.reset()
         try:
             handle.close()
         except Exception:
@@ -332,16 +351,24 @@ class SerialService:
             newline = self._buffer.find(b"\n")
             if newline < 0:
                 if len(self._buffer) > self._max_line_bytes:
-                    del self._buffer[: len(self._buffer) - self._max_line_bytes]
+                    self._buffer.clear()
+                    self._discard_text_line = True
                     self._error = "收到的文本行过长，已丢弃前部数据"
                 return
             raw = bytes(self._buffer[:newline]).rstrip(b"\r")
             del self._buffer[: newline + 1]
+            rejected = self._discard_text_line
+            self._discard_text_line = False
             if len(raw) > self._max_line_bytes:
                 raw = raw[-self._max_line_bytes :]
                 self._error = "收到的文本行过长，已截断"
+                rejected = True
             text = raw.decode("utf-8", errors="replace")
             self._append_record_locked(self._lines, {"time": received, "text": text})
+            if rejected:
+                continue
+            self._receiver.feed(text)
+            self._motors.feed(text, received)
             if self._format == "csv":
                 self._parse_csv_locked(text, received)
 

@@ -305,6 +305,118 @@ static int TestStrictStatsAndOrder(void)
                      "同批正 LQ 在前、新 RC 在后时应只发布最后一帧");
 }
 
+static int TestChannelSnapshot(void)
+{
+    ElrsChannelSnapshot snapshot;
+    uint16_t channel[MANUAL_INPUT_CRSF_CHANNEL_COUNT];
+    uint8_t rc[CRSF_FRAME_SIZE_MAX];
+    uint8_t statsUp[CRSF_FRAME_SIZE_MAX];
+    uint8_t statsDown[CRSF_FRAME_SIZE_MAX];
+    uint8_t batch[TEST_FRAME_BUFFER_SIZE];
+    uint8_t rcLength;
+    uint8_t upLength;
+    uint8_t downLength;
+    uint16_t length = 0u;
+    uint32_t sequence;
+    uint32_t published;
+
+    TestReset(1u);
+    TestChannels(channel);
+    for (uint8_t i = 0u; i < MANUAL_INPUT_CRSF_CHANNEL_COUNT; i++)
+    {
+        channel[i] = (uint16_t)(MANUAL_INPUT_CRSF_VALUE_MIN + i * 37u);
+    }
+    channel[4] = MANUAL_INPUT_CRSF_VALUE_MIN;
+    channel[5] = MANUAL_INPUT_CRSF_VALUE_MID;
+    s_tick = 17u;
+    upLength = TestBuildStats(statsUp, CRSF_ADDRESS_FLIGHT_CONTROLLER, 80u, 0u);
+    rcLength = TestBuildRc(rc, CRSF_ADDRESS_FLIGHT_CONTROLLER, channel, 0u);
+    length = TestAppend(batch, length, statsUp, upLength);
+    length = TestAppend(batch, length, rc, rcLength);
+    TestFeedBatch(batch, length);
+    ElrsChannelGetSnapshot(&snapshot);
+    if (!TestCheck(snapshot.valid != 0u && snapshot.last_frame_ms == 17u &&
+                       memcmp(snapshot.channel, channel, sizeof(channel)) == 0,
+                   "合法 RC 必须完整保留 16 个原始 11bit 通道和帧时间")) return 0;
+    sequence = snapshot.sequence;
+
+    s_tick = 100u;
+    TestFeedBatch(statsUp, upLength);
+    s_tick = (TickType_t)(100u + ELRS_LINK_STATS_TIMEOUT_MS);
+    ElrsChannelGetSnapshot(&snapshot);
+    if (!TestCheck(ElrsLinkDiag.state == ELRS_LINK_STATE_UP &&
+                       snapshot.valid == 0u && snapshot.sequence == sequence,
+                   "统计仍新但 RC 帧超时后，快照不得继续标记为有效")) return 0;
+
+    TestFeedBatch(rc, rcLength);
+    ElrsChannelGetSnapshot(&snapshot);
+    if (!TestCheck(snapshot.valid != 0u && snapshot.sequence == ElrsLinkSeqNext(sequence),
+                   "RC 帧超时后收到新合法 RC 必须恢复有效快照")) return 0;
+    sequence = snapshot.sequence;
+
+    published = ElrsLinkDiag.rc_publish_count;
+    channel[0] = 0u;
+    rcLength = TestBuildRc(rc, CRSF_ADDRESS_FLIGHT_CONTROLLER, channel, 0u);
+    TestFeedBatch(rc, rcLength);
+    ElrsChannelGetSnapshot(&snapshot);
+    if (!TestCheck(snapshot.valid == 0u && snapshot.channel[0] == 0u &&
+                       snapshot.sequence == ElrsLinkSeqNext(sequence) &&
+                       ElrsLinkDiag.rc_publish_count == published,
+                   "映射通道为 0 时必须观测原始值，但不得发布控制")) return 0;
+    sequence = snapshot.sequence;
+
+    channel[0] = 2047u;
+    rcLength = TestBuildRc(rc, CRSF_ADDRESS_FLIGHT_CONTROLLER, channel, 0u);
+    TestFeedBatch(rc, rcLength);
+    ElrsChannelGetSnapshot(&snapshot);
+    if (!TestCheck(snapshot.valid == 0u && snapshot.channel[0] == 2047u &&
+                       snapshot.sequence == ElrsLinkSeqNext(sequence) &&
+                       ElrsLinkDiag.rc_publish_count == published,
+                   "映射通道为 2047 时必须观测原始值，但不得发布控制")) return 0;
+    sequence = snapshot.sequence;
+
+    channel[0] = MANUAL_INPUT_CRSF_VALUE_MIN;
+    channel[15] = 0u;
+    rcLength = TestBuildRc(rc, CRSF_ADDRESS_FLIGHT_CONTROLLER, channel, 0u);
+    TestFeedBatch(rc, rcLength);
+    ElrsChannelGetSnapshot(&snapshot);
+    if (!TestCheck(snapshot.valid != 0u && snapshot.channel[15] == 0u &&
+                       snapshot.sequence == ElrsLinkSeqNext(sequence),
+                   "未映射 AUX 通道为 0 不得阻止当前帧有效")) return 0;
+    sequence = snapshot.sequence;
+
+    channel[15] = 2047u;
+    rcLength = TestBuildRc(rc, CRSF_ADDRESS_FLIGHT_CONTROLLER, channel, 0u);
+    TestFeedBatch(rc, rcLength);
+    ElrsChannelGetSnapshot(&snapshot);
+    if (!TestCheck(snapshot.valid != 0u && snapshot.channel[15] == 2047u &&
+                       snapshot.sequence == ElrsLinkSeqNext(sequence),
+                   "未映射 AUX 通道为 2047 不得阻止当前帧有效")) return 0;
+    sequence = snapshot.sequence;
+
+    downLength = TestBuildStats(statsDown, CRSF_ADDRESS_FLIGHT_CONTROLLER, 0u, 0u);
+    TestFeedBatch(statsDown, downLength);
+    ElrsChannelGetSnapshot(&snapshot);
+    if (!TestCheck(snapshot.valid == 0u && snapshot.sequence == sequence &&
+                       memcmp(snapshot.channel, channel, sizeof(channel)) == 0,
+                   "失联后可保留最后通道，但必须标记为无效")) return 0;
+
+    ElrsLinkStop();
+    ElrsLinkRxStart();
+    ElrsChannelGetSnapshot(&snapshot);
+    if (!TestCheck(snapshot.valid == 0u,
+                   "接收重启后旧会话通道不得作为当前有效通道")) return 0;
+
+    s_tick++;
+    length = 0u;
+    length = TestAppend(batch, length, statsUp, upLength);
+    length = TestAppend(batch, length, rc, rcLength);
+    TestFeedBatch(batch, length);
+    ElrsChannelGetSnapshot(&snapshot);
+    return TestCheck(snapshot.valid != 0u && snapshot.sequence == ElrsLinkSeqNext(sequence),
+                     "新会话重新收到合法统计和 RC 后必须恢复有效通道");
+}
+
 static int TestMappedChannelValidation(void)
 {
     ManualInputSnapshot snapshot;
@@ -1306,6 +1418,7 @@ void WatchTaskTimeout(uint8_t taskId)
 int main(void)
 {
     if (!TestStrictStatsAndOrder()) return 1;
+    if (!TestChannelSnapshot()) return 1;
     if (!TestLinkDownDominatesBatch()) return 1;
     if (!TestStatsTimeoutBoundary()) return 1;
     if (!TestTaskStatsDeadlineWait()) return 1;

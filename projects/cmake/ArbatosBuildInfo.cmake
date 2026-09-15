@@ -19,6 +19,7 @@ function(arbatos_add_build_info target)
         COMMAND "${Python3_EXECUTABLE}" "${ARBATOS_BUILD_INFO_ROOT}/tools/build/GenBuildInfo.py"
             --repo "${ARBATOS_BUILD_INFO_ROOT}"
             --output "${ARBATOS_BUILD_INFO_HEADER}"
+            --config "${CMAKE_CURRENT_BINARY_DIR}/zephyr/.config"
         BYPRODUCTS "${ARBATOS_BUILD_INFO_HEADER}"
         COMMENT "更新 ${target} 构建版本信息"
         VERBATIM)

@@ -102,16 +102,13 @@ static void CanTxLogMotorCmd(sdlog_actuator_current_t *log,
     }
 }
 
-// 清空大疆组帧缓存，后续按 CAN ID 填进 0x200 或 0x1FF 的四个槽位。
+// 清空大疆组帧缓存；发送组由型号和轴控制模式共同选择。
 static void CanTxClearRmFrames(void)
 {
-    (void)memset(s_can_tx_can1_200, 0, sizeof(s_can_tx_can1_200));
-    (void)memset(s_can_tx_can1_1ff, 0, sizeof(s_can_tx_can1_1ff));
-    (void)memset(s_can_tx_can2_200, 0, sizeof(s_can_tx_can2_200));
-    (void)memset(s_can_tx_can2_1ff, 0, sizeof(s_can_tx_can2_1ff));
+    (void)memset(s_can_tx_rm_frames, 0, sizeof(s_can_tx_rm_frames));
     for (uint8_t bus = 0u; bus < 2u; bus++)
     {
-        for (uint8_t group = 0u; group < 2u; group++)
+        for (uint8_t group = 0u; group < CanTxRmGroupCount; group++)
         {
             for (uint8_t slot = 0u; slot < 4u; slot++)
             {
@@ -121,36 +118,27 @@ static void CanTxClearRmFrames(void)
     }
 }
 
-static inline void CanTxStoreRmCurrent(uint8_t bus,
-                                            uint16_t can_id,
+static inline uint8_t CanTxStoreRmCurrent(uint8_t bus,
+                                            const motor_node_param_t *node,
                                             int16_t current,
                                             MotorId actuator_id)
 {
-    int16_t *frame_200;
-    int16_t *frame_1ff;
     uint8_t bus_index;
+    uint8_t group_index;
+    uint8_t slot;
+    uint16_t group_id;
 
-    if ((bus != 1u && bus != 2u) || CanTxActuatorIdValid(actuator_id) == 0u)
+    if (CanTxBusIndex(bus, &bus_index) == 0u ||
+        CanTxActuatorIdValid(actuator_id) == 0u ||
+        MotorCfgRmTxSlot(node, &group_id, &slot) == 0u ||
+        CanTxRmGroupIndex(group_id, &group_index) == 0u)
     {
-        return;
+        return 0u;
     }
 
-    bus_index = (uint8_t)(bus - 1u);
-    frame_200 = (bus == 1u) ? s_can_tx_can1_200 : s_can_tx_can2_200;
-    frame_1ff = (bus == 1u) ? s_can_tx_can1_1ff : s_can_tx_can2_1ff;
-
-    if (can_id >= 0x201u && can_id <= 0x204u)
-    {
-        const uint8_t slot = (uint8_t)(can_id - 0x201u);
-        frame_200[slot] = current;
-        s_can_tx_rm_motor[bus_index][0u][slot] = actuator_id;
-    }
-    else if (can_id >= 0x205u && can_id <= 0x208u)
-    {
-        const uint8_t slot = (uint8_t)(can_id - 0x205u);
-        frame_1ff[slot] = current;
-        s_can_tx_rm_motor[bus_index][1u][slot] = actuator_id;
-    }
+    s_can_tx_rm_frames[bus_index][group_index][slot] = current;
+    s_can_tx_rm_motor[bus_index][group_index][slot] = actuator_id;
+    return 1u;
 }
 
 static inline uint8_t CanTxProcessRs485Axis(MotorId actuator_id,
@@ -260,7 +248,16 @@ static inline void CanTxProcessRmAxis(uint8_t fallback_bus,
     {
         *flags |= (uint8_t)MotorAppliedFlagLimited;
     }
-    CanTxStoreRmCurrent(node_bus, can_id, limited_current, actuator_id);
+    (void)can_id;
+    if (CanTxStoreRmCurrent(node_bus, node, limited_current, actuator_id) == 0u) {
+        if (flags != NULL) {
+            *flags |= (uint8_t)MotorAppliedFlagSkipped;
+        }
+        if (out_current != NULL) {
+            *out_current = 0;
+        }
+        return;
+    }
     if (out_current != NULL)
     {
         *out_current = limited_current;
@@ -395,6 +392,11 @@ static void CanTxUpdateApplied(const MotorRoute *route,
     applied.transport = route->transport;
     applied.protocol = route->protocol;
     applied.txId = route->canId;
+    if (route->isRmGroup != 0u) {
+        uint8_t slot;
+        applied.txId = 0u;
+        (void)MotorCfgRmTxSlot(route->node, &applied.txId, &slot);
+    }
     applied.current = current;
     applied.flags = flags;
     applied.driveState = (uint8_t)CanTxDriveStateFromFeedback(route->motorId);
@@ -657,6 +659,38 @@ static void CanTxProcessInstance(const MotorRoute *route,
     }
 }
 
+static void CanTxRefreshRmGroup(uint8_t bus, uint16_t group_id,
+                                 sdlog_actuator_current_t *log, uint8_t output_locked)
+{
+    uint8_t bus_index;
+    uint8_t group_index;
+
+    if (CanTxBusIndex(bus, &bus_index) == 0u ||
+        CanTxRmGroupIndex(group_id, &group_index) == 0u)
+    {
+        return;
+    }
+    /* 调用者仅在这一帧取值、换算和入队期间暂停任务切换，中断仍可接收电机反馈。 */
+    for (uint8_t slot = 0u; slot < 4u; slot++)
+    {
+        const MotorId id = s_can_tx_rm_motor[bus_index][group_index][slot];
+        const MotorRoute *route = MotorRouteFindByMotor(id);
+        if (route == NULL || CanTxActuatorIdValid(id) == 0u)
+        {
+            continue;
+        }
+        s_can_tx_cmd_cache_valid[id] = LowCmdGetMotorStamped(id,
+                                                            &s_can_tx_cmd_cache[id],
+                                                            &s_can_tx_owner_cache[id]);
+        s_can_tx_cmd_expired[id] = 0u;
+        s_can_tx_cmd_unlock_blocked[id] = 0u;
+        /* 复用原有过期、解锁屏障、权限和协议限幅处理，不放行旧命令。 */
+        const uint8_t allowed = (output_locked == 0u && RobotSafetyOutputLocked() == 0u) ?
+                                   CanTxRouteAllowed(route) : 0u;
+        CanTxProcessInstance(route, allowed, log);
+    }
+}
+
 static void CanTxExecInstances(uint8_t output_locked)
 {
     sdlog_actuator_current_t log = {0};
@@ -686,6 +720,12 @@ static void CanTxExecInstances(uint8_t output_locked)
         {
             continue;
         }
+        if (route->transport == (uint8_t)MotorTransportCAN && route->isRmGroup != 0u)
+        {
+            /* 这里只登记槽位；命令在该组真正发送前读取，避免遍历期间的正常更新被当作失权。 */
+            (void)CanTxStoreRmCurrent(route->bus, route->node, 0, route->motorId);
+            continue;
+        }
 
         /* 长串口发送可能跨过生命周期新鲜度上限；每个路由都重新看一次锁。 */
         allowed = (output_locked != 0u || RobotSafetyOutputLocked() != 0u) ?
@@ -694,6 +734,6 @@ static void CanTxExecInstances(uint8_t output_locked)
         CanTxProcessInstance(route, allowed, &log);
     }
 
-    CanTxEmitRmFrames(&log);
+    CanTxEmitRmFrames(&log, output_locked);
     CanTxLogActuatorCurrent(&log);
 }

@@ -1,6 +1,10 @@
 # 测试说明
 
-测试资料分为三类：板级独立编译、历史 SD 台架实测、正式 Zephyr HERO-M 的 SD 与音乐功能记录。命令和结果都标明适用条件；编译、历史台架和实车结果不能互相替代。
+测试资料包括板级独立编译、A 板 CAN 接收诊断、历史 SD 台架实测、正式 Zephyr HERO-M 的 SD 与音乐功能记录。命令和结果都标明适用条件；编译、历史台架和实车结果不能互相替代。
+
+## RM 电机模式主机回归
+
+从仓库根目录执行 `local/cache/zephyrproject/.venv/Scripts/python.exe tools/tests/TestMotorRmProtocol.py --zig <zig.exe>`。测试用记录器代替总线，编译实际电机型号表并提取生产组帧、最终输出许可检查和故障零指令函数；覆盖 6020 电压/电流模式、3508/2006/3510/6623 既有路由、两路 CAN、正负限幅、节点边界及三份车型安装表。它不连接硬件，也不代表电机内部模式已设置或实车停机已经验证。
 
 ## 板级独立编译
 
@@ -14,6 +18,20 @@ west build -s tests/Boards -b dji_c_f407 -d local/build/board-check-dji_c_f407
 ```
 
 2026-09-08 两个工程均编译、链接通过：A 板 FLASH 33,292 B、RAM 6,720 B；C 板 FLASH 27,704 B、RAM 5,440 B。本机完整日志为 `local/build/board-check-*.log`。这只证明独立工程可编译，未烧录、未做实板或整车验证。
+
+## A 板 CAN 接收与 UART6 诊断
+
+`tests/InfantryCanA` 是 INFANTRY-TIAN-A 首次接车使用的独立 Zephyr 诊断工程，只编译该目录的 `main.c`，不启动车型控制器、电机任务、PWM、IMU、SD 或遥控任务。UART6 使用 PG14/TX、PG9/RX，115200、8N1；每秒打印运行时间、两路 CAN 初始化结果、错误计数、收到的数据帧 ID、累计帧数及最后 8 字节。
+
+CAN1/CAN2 均为 1 Mbps。应用没有 CAN 发送调用，不发送零电流、唤醒或查询命令；正常接收模式仍会产生硬件 ACK 和必要的 CAN 协议错误标志。`application_tx_count=0` 表示应用没有发送路径，不是物理总线的 TX 测量。标准 ID 和扩展 ID 在每路总线上各容纳 64 条，容量溢出会单独计数；远程请求帧不纳入统计。观测到 ID 只能证明有对应数据帧，不能单凭 ID 确定电机型号或安装位置。
+
+在已配置 Zephyr 环境的仓库根目录构建：
+
+```powershell
+west build -s tests/InfantryCanA -b dji_a_f427 -d local/build/infantry-can-a
+```
+
+该产物与 `local/build/infantry-tian-a` 下的完整车型固件分开。烧录前核对下载器和目标芯片，备份完整 Flash，写入后核对读回结果；不能拿这份诊断固件的运行结果代替完整车型验证。
 
 ## M 板副板 SD 历史台架
 

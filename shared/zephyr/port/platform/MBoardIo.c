@@ -1,4 +1,4 @@
-/* MC02 原理图：PC13/14/15 高电平开启，开机保持三路外供电关闭。 */
+/* MC02 的外供电高电平开启；先全部关闭，再按车型声明开启 5 V。 */
 #include "BspAdc.h"
 #include "SdLog.h"
 #include "MBoardIo.h"
@@ -24,6 +24,12 @@ static int MBoardPowerInit(void)
         ret = gpio_pin_configure(PowerGpio, pin, GPIO_OUTPUT_LOW);
     }
     MBoardIoDiag.powerError = ret;
+    /* UART7/USART10 共用 PC15 控制的 5 V；静态准备版仍禁止外供电。 */
+    if (ret == 0 && ROBOT_EXTERNAL_5V_ENABLED &&
+        !IS_ENABLED(CONFIG_ARBATOS_PREFLIGHT_ONLY) && !IS_ENABLED(CONFIG_ARBATOS_MUSIC_ONLY)) {
+        ret = MBoardPowerSet(MBoardPower5V, true);
+        MBoardIoDiag.powerError = ret;
+    }
     return ret;
 }
 SYS_INIT(MBoardPowerInit, APPLICATION, 80);

@@ -92,6 +92,10 @@ static MotorCurrentBind ChassisMotorCurrentBindings[CHASSIS_MOTOR_COUNT];
 #define CHASSIS_GIMBAL_YAW_RELATIVE_TURN YAW_TURN
 #endif
 
+#ifndef CHASSIS_SPIN_FRAME_REVERSE
+#define CHASSIS_SPIN_FRAME_REVERSE 0u
+#endif
+
 // Chassis yaw-rate fusion (wheel odom + IMU yaw-rate minus gimbal-yaw rate).
 // IMU is installed on the gimbal, so gyro Z includes chassis yaw-rate + gimbal yaw-rate.
 // We subtract gimbal yaw motor rate to obtain chassis yaw-rate measurement.

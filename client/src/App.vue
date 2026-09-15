@@ -13,8 +13,12 @@ import TelemetryChart from "./components/TelemetryChart.vue";
 import ConfigValuesPanel, { type ConfigValues } from "./components/ConfigValuesPanel.vue";
 import ToolsPanel from "./components/ToolsPanel.vue";
 import PortConfigPanel, { type PortOptions } from "./components/PortConfigPanel.vue";
+import ReceiverPanel from "./components/ReceiverPanel.vue";
+import ChassisPanel from "./components/ChassisPanel.vue";
+import type { MotorSnapshot } from "./chassis";
+import type { ReceiverSnapshot } from "./receiver";
 
-type Tab = "overview" | "robot" | "parameters" | "files" | "serial" | "tools" | "build";
+type Tab = "overview" | "robot" | "chassis" | "receiver" | "parameters" | "files" | "serial" | "tools" | "build";
 type Summary = {
     root: string;
     targets: { name: string; board: string; preset: string }[];
@@ -83,6 +87,8 @@ type SerialStatus = {
     rxBytes: number;
     txBytes: number;
     error?: string;
+    receiver?: ReceiverSnapshot;
+    motors?: MotorSnapshot;
 };
 
 const icon = (name: string) =>
@@ -90,10 +96,12 @@ const icon = (name: string) =>
         overview:
             '<path d="M3 13h7V3H3v10Zm0 8h7v-5H3v5Zm11 0h7V11h-7v10Zm0-18v5h7V3h-7Z"/>',
         robot: '<path d="M12 2v3m-6 4V7h12v2m-3 0v4m-6-4v4m-5 0h16v7H4v-7Zm4 3v1m8-1v1M9 22h6"/>',
+        chassis: '<circle cx="12" cy="12" r="6"/><path d="m3 8 5-5m8 0 5 5M3 16l5 5m8 0 5-5"/>',
         files: '<path d="M4 3h10l6 6v12H4V3Zm10 0v6h6M8 14h8M8 18h5"/>',
         serial: '<path d="M6 3v4m12-4v4M8 7h8v5a4 4 0 0 1-8 0V7Zm4 9v5m-3 0h6"/>',
         build: '<path d="m14 4 6 6-9 9H5v-6l9-9Zm-2 2 6 6M4 21h16"/>',
         parameters: '<path d="M5 3v18M12 3v18M19 3v18M2 8h6m1 8h6m1-10h6"/>',
+        receiver: '<path d="M4 9h16v12H4V9Zm3-6 3 6m7-6-3 6M7 15h4m-2-2v4m6-2h2"/>',
         tools: '<path d="M4 4h16v16H4V4Zm4 3v6m4-4v8m4-5v5"/>',
         refresh: '<path d="M20 11a8 8 0 1 0 2 5M20 4v7h-7"/>',
         search: '<circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/>',
@@ -177,6 +185,8 @@ const targetSelect = ref<HTMLSelectElement | null>(null);
 const nav: { key: Tab; label: string; hint: string }[] = [
     { key: "overview", label: "工程概览", hint: "工作区与车型" },
     { key: "robot", label: "车型与接口", hint: "控制器、服务、串口分配" },
+    { key: "chassis", label: "底盘装配", hint: "四轮位置、ID、方向与手转识别" },
+    { key: "receiver", label: "接收机", hint: "ELRS 通道、功能与拨杆模式" },
     { key: "parameters", label: "参数与设备", hint: "PID、中位、电机、遥控器" },
     { key: "files", label: "文件编辑", hint: "车型现有文件" },
     { key: "serial", label: "串口与曲线", hint: "真实串口数据" },
@@ -253,7 +263,7 @@ async function loadRobot() {
         dirtyFile.value = false;
         configValues.value = null;
         valueChanges.value = {};
-        if (activeTab.value === "parameters") await loadValues();
+        if (["parameters", "receiver", "chassis"].includes(activeTab.value)) await loadValues();
     } catch (e) {
         if (id === requestId) fail(e);
     } finally {
@@ -342,7 +352,7 @@ function changeConfig(value: Record<string, unknown>) {
 async function loadPortOptions() {
     const seq = ++portPreviewSeq;
     const expected = target.value;
-    if (!expected) return;
+    if (!expected || activeTab.value !== "robot") return;
     try {
         const result = await rpc<PortOptions>("ports.get", { target: expected, config: configDraft.value });
         if (seq === portPreviewSeq && expected === target.value) portOptions.value = result;
@@ -368,7 +378,9 @@ function changeValue(id: string, value: unknown) {
     const original = configValues.value?.groups.flatMap(group => group.fields).find(field => field.id === id);
     if (!original || original.editable === false) return;
     const next = { ...valueChanges.value };
-    if (Object.is(value, original.value)) delete next[id];
+    const unchanged = original.automatic === true && id.endsWith(".feedback_id")
+        ? value === -1 : Object.is(value, original.value);
+    if (unchanged) delete next[id];
     else next[id] = value;
     valueChanges.value = next;
     error.value = "";
@@ -383,7 +395,7 @@ async function saveValues(): Promise<boolean> {
         valueChanges.value = {};
         error.value = "";
         await refreshSummary();
-        showToast("参数已保存到车型文件，重新编译后生效。");
+        showToast("参数已保存到车型文件，重新编译并烧录后生效。");
         return true;
     } catch (e) { fail(e); return false; }
     finally { busy.value = false; }
@@ -616,6 +628,13 @@ async function serialToggle() {
         fail(e);
     }
 }
+async function observationToggle() {
+    if (!serial.value.connected) {
+        serialFormat.value = "text";
+        baud.value = 115200;
+    }
+    await serialToggle();
+}
 async function pollSerial(session = serialSession) {
     if (disposed || session !== serialSession) return;
     if (
@@ -782,11 +801,15 @@ watch(target, () => {
 });
 watch(activeTab, (tab) => {
     window.scrollTo(0, 0);
-    if (tab === "parameters") loadValues();
-    if (tab === "serial") {
+    if (tab === "robot") loadPortOptions();
+    if (["parameters", "receiver", "chassis"].includes(tab)) loadValues();
+    if (["serial", "receiver", "chassis"].includes(tab)) {
         refreshPorts();
         rpc<SerialStatus>("serial.status")
-            .then((x) => (serial.value = x))
+            .then((x) => {
+                serial.value = x;
+                if (x.connected) pollSerial(serialSession);
+            })
             .catch(fail);
     }
 });
@@ -1084,6 +1107,31 @@ onBeforeUnmount(() => {
                 <p class="muted tuning-note">
                     调参只写入离线配置；可先用“检查”验证修改。串口已实现，在线参数保存和控制输出通路尚未接入。
                 </p>
+            </section>
+            <section v-else-if="activeTab === 'chassis'" class="view">
+                <div class="title-row">
+                    <div><p class="eyebrow">新车装配</p><h1>底盘装配</h1><p>{{ target }} · 轮位、总线和安装方向统一配置。保存后重新编译并烧录到车上。</p></div>
+                    <div class="title-actions">
+                        <button class="button" :disabled="interfaceBusy || dirtyValues" @click="loadValues">重新读取配置</button>
+                        <button class="button primary" :disabled="interfaceBusy || !dirtyValues || job?.status === 'running'" @click="saveValues">{{ dirtyValues ? `保存 ${Object.keys(valueChanges).length} 项修改` : '配置已保存' }}</button>
+                    </div>
+                </div>
+                <ChassisPanel :key="target" :data="configValues" :changes="valueChanges" :serial="serial" :paused="paused"
+                    :ports="ports" :port="port" :disabled="interfaceBusy || job?.status === 'running'" @change="changeValue"
+                    @assign="changes => Object.entries(changes).forEach(([id, value]) => changeValue(id, value))"
+                    @port="port = $event" @toggle="observationToggle" @refresh="refreshPorts" @resume="paused = false" />
+            </section>
+            <section v-else-if="activeTab === 'receiver'" class="view">
+                <div class="title-row">
+                    <div><p class="eyebrow">遥控输入</p><h1>接收机</h1><p>查看每个通道的实时数值，设置它在 {{ target }} 中的用途。</p></div>
+                    <div class="title-actions">
+                        <button class="button" :disabled="interfaceBusy || dirtyValues" @click="loadValues">重新读取配置</button>
+                        <button class="button primary" :disabled="interfaceBusy || !dirtyValues || job?.status === 'running'" @click="saveValues">{{ dirtyValues ? `保存 ${Object.keys(valueChanges).length} 项修改` : '配置已保存' }}</button>
+                    </div>
+                </div>
+                <ReceiverPanel :data="configValues" :changes="valueChanges" :serial="serial" :ports="ports" :port="port" :paused="paused"
+                    :disabled="interfaceBusy || job?.status === 'running'" @change="changeValue" @port="port = $event"
+                    @toggle="observationToggle" @refresh="refreshPorts" @resume="paused = false" />
             </section>
             <section v-else-if="activeTab === 'parameters'" class="view">
                 <div class="title-row">

@@ -68,7 +68,10 @@ function(arbatos_add_legacy_sources target)
         shared/components/support/Crc8Crc16.c
     )
 
-    set(ARBATOS_H7_CORE
+    # 经典底盘、单云台和 RM 射击的实现仍会调用 SD 日志、俯仰校准和
+    # 多协议电机的兼容符号，即使车型没有启用它们对应的任务也必须链接。
+    # 这些实现不等于开放 A 板服务，车型选择由 RobotConfig.toml 生成器限制。
+    set(ARBATOS_PORTABLE_RUNTIME
         ${ARBATOS_COMMON_CORE}
         shared/application/arm/ArmTask.c
         shared/application/arm/ArmMotion.c
@@ -81,7 +84,6 @@ function(arbatos_add_legacy_sources target)
         shared/application/services/storage/SdLogTask.c
         shared/application/comm/referee/RefereeRxTask.c
         shared/application/services/diagnostics/CpuUsage.c
-        shared/components/devices/Bmi088Driver.c
         shared/components/devices/SdSpi.c
         shared/components/support/Fifo.c
         shared/components/support/MemMang4.c
@@ -89,19 +91,22 @@ function(arbatos_add_legacy_sources target)
         shared/components/support/fatfs/ffsystem.c
         shared/components/support/fatfs/ffunicode.c
     )
-    # The H723 Keil targets link the same control stack but do not include
-    # AhrsMiddleware.c; their IMU path is assembled differently.
-    list(REMOVE_ITEM ARBATOS_H7_CORE
-        shared/components/algorithm/AhrsMiddleware.c)
+    # H723 的 IMU 路径不使用 AhrsMiddleware；A 板改用 MPU6500，不能
+    # 编入 BMI088 驱动及其专属设备树端口。
+    if(CONFIG_BOARD_DM_MC02_H7)
+        list(REMOVE_ITEM ARBATOS_PORTABLE_RUNTIME
+            shared/components/algorithm/AhrsMiddleware.c)
+        list(APPEND ARBATOS_PORTABLE_RUNTIME
+            shared/components/devices/Bmi088Driver.c)
+    endif()
 
-    # 车型差异由 RobotConfig.toml 生成的 RobotTarget.cmake 提供。公共 H7
-    # 控制栈暂保留在这里，直到非 H7 端口也完成同样的迁移。
+    # 车型差异由 RobotConfig.toml 生成的 RobotTarget.cmake 提供。
     if(NOT DEFINED ARBATOS_TARGET_DIR OR NOT DEFINED ARBATOS_BOARD_DIR OR
        NOT DEFINED ARBATOS_TARGET_SOURCES)
         message(FATAL_ERROR "RobotTarget.cmake is incomplete; regenerate the selected Robotconfig")
     endif()
     set(ARBATOS_TARGET_SOURCES
-        ${ARBATOS_H7_CORE}
+        ${ARBATOS_PORTABLE_RUNTIME}
         ${ARBATOS_TARGET_SOURCES}
         ${ARBATOS_TARGET_PORT_SOURCES}
     )

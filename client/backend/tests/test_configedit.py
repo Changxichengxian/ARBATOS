@@ -56,6 +56,78 @@ class ConfigEditTest(unittest.TestCase):
                 if "options" in field:
                     self.assertTrue(all(set(option) == {"value", "label"} for option in field["options"]))
 
+    def test_chassis_layout_follows_real_kinematic_wheel_order(self):
+        mecanum = self.get("HERO-M")
+        self.assertTrue(mecanum["chassis"]["supported"])
+        self.assertEqual(mecanum["chassis"]["wheelType"], "mecanum")
+        self.assertEqual([(wheel["index"], wheel["position"], wheel["label"])
+                          for wheel in mecanum["chassis"]["wheels"]], [
+                              (0, "front-left", "底盘左前"), (1, "front-right", "底盘右前"),
+                              (2, "rear-left", "底盘左后"), (3, "rear-right", "底盘右后"),
+                          ])
+        mecanum_labels = {group["id"]: group["label"] for group in mecanum["groups"]}
+        self.assertEqual(mecanum_labels["motor.chassis[2]"], "底盘左后")
+
+        xdrive = self.get("INFANTRY-TIAN-A")
+        self.assertTrue(xdrive["chassis"]["supported"])
+        self.assertEqual(xdrive["chassis"]["wheelType"], "xdrive")
+        self.assertEqual([(wheel["index"], wheel["position"], wheel["label"])
+                          for wheel in xdrive["chassis"]["wheels"]], [
+                              (0, "front-left", "底盘左前"), (1, "front-right", "底盘右前"),
+                              (2, "rear-right", "底盘右后"), (3, "rear-left", "底盘左后"),
+                          ])
+        xdrive_labels = {group["id"]: group["label"] for group in xdrive["groups"]}
+        self.assertEqual(xdrive_labels["motor.chassis[2]"], "底盘右后")
+        self.assertFalse(self.get("MINIWHEELEG-M")["chassis"]["supported"])
+
+        hardware = self.root / "Robotconfig/HERO-M/ConfigHardware.inc"
+        text = hardware.read_text(encoding="utf-8")
+        hardware.write_text(text.replace("{MOTOR_MODEL_3508, 1u}", "{MOTOR_MODEL_3508, 0u}", 1),
+                            encoding="utf-8")
+        self.assertTrue(self.get("HERO-M")["chassis"]["supported"])
+
+    def test_feedback_automatic_and_model_id_limit_are_machine_readable(self):
+        hero_fields = self.fields(self.get("HERO-M"))
+        sentinel_fields = self.fields(self.get("SENTINEL-M"))
+        self.assertTrue(hero_fields["motor.chassis[0].feedback_id"]["automatic"])
+        self.assertFalse(sentinel_fields["motor.arm[0].feedback_id"]["automatic"])
+        detail = self.get("SENTINEL-M")
+        self.assertEqual(detail["models"]["MOTOR_MODEL_3508"]["id_max"], 8)
+        self.assertEqual(detail["models"]["MOTOR_MODEL_6020"]["id_max"], 4)
+
+    def test_swap_chassis_ids_and_directions_is_atomic_and_minimal(self):
+        hardware = self.root / "Robotconfig/HERO-M/ConfigHardware.inc"
+        tuning = self.root / "Robotconfig/HERO-M/ConfigTuning.inc"
+        before_hardware, before_tuning = hardware.read_bytes(), tuning.read_bytes()
+        detail = self.get("HERO-M")
+        saved = self.workspace.dispatch("config.update", {"target": "HERO-M", "revision": detail["revision"],
+            "changes": {"motor.chassis[0].id": 2, "motor.chassis[1].id": 1,
+                        "tuning.chassis.motor_dir[0]": -1, "tuning.chassis.motor_dir[1]": 1}})
+        expected_hardware = before_hardware.replace(
+            b"{MOTOR_MODEL_3508, 1u},\n                    {MOTOR_MODEL_3508, 2u}",
+            b"{MOTOR_MODEL_3508, 2u},\n                    {MOTOR_MODEL_3508, 1u}", 1)
+        expected_tuning = before_tuning.replace(
+            b".motor_dir = {1, -1, 1, -1}", b".motor_dir = {-1, 1, 1, -1}", 1)
+        self.assertEqual(hardware.read_bytes(), expected_hardware)
+        self.assertEqual(tuning.read_bytes(), expected_tuning)
+        self.assertEqual(self.fields(saved)["motor.chassis[0].id"]["value"], 2)
+
+    def test_chassis_id_conflict_and_zero_direction_leave_files_unchanged(self):
+        hardware = self.root / "Robotconfig/HERO-M/ConfigHardware.inc"
+        tuning = self.root / "Robotconfig/HERO-M/ConfigTuning.inc"
+        before_hardware, before_tuning = hardware.read_bytes(), tuning.read_bytes()
+        detail = self.get("HERO-M")
+        with self.assertRaisesRegex(ValueError, "命令 ID 冲突"):
+            self.workspace.dispatch("config.update", {"target": "HERO-M", "revision": detail["revision"],
+                "changes": {"motor.chassis[0].id": 2, "tuning.chassis.motor_dir[0]": -1}})
+        self.assertEqual(hardware.read_bytes(), before_hardware)
+        self.assertEqual(tuning.read_bytes(), before_tuning)
+        with self.assertRaisesRegex(ValueError, "只能为 -1 或 1"):
+            self.workspace.dispatch("config.update", {"target": "HERO-M", "revision": detail["revision"],
+                "changes": {"tuning.chassis.motor_dir[0]": 0}})
+        self.assertEqual(hardware.read_bytes(), before_hardware)
+        self.assertEqual(tuning.read_bytes(), before_tuning)
+
     def test_tuning_update_changes_only_literal_and_preserves_bom_crlf_comment(self):
         path = self.root / "Robotconfig/HERO-M/ConfigTuning.inc"
         text = path.read_text(encoding="utf-8")

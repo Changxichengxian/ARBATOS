@@ -19,6 +19,8 @@ typedef enum
     CAN_RM_GROUP_0X200_ID = 0x200,
     CAN_RM_GROUP_0X1FF_ID = 0x1FF,
     CAN_RM_GROUP_0X2FF_ID = 0x2FF,
+    CAN_RM_GROUP_0X1FE_ID = 0x1FE,
+    CAN_RM_GROUP_0X2FE_ID = 0x2FE,
 } can_msg_id_e;
 
 // rm motor data

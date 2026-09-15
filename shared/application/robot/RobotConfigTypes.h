@@ -94,6 +94,8 @@ typedef struct
     fp32 yaw_soft_limit_max;      // yaw 正向软限位，rad；max/min 都为 0 时保留校准或默认范围
     fp32 yaw_soft_limit_min;      // yaw 负向软限位，rad；max/min 都为 0 时保留校准或默认范围
     fp32 yaw_kick_current;        // yaw 起步电流（静摩擦补偿，按目标速度方向给正负）
+    fp32 yaw_spin_ff_gain;        // 小陀螺 yaw 补偿：原始给定/(rad/s)，负值反转转速补偿，0 沿用共享初值
+    fp32 yaw_spin_ff_limit;       // 小陀螺 yaw 补偿原始给定限幅，0 沿用共享初值
     fp32 pitch_kick_up_current;   // pitch 上抬起步电流（静摩擦补偿，摇杆有输入时生效）
     fp32 pitch_kick_down_current; // pitch 下压起步电流（静摩擦补偿，摇杆有输入时生效）
     // pitch 软限位（rad，符号以 GimbalPitchMotor.angle / AUX-VOFA ch0 为准）：
@@ -400,6 +402,7 @@ typedef enum
     MOTOR_CONTROL_MODE_POS_VEL,
     MOTOR_CONTROL_MODE_SPEED,
     MOTOR_CONTROL_MODE_FORCE_POS,
+    MOTOR_CONTROL_MODE_VOLTAGE, // RM 原始电压给定；追加枚举，保留已有配置数值
 } motor_control_mode_e;
 
 typedef enum
@@ -412,7 +415,7 @@ typedef enum
 typedef struct
 {
     uint16_t can_id_base;   // base ID (0x200 for most, 0x204 for 6020)
-    int16_t max_current;    // abs current limit
+    int16_t max_current;    // 默认模式的原始命令上限，电压模式不表示安培
     fp32 reduction_ratio;   // gear ratio
 } MotorModelParam;
 
@@ -431,6 +434,7 @@ typedef struct
     uint16_t feedback_id; // explicit CAN feedback ID when enabled
     uint8_t feedback_id_enable; // 1=use feedback_id, even when feedback_id is 0
     fp32 external_reduction_ratio; // 外置减速比；0/1 为直连，不包含型号内置减速器
+    int16_t command_limit_abs; // 轴级原始命令限幅；0 继承型号，不能突破当前模式协议范围
 } motor_node_param_t;
 
 #ifndef MOTOR_ARM_JOINT_COUNT

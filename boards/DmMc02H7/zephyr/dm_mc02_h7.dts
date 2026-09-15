@@ -123,6 +123,12 @@
 &i2c2 { pinctrl-0 = <&i2c2_scl_pb10 &i2c2_sda_pb11>; pinctrl-names = "default"; clock-frequency = <100000>; status = "okay"; };
 /* BMI088 的两个片选由传感器端口手动控制。 */
 &spi2 { pinctrl-0 = <&spi2_sck_pb13 &spi2_miso_pc2 &spi2_mosi_pc1>; pinctrl-names = "default"; st,soft-nss; status = "okay"; };
+/* H723 的片内温度和 VREFINT 只由 ADC3 提供。 */
+&adc3 {
+	st,adc-clock-source = "SYNC";
+	st,adc-prescaler = <4>;
+	status = "okay";
+};
 &spi3 {
 	pinctrl-0 = <&spi3_sck_pc10 &spi3_miso_pc11 &spi3_mosi_pc12>;
 	pinctrl-names = "default";

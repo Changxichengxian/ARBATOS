@@ -17,6 +17,7 @@
 // ELRS/CRSF baud rate on the aux link port.
 #define ELRS_LINK_BAUD 420000u
 #define ELRS_LINK_STATS_TIMEOUT_MS 250u
+#define ELRS_CHANNEL_COUNT 16u
 
 /*
  * 产品安全策略：ELRS 必须持续提供 0x14 Link Statistics 才能成为控制来源。
@@ -54,6 +55,15 @@ typedef struct
     uint8_t reserved[2];
 } ElrsLinkStats;
 
+/* 仅供桌面观测的最近一帧原始 CRSF 通道，不参与控制输入。 */
+typedef struct
+{
+    uint16_t channel[ELRS_CHANNEL_COUNT];
+    uint32_t last_frame_ms;
+    uint32_t sequence;
+    uint8_t valid;
+} ElrsChannelSnapshot;
+
 // FreeRTOS task entry (created in freertos.c).
 void ElrsLinkTask(void const *argument);
 
@@ -61,6 +71,7 @@ void ElrsLinkTask(void const *argument);
 void ElrsLinkRxStart(void);
 void ElrsLinkStop(void);
 void ElrsLinkGetStats(ElrsLinkStats *out);
+void ElrsChannelGetSnapshot(ElrsChannelSnapshot *out);
 
 // Callbacks from the aux link ISR context.
 void ElrsLinkOnRxEvent(uint16_t size, BspAuxLinkRxEvent evt);

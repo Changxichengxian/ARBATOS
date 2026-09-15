@@ -2,7 +2,13 @@
 schema = 1
 board = "dm_mc02_h7"
 profile = "hero"
-services = ["RC_SBUS", "HEALTH_MONITOR", "SDLOG", "BATTERY_MONITOR", "REFEREE_RX"]
+services = ["RC_SBUS", "ELRS_LINK", "HEALTH_MONITOR", "SDLOG", "BATTERY_MONITOR"]
+
+[ports]
+rc_sbus = "uart5"
+elrs_crsf = { port = "uart7", baud = 420000, protocol = "crsf" }
+rs485_0 = "usart2"
+rs485_1 = "usart3"
 
 [controllers.chassis]
 type = "classic"
@@ -16,6 +22,11 @@ type = "rm"
 [features]
 subboard_music = true
 imu_mount = true
+external_5v = true
+
+# 实机 SD 启动在 2 KiB 栈下触发保护异常；为文件系统调用保留余量。
+[tasks.SDLOG]
+stack_words = 2048
 
 [build]
 sources = ["RobotConfig.c", "Mc02Compat.c", "DetectTask.c", "ArmMotorTable.c", "PitchCaliBuiltin.c"]

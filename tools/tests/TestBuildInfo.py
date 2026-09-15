@@ -17,6 +17,9 @@ class GenBuildInfoTest(unittest.TestCase):
         self.repo = Path(self.temp.name) / "仓库 空格"
         self.repo.mkdir()
         self.output = Path(self.temp.name) / "构建 输出" / "build_info_autogen.h"
+        self.config = Path(self.temp.name) / "构建 输出" / ".config"
+        self.config.parent.mkdir(parents=True)
+        self.config.write_text("CONFIG_TEST=y\n", encoding="ascii")
         self.git("init")
         self.git("config", "user.email", "test@example.invalid")
         self.git("config", "user.name", "Test")
@@ -32,7 +35,8 @@ class GenBuildInfoTest(unittest.TestCase):
 
     def generate(self, env=None):
         subprocess.run(
-            [sys.executable, str(SCRIPT), "--repo", str(self.repo), "--output", str(self.output)],
+            [sys.executable, str(SCRIPT), "--repo", str(self.repo), "--output", str(self.output),
+             "--config", str(self.config)],
             check=True,
             env=env,
             stdout=subprocess.DEVNULL,
@@ -94,6 +98,15 @@ class GenBuildInfoTest(unittest.TestCase):
         self.assertNotEqual(self.macro(generated, "ARBATOS_BUILD_DATE"), "2001-02-03")
         self.assertNotEqual(self.macro(generated, "ARBATOS_BUILD_TIME"), "04:05:06")
 
+    def test_fingerprint_tracks_build_configuration(self):
+        first = self.generate()
+        first_fingerprint = self.macro(first, "ARBATOS_BUILD_FINGERPRINT_HEX")
+        self.assertRegex(first_fingerprint, r"^[0-9a-f]{64}$")
+        self.config.write_text("CONFIG_TEST=n\n", encoding="ascii")
+        second = self.generate()
+        self.assertNotEqual(first_fingerprint,
+                            self.macro(second, "ARBATOS_BUILD_FINGERPRINT_HEX"))
+
     def test_ignored_file_and_missing_git(self):
         (self.repo / ".gitignore").write_text("local/\n", encoding="utf-8")
         self.git("add", ".gitignore")
@@ -103,7 +116,11 @@ class GenBuildInfoTest(unittest.TestCase):
         self.assertIn('ARBATOS_BUILD_DIRTY 0u', self.generate())
         env = os.environ.copy()
         env["PATH"] = ""
-        self.assertIn('ARBATOS_GIT_SHA "unknown"', self.generate(env))
+        unknown_first = self.generate(env)
+        unknown_second = self.generate(env)
+        self.assertIn('ARBATOS_GIT_SHA "unknown"', unknown_first)
+        self.assertNotEqual(self.macro(unknown_first, "ARBATOS_BUILD_FINGERPRINT_HEX"),
+                            self.macro(unknown_second, "ARBATOS_BUILD_FINGERPRINT_HEX"))
 
     def test_cli_uses_utf8_for_chinese_output_path(self):
         env = os.environ.copy()

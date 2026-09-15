@@ -2,7 +2,7 @@
 
 #include <math.h>
 
-#include "MotorModelDb.h"
+#include "MotorConfig.h"
 
 #define CHASSIS_POWER_LIMITER_MIN_BUFFER_J 5.0f
 #define CHASSIS_POWER_LIMITER_MOTOR_COUNT 4U
@@ -124,7 +124,8 @@ uint8_t ChassisPowerLimiterIsPowerModelReady(const motor_node_param_t motor_node
 
         active_count++;
         entry = MotorModelDbGet(node->model);
-        if (entry == NULL || entry->cmd_current_range_abs <= 0 || entry->torque_current_range_a <= 0.0f)
+        if (MotorCfgControlMode(node) != MOTOR_CONTROL_MODE_CURRENT ||
+            entry == NULL || entry->cmd_current_range_abs <= 0 || entry->torque_current_range_a <= 0.0f)
         {
             return 0u;
         }
@@ -513,7 +514,8 @@ static uint8_t ChassisPowerLimiterModelCurrentToAmpere(const motor_node_param_t 
     }
 
     entry = MotorModelDbGet(node->model);
-    if (entry == NULL || entry->cmd_current_range_abs <= 0 || entry->torque_current_range_a <= 0.0f)
+    if (MotorCfgControlMode(node) != MOTOR_CONTROL_MODE_CURRENT ||
+        entry == NULL || entry->cmd_current_range_abs <= 0 || entry->torque_current_range_a <= 0.0f)
     {
         return 0u;
     }

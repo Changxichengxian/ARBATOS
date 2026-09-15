@@ -82,6 +82,99 @@ def wait_cursor(service: SerialService, cursor: int = 1) -> dict:
 
 
 class SerialServiceTest(unittest.TestCase):
+    def test_receiver_initial_snapshot_does_not_fabricate_zero_channels(self):
+        factory = Factory()
+        service = SerialService(factory, ports)
+        service.dispatch("serial.open", {"port": "COM7", "baud": 115200, "format": "text", "channels": 1})
+        port = factory.instances[-1]
+        port.input.put(b"@RC,100,0,0,0," + b",".join([b"0"] * 16) + b"\n")
+        receiver = wait_cursor(service)["receiver"]
+        self.assertIsNone(receiver["channels"])
+        self.assertFalse(receiver["rc"]["valid"])
+        port.input.put(b"@RC,101,101,0,1," + b",".join([b"0"] * 16) + b"\n")
+        receiver = wait_cursor(service, 2)["receiver"]
+        self.assertEqual(receiver["channels"], [0] * 16)
+        service.shutdown()
+
+    def test_receiver_telemetry_accepts_split_prefixed_frames(self):
+        factory = Factory()
+        clock = iter([1000.25, 1000.5, 1000.75, 1001.0]).__next__
+        service = SerialService(factory, ports, clock=clock)
+        service.dispatch("serial.open", {"port": "COM7", "baud": 115200, "format": "text", "channels": 1})
+        port = factory.instances[-1]
+        port.input.put(b"\x1b[32m<inf> bench: @RC,100000,90000,1,5,172,992,1811,0,2047,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024\r\n@ELRS,11,1,2,99,3,4,5,6,7,8,9,10\n@UART,12,13,14,15,16,17,18,19\n@IN")
+        port.input.put(b"PUT,13,1,2,3,1000,1500,2000,1200,1800,1,2\n")
+        result = wait_cursor(service, 4)
+        receiver = result["receiver"]
+        self.assertEqual(receiver["channels"], [172, 992, 1811, 0, 2047] + [1024] * 11)
+        self.assertEqual(receiver["rc"], {"ms": 100000, "frameMs": 90000, "valid": True, "sequence": 5, "receivedAt": 1000.25})
+        self.assertEqual(receiver["link"]["lq"], 99)
+        self.assertEqual(receiver["uart"]["lastError"], 19)
+        self.assertEqual(receiver["input"]["channels"], [1000, 1500, 2000, 1200, 1800])
+        self.assertEqual(receiver["input"]["switches"], [1, 2])
+        self.assertEqual(service.dispatch("serial.status")["receiver"], receiver)
+        service.shutdown()
+
+    def test_receiver_rejects_bad_frames_and_duplicate_rc_sequence(self):
+        factory = Factory()
+        service = SerialService(factory, ports, clock=lambda: 1.0)
+        service.dispatch("serial.open", {"port": "COM7", "baud": 115200, "format": "text", "channels": 1})
+        port = factory.instances[-1]
+        port.input.put(b"@RC,100000,90000,1,8,172,992,1811,0,2047,1005,1006,1007,1008,1009,1010,1011,1012,1013,1014,1015\n")
+        self.assertEqual(wait_cursor(service)["receiver"]["rc"]["receivedAt"], 1.0)
+        port.input.put(b"@RC,100001,99999,0,8,1500,1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1013,1014,1015\n@RC,100002,1,1,8,1500,1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1013,1014,1015\n@RC,100003,1,1,7,1500,1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1013,1014,1015\n@ELRS,100004,1,2,101,3,4,5,6,7,8,9,10\n")
+        result = wait_cursor(service, 5)
+        self.assertEqual(result["receiver"]["channels"][0], 172)
+        self.assertEqual(result["receiver"]["rc"]["receivedAt"], 1.0)
+        self.assertFalse(result["receiver"]["rc"]["valid"])
+        self.assertEqual(result["receiver"]["rc"]["frameMs"], 99999)
+        self.assertIsNone(result["receiver"]["link"])
+        service.shutdown()
+
+    def test_receiver_clears_on_boot_ms_rollback_and_close(self):
+        factory = Factory()
+        service = SerialService(factory, ports)
+        params = {"port": "COM7", "baud": 115200, "format": "text", "channels": 1}
+        service.dispatch("serial.open", params)
+        port = factory.instances[-1]
+        port.input.put(b"@ELRS,100,1,2,99,3,4,5,6,7,8,9,10\n@UART,100,13,14,15,16,17,18,19\n")
+        self.assertIsNotNone(wait_cursor(service, 2)["receiver"]["link"])
+        port.input.put(b"*** Booting Zephyr OS\n@RC,1,4,1,1,1000,1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1013,1014,1015\n")
+        result = wait_cursor(service, 4)
+        self.assertIsNone(result["receiver"]["link"])
+        self.assertIsNotNone(result["receiver"]["rc"])
+        port.input.put(b"@RC,0,4,1,2,1000,1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1013,1014,1015\n")
+        result = wait_cursor(service, 5)
+        self.assertEqual(result["receiver"]["rc"]["sequence"], 2)
+        service.dispatch("serial.close")
+        self.assertIsNone(service.dispatch("serial.status")["receiver"]["rc"])
+        service.shutdown()
+
+    def test_receiver_accepts_rc_sequence_uint32_wrap(self):
+        factory = Factory()
+        service = SerialService(factory, ports)
+        service.dispatch("serial.open", {"port": "COM7", "baud": 115200, "format": "text", "channels": 1})
+        port = factory.instances[-1]
+        port.input.put(b"@RC,10,9,1,4294967294,172,992,1811,0,2047,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024\n@RC,11,10,1,1,173,992,1811,0,2047,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024\n")
+        receiver = wait_cursor(service, 2)["receiver"]
+        self.assertEqual(receiver["rc"]["sequence"], 1)
+        self.assertEqual(receiver["channels"][0], 173)
+        service.shutdown()
+
+    def test_receiver_ms_rollback_requires_a_later_frame_before_valid(self):
+        factory = Factory()
+        service = SerialService(factory, ports)
+        service.dispatch("serial.open", {"port": "COM7", "baud": 115200, "format": "text", "channels": 1})
+        port = factory.instances[-1]
+        port.input.put(b"@RC,100,90,1,8,172,992,1811,0,2047,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024\n@RC,101,91,0,8,172,992,1811,0,2047,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024\n@RC,1,1,1,1,173,992,1811,0,2047,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024\n")
+        receiver = wait_cursor(service, 3)["receiver"]
+        self.assertFalse(receiver["rc"]["valid"])
+        self.assertIsNone(receiver["channels"])
+        port.input.put(b"@RC,2,2,1,2,174,992,1811,0,2047,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024\n")
+        receiver = wait_cursor(service, 4)["receiver"]
+        self.assertTrue(receiver["rc"]["valid"])
+        self.assertEqual(receiver["channels"][0], 174)
+        service.shutdown()
     def test_enumerates_only_com_and_does_not_open_by_default(self):
         factory = Factory()
         service = SerialService(factory, ports)
@@ -157,13 +250,17 @@ class SerialServiceTest(unittest.TestCase):
         service = SerialService(factory, ports)
         params = {"port": "COM7", "baud": 115200, "format": "text", "channels": 1}
         service.dispatch("serial.open", params)
-        factory.instances[-1].input.put(OSError("device removed"))
+        port = factory.instances[-1]
+        port.input.put(b"@ELRS,10,1,2,99,3,4,5,6,7,8,9,10\n")
+        self.assertIsNotNone(wait_cursor(service)["receiver"]["link"])
+        port.input.put(OSError("device removed"))
         deadline = time.monotonic() + 1
         while service.dispatch("serial.status")["connected"] and time.monotonic() < deadline:
             time.sleep(0.005)
         status = service.dispatch("serial.status")
         self.assertFalse(status["connected"])
         self.assertIn("device removed", status["error"])
+        self.assertIsNone(status["receiver"]["link"])
         self.assertTrue(service.dispatch("serial.open", params)["connected"])
         self.assertEqual(len(factory.instances), 2)
         threads = [threading.Thread(target=lambda: service.dispatch("serial.close")) for _ in range(3)]

@@ -14,6 +14,14 @@ param(
 
     [string]$Ninja,
 
+    [string]$RunningElf,
+
+    [string]$ProbeSerial,
+
+    [string]$FlashOutput,
+
+    [switch]$SdRemoved,
+
     [ValidateRange(1, 64)]
     [int]$Jobs = 2,
 
@@ -216,7 +224,46 @@ switch ($Action) {
     }
 
     "flash" {
+        $target = Resolve-ZephyrProject
         $buildDir = Get-ExistingZephyrBuild
+        if ($target.board -eq "dm_mc02_h7") {
+            if ($target.name -eq "HERO-M") {
+                if ([string]::IsNullOrWhiteSpace($ProbeSerial)) {
+                    throw "HERO-M flash requires -ProbeSerial so the guarded OpenOCD script selects the intended probe."
+                }
+                if ($SdRemoved -and -not [string]::IsNullOrWhiteSpace($RunningElf)) {
+                    throw "Use either -RunningElf or -SdRemoved for HERO-M flash, not both."
+                }
+                if (-not $SdRemoved -and [string]::IsNullOrWhiteSpace($RunningElf)) {
+                    throw "HERO-M flash requires the exact currently running ELF via -RunningElf. For an old firmware without the pause mailbox, physically remove the SD card and pass -SdRemoved."
+                }
+
+                if ([string]::IsNullOrWhiteSpace($FlashOutput)) {
+                    $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+                    $FlashOutput = Join-Path $RepoRoot "local\flash\hero-m-$stamp"
+                }
+                $arguments = @(
+                    "--build", $buildDir,
+                    "--output", ([System.IO.Path]::GetFullPath($FlashOutput)),
+                    "--serial", $ProbeSerial
+                )
+                if ($SdRemoved) {
+                    $arguments += "--sd-removed"
+                }
+                else {
+                    if (-not (Test-Path -LiteralPath $RunningElf -PathType Leaf)) {
+                        throw "Cannot find the currently running ELF: $RunningElf"
+                    }
+                    $arguments += @("--running-elf", ([System.IO.Path]::GetFullPath($RunningElf)))
+                }
+                Invoke-PythonTool -ToolPath (Join-Path $RepoRoot "tests\ZephyrMusicM\FlashBench.py") `
+                    -Arguments $arguments
+            }
+
+            if (-not $SdRemoved) {
+                throw "$($target.name) flash has no firmware pause-mailbox integration yet. Physically remove the SD card and pass -SdRemoved, or use the guarded HERO-M path."
+            }
+        }
         $tools = Get-OpenOcdTools
         Write-Host "Flashing $Project from $buildDir with OpenOCD, then verifying the written image."
         & $tools.West flash -d $buildDir -r openocd --no-rebuild --gdb $tools.Gdb --openocd $tools.OpenOcd -- --no-erase --verify

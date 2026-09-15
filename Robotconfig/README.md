@@ -11,6 +11,7 @@
 | `HERO-M` | 英雄机器人，已完整改用 MC02 H7 和 V2 副板接线 | `RobotConfig.toml`、`RobotConfig.c`、`Config*.inc`、`DetectTask.c`、`PitchCaliBuiltin.c` |
 | `SENTINEL-M` | 哨兵机器人接 MC02 H7 板 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`Mc02Compat.c` |
 | `MINIWHEELEG-M` | H7 接板和机械臂实验 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`ArmMotorTable.c` |
+| `INFANTRY-TIAN-A` | A 板步兵，参考 Ackerman_soldier 的 ID 和中位，主体沿用本工程；未上板 | `RobotConfig.toml`、`Config*.inc`、`安装说明.md` |
 
 目标目录采用扁平结构：
 
@@ -85,13 +86,14 @@ AUX 临时调参只改 RAM，重启后恢复配置文件默认值。运行模式
 
 | 新目标条件 | 优先复制 |
 |---|---|
-| DJI A F427 / DJI C F407 | 当前仅保留板级验证；完整机器人运行栈尚未完成迁移 |
+| DJI A F427 | `INFANTRY-TIAN-A`；仅开放 DBUS、健康检测、经典底盘、单云台和 RM 射击依赖 |
+| DJI C F407 | 当前仅保留板级验证；完整机器人运行栈尚未完成迁移 |
 | DM MC02 H7 | `HERO-M`、`SENTINEL-M` 或 `MINIWHEELEG-M` |
 | 经典底盘 + 单云台 | `HERO-M` |
 | 双 yaw 云台 | `SENTINEL-M` |
 | MIT 轮腿实验 | `MINIWHEELEG-M` |
 
-A/C 板的 IMU、存储、串口、输出能力与 M 板不同，生成器会拒绝将当前完整运行栈装到 A/C 板上。板级缺项见各板 README。
+A/C 板的 IMU、存储、串口、输出能力与 M 板不同。A 板只允许上述基础任务，其他服务仍由生成器拒绝；C 板仍只保留独立板级验证。板级缺项见[开发板说明](../boards/README.md)。
 
 默认用生成器从 `Robotconfig/<OLD>` 创建 `Robotconfig/<NEW>`；车型接入不再要求修改 `projects/`、CMake 预设或构建工具。正式构建不读取 `.uvprojx`。
 
@@ -237,6 +239,23 @@ pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1 -Action 
 - 遥控输入、CAN 反馈、IMU 姿态都能观察。
 - 每个子系统都能单独关闭或单独测试。
 - 上车检查清单有记录，不只靠口头记忆。
+
+## RM 电机的模式与限幅
+
+`ConfigHardware.inc` 的每个电机节点可配置 `control_mode` 和 `command_limit_abs`，型号能力保存在共享 `MotorModelDb`。发送组由型号、节点号与控制模式共同决定，反馈 ID 不再兼任发送路由依据。
+
+GM6020 以本地 `local/docs/RoboMaster GM6020电机说明书 20231013.pdf` 的 v1.4 为准：
+
+| 配置模式 | 节点 1–4 / 5–7 的发送组 | 原始数值范围 |
+| --- | --- | --- |
+| `MOTOR_CONTROL_MODE_VOLTAGE`（6020 默认） | `0x1FF / 0x2FF` | `±25000` |
+| `MOTOR_CONTROL_MODE_CURRENT` | `0x1FE / 0x2FE` | `±16384` 对应 `±3 A` |
+
+例如：`{MOTOR_MODEL_6020, 2u, .can_bus = 2u, .control_mode = MOTOR_CONTROL_MODE_VOLTAGE, .command_limit_abs = 16384}` 表示 CAN2 上 2 号电机，以电压模式输出，软件限幅 16384；反馈仍为 `0x206`，发送为 `0x1FF` 第二槽。`command_limit_abs=0` 继承模式限制，正值只能进一步收紧，负值禁止给定。现有三款含已启用 6020 的车型均显式保留原软件限幅，不因型号表修正提高实际输出。
+
+电流模式必须先确认电机固件 ≥1.0.11.2、RoboMaster Assistant ≥2.7，并在电机参数中打开电流环；修改控制板配置不会替电机切换内部模式。此选项是静态安装配置，换模式后重新构建和上电，不用于运行中热切换。旧 `LowCmdSetCurrent` / `MotorModeCurrent` 表示兼容的原始驱动给定，具体电压/电流单位由节点模式确定；电压给定不参与安培功率换算。两模式 PID 与补偿应分别调试，不能认为相同数字对应相同力矩。
+
+接收表中的“实际转矩电流”保留原始计数，手册未明确反馈的安培比例时不自行推定。模式不匹配时，手册说明电流模式收到电压指令会橙灯常亮；同一总线若还有使用 `0x1FF` 的其他电调，应特别核对组帧和告警，不能靠 ID 不同就假设完全互不影响。
 
 ## 安装说明模板
 

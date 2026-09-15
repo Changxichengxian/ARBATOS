@@ -89,6 +89,14 @@ typedef struct
 
 typedef struct
 {
+    uint16_t current_group[2]; // 节点 1..4、5..8 的发送 ID；0 表示不支持
+    uint16_t voltage_group[2];
+    int16_t voltage_range_abs;
+    uint8_t node_count;
+} MotorModelRmTx;
+
+typedef struct
+{
     MotorModelParam base;
     MotorModelRxFormat rx_format;
     uint8_t default_protocol;
@@ -96,6 +104,7 @@ typedef struct
     uint8_t caps;
     MotorModelSpecs specs;
     MotorModelMitLimits mit_limits;
+    MotorModelRmTx rm_tx;
     int16_t cmd_current_range_abs;
     fp32 torque_current_range_a;
     int16_t fb_current_meas_range_abs;

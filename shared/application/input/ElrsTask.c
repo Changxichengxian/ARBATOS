@@ -34,6 +34,9 @@
 #define CRSF_RC_FRAME_LEN 24u // length byte for RC_CHANNELS_PACKED
 #define CRSF_RC_PAYLOAD_LEN 22u
 #define CRSF_LINK_STATS_FRAME_LEN 12u // type + 10-byte standard payload + crc
+#if ELRS_CHANNEL_COUNT != MANUAL_INPUT_CRSF_CHANNEL_COUNT
+#error "ELRS channel snapshot must match CRSF channel count"
+#endif
 #define ELRS_LINK_PUBLISH_STALE 0u
 #define ELRS_LINK_PUBLISH_OK 1u
 #define ELRS_LINK_PUBLISH_CHANNEL_INVALID 2u
@@ -60,8 +63,17 @@ typedef struct
 {
     uint16_t channel[MANUAL_INPUT_CRSF_CHANNEL_COUNT];
     uint32_t session_gen;
+    uint32_t snapshot_sequence;
+    TickType_t frame_tick;
     uint8_t valid;
 } ElrsLinkPendingRcState;
+
+typedef struct
+{
+    ElrsChannelSnapshot snapshot;
+    uint32_t session_gen;
+    TickType_t last_frame_tick;
+} ElrsLinkChannelState;
 
 typedef struct
 {
@@ -70,6 +82,7 @@ typedef struct
 } ElrsLinkManualCommitContext;
 
 static ElrsLinkPendingRcState ElrsLinkPendingRc;
+static ElrsLinkChannelState ElrsLinkChannel;
 static ElrsLinkStats ElrsLinkDiag = {.state = ELRS_LINK_STATE_WAIT_STATS};
 static TickType_t ElrsLinkLastStatsTick = 0u;
 static uint32_t ElrsLinkLastStatsSessionGen = 0u;
@@ -119,6 +132,13 @@ static void ElrsLinkDecodeRcChannels(const uint8_t *payload, uint8_t payload_len
 static uint8_t ElrsLinkPublishRc(
     const uint16_t channel[MANUAL_INPUT_CRSF_CHANNEL_COUNT],
     uint32_t session_gen);
+static uint32_t ElrsChannelCaptureRaw(const uint16_t channel[MANUAL_INPUT_CRSF_CHANNEL_COUNT],
+                                      uint32_t frame_ms,
+                                      TickType_t frame_tick,
+                                      uint32_t session_gen);
+static void ElrsChannelMarkValid(uint32_t sequence,
+                                 TickType_t frame_tick,
+                                 uint32_t session_gen);
 static uint8_t ElrsLinkAddressValid(uint8_t address);
 static uint8_t ElrsLinkFrameCrcValid(const uint8_t *frame, uint8_t total_len);
 static TickType_t ElrsLinkStatsTimeoutTicks(void);
@@ -277,6 +297,27 @@ void ElrsLinkGetStats(ElrsLinkStats *out)
     taskEXIT_CRITICAL();
 }
 
+void ElrsChannelGetSnapshot(ElrsChannelSnapshot *out)
+{
+    const TickType_t now_tick = xTaskGetTickCount();
+
+    if (out == NULL)
+    {
+        return;
+    }
+
+    taskENTER_CRITICAL();
+    *out = ElrsLinkChannel.snapshot;
+    out->valid = (uint8_t)(out->valid != 0u &&
+                           ElrsLinkChannel.session_gen == ElrsLinkSessionGen &&
+                           ElrsLinkDmaActive != 0u &&
+                           ElrsLinkDiag.state == ELRS_LINK_STATE_UP &&
+                           (TickType_t)(now_tick - ElrsLinkChannel.last_frame_tick) <=
+                               ElrsLinkStatsTimeoutTicks() &&
+                           ElrsLinkStatsFresh(now_tick) != 0u);
+    taskEXIT_CRITICAL();
+}
+
 void ElrsLinkOnRxEvent(uint16_t Size, BspAuxLinkRxEvent evt)
 {
     if (BspElrsLinkGetBaudrate() != ELRS_LINK_BAUD || !ElrsLinkDmaActive)
@@ -392,6 +433,9 @@ static void ElrsLinkSessionResetLocked(void)
     }
     ElrsLinkReset();
     ElrsLinkPendingRc.valid = 0u;
+    ElrsLinkChannel.snapshot.valid = 0u;
+    ElrsLinkChannel.session_gen = 0u;
+    ElrsLinkChannel.last_frame_tick = 0u;
     ElrsLinkLastStatsTick = 0u;
     ElrsLinkLastStatsSessionGen = 0u;
     ElrsLinkSessionGen = ElrsLinkSeqNext(ElrsLinkSessionGen);
@@ -592,6 +636,9 @@ static void ElrsLinkBatchCommit(void)
         {
             ElrsLinkDiag.state = ELRS_LINK_STATE_UP;
             ElrsLinkDiag.rc_publish_count++;
+            ElrsChannelMarkValid(ElrsLinkPendingRc.snapshot_sequence,
+                                 ElrsLinkPendingRc.frame_tick,
+                                 session_gen);
             final_current = 1u;
         }
         else if (publish_result == ELRS_LINK_PUBLISH_CHANNEL_INVALID)
@@ -638,6 +685,7 @@ static void ElrsLinkMarkDown(uint8_t stats_timeout)
         }
     }
     ElrsLinkPendingRc.valid = 0u;
+    ElrsLinkChannel.snapshot.valid = 0u;
     if (ElrsLinkBatchActive != 0u)
     {
         ElrsLinkBatchForceInvalidate = 1u;
@@ -1009,6 +1057,11 @@ static void ElrsLinkDecodeRcChannels(const uint8_t *payload, uint8_t payload_len
 
     ElrsLinkDiag.last_rc_tick_ms = ElrsLinkTickMs(now_tick);
     ElrsLinkDiag.rc_frame_count++;
+    ElrsLinkPendingRc.snapshot_sequence =
+        ElrsChannelCaptureRaw(channel,
+                              ElrsLinkDiag.last_rc_tick_ms,
+                              now_tick,
+                              session_gen);
     if (mapped_values_valid == 0u)
     {
         ElrsLinkDiag.channel_reject_count++;
@@ -1031,6 +1084,7 @@ static void ElrsLinkDecodeRcChannels(const uint8_t *payload, uint8_t payload_len
     }
 
     ElrsLinkPendingRc.session_gen = session_gen;
+    ElrsLinkPendingRc.frame_tick = now_tick;
     ElrsLinkPendingRc.valid = 1u;
     taskEXIT_CRITICAL();
 }
@@ -1113,6 +1167,41 @@ static uint8_t ElrsLinkPublishRc(
         return ELRS_LINK_PUBLISH_STALE;
     }
     return ELRS_LINK_PUBLISH_OK;
+}
+
+static uint32_t ElrsChannelCaptureRaw(const uint16_t channel[MANUAL_INPUT_CRSF_CHANNEL_COUNT],
+                                      uint32_t frame_ms,
+                                      TickType_t frame_tick,
+                                      uint32_t session_gen)
+{
+    if (channel == NULL)
+    {
+        return 0u;
+    }
+
+    for (uint8_t i = 0u; i < ELRS_CHANNEL_COUNT; i++)
+    {
+        ElrsLinkChannel.snapshot.channel[i] = channel[i];
+    }
+    ElrsLinkChannel.snapshot.last_frame_ms = frame_ms;
+    ElrsLinkChannel.last_frame_tick = frame_tick;
+    ElrsLinkChannel.snapshot.sequence =
+        ElrsLinkSeqNext(ElrsLinkChannel.snapshot.sequence);
+    ElrsLinkChannel.snapshot.valid = 0u;
+    ElrsLinkChannel.session_gen = session_gen;
+    return ElrsLinkChannel.snapshot.sequence;
+}
+
+static void ElrsChannelMarkValid(uint32_t sequence,
+                                 TickType_t frame_tick,
+                                 uint32_t session_gen)
+{
+    if (ElrsLinkChannel.session_gen == session_gen &&
+        ElrsLinkChannel.snapshot.sequence == sequence &&
+        ElrsLinkChannel.last_frame_tick == frame_tick)
+    {
+        ElrsLinkChannel.snapshot.valid = 1u;
+    }
 }
 
 static void ElrsLinkHandleFrame(const uint8_t *frame, uint8_t total_len)

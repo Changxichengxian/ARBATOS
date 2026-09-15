@@ -3,6 +3,7 @@
 #define ARB_ZEPHYR_STORAGE_CONFIG_H
 
 #include <zephyr/devicetree.h>
+#include <zephyr/sys/util.h>
 
 /*
  * For a Zephyr disk driver, `sd-disk` points at the node which has
@@ -18,7 +19,7 @@
 #endif
 
 #ifndef ARB_STORAGE_USE_DISK_ACCESS
-#ifdef ARB_STORAGE_DISK_NAME
+#if defined(ARB_STORAGE_DISK_NAME) && IS_ENABLED(CONFIG_DISK_ACCESS)
 #define ARB_STORAGE_USE_DISK_ACCESS 1
 #else
 #define ARB_STORAGE_USE_DISK_ACCESS 0

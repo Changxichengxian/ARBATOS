@@ -5,6 +5,12 @@
 #include "BspUsart.h"
 
 #if defined(__ZEPHYR__)
+typedef struct
+{
+    uint32_t irqBytes, errors, overrun, framing, parity, noise, lastError;
+} BspElrsUartDiag;
+/* 累计串口层错误；与 CRSF 校验失败、软件队列溢出分开记录。 */
+void BspElrsLinkGetDiag(BspElrsUartDiag *out);
 void BspElrsLinkSetRxEventCb(BspAuxLinkRxEventCb cb);
 void BspElrsLinkSetRxByteCb(BspAuxLinkRxByteCb cb);
 void BspElrsLinkSetErrorCb(BspAuxLinkErrorCb cb);

@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -146,9 +147,10 @@ def build_values(repo: Path) -> tuple[str, int, str, str]:
     if git_text(repo, "rev-parse", "--is-inside-work-tree") != "true":
         return "unknown", 0, "unknown", "unknown"
 
-    sha = git_text(repo, "rev-parse", "--short=16", "HEAD") or "unknown"
+    full_sha = git_text(repo, "rev-parse", "HEAD") or "unknown"
+    sha = full_sha[:16] if full_sha != "unknown" else "unknown"
     submodules = git_text(repo, "submodule", "status", "--recursive")
-    dirty, state = source_state(repo, sha, submodules or "")
+    dirty, state = source_state(repo, full_sha, submodules or "")
     return sha, dirty, submodules or "", state
 
 
@@ -157,8 +159,24 @@ def previous_value(content: str, macro: str) -> str | None:
     return match.group(1) if match else None
 
 
-def render(repo: Path, previous: str) -> str:
+def build_fingerprint(state: str, config_path: Path | None) -> bytes:
+    if state == "unknown":
+        return secrets.token_bytes(32)
+    digest = hashlib.sha256()
+    digest.update(b"ARBATOS_BUILD_FINGERPRINT_V1\0")
+    digest.update(state.encode("utf-8", errors="surrogateescape"))
+    digest.update(b"\0CONFIG\0")
+    if config_path is None:
+        digest.update(b"none")
+    else:
+        digest.update(config_path.read_bytes())
+    return digest.digest()
+
+
+def render(repo: Path, previous: str, config_path: Path | None = None) -> str:
     sha, dirty, submodules, state = build_values(repo)
+    fingerprint = build_fingerprint(state, config_path)
+    fingerprint_bytes = ", ".join(f"0x{value:02x}u" for value in fingerprint)
     if previous_value(previous, "ARBATOS_SOURCE_STATE") == c_string(state):
         build_date = previous_value(previous, "ARBATOS_BUILD_DATE") or "unknown"
         build_time = previous_value(previous, "ARBATOS_BUILD_TIME") or "unknown"
@@ -176,6 +194,10 @@ def render(repo: Path, previous: str) -> str:
         f'#define ARBATOS_BUILD_TIME "{c_string(build_time)}"\n'
         f'#define ARBATOS_GIT_SUBMODULES "{c_string(submodules)}"\n\n'
         f'#define ARBATOS_SOURCE_STATE "{c_string(state)}"\n\n'
+        f'#define ARBATOS_BUILD_FINGERPRINT_HEX "{fingerprint.hex()}"\n'
+        f"#define ARBATOS_BUILD_FINGERPRINT_SIZE {len(fingerprint)}u\n"
+        f"#define ARBATOS_BUILD_FINGERPRINT_FIRST_BYTE 0x{fingerprint[0]:02x}u\n"
+        f"#define ARBATOS_BUILD_FINGERPRINT_BYTES {{ {fingerprint_bytes} }}\n\n"
         "#endif\n"
     )
 
@@ -196,13 +218,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="生成 ARBATOS 构建版本头")
     parser.add_argument("--repo", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--config", type=Path,
+                        help="参与固件身份计算的 Zephyr .config")
     args = parser.parse_args()
     output = args.output if args.output.is_absolute() else Path.cwd() / args.output
+    config_path = args.config.resolve() if args.config is not None else None
+    if config_path is not None and not config_path.is_file():
+        parser.error(f"configuration file does not exist: {config_path}")
     try:
         previous = output.read_text(encoding="ascii")
     except FileNotFoundError:
         previous = ""
-    changed = write_if_changed(output, render(args.repo.resolve(), previous))
+    changed = write_if_changed(output, render(args.repo.resolve(), previous, config_path))
     print(f"{'generated' if changed else 'unchanged'} {output.resolve()}")
     return 0
 

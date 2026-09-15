@@ -55,15 +55,23 @@ def main():
     compiler = Path(r"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat")
     if not compiler.is_file():
         raise SystemExit("未找到VS2022 Build Tools；可用C11编译器编译ProtocolTest.c")
-    command = ('cl.exe /nologo /std:c11 /utf-8 /W4 /WX '
-               '/I tests\\SdBenchM\\ProtocolStub /I shared\\hal '
-               '/Fo:local\\cache\\sd-bench-m\\host-tests\\ProtocolTest.obj '
-               '/Fe:local\\cache\\sd-bench-m\\host-tests\\ProtocolTest.exe '
-               'tests\\SdBenchM\\ProtocolTest.c')
+    protocol_command = ('cl.exe /nologo /std:c11 /utf-8 /W4 /WX '
+                        '/I tests\\SdBenchM\\ProtocolStub /I shared\\hal '
+                        '/Fo:local\\cache\\sd-bench-m\\host-tests\\ProtocolTest.obj '
+                        '/Fe:local\\cache\\sd-bench-m\\host-tests\\ProtocolTest.exe '
+                        'tests\\SdBenchM\\ProtocolTest.c')
+    reset_model_command = ('cl.exe /nologo /std:c11 /utf-8 /W4 /WX '
+                           '/I tests\\SdBenchM\\ProtocolStub /I shared\\hal '
+                           '/Fo:local\\cache\\sd-bench-m\\host-tests\\ResetWriteStateTest.obj '
+                           '/Fe:local\\cache\\sd-bench-m\\host-tests\\ResetWriteStateTest.exe '
+                           'tests\\SdBenchM\\ResetWriteStateTest.c')
     script = OUT / "RunProtocol.cmd"
     script.write_text(f'@echo off\ncall "{compiler}" >nul\nif errorlevel 1 exit /b %errorlevel%\n'
-                      f'{command}\nif errorlevel 1 exit /b %errorlevel%\n'
-                      'local\\cache\\sd-bench-m\\host-tests\\ProtocolTest.exe\n', encoding="ascii")
+                      f'{protocol_command}\nif errorlevel 1 exit /b %errorlevel%\n'
+                      'local\\cache\\sd-bench-m\\host-tests\\ProtocolTest.exe\n'
+                      'if errorlevel 1 exit /b %errorlevel%\n'
+                      f'{reset_model_command}\nif errorlevel 1 exit /b %errorlevel%\n'
+                      'local\\cache\\sd-bench-m\\host-tests\\ResetWriteStateTest.exe\n', encoding="ascii")
     run = subprocess.run(["cmd.exe", "/d", "/c", str(script)], cwd=ROOT,
                          capture_output=True, text=True, errors="replace",
                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))

@@ -563,7 +563,7 @@ static int CanCmdRmGroupSend(uint8_t bus,
     return ret;
 }
 
-// 发送大疆一组四电机电流帧；MIT 等非大疆协议不会走这里。
+// 发送大疆组帧；原始数值代表电压还是电流，由型号和发送 ID 决定。
 int CAN_cmd_rm_group(uint8_t bus,
                      uint16_t group_id,
                      int16_t motor1,

@@ -370,6 +370,31 @@ void ChassisRcToControlVector(fp32 *vx_set, fp32 *vy_set, ChassisMove *ChassisMo
   * @param[out]     ChassisMoveUpdate: "ChassisMove" variable point
   * @retval         none
   */
+static void ChassisLimitSpinTranslation(fp32 *vx, fp32 *vy, fp32 wz,
+                                        const ChassisRuntimeSnapshot *snapshot)
+{
+    const fp32 wheel_limit = (snapshot != NULL) ? snapshot->max_wheel_speed : MAX_WHEEL_SPEED;
+    const fp32 distance = (snapshot != NULL) ? snapshot->motor_distance_to_center : MOTOR_DISTANCE_TO_CENTER;
+    if (wheel_limit <= 0.0f) {
+        return;
+    }
+
+    // 现有两种混控的平移轮速峰值均为 sqrt(2)*|v|；为旋转保留与朝向无关的余量。
+    const fp32 available = wheel_limit - fabsf(distance * wz);
+    if (available <= 0.0f) {
+        *vx = 0.0f;
+        *vy = 0.0f;
+        return;
+    }
+    const fp32 speed_limit = available * 0.70710678118f;
+    const fp32 speed_squared = *vx * *vx + *vy * *vy;
+    if (speed_squared > speed_limit * speed_limit) {
+        const fp32 scale = speed_limit / sqrtf(speed_squared);
+        *vx *= scale;
+        *vy *= scale;
+    }
+}
+
 static void ChassisSetControl(ChassisMove *ChassisMoveControl,
                               const ChassisRuntimeSnapshot *snapshot)
 {
@@ -442,6 +467,23 @@ static void ChassisSetControl(ChassisMove *ChassisMoveControl,
         ChassisMoveControl->wz_set = angle_set;
         ChassisMoveControl->vx_set = fp32_constrain(vx_set, ChassisMoveControl->vx_min_speed, ChassisMoveControl->vx_max_speed);
         ChassisMoveControl->vy_set = fp32_constrain(vy_set, ChassisMoveControl->vy_min_speed, ChassisMoveControl->vy_max_speed);
+        if (ChassisMoveControl->spinTranslationInGimbalFrame != 0u) {
+            const GimbalMotorState *yaw_motor = (snapshot != NULL) ? &snapshot->gimbal.yaw : NULL;
+            fp32 yaw_frame = ChassisGetGimbalYawRelativeAngle(yaw_motor);
+            (void)ChassisGetTurnaroundFrameYaw(snapshot, &yaw_frame);
+            // 仅校正手动小陀螺的平移参考，不改编码器反馈、回中误差及云台转速补偿。
+            if (CHASSIS_SPIN_FRAME_REVERSE != 0u) {
+                yaw_frame = -yaw_frame;
+            }
+            ChassisLimitSpinTranslation(&ChassisMoveControl->vx_set, &ChassisMoveControl->vy_set,
+                                        angle_set, snapshot);
+            const fp32 vx = ChassisMoveControl->vx_set;
+            const fp32 vy = ChassisMoveControl->vy_set;
+            const fp32 sin_yaw = arm_sin_f32(-yaw_frame);
+            const fp32 cos_yaw = arm_cos_f32(-yaw_frame);
+            ChassisMoveControl->vx_set = cos_yaw * vx + sin_yaw * vy;
+            ChassisMoveControl->vy_set = -sin_yaw * vx + cos_yaw * vy;
+        }
     }
     else if (ChassisMoveControl->mode == CHASSIS_VECTOR_RAW)
     {

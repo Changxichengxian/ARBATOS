@@ -146,6 +146,8 @@ if(CONFIG_ARBATOS_LEGACY_SOURCES)
         ${ARBATOS_ROOT}/shared/zephyr/port/subboard/MPreflight.c)
     target_sources_ifdef(CONFIG_ARBATOS_RECEIVE_ONLY app PRIVATE
         ${ARBATOS_ROOT}/shared/zephyr/port/subboard/MReceiveCheck.c)
+    target_sources_ifdef(CONFIG_ARBATOS_BENCH_TELEMETRY app PRIVATE
+        ${ARBATOS_ROOT}/shared/zephyr/port/subboard/MBenchTelemetry.c)
 
     if(CONFIG_BOARD_DJI_A_F427)
         target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/sensors/Mpu6500.c)

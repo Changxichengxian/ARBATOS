@@ -9,7 +9,7 @@
 ## 当前主线
 
 - 后续开发使用 `main`；`zephyr` 分支保留已经结束的迁移历史。
-- 当前整车目标为 HERO-M、SENTINEL-M、MINIWHEELEG-M，均使用 M 板。A、C 板定义独立保留，完整运行栈仍需迁移，不能仅新建车型配置就运行。
+- 当前车型为 M 板的 HERO-M、SENTINEL-M、MINIWHEELEG-M，以及 A 板的 INFANTRY-TIAN-A。后者沿用经典底盘、单云台和 RM 射击框架，默认未放行电机，型号与机械参数仍待实车确认；A 板其他服务和 C 板整车栈仍需迁移。
 - 使用 CLion、Zephyr 4.4、Zephyr SDK、CMake、Ninja、OpenOCD 和 ARM GDB；当前流程不需要 Keil 或 CubeCLT。
 - HERO-M 已有整车正常运动结果，包括底盘和云台俯仰；当前接线为 M 板 + V2 副板。旧 HERO-C 的接线和实测结论不适用于现车。
 - 2026-09-08 目录整理后的构建尚未再次上车。其他车辆、全部外设、长期负载、致命故障停机和 CLion 图形调试仍需分别验收，具体限制写在对应开发板、接口和测试说明中。
@@ -72,7 +72,7 @@ pwsh -NoProfile -File .\tools\build.ps1 -Project HERO-M
 | 上车检查、PID、日志与复盘 | [调试与日志](manual/调试与日志.md) |
 | 上位机协议、坐标和方向 | [算法协议与坐标](manual/算法协议与坐标.md) |
 | 车型参数、新增车型和安装模板 | [车型配置](Robotconfig/README.md) |
-| 三台车的具体安装 | [HERO-M](Robotconfig/HERO-M/安装说明.md)、[SENTINEL-M](Robotconfig/SENTINEL-M/安装说明.md)、[MINIWHEELEG-M](Robotconfig/MINIWHEELEG-M/安装说明.md) |
+| 车型安装与参数 | [HERO-M](Robotconfig/HERO-M/安装说明.md)、[SENTINEL-M](Robotconfig/SENTINEL-M/安装说明.md)、[MINIWHEELEG-M](Robotconfig/MINIWHEELEG-M/安装说明.md)、[INFANTRY-TIAN-A](Robotconfig/INFANTRY-TIAN-A/安装说明.md) |
 | A/C/M 板引脚、能力和限制 | [开发板说明](boards/README.md) |
 | 共用代码与 Zephyr 外设接口 | [共享代码与接口](shared/README.md) |
 | 编译检查、日志、音频转换和自动调参工具 | [工具说明](tools/README.md) |

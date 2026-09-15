@@ -39,6 +39,11 @@
 #include <string.h>
 #include <zephyr/kernel.h>
 
+#if defined(CONFIG_ARBATOS_BENCH_TELEMETRY)
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(imu_bench, LOG_LEVEL_INF);
+#endif
+
 #define IMU_DT_FALLBACK_S 0.001f
 #define IMU_DT_MIN_S 0.0002f
 #define IMU_DT_MAX_S 0.0200f
@@ -586,6 +591,24 @@ void ImuFusionTask(void const *pvParameters)
         for (int i = 0; i < 4; ++i) InsQuat[i] = InsMahony.quat[i];
         ImuEulerUpdate();
         InsSnapshotPublishCurrent(now_ms, InsTemp);
+#if defined(CONFIG_ARBATOS_BENCH_TELEMETRY)
+        /* 延后打印，采样线程不等待串口；角速度/角度用微弧度，保留零漂分辨率。 */
+        static uint32_t lastBenchMs;
+        if (now_ms - lastBenchMs >= 100u) {
+            LOG_INF("@IMU,%u,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%u,%u",
+                    now_ms, (int)(InsTemp * 1000.0f),
+                    (int)(InsGyro[0] * 1000000.0f), (int)(InsGyro[1] * 1000000.0f),
+                    (int)(InsGyro[2] * 1000000.0f),
+                    (int)(INS_angle[0] * 1000000.0f), (int)(INS_angle[1] * 1000000.0f),
+                    (int)(INS_angle[2] * 1000000.0f),
+                    (int)(InsAccel[0] * 1000.0f), (int)(InsAccel[1] * 1000.0f),
+                    (int)(InsAccel[2] * 1000.0f), InsHeaterPwm, ins_is_gyro_boot_calibrated());
+            LOG_INF("@BIAS,%u,%d,%d,%d,%u", now_ms,
+                    (int)(InsGyroOffset[0] * 1000000.0f), (int)(InsGyroOffset[1] * 1000000.0f),
+                    (int)(InsGyroOffset[2] * 1000000.0f), ins_is_gyro_boot_calibrating());
+            lastBenchMs = now_ms;
+        }
+#endif
 #if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY)
         static uint32_t lastLogMs;
         if (now_ms - lastLogMs >= 10u) {

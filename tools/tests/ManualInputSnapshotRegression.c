@@ -180,6 +180,46 @@ static int TestNoSourceSafe(void)
                      "初始化必须建立定时刷新并初始化板级遥控");
 }
 
+static int TestDbusIgnoredCh5Publication(void)
+{
+    uint8_t frame[RC_FRAME_LENGTH] = {
+        0x00u, 0x04u, 0x20u, 0x00u, 0x01u, 0x78u,
+        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+    };
+    ManualInputSnapshot snapshot;
+
+    TestReset(100u, 0u);
+    s_tick = 1u;
+    ManualInputOnSbusFrame(frame);
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u &&
+                   snapshot.online != 0u && snapshot.dataValid != 0u &&
+                   snapshot.activeSource == MANUAL_INPUT_SRC_DBUS &&
+                   snapshot.manual.rc.ch[4] == 0 &&
+                   snapshot.manual.rc.s[0] == RC_SW_MID &&
+                   ManualInputGetSbusFrameCount() == 1u && s_detectHookCount == 1u,
+                   "现场 CH5 为零的 DBUS 帧必须正常发布且第五轴中立")) return 0;
+
+    s_tick = 2u;
+    frame[16] = 0xFFu;
+    frame[17] = 0xFFu;
+    ManualInputOnSbusFrame(frame);
+    if (!TestCheck(ManualInputSnapshotRead(&snapshot) != 0u && snapshot.online != 0u &&
+                   snapshot.manual.rc.ch[4] == 0 && ManualInputGetSbusFrameCount() == 2u,
+                   "CH5 损坏值不能污染统一输入或被二次校验拒绝")) return 0;
+
+    s_tick = 50u;
+    frame[5] &= 0xCFu;
+    ManualInputOnSbusFrame(frame);
+    if (!TestCheck(ManualInputGetSbusFrameCount() == 2u &&
+                   ManualInputGetSbusRejectCount() == 1u && s_detectHookCount == 2u,
+                   "非法拨杆仍须拒收且不得刷新遥控健康时间")) return 0;
+
+    s_tick = 103u;
+    TestFireTimer();
+    return TestCheck(ManualInputSnapshotRead(&snapshot) != 0u && snapshot.online == 0u,
+                     "忽略 CH5 后停止合法 DBUS 帧仍须超时离线");
+}
+
 static int TestRawMappedSameGenerationAndReadOnly(void)
 {
     ManualInputSnapshot snapshot;
@@ -1315,6 +1355,7 @@ void RC_restart(uint16_t dma_buf_num)
 int main(void)
 {
     if (!TestNoSourceSafe()) return 1;
+    if (!TestDbusIgnoredCh5Publication()) return 1;
     if (!TestRawMappedSameGenerationAndReadOnly()) return 1;
     if (!TestPublishedDataValidity()) return 1;
     if (!TestDeferredInvalidationBarrier()) return 1;
