@@ -1,4 +1,4 @@
-"""检查真实小陀螺指令链在整圈旋转中保持平移速度、方向和轮速边界。"""
+"""检查跟随/小陀螺的真实坐标链、正弦转速与模式退出。"""
 import argparse
 from pathlib import Path
 import re
@@ -53,6 +53,11 @@ typedef struct { float out; } PidTypeDef;
 typedef struct {
     uint16_t key_mask, front_key_mask, back_key_mask, left_key_mask, right_key_mask;
     float swing_no_move_angle, swing_move_angle;
+    uint16_t spinSinePeriodMs;
+    float spinSineMinScale;
+    uint8_t spinSineRc, manual_online, ChassisOnlyMode, safe_pos, follow_pos, spin_pos;
+    uint16_t mode_sw, gyro_spin_key_mask, gyro_spin_var_key_mask, swing_key_mask;
+    uint32_t authority_seq, semantics_seq;
 } ChassisControlSnapshot;
 typedef struct {
     int mode;
@@ -61,6 +66,8 @@ typedef struct {
     PidTypeDef ChassisAnglePid, ChassisCmdSlowSetVx, ChassisCmdSlowSetVy;
     ChassisControlSnapshot fast;
     uint8_t spinTranslationInGimbalFrame;
+    uint8_t spinSineActive;
+    uint32_t spinSinePhaseMs, spinSineLastMs;
 } ChassisMove;
 typedef struct {
     struct { GimbalMotorState yaw; } gimbal;
@@ -73,6 +80,8 @@ typedef struct { uint8_t mode, flags; float yaw_offset_rad, wz_radps, vx, vy; } 
 static int ChassisBehaviourMode = CHASSIS_GYRO_SPIN;
 static float input_x, input_y, input_wz, frame_yaw, slew_start_x, slew_start_y;
 static uint8_t external_active, turnaround;
+static uint8_t gateReady=1, gimbalStop;
+static int s_chassisInputGate;
 static ExternalMotionIntent external_cmd;
 static uint32_t tick;
 static uint32_t BspTimeGetTickMs(void) { return tick; }
@@ -98,6 +107,14 @@ static void OtherControl(float *x, float *y, float *w, ChassisMove *m)
 #define ChassisOpenSetControl OtherControl
 static void ChassisAlgorithmMoveResetSlew(void) {}
 static int ChassisAlgorithmMoveGetActive(ExternalMotionIntent *c) { *c=external_cmd; return external_active; }
+static int ControlInputSwitchIsPos(uint16_t value, uint8_t pos) { return value==pos; }
+static uint16_t ControlInputSwitchPosToRaw(uint8_t pos) { return pos; }
+static uint8_t ChassisInputGateApply(int *gate, uint32_t authority, uint32_t semantics, uint8_t online, int spin, uint8_t key)
+{ (void)gate; (void)authority; (void)semantics; (void)online; (void)spin; (void)key; return gateReady; }
+static int ChassisGimbalTurnaroundIsActive(ChassisMove *m) { (void)m; return turnaround; }
+static int ChassisGimbalCmdToChassisStop(ChassisMove *m) { (void)m; return gimbalStop; }
+static int ChassisBehaviourNeedsGimbalFollow(int mode) { return mode==CHASSIS_INFANTRY_FOLLOW_GIMBAL_YAW; }
+static int ChassisGimbalFollowAvailable(ChassisMove *m) { (void)m; return 1; }
 static void ChassisAlgorithmResolveVxy(const ExternalMotionIntent *c, ChassisMove *m, uint8_t frame, float *x, float *y)
 { (void)m; (void)frame; *x=c->vx; *y=c->vy; }
 static void ChassisAlgorithmDebugRecord(float x, float y, float w) { (void)x; (void)y; (void)w; }
@@ -172,7 +189,7 @@ int main(void)
     if (TEST_FRAME_SIGN < 0) { near(m.vx_set,0); near(m.vy_set,-.8f); }
     /* 外部覆盖保留底盘坐标及斜坡起点；退出旋转不能遗留坐标标记。 */
     external_active=1; external_cmd=(ExternalMotionIntent){.mode=EXTERNAL_MOTION_MODE_NO_FOLLOW,.vx=3,.vy=-2};
-    ChassisSetControl(&m,&snap); near(slew_start_x,0); near(slew_start_y,.8f);
+    ChassisSetControl(&m,&snap); near(slew_start_x,0); near(slew_start_y,.8f*TEST_FRAME_SIGN);
     near(m.vx_set,2); near(m.vy_set,-1.5f); assert(!m.spinTranslationInGimbalFrame);
     external_active=0;
     ChassisBehaviourMode=CHASSIS_NO_FOLLOW_YAW; input_x=3; input_y=-2;
@@ -184,8 +201,70 @@ int main(void)
     ChassisLimitSpinTranslation(&x,&y,3.5f,&snap); near(x,0); near(y,0);
     x=1; y=1; snap.max_wheel_speed=0;
     ChassisLimitSpinTranslation(&x,&y,3.5f,&snap); near(x,1); near(y,1);
+    /* 普通档从静止起步，包含未回中的四个象限；只比较平移，回中误差保持原方向。 */
+    ChassisBehaviourMode=CHASSIS_INFANTRY_FOLLOW_GIMBAL_YAW;
+    m.mode=CHASSIS_VECTOR_FOLLOW_GIMBAL_YAW; m.wz=0; input_wz=0;
+    input_x=.5f; input_y=0;
+    for (int deg=-180; deg<=180; deg+=15) {
+        frame_yaw=deg*PI/180; snap.gimbal.yaw.yaw=frame_yaw;
+        ChassisSetControl(&m,&snap);
+        const float a=frame_yaw*TEST_FRAME_SIGN;
+        near(cosf(a)*m.vx_set+sinf(a)*m.vy_set,.5f);
+        near(-sinf(a)*m.vx_set+cosf(a)*m.vy_set,0);
+        if (deg != 0) near(m.wz_set,-3.5f*frame_yaw);
+        float x,y,gx,gy;
+        ChassisAlgorithmGimbalToChassis(&m,.5f,.2f,&x,&y);
+        ChassisAlgorithmChassisToGimbal(&m,x,y,&gx,&gy);
+        near(gx,.5f); near(gy,.2f);
+        near(x,cosf(a)*.5f-sinf(a)*.2f);
+        near(y,sinf(a)*.5f+cosf(a)*.2f);
+    }
+    turnaround=1; frame_yaw=PI/4; snap.gimbal.yaw.yaw=0;
+    ChassisSetControl(&m,&snap); near(m.vx_set,.35355339f); near(m.vy_set,.35355339f*TEST_FRAME_SIGN);
+    turnaround=0;
+    /* 从定速切入、整周期、正反方向及长运行 tick 回绕；不得加入随机或依赖调用次数。 */
+    m.mode=CHASSIS_VECTOR_NO_FOLLOW_YAW; input_x=0; input_y=0;
+    m.fast.spinSinePeriodMs=2000; m.fast.spinSineMinScale=.5f;
+    for (int sign=-1; sign<=1; sign+=2) {
+        m.fast.swing_move_angle=m.fast.swing_no_move_angle=3.5f*sign;
+        ChassisBehaviourMode=CHASSIS_GYRO_SPIN; ChassisSetControl(&m,&snap);
+        assert(!m.spinSineActive); near(m.wz_set,3.5f*sign);
+        ChassisBehaviourMode=CHASSIS_GYRO_SPIN_VAR;
+        uint32_t start=UINT32_MAX-333;
+        for (uint32_t dt=0; dt<=6000; dt+=25) {
+            tick=start+dt; ChassisSetControl(&m,&snap);
+            float expected=3.5f*sign*(.75f+.25f*cosf(2*PI*(dt%2000)/2000.0f));
+            near(m.wz_set,expected);
+            assert(fabsf(m.wz_set)>=1.749f && fabsf(m.wz_set)<=3.501f);
+        }
+        tick=start+9876; ChassisSetControl(&m,&snap);
+        near(m.wz_set,3.5f*sign*(.75f+.25f*cosf(2*PI*1876/2000.0f)));
+    }
+    ChassisBehaviourMode=CHASSIS_ZERO_FORCE; input_wz=0;
+    ChassisSetControl(&m,&snap); assert(!m.spinSineActive); near(m.wz_set,0);
+    m.fast.spinSinePeriodMs=1; m.fast.spinSineMinScale=NAN;
+    ChassisBehaviourMode=CHASSIS_GYRO_SPIN_VAR; tick=0; ChassisSetControl(&m,&snap);
+    near(m.wz_set,3.5f); tick=1000; ChassisSetControl(&m,&snap); near(m.wz_set,1.75f);
+    ChassisBehaviourMode=CHASSIS_NO_MOVE; ChassisSetControl(&m,&snap); assert(!m.spinSineActive);
+    ChassisBehaviourMode=CHASSIS_GYRO_SPIN_VAR; ChassisSetControl(&m,&snap); near(m.wz_set,3.5f);
+    m.fast.spinSineMinScale=1; tick+=300; ChassisSetControl(&m,&snap); near(m.wz_set,3.5f);
+    m.fast.swing_move_angle=m.fast.swing_no_move_angle=0; ChassisSetControl(&m,&snap); near(m.wz_set,0);
+    /* 原模式选择函数：遥控下档可选正弦，安全档、输入重新确认和云台停止仍优先。 */
+    m.fast.safe_pos=1; m.fast.follow_pos=3; m.fast.spin_pos=2;
+    m.fast.gyro_spin_key_mask=1u<<5; m.fast.gyro_spin_var_key_mask=1u<<15;
+    m.fast.mode_sw=2; m.fast.spinSineRc=1; ChassisBehaviourModeSet(&m);
+    assert(ChassisBehaviourMode==CHASSIS_GYRO_SPIN_VAR && m.mode==CHASSIS_VECTOR_NO_FOLLOW_YAW);
+    m.fast.spinSineRc=0; ChassisBehaviourModeSet(&m); assert(ChassisBehaviourMode==CHASSIS_GYRO_SPIN);
+    m.fast.key_mask=1u<<15; ChassisBehaviourModeSet(&m); assert(ChassisBehaviourMode==CHASSIS_GYRO_SPIN_VAR);
+    m.fast.mode_sw=1; ChassisBehaviourModeSet(&m); assert(ChassisBehaviourMode==CHASSIS_ZERO_FORCE);
+    m.fast.mode_sw=2; m.fast.spinSineRc=1; gateReady=0; ChassisBehaviourModeSet(&m);
+    assert(ChassisBehaviourMode==CHASSIS_INFANTRY_FOLLOW_GIMBAL_YAW);
+    gateReady=1; gimbalStop=1; ChassisBehaviourModeSet(&m); assert(ChassisBehaviourMode==CHASSIS_NO_MOVE);
+    gimbalStop=0; m.fast.mode_sw=3; m.fast.key_mask=0; ChassisBehaviourModeSet(&m);
+    assert(ChassisBehaviourMode==CHASSIS_INFANTRY_FOLLOW_GIMBAL_YAW);
+    m.fast.key_mask=1u<<5; ChassisBehaviourModeSet(&m); assert(ChassisBehaviourMode==CHASSIS_GYRO_SPIN);
     ChassisSetControl(NULL,NULL);
-    puts("Chassis spin translation: whole-turn speed/direction, both mixers, limits and mode transitions passed");
+    puts("Chassis: follow/spin frames, reciprocal transforms, sine period/bounds/tick-wrap and exits passed");
     return 0;
 }
 '''
@@ -199,8 +278,10 @@ def main():
         parser.error("请用 --zig 指定编译器")
     parts = [FIXTURE]
     for path, names in [
-        ("ChassisBehaviour.c", ["ChassisAlgorithmGimbalToChassis", "ChassisAlgorithmMoveOverride",
-                                "ChassisGyroSpinControl", "ChassisGyroSpinVarControl", "ChassisBehaviourControlSet"]),
+        ("ChassisControlTask.h", ["ChassisTranslationYaw"]),
+        ("ChassisBehaviour.c", ["ChassisAlgorithmChassisToGimbal", "ChassisAlgorithmGimbalToChassis", "ChassisAlgorithmMoveOverride",
+                                "ChassisGyroSpinControl", "ChassisGyroSpinVarControl", "ChassisBehaviourControlSet",
+                                "ChassisBehaviourModeSet"]),
         ("ChassisCoreControl.inc", ["ChassisLimitSpinTranslation", "ChassisSetControl"]),
         ("ChassisCore.h", ["ChassisCoreAbsFp32", "ChassisCoreVectorToWheelSpeed",
                             "ChassisCoreLimitWheelSpeed", "ChassisCoreStepVelocity"]),
@@ -209,22 +290,28 @@ def main():
     out = ROOT / "local/build/host-tests/chassis-spin-translation"
     out.mkdir(parents=True, exist_ok=True)
     source = out / "ExtractedSpin.c"
-    source.write_text("\n".join(parts) + TESTS, encoding="utf-8")
-    task = (ROOT / "shared/application/chassis/ChassisControlTask.c").read_text(encoding="utf-8")
+    complete = "\n".join(parts) + TESTS
+    task = (ROOT / "shared/application/chassis/ChassisControlTask.h").read_text(encoding="utf-8")
     target = (ROOT / "Robotconfig/INFANTRY-TIAN-A/RobotConfig.h").read_text(encoding="utf-8")
     def frame_reverse(text):
-        return int(re.search(r"#define CHASSIS_SPIN_FRAME_REVERSE (\d+)u", text).group(1))
+        return int(re.search(r"#define CHASSIS_TRANSLATION_FRAME_REVERSE (\d+)u", text).group(1))
     for name, reverse, expected_sign in [("default", frame_reverse(task), 1),
                                           ("infantry", frame_reverse(target), -1),
-                                          ("wrong-frame", 0, -1)]:
+                                          ("wrong-frame", 0, -1),
+                                          ("old-follow", frame_reverse(target), -1)]:
+        code = complete
+        if name == "old-follow":
+            # 仅还原修复前的普通档变换，小陀螺保持正确，必须能复现起步方向失败。
+            code = code.replace("yaw_frame = ChassisTranslationYaw(yaw_frame);", "/* old follow direction */", 1)
+        source.write_text(code, encoding="utf-8")
         exe = out / f"{name}.exe"
         subprocess.run([args.zig, "cc", "-std=c99", "-Wall", "-Wextra", "-Werror",
-                        f"-DCHASSIS_SPIN_FRAME_REVERSE={reverse}", f"-DTEST_FRAME_SIGN={expected_sign}",
+                        f"-DCHASSIS_TRANSLATION_FRAME_REVERSE={reverse}", f"-DTEST_FRAME_SIGN={expected_sign}",
                         str(source), "-o", str(exe)], check=True)
-        if name == "wrong-frame":
+        if name in {"wrong-frame", "old-follow"}:
             result = subprocess.run([str(exe)], capture_output=True, text=True)
             assert result.returncode != 0 and "Assertion failed" in result.stderr
-            print("Original frame direction fails the confirmed clockwise vehicle geometry, as expected")
+            print(f"{name}: direction regression rejected as expected")
         else:
             subprocess.run([str(exe)], check=True)
 

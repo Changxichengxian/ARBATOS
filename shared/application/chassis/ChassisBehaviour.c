@@ -408,7 +408,7 @@ static void ChassisAlgorithmChassisToGimbal(const ChassisMove *ChassisMoveRcToVe
         return;
     }
 
-    const fp32 yaw = ChassisAlgorithmYawFrame(ChassisMoveRcToVector);
+    const fp32 yaw = ChassisTranslationYaw(ChassisAlgorithmYawFrame(ChassisMoveRcToVector));
     const fp32 sin_yaw = arm_sin_f32(yaw);
     const fp32 cos_yaw = arm_cos_f32(yaw);
 
@@ -427,7 +427,7 @@ static void ChassisAlgorithmGimbalToChassis(const ChassisMove *ChassisMoveRcToVe
         return;
     }
 
-    const fp32 yaw = ChassisAlgorithmYawFrame(ChassisMoveRcToVector);
+    const fp32 yaw = ChassisTranslationYaw(ChassisAlgorithmYawFrame(ChassisMoveRcToVector));
     const fp32 sin_yaw = arm_sin_f32(yaw);
     const fp32 cos_yaw = arm_cos_f32(yaw);
 
@@ -781,7 +781,8 @@ void ChassisBehaviourModeSet(ChassisMove *ChassisMoveMode)
     else if (ControlInputSwitchIsPos(ChassisSwEffective, fast->spin_pos))
     {
         // 小陀螺：持续自转（类似 WH 的 SelfProtect），同时保留平移控制
-        ChassisBehaviourMode = ((effectiveKeys & fast->gyro_spin_var_key_mask) != 0u) ?
+        ChassisBehaviourMode = (fast->spinSineRc != 0u ||
+                               (effectiveKeys & fast->gyro_spin_var_key_mask) != 0u) ?
                                      CHASSIS_GYRO_SPIN_VAR :
                                      CHASSIS_GYRO_SPIN;
     }
@@ -896,6 +897,9 @@ void ChassisBehaviourControlSet(fp32 *vx_set, fp32 *vy_set, fp32 *angle_set, Cha
     }
 
     ChassisMoveRcToVector->spinTranslationInGimbalFrame = 0u;
+    if (ChassisBehaviourMode != CHASSIS_GYRO_SPIN_VAR) {
+        ChassisMoveRcToVector->spinSineActive = 0u;
+    }
     if (ChassisBehaviourMode == CHASSIS_ZERO_FORCE)
     {
         ChassisZeroForceControl(vx_set, vy_set, angle_set, ChassisMoveRcToVector);
@@ -1284,50 +1288,24 @@ static void ChassisGyroSpinVarControl(fp32 *vx_set, fp32 *vy_set, fp32 *wz_set, 
 
     ChassisGyroSpinControl(vx_set, vy_set, wz_set, ChassisMoveRcToVector);
 
-    const fp32 spin_wz_base = *wz_set;
-    const fp32 sign = (spin_wz_base >= 0.0f) ? 1.0f : -1.0f;
-    const fp32 base_abs = fabsf(spin_wz_base);
+    const ChassisControlSnapshot *fast = &ChassisMoveRcToVector->fast;
+    const uint32_t periodMs = (fast->spinSinePeriodMs >= 200u) ? fast->spinSinePeriodMs : 2000u;
+    const fp32 minScale = (fast->spinSineMinScale > 0.0f && fast->spinSineMinScale <= 1.0f) ?
+                             fast->spinSineMinScale : 0.5f;
     const uint32_t now_ms = BspTimeGetTickMs();
-    const fp32 t = (fp32)now_ms * 0.001f;
-
-    static uint32_t s_rng = 0u;
-    static uint32_t s_jump_next_ms = 0u;
-    static fp32 s_jump = 0.0f;
-    static fp32 s_walk = 0.0f;
-
-    if (s_rng == 0u)
-    {
-        s_rng = now_ms ^ 0x9E3779B9u;
-        if (s_rng == 0u)
-        {
-            s_rng = 0x6C8E9CF5u;
-        }
+    if (ChassisMoveRcToVector->spinSineActive == 0u) {
+        // 从原定速的峰值进入，避免定速切换时突降；退出后下次重新开始。
+        ChassisMoveRcToVector->spinSineActive = 1u;
+        ChassisMoveRcToVector->spinSinePhaseMs = 0u;
+    } else {
+        const uint32_t elapsedMs = now_ms - ChassisMoveRcToVector->spinSineLastMs;
+        ChassisMoveRcToVector->spinSinePhaseMs =
+            (ChassisMoveRcToVector->spinSinePhaseMs + elapsedMs % periodMs) % periodMs;
     }
-
-    s_rng ^= s_rng << 13;
-    s_rng ^= s_rng >> 17;
-    s_rng ^= s_rng << 5;
-
-    if (now_ms >= s_jump_next_ms)
-    {
-        const fp32 r01 = (fp32)(s_rng & 0xFFFFu) * (1.0f / 65535.0f);
-        s_jump = (r01 - 0.5f) * 0.36f;
-
-        s_rng ^= s_rng << 13;
-        s_rng ^= s_rng >> 17;
-        s_rng ^= s_rng << 5;
-        s_jump_next_ms = now_ms + 150u + (s_rng % 451u);
-    }
-
-    s_rng ^= s_rng << 13;
-    s_rng ^= s_rng >> 17;
-    s_rng ^= s_rng << 5;
-    s_walk += (((fp32)(s_rng & 0xFFFFu) * (1.0f / 65535.0f)) - 0.5f) * 0.01f;
-    s_walk = fp32_constrain(s_walk, -0.10f, 0.10f);
-
-    fp32 factor = 0.75f + 0.25f * arm_sin_f32((2.0f * PI * 1.2f) * t) + s_jump + s_walk;
-    factor = fp32_constrain(factor, 0.5f, 1.0f);
-    *wz_set = sign * base_abs * factor;
+    ChassisMoveRcToVector->spinSineLastMs = now_ms;
+    const fp32 phase = 2.0f * PI * (fp32)ChassisMoveRcToVector->spinSinePhaseMs / (fp32)periodMs;
+    const fp32 factor = minScale + (1.0f - minScale) * 0.5f * (1.0f + arm_cos_f32(phase));
+    *wz_set *= fp32_constrain(factor, minScale, 1.0f);
 }
 
 /**

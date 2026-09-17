@@ -317,6 +317,9 @@ static void ChassisSnapshotCapture(ChassisRuntimeSnapshot *snapshot,
         fast.right_key_mask = CHASSIS_RIGHT_KEY;
         fast.gyro_spin_key_mask = SWING_KEY;
         fast.gyro_spin_var_key_mask = CHASSIS_GYRO_SPIN_VAR_KEY;
+        fast.spinSineRc = g_config.chassis.spinSineRc;
+        fast.spinSinePeriodMs = g_config.chassis.spinSinePeriodMs;
+        fast.spinSineMinScale = g_config.chassis.spinSineMinScale;
         fast.swing_key_mask = CHASSIS_SWING_KEY;
         fast.vx_rc_sen = CHASSIS_VX_RC_SEN;
         fast.vy_rc_sen = CHASSIS_VY_RC_SEN;

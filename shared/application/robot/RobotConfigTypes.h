@@ -186,6 +186,9 @@ typedef struct
     uint16_t swing_key_mask;         // 摇摆按键
     uint16_t swing_mode_key_mask;    // 真正摇摆模式按键
     uint16_t gyro_spin_var_key_mask; // 变速小陀螺按键
+    uint8_t spinSineRc;             // 遥控小陀螺档使用正弦变速；0 保留定速。
+    uint16_t spinSinePeriodMs;      // 正弦周期；小于 200 ms 时按 2000 ms。
+    fp32 spinSineMinScale;          // 最低转速相对原定速的比例，范围 (0,1]；无效时为 0.5。
     fp32 swing_amp_rad;              // 摇摆幅度(rad)
     uint16_t swing_half_period_ms;   // 摇摆半周期(ms)
     uint16_t swing_center_hold_min_ms; // 中心保持最短时间(ms)

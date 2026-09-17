@@ -11,8 +11,8 @@
 #include "RobotTargetConfig.h"
 #define ROBOT_PROFILE_GIMBAL_ENCODER_FALLBACK_MASK 0x01u
 
-// 实车小陀螺顺时针转时 yaw 编码器增加；平移坐标须反向抵消车身转动。
-#define CHASSIS_SPIN_FRAME_REVERSE 1u
+// 实车顺时针转时 yaw 编码器增加；普通跟随、小陀螺及云台坐标转换统一反向。
+#define CHASSIS_TRANSLATION_FRAME_REVERSE 1u
 
 // A 板接收 9 路约 1 kHz 反馈，默认 200 us 预算实测会积压；沿用现有任务预算入口。
 #define ROBOT_PROFILE_CAN_FEEDBACK_RX_BUDGET_US 500u

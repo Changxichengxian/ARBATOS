@@ -17,12 +17,21 @@ typedef struct {
     float bias[3], temperature;
     uint32_t crc;
 } ImuCalRecord;
-/* H723 最后两个 128 KiB 扇区；链接脚本将程序限制在前 768 KiB。 */
+/* 两个独立 128 KiB 扇区；代码分区与校准区必须分开。 */
 #define IMU_CAL_SECTOR_SIZE 0x20000u
 BUILD_ASSERT(PARTITION_SIZE(imu_cal_partition) == 2u * IMU_CAL_SECTOR_SIZE);
+#if defined(CONFIG_BOARD_DJI_A_F427)
+BUILD_ASSERT(PARTITION_OFFSET(imu_cal_partition) == 0x1c0000u);
+BUILD_ASSERT(CONFIG_FLASH_LOAD_OFFSET == 0u && CONFIG_FLASH_LOAD_SIZE == 0xa0000u);
+#define IMU_CAL_TEMP_MIN 47.0f
+#define IMU_CAL_TEMP_MAX 49.0f
+#else
 BUILD_ASSERT(PARTITION_OFFSET(imu_cal_partition) == 0xc0000u);
-BUILD_ASSERT(IS_ENABLED(CONFIG_USE_DT_CODE_PARTITION));
 BUILD_ASSERT(CONFIG_FLASH_LOAD_OFFSET == 0u && CONFIG_FLASH_LOAD_SIZE == 0xc0000u);
+#define IMU_CAL_TEMP_MIN 35.0f
+#define IMU_CAL_TEMP_MAX 45.0f
+#endif
+BUILD_ASSERT(IS_ENABLED(CONFIG_USE_DT_CODE_PARTITION));
 BUILD_ASSERT(sizeof(ImuCalRecord) == 44u && offsetof(ImuCalRecord, crc) == 40u);
 static int ActiveSlot = -1;
 static uint32_t Sequence;
@@ -51,7 +60,8 @@ static int ImuCalRead(const struct flash_area *area, unsigned slot, ImuCalRecord
     for (unsigned i = 0; i < 3; i++) {
         if (!isfinite(record->bias[i]) || fabsf(record->bias[i]) > 0.0873f) return -ERANGE;
     }
-    return isfinite(record->temperature) && record->temperature >= 35 && record->temperature <= 45 ? 0 : -ERANGE;
+    return isfinite(record->temperature) && record->temperature >= IMU_CAL_TEMP_MIN &&
+           record->temperature <= IMU_CAL_TEMP_MAX ? 0 : -ERANGE;
 }
 
 int ImuCalStoreLoad(float offset[3])
@@ -116,7 +126,7 @@ int ImuCalStoreSave(const float offset[3], float temperature)
         if (!isfinite(offset[i]) || fabsf(offset[i]) > 0.0873f) goto done;
         record.bias[i] = offset[i];
     }
-    if (!isfinite(temperature) || temperature < 35 || temperature > 45) goto done;
+    if (!isfinite(temperature) || temperature < IMU_CAL_TEMP_MIN || temperature > IMU_CAL_TEMP_MAX) goto done;
     ret = -ENODEV;
     if (hwinfo_get_device_id(record.uid, sizeof(record.uid)) != sizeof(record.uid)) goto done;
     record.crc = crc32_ieee((uint8_t *)&record, offsetof(ImuCalRecord, crc));

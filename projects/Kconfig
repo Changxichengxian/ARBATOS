@@ -45,6 +45,13 @@ config ARBATOS_M_BOARD_IO
     select FLASH
     select FLASH_MAP
 
+config ARBATOS_A_IMU_CAL
+    bool
+    default y if BOARD_DJI_A_F427 && ARBATOS_LEGACY_SOURCES
+    select CRC
+    select FLASH
+    select FLASH_MAP
+
 config ARBATOS_LOG_RAM
     bool "Keep Zephyr messages in debugger-readable RAM"
     depends on LOG && !LOG_MODE_MINIMAL

@@ -150,7 +150,8 @@ if(CONFIG_ARBATOS_LEGACY_SOURCES)
         ${ARBATOS_ROOT}/shared/zephyr/port/subboard/MBenchTelemetry.c)
 
     if(CONFIG_BOARD_DJI_A_F427)
-        target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/sensors/Mpu6500.c)
+        target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/sensors/Mpu6500.c
+            ${ARBATOS_ROOT}/shared/zephyr/port/sensors/ImuCalStore.c)
     elseif(CONFIG_BOARD_DJI_C_F407)
         target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/sensors/BspBmi088Port.c ${ARBATOS_ROOT}/shared/zephyr/port/sensors/BspIst8310Port.c)
     elseif(CONFIG_BOARD_DM_MC02_H7)

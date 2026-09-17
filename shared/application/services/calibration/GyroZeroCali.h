@@ -7,7 +7,12 @@
 #include <string.h>
 
 #define GYRO_ZERO_CALI_TEST_SAMPLES          30000U
+#if defined(CONFIG_BOARD_DJI_A_F427)
+/* A 板只在稳温后静止取样，实际约 2 ms 周期下累积约 60 秒。 */
+#define GYRO_ZERO_CALI_BOOT_ADJUST_SAMPLES   30000U
+#else
 #define GYRO_ZERO_CALI_BOOT_ADJUST_SAMPLES   3000U
+#endif
 #define GYRO_ZERO_CALI_TEMP_STABLE_MS        2000U
 #define GYRO_ZERO_CALI_TEMP_ERR_C            3.0f
 #define GYRO_ZERO_CALI_MOVING_LIMIT_DPS      5.0f

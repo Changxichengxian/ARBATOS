@@ -17,6 +17,16 @@
 #include "RobotConfig.h"
 #include "ChassisSnapshotPolicy.h"
 
+#ifndef CHASSIS_TRANSLATION_FRAME_REVERSE
+#define CHASSIS_TRANSLATION_FRAME_REVERSE 0u
+#endif
+
+// 只改变平移坐标的约定，不改变回中误差、编码器反馈或角速度补偿的方向。
+static inline fp32 ChassisTranslationYaw(fp32 yaw)
+{
+    return (CHASSIS_TRANSLATION_FRAME_REVERSE != 0u) ? -yaw : yaw;
+}
+
 #define CHASSIS_TASK_INIT_TIME                 (g_config.chassis.task_init_time_ms)
 
 #define CHASSIS_X_CHANNEL                      (g_config.chassis.channel_vx)
@@ -119,6 +129,9 @@ typedef struct
     uint16_t right_key_mask;
     uint16_t gyro_spin_key_mask;
     uint16_t gyro_spin_var_key_mask;
+    uint8_t spinSineRc;
+    uint16_t spinSinePeriodMs;
+    fp32 spinSineMinScale;
     uint16_t swing_key_mask;
     fp32 vx_rc_sen;
     fp32 vy_rc_sen;
@@ -164,6 +177,9 @@ typedef struct
     fp32 ChassisRoll;
     ChassisControlSnapshot fast;
     uint8_t spinTranslationInGimbalFrame; // 手动小陀螺先按云台方向限速，再转换到底盘坐标。
+    uint8_t spinSineActive;
+    uint32_t spinSinePhaseMs;
+    uint32_t spinSineLastMs;
 } ChassisMove;
 
 extern void ChassisControlTask(void const *pvParameters);

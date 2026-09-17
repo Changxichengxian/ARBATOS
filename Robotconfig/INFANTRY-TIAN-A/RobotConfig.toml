@@ -2,7 +2,7 @@
 schema = 1
 board = "dji_a_f427"
 profile = "infantry"
-services = ["RC_SBUS", "HEALTH_MONITOR"]
+services = ["RC_SBUS", "HEALTH_MONITOR", "SDLOG"]
 
 [controllers.chassis]
 type = "classic"
@@ -16,6 +16,10 @@ type = "rm"
 [features]
 subboard_music = false
 imu_mount = true
+
+# SD 初始化和文件系统调用需要比普通控制任务更大的栈。
+[tasks.SDLOG]
+stack_words = 2048
 
 [build]
 sources = ["RobotConfig.c", "DetectTask.c", "ArmMotorTable.c", "InfantryDiag.c"]

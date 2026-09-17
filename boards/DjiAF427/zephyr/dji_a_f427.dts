@@ -5,6 +5,7 @@
 #include "dji_a_f427-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/pwm/pwm.h>
+#include <zephyr/dt-bindings/dma/stm32_dma.h>
 
 / {
 	model = "DJI A Board with STM32F427";
@@ -14,6 +15,7 @@
 		/* DBUS 只有 PB7 接收线；控制台由具体应用选择。 */
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
+		zephyr,code-partition = &application_partition;
 		zephyr,dtcm = &ccm0;
 		zephyr,canbus = &can1;
 	};
@@ -59,7 +61,8 @@
 		mpu6500-cs-gpios = <&gpiof 6 GPIO_ACTIVE_LOW>;
 		mpu6500-spi-hz = <8000000>;
 		imu-heater-pwms = <&pwm3 2 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
-		imu-heater-period-cycles = <50>;
+		/* 10000 档占空比，避免温控输出被 50 档周期截成满功率。 */
+		imu-heater-period-cycles = <10000>;
 	};
 
 	arbatos_platform: arbatos-platform {
@@ -67,6 +70,23 @@
 		key-gpios = <&gpiob 2 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
 		led0-gpios = <&gpiof 14 GPIO_ACTIVE_LOW>;
 		buzzer-pwms = <&pwm12 1 PWM_USEC(100) PWM_POLARITY_NORMAL>;
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		application_partition: partition@0 {
+			label = "application";
+			reg = <0x0 0xa0000>;
+		};
+		/* 第二 Bank 最后两个扇区；保留旧 0x080A0000 校准区。 */
+		imu_cal_partition: partition@1c0000 {
+			label = "imu-calibration";
+			reg = <0x1c0000 0x40000>;
+		};
 	};
 };
 
@@ -86,7 +106,19 @@
 &can1 { pinctrl-0 = <&can1_rx_pd0 &can1_tx_pd1>; pinctrl-names = "default"; status = "okay"; };
 &can2 { pinctrl-0 = <&can2_rx_pb12 &can2_tx_pb13>; pinctrl-names = "default"; status = "okay"; };
 &spi5 { pinctrl-0 = <&spi5_sck_pf7 &spi5_miso_pf8 &spi5_mosi_pf9>; pinctrl-names = "default"; status = "okay"; };
-&sdmmc1 { pinctrl-0 = <&sdmmc1_d0_pc8 &sdmmc1_d1_pc9 &sdmmc1_d2_pc10 &sdmmc1_d3_pc11 &sdmmc1_ck_pc12 &sdmmc1_cmd_pd2>; pinctrl-names = "default"; bus-width = <4>; cd-gpios = <&gpioe 15 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>; disk-name = "SD"; status = "okay"; };
+&dma2 { status = "okay"; };
+&sdmmc1 {
+	pinctrl-0 = <&sdmmc1_d0_pc8 &sdmmc1_d1_pc9 &sdmmc1_d2_pc10 &sdmmc1_d3_pc11 &sdmmc1_ck_pc12 &sdmmc1_cmd_pd2>;
+	pinctrl-names = "default";
+	bus-width = <4>;
+	cd-gpios = <&gpioe 15 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+	/* SDIO 使用 DMA2 通道 4，避免控制任务运行时 FIFO 来不及排空。 */
+	dmas = <&dma2 6 4 STM32_DMA_PRIORITY_VERY_HIGH STM32_DMA_FIFO_FULL>,
+	       <&dma2 3 4 STM32_DMA_PRIORITY_VERY_HIGH STM32_DMA_FIFO_FULL>;
+	dma-names = "tx", "rx";
+	disk-name = "SD";
+	status = "okay";
+};
 zephyr_udc0: &usbotg_fs {
 	pinctrl-0 = <&usb_otg_fs_dm_pa11 &usb_otg_fs_dp_pa12>;
 	pinctrl-names = "default";
@@ -99,6 +131,7 @@ zephyr_udc0: &usbotg_fs {
 
 &timers3 {
 	status = "okay";
+	st,prescaler = <83>;
 	pwm3: pwm { status = "okay"; pinctrl-0 = <&tim3_ch2_pb5>; pinctrl-names = "default"; };
 };
 

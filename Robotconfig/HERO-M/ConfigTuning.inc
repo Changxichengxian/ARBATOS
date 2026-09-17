@@ -142,6 +142,9 @@
             .swing_key_mask = 1u << 5, // 摇摆键：CTRL
             .swing_mode_key_mask = 1u << 10, // 小陀螺键：G
             .gyro_spin_var_key_mask = 1u << 15, // 变速小陀螺键：B
+            .spinSineRc = 1u,          // 遥控下档也使用正弦小陀螺，待本轮实车复验。
+            .spinSinePeriodMs = 2000u, // 正弦转速周期，单位 ms。
+            .spinSineMinScale = 0.5f,  // 保持同向，转速在原定速的 50%～100% 之间变化。
             .swing_amp_rad = 0.2617993878f, // [245] 15deg
             .swing_half_period_ms = 300, // [246]
             .swing_center_hold_min_ms = 5000, // [247]

@@ -415,6 +415,7 @@ static void ChassisSetControl(ChassisMove *ChassisMoveControl,
         fp32 yaw_frame = yaw_relative_meas;
         fp32 sin_yaw = 0.0f, cos_yaw = 0.0f;
         (void)ChassisGetTurnaroundFrameYaw(snapshot, &yaw_frame);
+        yaw_frame = ChassisTranslationYaw(yaw_frame);
         //rotate chassis direction, make sure vertial direction follow gimbal
         //旋转控制底盘速度方向，保证前进方向是云台方向，有利于运动平稳
         sin_yaw = arm_sin_f32(-yaw_frame);
@@ -471,10 +472,7 @@ static void ChassisSetControl(ChassisMove *ChassisMoveControl,
             const GimbalMotorState *yaw_motor = (snapshot != NULL) ? &snapshot->gimbal.yaw : NULL;
             fp32 yaw_frame = ChassisGetGimbalYawRelativeAngle(yaw_motor);
             (void)ChassisGetTurnaroundFrameYaw(snapshot, &yaw_frame);
-            // 仅校正手动小陀螺的平移参考，不改编码器反馈、回中误差及云台转速补偿。
-            if (CHASSIS_SPIN_FRAME_REVERSE != 0u) {
-                yaw_frame = -yaw_frame;
-            }
+            yaw_frame = ChassisTranslationYaw(yaw_frame);
             ChassisLimitSpinTranslation(&ChassisMoveControl->vx_set, &ChassisMoveControl->vy_set,
                                         angle_set, snapshot);
             const fp32 vx = ChassisMoveControl->vx_set;

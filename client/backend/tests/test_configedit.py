@@ -32,6 +32,18 @@ class ConfigEditTest(unittest.TestCase):
     def fields(detail):
         return {field["id"]: field for group in detail["groups"] for field in group["fields"]}
 
+    def test_sine_spin_settings_and_hero_power_meter_route(self):
+        for target in ("HERO-M", "INFANTRY-TIAN-A"):
+            fields = self.fields(self.get(target))
+            self.assertEqual(fields["tuning.chassis.spinSineRc"]["value"], 1)
+            self.assertEqual(fields["tuning.chassis.spinSinePeriodMs"]["value"], 2000)
+            self.assertEqual(fields["tuning.chassis.spinSineMinScale"]["value"], 0.5)
+        source = (self.root / "Robotconfig/HERO-M/ConfigHardware.inc").read_text(encoding="utf-8")
+        meter = source.split(".powerMeter =", 1)[1]
+        self.assertIn(".enable = 1u", meter)
+        self.assertIn(".canBus = 1u", meter)
+        self.assertIn(".canId = 0x212u", meter)
+
     def test_contract_covers_real_targets_and_requested_sections(self):
         for target in ("HERO-M", "SENTINEL-M", "MINIWHEELEG-M"):
             detail = self.get(target)

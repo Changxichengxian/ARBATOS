@@ -25,8 +25,12 @@
 #include "Mpu6500.h"
 #include "RobotMode.h"
 #include "UserLib.h"
-#if defined(CONFIG_BOARD_DM_MC02_H7)
+#if defined(CONFIG_BOARD_DM_MC02_H7) || defined(CONFIG_BOARD_DJI_A_F427)
 #include "ImuCalStore.h"
+#endif
+#if defined(CONFIG_BOARD_DJI_A_F427)
+#include "ImuThermalA.h"
+static ImuThermalA InsThermal;
 #endif
 #endif
 
@@ -67,7 +71,11 @@ static uint8_t InsHeaterStable;
 
 __weak int8_t get_control_temperature(void)
 {
+#if defined(CONFIG_BOARD_DJI_A_F427) && !ROBOT_EXTERNAL_IMU_HI14
+    return (int8_t)IMU_A_TARGET_C;
+#else
     return 40;
+#endif
 }
 
 #define INS_quat InsQuat
@@ -116,6 +124,15 @@ static float ImuSampleDt(void)
 
 static void ImuHeaterUpdate(float temp)
 {
+#if defined(CONFIG_BOARD_DJI_A_F427)
+    ImuThermalAUpdate(&InsThermal, temp, k_uptime_get_32(), g_config.imu.imu_temp_pwm_max);
+    InsHeaterPwm = InsThermal.pwm;
+    InsHeaterPidOut = InsHeaterPwm;
+    InsHeaterStable = InsThermal.stable;
+    imu_pwm_set(InsHeaterPwm);
+    if (imu_pwm_last_error() != 0) InsHeaterStable = 0u;
+    return;
+#endif
 #if defined(CONFIG_BOARD_DM_MC02_H7)
     if (ImuCalStoreIsWriting()) {
         InsHeaterPwm = 0u;
@@ -544,7 +561,7 @@ void ImuFusionTask(void const *pvParameters)
     }
     mahony_imu_init(&InsMahony, 0.002f);
     GyroZeroCaliRuntimeReset(&InsGyroCaliState);
-#if defined(CONFIG_BOARD_DM_MC02_H7)
+#if defined(CONFIG_BOARD_DM_MC02_H7) || defined(CONFIG_BOARD_DJI_A_F427)
     imu_pwm_set(0u);
     (void)ImuCalStoreLoad(InsGyroOffset);
 #if defined(CONFIG_ARBATOS_PREFLIGHT_ONLY)
@@ -563,6 +580,9 @@ void ImuFusionTask(void const *pvParameters)
 #endif
         if (read != 0) {
             /* 读失败不能继续沿用加热占空比，也不能把未初始化值发布为姿态。 */
+#if defined(CONFIG_BOARD_DJI_A_F427)
+            InsThermal = (ImuThermalA){0};
+#endif
             InsHeaterPwm = 0u;
             InsHeaterStable = 0u;
             imu_pwm_set(0u);

@@ -48,6 +48,7 @@ PORT_ID = re.compile(r"[a-z][a-z0-9_]*\Z")
 A_F427_ALLOWED_TASKS = {
     "RC_SBUS",
     "HEALTH_MONITOR",
+    "SDLOG",
     "CAN_COMMAND_TX",
     "CAN_FEEDBACK_RX",
     "CLASSIC_CHASSIS",
@@ -580,7 +581,7 @@ def resolve(root, requested, config_text=None):
     if target["board"] == "dji_a_f427":
         unsupported = sorted(set(selected) - A_F427_ALLOWED_TASKS)
         require(not unsupported,
-                "dji_a_f427 当前只支持 DBUS、健康检测、经典底盘、单云台和 RM 射击控制链；"
+                "dji_a_f427 当前只支持 DBUS、健康检测、SD 日志、经典底盘、单云台和 RM 射击控制链；"
                 "未迁移模块: " + ", ".join(unsupported))
     require(target["board"] == "dm_mc02_h7" or "SERVO" not in selected,
             "SERVO 需要 M 板 P11 的四路 servo-pwms；当前开发板没有该资源")
@@ -818,6 +819,10 @@ def generate(root, target, out):
     conf = [f'CONFIG_ARBATOS_ROBOT_NAME="{target["name"]}"', "CONFIG_ARBATOS_LEGACY_SOURCES=y"]
     if target["board"] == "dm_mc02_h7":
         conf.append("CONFIG_CAN_FD_MODE=y")
+    if target["board"] == "dji_a_f427":
+        # A 板卡槽走 SDIO；启用磁盘驱动后，现有 FatFs 桥接才会使用它。
+        conf.extend(["CONFIG_DISK_ACCESS=y", "CONFIG_DISK_DRIVERS=y",
+                     "CONFIG_DISK_DRIVER_SDMMC=y", "CONFIG_SDMMC_STM32=y"])
     conf.append("CONFIG_ARBATOS_SUBBOARD_MUSIC=" + ("y" if target["features"].get("subboard_music") else "n"))
     write_changed(out / "robot.conf", "\n".join(conf) + "\n")
     report = {k: v for k, v in target.items() if k != "catalog"}
