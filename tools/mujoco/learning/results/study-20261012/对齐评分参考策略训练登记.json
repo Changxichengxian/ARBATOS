@@ -1,0 +1,127 @@
+{
+  "schema": 1,
+  "route": "E-aligned-reference",
+  "registered_at": "2026-10-12T05:49:18.836037+08:00",
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "latest_screen_expansion": "2026-10-12T18:00:00+08:00",
+  "latest_formal_promotion": "2026-10-13T04:00:00+08:00",
+  "screening_seeds": [
+    41,
+    73
+  ],
+  "formal_seeds": [
+    101,
+    211,
+    307
+  ],
+  "smoke_seed": 9001,
+  "smoke_steps": [
+    1024,
+    2048
+  ],
+  "training_steps": [
+    262144,
+    1048576
+  ],
+  "envs": 2,
+  "checkpoint_every": 16384,
+  "training_cases_sha256": "c4492d8429b8a857c7574fdd98073fe163c52196ea9bfb78d0747e35df75fd9f",
+  "monitor_cases_sha256": "5d22cd9b2336125b4c681964ce28ce74c6a362577e630a3e542e0404424b43ff",
+  "training_case_count": 144,
+  "monitor_case_count": 24,
+  "training_bank_lock": "tools/mujoco/learning/results/study-20261012/aligned-training-baseline/基线核验记录.json",
+  "reward_source_sha256": "ae5bd58bf63115c16985deba9fb8cf0a4a2f3ee9e3ee3e4995229ab4b2af334a",
+  "calibration_sha256": "722e087fa31c963234e9cbf08f2566095120f9360f69b8ca6015e8744db963bf",
+  "weights": {
+    "primary": 1.0,
+    "drive": 0.2,
+    "heat": 4.0,
+    "pose": 0.02,
+    "action_change": 0.02,
+    "action_magnitude": 0.001,
+    "guard": 2.0
+  },
+  "algorithm": {
+    "learning_rate": 0.0003,
+    "n_steps": 1024,
+    "batch_size": 256,
+    "n_epochs": 6,
+    "gamma": 0.999,
+    "gae_lambda": 0.97,
+    "clip_range": 0.15,
+    "target_kl": 0.025,
+    "log_std_init": -1.6,
+    "initial_action": [
+      0.0,
+      -0.7649057549197802,
+      0.3239571563657214
+    ]
+  },
+  "initialization": {
+    "source": "D41完成72次候选搜索后的6例开发重放，选择时尚未读取D41的45例验证结果",
+    "replay_summary_sha256": "1ce7a6d18811dd798444d177ef608104e3734aa35b79be037f87c2e5387abb4b",
+    "binding": {
+      "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen",
+      "library_sha256": "1181b692d52915926ec5825269f66bb2fe1e75169d82ecb5dd4391aa96cd2858",
+      "experiment_identity": "419ae6b535c37b453b622caeb3f452eccc0f8ed5c076992f224c8669fa5b5672",
+      "policy_sha256": "fe796fb4de1d9b9c27f3df444de261b947de7c9085e5d9bec1ba69eb98deb2f4",
+      "state_sha256": "76b07fc267c15a107caea05f48dc4c98582d3d76772584be0397bb854f4387ba",
+      "source_state_content_hash": "3dd93b6c888baffcb8882bd79950dd68f6ab86db6f59ce4d1c7404f0e63944bd",
+      "coefficients": [
+        0.0,
+        -0.7649057549197802,
+        0.3239571563657214
+      ],
+      "cases_sha256": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+      "started_at": "2026-10-12T05:41:25.336684+08:00",
+      "replay_script_sha256": "5c373e35aaaa36563b9ab2090995bc7ca61a2fafab3f5b85bd02995c79126771"
+    },
+    "reason": "可行常数控制作为共同起点，策略仍需学习随状态变化；不将其开发收益视为独立验证。各种子随机网络、探索和训练库洗牌独立。"
+  },
+  "screening_first": {
+    "steps": 262144,
+    "dataset": "aligned-monitor",
+    "minimum_stop_improvement": 0.01,
+    "minimum_push_improvement": 0.01,
+    "both_seeds_required": true,
+    "all_original_case_guards": true,
+    "motion_quality": true,
+    "mean_hip_heat_increase_max": 0.05,
+    "physics_complete": true,
+    "selection": "只评价最终权重，不按监控成绩挑中途检查点"
+  },
+  "screening_extended": {
+    "steps": 1048576,
+    "dataset": "validation",
+    "minimum_stop_improvement": 0.05,
+    "minimum_push_improvement": 0.05,
+    "both_seeds_required": true,
+    "all_original_case_guards": true,
+    "motion_quality": true,
+    "mean_hip_heat_increase_max": 0.05,
+    "physics_complete": true,
+    "selection": "从两个短训最终检查点续训；保留网络优化器，重新开始物理回合及随机序列"
+  },
+  "final": {
+    "steps": 1048576,
+    "dataset": "final",
+    "case_count": 60,
+    "all_three_seeds_required": true,
+    "minimum_stop_improvement": 0.1,
+    "minimum_push_improvement": 0.1,
+    "all_original_case_guards": true,
+    "motion_quality": true,
+    "mean_hip_heat_increase_max": 0.05,
+    "physics_complete": true,
+    "selection": "三种子从共同登记起点独立训练，全部最终权重锁定后才能打开最终60例；不在最终结果上修改或择优"
+  },
+  "boundaries": [
+    "仅旧冻结模型及主机控制，不接实车；104份非学习原文件继承原研究。",
+    "每类48训练场景，始终采用原随机化；监控每类8例，随机种子与所有旧数据不同。",
+    "评分使用真实状态及同场景原控制整段成本，只为训练，绝不进入原93维传感器观测。",
+    "训练三动作与原reference一致：额外减速[0,1]，位置/速度增益[-1,1]。",
+    "8秒是完整训练回合，终端约束结算后不追加价值估计；独立评价8秒协议不变。",
+    "预算为上限，任何筛选条件不满足就终止此路线晋级；不放宽原正式目标。",
+    "奖励开发使用旧48条、拆分54条及D41开发6条；45例验证与60例最终数据未用于此轮评分校准。"
+  ]
+}

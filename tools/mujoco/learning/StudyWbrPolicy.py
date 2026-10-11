@@ -54,4 +54,7 @@ class StudyPolicy:
             value = value @ self.weights[f"w{i}"].T + self.weights[f"b{i}"]
             if i < count-1:
                 value = np.tanh(value)
-        return np.clip(value, -1., 1.)
+        default_low = ([0., -1., -1.] if self.contract.get("env_config", {}).get("action_mode")
+                       in ("reference", "split_velocity") else -1.)
+        return np.clip(value, self.contract.get("action_low", default_low),
+                       self.contract.get("action_high", 1.))

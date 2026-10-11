@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "stage": "aligned-baselines",
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+  "learning_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-frozen\\tools\\mujoco\\learning",
+  "jobs": [
+    {
+      "id": "baseline-development",
+      "kind": "evaluate",
+      "arguments": [
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\development",
+        "--cases",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\development.json",
+        "--baseline-only",
+        "--action-mode",
+        "reference",
+        "--deadline",
+        "2026-10-14T02:10:00+08:00"
+      ]
+    },
+    {
+      "id": "baseline-training",
+      "kind": "evaluate",
+      "arguments": [
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\training",
+        "--cases",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-frozen\\tools\\mujoco\\learning\\cases\\aligned-20261012\\training.json",
+        "--baseline-only",
+        "--action-mode",
+        "reference",
+        "--deadline",
+        "2026-10-14T02:10:00+08:00"
+      ]
+    },
+    {
+      "id": "baseline-monitor",
+      "kind": "evaluate",
+      "arguments": [
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\monitor",
+        "--cases",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-frozen\\tools\\mujoco\\learning\\cases\\aligned-20261012\\monitor.json",
+        "--baseline-only",
+        "--action-mode",
+        "reference",
+        "--deadline",
+        "2026-10-14T02:10:00+08:00"
+      ]
+    }
+  ]
+}

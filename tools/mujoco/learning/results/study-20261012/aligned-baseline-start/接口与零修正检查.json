@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "checks": {
+    "case_balance_and_seed_isolation": true,
+    "export_and_legacy_action_bounds": {
+      "reference": 0.0,
+      "symmetric": 0.0,
+      "full": 0.0
+    },
+    "six_zero_cases_all_metrics_exact": true
+  },
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "test_source_sha256": "71c69d4bd2671399612f740de0de9d6df2d64fab386acddc546bcdc3b78856d0",
+  "bank_sha256": null
+}

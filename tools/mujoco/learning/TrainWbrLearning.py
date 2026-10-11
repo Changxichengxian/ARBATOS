@@ -62,11 +62,13 @@ def export_policy(model, output):
         actual = actual @ arrays[f"w{i}"].T + arrays[f"b{i}"]
         if i < len(layers)-1:
             actual = np.tanh(actual)
-    error = float(np.max(np.abs(np.clip(actual,-1,1)-expected)))
+    lower, upper = model.action_space.low, model.action_space.high
+    error = float(np.max(np.abs(np.clip(actual,lower,upper)-expected)))
     if error > 2e-5:
         raise RuntimeError(f"纯数值网络与训练框架输出不一致：{error}")
     return dict(layers=[layer.in_features for layer in layers]+[layers[-1].out_features],
                 parameters=sum(a.size for a in arrays.values()), export_max_abs_error=error,
+                action_low=lower.tolist(), action_high=upper.tolist(),
                 policy_dt_s=POLICY_DT, history_frames=HISTORY, frame_size=FRAME_SIZE,
                 scope="仅限本次平地停车/纵向抗扰，不支持起身或跳跃的学习控制")
 

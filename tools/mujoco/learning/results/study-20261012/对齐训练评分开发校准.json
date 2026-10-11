@@ -1,0 +1,2144 @@
+{
+  "schema": 1,
+  "calibrated_at": "2026-10-12T05:47:30.926731+08:00",
+  "selected_weights": {
+    "primary": 1.0,
+    "drive": 0.2,
+    "heat": 4.0,
+    "pose": 0.02,
+    "action_change": 0.02,
+    "action_magnitude": 0.001,
+    "guard": 2.0
+  },
+  "gamma": 0.999,
+  "development_heat_scale": 148.82678282051992,
+  "sources": {
+    "reference": {
+      "evidence_sha256": "e446febfca8aaf187b38fa962945c5a43e4565fee19e62d8cd0c0224dc2c0295",
+      "files": {
+        "zero-development-stop-000.json": "e3c552c883d845fb7e334e6316a5d88947791a58fd8568b43e74c1943a1f007c",
+        "zero-development-stop-001.json": "ccba1f8a0882abdf40b421bfdfef21f8949bffa6865ae094c6660e2337177df2",
+        "zero-development-push-000.json": "0b37a2aeeefd9b5de5667a232b35373a3a3df153fb4e0d26b47fab11c63962c6",
+        "zero-development-push-001.json": "5581fc3946ea38741e6aa2ae0723c596050a4354b729961a4f09e37dc3b72e39",
+        "zero-development-combined-000.json": "3cb188363bc1ea9186c95bed5f876a621ea3f6280437bba48ad20745456ccbd5",
+        "zero-development-combined-001.json": "7a6bbafde99579f6208fdbde71656750357e87d4ab1abb095a66207b5e5b3f95",
+        "brake-025-development-stop-000.json": "745b827f60ee6e6a5751acf99751f6b08fe0d1e29aa4202ef9953b2e136b461d",
+        "brake-025-development-stop-001.json": "cc1f3b82ee4c53e8d1fbd111202c8ab25e4f01d35a69e934a081938a4e811960",
+        "brake-025-development-push-000.json": "44ffdc44da1553bc044de07727a4adb0f391cdfc2e408c2cc81b176014c19ded",
+        "brake-025-development-push-001.json": "6bc041cd0fee2e793170164c3f3a9a16d4c08a207e4afb9d76510555412efd02",
+        "brake-025-development-combined-000.json": "c3a5cfa22645b11ef9408b922818bfacef82b13b2e8acd0d2670e62d07771858",
+        "brake-025-development-combined-001.json": "7ce26d3149164281bc02a805c202cdb979bf514bbebc1ead78f6842faff65351",
+        "brake-050-development-stop-000.json": "b872b145bb2af011a0973884bb68649840e193dbfdbc1ae05bdfdc90b53ba12d",
+        "brake-050-development-stop-001.json": "abf456f94f19d2e36fa2435a62dfe2078dbfea271b9aec238fb84b7f36229893",
+        "brake-050-development-push-000.json": "00df6990f8b5d751405dc0fbc32ab1ad148ba1add424746e7c43d7d063de177e",
+        "brake-050-development-push-001.json": "5c501856987279bae627fa7e642e5e1667879ac0b1a12bf0e82eaef74c71405d",
+        "brake-050-development-combined-000.json": "dce0a1b39be2139355c26620a81c85d0662f3ac50ad372b019d3d075ab19ca36",
+        "brake-050-development-combined-001.json": "a65992ab161262daf7b96c6c509ad3a22de680dad79b8b1abbf799fa07151954",
+        "velocity-plus-development-stop-000.json": "8036bb56b01992567115dd906135cced9a7dfc6c181ac0e21d4f9d44b0f66bf5",
+        "velocity-plus-development-stop-001.json": "42af8e37df859db52121eaa947d0fb51b64e771004b754a1bfe29c844eeb9f08",
+        "velocity-plus-development-push-000.json": "4fcffff6e634e87978fc2069f63de52d251dad0448d6306bf2667be06ffed610",
+        "velocity-plus-development-push-001.json": "349a8cf9b551624c35eb9e5e0fae240891c375dfa489c5ab087df1f6a4ee12f0",
+        "velocity-plus-development-combined-000.json": "ad40ec545080661be8110a8ddb3855cd9101a50e8b7ec13b64cad3f11ac9f3b6",
+        "velocity-plus-development-combined-001.json": "5bd9378ac3d056e39bcfd6cdd37df5d0ef141dc390464a3a477e53df80fbbd9a",
+        "velocity-minus-development-stop-000.json": "ab1fff2dbfff959503ac8f1925c92431e6d2eec024cf46c1b1384f4270a7a35d",
+        "velocity-minus-development-stop-001.json": "f37957de495757dd947ed80c0eef7ff3bce7ccb43254aab1fc782ef390a2f544",
+        "velocity-minus-development-push-000.json": "f6abc64f8ac7d8bf12fa77bc4cf73d39198f2f32711fd9125db45f5f3ebe120e",
+        "velocity-minus-development-push-001.json": "78fd1c65e3ecebf9fe81c6793315d8192d31696d0be3fb5583d875096f3202f5",
+        "velocity-minus-development-combined-000.json": "3bb16c67fac5b4be68da6e0c7f9c35c585d86bda20a80d57a681606fdee3e528",
+        "velocity-minus-development-combined-001.json": "74d33220894db92550a6185c5e56371145794cd46ad2d76c7847a79756d8806e",
+        "position-plus-development-stop-000.json": "3678f6931d7ea4bd922b4565f604aad281d9e6700f5e5dddb2a94a922e5f6a9c",
+        "position-plus-development-stop-001.json": "77ef42d440280d1f6c2850fb3ac8c8fd560fed6de51c2aaac2a895d9c3743ca0",
+        "position-plus-development-push-000.json": "4c98222be8908d82b037f352590bbb5c4083a1555f5d85bf138d9a602de7925e",
+        "position-plus-development-push-001.json": "392eed8073003853639e995899260adc1f0c7426949a668301eb4af6f1ea3c04",
+        "position-plus-development-combined-000.json": "d1a74b0e56efd91aa1d92ccc3ed8b4a978c29637dded71307a9187169c157e48",
+        "position-plus-development-combined-001.json": "ca04cb4ed97a5bffbd6a1a992e6d8db22b0676df2b1c34624c905f696cfa90c0",
+        "position-minus-development-stop-000.json": "26385a977734a4d94ac249b0726081c7e9748eb3a1bc8ce14ba092e886dad989",
+        "position-minus-development-stop-001.json": "9222d77129eefb0c1c2ad648ebd1f2f3992e72339e5b9ed8fa11a5b50988eaac",
+        "position-minus-development-push-000.json": "55ccd7aadd63111aeab1501a28c49bd211b4949babe628175e67eb9d5fac88e2",
+        "position-minus-development-push-001.json": "4387932bbe808e4533ab09a017dc0bf3ebe3dbb5c8c8590e2281c90a958d7d3b",
+        "position-minus-development-combined-000.json": "ccb0c760d741180ffcc85d26fcf658655ce1f39f4b3fe1c7866bec05fbd288b1",
+        "position-minus-development-combined-001.json": "cb31d4925d39e25df1847cd69dc03bd24eda1f6e3bcd097642169c998059b88a",
+        "brake-velocity-development-stop-000.json": "84c518943f390a05a067653c61e4bcfb0b84dc29ab2d09c157c44e96c1cbeddf",
+        "brake-velocity-development-stop-001.json": "d5cf9ca7d135e7eb15c0fc52610c8c611fc6369a45de335135772b4285075e1a",
+        "brake-velocity-development-push-000.json": "d07a9b9ed8dd227a719a3315576a5c13a973ed18de80dc87e7e05044ad3146d4",
+        "brake-velocity-development-push-001.json": "bc793ddd6d2dee1fedb6145e27e595d76b04e82ca31406036f44251daf49e6a2",
+        "brake-velocity-development-combined-000.json": "dafda058d300e2914a455b84f18d87fc5acfa511ebcf805114cf59d92941bfdf",
+        "brake-velocity-development-combined-001.json": "0a674899862706a5994ce22c05b687fd4f228bfbea2b4ba07e63ae561df30ed1"
+      }
+    },
+    "split": {
+      "evidence_sha256": "bb5e80ccfec4f91c41b16f561ad792e242238f0f788dee06b559f287c79dc4f3",
+      "files": {
+        "zero-development-stop-000.json": "08d9e8a6184c4ebbf1859b634511438b17f3ecc63da0a8ef32e6dfee9d9a6134",
+        "zero-development-stop-001.json": "6cbdee90e83b5984e7be9e0779372e28b090fc5328167107628528147a1275c9",
+        "zero-development-push-000.json": "e14a8538c546677dacb39cce45bafb63a8386b5c5a1026b82008ebe0c1f138f1",
+        "zero-development-push-001.json": "14fd4081e97f7ed7d14c5fd5375db3768203228c86a19b4b860f7051bcca8de0",
+        "zero-development-combined-000.json": "b0fc5b6839e2bde39b88834327f53e108a142fa89a43ef69e4a12a2ee309caf9",
+        "zero-development-combined-001.json": "a3285f4ef49afc56704bdf7ecbe57735624e2614902accd8dddd98b94fb0d00d",
+        "shared-velocity-plus-development-stop-000.json": "b14d3368009ba6f25b7f4fb1a4625fc577ec2e75119501887b0f345762acc217",
+        "shared-velocity-plus-development-stop-001.json": "658bc842a304f95ed9441c05996d01c7bc129dd898b5c27c2505aade584f0efa",
+        "shared-velocity-plus-development-push-000.json": "f6fdb7f02d54e85680ba9e05d71553c5a6dfd2d0a97662a3ca0dd02730306ff2",
+        "shared-velocity-plus-development-push-001.json": "928ec6fcb5186e66344927e64d3cb64f59ee93e1393443e1e0504d990a49eeb9",
+        "shared-velocity-plus-development-combined-000.json": "57c3bf483dcd145a21aaf786daf0f8fa201ff466ee475f738a9367d0f4bc0395",
+        "shared-velocity-plus-development-combined-001.json": "e49908bb7403d64c86c3c5fb292c444b5baa0ef0d28d6156fe29eda89ff3f335",
+        "wheel-plus-development-stop-000.json": "098e4ef9c635953c371b8e878cc441b6ba733758712ecd9e2b7d64b41c0ccbe3",
+        "wheel-plus-development-stop-001.json": "60f0219b2b3bbb6c96d82e352b6530c19381b5bb2f08909683534f4b2bfddf25",
+        "wheel-plus-development-push-000.json": "7a4a12c6b1e81708a69440586955a39e7c267e617d265f83947137af52b01fce",
+        "wheel-plus-development-push-001.json": "f77dbf786a6f0ef6c67758770074ced4a925a8a6cb26aab7e1dca35e43537a95",
+        "wheel-plus-development-combined-000.json": "6f28f859d72e9782291b8b19ed9f60e609cceb0b33015eaa0a50373a29aece95",
+        "wheel-plus-development-combined-001.json": "14bcb85a6ce923788528712d5dcce598c9ecf72d2dc7a2f5573b9ddc8445d56e",
+        "wheel-minus-development-stop-000.json": "254f10539ed52ada24f32e8e0d0433b3b9636bd78b26e9c5af5ed538947de555",
+        "wheel-minus-development-stop-001.json": "b6b45d4c245c6991701e7009d5f3450815b2615576d4233908ce962fb79cb1ee",
+        "wheel-minus-development-push-000.json": "ddb12c89459315130e8dfa3309198a3b2c00e037f616fb2a29cd11fb4fc5b101",
+        "wheel-minus-development-push-001.json": "946e4df1ea14e9658257063d735bd2e1fed9e0ff626c585ed09f82d0e2ce4971",
+        "wheel-minus-development-combined-000.json": "3ca4d285e67d9d108a58bbb09c5e6ae479beb4aa8cda18af2f9622e35aae6c9e",
+        "wheel-minus-development-combined-001.json": "6a57d09f1d7eb0d8fae7dd8aad61ff1988f7437c4492caceafbd3591a9df3e94",
+        "hip-plus-development-stop-000.json": "4c8a3cfbdb360f3cfb4d7e89d886ada941b3cb3081656c19f919a65974b6f970",
+        "hip-plus-development-stop-001.json": "b55171bb65b38737455aa1fbe22093ee6ba2cd795442c23a35dde2b7bc93170d",
+        "hip-plus-development-push-000.json": "1ac52d2510d0f6b0c4cc31fbc9fb3255f1e69d76a98d64faa7d1589f2364e376",
+        "hip-plus-development-push-001.json": "1a72bf70606eead1bdb95faed67056aa5b0a75b7ec833168393ee9c8e974b213",
+        "hip-plus-development-combined-000.json": "6c90be6c7b476f53d9c0a365fe1048933aaa28b1b92c3bc816de47f9c71d5115",
+        "hip-plus-development-combined-001.json": "33ae69a6047387908986fdcb8267ce65a9b69b3f4f1f8f3a36e8e9a283fe203f",
+        "hip-minus-development-stop-000.json": "7d9ade3b202b98fd9a76bdb73a55a23ccbd68eb3155bb1be84acbb318acf31b0",
+        "hip-minus-development-stop-001.json": "7c1bad020cbb5b635bcea1f0f775f623a4147dbe89ae2c2f97ed41207a166b7a",
+        "hip-minus-development-push-000.json": "2c38e47dcf8e476f4552aebb3ee67423001d3e898336be8fc55e11206bd01200",
+        "hip-minus-development-push-001.json": "5297d3add1597deb0978fc11a2b0600c0c9177c89c65341143007b918d6f760a",
+        "hip-minus-development-combined-000.json": "e1ce8926ef0fa9e718685f527f9b9b3c22315ef31696fd2d62dd7ab2a80a3e7e",
+        "hip-minus-development-combined-001.json": "d461c442afce686d1e6318226c9a1facccce969b180120913f05ace389376790",
+        "wheel-plus-hip-minus-development-stop-000.json": "5268ad466d07093a1238cca936042c8e3f0238612b57ae4106243a6cf2303080",
+        "wheel-plus-hip-minus-development-stop-001.json": "9d17f19758887b975e62f6b16ae8dbf29b17b1c97f59a0a0338470fab99b7ac3",
+        "wheel-plus-hip-minus-development-push-000.json": "c790332f4ecb05f772570ed8bc1c4035c235146134be124f28ca820b298714bf",
+        "wheel-plus-hip-minus-development-push-001.json": "bed34ad06eac8fc4ab8168124d9794bb206d90116d787866bd55f38a2bce4f2e",
+        "wheel-plus-hip-minus-development-combined-000.json": "b909ea092e0f5c01aa1bcdf50e03be8e8f30df9604afd6403375f4c8275dab68",
+        "wheel-plus-hip-minus-development-combined-001.json": "a63285bfcb3fd4f5d2b1c04fdb1b0a50e0bc3290ee1ce21a8cb5d56522609376",
+        "brake-wheel-plus-development-stop-000.json": "67d46fb1cecec43f01bf2ff1beaa7cc767eaa54ab714fcbd063b98086247f16f",
+        "brake-wheel-plus-development-stop-001.json": "8bbf8d348b1d4f86f3375b59e889fefb902c5a4215a3a6ad2fe5d2877b4bb18e",
+        "brake-wheel-plus-development-push-000.json": "a4c4141caa5a8dccc3d3da98786e0160e3869def9162a0862c26ded327956300",
+        "brake-wheel-plus-development-push-001.json": "f9a32f82b99805af464dbc0e63764f0572b91b66c644550e6b89fe87a17b0d73",
+        "brake-wheel-plus-development-combined-000.json": "326aacb51344d12e93a50180885ac62ed73e626cae3d8e5d65cbd10e4dd17e56",
+        "brake-wheel-plus-development-combined-001.json": "6d791fbce13e5f930c5d2f94915e487ce6b3264a8f8a03094f671d5bd2d8c570",
+        "brake-wheel-plus-hip-minus-development-stop-000.json": "cf530f36d263457e50bf6894db7da56d0a401e416a68b05c4a08c8fdbfc7bd92",
+        "brake-wheel-plus-hip-minus-development-stop-001.json": "644f236f89fb5562b4eaf4a67a4dc48283cabe85c6a74a5917250a74ddaabda4",
+        "brake-wheel-plus-hip-minus-development-push-000.json": "26663aa209234f386e0173b6a5f92a831f74959f25ddeaeb216591ed816ec0a1",
+        "brake-wheel-plus-hip-minus-development-push-001.json": "8d4eb31ce387ededbb5eb0d3af58e95f3a10d69ecfc515c69deaa2e4d7def86c",
+        "brake-wheel-plus-hip-minus-development-combined-000.json": "7564b72b451dd275658bda4f91f59701ddbb5b035e795d86dada533d1b4d1501",
+        "brake-wheel-plus-hip-minus-development-combined-001.json": "6197b37b564f961cbbc457a7e2061901fcb7302bcc1b74aa1e8f3016ee05e490"
+      }
+    },
+    "search_D41": {
+      "summary_sha256": "1ce7a6d18811dd798444d177ef608104e3734aa35b79be037f87c2e5387abb4b",
+      "run_sha256": "6f8ec7e686b46b54782eaec4cb8c5a7d2b60ffed516bc235b74e27cf91abb22b",
+      "files": {
+        "development-stop-000.json": "aa42da77f3883782e18580a8b7ebcd57f03f54f22d5990b5d5d64a3f42084018",
+        "development-stop-001.json": "6fe42063bda31f9b3ab6fd6ad2448fc6565eaf1c48c7b2ea1093609c39b66624",
+        "development-push-000.json": "8ca034ab0e1d262f2b9a1550481e59a6aa3a824f45f40de0c05a888f066d9f62",
+        "development-push-001.json": "00ee567c8c1e0cf867c644ee342d6d9d0fce9b56a63e668416d7a4d5c04441b0",
+        "development-combined-000.json": "6b177c3e7f426b142d185381fe37353d4548152f9eaa1a736751c066e4091ff4",
+        "development-combined-001.json": "34bd4fec5b4be03bb73800c5063e5fadfbb88f447ebe26214227880272a1b25b"
+      },
+      "policy_sha256": "fe796fb4de1d9b9c27f3df444de261b947de7c9085e5d9bec1ba69eb98deb2f4",
+      "coefficients": [
+        0.0,
+        -0.7649057549197802,
+        0.3239571563657214
+      ]
+    }
+  },
+  "trials": [
+    {
+      "weights": {
+        "primary": 1.0,
+        "drive": 0.2,
+        "heat": 4.0,
+        "pose": 0.02,
+        "action_change": 0.02,
+        "action_magnitude": 0.001,
+        "guard": 2.0
+      },
+      "ordering_checks": {
+        "return_sum": true,
+        "discounted_return": true
+      },
+      "scores": {
+        "reference/zero": {
+          "label": "zero",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -6.11726501685798,
+              "discounted_return": -4.579629422424511,
+              "dense_costs": {
+                "primary": 0.9999999999999997,
+                "drive": 1.0000000000000002,
+                "heat": 1.2287977420577583,
+                "pose": 0.1037024313471681,
+                "action_change": 0.0,
+                "action_magnitude": 0.0
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -5.5391577585333724,
+              "discounted_return": -4.1225374929946454,
+              "dense_costs": {
+                "primary": 0.9999999999999999,
+                "drive": 1.0000000000000002,
+                "heat": 1.0845269313761208,
+                "pose": 0.05250165144418491,
+                "action_change": 0.0,
+                "action_magnitude": 0.0
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -5.910242614234881,
+              "discounted_return": -4.340128297904396,
+              "dense_costs": {
+                "primary": 0.9999999999999999,
+                "drive": 0.0,
+                "heat": 1.2266727188483373,
+                "pose": 0.17758694207663034,
+                "action_change": 0.0,
+                "action_magnitude": 0.0
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -3.0676089634948616,
+              "discounted_return": -2.3650109569592277,
+              "dense_costs": {
+                "primary": 0.9999999999999997,
+                "drive": 0.0,
+                "heat": 0.5168695182535303,
+                "pose": 0.006544524037032345,
+                "action_change": 0.0,
+                "action_magnitude": 0.0
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -4.486580289008135,
+              "discounted_return": -3.36809764009121,
+              "dense_costs": {
+                "primary": 0.9999999999999986,
+                "drive": 0.9999999999999998,
+                "heat": 0.8214109647706016,
+                "pose": 0.046821496286399734,
+                "action_change": 0.0,
+                "action_magnitude": 0.0
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -5.688578170968113,
+              "discounted_return": -4.2753774552432064,
+              "dense_costs": {
+                "primary": 0.9999999999999994,
+                "drive": 1.0000000000000002,
+                "heat": 1.1217221246936497,
+                "pose": 0.08448360967586115,
+                "action_change": 0.0,
+                "action_magnitude": 0.0
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            }
+          ],
+          "return_sum": -5.134905468849557,
+          "discounted_return": -3.841796877602866
+        },
+        "reference/brake-025": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -17.35287057177884,
+              "discounted_return": -11.215500030379546,
+              "dense_costs": {
+                "primary": 1.2728244161582145,
+                "drive": 1.0000000000000002,
+                "heat": 1.3440526579497654,
+                "pose": 0.1415477877787447,
+                "action_change": 0.04250000000000001,
+                "action_magnitude": 0.06253593749999942
+              },
+              "guard_cost": 5.250046016064244,
+              "violations": {
+                "control/push_primary": 5.250046016064244,
+                "control/peak_pitch_deg": 0.8935575239705614,
+                "motion/push_world_vx_rms_mps": 5.25004592371933,
+                "motion/push_plane_speed_rms_mps": 5.249990425242986
+              }
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -18.857232846074368,
+              "discounted_return": -11.965610457511604,
+              "dense_costs": {
+                "primary": 1.1217203977675332,
+                "drive": 1.0000000000000002,
+                "heat": 1.1476055254749362,
+                "pose": 0.05178937440349619,
+                "action_change": 0.04250000000000001,
+                "action_magnitude": 0.06253593749999942
+              },
+              "guard_cost": 6.471571011490759,
+              "violations": {
+                "control/push_primary": 3.3999111671575797,
+                "control/stop_reverse": 6.471571011490759,
+                "control/push_peak_velocity_error": 6.203930859775953,
+                "motion/push_world_vx_rms_mps": 3.399633177517406,
+                "motion/push_plane_speed_rms_mps": 3.4000173771434525
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -5.911155150172381,
+              "discounted_return": -4.341026709782673,
+              "dense_costs": {
+                "primary": 0.9999999999999999,
+                "drive": 0.0,
+                "heat": 1.2266727188483373,
+                "pose": 0.17758694207663034,
+                "action_change": 0.04250000000000001,
+                "action_magnitude": 0.06253593749999942
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -3.0685214994323613,
+              "discounted_return": -2.3659093688375044,
+              "dense_costs": {
+                "primary": 0.9999999999999997,
+                "drive": 0.0,
+                "heat": 0.5168695182535303,
+                "pose": 0.006544524037032345,
+                "action_change": 0.04250000000000001,
+                "action_magnitude": 0.06253593749999942
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -18.217207816572703,
+              "discounted_return": -11.414066928374698,
+              "dense_costs": {
+                "primary": 0.8616531765193476,
+                "drive": 0.9999999999999998,
+                "heat": 0.9145532010750558,
+                "pose": 0.10357627418245738,
+                "action_change": 0.04250000000000001,
+                "action_magnitude": 0.06253593749999942
+              },
+              "guard_cost": 6.747178887165993,
+              "violations": {
+                "control/stop_reverse": 6.747178887165993
+              }
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -18.888616083568042,
+              "discounted_return": -12.017170446307041,
+              "dense_costs": {
+                "primary": 0.7456372548994846,
+                "drive": 1.0000000000000002,
+                "heat": 1.25452720440766,
+                "pose": 0.13923707487283532,
+                "action_change": 0.04250000000000001,
+                "action_magnitude": 0.06253593749999942
+              },
+              "guard_cost": 6.46058636680148,
+              "violations": {
+                "control/stop_reverse": 6.46058636680148,
+                "control/peak_pitch_deg": 1.8413795956978458
+              }
+            }
+          ],
+          "return_sum": -13.715933994599782,
+          "discounted_return": -8.886547323532177
+        },
+        "reference/brake-050": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -27.503323876420797,
+              "discounted_return": -17.232456366222166,
+              "dense_costs": {
+                "primary": 1.5812434679194718,
+                "drive": 1.0000000000000002,
+                "heat": 1.4292090075614485,
+                "pose": 0.15973141277629524,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 10.0,
+              "violations": {
+                "control/push_primary": 10.0,
+                "control/peak_pitch_deg": 2.812318671408139,
+                "motion/push_world_vx_rms_mps": 10.0,
+                "motion/push_plane_speed_rms_mps": 10.0
+              }
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -25.87301256078708,
+              "discounted_return": -16.0724452556089,
+              "dense_costs": {
+                "primary": 1.0736943913295207,
+                "drive": 1.0000000000000002,
+                "heat": 1.1490868262919793,
+                "pose": 0.04605571448179561,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 10.0,
+              "violations": {
+                "control/push_primary": 3.474113023516316,
+                "control/stop_reverse": 10.0,
+                "control/push_peak_velocity_error": 6.720318208045227,
+                "motion/push_world_vx_rms_mps": 3.4739782018205707,
+                "motion/push_plane_speed_rms_mps": 3.4740810212115365
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -5.912292364234881,
+              "discounted_return": -4.342120552036253,
+              "dense_costs": {
+                "primary": 0.9999999999999999,
+                "drive": 0.0,
+                "heat": 1.2266727188483373,
+                "pose": 0.17758694207663034,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -3.0696587134948614,
+              "discounted_return": -2.367003211091084,
+              "dense_costs": {
+                "primary": 0.9999999999999997,
+                "drive": 0.0,
+                "heat": 0.5168695182535303,
+                "pose": 0.006544524037032345,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -24.743260955927084,
+              "discounted_return": -15.260840704776609,
+              "dense_costs": {
+                "primary": 0.8032370827227179,
+                "drive": 0.9999999999999998,
+                "heat": 1.0364814393874073,
+                "pose": 0.15401340638639208,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 9.794484048763504,
+              "violations": {
+                "control/stop_reverse": 9.794484048763504,
+                "control/peak_pitch_deg": 2.2996387278045303,
+                "control/hip_heat_case": 0.30915268873279156
+              }
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -18.969440317457742,
+              "discounted_return": -12.061098788247271,
+              "dense_costs": {
+                "primary": 0.6168280793859358,
+                "drive": 1.0000000000000002,
+                "heat": 1.2686856805136,
+                "pose": 0.14529079118003527,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 6.536456975096904,
+              "violations": {
+                "control/stop_reverse": 6.536456975096904,
+                "control/peak_pitch_deg": 2.793954061419267
+              }
+            }
+          ],
+          "return_sum": -17.678498131387073,
+          "discounted_return": -11.222660812997043
+        },
+        "reference/velocity-plus": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -7.052207865966419,
+              "discounted_return": -5.140326016623199,
+              "dense_costs": {
+                "primary": 1.0379495556043472,
+                "drive": 1.0010212719246643,
+                "heat": 1.2347034128908885,
+                "pose": 0.08808409282527278,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.43571448627854253,
+              "violations": {
+                "control/push_primary": 0.43571110050870815,
+                "motion/push_world_vx_rms_mps": 0.4356969214120823,
+                "motion/push_plane_speed_rms_mps": 0.43571448627854253
+              }
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -10.706826263943315,
+              "discounted_return": -7.160346690963806,
+              "dense_costs": {
+                "primary": 0.8938543766754303,
+                "drive": 0.9985167384681602,
+                "heat": 1.1350536173470813,
+                "pose": 0.04948832076480527,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 2.5350072768853154,
+              "violations": {
+                "control/push_peak_velocity_error": 2.5350072768853154
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -5.401549386500626,
+              "discounted_return": -3.9764954113731372,
+              "dense_costs": {
+                "primary": 0.7316142680457565,
+                "drive": 0.0,
+                "heat": 1.1663535953174784,
+                "pose": 0.1235493592480382,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -4.8608716714020925,
+              "discounted_return": -3.4736774782598614,
+              "dense_costs": {
+                "primary": 0.8938235181147464,
+                "drive": 0.0,
+                "heat": 0.6837949783638201,
+                "pose": 0.013555237637437257,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.614773692539659,
+              "violations": {
+                "control/hip_heat_case": 0.614773692539659
+              }
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -4.372514931828461,
+              "discounted_return": -3.290299148234555,
+              "dense_costs": {
+                "primary": 0.8784066297630986,
+                "drive": 0.993449292619881,
+                "heat": 0.8231103435960654,
+                "pose": 0.04636595785630189,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -5.544036450382358,
+              "discounted_return": -4.175416543767893,
+              "dense_costs": {
+                "primary": 0.8989591516552488,
+                "drive": 0.9999477150831545,
+                "heat": 1.1103576316554495,
+                "pose": 0.08037395443377733,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            }
+          ],
+          "return_sum": -6.323001095003878,
+          "discounted_return": -4.536093548203742
+        },
+        "reference/velocity-minus": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -9.66160121861824,
+              "discounted_return": -6.643107572102592,
+              "dense_costs": {
+                "primary": 0.956121221738908,
+                "drive": 1.0000747755738422,
+                "heat": 1.1901864801153927,
+                "pose": 0.08335806868609497,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 1.8705011049646367,
+              "violations": {
+                "control/push_peak_velocity_error": 1.8705011049646367
+              }
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -6.875822961978344,
+              "discounted_return": -4.906349505306254,
+              "dense_costs": {
+                "primary": 1.119745824723666,
+                "drive": 0.9998168627155252,
+                "heat": 1.061286794062295,
+                "pose": 0.0456587663125747,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.6540018315680709,
+              "violations": {
+                "control/stop_primary": 0.18861376554821882,
+                "control/push_primary": 0.13857389876038498,
+                "control/stop_travel": 0.6540018315680709,
+                "motion/stop_world_vx_rms_mps": 0.18862109984584965,
+                "motion/stop_plane_speed_rms_mps": 0.1886129495587987,
+                "motion/push_world_vx_rms_mps": 0.1386027874299485,
+                "motion/push_plane_speed_rms_mps": 0.13852063013500365
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -11.251779537527403,
+              "discounted_return": -7.497032661171706,
+              "dense_costs": {
+                "primary": 1.3944384450014446,
+                "drive": 0.0,
+                "heat": 1.154342815807982,
+                "pose": 0.16913999296383797,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 2.6172686397173774,
+              "violations": {
+                "control/push_primary": 2.6172686397173774,
+                "motion/push_world_vx_rms_mps": 2.617249980416552,
+                "motion/push_plane_speed_rms_mps": 2.6172289915444233
+              }
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -3.923628453588208,
+              "discounted_return": -2.850606090485332,
+              "dense_costs": {
+                "primary": 1.1621442448997912,
+                "drive": 0.0,
+                "heat": 0.40950142979249227,
+                "pose": 0.005068491222384457,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.5606636848469998,
+              "violations": {
+                "control/push_primary": 0.560558850825658,
+                "motion/push_world_vx_rms_mps": 0.5606636848469998,
+                "motion/push_plane_speed_rms_mps": 0.5603454086745528
+              }
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -11.862646486137566,
+              "discounted_return": -7.7208592604740724,
+              "dense_costs": {
+                "primary": 1.187000325887464,
+                "drive": 1.0074874136998226,
+                "heat": 0.8250446773345439,
+                "pose": 0.046224820071672085,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 3.585497860885265,
+              "violations": {
+                "control/stop_primary": 0.7899089111218166,
+                "control/stop_travel": 1.9502336606718063,
+                "control/stop_reverse": 3.585497860885265,
+                "motion/stop_world_vx_rms_mps": 0.7899066753745366,
+                "motion/stop_plane_speed_rms_mps": 0.7899184022195087
+              }
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -25.189327951019674,
+              "discounted_return": -15.731006487448784,
+              "dense_costs": {
+                "primary": 1.1641644773691706,
+                "drive": 1.0003912554790462,
+                "heat": 1.13140921423531,
+                "pose": 0.09040875699292537,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 9.647795220236796,
+              "violations": {
+                "control/stop_primary": 0.5792907888018508,
+                "control/stop_travel": 0.622749987311049,
+                "control/stop_reverse": 9.647795220236796,
+                "motion/stop_world_vx_rms_mps": 0.5792874945062149,
+                "motion/stop_plane_speed_rms_mps": 0.5792906746603947
+              }
+            }
+          ],
+          "return_sum": -11.46080110147824,
+          "discounted_return": -7.558160262831457
+        },
+        "reference/position-plus": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -6.132857580422716,
+              "discounted_return": -4.59373523995855,
+              "dense_costs": {
+                "primary": 1.0036846746994876,
+                "drive": 0.9999415559662873,
+                "heat": 1.2312654382739936,
+                "pose": 0.10365457169976272,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -7.468698973199923,
+              "discounted_return": -5.268492162744194,
+              "dense_costs": {
+                "primary": 1.095835856390602,
+                "drive": 0.9998339530648094,
+                "heat": 1.0981403165774157,
+                "pose": 0.05818592439831265,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.8885607956993649,
+              "violations": {
+                "control/push_primary": 0.8885513482870003,
+                "control/push_peak_velocity_error": 0.7320927982704917,
+                "motion/push_world_vx_rms_mps": 0.8885607956993649,
+                "motion/push_plane_speed_rms_mps": 0.8884745520007019
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -5.85003748969816,
+              "discounted_return": -4.305881970219814,
+              "dense_costs": {
+                "primary": 1.022149125224151,
+                "drive": 0.0,
+                "heat": 1.20564649320772,
+                "pose": 0.16263208215635241,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -3.205703932547823,
+              "discounted_return": -2.46577134234372,
+              "dense_costs": {
+                "primary": 1.0452035886104456,
+                "drive": 0.0,
+                "heat": 0.5395758876833703,
+                "pose": 0.007352160194775524,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -8.688990315020174,
+              "discounted_return": -5.834571505457822,
+              "dense_costs": {
+                "primary": 1.0158293696451244,
+                "drive": 1.000727505401167,
+                "heat": 0.8204076499733417,
+                "pose": 0.04961121507723703,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 2.0941714350499523,
+              "violations": {
+                "control/stop_reverse": 2.0941714350499523
+              }
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -9.413955336457919,
+              "discounted_return": -6.456619242822609,
+              "dense_costs": {
+                "primary": 1.0074995471136672,
+                "drive": 1.000246749300215,
+                "heat": 1.1222655389979401,
+                "pose": 0.08814144347409826,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 1.8567658523114827,
+              "violations": {
+                "control/stop_reverse": 1.8567658523114827
+              }
+            }
+          ],
+          "return_sum": -6.793373937891119,
+          "discounted_return": -4.820845243924452
+        },
+        "reference/position-minus": {
+          "label": "feasible_improving",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -6.1024706189098525,
+              "discounted_return": -4.57141904654227,
+              "dense_costs": {
+                "primary": 0.9971708851295112,
+                "drive": 0.9999553371602115,
+                "heat": 1.2252945709603686,
+                "pose": 0.1040316253411189,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -5.413557211716424,
+              "discounted_return": -4.037764462648663,
+              "dense_costs": {
+                "primary": 0.9196935563686514,
+                "drive": 0.9994603968001678,
+                "heat": 1.072738983228175,
+                "pose": 0.04829465375193314,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -5.919507687563739,
+              "discounted_return": -4.34352833173262,
+              "dense_costs": {
+                "primary": 0.977655412999068,
+                "drive": 0.0,
+                "heat": 1.2340070668247158,
+                "pose": 0.18871286329011316,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -2.9736016911146606,
+              "discounted_return": -2.296252410532984,
+              "dense_costs": {
+                "primary": 0.953846467862881,
+                "drive": 0.0,
+                "heat": 0.5043974604778765,
+                "pose": 0.005781567013687624,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -4.459308046085578,
+              "discounted_return": -3.351677975145429,
+              "dense_costs": {
+                "primary": 0.9838178530521454,
+                "drive": 0.9991866989061953,
+                "heat": 0.8181747268248685,
+                "pose": 0.045209797636069214,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -5.580567937460318,
+              "discounted_return": -4.202810606631736,
+              "dense_costs": {
+                "primary": 0.9908788041284381,
+                "drive": 0.9999178764318781,
+                "heat": 1.0965043812510982,
+                "pose": 0.08191415205579221,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            }
+          ],
+          "return_sum": -5.074835532141762,
+          "discounted_return": -3.800575472205617
+        },
+        "reference/brake-velocity": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -12.909099383548645,
+              "discounted_return": -8.61378337648213,
+              "dense_costs": {
+                "primary": 1.0919688204612115,
+                "drive": 1.0010212719246643,
+                "heat": 1.3891179680822003,
+                "pose": 0.14693942190249024,
+                "action_change": 0.1325,
+                "action_magnitude": 0.3122859375000007
+              },
+              "guard_cost": 3.0272766809990777,
+              "violations": {
+                "control/push_primary": 3.027242636666077,
+                "control/peak_pitch_deg": 1.5584526545232353,
+                "motion/push_world_vx_rms_mps": 3.0272510588054997,
+                "motion/push_plane_speed_rms_mps": 3.0272766809990777
+              }
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -25.970107805716793,
+              "discounted_return": -16.123578564607143,
+              "dense_costs": {
+                "primary": 0.9080482301738484,
+                "drive": 0.9985167384681602,
+                "heat": 1.2145771825874172,
+                "pose": 0.05426057810729771,
+                "action_change": 0.1325,
+                "action_magnitude": 0.3122859375000007
+              },
+              "guard_cost": 10.0,
+              "violations": {
+                "control/push_primary": 0.3159012628437914,
+                "control/stop_reverse": 10.0,
+                "control/push_peak_velocity_error": 4.15962703459319,
+                "motion/push_world_vx_rms_mps": 0.3157418053755271,
+                "motion/push_plane_speed_rms_mps": 0.31594932776476603
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -5.4024619224381265,
+              "discounted_return": -3.977393823251414,
+              "dense_costs": {
+                "primary": 0.7316142680457565,
+                "drive": 0.0,
+                "heat": 1.1663535953174784,
+                "pose": 0.1235493592480382,
+                "action_change": 0.1325,
+                "action_magnitude": 0.3122859375000007
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -4.861784207339593,
+              "discounted_return": -3.474575890138138,
+              "dense_costs": {
+                "primary": 0.8938235181147464,
+                "drive": 0.0,
+                "heat": 0.6837949783638201,
+                "pose": 0.013555237637437257,
+                "action_change": 0.1325,
+                "action_magnitude": 0.3122859375000007
+              },
+              "guard_cost": 0.614773692539659,
+              "violations": {
+                "control/hip_heat_case": 0.614773692539659
+              }
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -19.950132831755013,
+              "discounted_return": -12.458164796684835,
+              "dense_costs": {
+                "primary": 0.7638213174657718,
+                "drive": 0.993449292619881,
+                "heat": 1.0510542167119497,
+                "pose": 0.15621568315557485,
+                "action_change": 0.1325,
+                "action_magnitude": 0.3122859375000007
+              },
+              "guard_cost": 7.388659094658427,
+              "violations": {
+                "control/stop_reverse": 7.388659094658427,
+                "control/peak_pitch_deg": 2.233688499462224,
+                "control/hip_heat_case": 0.39785845204465314
+              }
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -9.112994038932284,
+              "discounted_return": -6.269922066063311,
+              "dense_costs": {
+                "primary": 0.6472878993118059,
+                "drive": 0.9999477150831545,
+                "heat": 1.2524415403721554,
+                "pose": 0.1355459184247703,
+                "action_change": 0.1325,
+                "action_magnitude": 0.3122859375000007
+              },
+              "guard_cost": 1.625138615404614,
+              "violations": {
+                "control/stop_reverse": 0.7801264176241461,
+                "control/peak_pitch_deg": 1.625138615404614
+              }
+            }
+          ],
+          "return_sum": -13.034430031621744,
+          "discounted_return": -8.486236419537828
+        },
+        "split/zero": {
+          "label": "zero",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -6.11726501685798,
+              "discounted_return": -4.579629422424511,
+              "dense_costs": {
+                "primary": 0.9999999999999997,
+                "drive": 1.0000000000000002,
+                "heat": 1.2287977420577583,
+                "pose": 0.1037024313471681,
+                "action_change": 0.0,
+                "action_magnitude": 0.0
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -5.5391577585333724,
+              "discounted_return": -4.1225374929946454,
+              "dense_costs": {
+                "primary": 0.9999999999999999,
+                "drive": 1.0000000000000002,
+                "heat": 1.0845269313761208,
+                "pose": 0.05250165144418491,
+                "action_change": 0.0,
+                "action_magnitude": 0.0
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -5.910242614234881,
+              "discounted_return": -4.340128297904396,
+              "dense_costs": {
+                "primary": 0.9999999999999999,
+                "drive": 0.0,
+                "heat": 1.2266727188483373,
+                "pose": 0.17758694207663034,
+                "action_change": 0.0,
+                "action_magnitude": 0.0
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -3.0676089634948616,
+              "discounted_return": -2.3650109569592277,
+              "dense_costs": {
+                "primary": 0.9999999999999997,
+                "drive": 0.0,
+                "heat": 0.5168695182535303,
+                "pose": 0.006544524037032345,
+                "action_change": 0.0,
+                "action_magnitude": 0.0
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -4.486580289008135,
+              "discounted_return": -3.36809764009121,
+              "dense_costs": {
+                "primary": 0.9999999999999986,
+                "drive": 0.9999999999999998,
+                "heat": 0.8214109647706016,
+                "pose": 0.046821496286399734,
+                "action_change": 0.0,
+                "action_magnitude": 0.0
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -5.688578170968113,
+              "discounted_return": -4.2753774552432064,
+              "dense_costs": {
+                "primary": 0.9999999999999994,
+                "drive": 1.0000000000000002,
+                "heat": 1.1217221246936497,
+                "pose": 0.08448360967586115,
+                "action_change": 0.0,
+                "action_magnitude": 0.0
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            }
+          ],
+          "return_sum": -5.134905468849557,
+          "discounted_return": -3.841796877602866
+        },
+        "split/shared-velocity-plus": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -7.054257615966418,
+              "discounted_return": -5.142318270755055,
+              "dense_costs": {
+                "primary": 1.0379495556043472,
+                "drive": 1.0010212719246643,
+                "heat": 1.2347034128908885,
+                "pose": 0.08808409282527278,
+                "action_change": 0.18000000000000002,
+                "action_magnitude": 0.49949999999999534
+              },
+              "guard_cost": 0.43571448627854253,
+              "violations": {
+                "control/push_primary": 0.43571110050870815,
+                "motion/push_world_vx_rms_mps": 0.4356969214120823,
+                "motion/push_plane_speed_rms_mps": 0.43571448627854253
+              }
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -10.708876013943314,
+              "discounted_return": -7.162338945095662,
+              "dense_costs": {
+                "primary": 0.8938543766754303,
+                "drive": 0.9985167384681602,
+                "heat": 1.1350536173470813,
+                "pose": 0.04948832076480527,
+                "action_change": 0.18000000000000002,
+                "action_magnitude": 0.49949999999999534
+              },
+              "guard_cost": 2.5350072768853154,
+              "violations": {
+                "control/push_peak_velocity_error": 2.5350072768853154
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -5.403599136500627,
+              "discounted_return": -3.9784876655049937,
+              "dense_costs": {
+                "primary": 0.7316142680457565,
+                "drive": 0.0,
+                "heat": 1.1663535953174784,
+                "pose": 0.1235493592480382,
+                "action_change": 0.18000000000000002,
+                "action_magnitude": 0.49949999999999534
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -4.862921421402093,
+              "discounted_return": -3.4756697323917183,
+              "dense_costs": {
+                "primary": 0.8938235181147464,
+                "drive": 0.0,
+                "heat": 0.6837949783638201,
+                "pose": 0.013555237637437257,
+                "action_change": 0.18000000000000002,
+                "action_magnitude": 0.49949999999999534
+              },
+              "guard_cost": 0.614773692539659,
+              "violations": {
+                "control/hip_heat_case": 0.614773692539659
+              }
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -4.374564681828462,
+              "discounted_return": -3.292291402366412,
+              "dense_costs": {
+                "primary": 0.8784066297630986,
+                "drive": 0.993449292619881,
+                "heat": 0.8231103435960654,
+                "pose": 0.04636595785630189,
+                "action_change": 0.18000000000000002,
+                "action_magnitude": 0.49949999999999534
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -5.546086200382358,
+              "discounted_return": -4.17740879789975,
+              "dense_costs": {
+                "primary": 0.8989591516552488,
+                "drive": 0.9999477150831545,
+                "heat": 1.1103576316554495,
+                "pose": 0.08037395443377733,
+                "action_change": 0.18000000000000002,
+                "action_magnitude": 0.49949999999999534
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            }
+          ],
+          "return_sum": -6.3250508450038785,
+          "discounted_return": -4.5380858023355986
+        },
+        "split/wheel-plus": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -7.461637885724556,
+              "discounted_return": -5.377312409857348,
+              "dense_costs": {
+                "primary": 1.0640560214838448,
+                "drive": 1.00100723164123,
+                "heat": 1.2165546565750784,
+                "pose": 0.11259314356315435,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.6634300893704457,
+              "violations": {
+                "control/push_primary": 0.6634159933676075,
+                "control/peak_pitch_deg": 0.05713057713401554,
+                "motion/push_world_vx_rms_mps": 0.6634300893704457,
+                "motion/push_plane_speed_rms_mps": 0.6633892136155862
+              }
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -9.23942795368289,
+              "discounted_return": -6.283083510587892,
+              "dense_costs": {
+                "primary": 0.8849539026010191,
+                "drive": 1.0007408875365038,
+                "heat": 1.0755166837004047,
+                "pose": 0.052602960602594784,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 1.9245786647804488,
+              "violations": {
+                "control/push_peak_velocity_error": 1.9245786647804488
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -6.180527313846414,
+              "discounted_return": -4.4864070150685045,
+              "dense_costs": {
+                "primary": 0.8776763956435933,
+                "drive": 0.0,
+                "heat": 1.247043658032569,
+                "pose": 0.19343152815736184,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.15437895275469765,
+              "violations": {
+                "control/peak_pitch_deg": 0.15437895275469765
+              }
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -4.523188019446896,
+              "discounted_return": -3.2182165436804957,
+              "dense_costs": {
+                "primary": 0.9057714909841127,
+                "drive": 0.0,
+                "heat": 0.5541590620346143,
+                "pose": 0.008783356405907577,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.6992774315981028,
+              "violations": {
+                "control/peak_pitch_deg": 0.6992774315981028
+              }
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -4.534709258760236,
+              "discounted_return": -3.3841643730167825,
+              "dense_costs": {
+                "primary": 0.8993153821719616,
+                "drive": 0.9936426614135748,
+                "heat": 0.8151164921718385,
+                "pose": 0.05277373071296243,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.08654707550197344,
+              "violations": {
+                "control/peak_pitch_deg": 0.08654707550197344
+              }
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -5.430091559227835,
+              "discounted_return": -4.104648114282343,
+              "dense_costs": {
+                "primary": 0.9297560806161693,
+                "drive": 1.0001288460691717,
+                "heat": 1.0740965910693447,
+                "pose": 0.09367975602259147,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            }
+          ],
+          "return_sum": -6.228263665114805,
+          "discounted_return": -4.475638661082228
+        },
+        "split/wheel-minus": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -7.33930880754524,
+              "discounted_return": -5.279308065586944,
+              "dense_costs": {
+                "primary": 0.8957498393748201,
+                "drive": 0.9998892139274873,
+                "heat": 1.183193212200663,
+                "pose": 0.06560331989829729,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.7537232300921536,
+              "violations": {
+                "control/push_peak_velocity_error": 0.7537232300921536
+              }
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -13.339262481858222,
+              "discounted_return": -8.732563050665565,
+              "dense_costs": {
+                "primary": 1.2940709988952965,
+                "drive": 1.0003608613109958,
+                "heat": 1.1333925472915662,
+                "pose": 0.06057685489525949,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 3.654143917218276,
+              "violations": {
+                "control/push_primary": 3.6541355217536844,
+                "motion/push_world_vx_rms_mps": 3.654143917218276,
+                "motion/push_plane_speed_rms_mps": 3.6540032892974645
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -7.0785187618754435,
+              "discounted_return": -5.030417840545857,
+              "dense_costs": {
+                "primary": 1.1706565882701334,
+                "drive": 0.0,
+                "heat": 1.1561109521724913,
+                "pose": 0.1307345353302739,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.6393769621043693,
+              "violations": {
+                "control/push_primary": 0.6393769621043693,
+                "motion/push_world_vx_rms_mps": 0.6393750534840325,
+                "motion/push_plane_speed_rms_mps": 0.6393608488971438
+              }
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -3.0924288569172,
+              "discounted_return": -2.3938207316969633,
+              "dense_costs": {
+                "primary": 1.0936738672969923,
+                "drive": 0.0,
+                "heat": 0.49914973765497545,
+                "pose": 0.005314450015352828,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -19.957277239622144,
+              "discounted_return": -12.473299419173005,
+              "dense_costs": {
+                "primary": 1.1863651772173667,
+                "drive": 1.0081287642072732,
+                "heat": 0.8619078695682971,
+                "pose": 0.04968781461127307,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 7.559305662498954,
+              "violations": {
+                "control/stop_primary": 0.7840783804811648,
+                "control/stop_travel": 0.6530023952572361,
+                "control/stop_reverse": 7.559305662498954,
+                "motion/stop_world_vx_rms_mps": 0.7840697290317672,
+                "motion/stop_plane_speed_rms_mps": 0.7840915407012689
+              }
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -25.926805480911455,
+              "discounted_return": -16.1618786980116,
+              "dense_costs": {
+                "primary": 1.1068989065557617,
+                "drive": 0.9993685313116217,
+                "heat": 1.1862328866967213,
+                "pose": 0.08337505791830412,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 9.935692035074059,
+              "violations": {
+                "control/stop_primary": 0.04185264234841505,
+                "control/stop_reverse": 9.935692035074059,
+                "motion/stop_world_vx_rms_mps": 0.0418513474964022,
+                "motion/stop_plane_speed_rms_mps": 0.0418521495767222
+              }
+            }
+          ],
+          "return_sum": -12.788933604788284,
+          "discounted_return": -8.345214634279989
+        },
+        "split/hip-plus": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -6.144181484537511,
+              "discounted_return": -4.605289091319613,
+              "dense_costs": {
+                "primary": 0.9934448532711028,
+                "drive": 1.0000245627681057,
+                "heat": 1.2367551379410078,
+                "pose": 0.08307084743785703,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -6.702010949036235,
+              "discounted_return": -4.827430752710113,
+              "dense_costs": {
+                "primary": 1.0444903818119982,
+                "drive": 0.9986306300241963,
+                "heat": 1.1558557070704834,
+                "pose": 0.0578731469647933,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.41558219999908463,
+              "violations": {
+                "control/push_primary": 0.3233727698215541,
+                "control/push_peak_velocity_error": 0.41558219999908463,
+                "motion/push_world_vx_rms_mps": 0.32333288839476687,
+                "motion/push_plane_speed_rms_mps": 0.3233105454660294
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -5.584913237260436,
+              "discounted_return": -4.112725720379124,
+              "dense_costs": {
+                "primary": 0.8306439357078401,
+                "drive": 0.0,
+                "heat": 1.187426219575995,
+                "pose": 0.12573366243075487,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -4.326698951451227,
+              "discounted_return": -3.160805966465557,
+              "dense_costs": {
+                "primary": 0.9574457104580042,
+                "drive": 0.0,
+                "heat": 0.6581940052613577,
+                "pose": 0.009416207517083674,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.36711957289872543,
+              "violations": {
+                "control/hip_heat_case": 0.36711957289872543
+              }
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -7.101105223899867,
+              "discounted_return": -4.908700014931501,
+              "dense_costs": {
+                "primary": 0.9798244845529839,
+                "drive": 0.9998666217989397,
+                "heat": 0.8564334417366086,
+                "pose": 0.05073806254336226,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 1.2462545683948953,
+              "violations": {
+                "control/stop_reverse": 1.2462545683948953
+              }
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -5.78835740931035,
+              "discounted_return": -4.328134622078698,
+              "dense_costs": {
+                "primary": 0.9613079341567611,
+                "drive": 0.9999976526435548,
+                "heat": 1.1558451953498337,
+                "pose": 0.08097066127706451,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            }
+          ],
+          "return_sum": -5.941211209249271,
+          "discounted_return": -4.3238476946474345
+        },
+        "split/hip-minus": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -7.5753273911357795,
+              "discounted_return": -5.414947199096896,
+              "dense_costs": {
+                "primary": 0.9435470641019716,
+                "drive": 0.99993112508585,
+                "heat": 1.1612645415680358,
+                "pose": 0.09221661929487895,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.8914209266792968,
+              "violations": {
+                "control/peak_pitch_deg": 0.8914209266792968
+              }
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -5.882087337139887,
+              "discounted_return": -4.299954343344375,
+              "dense_costs": {
+                "primary": 0.9114684896228683,
+                "drive": 0.9995522072299321,
+                "heat": 1.0442101171542046,
+                "pose": 0.048924485333071574,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.29541984887377776,
+              "violations": {
+                "control/peak_pitch_deg": 0.29541984887377776
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -8.54210947887509,
+              "discounted_return": -5.912668121064869,
+              "dense_costs": {
+                "primary": 1.192182192324584,
+                "drive": 0.0,
+                "heat": 1.2413503136395836,
+                "pose": 0.24055266139660336,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 1.188832614382121,
+              "violations": {
+                "control/push_primary": 0.837419191146047,
+                "control/push_peak_velocity_error": 0.35496371105905844,
+                "control/peak_pitch_deg": 1.188832614382121,
+                "motion/push_world_vx_rms_mps": 0.8374019418348865,
+                "motion/push_plane_speed_rms_mps": 0.8373886946733657
+              }
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -2.6765348231011963,
+              "discounted_return": -2.0889296229511323,
+              "dense_costs": {
+                "primary": 0.9915595486321646,
+                "drive": 0.0,
+                "heat": 0.42070123040979857,
+                "pose": 0.006030141491825109,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -5.313148005443716,
+              "discounted_return": -3.8502908262570075,
+              "dense_costs": {
+                "primary": 1.0097618484423112,
+                "drive": 0.9989880663425109,
+                "heat": 0.8044319893226702,
+                "pose": 0.05552510125948619,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.4413501672085149,
+              "violations": {
+                "control/peak_pitch_deg": 0.4413501672085149
+              }
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -6.3845483375724275,
+              "discounted_return": -4.679960307459838,
+              "dense_costs": {
+                "primary": 1.0392590597581493,
+                "drive": 1.000309047980978,
+                "heat": 1.0755709970817462,
+                "pose": 0.1002543194401328,
+                "action_change": 0.09000000000000001,
+                "action_magnitude": 0.24974999999999767
+              },
+              "guard_cost": 0.4194443217511465,
+              "violations": {
+                "control/peak_pitch_deg": 0.4194443217511465
+              }
+            }
+          ],
+          "return_sum": -6.06229256221135,
+          "discounted_return": -4.374458403362353
+        },
+        "split/wheel-plus-hip-minus": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -12.389872037399465,
+              "discounted_return": -8.254520056345719,
+              "dense_costs": {
+                "primary": 1.0723343661832136,
+                "drive": 1.0010036471196315,
+                "heat": 1.1886890881015635,
+                "pose": 0.13924795331398768,
+                "action_change": 0.18000000000000002,
+                "action_magnitude": 0.49949999999999534
+              },
+              "guard_cost": 3.177848065159895,
+              "violations": {
+                "control/push_primary": 0.6119767555709978,
+                "control/peak_pitch_deg": 3.177848065159895,
+                "motion/push_world_vx_rms_mps": 0.6119323458667024,
+                "motion/push_plane_speed_rms_mps": 0.611992040634066
+              }
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -9.846244840904388,
+              "discounted_return": -6.619072474722862,
+              "dense_costs": {
+                "primary": 0.8405361912132279,
+                "drive": 1.0003144170840228,
+                "heat": 1.041433869628209,
+                "pose": 0.05627047100665914,
+                "action_change": 0.18000000000000002,
+                "action_magnitude": 0.49949999999999534
+              },
+              "guard_cost": 2.3173426891706925,
+              "violations": {
+                "control/push_peak_velocity_error": 0.7431408865993163,
+                "control/peak_pitch_deg": 2.3173426891706925
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -12.366358691571486,
+              "discounted_return": -8.158444692299222,
+              "dense_costs": {
+                "primary": 1.0490389227339967,
+                "drive": 0.0,
+                "heat": 1.2899364679712697,
+                "pose": 0.28412673596440047,
+                "action_change": 0.18000000000000002,
+                "action_magnitude": 0.49949999999999534
+              },
+              "guard_cost": 3.0738959311165623,
+              "violations": {
+                "control/push_peak_velocity_error": 0.6385540287144648,
+                "control/peak_pitch_deg": 3.0738959311165623
+              }
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -5.644824403704723,
+              "discounted_return": -3.8286590180218543,
+              "dense_costs": {
+                "primary": 0.9238658269797679,
+                "drive": 0.0,
+                "heat": 0.4442333843515881,
+                "pose": 0.007443845332271511,
+                "action_change": 0.18000000000000002,
+                "action_magnitude": 0.49949999999999534
+              },
+              "guard_cost": 1.469888331205978,
+              "violations": {
+                "control/push_peak_velocity_error": 0.17652320801745292,
+                "control/peak_pitch_deg": 1.469888331205978
+              }
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -8.80108830030344,
+              "discounted_return": -5.879929778134298,
+              "dense_costs": {
+                "primary": 0.9098181987044305,
+                "drive": 0.9938896611561798,
+                "heat": 0.7865878161852242,
+                "pose": 0.06439254269659057,
+                "action_change": 0.18000000000000002,
+                "action_magnitude": 0.49949999999999534
+              },
+              "guard_cost": 2.2703767768864744,
+              "violations": {
+                "control/peak_pitch_deg": 2.2703767768864744
+              }
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -11.297787615844003,
+              "discounted_return": -7.553627266645149,
+              "dense_costs": {
+                "primary": 0.9594843208245722,
+                "drive": 1.0002570857885429,
+                "heat": 1.065248588354868,
+                "pose": 0.11644889277430923,
+                "action_change": 0.18000000000000002,
+                "action_magnitude": 0.49949999999999534
+              },
+              "guard_cost": 2.9354145232933835,
+              "violations": {
+                "control/peak_pitch_deg": 2.9354145232933835
+              }
+            }
+          ],
+          "return_sum": -10.05769598162125,
+          "discounted_return": -6.715708881028184
+        },
+        "split/brake-wheel-plus": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -17.464863457273292,
+              "discounted_return": -11.296886925336667,
+              "dense_costs": {
+                "primary": 1.2479161530073148,
+                "drive": 1.00100723164123,
+                "heat": 1.392901948438689,
+                "pose": 0.18630175408639743,
+                "action_change": 0.1325,
+                "action_magnitude": 0.3122859375000007
+              },
+              "guard_cost": 5.219224871581872,
+              "violations": {
+                "control/push_primary": 5.219222405657085,
+                "control/peak_pitch_deg": 3.426403731980537,
+                "motion/push_world_vx_rms_mps": 5.219224871581872,
+                "motion/push_plane_speed_rms_mps": 5.219192279306737
+              }
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -25.743876265549446,
+              "discounted_return": -15.988813371454711,
+              "dense_costs": {
+                "primary": 0.9636771437511344,
+                "drive": 1.0007408875365038,
+                "heat": 1.1440136329581334,
+                "pose": 0.051706326048859635,
+                "action_change": 0.1325,
+                "action_magnitude": 0.3122859375000007
+              },
+              "guard_cost": 10.0,
+              "violations": {
+                "control/push_primary": 0.9629641863252885,
+                "control/stop_reverse": 10.0,
+                "control/push_peak_velocity_error": 6.40971378693292,
+                "control/peak_pitch_deg": 0.9632003557833476,
+                "motion/push_world_vx_rms_mps": 0.9628010107136575,
+                "motion/push_plane_speed_rms_mps": 0.9629290469706704
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -6.181439849783914,
+              "discounted_return": -4.487305426946781,
+              "dense_costs": {
+                "primary": 0.8776763956435933,
+                "drive": 0.0,
+                "heat": 1.247043658032569,
+                "pose": 0.19343152815736184,
+                "action_change": 0.1325,
+                "action_magnitude": 0.3122859375000007
+              },
+              "guard_cost": 0.15437895275469765,
+              "violations": {
+                "control/peak_pitch_deg": 0.15437895275469765
+              }
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -4.524100555384396,
+              "discounted_return": -3.2191149555587724,
+              "dense_costs": {
+                "primary": 0.9057714909841127,
+                "drive": 0.0,
+                "heat": 0.5541590620346143,
+                "pose": 0.008783356405907577,
+                "action_change": 0.1325,
+                "action_magnitude": 0.3122859375000007
+              },
+              "guard_cost": 0.6992774315981028,
+              "violations": {
+                "control/peak_pitch_deg": 0.6992774315981028
+              }
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -11.920222536827177,
+              "discounted_return": -7.705946650355132,
+              "dense_costs": {
+                "primary": 0.7702450073464351,
+                "drive": 0.9936426614135748,
+                "heat": 0.8856132615416324,
+                "pose": 0.10417828040074713,
+                "action_change": 0.1325,
+                "action_magnitude": 0.3122859375000007
+              },
+              "guard_cost": 3.7018750497429926,
+              "violations": {
+                "control/stop_reverse": 3.7018750497429926
+              }
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -10.040481697847138,
+              "discounted_return": -6.806782441540373,
+              "dense_costs": {
+                "primary": 0.6856413169893179,
+                "drive": 1.0001288460691717,
+                "heat": 1.2292367131092496,
+                "pose": 0.15921987404640356,
+                "action_change": 0.1325,
+                "action_magnitude": 0.3122859375000007
+              },
+              "guard_cost": 2.1158605378942794,
+              "violations": {
+                "control/stop_reverse": 1.5845806794860613,
+                "control/peak_pitch_deg": 2.1158605378942794
+              }
+            }
+          ],
+          "return_sum": -12.645830727110896,
+          "discounted_return": -8.25080829519874
+        },
+        "split/brake-wheel-plus-hip-minus": {
+          "label": "not_preferred",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -19.454612229165384,
+              "discounted_return": -12.455393742015739,
+              "dense_costs": {
+                "primary": 1.3456889374402223,
+                "drive": 1.0010036471196315,
+                "heat": 1.2828147070054672,
+                "pose": 0.16716010374729534,
+                "action_change": 0.22250000000000003,
+                "action_magnitude": 0.5620359374999999
+              },
+              "guard_cost": 6.384554248133459,
+              "violations": {
+                "control/push_primary": 6.384554248133459,
+                "control/peak_pitch_deg": 3.402490817262288,
+                "motion/push_world_vx_rms_mps": 6.384424546191319,
+                "motion/push_plane_speed_rms_mps": 6.384509359762301
+              }
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -25.751404764672884,
+              "discounted_return": -15.996339714909181,
+              "dense_costs": {
+                "primary": 1.0712400892753409,
+                "drive": 1.0003144170840228,
+                "heat": 1.1183786054879177,
+                "pose": 0.07876670457842047,
+                "action_change": 0.22250000000000003,
+                "action_magnitude": 0.5620359374999999
+              },
+              "guard_cost": 10.0,
+              "violations": {
+                "control/push_primary": 2.4412536215769993,
+                "control/stop_reverse": 10.0,
+                "control/push_peak_velocity_error": 8.033475707711753,
+                "control/peak_pitch_deg": 2.753132802156931,
+                "motion/push_world_vx_rms_mps": 2.4411381689623863,
+                "motion/push_plane_speed_rms_mps": 2.44110992326765
+              }
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -12.367271227508986,
+              "discounted_return": -8.159343104177498,
+              "dense_costs": {
+                "primary": 1.0490389227339967,
+                "drive": 0.0,
+                "heat": 1.2899364679712697,
+                "pose": 0.28412673596440047,
+                "action_change": 0.22250000000000003,
+                "action_magnitude": 0.5620359374999999
+              },
+              "guard_cost": 3.0738959311165623,
+              "violations": {
+                "control/push_peak_velocity_error": 0.6385540287144648,
+                "control/peak_pitch_deg": 3.0738959311165623
+              }
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -5.645736939642223,
+              "discounted_return": -3.8295574299001305,
+              "dense_costs": {
+                "primary": 0.9238658269797679,
+                "drive": 0.0,
+                "heat": 0.4442333843515881,
+                "pose": 0.007443845332271511,
+                "action_change": 0.22250000000000003,
+                "action_magnitude": 0.5620359374999999
+              },
+              "guard_cost": 1.469888331205978,
+              "violations": {
+                "control/push_peak_velocity_error": 0.17652320801745292,
+                "control/peak_pitch_deg": 1.469888331205978
+              }
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -8.968902001439698,
+              "discounted_return": -5.957565452849762,
+              "dense_costs": {
+                "primary": 0.7723534058858911,
+                "drive": 0.9938896611561798,
+                "heat": 0.7964064695627289,
+                "pose": 0.06464650003398859,
+                "action_change": 0.22250000000000003,
+                "action_magnitude": 0.5620359374999999
+              },
+              "guard_cost": 2.4029199095667373,
+              "violations": {
+                "control/peak_pitch_deg": 2.4029199095667373
+              }
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -12.812152681453325,
+              "discounted_return": -8.424600943159987,
+              "dense_costs": {
+                "primary": 0.7194440423866563,
+                "drive": 1.0002570857885429,
+                "heat": 1.1552649560681418,
+                "pose": 0.1500750496225984,
+                "action_change": 0.22250000000000003,
+                "action_magnitude": 0.5620359374999999
+              },
+              "guard_cost": 3.6317919303532196,
+              "violations": {
+                "control/peak_pitch_deg": 3.6317919303532196
+              }
+            }
+          ],
+          "return_sum": -14.166679973980417,
+          "discounted_return": -9.137133397835383
+        },
+        "search/D41": {
+          "label": "feasible_improving",
+          "cases": [
+            {
+              "id": "development-combined-000",
+              "return_sum": -6.139370017226852,
+              "discounted_return": -4.604463062243944,
+              "dense_costs": {
+                "primary": 1.0055785854520771,
+                "drive": 1.0009380283003193,
+                "heat": 1.2317494508384617,
+                "pose": 0.09331542164804629,
+                "action_change": 0.20255928048053906,
+                "action_magnitude": 0.6885287182900488
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-combined-001",
+              "return_sum": -5.463516510620008,
+              "discounted_return": -4.070760557766527,
+              "dense_costs": {
+                "primary": 0.8487754738125152,
+                "drive": 0.9995897449717283,
+                "heat": 1.1022753108589824,
+                "pose": 0.04910650246581063,
+                "action_change": 0.20255928048053906,
+                "action_magnitude": 0.6885287182900488
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-000",
+              "return_sum": -5.705878872569611,
+              "discounted_return": -4.185531236296993,
+              "dense_costs": {
+                "primary": 0.7889353795621419,
+                "drive": 0.0,
+                "heat": 1.2272455549896424,
+                "pose": 0.16107793604988524,
+                "action_change": 0.20255928048053906,
+                "action_magnitude": 0.6885287182900488
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-push-001",
+              "return_sum": -3.2750317005909015,
+              "discounted_return": -2.501523847221609,
+              "dense_costs": {
+                "primary": 0.874104802284474,
+                "drive": 0.0,
+                "heat": 0.5990040670923313,
+                "pose": 0.008545780460238931,
+                "action_change": 0.20255928048053906,
+                "action_magnitude": 0.6885287182900488
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-000",
+              "return_sum": -4.395730563203984,
+              "discounted_return": -3.306404062315954,
+              "dense_costs": {
+                "primary": 0.9014608343399683,
+                "drive": 0.9937654853326368,
+                "heat": 0.8224693188278248,
+                "pose": 0.0449821079143907,
+                "action_change": 0.20255928048053906,
+                "action_magnitude": 0.6885287182900488
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            },
+            {
+              "id": "development-stop-001",
+              "return_sum": -5.508061065898284,
+              "discounted_return": -4.155174784573004,
+              "dense_costs": {
+                "primary": 0.9155218020797561,
+                "drive": 1.0005212637077237,
+                "heat": 1.0965319291440039,
+                "pose": 0.07837900865304753,
+                "action_change": 0.20255928048053906,
+                "action_magnitude": 0.6885287182900488
+              },
+              "guard_cost": 0.0,
+              "violations": {}
+            }
+          ],
+          "return_sum": -5.081264788351606,
+          "discounted_return": -3.803976258403005
+        }
+      }
+    }
+  ],
+  "reward_source_sha256": "ae5bd58bf63115c16985deba9fb8cf0a4a2f3ee9e3ee3e4995229ab4b2af334a",
+  "calibration_source_sha256": "f9272226d343454ccad2e9f973401f40f7fd7936d7c257a333f1fbe4255b5fc8",
+  "scope": "训练评分开发校准：排序使用已知开发结果，不是独立验证，不宣称更好训练性能；未读取45例验证或60例最终集。",
+  "ordering": "可行且两主指标改善的已知组 > 原控制 > 已知不合格或退步组；同时检查未折扣和gamma=.999折扣回报。",
+  "limitations": "终端罚项只是训练信号；并不保证学习策略满足约束，仍须逐项通过原独立评价。热量4权重由19%平方误差/5%热预算量级设计，最终均值热上限仍为5%。"
+}

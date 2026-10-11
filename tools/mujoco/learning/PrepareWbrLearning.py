@@ -16,7 +16,7 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def prepare(destination, reference_snapshot=None):
+def prepare(destination, reference_snapshot=None, reuse_library=False):
     destination = Path(destination).resolve()
     if destination.exists():
         raise FileExistsError(f"快照目录已存在，拒绝覆盖：{destination}")
@@ -26,6 +26,10 @@ def prepare(destination, reference_snapshot=None):
         for relative, expected in previous["files"].items():
             if digest(base/relative) != expected:
                 raise RuntimeError(f"原快照发生变化：{relative}")
+        if digest(base/previous["library"]) != previous["library_sha256"]:
+            raise RuntimeError("原快照动态库发生变化")
+    elif reuse_library:
+        raise ValueError("复用动态库必须指定原冻结目录")
     paths = []
     for directory in ("tools/mujoco/reference",):
         paths += [p for p in (base/directory).rglob("*")
@@ -47,6 +51,26 @@ def prepare(destination, reference_snapshot=None):
     for relative, expected in before.items():
         if digest(sources[relative]) != expected or digest(destination/relative) != expected:
             raise RuntimeError(f"冻结期间源码发生变化，请另建快照重试：{relative}")
+    if reuse_library:
+        relevant = {key:value for key,value in previous["files"].items()
+                    if not key.startswith("tools/mujoco/learning/") or key in (
+                        "tools/mujoco/learning/WbrLearningBridge.c",
+                        "tools/mujoco/learning/WbrLearningEnv.py",
+                        "tools/mujoco/learning/StudyWbrPolicy.py")}
+        if any(before.get(key) != value for key,value in relevant.items()):
+            raise RuntimeError("控制/环境/推理或模型文件变化，不能复用原动态库")
+        library = destination/previous["library"]
+        library.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(base/previous["library"], library)
+        if digest(library) != previous["library_sha256"]:
+            raise RuntimeError("复制期间原动态库发生变化，拒绝复用")
+        manifest = dict(schema=1, source_root=str(ROOT), reference_snapshot=str(base), files=before,
+            library=library.relative_to(destination).as_posix(), library_sha256=digest(library),
+            build_command=previous["build_command"], reused_library_from=str(base/previous["library"]),
+            scope="主机平地控制实验，非固件或实车验收；控制/模型相同，动态库直接复用原字节")
+        (destination/"manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2)+"\n", encoding="utf-8")
+        print(json.dumps(dict(snapshot=str(destination), files=len(before), library=str(library), reused=True), ensure_ascii=False))
+        return
     sys.path.insert(0, str(destination/"tools/mujoco/wheelleg"))
     from RunWheelLeg import find_compiler
     compiler = find_compiler()
@@ -81,5 +105,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--reference-snapshot", type=Path)
+    parser.add_argument("--reuse-library", action="store_true",
+                        help="控制/环境/推理和模型文件相同时复制原库，供补入已核验的基线数据")
     args = parser.parse_args()
-    prepare(args.output, args.reference_snapshot)
+    prepare(args.output, args.reference_snapshot, args.reuse_library)

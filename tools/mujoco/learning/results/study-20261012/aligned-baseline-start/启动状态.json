@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "updated_at": "2026-10-12T05:57:19.888746+08:00",
+  "stage": "baselines_running",
+  "baseline_snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-frozen",
+  "baseline_queue": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-queue\\plan.json",
+  "queue_pid": 6396,
+  "queue_current_job": "baseline-training",
+  "registration": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json",
+  "registration_sha256": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120",
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "baseline_training_completed": 16,
+  "full_wrapper_and_real_training_preflight_pending": true,
+  "next_steps": [
+    "等待aligned-reference/baseline-queue完成144条training和24条monitor原控制基线，检查原控制均物理合格。",
+    "使用baseline-frozen中的SealWbrAlignedBank.py：--cases该冻结的training.json --baseline baselines/training/summary.json --registration该冻结的登记 --destination-root D:\\ARBATOS。许可及原始来源保存到rootresults/aligned-training-baseline。",
+    "以baseline-frozen为reference使用当前PrepareWbrLearning.py --reuse-library另建aligned-reference/training-frozen；核对DLL、104原文件和experiment_identity完全相同。不要修改已有冻结。",
+    "运行当前TestWbrAligned.py --snapshot training-frozen --bank该冻结许可文件同目录training-bank.json，核对三个任务的原观测/物理、在线离线评分、8秒真正终止、失败末帧与篡改拒绝。",
+    "实际短训seed9001一环境1024步，再新目录续到2048；核对检查点网络和优化器恢复、导出、各项绑定。尚未完成此步，不能声称训练程序全部验证。",
+    "通过后固定两个筛选种子41/73各262144步、2环境，完成后各跑24监控。晋级记录必须复算本登记条件，不能看着结果改阈值或选中途检查点。",
+    "满足登记再扩1M、45例独立验证、101/211/307三种子正式训练与锁定60例；否则保存负结果，所有步骤受2026-10-14 02:10期限限制。"
+  ],
+  "notes": "reuse-preflight-frozen只是准备工具检查，不是实际训练冻结；incompatible-reuse-rejected拒绝成功后没有manifest，均不要拿来训练。"
+}

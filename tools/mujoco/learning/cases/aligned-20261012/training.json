@@ -1,0 +1,1748 @@
+{
+  "schema": 1,
+  "split": "aligned-training",
+  "primary_gate": false,
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "generated_at": "2026-10-12T05:32:30+08:00",
+  "training_seeds": [
+    101,
+    211,
+    307
+  ],
+  "screening_seeds": [
+    41,
+    73
+  ],
+  "cases_sha256": "c4492d8429b8a857c7574fdd98073fe163c52196ea9bfb78d0747e35df75fd9f",
+  "case_count": 144,
+  "cases": [
+    {
+      "id": "aligned-training-stop-000",
+      "seed": 71000,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.426596,
+        "push": -25.212766,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-001",
+      "seed": 71001,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.562766,
+        "push": 25.702128,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-002",
+      "seed": 71002,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.35,
+        "push": 18.851064,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-003",
+      "seed": 71003,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.409574,
+        "push": 20.808511,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-004",
+      "seed": 71004,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.681915,
+        "push": -35.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-005",
+      "seed": 71005,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.358511,
+        "push": 30.595745,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-006",
+      "seed": 71006,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.418085,
+        "push": 32.553191,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-007",
+      "seed": 71007,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.690426,
+        "push": 34.510638,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-008",
+      "seed": 71008,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.715957,
+        "push": 24.723404,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-009",
+      "seed": 71009,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.401064,
+        "push": 22.765957,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-010",
+      "seed": 71010,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.673404,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-011",
+      "seed": 71011,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.375532,
+        "push": 16.893617,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-012",
+      "seed": 71012,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.537234,
+        "push": -13.468085,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-013",
+      "seed": 71013,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.528723,
+        "push": -23.255319,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-014",
+      "seed": 71014,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.664894,
+        "push": -29.12766,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-015",
+      "seed": 71015,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.469149,
+        "push": 33.531915,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-016",
+      "seed": 71016,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.545745,
+        "push": 15.914894,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-017",
+      "seed": 71017,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.647872,
+        "push": -32.06383,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-018",
+      "seed": 71018,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.656383,
+        "push": 19.829787,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-019",
+      "seed": 71019,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.452128,
+        "push": 12.978723,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-020",
+      "seed": 71020,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.724468,
+        "push": -31.085106,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-021",
+      "seed": 71021,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.47766,
+        "push": 29.617021,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-022",
+      "seed": 71022,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.511702,
+        "push": -22.276596,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-023",
+      "seed": 71023,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.588298,
+        "push": -16.404255,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-024",
+      "seed": 71024,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.384043,
+        "push": 14.93617,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-025",
+      "seed": 71025,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.460638,
+        "push": -18.361702,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-026",
+      "seed": 71026,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.579787,
+        "push": -27.170213,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-027",
+      "seed": 71027,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.707447,
+        "push": 26.680851,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-028",
+      "seed": 71028,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.596809,
+        "push": -30.106383,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-029",
+      "seed": 71029,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.435106,
+        "push": 28.638298,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-030",
+      "seed": 71030,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.48617,
+        "push": 17.87234,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-031",
+      "seed": 71031,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.62234,
+        "push": -28.148936,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-032",
+      "seed": 71032,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.630851,
+        "push": -21.297872,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-033",
+      "seed": 71033,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.494681,
+        "push": -34.021277,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-034",
+      "seed": 71034,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.698936,
+        "push": 27.659574,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-035",
+      "seed": 71035,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.75,
+        "push": -14.446809,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-036",
+      "seed": 71036,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.605319,
+        "push": -19.340426,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-037",
+      "seed": 71037,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.571277,
+        "push": -24.234043,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-038",
+      "seed": 71038,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.367021,
+        "push": 31.574468,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-039",
+      "seed": 71039,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.61383,
+        "push": -33.042553,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-040",
+      "seed": 71040,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.392553,
+        "push": 13.957447,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-041",
+      "seed": 71041,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.639362,
+        "push": -17.382979,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-042",
+      "seed": 71042,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.503191,
+        "push": -20.319149,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-043",
+      "seed": 71043,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.443617,
+        "push": -15.425532,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-044",
+      "seed": 71044,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.520213,
+        "push": 21.787234,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-045",
+      "seed": 71045,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.732979,
+        "push": 23.744681,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-046",
+      "seed": 71046,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.554255,
+        "push": -26.191489,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-stop-047",
+      "seed": 71047,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.741489,
+        "push": -12.489362,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-000",
+      "seed": 71048,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.409574,
+        "push": -28.148936,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-001",
+      "seed": 71049,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.707447,
+        "push": 29.617021,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-002",
+      "seed": 71050,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.418085,
+        "push": 23.744681,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-003",
+      "seed": 71051,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.554255,
+        "push": 21.787234,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-004",
+      "seed": 71052,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.469149,
+        "push": 16.893617,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-005",
+      "seed": 71053,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.732979,
+        "push": -14.446809,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-006",
+      "seed": 71054,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.579787,
+        "push": 25.702128,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-007",
+      "seed": 71055,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.698936,
+        "push": -17.382979,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-008",
+      "seed": 71056,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.35,
+        "push": -19.340426,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-009",
+      "seed": 71057,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.367021,
+        "push": -18.361702,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-010",
+      "seed": 71058,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.596809,
+        "push": 22.765957,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-011",
+      "seed": 71059,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.47766,
+        "push": -21.297872,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-012",
+      "seed": 71060,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.520213,
+        "push": 14.93617,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-013",
+      "seed": 71061,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.375532,
+        "push": -33.042553,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-014",
+      "seed": 71062,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.571277,
+        "push": -29.12766,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-015",
+      "seed": 71063,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.75,
+        "push": 17.87234,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-016",
+      "seed": 71064,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.426596,
+        "push": -27.170213,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-017",
+      "seed": 71065,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.435106,
+        "push": -20.319149,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-018",
+      "seed": 71066,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.401064,
+        "push": 13.957447,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-019",
+      "seed": 71067,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.537234,
+        "push": 15.914894,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-020",
+      "seed": 71068,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.630851,
+        "push": 24.723404,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-021",
+      "seed": 71069,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.562766,
+        "push": 31.574468,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-022",
+      "seed": 71070,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.511702,
+        "push": 19.829787,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-023",
+      "seed": 71071,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.605319,
+        "push": 12.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-024",
+      "seed": 71072,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.460638,
+        "push": 33.531915,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-025",
+      "seed": 71073,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.62234,
+        "push": 28.638298,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-026",
+      "seed": 71074,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.715957,
+        "push": 30.595745,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-027",
+      "seed": 71075,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.494681,
+        "push": 20.808511,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-028",
+      "seed": 71076,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.545745,
+        "push": -22.276596,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-029",
+      "seed": 71077,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.358511,
+        "push": 32.553191,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-030",
+      "seed": 71078,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.664894,
+        "push": 27.659574,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-031",
+      "seed": 71079,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.392553,
+        "push": -16.404255,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-032",
+      "seed": 71080,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.690426,
+        "push": 18.851064,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-033",
+      "seed": 71081,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.452128,
+        "push": -25.212766,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-034",
+      "seed": 71082,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.503191,
+        "push": -26.191489,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-035",
+      "seed": 71083,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.724468,
+        "push": 34.510638,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-036",
+      "seed": 71084,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.528723,
+        "push": -31.085106,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-037",
+      "seed": 71085,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.443617,
+        "push": -23.255319,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-038",
+      "seed": 71086,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.48617,
+        "push": -24.234043,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-039",
+      "seed": 71087,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.741489,
+        "push": -12.489362,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-040",
+      "seed": 71088,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.673404,
+        "push": -30.106383,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-041",
+      "seed": 71089,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.656383,
+        "push": -13.468085,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-042",
+      "seed": 71090,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.681915,
+        "push": 26.680851,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-043",
+      "seed": 71091,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.384043,
+        "push": -34.021277,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-044",
+      "seed": 71092,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.61383,
+        "push": -32.06383,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-045",
+      "seed": 71093,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.647872,
+        "push": 12.978723,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-046",
+      "seed": 71094,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.639362,
+        "push": -35.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-push-047",
+      "seed": 71095,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.588298,
+        "push": -15.425532,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-000",
+      "seed": 71096,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.520213,
+        "push": 26.191489,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-001",
+      "seed": 71097,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.61383,
+        "push": -31.574468,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-002",
+      "seed": 71098,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.596809,
+        "push": -18.851064,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-003",
+      "seed": 71099,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.358511,
+        "push": -27.659574,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-004",
+      "seed": 71100,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.724468,
+        "push": 13.468085,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-005",
+      "seed": 71101,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.715957,
+        "push": -24.723404,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-006",
+      "seed": 71102,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.409574,
+        "push": -12.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-007",
+      "seed": 71103,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.426596,
+        "push": -15.425532,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-008",
+      "seed": 71104,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.494681,
+        "push": -29.12766,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-009",
+      "seed": 71105,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.452128,
+        "push": 34.021277,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-010",
+      "seed": 71106,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.732979,
+        "push": -28.638298,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-011",
+      "seed": 71107,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.741489,
+        "push": 12.978723,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-012",
+      "seed": 71108,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.48617,
+        "push": 16.404255,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-013",
+      "seed": 71109,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.75,
+        "push": -22.276596,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-014",
+      "seed": 71110,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.443617,
+        "push": -32.06383,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-015",
+      "seed": 71111,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.460638,
+        "push": -25.212766,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-016",
+      "seed": 71112,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.384043,
+        "push": 17.382979,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-017",
+      "seed": 71113,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.681915,
+        "push": -21.787234,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-018",
+      "seed": 71114,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.554255,
+        "push": 19.340426,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-019",
+      "seed": 71115,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.469149,
+        "push": 27.170213,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-020",
+      "seed": 71116,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.698936,
+        "push": 25.702128,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-021",
+      "seed": 71117,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.503191,
+        "push": 33.042553,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-022",
+      "seed": 71118,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.545745,
+        "push": 34.510638,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-023",
+      "seed": 71119,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.392553,
+        "push": 20.319149,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-024",
+      "seed": 71120,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.571277,
+        "push": 13.957447,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-025",
+      "seed": 71121,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.47766,
+        "push": 21.297872,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-026",
+      "seed": 71122,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.35,
+        "push": 35.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-027",
+      "seed": 71123,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.562766,
+        "push": 22.765957,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-028",
+      "seed": 71124,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.367021,
+        "push": 31.085106,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-029",
+      "seed": 71125,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.435106,
+        "push": -23.744681,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-030",
+      "seed": 71126,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.588298,
+        "push": -30.595745,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-031",
+      "seed": 71127,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.707447,
+        "push": -16.893617,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-032",
+      "seed": 71128,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.664894,
+        "push": 26.680851,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-033",
+      "seed": 71129,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.639362,
+        "push": -33.531915,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-034",
+      "seed": 71130,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.401064,
+        "push": -24.234043,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-035",
+      "seed": 71131,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.690426,
+        "push": -20.808511,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-036",
+      "seed": 71132,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.673404,
+        "push": -32.553191,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-037",
+      "seed": 71133,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.656383,
+        "push": -19.829787,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-038",
+      "seed": 71134,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.537234,
+        "push": -15.914894,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-039",
+      "seed": 71135,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.630851,
+        "push": 18.361702,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-040",
+      "seed": 71136,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.418085,
+        "push": -30.106383,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-041",
+      "seed": 71137,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.579787,
+        "push": 14.446809,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-042",
+      "seed": 71138,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.528723,
+        "push": 14.93617,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-043",
+      "seed": 71139,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.511702,
+        "push": 12.489362,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-044",
+      "seed": 71140,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.375532,
+        "push": 23.255319,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-045",
+      "seed": 71141,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.605319,
+        "push": -29.617021,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-046",
+      "seed": 71142,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.62234,
+        "push": -28.148936,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-training-combined-047",
+      "seed": 71143,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.647872,
+        "push": 17.87234,
+        "delay": 1,
+        "duration": 8.0
+      }
+    }
+  ]
+}

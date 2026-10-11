@@ -1,0 +1,136 @@
+{
+  "schema": 1,
+  "route": "B-symmetric",
+  "seeds": [
+    41,
+    73
+  ],
+  "training_steps_each": 131072,
+  "validation_pairs_each": 45,
+  "advance": false,
+  "final_dataset_used": false,
+  "results": [
+    {
+      "seed": 41,
+      "gate": {
+        "pass_all": false,
+        "checks": {
+          "physical_complete": true,
+          "stop_improvement": false,
+          "push_improvement": false,
+          "primary_case_regression": true,
+          "heat_mean": true,
+          "motion_quality": false
+        },
+        "primary_gates_pass": false,
+        "motion_quality_pending": true,
+        "stop_improvement": -0.003734428346119145,
+        "push_improvement": 0.002955596952724515,
+        "heat_change": 0.06697569942587189,
+        "final_thresholds_pass": false,
+        "failing_final_case_guards": [
+          "validation-combined-006",
+          "validation-combined-007",
+          "validation-combined-008",
+          "validation-push-000",
+          "validation-push-001",
+          "validation-push-002",
+          "validation-push-004",
+          "validation-push-005",
+          "validation-push-006",
+          "validation-push-007",
+          "validation-push-010",
+          "validation-push-012",
+          "validation-push-014",
+          "validation-stop-000",
+          "validation-stop-001",
+          "validation-stop-002",
+          "validation-stop-003",
+          "validation-stop-004",
+          "validation-stop-005",
+          "validation-stop-006",
+          "validation-stop-007",
+          "validation-stop-008",
+          "validation-stop-009",
+          "validation-stop-010",
+          "validation-stop-011",
+          "validation-stop-012",
+          "validation-stop-013",
+          "validation-stop-014",
+          "validation-stop-015",
+          "validation-stop-016",
+          "validation-stop-017"
+        ]
+      },
+      "failed_original_guards": {
+        "hip_heat_case": 15,
+        "peak_pitch_deg": 12,
+        "stop_reverse": 18
+      }
+    },
+    {
+      "seed": 73,
+      "gate": {
+        "pass_all": false,
+        "checks": {
+          "physical_complete": true,
+          "stop_improvement": false,
+          "push_improvement": false,
+          "primary_case_regression": true,
+          "heat_mean": false,
+          "motion_quality": false
+        },
+        "primary_gates_pass": false,
+        "motion_quality_pending": true,
+        "stop_improvement": 0.0027891626584320983,
+        "push_improvement": -0.009789010379307905,
+        "heat_change": 0.13397422430293826,
+        "final_thresholds_pass": false,
+        "failing_final_case_guards": [
+          "validation-combined-001",
+          "validation-combined-003",
+          "validation-combined-005",
+          "validation-combined-007",
+          "validation-push-000",
+          "validation-push-003",
+          "validation-push-006",
+          "validation-push-008",
+          "validation-push-009",
+          "validation-push-012",
+          "validation-push-013",
+          "validation-push-015",
+          "validation-push-016",
+          "validation-stop-001",
+          "validation-stop-005",
+          "validation-stop-006",
+          "validation-stop-009",
+          "validation-stop-010",
+          "validation-stop-011",
+          "validation-stop-013",
+          "validation-stop-015",
+          "validation-stop-016"
+        ]
+      },
+      "failed_original_guards": {
+        "hip_heat_case": 22,
+        "peak_pitch_deg": 2,
+        "stop_reverse": 4
+      }
+    }
+  ],
+  "evidence_files": {
+    "screening-B-symmetric-41/policy.json": "44e0b320151f6a958614cfae801aff9438da6ad9abda5b589b9d91eba22e160e",
+    "screening-B-symmetric-41/policy.npz": "dc35c14fed684fcba0e69eb31d2ea3c0724e7e5c0387b8e840193541cc101927",
+    "screening-B-symmetric-41/checkpoint.zip": "f432ee00ad8b865719b7e6cb9357e8141b52d8673d1d2c007d2671307c6c0aa5",
+    "screening-B-symmetric-41/summary.json": "d3b1b3e26724d3d322d54060eab0258101866986ce7b7ab5e50d14deb1c98921",
+    "screening-B-symmetric-41/evaluation-run.json": "2fe5e3154f286779149e223a7a7efc79c1fe553c2c1d1cddb4c3de37a450f348",
+    "screening-B-symmetric-41/筛选结论.json": "ec64c56699f1ae32119c4dc7d1f2420f996ef9a32b1ecbd140f73c40291a2302",
+    "screening-B-symmetric-73/policy.json": "3f13759dc842921493fe1eafbc0f2f12b264ffcf8655d0b4937489fa23080a24",
+    "screening-B-symmetric-73/policy.npz": "e4350071e7c1a37684a29b598f9689eb1285f58153f23fa2851d96e4ffacd309",
+    "screening-B-symmetric-73/checkpoint.zip": "94749230b921097b4ab70101319e4d50b7d23c63b93be060c7ba57d5a2933aea",
+    "screening-B-symmetric-73/summary.json": "1893b4b44fe9dd759088a904454c004deeb2da7dd2d6db503e787a931216dcd7",
+    "screening-B-symmetric-73/evaluation-run.json": "34b6451c7504a8f8d3d5ed0a39fafba94f7ca6e10408edf5bdaf2c4bd127b089",
+    "screening-B-symmetric-73/筛选结论.json": "3b27de77bde0c2e62920ca5bab3db16d2927ffa28a46479e1a257cf1e5ff5f21"
+  },
+  "conclusion": "登记的两个种子均没有足够主收益；在131072步、旧密集评分和对称动作的配置下停止晋级。未补跑运动质量、未使用最终集，不代表更长训练或全部强化学习无效。"
+}

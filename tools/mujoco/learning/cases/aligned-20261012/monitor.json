@@ -1,0 +1,308 @@
+{
+  "schema": 1,
+  "split": "aligned-monitor",
+  "primary_gate": false,
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "generated_at": "2026-10-12T05:32:30+08:00",
+  "training_seeds": [
+    101,
+    211,
+    307
+  ],
+  "screening_seeds": [
+    41,
+    73
+  ],
+  "cases_sha256": "5d22cd9b2336125b4c681964ce28ce74c6a362577e630a3e542e0404424b43ff",
+  "case_count": 24,
+  "cases": [
+    {
+      "id": "aligned-monitor-stop-000",
+      "seed": 81000,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": 0.35,
+        "push": -35.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-stop-001",
+      "seed": 81001,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.578571,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-stop-002",
+      "seed": 81002,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": -0.635714,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-stop-003",
+      "seed": 81003,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.521429,
+        "push": 31.714286,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-stop-004",
+      "seed": 81004,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": -0.75,
+        "push": -28.428571,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-stop-005",
+      "seed": 81005,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.407143,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-stop-006",
+      "seed": 81006,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": 0.692857,
+        "push": 18.571429,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-stop-007",
+      "seed": 81007,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.464286,
+        "push": -21.857143,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-push-000",
+      "seed": 81008,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": -0.635714,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-push-001",
+      "seed": 81009,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.521429,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-push-002",
+      "seed": 81010,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": 0.464286,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-push-003",
+      "seed": 81011,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.578571,
+        "push": -35.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-push-004",
+      "seed": 81012,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": 0.692857,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-push-005",
+      "seed": 81013,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.75,
+        "push": 31.714286,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-push-006",
+      "seed": 81014,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": -0.407143,
+        "push": -28.428571,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-push-007",
+      "seed": 81015,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.35,
+        "push": 18.571429,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-combined-000",
+      "seed": 81016,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": 0.692857,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-combined-001",
+      "seed": 81017,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.407143,
+        "push": -31.714286,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-combined-002",
+      "seed": 81018,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": 0.35,
+        "push": 28.428571,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-combined-003",
+      "seed": 81019,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.464286,
+        "push": -35.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-combined-004",
+      "seed": 81020,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": 0.578571,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-combined-005",
+      "seed": 81021,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.635714,
+        "push": -12.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-combined-006",
+      "seed": 81022,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": -0.75,
+        "push": 15.285714,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "aligned-monitor-combined-007",
+      "seed": 81023,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.521429,
+        "push": 18.571429,
+        "delay": 1,
+        "duration": 8.0
+      }
+    }
+  ]
+}

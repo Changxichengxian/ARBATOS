@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "checks": {
+    "reused_library_bytes_identical": true,
+    "physical_identity_identical": true,
+    "original_104_files_identical": true,
+    "incompatible_inference_source_rejected": true,
+    "unsealed_bank_training_rejected": true
+  },
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "prepare_source_sha256": "a6f4515f692b1e3bc1a545cb63e4dff1c8b6aec0b79f7dc42717928547747bc4",
+  "test_source_sha256": "b6ad292d29a34756b38bba580999121c3e61fe73f4c4014e461ff0aade1cd57b",
+  "source_manifest_sha256": "735b5749ed195a7191f3541cca4c795160f2f1ca69479a01493ea794a0c21c0e",
+  "probe_manifest_sha256": "725d2b6771ccc2034b8144154aace5cfd086c02a239292aa5ef8338f4ae84171"
+}
