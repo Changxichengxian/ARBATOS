@@ -39,7 +39,8 @@
     "三参数4候选1代短流程实际中断恢复成功，6组导出配对评价逐项复现，原6例零修正基线完全相同",
     "独立启动D参考参数路线两个种子的正式开发搜索及45例验证队列，最终集仍未使用",
     "A-full两个种子各131072步及45例配对验证完成；收益均不足筛选门槛，不晋级，实际评价权重和完整负结果已保存",
-    "完成8组有推/无推组合诊断：每组推力前333点完全相等；确认制动回摆与推力响应共同影响组合退步，保留原验收"
+    "完成8组有推/无推组合诊断：每组推力前333点完全相等；确认制动回摆与推力响应共同影响组合退步，保留原验收",
+    "两条路线的源码/模型/动态库及B81920步、D20候选恢复点打包；换目录读取与两条既有基线实跑精确复现通过"
   ],
   "next": "A-full双种子筛选已完整结束并均失败，不扩大同配置训练；继续原B对称动作、C线性反馈及D三参数参考对照。达到各自原筛选门的候选才补充运动质量或进入正式三种子研究。完整最终60例仍未运行，禁止为未达门槛的A消耗最终集。",
   "active_process": {
@@ -48,10 +49,10 @@
     "queue_status_at_update": "running",
     "current_job_status_at_update": {
       "status": "running",
-      "steps": 61440,
-      "segment_seconds": 1151.0777819000068,
-      "steps_per_s": 53.376062822257865,
-      "episodes": 114,
+      "steps": 102400,
+      "segment_seconds": 1865.0215265000006,
+      "steps_per_s": 54.90553248045846,
+      "episodes": 190,
       "failures": 0,
       "pid": 34068
     },
@@ -59,7 +60,7 @@
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T04:23:49.906785+08:00",
+  "updated_at": "2026-10-12T04:34:50.487478+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -238,5 +239,17 @@
     "reused_trajectories": 8,
     "final_dataset_used": false,
     "note": "只分析两个既有组合开发场景，不计入独立验证，不重启已完成诊断"
+  },
+  "recovery_package": {
+    "archive": "tools/mujoco/learning/results/study-20261012/阶段恢复包-B81920.zip",
+    "sha256": "1106baee8330c292669b8f043944b5db2e785af6cdd2bca56d221acca39a661f",
+    "verification": "tools/mujoco/learning/results/study-20261012/阶段恢复包检查.json",
+    "b_seed": 41,
+    "b_steps": 81920,
+    "d_seed": 41,
+    "d_generation": 1,
+    "d_evaluations": 20,
+    "verified_on_same_machine_after_relocation": true,
+    "note": "同时包含两份完整冻结源码/模型/动态库及一致恢复点；旧任务仍继续，此包不代表最新进度"
   }
 }

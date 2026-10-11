@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T04:34:50.487478+08:00",
+  "status": "passed",
+  "scope": "同一Windows主机换目录解压验证，不宣称已经在另一台电脑续训",
+  "archive": "阶段恢复包-B81920.zip",
+  "archive_bytes": 11871674,
+  "archive_sha256": "1106baee8330c292669b8f043944b5db2e785af6cdd2bca56d221acca39a661f",
+  "archive_entries": 301,
+  "archive_crc_and_each_entry_bytes_verified": true,
+  "source_files": {
+    "abc": 132,
+    "reference": 155
+  },
+  "actual_probe_command": [
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\recovery-package-relocated-81920\\检查恢复包.py"
+  ],
+  "actual_probe_exit_code": 0,
+  "actual_probe_results": [
+    {
+      "route": "abc",
+      "status": "passed",
+      "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+      "baseline_case": "development-stop-000",
+      "baseline_exact": true,
+      "steps": 81920,
+      "optimizer_states": 13,
+      "export_max_abs_error": 7.450580596923828e-08
+    },
+    {
+      "route": "reference",
+      "status": "passed",
+      "experiment_identity": "419ae6b535c37b453b622caeb3f452eccc0f8ed5c076992f224c8669fa5b5672",
+      "baseline_case": "development-stop-000",
+      "baseline_exact": true,
+      "generation": 1,
+      "evaluations": 20,
+      "cached_candidates": 18,
+      "rng_state_restored": true
+    }
+  ],
+  "checks": [
+    "两份冻结清单内全部源码、机械模型和动态库哈希相符",
+    "B保存点网络、优化器13组状态和81920累计步数可读取，三维对称动作空间正确",
+    "64组固定输入的导出推理与原网络最大差小于2e-6",
+    "D状态内容哈希、源码/场景身份和全部缓存场景顺序相符",
+    "20个已完成候选的评分及完整判据均可从缓存精确复算，随机状态可恢复",
+    "在解压后的两份冻结环境实际重跑既有停车开发例，各自所有结果字段与原记录完全相等"
+  ],
+  "limitations": [
+    "仅重复两个既有开发基线，不属于独立性能验证，也未运行最终集",
+    "恢复包不包含Python解释器或虚拟环境，依赖版本和命令在包内记录",
+    "B续训重新初始化物理环境及随机序列；D未完成单场景需要重跑",
+    "本次只检查读取、状态和仿真复现，不启动重复训练或搜索",
+    "原任务继续前进，本包是固定时间的恢复点，接续时先检查有无更新结果"
+  ],
+  "ongoing_processes_untouched": true,
+  "final_dataset_used": false
+}
