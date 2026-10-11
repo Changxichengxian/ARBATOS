@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "stage": "reference-screening",
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+  "learning_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning",
+  "jobs": [
+    {
+      "id": "D-reference-41-search",
+      "kind": "search",
+      "arguments": [
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\D-reference\\41\\search",
+        "--cases",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\development.json",
+        "--seed",
+        "41",
+        "--family",
+        "reference",
+        "--population",
+        "12",
+        "--generations",
+        "6",
+        "--deadline",
+        "2026-10-14T02:10:00+08:00"
+      ]
+    },
+    {
+      "id": "baseline-validation-reference",
+      "kind": "evaluate",
+      "arguments": [
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\baselines\\validation-reference",
+        "--cases",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\validation.json",
+        "--baseline-only",
+        "--action-mode",
+        "reference"
+      ]
+    },
+    {
+      "id": "D-reference-41-evaluate",
+      "kind": "evaluate",
+      "arguments": [
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\D-reference\\41\\evaluation",
+        "--cases",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\validation.json",
+        "--policy",
+        "{job:D-reference-41-search}",
+        "--baseline-cache",
+        "{job:baseline-validation-reference}"
+      ]
+    },
+    {
+      "id": "D-reference-73-search",
+      "kind": "search",
+      "arguments": [
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\D-reference\\73\\search",
+        "--cases",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\development.json",
+        "--seed",
+        "73",
+        "--family",
+        "reference",
+        "--population",
+        "12",
+        "--generations",
+        "6",
+        "--deadline",
+        "2026-10-14T02:10:00+08:00"
+      ]
+    },
+    {
+      "id": "D-reference-73-evaluate",
+      "kind": "evaluate",
+      "arguments": [
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\D-reference\\73\\evaluation",
+        "--cases",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\validation.json",
+        "--policy",
+        "{job:D-reference-73-search}",
+        "--baseline-cache",
+        "{job:baseline-validation-reference}"
+      ]
+    }
+  ]
+}

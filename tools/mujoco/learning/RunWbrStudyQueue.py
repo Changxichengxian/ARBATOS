@@ -127,11 +127,13 @@ def policy_artifacts(directory):
     result = {path.name: sha256_file(path) for path in files}
     if len(files) < 2:
         coefficients = contract.get("coefficients")
-        if contract.get("kind") != "linear" or not isinstance(coefficients, list):
+        kind = contract.get("kind")
+        if kind not in ("linear","reference_constant") or not isinstance(coefficients, list):
             raise RuntimeError(f"策略产物不完整：{directory}")
         encoded = json.dumps(coefficients, ensure_ascii=False, sort_keys=True,
                              separators=(",", ":")).encode("utf-8")
-        result["embedded_linear_coefficients"] = hashlib.sha256(encoded).hexdigest()
+        key = "embedded_linear_coefficients" if kind == "linear" else "embedded_reference_coefficients"
+        result[key] = hashlib.sha256(encoded).hexdigest()
     return contract, result
 
 
@@ -151,10 +153,16 @@ def validate_output_binding(kind, directory, arguments, source, script_sha256,
             raise RuntimeError(f"训练源码绑定不匹配：{directory}")
     elif kind == "search":
         state = json.loads((directory/"search-state.json").read_text(encoding="utf-8"))
+        encoded = json.dumps({key:value for key,value in state.items() if key != "state_sha256"},
+                             ensure_ascii=False,sort_keys=True,separators=(",", ":")).encode("utf-8")
+        if state.get("state_sha256") != hashlib.sha256(encoded).hexdigest():
+            raise RuntimeError(f"搜索状态内容哈希不匹配：{directory}")
         cases = json.loads(Path(option(arguments, "--cases")).read_text(encoding="utf-8"))
         expected = {"seed": int(option(arguments, "--seed", 41)),
+                    "family": option(arguments,"--family","linear"),
                     "scenarios_sha256": cases["cases_sha256"],
-                    "env_config": {"reward_mode": "dense", "action_mode": "symmetric",
+                    "env_config": {"reward_mode": "dense", "action_mode":
+                                   "reference" if option(arguments,"--family","linear") == "reference" else "symmetric",
                                    "gas_force": 450.0},
                     "generations": int(option(arguments, "--generations", 5)),
                     "population": int(option(arguments, "--population", 8)), **source}
@@ -238,6 +246,16 @@ def is_complete(kind, directory, arguments, source, script_sha256,
     if kind == "train":
         expected = int(arguments[arguments.index("--steps")+1])
         return int(status.get("steps", 0)) >= expected
+    state = json.loads(metadata.read_text(encoding="utf-8"))
+    if state.get("status") != "completed" or state.get("generation",0) < state["binding"]["generations"]:
+        return False
+    policy = json.loads((directory/"policy.json").read_text(encoding="utf-8"))
+    best = state.get("best") or {}
+    expected = dict(state["binding"],
+                    kind="reference_constant" if state["binding"]["family"] == "reference" else "linear",
+                    coefficients=best.get("coefficients"),development_score=best.get("score"))
+    if not best or any(policy.get(key) != value for key,value in expected.items()):
+        raise RuntimeError(f"搜索导出策略与完成状态不匹配：{directory}")
     return True
 
 

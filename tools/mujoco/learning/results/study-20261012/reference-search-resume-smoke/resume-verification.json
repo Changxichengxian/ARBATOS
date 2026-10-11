@@ -1,0 +1,404 @@
+{
+  "pass_all": true,
+  "elapsed_s": 532.395744562149,
+  "experiment_identity": "419ae6b535c37b453b622caeb3f452eccc0f8ed5c076992f224c8669fa5b5672",
+  "library_sha256": "1181b692d52915926ec5825269f66bb2fe1e75169d82ecb5dd4391aa96cd2858",
+  "physical_files_unchanged": 104,
+  "frozen_files": 155,
+  "interrupted_state_sha256": "ea6eea627985ea91d00ad6414df56f6399c73cd491967ec7f1cfe513221be3a2",
+  "final_state_sha256": "5ef7c64063073a96525472cfa2c335cd1cdd02513e85a24e2fd2750315b21961",
+  "search_attempts": 2,
+  "stop_mode": "graceful",
+  "completed_candidates": 4,
+  "completed_evaluation_pairs": 6,
+  "baseline_exact_match": true,
+  "partial_results_preserved": true,
+  "population_and_rng_preserved": true,
+  "exported_policy_exact_match": true,
+  "best": {
+    "generation": 0,
+    "index": 1,
+    "coefficients": [
+      0.0,
+      -0.5,
+      0.0
+    ],
+    "score": 0.005616038608161984,
+    "checks": {
+      "physical_complete": {
+        "pass": true
+      },
+      "all_case_guards": {
+        "pass": true
+      },
+      "stop_mean_improvement": {
+        "pass": false,
+        "paired_cases": 2,
+        "baseline_mean": 0.2982541796260695,
+        "learned_mean": 0.29658219634712374,
+        "metric": "velocity_rms_mps",
+        "improvement_fraction": 0.005605900581316159
+      },
+      "push_mean_improvement": {
+        "pass": false,
+        "paired_cases": 2,
+        "baseline_mean": 0.13601682219789585,
+        "learned_mean": 0.13402143459067173,
+        "metric": "velocity_error_rms_mps",
+        "improvement_fraction": 0.014670153110333373
+      },
+      "hip_heat_mean": {
+        "pass": true,
+        "baseline_mean": 148.82678282051992,
+        "learned_mean": 147.6142709185277,
+        "change_fraction": -0.00814713507214948
+      },
+      "motion_quality": {
+        "pass": true,
+        "protocol": "motion-quality-20261012",
+        "thresholds": {
+          "relative_regression": 0.05,
+          "drive_tracking_absolute_mps": 0.005,
+          "world_speed_absolute_mps": 0.001,
+          "progress_absolute_m": 0.005,
+          "lateral_absolute_m": 0.005,
+          "yaw_absolute_deg": 0.5
+        },
+        "cases": [
+          {
+            "id": "development-combined-000",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0056447115546868765,
+                "learned": 0.005486767119027454,
+                "delta": -0.00015794443565942274,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.2620787302386796,
+                "learned": 0.2540588417934134,
+                "delta": -0.008019888445266188,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.7763550364823455,
+                "learned": 0.7713867859670157,
+                "delta": -0.004968250515329786,
+                "allowed_increase": 0.03881775182411728
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.7763558475864453,
+                "learned": 0.7713878597353174,
+                "delta": -0.004967987851127842,
+                "allowed_increase": 0.038817792379322265
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.1290964798305838,
+                "learned": 0.12955392867540774,
+                "delta": 0.0004574488448239322,
+                "allowed_increase": 0.0064548239915291905
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.12909693225684662,
+                "learned": 0.12955419415737107,
+                "delta": 0.00045726190052444715,
+                "allowed_increase": 0.006454846612842332
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.4455046069403695,
+                "learned": 0.44549465807883976,
+                "delta": -9.9488615297183e-06,
+                "allowed_increase": 0.022275230347018476
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.12391301295277032,
+                "learned": 0.12381022592243193,
+                "delta": -0.00010278703033839154,
+                "allowed_increase": 0.006195650647638516
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.3665650243190184,
+                "learned": -1.366297839396454,
+                "delta": 0.00026718492256438964,
+                "allowed_increase": 0.06832825121595092,
+                "baseline_progress_m": 1.3665650243190184,
+                "learned_progress_m": 1.366297839396454
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "development-combined-001",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0032865011290655033,
+                "learned": 0.0032453917348606656,
+                "delta": -4.110939420483772e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.34348008086637016,
+                "learned": 0.33950630933579146,
+                "delta": -0.003973771530578707,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.33014606308765077,
+                "learned": 0.33103399418552293,
+                "delta": 0.0008879310978721633,
+                "allowed_increase": 0.01650730315438254
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.3301470970813717,
+                "learned": 0.3310351212179255,
+                "delta": 0.0008880241365538111,
+                "allowed_increase": 0.016507354854068585
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.09240653515183873,
+                "learned": 0.08438907967631616,
+                "delta": -0.008017455475522572,
+                "allowed_increase": 0.004620326757591937
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.09240748782192257,
+                "learned": 0.0843901177059939,
+                "delta": -0.008017370115928665,
+                "allowed_increase": 0.004620374391096129
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.18109322628902927,
+                "learned": 0.18104436045391278,
+                "delta": -4.886583511648501e-05,
+                "allowed_increase": 0.009054661314451463
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.05753746258937277,
+                "learned": 0.05753210232740006,
+                "delta": -5.3602619727102785e-06,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -0.8652689018487979,
+                "learned": -0.8651125204418117,
+                "delta": 0.00015638140698615022,
+                "allowed_increase": 0.0432634450924399,
+                "baseline_progress_m": 0.8652689018487979,
+                "learned_progress_m": 0.8651125204418117
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "development-push-000",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.00048077095427544105,
+                "learned": 0.000523988167533189,
+                "delta": 4.321721325774796e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.1070791806547859,
+                "learned": 0.1326884580792228,
+                "delta": 0.025609277424436902,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.19490268237122554,
+                "learned": 0.19271290994113272,
+                "delta": -0.002189772430092829,
+                "allowed_increase": 0.009745134118561278
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.19490356744851198,
+                "learned": 0.19271385298566834,
+                "delta": -0.002189714462843634,
+                "allowed_increase": 0.0097451783724256
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "development-push-001",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0009646742646300121,
+                "learned": 0.0009082213170086051,
+                "delta": -5.645294762140704e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.2769389929414224,
+                "learned": 0.25222250701123144,
+                "delta": -0.024716485930190935,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.07712972298671035,
+                "learned": 0.07532897872798411,
+                "delta": -0.0018007442587262418,
+                "allowed_increase": 0.0038564861493355176
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.07713365559114374,
+                "learned": 0.07533237173719792,
+                "delta": -0.0018012838539458176,
+                "allowed_increase": 0.003856682779557187
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "development-stop-000",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0018922369320101915,
+                "learned": 0.001955603965801972,
+                "delta": 6.336703379178051e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.11311956388363202,
+                "learned": 0.3613327822698075,
+                "delta": 0.24821321838617544,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.17373904171219937,
+                "learned": 0.1723275219875616,
+                "delta": -0.0014115197246377664,
+                "allowed_increase": 0.008686952085609968
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.1737392363693955,
+                "learned": 0.17232803592140858,
+                "delta": -0.0014112004479869267,
+                "allowed_increase": 0.008686961818469776
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.18184311094102965,
+                "learned": 0.181769149299185,
+                "delta": -7.396164184464427e-05,
+                "allowed_increase": 0.009092155547051483
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.054588296497994696,
+                "learned": 0.05472429736582968,
+                "delta": 0.00013600086783498166,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -0.8567887399384445,
+                "learned": -0.8568830344650528,
+                "delta": -9.429452660825177e-05,
+                "allowed_increase": 0.04283943699692223,
+                "baseline_progress_m": 0.8567887399384445,
+                "learned_progress_m": 0.8568830344650528
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "development-stop-001",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0022995557757383178,
+                "learned": 0.0022075890471385897,
+                "delta": -9.196672859972804e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.20339255573116435,
+                "learned": 0.22593568142234519,
+                "delta": 0.022543125691180832,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.4227690246806972,
+                "learned": 0.420836525125825,
+                "delta": -0.0019324995548722357,
+                "allowed_increase": 0.021138451234034863
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.4227693595024163,
+                "learned": 0.42083686504797174,
+                "delta": -0.0019324944544445444,
+                "allowed_increase": 0.021138467975120815
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.4442663538577379,
+                "learned": 0.4442481111141028,
+                "delta": -1.824274363509959e-05,
+                "allowed_increase": 0.022213317692886897
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.1371224398692253,
+                "learned": 0.13746930746554709,
+                "delta": 0.0003468675963217982,
+                "allowed_increase": 0.006856121993461264
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.3923318256653554,
+                "learned": -1.3927791494156585,
+                "delta": -0.0004473237503030969,
+                "allowed_increase": 0.06961659128326778,
+                "baseline_progress_m": 1.3923318256653554,
+                "learned_progress_m": 1.3927791494156585
+              }
+            },
+            "pass": true
+          }
+        ]
+      }
+    }
+  },
+  "comparison_note": "独立评价会额外写入controller标签；先核对标签，再除去这一元数据字段，其余场景、指标和运动质量逐项完全相等。初次全对象比较因这6个标签停止，未重跑或更改物理结果。",
+  "files": {
+    "D-reference\\41\\search\\search-state.json": "24edaffbb2ce17dc493605a7fdcc554fd586e82f47c26d93945939e6cee05257",
+    "plan.json": "7e2e42301bc6f8feb18f0434cc411b5e11a4c92226d0f7923636c1860d124bfa",
+    "queue-state.json": "a1132daa97ea6972d3d56803e1af29c78867348f9aebf8ad8e3f18060dc4625c",
+    "D-reference\\41\\evaluation\\summary.json": "98814efb1d578bd290f02a208af877e91b5967208287dd4db4a88de29426a77d"
+  },
+  "scope": "只验证开发短流程和实际恢复，不计入正式筛选，不作为强化学习或最终性能成功"
+}

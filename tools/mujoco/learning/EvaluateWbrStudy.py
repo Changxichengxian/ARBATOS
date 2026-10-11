@@ -312,9 +312,11 @@ def policy_artifacts(directory: Path) -> dict[str, str]:
     contract_data = json.loads(contract.read_text(encoding="utf-8"))
     if len(files) < 2:
         coefficients = contract_data.get("coefficients")
-        if contract_data.get("kind") != "linear" or not isinstance(coefficients, list):
-            raise FileNotFoundError("策略缺少 policy.npz 或线性系数")
-        result["embedded_linear_coefficients"] = hashlib.sha256(
+        kind = contract_data.get("kind")
+        if kind not in ("linear","reference_constant") or not isinstance(coefficients, list):
+            raise FileNotFoundError("策略缺少 policy.npz 或参数")
+        key = "embedded_linear_coefficients" if kind == "linear" else "embedded_reference_coefficients"
+        result[key] = hashlib.sha256(
             canonical_bytes(coefficients)).hexdigest()
     return result
 
@@ -619,7 +621,7 @@ def main():
     parser.add_argument("--create-lock", type=Path)
     parser.add_argument("--lock", type=Path)
     parser.add_argument("--reward-mode", default="dense", choices=("dense", "legacy"))
-    parser.add_argument("--action-mode", default="full", choices=("full", "symmetric"))
+    parser.add_argument("--action-mode", default="full", choices=("full", "symmetric", "reference"))
     parser.add_argument("--record", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--deadline", default="2026-10-14T02:10:00+08:00")

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 
-def screening_gate(report):
+def screening_gate(report, strict_guards=False):
     checks = report["checks"]
     means = [checks[name].get("improvement_fraction", -1.) for name in
              ("stop_mean_improvement", "push_mean_improvement")]
@@ -19,6 +19,10 @@ def screening_gate(report):
                  heat_mean=checks["hip_heat_mean"].get("change_fraction", 1.) <= .08)
     primary_gates_pass = all(gates.values())
     gates["motion_quality"] = checks.get("motion_quality",{}).get("pass",False)
+    if strict_guards:
+        gates["all_case_guards"] = checks["all_case_guards"]["pass"]
+        gates["heat_mean"] = checks["hip_heat_mean"]["pass"]
+        primary_gates_pass = all(value for key,value in gates.items() if key != "motion_quality")
     return dict(pass_all=all(gates.values()), checks=gates,
                 primary_gates_pass=primary_gates_pass,
                 motion_quality_pending="motion_quality" not in checks,
@@ -57,9 +61,9 @@ def summarize(queue_path, quality_map=None):
         route, seed = job_id.removesuffix("-evaluate").rsplit("-",1)
         candidates.append(dict(route=route, seed=int(seed),
             summary_sha256=hashlib.sha256(summary_path.read_bytes()).hexdigest(),
-            summary_path=str(summary_path), gate=screening_gate(summary["acceptance"])))
+            summary_path=str(summary_path), gate=screening_gate(summary["acceptance"],route == "D-reference")))
     routes = []
-    for name in ("A-full", "B-symmetric", "C-linear"):
+    for name in ("A-full", "B-symmetric", "C-linear", "D-reference"):
         rows = [row for row in candidates if row["route"] == name]
         complete = {row["seed"] for row in rows} == {41,73}
         eligible = complete and all(row["gate"]["pass_all"] for row in rows)

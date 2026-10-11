@@ -34,26 +34,24 @@
     "三参数参考/阻尼接口7项检查与旧动作5项检查通过，6例零修正与原冻结控制逐项完全一致",
     "A-full种子41完成45例独立配对验证；实际评价权重、完整结果与筛选结论已保存",
     "参考减速/共享位置与速度反馈的48条开发诊断完成；逐场景实际动作与登记完全相符",
-    "后续诊断缓存的模式/参数/身份/内容保护5项测试在Python -O下通过"
+    "后续诊断缓存的模式/参数/身份/内容保护5项测试在Python -O下通过",
+    "三参数联合约束搜索在启动前完成登记；7项评分、导出策略和状态保护检查通过",
+    "三参数4候选1代短流程实际中断恢复成功，6组导出配对评价逐项复现，原6例零修正基线完全相同",
+    "独立启动D参考参数路线两个种子的正式开发搜索及45例验证队列，最终集仍未使用"
   ],
-  "next": "继续冻结A/B/C其余种子与方案，A-full-41已不满足晋级条件，不重复训练或追加质量评价。满足原筛选门的其他候选须用含运动质量门的评价器补测，再独立训练101/211/307并锁定最终60例。参考减速48条开发诊断已完成、未有可采用变体；据此可另登记三参数联合约束搜索，先研究较小额外减速配合速度反馈增强和位置反馈减弱，所有原验收约束保持不变。最终集仍未运行。",
+  "next": "继续冻结A/B/C其余种子与方案，同时运行已登记D三参数联合约束搜索。A-full-41已不满足晋级条件，不追加质量评价；其他满足原筛选门的候选须补运动质量评价。D的两个种子均须过独立45例、两均值5%、全部原逐例保护/热均值5%/运动质量后才可扩展。各路线完成后比较，正式101/211/307从头独立运行并全部锁定后才使用最终60例。没有方案通过则报告负结果，不复用最终集调参。",
   "active_process": {
     "queue_pid": 8796,
-    "current_job_at_update": "A-full-73-train",
+    "current_job_at_update": "A-full-73-evaluate",
+    "queue_status_at_update": "running",
     "current_job_status_at_update": {
-      "status": "running",
-      "steps": 24576,
-      "segment_seconds": 300.57121319998987,
-      "steps_per_s": 81.76431714253343,
-      "episodes": 46,
-      "failures": 0,
-      "pid": 11960
+      "status": "running"
     },
     "note": "接续前须核对实际进程及命令，避免重复启动；这是保存时的快照"
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T03:33:24.141416+08:00",
+  "updated_at": "2026-10-12T04:00:24.370457+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -179,5 +177,27 @@
         "validation-stop-017"
       ]
     }
+  },
+  "reference_search": {
+    "status_at_update": "running",
+    "queue_pid_at_update": 21996,
+    "current_job_at_update": "D-reference-41-search",
+    "registration": "tools/mujoco/learning/results/study-20261012/参考参数搜索登记.json",
+    "smoke_evidence": "tools/mujoco/learning/results/study-20261012/reference-search-resume-smoke",
+    "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen",
+    "queue_plan": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\plan.json",
+    "queue_state": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\queue-state.json",
+    "experiment_identity": "419ae6b535c37b453b622caeb3f452eccc0f8ed5c076992f224c8669fa5b5672",
+    "library_sha256": "1181b692d52915926ec5825269f66bb2fe1e75169d82ecb5dd4391aa96cd2858",
+    "start_command": [
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+      "-u",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\RunWbrStudyQueue.py",
+      "--plan",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\plan.json"
+    ],
+    "resume": "确认本队列及子进程均退出后，按原start_command增加--resume；不得修改冻结目录。已有进程正常运行时不重复启动。",
+    "stop": "在本queue_plan父目录创建stop.request可正常保存停止；原A/B/C有自己的停止文件，用户要求暂停研究时两个队列都应停止。",
+    "scope": "固定三参数优化对照，不能称为强化学习成功；只开发搜索和独立验证，最终60例未使用"
   }
 }

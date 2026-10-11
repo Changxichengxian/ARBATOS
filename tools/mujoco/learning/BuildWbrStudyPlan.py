@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 
-def build_plan(learning, cases, output, python, smoke=False):
+def build_plan(learning, cases, output, python, smoke=False, reference=False):
     learning, cases, output = map(lambda path:Path(path).resolve(), (learning,cases,output))
     deadline = "2026-10-14T02:10:00+08:00"
     jobs = []
@@ -33,7 +33,18 @@ def build_plan(learning, cases, output, python, smoke=False):
             arguments += ["--baseline-cache", "{job:"+cache+"}"]
         add(f"{label}-{seed}-evaluate", "evaluate", arguments)
 
-    if smoke:
+    if reference:
+        cache = None
+        for seed in ((41,) if smoke else (41,73)):
+            job_id = f"D-reference-{seed}-search"
+            add(job_id,"search",["--output",output/"D-reference"/str(seed)/"search",
+                "--cases",cases/"development.json","--seed",seed,"--family","reference",
+                "--population",4 if smoke else 12,"--generations",1 if smoke else 6,
+                "--deadline",deadline])
+            if not smoke and cache is None:
+                cache = baseline("reference")
+            evaluate("D-reference",seed,job_id,cache,split="development" if smoke else "validation")
+    elif smoke:
         source = train("smoke", 41, "full", 1024)
         evaluate("smoke", 41, source, split="development")
     else:
@@ -54,7 +65,8 @@ def build_plan(learning, cases, output, python, smoke=False):
                 "--cases", cases/"development.json", "--seed", seed,
                 "--population", 8, "--generations", 5, "--deadline", deadline])
             evaluate("C-linear", seed, job_id, cache)
-    return dict(schema=1, stage="smoke" if smoke else "screening", deadline=deadline,
+    stage = ("reference-" if reference else "")+("smoke" if smoke else "screening")
+    return dict(schema=1, stage=stage, deadline=deadline,
                 python=str(Path(python).resolve()), learning_directory=str(learning), jobs=jobs)
 
 
@@ -65,8 +77,9 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument("--smoke", action="store_true")
+    parser.add_argument("--reference", action="store_true", help="独立三参数参考对照")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
-    plan = build_plan(args.learning_directory, args.cases, args.output, args.python, args.smoke)
+    plan = build_plan(args.learning_directory, args.cases, args.output, args.python, args.smoke,args.reference)
     (args.output/"plan.json").write_bytes((json.dumps(plan, ensure_ascii=False, indent=2)+"\n").encode("utf-8"))
     print(json.dumps(dict(plan=str((args.output/"plan.json").resolve()), jobs=len(plan["jobs"]))))

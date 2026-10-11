@@ -17,17 +17,32 @@ def linear_action(observation, coefficients):
     return np.clip([0., leg, wheel], -1., 1.).astype(np.float32)
 
 
+def reference_action(coefficients):
+    value = np.asarray(coefficients,dtype=np.float32)
+    if value.shape != (3,) or not np.isfinite(value).all():
+        raise ValueError("参考参数必须为3个有限数")
+    if not 0 <= value[0] <= 1 or np.any(np.abs(value[1:]) > 1):
+        raise ValueError("参考参数超出登记边界")
+    return value.copy()
+
+
 class StudyPolicy:
     def __init__(self, directory):
         directory = Path(directory)
         self.contract = json.loads((directory/"policy.json").read_text(encoding="utf-8"))
         self.kind = self.contract.get("kind", "ppo")
-        if self.kind not in ("ppo", "linear"):
+        if self.kind not in ("ppo", "linear", "reference_constant"):
             raise ValueError("未知策略类型")
         if self.kind == "ppo":
             self.weights = dict(np.load(directory/"policy.npz", allow_pickle=False))
+        elif self.kind == "reference_constant":
+            if self.contract.get("env_config",{}).get("action_mode") != "reference":
+                raise ValueError("参考参数策略不能用于其他动作接口")
+            self.reference = reference_action(self.contract["coefficients"])
 
     def predict(self, observation):
+        if self.kind == "reference_constant":
+            return self.reference.copy()
         if self.kind == "linear":
             value = linear_action(observation, self.contract["coefficients"])
             if self.contract["env_config"]["action_mode"] == "full":

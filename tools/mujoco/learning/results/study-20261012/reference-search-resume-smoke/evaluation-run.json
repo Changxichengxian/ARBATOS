@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "binding": {
+    "schema": 1,
+    "split": "development",
+    "scenarios_sha256": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+    "library_sha256": "1181b692d52915926ec5825269f66bb2fe1e75169d82ecb5dd4391aa96cd2858",
+    "experiment_identity": "419ae6b535c37b453b622caeb3f452eccc0f8ed5c076992f224c8669fa5b5672",
+    "evaluator_sha256": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+    "env_config": {
+      "reward_mode": "dense",
+      "action_mode": "reference",
+      "gas_force": 450.0
+    },
+    "policy_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\search",
+    "policy_artifacts": {
+      "policy.json": "31936fccaacdfad3239e0c8e2cf4b1b307ea3f9d609b785b2586723192e5976c",
+      "embedded_reference_coefficients": "397ba9c56d20361d6b40191cfaeae7036daaece440ae3a97d6067cd8ea9674cd"
+    },
+    "policy_lock_sha256": null,
+    "baseline_cache_sha256": null,
+    "record": false
+  },
+  "binding_sha256": "32c296bd7e945d35902a3f221ec305852b8b203a180b0c4c2fc1b6a2f61b874e"
+}

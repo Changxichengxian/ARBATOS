@@ -1,0 +1,183 @@
+{
+  "schema": 1,
+  "plan_sha256": "7e2e42301bc6f8feb18f0434cc411b5e11a4c92226d0f7923636c1860d124bfa",
+  "jobs": {
+    "D-reference-41-search": {
+      "status": "completed",
+      "attempts": [
+        {
+          "command": [
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "-u",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\SearchWbrLinear.py",
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\search",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\development.json",
+            "--seed",
+            "41",
+            "--family",
+            "reference",
+            "--population",
+            "4",
+            "--generations",
+            "1",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\logs\\D-reference-41-search-01.log",
+          "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\search",
+          "job_binding_sha256": "16e1b9f5a1cec3b3703a4404f2d1fe14e84226ea269cf21c9319486e2dae0321",
+          "restart_without_checkpoint": false,
+          "started_at": "2026-10-11T19:51:00.240416+00:00",
+          "pid": 8044,
+          "stop_requested_at": "2026-10-11T19:52:30.264684+00:00",
+          "stop_mode": "graceful",
+          "exit_code": 0,
+          "finished_at": "2026-10-11T19:52:35.504164+00:00"
+        },
+        {
+          "command": [
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "-u",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\SearchWbrLinear.py",
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\search",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\development.json",
+            "--seed",
+            "41",
+            "--family",
+            "reference",
+            "--population",
+            "4",
+            "--generations",
+            "1",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00",
+            "--resume"
+          ],
+          "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\logs\\D-reference-41-search-02.log",
+          "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\search",
+          "job_binding_sha256": "16e1b9f5a1cec3b3703a4404f2d1fe14e84226ea269cf21c9319486e2dae0321",
+          "restart_without_checkpoint": false,
+          "started_at": "2026-10-11T19:52:35.733264+00:00",
+          "pid": 34464,
+          "exit_code": 0,
+          "finished_at": "2026-10-11T19:56:05.773314+00:00"
+        }
+      ],
+      "job_binding": {
+        "payload": {
+          "kind": "search",
+          "arguments": [
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\search",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\development.json",
+            "--seed",
+            "41",
+            "--family",
+            "reference",
+            "--population",
+            "4",
+            "--generations",
+            "1",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+          "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\SearchWbrLinear.py",
+          "script_sha256": "5b93f26b60b6a1e041a0669c3237a88a56a102cf52a66f5b561fbf75ae2bf28d",
+          "source_hashes": {
+            "SearchWbrLinear.py": "5b93f26b60b6a1e041a0669c3237a88a56a102cf52a66f5b561fbf75ae2bf28d",
+            "EvaluateWbrStudy.py": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+            "BuildWbrStudyCases.py": "91b1e3d129fd70cdea9b5ffa5cca5a6a2880a8b12568b3671d3534846f69b582"
+          },
+          "source": {
+            "library_sha256": "1181b692d52915926ec5825269f66bb2fe1e75169d82ecb5dd4391aa96cd2858",
+            "experiment_identity": "419ae6b535c37b453b622caeb3f452eccc0f8ed5c076992f224c8669fa5b5672"
+          },
+          "inputs": {
+            "--cases": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\development.json",
+              "sha256": "23916c09b8bd85034dd9ec626edbb879c6fa4345eaa2482d4f3ed8f7865f7ca7"
+            }
+          }
+        },
+        "sha256": "16e1b9f5a1cec3b3703a4404f2d1fe14e84226ea269cf21c9319486e2dae0321"
+      },
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\search"
+    },
+    "D-reference-41-evaluate": {
+      "status": "completed",
+      "attempts": [
+        {
+          "command": [
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "-u",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\evaluation",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\development.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\search"
+          ],
+          "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\logs\\D-reference-41-evaluate-01.log",
+          "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\evaluation",
+          "job_binding_sha256": "76c5c123454f2a8dc0a280728150192ccef514862c1bea044a90e5f617d4bdd8",
+          "restart_without_checkpoint": false,
+          "started_at": "2026-10-11T19:56:05.820933+00:00",
+          "pid": 21580,
+          "exit_code": 0,
+          "finished_at": "2026-10-11T19:58:25.850285+00:00"
+        }
+      ],
+      "job_binding": {
+        "payload": {
+          "kind": "evaluate",
+          "arguments": [
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\evaluation",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\development.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\search"
+          ],
+          "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+          "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+          "script_sha256": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+          "source_hashes": {
+            "EvaluateWbrStudy.py": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405"
+          },
+          "source": {
+            "library_sha256": "1181b692d52915926ec5825269f66bb2fe1e75169d82ecb5dd4391aa96cd2858",
+            "experiment_identity": "419ae6b535c37b453b622caeb3f452eccc0f8ed5c076992f224c8669fa5b5672"
+          },
+          "inputs": {
+            "--cases": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\development.json",
+              "sha256": "23916c09b8bd85034dd9ec626edbb879c6fa4345eaa2482d4f3ed8f7865f7ca7"
+            },
+            "--policy": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\search",
+              "files": [
+                {
+                  "name": "policy.json",
+                  "sha256": "31936fccaacdfad3239e0c8e2cf4b1b307ea3f9d609b785b2586723192e5976c"
+                }
+              ]
+            }
+          }
+        },
+        "sha256": "76c5c123454f2a8dc0a280728150192ccef514862c1bea044a90e5f617d4bdd8"
+      },
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\evaluation"
+    }
+  },
+  "status": "completed",
+  "pid": 1328,
+  "current_job": null,
+  "updated_at": "2026-10-11T19:58:25.871241+00:00"
+}

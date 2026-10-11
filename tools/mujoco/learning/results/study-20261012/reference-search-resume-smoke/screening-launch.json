@@ -1,0 +1,15 @@
+{
+  "started_at": "2026-10-12T03:59:56.028172+08:00",
+  "wrapper_pid": 34500,
+  "command": [
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+    "-u",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\tools\\mujoco\\learning\\RunWbrStudyQueue.py",
+    "--plan",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\plan.json"
+  ],
+  "plan_sha256": "2003a2c2df5eb8941a44a860373521e798954beb58bea456ba7281b34c298e69",
+  "experiment_identity": "419ae6b535c37b453b622caeb3f452eccc0f8ed5c076992f224c8669fa5b5672",
+  "library_sha256": "1181b692d52915926ec5825269f66bb2fe1e75169d82ecb5dd4391aa96cd2858",
+  "smoke_report_sha256": "256d651d0419272cf3427b9ce3e56705cdc1255323c850d0f73828716103aa47"
+}

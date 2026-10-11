@@ -1,0 +1,29 @@
+{
+  "scope": "开发短流程与实际中断恢复的证据，不是正式筛选或最终性能成功；screening文件是后续队列入口",
+  "files": {
+    "resume-verification.json": "256d651d0419272cf3427b9ce3e56705cdc1255323c850d0f73828716103aa47",
+    "interrupted-search-state.json": "b8cea7bdc3fd63a1bead85c4358782caf7a4bc8571a748e9f95adaa20c4a693e",
+    "search-state.json": "24edaffbb2ce17dc493605a7fdcc554fd586e82f47c26d93945939e6cee05257",
+    "policy.json": "31936fccaacdfad3239e0c8e2cf4b1b307ea3f9d609b785b2586723192e5976c",
+    "summary.json": "98814efb1d578bd290f02a208af877e91b5967208287dd4db4a88de29426a77d",
+    "evaluation-run.json": "c9d5221bd2624218cad5346eac7371fa37fec25c4667b90db7badc9095b25cfa",
+    "queue-state.json": "a1132daa97ea6972d3d56803e1af29c78867348f9aebf8ad8e3f18060dc4625c",
+    "smoke-plan.json": "7e2e42301bc6f8feb18f0434cc411b5e11a4c92226d0f7923636c1860d124bfa",
+    "screening-plan.json": "2003a2c2df5eb8941a44a860373521e798954beb58bea456ba7281b34c298e69",
+    "screening-launch.json": "5be1425dcad508d3b5b169d66d0828a1d5b157b336b6ab9e95ec886fbd0294b0",
+    "frozen-manifest.json": "34bbd8ef20fe2c863d392f0a6d9c6cad2a2244ceda8252fe9d4e567d803660be"
+  },
+  "source_paths": {
+    "resume-verification.json": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\resume-verification.json",
+    "interrupted-search-state.json": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\interrupted-search-state.json",
+    "search-state.json": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\search\\search-state.json",
+    "policy.json": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\search\\policy.json",
+    "summary.json": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\evaluation\\summary.json",
+    "evaluation-run.json": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\D-reference\\41\\evaluation\\run.json",
+    "queue-state.json": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\queue-state.json",
+    "smoke-plan.json": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\smoke\\plan.json",
+    "screening-plan.json": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\plan.json",
+    "screening-launch.json": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\launch.json",
+    "frozen-manifest.json": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen\\manifest.json"
+  }
+}
