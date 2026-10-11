@@ -1,0 +1,52 @@
+{
+  "kind": "reference_constant",
+  "seed": 73,
+  "scenarios_sha256": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+  "library_sha256": "1181b692d52915926ec5825269f66bb2fe1e75169d82ecb5dd4391aa96cd2858",
+  "experiment_identity": "419ae6b535c37b453b622caeb3f452eccc0f8ed5c076992f224c8669fa5b5672",
+  "env_config": {
+    "reward_mode": "dense",
+    "action_mode": "reference",
+    "gas_force": 450.0
+  },
+  "generations": 6,
+  "population": 12,
+  "family": "reference",
+  "coefficient_lower": [
+    0.0,
+    -1.0,
+    -1.0
+  ],
+  "coefficient_upper": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "initial_mean": [
+    0.08,
+    -0.5,
+    0.5
+  ],
+  "initial_std": [
+    0.08,
+    0.3,
+    0.25
+  ],
+  "minimum_std": [
+    0.025,
+    0.08,
+    0.08
+  ],
+  "source_hashes": {
+    "SearchWbrLinear.py": "5b93f26b60b6a1e041a0669c3237a88a56a102cf52a66f5b561fbf75ae2bf28d",
+    "EvaluateWbrStudy.py": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+    "BuildWbrStudyCases.py": "91b1e3d129fd70cdea9b5ffa5cca5a6a2880a8b12568b3671d3534846f69b582"
+  },
+  "coefficients": [
+    0.008276367516208747,
+    -0.6015197409478568,
+    0.19662632814881242
+  ],
+  "development_score": 0.036376501507458914,
+  "created_at": "2026-10-11T23:48:02.143878+00:00"
+}
