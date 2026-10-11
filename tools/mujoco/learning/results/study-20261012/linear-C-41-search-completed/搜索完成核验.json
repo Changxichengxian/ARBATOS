@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "created_at": "2026-10-12T07:08:07.910653+08:00",
+  "search_completed": true,
+  "seed": 41,
+  "generations": 5,
+  "population": 8,
+  "evaluations": 40,
+  "policy_sha256": "e4018eb8134d20796270c5e82ce48b4f4d819b51da953a94ac6bee6deb63a11a",
+  "search_state_sha256": "fc3c94e0adf746e61b7666fb10cea138bbcd0ec76ca378cea28372bc7a853203",
+  "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+  "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+  "best_coefficients": [
+    -3.2457513313577357,
+    0.3232702197468701,
+    -2.5365164291865865,
+    -0.2917769674360716,
+    -0.21190826990804928,
+    0.12498899759187512
+  ],
+  "best_score": 0.030026578894387253,
+  "development_checks": {
+    "physical_complete": {
+      "pass": true
+    },
+    "all_case_guards": {
+      "pass": false
+    },
+    "stop_mean_improvement": {
+      "pass": false,
+      "paired_cases": 2,
+      "baseline_mean": 0.2982541796260695,
+      "learned_mean": 0.2904537275072423,
+      "metric": "velocity_rms_mps",
+      "improvement_fraction": 0.02615370597188904
+    },
+    "push_mean_improvement": {
+      "pass": false,
+      "paired_cases": 2,
+      "baseline_mean": 0.13601682219789585,
+      "learned_mean": 0.1325140211686181,
+      "metric": "velocity_error_rms_mps",
+      "improvement_fraction": 0.025752704501369683
+    },
+    "hip_heat_mean": {
+      "pass": true,
+      "baseline_mean": 148.82678282051992,
+      "learned_mean": 145.74698817324096,
+      "change_fraction": -0.020693819949014758
+    }
+  },
+  "selection_and_score_consistent": true,
+  "rng_state_restored": true,
+  "chosen_policy_six_cases_replayed": true,
+  "failed_guards": [
+    {
+      "case": "development-combined-001",
+      "metric": "push_peak_velocity_error",
+      "pass": false,
+      "baseline": 0.19832903302458638,
+      "learned": 0.21044141042072378,
+      "delta": 0.012112377396137408,
+      "allowed_increase": 0.00991645165122932
+    }
+  ],
+  "boundary": "旧C完整状态只保留40候选评分和来源，逐场景缓存随代结束清空。实际重放最终策略的6个开发场景，完整评分和保护结果一致，未声称重新仿真40个候选。45例独立评价正在运行，尚未给出筛选结论。"
+}

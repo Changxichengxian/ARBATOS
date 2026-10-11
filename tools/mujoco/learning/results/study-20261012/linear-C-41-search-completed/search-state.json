@@ -1,0 +1,2064 @@
+{
+  "binding": {
+    "seed": 41,
+    "scenarios_sha256": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+    "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+    "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+    "env_config": {
+      "reward_mode": "dense",
+      "action_mode": "symmetric",
+      "gas_force": 450.0
+    },
+    "generations": 5,
+    "population": 8,
+    "coefficient_bounds": [
+      4.0,
+      2.0,
+      4.0,
+      0.5,
+      2.0,
+      0.25
+    ],
+    "source_hashes": {
+      "SearchWbrLinear.py": "ac521794a598e6ce127ad980b60f22f4b71ac042d269a40c42494831b0b700f8",
+      "EvaluateWbrStudy.py": "766a4541a8dab9d0fc911056b64765eb4c0ab55ac4eb1f9a0bcc15286fd73fd6",
+      "BuildWbrStudyCases.py": "91b1e3d129fd70cdea9b5ffa5cca5a6a2880a8b12568b3671d3534846f69b582"
+    }
+  },
+  "status": "completed",
+  "baseline": [
+    {
+      "id": "development-stop-000",
+      "seed": 31000,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.35,
+        "push": -35.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.17373907659501056,
+            "velocity_error_rms_mps": 0.17373907659501056,
+            "peak_speed_mps": 0.4110498267967144,
+            "peak_velocity_error_mps": 0.4110498267967144,
+            "travel_m": 0.33343675022418506,
+            "peak_reverse_mps": 0.07675608900555583,
+            "peak_pitch_deg": 2.5491000087804445,
+            "peak_roll_deg": 0.22181401643724363,
+            "max_closure_m": 7.785005618465804e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 122.24795126030808,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.9298645515006223,
+        "peak_roll_1ms_deg": 0.2218556262135009,
+        "max_closure_1ms_m": 7.857400951570185e-05,
+        "passed": true,
+        "failure": null
+      }
+    },
+    {
+      "id": "development-stop-001",
+      "seed": 31001,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.75,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.42276928265712843,
+            "velocity_error_rms_mps": 0.42276928265712843,
+            "peak_speed_mps": 0.8856065193841742,
+            "peak_velocity_error_mps": 0.8856065193841742,
+            "travel_m": 1.0394801028707943,
+            "peak_reverse_mps": 0.1249507293190674,
+            "peak_pitch_deg": 2.3925603186582536,
+            "peak_roll_deg": 0.19739014968921403,
+            "max_closure_m": 7.268170727644904e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 166.94229503675385,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.830152444689536,
+        "peak_roll_1ms_deg": 0.24996978174009749,
+        "max_closure_1ms_m": 7.838523241450907e-05,
+        "passed": true,
+        "failure": null
+      }
+    },
+    {
+      "id": "development-push-000",
+      "seed": 31002,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.35,
+        "push": -35.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.19490229116142896,
+            "velocity_error_rms_mps": 0.19490229116142896,
+            "peak_speed_mps": 0.4636035057966486,
+            "peak_velocity_error_mps": 0.4636035057966486,
+            "travel_m": 0.15710515285213303,
+            "peak_reverse_mps": 0.4636035057966486,
+            "peak_pitch_deg": 3.68478089391858,
+            "peak_roll_deg": 0.2131034107886591,
+            "max_closure_m": 7.89455645368407e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 182.56175431989817,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.6852272610902364,
+        "peak_roll_1ms_deg": 0.2131271666158094,
+        "max_closure_1ms_m": 7.953164647338246e-05,
+        "passed": true,
+        "failure": null
+      }
+    },
+    {
+      "id": "development-push-001",
+      "seed": 31003,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.75,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.07713135323436274,
+            "velocity_error_rms_mps": 0.07713135323436274,
+            "peak_speed_mps": 0.19977311767090908,
+            "peak_velocity_error_mps": 0.19977311767090908,
+            "travel_m": 0.0813023565774535,
+            "peak_reverse_mps": 0.19977311767090908,
+            "peak_pitch_deg": 1.4823446829484943,
+            "peak_roll_deg": 0.18049459820106478,
+            "max_closure_m": 7.683882438817849e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 76.9240275396649,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 1.4825240513856441,
+        "peak_roll_1ms_deg": 0.18424296642982962,
+        "max_closure_1ms_m": 7.833972177730018e-05,
+        "passed": true,
+        "failure": null
+      }
+    },
+    {
+      "id": "development-combined-000",
+      "seed": 31004,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.75,
+        "push": 35.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.7763557342532149,
+            "velocity_error_rms_mps": 0.7763557342532149,
+            "peak_speed_mps": 0.8788252285504916,
+            "peak_velocity_error_mps": 0.8788252285504916,
+            "travel_m": 0.7622642945578666,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.4959769795209548,
+            "peak_roll_deg": 0.19868027388505086,
+            "max_closure_m": 7.324952442954019e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.12909656384307133,
+            "velocity_error_rms_mps": 0.12909656384307133,
+            "peak_speed_mps": 0.5253767981977009,
+            "peak_velocity_error_mps": 0.5253767981977009,
+            "travel_m": 0.16736717286930025,
+            "peak_reverse_mps": 0.10294362300215894,
+            "peak_pitch_deg": 2.5326019904643804,
+            "peak_roll_deg": 0.1992474384702821,
+            "max_closure_m": 7.013539533563991e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 182.87801468757536,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.0190084394466985,
+        "peak_roll_1ms_deg": 0.21744976855335077,
+        "max_closure_1ms_m": 7.979546155055384e-05,
+        "passed": true,
+        "failure": null
+      }
+    },
+    {
+      "id": "development-combined-001",
+      "seed": 31005,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.35,
+        "push": -12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.33014704549765794,
+            "velocity_error_rms_mps": 0.33014704549765794,
+            "peak_speed_mps": 0.4128398071927644,
+            "peak_velocity_error_mps": 0.4128398071927644,
+            "travel_m": 0.31355039873348733,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.3707829594557346,
+            "peak_roll_deg": 0.18982757490309043,
+            "max_closure_m": 7.661480192443363e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.09240676364446272,
+            "velocity_error_rms_mps": 0.09240676364446272,
+            "peak_speed_mps": 0.19832903302458638,
+            "peak_velocity_error_mps": 0.19832903302458638,
+            "travel_m": 0.15945193596668905,
+            "peak_reverse_mps": 0.19832903302458638,
+            "peak_pitch_deg": 2.1724861274715126,
+            "peak_roll_deg": 0.21673744772668435,
+            "max_closure_m": 7.37840814036782e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 161.40665407891905,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.7451899817015772,
+        "peak_roll_1ms_deg": 0.21691148763363738,
+        "max_closure_1ms_m": 7.842112415221481e-05,
+        "passed": true,
+        "failure": null
+      }
+    }
+  ],
+  "generation": 5,
+  "population": [],
+  "evaluations": [
+    {
+      "generation": 0,
+      "index": 0,
+      "coefficients": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "score": 0.0,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2982541796260695,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.0
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13601682219789585,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.0
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 148.82678282051992,
+          "change_fraction": 0.0
+        }
+      }
+    },
+    {
+      "generation": 0,
+      "index": 1,
+      "coefficients": [
+        0.1875097623358072,
+        -1.1708180763562224,
+        -2.716480789920207,
+        -0.32664100616614267,
+        -0.7176152818724516,
+        0.14820266974116642
+      ],
+      "score": -0.004380742412349295,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": false
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2967824844028512,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.004934365798539342
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13626964243384432,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": -0.0018587424104103967
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 148.2722033009605,
+          "change_fraction": -0.0037263421882082204
+        }
+      }
+    },
+    {
+      "generation": 0,
+      "index": 2,
+      "coefficients": [
+        1.789067491936873,
+        -0.5440478173910653,
+        -1.0931758479636122,
+        0.4823969350646351,
+        0.9027885949894684,
+        -0.10042382245058058
+      ],
+      "score": -0.06461441799138602,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": false
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.3022248817544969,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": -0.013313148313313317
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.1380729507665374,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": -0.01511672258928387
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 149.04226723236707,
+          "change_fraction": 0.0014478873208394472
+        }
+      }
+    },
+    {
+      "generation": 0,
+      "index": 3,
+      "coefficients": [
+        -0.2994239289663557,
+        -0.43029158025002134,
+        0.30308291506712165,
+        0.2197874646650082,
+        -0.27489147947244597,
+        0.04616012837319782
+      ],
+      "score": 0.0007994185592787029,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2976133279644016,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.0021486762146010197
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13595264232393245,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.00047185247329206703
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 148.5857288960714,
+          "change_fraction": -0.001619694519226611
+        }
+      }
+    },
+    {
+      "generation": 0,
+      "index": 4,
+      "coefficients": [
+        1.1365309211340728,
+        0.7835076560925684,
+        -1.2608681910613873,
+        -0.0554491139361945,
+        1.9723534034631014,
+        -0.023246007651481247
+      ],
+      "score": -0.011043339484123671,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.3010329339235721,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": -0.009316732127564675
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13662837106721676,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": -0.00449612672490729
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 148.28213899065824,
+          "change_fraction": -0.0036595820963120085
+        }
+      }
+    },
+    {
+      "generation": 0,
+      "index": 5,
+      "coefficients": [
+        0.059826189599256174,
+        0.44094825078674765,
+        -1.1545211047226864,
+        -0.09743690015984754,
+        1.6782279840043126,
+        0.16205699887294747
+      ],
+      "score": -0.0018337119828818471,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.29831539104492927,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": -0.00020523239250680447
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13623542334856933,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": -0.0016071626078386636
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.8946826868192,
+          "change_fraction": -0.0129822072148853
+        }
+      }
+    },
+    {
+      "generation": 0,
+      "index": 6,
+      "coefficients": [
+        -2.206874817884411,
+        0.0651657951870844,
+        -2.578859407581589,
+        -0.3829368810606543,
+        0.0027364725013915097,
+        0.190569275447211
+      ],
+      "score": 0.0247321699310529,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.29236922980201824,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.019731323904427334
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13325902069439277,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.020275444308577195
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.12279793333022,
+          "change_fraction": -0.018168671229362165
+        }
+      }
+    },
+    {
+      "generation": 0,
+      "index": 7,
+      "coefficients": [
+        -0.16365226963522583,
+        1.4702009910257487,
+        -2.113700815749883,
+        0.03406707276416421,
+        0.08094594493870162,
+        0.010774496378765808
+      ],
+      "score": 0.005378415454290034,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2971410834795662,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.0037320387191180915
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13473296279152072,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.009438975162257446
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 148.65295232942697,
+          "change_fraction": -0.0011680054342274593
+        }
+      }
+    },
+    {
+      "generation": 1,
+      "index": 0,
+      "coefficients": [
+        -2.206874817884411,
+        0.0651657951870844,
+        -2.578859407581589,
+        -0.3829368810606543,
+        0.0027364725013915097,
+        0.190569275447211
+      ],
+      "score": 0.0247321699310529,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.29236922980201824,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.019731323904427334
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13325902069439277,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.020275444308577195
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.12279793333022,
+          "change_fraction": -0.018168671229362165
+        }
+      }
+    },
+    {
+      "generation": 1,
+      "index": 1,
+      "coefficients": [
+        -1.747834941246333,
+        -0.3037124802412091,
+        -2.910642315233213,
+        -0.005281040091360989,
+        0.08287019253833856,
+        0.04803173741705645
+      ],
+      "score": 0.02024056129561552,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": false
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.29304390433249594,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.017469244857208133
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.1336091255854817,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.01770146202144851
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.47376679976983,
+          "change_fraction": -0.015810433956553016
+        }
+      }
+    },
+    {
+      "generation": 1,
+      "index": 2,
+      "coefficients": [
+        -0.7349212543143839,
+        1.115020972400143,
+        -2.4146029682973724,
+        -0.26349551681383226,
+        0.22565177729321428,
+        0.17737592189448348
+      ],
+      "score": 0.011134186875404503,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.29566671201754735,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.008675377531225603
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13452130401397452,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.010995097222205596
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 147.78638257200168,
+          "change_fraction": -0.006990678887233148
+        }
+      }
+    },
+    {
+      "generation": 1,
+      "index": 3,
+      "coefficients": [
+        0.27822484000078407,
+        1.4787773165837237,
+        -2.263589622782915,
+        -0.2680802323947842,
+        -0.012981375619203775,
+        0.047221725399775046
+      ],
+      "score": 0.001956250015838809,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.29794954112875704,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.0010214056268863514
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.1351385140411612,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.00645734948473331
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 148.93788176474388,
+          "change_fraction": 0.0007464983258955726
+        }
+      }
+    },
+    {
+      "generation": 1,
+      "index": 4,
+      "coefficients": [
+        -1.118598521445767,
+        0.9146320138833004,
+        -1.9729720347744686,
+        0.10654118222686434,
+        0.03895968985188263,
+        0.13572816450800945
+      ],
+      "score": 0.013751662281753854,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2950387407668833,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.010780867725701193
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13425057728714485,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.012985488722720095
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 147.60250210176042,
+          "change_fraction": -0.008226212349399131
+        }
+      }
+    },
+    {
+      "generation": 1,
+      "index": 5,
+      "coefficients": [
+        -2.386167712625485,
+        0.29159588829891564,
+        -2.6938823161288514,
+        -0.1480168753857703,
+        -0.044255897471872946,
+        0.031082410226740992
+      ],
+      "score": 0.02647670066870282,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.29196231882298257,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.02109563329833375
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.1330308577313842,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.021952905664618827
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.17685612623742,
+          "change_fraction": -0.01780544230051806
+        }
+      }
+    },
+    {
+      "generation": 1,
+      "index": 6,
+      "coefficients": [
+        -1.2151191806799095,
+        -0.5494512741403575,
+        -2.3775785268255483,
+        -0.07992537433477007,
+        0.23905333242831597,
+        -0.005219987615187674
+      ],
+      "score": 0.01186608808602481,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.29439983241170237,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.012923028335091291
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.1347774720312582,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.009111741817011909
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 147.08387536287046,
+          "change_fraction": -0.01171097986947256
+        }
+      }
+    },
+    {
+      "generation": 1,
+      "index": 7,
+      "coefficients": [
+        -1.6310481294494426,
+        -0.6789742442792089,
+        -1.9244935737244813,
+        -0.21859847135942698,
+        0.07601166658836225,
+        -0.037726541825760226
+      ],
+      "score": 0.017078873248951784,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": false
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2937052175010054,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.015251964384094263
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13399264107439307,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.014881843957196161
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.93340550618075,
+          "change_fraction": -0.012722020045427773
+        }
+      }
+    },
+    {
+      "generation": 2,
+      "index": 0,
+      "coefficients": [
+        -2.386167712625485,
+        0.29159588829891564,
+        -2.6938823161288514,
+        -0.1480168753857703,
+        -0.044255897471872946,
+        0.031082410226740992
+      ],
+      "score": 0.02647670066870282,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.29196231882298257,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.02109563329833375
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.1330308577313842,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.021952905664618827
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.17685612623742,
+          "change_fraction": -0.01780544230051806
+        }
+      }
+    },
+    {
+      "generation": 2,
+      "index": 1,
+      "coefficients": [
+        -2.872128577646377,
+        0.3820243861715027,
+        -2.6617513347271538,
+        -0.25840274128901575,
+        -0.013628897721846268,
+        0.0845361628385495
+      ],
+      "score": 0.02974861563641165,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.291159082599488,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.023788759760137612
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13276736844811293,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.023890087250054703
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 145.86564975323554,
+          "change_fraction": -0.01989650660429454
+        }
+      }
+    },
+    {
+      "generation": 2,
+      "index": 2,
+      "coefficients": [
+        -2.3562275842121023,
+        0.24661205556543017,
+        -2.7623367441636684,
+        -0.13168416692956578,
+        -0.07580161195965286,
+        0.19221716986805082
+      ],
+      "score": 0.026271561404785385,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2920137040793519,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.020923346504452933
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13304317173777974,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.021862372698206678
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.45418246996834,
+          "change_fraction": -0.015942025390771608
+        }
+      }
+    },
+    {
+      "generation": 2,
+      "index": 3,
+      "coefficients": [
+        -2.6279056698874186,
+        0.20319349472961432,
+        -2.4587417978859265,
+        -0.12680271422417427,
+        0.17239979959655188,
+        0.023939873886224095
+      ],
+      "score": 0.02760411818580641,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.29161600298685164,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.02225677657741576
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13301574448020256,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.022064018767670612
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 145.949497976579,
+          "change_fraction": -0.01933311188625786
+        }
+      }
+    },
+    {
+      "generation": 2,
+      "index": 4,
+      "coefficients": [
+        -2.542138768495994,
+        0.40603179829108077,
+        -2.7943206334932644,
+        -0.4559146461204031,
+        0.13579789901877704,
+        0.14848229124769044
+      ],
+      "score": 0.027364623624811832,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2917431482067646,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.021830478377429463
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13296423969280938,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.022442683601629487
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.41207533510521,
+          "change_fraction": -0.016224952523006375
+        }
+      }
+    },
+    {
+      "generation": 2,
+      "index": 5,
+      "coefficients": [
+        -2.7151311669600293,
+        0.06600276291125491,
+        -2.2706204895613795,
+        -0.3314139230349886,
+        -0.12771805458911561,
+        0.06883719101820367
+      ],
+      "score": 0.02755994724001587,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2914274427273329,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.02288898987868493
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13303063954438357,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.021954509782382448
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.5135220278661,
+          "change_fraction": -0.01554330980495322
+        }
+      }
+    },
+    {
+      "generation": 2,
+      "index": 6,
+      "coefficients": [
+        -1.9240111124069492,
+        -0.10298818598190262,
+        -2.5741611508604505,
+        -0.27443297006682166,
+        0.020712859731357527,
+        0.1517547452993438
+      ],
+      "score": 0.02247784041096583,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2929088681236526,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.017922000319051667
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13349714859477146,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.01852472041626163
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.67700443424582,
+          "change_fraction": -0.01444483543574726
+        }
+      }
+    },
+    {
+      "generation": 2,
+      "index": 7,
+      "coefficients": [
+        -2.351602649078926,
+        0.2372038382242112,
+        -2.5628258639405486,
+        -0.12580151662857902,
+        -0.40548939052721944,
+        0.08582738928976329
+      ],
+      "score": 0.0262695453411685,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2920500903999529,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.020801348815613796
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13289602184474938,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.022944223388823848
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.36253095886502,
+          "change_fraction": -0.016557852121460548
+        }
+      }
+    },
+    {
+      "generation": 3,
+      "index": 0,
+      "coefficients": [
+        -2.872128577646377,
+        0.3820243861715027,
+        -2.6617513347271538,
+        -0.25840274128901575,
+        -0.013628897721846268,
+        0.0845361628385495
+      ],
+      "score": 0.02974861563641165,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.291159082599488,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.023788759760137612
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13276736844811293,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.023890087250054703
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 145.86564975323554,
+          "change_fraction": -0.01989650660429454
+        }
+      }
+    },
+    {
+      "generation": 3,
+      "index": 1,
+      "coefficients": [
+        -2.55927519902003,
+        0.2967326721367583,
+        -2.814063444439318,
+        -0.15805379945038117,
+        0.11940040142628397,
+        0.025621228152379365
+      ],
+      "score": 0.02760220305394194,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2916268933327096,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.0222202629370315
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13301542419707704,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.022066373499389336
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.0954237922294,
+          "change_fraction": -0.018352604124920457
+        }
+      }
+    },
+    {
+      "generation": 3,
+      "index": 2,
+      "coefficients": [
+        -2.8351183782977976,
+        0.48902340454436766,
+        -2.2020167925933825,
+        -0.25597574626637043,
+        -0.023724379722859526,
+        0.09493273955549371
+      ],
+      "score": 0.028648441831344837,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2914561852747338,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.022792620575706635
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13274508042975944,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.024053949469398983
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.12441590399433,
+          "change_fraction": -0.018157799727382073
+        }
+      }
+    },
+    {
+      "generation": 3,
+      "index": 3,
+      "coefficients": [
+        -2.573235728160621,
+        0.2973012861623127,
+        -2.663027782179231,
+        -0.18092377733898,
+        0.2212424472310778,
+        -0.015090222223057476
+      ],
+      "score": 0.02747476654721688,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2917130771623133,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.02193130192494519
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13296781265728666,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.022416415053228333
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.11843348487218,
+          "change_fraction": -0.018197996921790027
+        }
+      }
+    },
+    {
+      "generation": 3,
+      "index": 4,
+      "coefficients": [
+        -2.4845121161680934,
+        0.1486744823015146,
+        -2.971459885150959,
+        -0.23543039140783079,
+        -0.09207852249996612,
+        0.024207602348550128
+      ],
+      "score": 0.02766908985796107,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.29167606090202636,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.02205541170383707
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13290829190319248,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.02285401352915495
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.49880414613202,
+          "change_fraction": -0.015642202500576574
+        }
+      }
+    },
+    {
+      "generation": 3,
+      "index": 5,
+      "coefficients": [
+        -2.737572590825808,
+        0.22480890603668963,
+        -2.253691542579526,
+        -0.2918082306887432,
+        0.2028749860078239,
+        0.01853412652957718
+      ],
+      "score": 0.02826213880711749,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.291512906545618,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.022602442952863955
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13293262390463625,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.022675123881164327
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 145.97285839936606,
+          "change_fraction": -0.019176148049881547
+        }
+      }
+    },
+    {
+      "generation": 3,
+      "index": 6,
+      "coefficients": [
+        -2.6989368471673543,
+        0.24090493301700786,
+        -2.265024079768094,
+        -0.2738115966363706,
+        0.0926589738743643,
+        0.10077257707577437
+      ],
+      "score": 0.02780360466499389,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.29158232353624064,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.022369698551059858
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.1329933323860078,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.022228793196543473
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 145.7883865267089,
+          "change_fraction": -0.020415655275403122
+        }
+      }
+    },
+    {
+      "generation": 3,
+      "index": 7,
+      "coefficients": [
+        -2.3466379638846444,
+        0.2535826753079825,
+        -2.313618924968052,
+        -0.12105968238306888,
+        0.1650032728539796,
+        0.09098851210024214
+      ],
+      "score": 0.025542185879153162,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2921978854735429,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.020305814859391202
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13308087823955164,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.021585153298704474
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.39816485490527,
+          "change_fraction": -0.016318420109527443
+        }
+      }
+    },
+    {
+      "generation": 4,
+      "index": 0,
+      "coefficients": [
+        -2.872128577646377,
+        0.3820243861715027,
+        -2.6617513347271538,
+        -0.25840274128901575,
+        -0.013628897721846268,
+        0.0845361628385495
+      ],
+      "score": 0.02974861563641165,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.291159082599488,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.023788759760137612
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13276736844811293,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.023890087250054703
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 145.86564975323554,
+          "change_fraction": -0.01989650660429454
+        }
+      }
+    },
+    {
+      "generation": 4,
+      "index": 1,
+      "coefficients": [
+        -2.820221232313381,
+        0.31924361444928623,
+        -2.516547817345024,
+        -0.25893309010112575,
+        0.3063602802306249,
+        0.08606797967439167
+      ],
+      "score": 0.028564324325108387,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2913504800454589,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.02314703381279004
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.1329131063089039,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.022818617865341895
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 145.9003625920819,
+          "change_fraction": -0.019663263378925433
+        }
+      }
+    },
+    {
+      "generation": 4,
+      "index": 2,
+      "coefficients": [
+        -2.65627134286155,
+        0.4132743875489302,
+        -2.7091535610539497,
+        -0.28121878814596013,
+        -0.18763770952570907,
+        0.11783948351955086
+      ],
+      "score": 0.02879757752208363,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2914204073854483,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.022912578288723173
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13272964713021854,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.02416741557816049
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.13123105351863,
+          "change_fraction": -0.01811200723361761
+        }
+      }
+    },
+    {
+      "generation": 4,
+      "index": 3,
+      "coefficients": [
+        -2.9149435658302325,
+        0.21337078427298317,
+        -2.421840839500492,
+        -0.17387100653422988,
+        0.03058209624580955,
+        0.08990791967149706
+      ],
+      "score": 0.029456515515060427,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2911217410765838,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.02391396009413127
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13281682750802015,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.023526462669594683
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 145.70907690830543,
+          "change_fraction": -0.020948554105172934
+        }
+      }
+    },
+    {
+      "generation": 4,
+      "index": 4,
+      "coefficients": [
+        -2.749318508325876,
+        0.38059257491171045,
+        -2.7462059445507845,
+        -0.2036217626000079,
+        -0.5394295647492519,
+        0.07995013850649568
+      ],
+      "score": 0.029308561037219683,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2912177574823693,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.023592031979307038
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13282985047958595,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.023430717368716714
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 146.6193257043968,
+          "change_fraction": -0.014832391551359736
+        }
+      }
+    },
+    {
+      "generation": 4,
+      "index": 5,
+      "coefficients": [
+        -3.1274421969975243,
+        0.4074416847005074,
+        -2.6563813319861427,
+        -0.21089284704635772,
+        0.2356645419479231,
+        0.0934194523171221
+      ],
+      "score": 0.029640996099929436,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": false
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2907523774036392,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.025152379194938845
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.13267596387729014,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.02456209655997532
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 145.60444676081974,
+          "change_fraction": -0.021651587158113994
+        }
+      }
+    },
+    {
+      "generation": 4,
+      "index": 6,
+      "coefficients": [
+        -3.2457513313577357,
+        0.3232702197468701,
+        -2.5365164291865865,
+        -0.2917769674360716,
+        -0.21190826990804928,
+        0.12498899759187512
+      ],
+      "score": 0.030026578894387253,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": false
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2904537275072423,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.02615370597188904
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.1325140211686181,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.025752704501369683
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 145.74698817324096,
+          "change_fraction": -0.020693819949014758
+        }
+      }
+    },
+    {
+      "generation": 4,
+      "index": 7,
+      "coefficients": [
+        -2.5458691035746113,
+        0.2849223690306054,
+        -2.7043951814295006,
+        -0.25377923946589925,
+        -0.1215260740577258,
+        0.10159568374097827
+      ],
+      "score": 0.027746951586397423,
+      "checks": {
+        "physical_complete": {
+          "pass": true
+        },
+        "all_case_guards": {
+          "pass": true
+        },
+        "stop_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.2982541796260695,
+          "learned_mean": 0.2916773751562656,
+          "metric": "velocity_rms_mps",
+          "improvement_fraction": 0.022051005213236108
+        },
+        "push_mean_improvement": {
+          "pass": false,
+          "paired_cases": 2,
+          "baseline_mean": 0.13601682219789585,
+          "learned_mean": 0.1328181736525732,
+          "metric": "velocity_error_rms_mps",
+          "improvement_fraction": 0.02351656577205441
+        },
+        "hip_heat_mean": {
+          "pass": true,
+          "baseline_mean": 148.82678282051992,
+          "learned_mean": 145.9114052743968,
+          "change_fraction": -0.019589065159319907
+        }
+      }
+    }
+  ],
+  "best": {
+    "generation": 4,
+    "index": 6,
+    "coefficients": [
+      -3.2457513313577357,
+      0.3232702197468701,
+      -2.5365164291865865,
+      -0.2917769674360716,
+      -0.21190826990804928,
+      0.12498899759187512
+    ],
+    "score": 0.030026578894387253,
+    "checks": {
+      "physical_complete": {
+        "pass": true
+      },
+      "all_case_guards": {
+        "pass": false
+      },
+      "stop_mean_improvement": {
+        "pass": false,
+        "paired_cases": 2,
+        "baseline_mean": 0.2982541796260695,
+        "learned_mean": 0.2904537275072423,
+        "metric": "velocity_rms_mps",
+        "improvement_fraction": 0.02615370597188904
+      },
+      "push_mean_improvement": {
+        "pass": false,
+        "paired_cases": 2,
+        "baseline_mean": 0.13601682219789585,
+        "learned_mean": 0.1325140211686181,
+        "metric": "velocity_error_rms_mps",
+        "improvement_fraction": 0.025752704501369683
+      },
+      "hip_heat_mean": {
+        "pass": true,
+        "baseline_mean": 148.82678282051992,
+        "learned_mean": 145.74698817324096,
+        "change_fraction": -0.020693819949014758
+      }
+    }
+  },
+  "mean": [
+    -3.0589399545020566,
+    0.3526473029591864,
+    -2.5991338819568703,
+    -0.2750898543625437,
+    -0.11276858381494778,
+    0.10476258021521231
+  ],
+  "std": [
+    0.32,
+    0.16,
+    0.32,
+    0.04,
+    0.16,
+    0.02022641737666281
+  ],
+  "rng_state": {
+    "bit_generator": "PCG64",
+    "state": {
+      "state": 305784832963678135355870018989821232416,
+      "inc": 16450919397810582319219321886622321693
+    },
+    "has_uint32": 0,
+    "uinteger": 0
+  },
+  "updated_at": "2026-10-11T23:02:30.006642+00:00"
+}
