@@ -30,24 +30,30 @@
     "线性搜索中途停止后恢复完成4个候选，原6个基线结果哈希未变",
     "运动质量门在验证开始前登记；开发集原控制6例的原指标逐项不变，16384步中间策略6例完成补充评价",
     "开发集30条控制修正诊断全部完成，停车主要误差在前两秒减速；各探针均未达到完整采用条件",
-    "A-full种子41完成131072步，已自动进入45例原控制验证基线评价"
+    "A-full种子41完成131072步，已自动进入45例原控制验证基线评价",
+    "三参数参考/阻尼接口7项检查与旧动作5项检查通过，6例零修正与原冻结控制逐项完全一致",
+    "A-full种子41完成45例独立配对验证；实际评价权重、完整结果与筛选结论已保存",
+    "参考减速/共享位置与速度反馈的48条开发诊断完成；逐场景实际动作与登记完全相符",
+    "后续诊断缓存的模式/参数/身份/内容保护5项测试在Python -O下通过"
   ],
-  "next": "先完成原冻结A/B/C筛选；原筛选分数不可独立宣称通过。所有拟晋级候选须用当前EvaluateWbrStudy.py --snapshot 原冻结目录通过运动质量补充门，再按原门槛从头做三种子复验；最终评价也用包含补充门的版本。",
+  "next": "继续冻结A/B/C其余种子与方案，A-full-41已不满足晋级条件，不重复训练或追加质量评价。满足原筛选门的其他候选须用含运动质量门的评价器补测，再独立训练101/211/307并锁定最终60例。参考减速48条开发诊断已完成、未有可采用变体；据此可另登记三参数联合约束搜索，先研究较小额外减速配合速度反馈增强和位置反馈减弱，所有原验收约束保持不变。最终集仍未运行。",
   "active_process": {
     "queue_pid": 8796,
-    "current_job_at_update": "baseline-validation-full",
-    "previous_training_status": {
-      "status": "completed",
-      "steps": 131072,
-      "stop_reason": null,
-      "pid": 32248,
-      "updated_at": "2026-10-11T19:08:06.059364+00:00"
+    "current_job_at_update": "A-full-73-train",
+    "current_job_status_at_update": {
+      "status": "running",
+      "steps": 24576,
+      "segment_seconds": 300.57121319998987,
+      "steps_per_s": 81.76431714253343,
+      "episodes": 46,
+      "failures": 0,
+      "pid": 11960
     },
-    "note": "只表示此时间点；接续前核对实际进程及queue-state，避免重复启动"
+    "note": "接续前须核对实际进程及命令，避免重复启动；这是保存时的快照"
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T03:09:05.328107+08:00",
+  "updated_at": "2026-10-12T03:33:24.141416+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -66,14 +72,112 @@
   "resume_instructions": "确认同一队列和子进程均已退出、期限未到且用户没有暂停；清除队列根stop.request后使用冻结目录RunWbrStudyQueue.py --plan 原计划 --resume。不得并行启动第二份。",
   "study_code_commit": "5569b66003d8a14425d8b0937791d4eef6888d7c",
   "saved_checkpoint": {
-    "repository_path": "tools/mujoco/learning/results/study-20261012/screening-A-full-41-checkpoint-131072",
+    "repository_path": "tools/mujoco/learning/results/study-20261012/screening-A-full-41-evaluated",
     "steps": 131072,
     "seed": 41,
     "route": "A-full",
-    "checkpoint_sha256": "66a4b6168a49251e435b9b7200a744f29e5c12f74ceffe28f7239632b65af859",
-    "note": "首个筛选训练已完成；尚待45例独立验证，不用于正式控制"
+    "checkpoint_sha256": "edc4825888fa959585d420bcced529f33882dc76e38d8d1b7475dae66eecc437",
+    "note": "含本次45例验证实际使用的最终策略及网络/优化器检查点；是否晋级见筛选结论，不接入正式控制"
   },
   "quality_gate_supplement": "tools/mujoco/learning/results/study-20261012/运动质量补充登记.json",
   "development_diagnostic": "tools/mujoco/learning/results/study-20261012/控制修正能力诊断.json",
-  "quality_verification": "tools/mujoco/learning/results/study-20261012/运动质量实测检查.json"
+  "quality_verification": "tools/mujoco/learning/results/study-20261012/运动质量实测检查.json",
+  "supplementary_diagnostic": {
+    "root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-probe",
+    "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-probe\\frozen",
+    "output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-probe\\results",
+    "pid_at_update": 11996,
+    "status_at_update": {
+      "status": "completed",
+      "pid": 11996,
+      "completed_trajectories": 48
+    },
+    "registration": "tools/mujoco/learning/results/study-20261012/参考减速诊断登记.json",
+    "verification": "tools/mujoco/learning/results/study-20261012/参考减速接口检查.json",
+    "resume": "本批48条诊断已完成，不重启。复核使用当前AuditWbrReference.py检查原frozen和results；原command保留用于复现。后续参数搜索另起登记和输出目录。",
+    "audit_script": "tools/mujoco/learning/AuditWbrReference.py",
+    "command": [
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+      "-u",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-probe\\frozen\\tools\\mujoco\\learning\\DiagnoseWbrReference.py",
+      "--snapshot",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-probe\\frozen",
+      "--registration",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-probe\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\参考减速诊断登记.json",
+      "--cases",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-probe\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\development.json",
+      "--original-baseline",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\quality-smoke-baseline\\summary.json",
+      "--output",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-probe\\results"
+    ],
+    "result": "tools/mujoco/learning/results/study-20261012/参考减速诊断结果.json"
+  },
+  "screening_first_validation": {
+    "repository_path": "tools/mujoco/learning/results/study-20261012/screening-A-full-41-evaluated",
+    "gate": {
+      "pass_all": false,
+      "checks": {
+        "physical_complete": true,
+        "stop_improvement": false,
+        "push_improvement": false,
+        "primary_case_regression": true,
+        "heat_mean": true,
+        "motion_quality": false
+      },
+      "primary_gates_pass": false,
+      "motion_quality_pending": true,
+      "stop_improvement": -0.0028350351343180424,
+      "push_improvement": -0.0009913116542541456,
+      "heat_change": 0.061430342059510146,
+      "final_thresholds_pass": false,
+      "failing_final_case_guards": [
+        "validation-combined-000",
+        "validation-combined-001",
+        "validation-combined-002",
+        "validation-combined-003",
+        "validation-combined-004",
+        "validation-combined-005",
+        "validation-combined-006",
+        "validation-combined-007",
+        "validation-combined-008",
+        "validation-push-000",
+        "validation-push-001",
+        "validation-push-002",
+        "validation-push-003",
+        "validation-push-004",
+        "validation-push-005",
+        "validation-push-006",
+        "validation-push-007",
+        "validation-push-008",
+        "validation-push-009",
+        "validation-push-010",
+        "validation-push-011",
+        "validation-push-012",
+        "validation-push-013",
+        "validation-push-014",
+        "validation-push-015",
+        "validation-push-016",
+        "validation-push-017",
+        "validation-stop-000",
+        "validation-stop-001",
+        "validation-stop-002",
+        "validation-stop-003",
+        "validation-stop-004",
+        "validation-stop-005",
+        "validation-stop-006",
+        "validation-stop-007",
+        "validation-stop-008",
+        "validation-stop-009",
+        "validation-stop-010",
+        "validation-stop-011",
+        "validation-stop-012",
+        "validation-stop-013",
+        "validation-stop-014",
+        "validation-stop-015",
+        "validation-stop-016",
+        "validation-stop-017"
+      ]
+    }
+  }
 }

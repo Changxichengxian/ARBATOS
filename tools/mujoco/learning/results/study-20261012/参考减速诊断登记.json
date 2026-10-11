@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "registered_at": "2026-10-12T03:16:57.558497+08:00",
+  "purpose": "由已完成停车误差分解提出的独立开发对照，先分清前段减速与纵向反馈强度的作用",
+  "original_snapshot": "work/study-20261012/frozen",
+  "original_controller_sha256": "2d3600ca5d3c6d1fc42bc73895431cdcccc4c540f24753317181aa984aabbed1",
+  "cases_split": "development",
+  "cases_sha256": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+  "interface": "正常平衡且速度/转向/跳跃指令均在零死区内，每3ms先加快v_ref减速，再调用原控制，调用后恢复原k",
+  "actions": [
+    "额外减速1.2*clamp(a0,0,1) m/s2，不预改x_ref",
+    "k[2]和k[8]共同乘1+0.5*clamp(a1,-1,1)，对应纵向位置误差",
+    "k[3]和k[9]共同乘1+0.5*clamp(a2,-1,1)，对应纵向速度误差"
+  ],
+  "invariants": [
+    "原机械、质量、气簧、碰撞、传感器随机化均从原冻结快照继承",
+    "零动作在相同6个开发场景的原指标和新增运动质量指标均须逐项完全相同，否则停止非零诊断",
+    "原20Nm髋力矩、5.2Nm轮力矩及每1ms物理检查不变",
+    "正常行驶指令幅度大于0.01时不启用；当前研究行驶指令幅度至少0.35",
+    "不使用物理真值控制，不更新固件或实车",
+    "原两项10%改善、逐例保护、热指标及运动质量门不变；最终集未运行"
+  ],
+  "modes": [
+    {
+      "name": "zero",
+      "action": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "brake-025",
+      "action": [
+        0.25,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "brake-050",
+      "action": [
+        0.5,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "velocity-plus",
+      "action": [
+        0,
+        0,
+        0.5
+      ]
+    },
+    {
+      "name": "velocity-minus",
+      "action": [
+        0,
+        0,
+        -0.5
+      ]
+    },
+    {
+      "name": "position-plus",
+      "action": [
+        0,
+        0.5,
+        0
+      ]
+    },
+    {
+      "name": "position-minus",
+      "action": [
+        0,
+        -0.5,
+        0
+      ]
+    },
+    {
+      "name": "brake-velocity",
+      "action": [
+        0.25,
+        0,
+        0.5
+      ]
+    }
+  ],
+  "planned_trajectories": 48,
+  "next_rule": "开发诊断只作归因；有证据后再登记参数搜索或训练和独立验证，不能以6例开发结果宣称泛化或最终验收",
+  "stop_resume": "每个场景结束原子保存；输出目录stop.request可停止，核对进程退出后--resume以原配置继续",
+  "deadline": "2026-10-14T02:10:00+08:00"
+}

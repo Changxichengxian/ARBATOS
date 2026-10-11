@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T03:20:37.651083+08:00",
+  "experiment_identity": "39b6bafdf4f0313b4383986195d099a21f0a4acf88de18a37f16fb255a10583e",
+  "library_sha256": "e2ceaf5a6486bb4d3cd1d516694f21359e5f628987a23a768633369335ab1a61",
+  "original_library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+  "physical_source_files_unchanged": 104,
+  "zero_action_exact_development_cases": 6,
+  "physical_metrics_and_motion_quality_exact": true,
+  "source_hashes": {
+    "WbrLearningBridge.c": "f711c2554fa50204b82917d8a506416332443be68b7321a35e29d1e13539b3d0",
+    "WbrLearningEnv.py": "aa84a1cb9337bcd3faffd0b8a26cb2146a370ee8b95c5704cf01f4884edcd46c",
+    "TestWbrReference.py": "b3a837bfc18e6ae46f311bcafc010cbe7a6f099aff77389b7d242626fdc9df16",
+    "DiagnoseWbrReference.py": "dad725ec0c6df063a8dc32cbb46abeefe042938ec2cfc94b56d57847c18c04f7"
+  },
+  "test_reference": {
+    "zero_drive_stop": true,
+    "driving_command_disables": true,
+    "additional_decel_1_2_mps2": true,
+    "invalid_input_no_mutation": true,
+    "gain_restore": true,
+    "motor_limits": true,
+    "three_dimensional_action": true
+  },
+  "test_old_action_modes": {
+    "symmetric_full_exact": true,
+    "linear_zero_bounded": true,
+    "invalid_dimension_clears": true,
+    "physical_peaks_cover_policy": true,
+    "dense_reward_finite": true
+  },
+  "run_binding_sha256": "1aacaab27f203a8470bca09fd292fbcbeac0af5dcf6681aea5584f63c7ad3368",
+  "diagnostic_status_at_update": {
+    "status": "running",
+    "pid": 11996,
+    "mode": "brake-025",
+    "completed_cases": 4,
+    "total_cases": 6
+  },
+  "note": "7项新接口及5项旧模式检查通过。48条固定参数开发诊断尚在运行，无性能改善结论，最终集未使用。"
+}

@@ -61,3 +61,70 @@ int WbrLearningStep(void *handle, const float *sensor, const float *command,
     }
     return 0;
 }
+
+/* 独立研究接口：停车参考减速及原反馈系数的小范围调整。
+ * 三项依次为额外减速、纵向位置反馈倍率、纵向速度反馈倍率。
+ * 同一倍率同时用于轮矩和髋力矩通道；每个句柄只允许单线程调用。
+ * 零动作完全走原控制，不叠加 WbrLearningStep 的末端力矩修正。
+ */
+int WbrLearningReferenceStep(void *handle, const float *sensor, const float *command,
+                              const float *action, float *out)
+{
+    if (out != NULL) {
+        memset(out, 0, 40 * sizeof(*out));
+    }
+    if (handle == NULL || sensor == NULL || command == NULL || out == NULL) {
+        return 5;
+    }
+    if (action == NULL) {
+        return 6;
+    }
+    for (int i = 0; i < 3; i++) {
+        if (!isfinite(action[i])) {
+            return 6;
+        }
+    }
+    /* 先验证，再改参考；错误输入不得污染下一帧的控制状态。 */
+    for (int i = 0; i < 28; i++) {
+        if (!isfinite(sensor[i])) {
+            return 3;
+        }
+    }
+    for (int i = 0; i < 3; i++) {
+        if (!isfinite(command[i])) {
+            return 3;
+        }
+    }
+    OwnWbrState *state = (OwnWbrState *)handle;
+    if (action[0] == 0.0f && action[1] == 0.0f && action[2] == 0.0f) {
+        return OwnWbrCommandStep(handle, sensor, command, out);
+    }
+    if (state->stages.stage != 3u || state->rise_phase != 0 ||
+        state->jump_phase != 0u || state->step_climb_phase != 0u ||
+        state->recovery_requested || state->step_climb_fault ||
+        state->recovery_release_time > 0.0f || state->step_climb_hold ||
+        state->drive_mode != 0u || WheelLegCoreAbs(command[0]) > 0.01f ||
+        WheelLegCoreAbs(command[1]) > 0.01f || WheelLegCoreAbs(command[2]) > 0.01f) {
+        return OwnWbrCommandStep(handle, sensor, command, out);
+    }
+    const float saved_v_ref = state->v_ref;
+    const float extra_step = 1.2f * WheelLegCoreClamp(action[0], 0.0f, 1.0f) * 0.003f;
+    if (extra_step > 0.0f) {
+        state->v_ref += WheelLegCoreClamp(-state->v_ref, -extra_step, extra_step);
+    }
+    float saved_k[12];
+    memcpy(saved_k, state->k, sizeof(saved_k));
+    const int indices[4] = {2, 3, 8, 9};
+    for (int i = 0; i < 4; i++) {
+        const float gain_action = action[1+i%2];
+        if (gain_action != 0.0f) {
+            state->k[indices[i]] *= 1.0f + 0.5f * WheelLegCoreClamp(gain_action, -1.0f, 1.0f);
+        }
+    }
+    const int result = OwnWbrCommandStep(handle, sensor, command, out);
+    memcpy(state->k, saved_k, sizeof(saved_k));
+    if (result != 0) {
+        state->v_ref = saved_v_ref;
+    }
+    return result;
+}

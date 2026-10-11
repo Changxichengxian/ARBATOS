@@ -55,6 +55,7 @@ def load_library():
     lib.OwnWbrSetJointLimits.argtypes = [ctypes.c_void_p, ctypes.c_float, ctypes.c_float]
     lib.OwnWbrCommandStep.argtypes = [ctypes.c_void_p, ptr, ptr, ptr]
     lib.WbrLearningStep.argtypes = [ctypes.c_void_p, ptr, ptr, ptr, ptr]
+    lib.WbrLearningReferenceStep.argtypes = [ctypes.c_void_p, ptr, ptr, ptr, ptr]
     return lib
 
 
@@ -64,7 +65,7 @@ class WbrLearningEnv(gym.Env):
     def __init__(self, *, randomize=True, strict=False, record=False, gas_force=450.,
                  reward_mode="legacy", action_mode="full"):
         super().__init__()
-        if reward_mode not in ("legacy", "dense") or action_mode not in ("full", "symmetric"):
+        if reward_mode not in ("legacy", "dense") or action_mode not in ("full", "symmetric", "reference"):
             raise ValueError("未知的奖励或动作模式")
         self.reward_mode, self.action_mode = reward_mode, action_mode
         self.randomize, self.strict, self.record = randomize, strict, record
@@ -99,7 +100,11 @@ class WbrLearningEnv(gym.Env):
             self.model.sensor(n).adr[0]+self.model.sensor(n).dim[0]) for n in names])
         self.sensor, self.command = (ctypes.c_float*28)(), (ctypes.c_float*3)()
         self.output, self.action_buffer = (ctypes.c_float*40)(), (ctypes.c_float*6)()
-        self.action_space = gym.spaces.Box(-1., 1., (6 if action_mode == "full" else 3,), dtype=np.float32)
+        action_size = {"full":6, "symmetric":3, "reference":3}[action_mode]
+        action_low = np.full(action_size, -1., dtype=np.float32)
+        if action_mode == "reference":
+            action_low[0] = 0.
+        self.action_space = gym.spaces.Box(action_low, np.ones(action_size, dtype=np.float32))
         self.observation_space = gym.spaces.Box(-20., 20., (FRAME_SIZE*HISTORY,), dtype=np.float32)
         self.jac = np.zeros((3, self.model.nv))
         self.history = deque(maxlen=HISTORY)
@@ -192,7 +197,9 @@ class WbrLearningEnv(gym.Env):
                 self.feedback[[11,14,17,20,23,26]] += self.np_random.normal(0., .008, 6)
             self.sensor[:] = self.feedback
             self.command[:] = (self.command_v, 0., 0.)
-            code = self.lib.WbrLearningStep(self.handle, self.sensor, self.command, self.action_buffer, self.output)
+            controller = (self.lib.WbrLearningReferenceStep if self.action_mode == "reference"
+                          else self.lib.WbrLearningStep)
+            code = controller(self.handle, self.sensor, self.command, self.action_buffer, self.output)
             if code:
                 self.error = f"controller_error_{code}"
                 self.data.ctrl[:] = 0.
@@ -268,6 +275,8 @@ class WbrLearningEnv(gym.Env):
             raise ValueError("学习动作维度不匹配或包含非有限数")
         if self.action_mode == "symmetric":
             action = np.tile(action, 2)
+        elif self.action_mode == "reference":
+            action = np.concatenate(([np.clip(action[0],0.,1.)],action[1:],np.zeros(3)))
         previous = self.filtered_action.copy()
         self.filtered_action += np.clip(np.clip(action, -1., 1.)-self.filtered_action, -.2, .2)
         self.action_buffer[:] = self.filtered_action
