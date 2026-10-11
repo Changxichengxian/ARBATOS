@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "route": "D-reference-73",
+  "status": "verified_partial",
+  "captured_at": "2026-10-12T06:51:41.694689+08:00",
+  "state_sha256": "20c088154aa68061ad4e4a911c8855ac2298f8d987e0c6471274a69c1ae48a5c",
+  "experiment_identity": "419ae6b535c37b453b622caeb3f452eccc0f8ed5c076992f224c8669fa5b5672",
+  "library_sha256": "1181b692d52915926ec5825269f66bb2fe1e75169d82ecb5dd4391aa96cd2858",
+  "source_snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen",
+  "generation": 2,
+  "evaluations": 31,
+  "recomputed_scores": 31,
+  "rng_state_restored": true,
+  "best_score": 0.032491225574639855,
+  "best_coefficients": [
+    0.00950811841568894,
+    -0.617979393289595,
+    0.15182014126706472
+  ],
+  "boundary": "全部历史候选评分用缓存逐项复算；原状态含内部哈希。",
+  "note": "这是运行中阶段恢复点，不是搜索最终结果或独立性能验收。旧任务仍活着时禁止另行恢复。"
+}

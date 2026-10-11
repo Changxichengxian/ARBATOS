@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "created_at": "2026-10-12T06:51:41.839883+08:00",
+  "snapshots_archive": "阶段恢复包-B81920.zip",
+  "snapshots_archive_sha256": "1106baee8330c292669b8f043944b5db2e785af6cdd2bca56d221acca39a661f",
+  "routes": {
+    "C-linear-41": {
+      "schema": 1,
+      "route": "C-linear-41",
+      "status": "verified_partial",
+      "captured_at": "2026-10-12T06:51:37.600402+08:00",
+      "state_sha256": "da0f54ded40a75655a9313934fafcadc4dbcc938e4c019e4d74cb59118b0db10",
+      "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+      "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+      "source_snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
+      "generation": 4,
+      "evaluations": 35,
+      "recomputed_scores": 3,
+      "rng_state_restored": true,
+      "best_score": 0.02974861563641165,
+      "best_coefficients": [
+        -2.872128577646377,
+        0.3820243861715027,
+        -2.6617513347271538,
+        -0.25840274128901575,
+        -0.013628897721846268,
+        0.0845361628385495
+      ],
+      "boundary": "旧C格式只保留当前代完整场景缓存；核验当前代评分和历史最优归属，不声称逐项重算所有历史候选。",
+      "note": "这是运行中阶段恢复点，不是搜索最终结果或独立性能验收。旧任务仍活着时禁止另行恢复。"
+    },
+    "D-reference-73": {
+      "schema": 1,
+      "route": "D-reference-73",
+      "status": "verified_partial",
+      "captured_at": "2026-10-12T06:51:41.694689+08:00",
+      "state_sha256": "20c088154aa68061ad4e4a911c8855ac2298f8d987e0c6471274a69c1ae48a5c",
+      "experiment_identity": "419ae6b535c37b453b622caeb3f452eccc0f8ed5c076992f224c8669fa5b5672",
+      "library_sha256": "1181b692d52915926ec5825269f66bb2fe1e75169d82ecb5dd4391aa96cd2858",
+      "source_snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\frozen",
+      "generation": 2,
+      "evaluations": 31,
+      "recomputed_scores": 31,
+      "rng_state_restored": true,
+      "best_score": 0.032491225574639855,
+      "best_coefficients": [
+        0.00950811841568894,
+        -0.617979393289595,
+        0.15182014126706472
+      ],
+      "boundary": "全部历史候选评分用缓存逐项复算；原状态含内部哈希。",
+      "note": "这是运行中阶段恢复点，不是搜索最终结果或独立性能验收。旧任务仍活着时禁止另行恢复。"
+    }
+  },
+  "recovery": "先确认原队列和搜索已退出；把保存的search-state.json复制到新的恢复目录，使用配套旧恢复包中的abc/reference冻结代码与动态库，按原种子/代数/种群大小添加--resume继续。不要覆盖任何正在运行的目录，也不能用根目录新版本混跑旧C状态。"
+}

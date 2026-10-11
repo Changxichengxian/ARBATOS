@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "steps": 16384,
+  "optimizer_states": 13,
+  "export_max_abs_error": 5.960464477539063e-08,
+  "baseline_case": "development-stop-000",
+  "baseline_all_fields_exact": true,
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "bank_admission_revalidated": true,
+  "boundary": "同机换目录的真实模型载入、导出推理和原控制基线重放；未在另一电脑验证，未启动续训或最终集。",
+  "archive_sha256": "a7c2df34e17734136651a2c42e4f36806029df568c9688035e4969b89e221652",
+  "archive_bytes": 7392040,
+  "entries": 275,
+  "source_files": 239,
+  "archive": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\阶段恢复包-E首段.zip",
+  "relocation_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\e-recovery-check",
+  "relocation_note": "首次长目录解压触发Windows路径长度限制；原压缩包未改，改用工作区内较短目录实际核验。"
+}

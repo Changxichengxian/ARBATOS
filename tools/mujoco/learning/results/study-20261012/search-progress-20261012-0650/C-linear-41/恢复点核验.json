@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "route": "C-linear-41",
+  "status": "verified_partial",
+  "captured_at": "2026-10-12T06:51:37.600402+08:00",
+  "state_sha256": "da0f54ded40a75655a9313934fafcadc4dbcc938e4c019e4d74cb59118b0db10",
+  "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+  "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+  "source_snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
+  "generation": 4,
+  "evaluations": 35,
+  "recomputed_scores": 3,
+  "rng_state_restored": true,
+  "best_score": 0.02974861563641165,
+  "best_coefficients": [
+    -2.872128577646377,
+    0.3820243861715027,
+    -2.6617513347271538,
+    -0.25840274128901575,
+    -0.013628897721846268,
+    0.0845361628385495
+  ],
+  "boundary": "旧C格式只保留当前代完整场景缓存；核验当前代评分和历史最优归属，不声称逐项重算所有历史候选。",
+  "note": "这是运行中阶段恢复点，不是搜索最终结果或独立性能验收。旧任务仍活着时禁止另行恢复。"
+}

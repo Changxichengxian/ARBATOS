@@ -54,9 +54,10 @@
     "E续跑增加训练库、环境数及权重内容绑定；扩展必须继承实际晋级短训权重。旧队列检查、7项新队列/晋级边界及4项来源单测通过；尚待完整训练库后的真实网络短训/续训验收",
     "启动E基线后的自动准备与筛选流程；新增真实网络/优化器载入数值核验。该核验工具使用已保存B73真实模型检验通过，E实际1024至2048短训仍待基线齐全后执行",
     "修复E准备流程恢复时信任旧完成标记问题；已完成队列、短训实际模型、晋级记录均重新复核。正常停止归档旧等待流程并按新代码启动；144条训练基线全部物理通过",
-    "E的144训练+24监控基线完成并封存；三类包装物理与观测逐步一致、在线离线评分一致、物理失败结算正确；实际1024步接续2048步证明网络和优化器精确载入并继续更新，导出推理通过，登记E41长训练已启动"
+    "E的144训练+24监控基线完成并封存；三类包装物理与观测逐步一致、在线离线评分一致、物理失败结算正确；实际1024步接续2048步证明网络和优化器精确载入并继续更新，导出推理通过，登记E41长训练已启动",
+    "保存E41首段16384步完整冻结环境恢复包；同机换目录载入实际网络/优化器并逐字段重放一条开发基线一致。另保留C41的35候选、D73的31候选阶段状态并核验随机状态及可复算评分"
   ],
-  "next": "E真实三类包装检查与1024接2048续训已通过，筛选队列20360运行。先核对准备进程15376和筛选队列，不能重复训练。E41首个16384步检查点产生后运行work/ExportAlignedRecovery.py保存完整恢复包并实际换目录核验；随后按登记完成两种子262144步和24例监控，仅依据完整晋级结果决定是否扩展。C41/D73旧搜索继续，最终60例未运行。",
+  "next": "E筛选队列20360与准备进程15376继续登记训练和监控；不要重复启动。E41首段16384步恢复包已完整保存并真实核验。随后检查C41搜索完成后的45例验证、D73最终搜索和验证，以及E两种子262144步完整监控，按原登记决定是否扩展；最终60例尚未运行。",
   "active_process": {
     "queues": [
       {
@@ -85,7 +86,7 @@
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T06:47:56.628416+08:00",
+  "updated_at": "2026-10-12T06:57:21.211912+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -483,7 +484,7 @@
     },
     "manual_recovery_order_only": true,
     "recovery_export_script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\ExportAlignedRecovery.py",
-    "recovery_export_note": "待真实续训检查通过、E41至少一个16384步保存点完整产生后运行一次；脚本会拒绝提前打包。它尚未执行，也不能把预备脚本视为已交付恢复包。",
+    "recovery_export_note": "已执行并通过同机换目录实际模型加载、训练库许可核验及原控制基线逐字段重放；无需重复打包相同阶段。后续训练仍查看最新活任务检查点。",
     "baseline_monitor_completed": 24,
     "training_frozen": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen",
     "training_manifest_sha256": "1d04fb34dd8ac26f497746ad5f2871c501025504424c5fe8cb207b94305684c2",
@@ -491,7 +492,16 @@
     "actual_training_admitted": true,
     "actual_training_proof": "tools/mujoco/learning/results/study-20261012/aligned-training-admitted/准入结果.json",
     "screening_plan": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\plan.json",
-    "screening_queue_pid": 20360
+    "screening_queue_pid": 20360,
+    "recovery_package": {
+      "path": "tools/mujoco/learning/results/study-20261012/阶段恢复包-E首段.zip",
+      "sha256": "a7c2df34e17734136651a2c42e4f36806029df568c9688035e4969b89e221652",
+      "steps": 16384,
+      "bytes": 7392040,
+      "actual_verification": "tools/mujoco/learning/results/study-20261012/阶段恢复包-E首段核验.json",
+      "relocated_baseline_exact": true,
+      "other_machine_verified": false
+    }
   },
   "reference_D_first_seed_validation": {
     "report": "tools/mujoco/learning/results/study-20261012/reference-D-41-validation/筛选结论.json",
@@ -508,6 +518,20 @@
       "heat": true,
       "stop": false,
       "push": true
+    }
+  },
+  "search_recovery_0650": {
+    "C-linear-41": {
+      "evaluations": 35,
+      "generation": 4,
+      "state_sha256": "da0f54ded40a75655a9313934fafcadc4dbcc938e4c019e4d74cb59118b0db10",
+      "directory": "tools/mujoco/learning/results/study-20261012/search-progress-20261012-0650/C-linear-41"
+    },
+    "D-reference-73": {
+      "evaluations": 31,
+      "generation": 2,
+      "state_sha256": "20c088154aa68061ad4e4a911c8855ac2298f8d987e0c6471274a69c1ae48a5c",
+      "directory": "tools/mujoco/learning/results/study-20261012/search-progress-20261012-0650/D-reference-73"
     }
   }
 }
