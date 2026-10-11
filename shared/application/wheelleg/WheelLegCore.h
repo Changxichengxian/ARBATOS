@@ -598,7 +598,8 @@ static inline uint8_t WheelLegCoreForwardPoint(const WheelLegCoreGeometry *geo,
     fp32 xc;
     fp32 yc;
 
-    if (out == NULL || l1 <= 0.0f || l2 <= 0.0f || l3 <= 0.0f || l4 <= 0.0f || l5 <= 0.0f)
+    /* 共轴髋关节的基座间距可以为零；支链退化仍由下面的 lbd 检查拒绝。 */
+    if (out == NULL || l1 <= 0.0f || l2 <= 0.0f || l3 <= 0.0f || l4 <= 0.0f || l5 < 0.0f)
     {
         return 0u;
     }

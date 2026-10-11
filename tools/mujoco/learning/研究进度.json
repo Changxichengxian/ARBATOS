@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "status": "preparing",
+  "started_at": "2026-10-12T02:10:00+08:00",
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "goal": "轮腿停车与受推恢复的可复现控制改进；不能用训练完成代替性能提升",
+  "physical_baseline": "first-run-20261012",
+  "physical_controller_sha256": "2d3600ca5d3c6d1fc42bc73895431cdcccc4c540f24753317181aa984aabbed1",
+  "automation_id": "automation",
+  "acceptance": {
+    "independent_training_seeds": 3,
+    "sealed_final_scenarios": 60,
+    "stop_velocity_rms_improvement_min": 0.10,
+    "push_recovery_velocity_rms_improvement_min": 0.10,
+    "per_scenario_primary_error_regression_max": 0.05,
+    "mean_hip_heat_regression_max": 0.05,
+    "new_physics_failures_allowed": 0,
+    "validation_and_final_test_separate": true
+  },
+  "completed": [
+    "接口8项检查通过",
+    "首轮32768步训练及12组配对评价完成，收益不足，不接入正式控制",
+    "全仓5车型CheckZephyr静态检查通过"
+  ],
+  "next": "提交首轮实验与参考仿真依赖，固化研究数据集与统计窗口，增加训练检查点和断点继续功能，然后启动三种方案的筛选",
+  "active_process": null,
+  "hardware_access": false,
+  "paid_compute": false
+}

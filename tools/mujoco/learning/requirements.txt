@@ -1,0 +1,6 @@
+# CPU PyTorch 另从 https://download.pytorch.org/whl/cpu 安装 torch==2.9.1+cpu
+stable-baselines3==2.7.1
+gymnasium==1.2.2
+mujoco==3.14.0
+numpy==2.5.3
+scipy==1.18.1

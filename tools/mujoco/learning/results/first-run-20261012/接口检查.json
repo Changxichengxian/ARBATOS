@@ -1,0 +1,14 @@
+{
+  "command": "work/rl-env/Scripts/python.exe work/rl-v4/snapshot/tools/mujoco/learning/TestWbrLearning.py",
+  "exit_code": 0,
+  "observation_shape": true,
+  "zero_action_bitwise_equal_120_frames": true,
+  "invalid_action_clears_output": true,
+  "invalid_sensor_clears_output": true,
+  "large_action_remains_bounded": true,
+  "world_position_not_observed": true,
+  "reset_reproducible": true,
+  "gymnasium_api": true,
+  "elapsed_s": 11.676526399998693,
+  "scope": "主机学习接口检查，不是策略性能或实车验收"
+}

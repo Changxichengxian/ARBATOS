@@ -1,0 +1,63 @@
+{
+  "source_name": "RMUL2026.stp",
+  "source_sha256": "b0d380030c3d0dacf21bc53345bd3dc5c4c11763ab180f1de0b86fb0240d651c",
+  "source_length_unit": "mm",
+  "scale_to_m": 0.001,
+  "axis_transform": "world (x,y,z) = CAD (X,Z,-Y) / 1000",
+  "local_bounds_m": [
+    [
+      -6.3,
+      -4.3,
+      -0.1
+    ],
+    [
+      6.3,
+      4.3,
+      0.42
+    ]
+  ],
+  "size_m": [
+    12.6,
+    8.6,
+    0.52
+  ],
+  "faces": 1106,
+  "convex_collision_parts": 1873,
+  "concave_faces_split": 65,
+  "source_triangles": 3187,
+  "degenerate_faces": 0,
+  "collision_shell_thickness_m": 0.002,
+  "horizontal_repartition": {
+    "method": "exact_horizontal_union_grid_and_constrained_edges",
+    "grid_size_m": 1.0,
+    "grid_origin_m": 0.25,
+    "shapely_version": "2.1.2",
+    "groups": [
+      {
+        "top_m": 0.0,
+        "bottom_m": -0.002,
+        "source_parts": 134,
+        "area_m2": 73.52749999999982,
+        "boxes": 4,
+        "edge_triangles": 272,
+        "symmetric_difference_area_m2": 0.0,
+        "boundary_error_m": 0.0
+      },
+      {
+        "top_m": 0.4,
+        "bottom_m": 0.398,
+        "source_parts": 429,
+        "area_m2": 12.899999999999984,
+        "boxes": 0,
+        "edge_triangles": 15,
+        "symmetric_difference_area_m2": 0.0,
+        "boundary_error_m": 0.0
+      }
+    ],
+    "original_collision_parts": 2145,
+    "output_collision_parts": 1873
+  },
+  "collision_note": "逐平面凸分解；承载面向下2mm，竖面两侧1mm；零高地面严格等价矩形剖分，边角与孔洞约束三角化",
+  "converter": "cadquery-ocp 8.0.1.0.0 / OpenCascade",
+  "orientation_reason": "CAD Y跨度0.52m，地面Y=0，高台Y为负"
+}

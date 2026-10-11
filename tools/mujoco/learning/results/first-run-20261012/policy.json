@@ -1,0 +1,28 @@
+{
+  "layers": [
+    93,
+    64,
+    64,
+    6
+  ],
+  "parameters": 10566,
+  "export_max_abs_error": 2.60770320892334e-08,
+  "policy_dt_s": 0.015,
+  "history_frames": 3,
+  "frame_size": 31,
+  "scope": "仅限本次平地停车/纵向抗扰，不支持起身或跳跃的学习控制",
+  "seed": 31,
+  "training_steps": 32768,
+  "training_seconds": 544.5627944000007,
+  "snapshot": "first-run-20261012 frozen snapshot, archived in the local experiment bundle",
+  "library_sha256": "af65c3cacd8351456306b5546dd122de2f6764ea4a4e2dc34b769f0a5e95ae8b",
+  "experiment_identity": "7732e600e3c0636804af51c3e7ea0368d387bcc9a73c5deb7aceb9fc51760a4a",
+  "strict_training_checks": true,
+  "versions": {
+    "mujoco": "3.14.0",
+    "numpy": "2.5.3",
+    "torch": "2.9.1+cpu",
+    "gymnasium": "1.2.2",
+    "stable-baselines3": "2.7.1"
+  }
+}

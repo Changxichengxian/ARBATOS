@@ -1,0 +1,1373 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#10151d">
+    <title>ARBATOS · RM WBR 仿真控制台</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: #10151d;
+            color: #e8edf4;
+            font-synthesis: none;
+        }
+
+        * { box-sizing: border-box; }
+        [hidden] { display: none !important; }
+
+        body {
+            margin: 0;
+            min-width: 320px;
+            min-height: 100vh;
+            background: radial-gradient(ellipse at 42% -20%, #243143 0, #141c27 43%, #10151d 78%);
+        }
+
+        button { font: inherit; }
+
+        .shell {
+            width: min(1500px, 100%);
+            min-height: 100vh;
+            margin: 0 auto;
+            padding: 24px 28px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .brand { display: flex; align-items: center; gap: 14px; }
+        .mark {
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            border: 1px solid #43607e;
+            border-radius: 12px;
+            color: #83c7ff;
+            background: linear-gradient(145deg, #20374a, #162431);
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+        h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: .02em; }
+        .subtitle { margin-top: 4px; color: #8f9cab; font-size: 12px; }
+        .quick-keys { margin-top: 5px; color: #a4b1bf; font-size: 11px; }
+        .connection {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border: 1px solid #34404d;
+            border-radius: 999px;
+            color: #aab5c2;
+            background: #161d26;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #e0ad58; box-shadow: 0 0 10px #e0ad5866; }
+        .connection.online .dot { background: #54d49a; box-shadow: 0 0 10px #54d49a88; }
+        .connection.offline .dot { background: #ed6c72; box-shadow: 0 0 10px #ed6c7288; }
+
+        .layout {
+            flex: 1;
+            min-height: 0;
+            display: grid;
+            align-items: start;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            gap: 18px;
+        }
+
+        .panel {
+            border: 1px solid #2b3541;
+            border-radius: 16px;
+            background: linear-gradient(155deg, #1a222c, #151b23 72%);
+            box-shadow: 0 18px 45px #05080c30;
+        }
+
+        .scene-panel { min-width: 0; padding: 16px; display: flex; flex-direction: column; gap: 14px;
+            position: static; height: auto; min-height: 0; }
+        .scene-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .scene-title { font-size: 13px; font-weight: 650; }
+        .scene-label { color: #8492a2; font-size: 11px; }
+        .scene {
+            position: relative;
+            flex: none;
+            aspect-ratio: 8 / 5;
+            min-height: 0;
+            overflow: hidden;
+            display: grid;
+            place-items: center;
+            border: 1px solid #303d4b;
+            border-radius: 12px;
+            background: #0b1016;
+        }
+        .scene::before {
+            position: absolute;
+            inset: 0;
+            content: "";
+            pointer-events: none;
+            background: linear-gradient(180deg, #0a0f1550, transparent 16%, transparent 82%, #080c1260);
+            z-index: 1;
+        }
+        #frame {
+            display: block;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .empty {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-content: center;
+            gap: 10px;
+            text-align: center;
+            color: #8b98a7;
+            font-size: 13px;
+        }
+        .empty strong { color: #dce5ef; font-size: 14px; font-weight: 600; }
+        .spinner {
+            width: 22px;
+            height: 22px;
+            margin: 0 auto 2px;
+            border: 2px solid #324150;
+            border-top-color: #72baff;
+            border-radius: 50%;
+            animation: spin .9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .scene-foot { display: flex; justify-content: space-between; color: #778596; font-size: 11px; }
+        .scene-actions, .record-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .scene-actions select, .scene-actions button, .record-row button {
+            color: #dce5ee; background: #202832; border: 1px solid #3a4654;
+            border-radius: 8px; padding: 6px 9px; font: inherit; font-size: 11px; cursor: pointer;
+        }
+        #climbAssistButton.active { border-color: #65b9ff; background: #244966; }
+        button:disabled { cursor: default; opacity: .45; }
+        .motor-hud { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+        .motor-cell { background: #131922; border: 1px solid #2b3540; border-radius: 8px; padding: 8px; }
+        .motor-cell small { display: block; color: #8996a5; font-size: 10px; }
+        .motor-cell b { display: block; font-size: 15px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+        .motor-note, .record-status { color: #8996a5; font-size: 10px; line-height: 1.4; }
+        .record-row a { color: #83c7ff; font-size: 11px; }
+        .map-panel summary { cursor: pointer; color: #a4b1bf; font-size: 11px; }
+        #terrainMap { display: block; width: 100%; height: 180px; margin-top: 8px; border-radius: 8px; background: #0b1016; }
+        .scene-panel:fullscreen, .scene-panel.viewport-fullscreen {
+            position: fixed; inset: 0; top: 0; width: 100%; height: 100dvh; min-height: 0;
+            margin: 0; padding: 12px; gap: 8px; border: 0; border-radius: 0; z-index: 1000;
+        }
+        .scene-panel:fullscreen .scene, .scene-panel.viewport-fullscreen .scene {
+            flex: 1; min-height: 0; aspect-ratio: auto;
+        }
+        body.viewport-fullscreen-active { overflow: hidden; }
+
+        .sidebar { display: flex; flex-direction: column; gap: 14px; }
+        .sidebar .controls { order: 1; }
+        .sidebar .telemetry { order: 2; }
+        .sidebar .disclaimer { order: 3; }
+        .telemetry { padding: 16px; }
+        .section-title { margin: 0 0 14px; color: #cfd8e3; font-size: 12px; font-weight: 650; letter-spacing: .04em; }
+        .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+        .metric { min-width: 0; padding: 11px 12px; border: 1px solid #2b3540; border-radius: 10px; background: #171e27; }
+        .metric-label { color: #8592a1; font-size: 10px; }
+        .metric-value { margin-top: 6px; color: #edf3fa; font-size: 18px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+        .metric-value small { color: #8996a5; font-size: 10px; letter-spacing: 0; }
+        .status-line { margin-top: 12px; padding: 10px 11px; border-radius: 9px; background: #131922; color: #9aa7b6; font-size: 11px; line-height: 1.5; }
+        .status-line b { color: #d8e0e9; font-weight: 550; }
+
+        .controls { padding: 16px; }
+        .select-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 12px; }
+        .select-row label { display: grid; gap: 5px; color: #8592a1; font-size: 10px; }
+        .select-row select { min-width: 0; width: 100%; padding: 8px; border: 1px solid #3a4654; border-radius: 8px; color: #e8edf4; background: #171e27; font: inherit; }
+        .length-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; margin: -3px 0 12px; color: #aab5c2; font-size: 11px; }
+        .length-row input { width: 100%; accent-color: #72baff; }
+        .control-warning { min-height: 1.4em; margin: -5px 0 8px; color: #e4bc72; font-size: 10px; line-height: 1.4; }
+        .stage-hint { margin: -7px 0 10px; color: #e4bc72; font-size: 10px; line-height: 1.4; }
+        .controls-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+        .key-hint { color: #748292; font-size: 10px; }
+        .pad {
+            width: 192px;
+            margin: 2px auto 14px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 58px);
+            gap: 7px;
+        }
+        .control-key, .jump-button, .reset-button {
+            border: 1px solid #3a4654;
+            color: #dce5ee;
+            background: linear-gradient(180deg, #27313d, #202832);
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            transition: background .12s, border-color .12s, transform .12s, box-shadow .12s;
+        }
+        .control-key { border-radius: 11px; font-size: 17px; font-weight: 650; }
+        .control-key:hover, .jump-button:hover, .reset-button:hover { border-color: #5d7893; background: #2d3a48; }
+        .control-key:active, .control-key.active, .jump-button:active, .jump-button.active { transform: translateY(1px); border-color: #65b9ff; background: #244966; box-shadow: inset 0 0 0 1px #65b9ff44; }
+        [data-key="w"] { grid-column: 2; grid-row: 1; }
+        [data-key="a"] { grid-column: 1; grid-row: 2; }
+        [data-key="s"] { grid-column: 2; grid-row: 2; }
+        [data-key="d"] { grid-column: 3; grid-row: 2; }
+        .button-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+        .jump-button, .reset-button { min-height: 42px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+        .jump-button { border-color: #655339; background: linear-gradient(180deg, #453923, #332b1f); color: #f3d394; }
+        .jump-button:active, .jump-button.active { border-color: #f1c56d; background: #594726; box-shadow: inset 0 0 0 1px #f1c56d44; }
+        .reset-button { color: #b8c2cd; background: #1c242d; }
+        .hold-note { margin-top: 11px; color: #788696; font-size: 10px; line-height: 1.5; text-align: center; }
+
+        .disclaimer { color: #738191; font-size: 10px; line-height: 1.5; text-align: center; }
+        .disclaimer strong { color: #a9b7c6; font-weight: 550; }
+
+        @media (min-width: 1400px) {
+            .layout { grid-template-columns: minmax(0, 1fr) 344px; }
+        }
+        @media (max-width: 900px) {
+            .shell { padding: 18px; }
+            .layout { grid-template-columns: minmax(0, 1fr) 280px; gap: 12px; }
+            .scene-panel { padding: 12px; }
+        }
+        @media (max-width: 700px) {
+            .shell { min-height: 100svh; padding: 14px; gap: 14px; }
+            header { align-items: flex-start; }
+            .layout { grid-template-columns: 1fr; }
+            .scene-panel { position: static; height: auto; min-height: 0; }
+            .scene { flex: none; min-height: 0; aspect-ratio: 8 / 5; }
+            .sidebar { display: grid; grid-template-columns: 1fr; }
+            .controls { order: -1; }
+            .pad { grid-template-rows: repeat(2, 52px); }
+        }
+        @media (max-height: 760px) and (min-width: 701px) {
+            .shell { padding-top: 15px; padding-bottom: 15px; gap: 13px; }
+            .layout { min-height: 0; }
+            .scene { min-height: 0; }
+            .telemetry, .controls { padding: 12px; }
+            .metric { padding: 8px 10px; }
+            .metric-value { margin-top: 4px; font-size: 16px; }
+            .pad { grid-template-rows: repeat(2, 50px); margin-bottom: 10px; }
+        }
+        @media (max-width: 900px) {
+            .motor-hud { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+        @media (max-height: 550px) {
+            .scene-panel:fullscreen .motor-cell, .viewport-fullscreen .motor-cell { padding: 3px 7px; }
+            .scene-panel:fullscreen #terrainMap, .viewport-fullscreen #terrainMap { height: 100px; }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <header>
+            <div class="brand">
+                <div class="mark" aria-hidden="true">A</div>
+                <div>
+                    <h1>轮腿仿真控制台</h1>
+                    <div class="subtitle">RM WBR 模型 · 实时物理仿真</div>
+                    <div class="quick-keys">W/S 前后 · A/D 转向 · Q/E 腿高 · 按住 G 上台准备 · 空格跳跃 · R 尝试自起 · T 强制复位 · X 停止电机</div>
+                </div>
+            </div>
+            <div id="connection" class="connection"><span class="dot"></span><span id="connectionText">正在连接仿真</span></div>
+        </header>
+
+        <div class="layout">
+            <section id="scenePanel" class="panel scene-panel" aria-label="仿真画面">
+                <div class="scene-heading">
+                    <div class="scene-title">实时画面</div>
+                    <div class="scene-actions">
+                        <label class="scene-label">画质 <select id="qualitySelect" aria-label="画质">
+                            <option value="standard">标清 800×500</option>
+                            <option value="high" selected>高清 1280×800</option>
+                            <option value="ultra">超清 1920×1200</option>
+                        </select></label>
+                        <button id="fullscreenButton" type="button">全屏画面</button>
+                        <button id="climbAssistButton" type="button" data-key="g" disabled aria-label="按住进入上台准备，G" aria-pressed="false">按住上台 · G</button>
+                        <button id="motorStopButton" type="button" disabled style="border-color:#ee6c69;color:#ffb2ae" aria-label="立即锁住六路电机输出，X">停止电机 · X</button>
+                    </div>
+                </div>
+                <div id="motorStopNotice" class="control-warning" role="status" hidden></div>
+                <div class="scene">
+                    <img id="frame" alt="MuJoCo 轮腿仿真实时画面" hidden>
+                    <div id="empty" class="empty">
+                        <div class="spinner"></div>
+                        <strong>正在连接仿真</strong>
+                        <span>等待第一帧真实画面…</span>
+                    </div>
+                </div>
+                <div class="motor-hud" aria-label="实时电机数据">
+                    <div class="motor-cell"><small>左轮估算电功率</small><b id="wheelPower0">— W</b></div>
+                    <div class="motor-cell"><small>右轮估算电功率</small><b id="wheelPower1">— W</b></div>
+                    <div class="motor-cell"><small>左关节 1 实际扭矩</small><b id="hipTorque0">— Nm</b></div>
+                    <div class="motor-cell"><small>左关节 4 实际扭矩</small><b id="hipTorque1">— Nm</b></div>
+                    <div class="motor-cell"><small>右关节 1 实际扭矩</small><b id="hipTorque2">— Nm</b></div>
+                    <div class="motor-cell"><small>右关节 4 实际扭矩</small><b id="hipTorque3">— Nm</b></div>
+                </div>
+                <div class="motor-note">电功率为模型估算，非电池实测；髋扭矩仅计电机输出，不含气弹簧和机械限位的承载。悬停可看转速与机械功率。</div>
+                <div class="record-row">
+                    <button id="recordStart" type="button">开始记录</button>
+                    <button id="recordStop" type="button" disabled>停止并打包</button>
+                    <span id="recordStatus" class="record-status" role="status">尚未记录</span>
+                    <a id="recordDownload" hidden download>下载记录 ZIP</a>
+                </div>
+                <details id="mapPanel" class="map-panel">
+                    <summary>展开场地俯视地图 · 仅显示位置</summary>
+                    <canvas id="terrainMap" aria-label="场地区域、车辆位置与朝向"></canvas>
+                </details>
+                <div class="scene-foot"><span>画面由 MuJoCo 实时渲染</span><span id="frameInfo">等待图像</span></div>
+            </section>
+
+            <aside class="sidebar">
+                <section class="panel telemetry" aria-label="仿真状态">
+                    <h2 class="section-title">运行状态</h2>
+                    <div class="metrics">
+                        <div class="metric"><div class="metric-label">前进速度</div><div class="metric-value"><span id="speed">—</span> <small>m/s</small></div></div>
+                        <div class="metric"><div class="metric-label">实时倍率</div><div class="metric-value"><span id="rtf">—</span> <small>×</small></div></div>
+                        <div class="metric"><div class="metric-label">俯仰 Pitch</div><div class="metric-value"><span id="pitch">—</span><small> °</small></div></div>
+                        <div class="metric"><div class="metric-label">横滚 Roll</div><div class="metric-value"><span id="roll">—</span><small> °</small></div></div>
+                        <div class="metric"><div class="metric-label">偏航 Yaw</div><div class="metric-value"><span id="yaw">—</span><small> °</small></div></div>
+                        <div class="metric"><div class="metric-label">腿长</div><div class="metric-value"><span id="leg">—</span><small> m</small></div></div>
+                        <div class="metric"><div class="metric-label">轮底净空（相对起跳面）</div><div class="metric-value"><span id="jumpClearance">—</span><small> mm</small></div></div>
+                        <div class="metric"><div class="metric-label">全身离地累计 / 最长</div><div class="metric-value"><span id="airTime">—</span><small> ms</small></div></div>
+                        <div class="metric"><div class="metric-label">重心离地后上升</div><div class="metric-value"><span id="jumpComRise">—</span><small> mm</small></div></div>
+                        <div class="metric"><div class="metric-label">离地竖直速度</div><div class="metric-value"><span id="jumpTakeoffVz">—</span><small> m/s</small></div></div>
+                        <div class="metric"><div class="metric-label">当前四髋最大转速</div><div class="metric-value"><span id="hipRpm">—</span><small> rpm</small></div></div>
+                    </div>
+                    <div class="status-line">当前阶段 <b id="currentStage">阶段 3 · VMC + 髋平衡</b><br>起身状态 <b id="riseStatus">等待起身</b> · <b id="riseElapsed">—</b> s<br>控制限制 <b id="commandInhibited">起身完成前暂不响应移动和跳跃</b><br>仿真时间 <b id="simTime">—</b> s<br>跳跃阶段 <b id="jumpPhase">—</b><br>状态 <b id="statusText">等待连接</b></div>
+                </section>
+
+                <section class="panel controls" aria-label="运动控制">
+                    <div class="controls-top"><h2 class="section-title">运动控制</h2><span class="key-hint">键盘 WASD</span></div>
+                    <div class="select-row">
+                        <label>控制器<select id="controllerSelect"><option value="own">我的 ARBATOS</option><option value="upstream">原作者 WBR（参考模型适配）</option></select></label>
+                        <label>自家阶段<select id="stageSelect">
+                            <option value="0">阶段 0 · 关节抱姿 + 轮 LQR</option>
+                            <option value="1">阶段 1 · 腿位置环 + 轮 LQR</option>
+                            <option value="2">阶段 2 · VMC 腿高 + 轮 LQR</option>
+                            <option value="3" selected>阶段 3 · VMC + 髋平衡</option>
+                        </select></label>
+                    </div>
+                    <div id="stageHint" class="stage-hint" hidden></div>
+                    <div class="select-row"><label>测试位置（切换会重置）<select id="locationSelect"><option value="start">起点 · 坑洼与小台阶</option><option value="playground">自由平地</option><option value="rmul2026">RMUL 2026 原尺寸场地</option><option value="stairs">宽台阶与连续阶梯</option><option value="ramps">纵坡桥与下坡</option><option value="rough">浅坑起伏与搓板</option><option value="step_auto">100 mm 台阶 · 直接开过去</option><option value="climb200">200 mm 高台 · 磕台上台</option><option value="step_jump200">200 mm 高台 · 带速试验</option><option value="large_steps">100 mm 台阶 · 带速大跳</option><option value="step_climb">100 mm 台阶 · 慢速搭台</option><option value="slope_course">横坡道路 · 从平地驶入</option><option value="cross10">10° 横坡 · 从站姿开始</option><option value="cross15">15° 横坡 · 从站姿开始</option></select></label><span class="hold-note">80×40 m 场地可自由转弯，东侧加入 RMUL 2026 原尺寸地形。新障碍的控制效果需逐项验证。</span></div>
+                    <div id="mechanicalNotice" class="hold-note">正在读取底部导轮配置。</div>
+                    <div class="select-row"><label>视角<select id="cameraSelect"><option value="follow">背后跟随</option><option value="oblique">场地斜视</option><option value="overview">当前区域总览</option></select></label><span class="hold-note">切换视角不影响驾驶，也不会重置。</span></div>
+                    <label class="length-row"><span>W/S 速度 <input id="driveSpeed" type="range" min="0.25" max="3" step="0.05" value="1"></span><b><span id="driveSpeedValue">1.00</span> m/s</b></label>
+                    <label class="length-row"><span>A/D 转向 <input id="turnSpeed" type="range" min="0.3" max="3" step="0.1" value="1.2"></span><b><span id="turnSpeedValue">69</span> °/s</b></label>
+                    <div class="hold-note">实际转速 <b id="actualTurnSpeed">—</b> °/s · 前进 A 左转、D 右转；倒车时反转车头转向，让 A 的倒车轨迹向左、D 向右。制动时随实际行驶方向切换。</div>
+                    <label id="jumpProfileRow" class="length-row"><span>跳跃动作 <select id="jumpProfileSelect"><option value="0">小跳 · 目标 100 mm</option><option value="1">越台大跳 · 调试中</option></select></span><small>行驶中可切换</small></label>
+                    <label id="lengthRow" class="length-row"><span>目标腿长 <input id="legLength" type="range" min="0.18" max="0.32" step="0.01" value="0.20"></span><b><span id="legLengthValue">0.200</span> m</b></label>
+                    <div class="button-row"><button id="lowerLeg" class="reset-button" type="button">降低 · Q</button><button id="raiseLeg" class="reset-button" type="button">升高 · E</button><span>实际腿长 <b id="actualLegLength">—</b> m</span></div>
+                    <div class="hold-note">腿长是髋轴到轮轴的距离；底盘导轮的离地间隙更小，不能直接当作可跨台阶高度。</div>
+                    <div id="kneeRangeNotice" class="hold-note">正在读取模型收腿范围。</div>
+                    <div class="hold-note">车底到轮底 <b id="chassisClearance">—</b> mm · 平地双轮着地时为车底间隙；Q/E 可调至 320 mm 腿长。</div>
+                    <div class="hold-note">左 / 右腿长 <b id="sideLegLengths">—</b> m · 横坡自动调整两侧腿长</div>
+                    <div class="hold-note">行驶状态 <b id="driveMode">等待连接</b> · 正在使用的腿长目标 <b id="appliedLegLength">—</b> m</div>
+                    <div id="controlWarning" class="control-warning" role="status" aria-live="polite"></div>
+                    <div id="jumpNotice" class="hold-note">读取跳跃参数中</div>
+                    <div id="terrainNotice" class="hold-note">读取场地中</div>
+                    <div id="stepNotice" class="hold-note" hidden></div>
+                    <div id="climbAssistNotice" class="hold-note">读取上台准备能力…</div>
+                    <div class="hold-note">两轮落脚：<b id="wheelSupport">—</b></div>
+                    <div class="pad" aria-label="按住控制方向">
+                        <button class="control-key" type="button" data-key="w" aria-label="前进 W">W</button>
+                        <button class="control-key" type="button" data-key="a" aria-label="左转 A">A</button>
+                        <button class="control-key" type="button" data-key="s" aria-label="后退 S">S</button>
+                        <button class="control-key" type="button" data-key="d" aria-label="右转 D">D</button>
+                    </div>
+                    <div class="button-row">
+                        <button id="jumpButton" class="jump-button" type="button" aria-label="跳跃，空格">跳跃 · Space</button>
+                        <button id="riseButton" class="reset-button" type="button" aria-label="尝试自起，保留当前姿态和速度，R">尝试自起 · R</button>
+                        <button id="resetButton" class="reset-button" type="button" aria-label="强制复位，返回所选场地入口，T">强制复位 · T</button>
+                    </div>
+                    <div class="hold-note">W/S 前后，松键滑行，反向键制动；A/D 转向，Q/E 调腿高。自家控制器可用 R 从当前姿态尝试受限自起；原作者对照未接入此动作。T 回入口。X 中止所有电机动作并锁住输出，新的 R/T 才恢复；失去支撑后车体仍会自然落下。离开页面会减速，跳跃或磕台中的人工中止请用 X。</div>
+                </section>
+                <div class="disclaimer"><strong id="controllerLabel">控制核心：我的 ARBATOS</strong><br><span id="motorLimitLabel">8009 · 常态 20 / 动作峰值 40 Nm · 额定转速待确认。</span><br>气弹簧：每腿一根 450 N，安装几何采用开源参考。两套控制共用同一物理模型。<br><span id="kneeRangeLabel">膝短端：180 mm 实体挡块。</span><br><span id="collisionLabel">正在读取模型配置</span></div>
+            </aside>
+        </div>
+    </main>
+
+    <script>
+        (() => {
+            const API = "";
+            const SEND_INTERVAL_MS = 100;
+            const STATE_INTERVAL_MS = 200;
+            const FRAME_INTERVAL_MS = 50;
+            const heldKeys = new Set();
+            let resetPending = false;
+            let clearMotorStopPending = false;
+            let resetMode = "global";
+            let resetAwaitingState = false;
+            let manualMotorStop = false;
+            let motorStopSupported = false;
+            let limitedRecoverySupported = false;
+            let climbAssistSupported = false;
+            let motorStopGeneration = 0;
+            let motorStopAckRevision = 0;
+            let resetRevision = 0;
+            let jumpPending = false;
+            let selectedController = "own";
+            let selectedStage = 3;
+            let ownReady = false;
+            let simRunning = false;
+            let legLength = 0.20;
+            let selectedJumpProfile = 0;
+            let selectedLocation = "start";
+            let currentTerrain = "flat";
+            let stepClimbAvailable = false;
+            let contactNotice = "";
+            let driveSpeed = 1.0;
+            let turnSpeed = 1.2;
+            let latestMapState = null;
+            let recorderState = {};
+            let recordPending = false;
+            let recordError = "";
+            let recordDesired = null;
+            let recordRequestedAt = 0;
+            let qualityPending = false;
+            let frameDimensions = "";
+            let stopPending = false;
+            let heightTimer = 0;
+            let heightDirection = 0;
+            const clientId = crypto.randomUUID();
+            let claimControlPending = false;
+            let controlOwner = null;
+            let stateReceived = false;
+            let controlRevision = 0;
+            let commandTimer = 0;
+            let commandImmediateTimer = 0;
+            let stateTimer = 0;
+            let frameTimer = 0;
+            let frameSeq = null;
+            let currentObjectUrl = null;
+            let frameInFlight = false;
+            let stateInFlight = false;
+            let commandInFlight = false;
+            let lastFrameAt = 0;
+            let lastStateAt = 0;
+            let disconnectedSince = Date.now();
+
+            const $ = (id) => document.getElementById(id);
+            const connection = $("connection");
+            const connectionText = $("connectionText");
+            const frame = $("frame");
+            const empty = $("empty");
+
+            function setConnection(kind, label) {
+                connection.classList.remove("online", "offline");
+                if (kind) connection.classList.add(kind);
+                connectionText.textContent = label;
+            }
+
+            function setKey(key, down) {
+                if (down && !ownReady) return;
+                if (key === "g" && down && (!climbAssistSupported || !stepClimbAvailable || selectedController !== "own" ||
+                    selectedStage !== 3 || manualMotorStop || resetPending || resetAwaitingState ||
+                    ["step_climb", "large_steps"].includes(selectedLocation))) return;
+                if (key === " " && down && (selectedController !== "own" || selectedStage !== 3 ||
+                    selectedLocation === "step_climb" || heldKeys.has("g"))) return;
+                if (down) { claimControlPending = true; stopPending = false; }
+                const hadKey = heldKeys.has(key);
+                if (down) {
+                    if (key === "g") { heldKeys.delete(" "); jumpPending = false; }
+                    if (key === "w") heldKeys.delete("s");
+                    if (key === "s") heldKeys.delete("w");
+                    heldKeys.add(key);
+                    if (key === " " && !hadKey) jumpPending = true;
+                }
+                else heldKeys.delete(key);
+                if (hadKey !== down) {
+                    updateButtons();
+                    scheduleCommand(0);
+                }
+            }
+
+            function updateButtons() {
+                document.querySelectorAll("[data-key]").forEach((button) => {
+                    button.classList.toggle("active", heldKeys.has(button.dataset.key));
+                });
+                $("jumpButton").classList.toggle("active", heldKeys.has(" "));
+                $("climbAssistButton").setAttribute("aria-pressed", String(heldKeys.has("g")));
+            }
+
+            function normalizedKeys() {
+                return ["w", "a", "s", "d", "g"].filter((key) => heldKeys.has(key)).concat(
+                    heldKeys.has(" ") || jumpPending ? [" "] : []
+                );
+            }
+
+            async function sendCommand(force) {
+                if (!stateReceived || (!claimControlPending && controlOwner !== clientId)) return;
+                if (resetMode === "recover" && resetAwaitingState && !resetPending) return;
+                if (commandInFlight) {
+                    scheduleCommand(20);
+                    return;
+                }
+                const keys = normalizedKeys();
+                const submittedResetRevision = resetRevision;
+                commandInFlight = true;
+                const body = { controller: selectedController, stage: selectedStage, leg_length: legLength,
+                    jump_profile: selectedJumpProfile, drive_speed: driveSpeed, turn_speed: turnSpeed,
+                    keys, reset: resetPending, reset_mode: resetMode,
+                    clear_emergency_stop: resetPending && manualMotorStop && clearMotorStopPending,
+                    stop_generation: motorStopGeneration,
+                    client_id: clientId, claim_control: claimControlPending, stop: stopPending,
+                    location: selectedLocation };
+                if (body.reset && body.reset_mode === "recover") {
+                    ["controller", "stage", "leg_length", "jump_profile", "drive_speed", "turn_speed", "location"]
+                        .forEach((name) => delete body[name]);
+                }
+                if (body.claim_control) controlRevision += 1;
+                try {
+                    const response = await fetch(API + "/command", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        cache: "no-store",
+                        body: JSON.stringify(body)
+                    });
+                    if (!response.ok) throw new Error("HTTP " + response.status);
+                    if (body.claim_control) {
+                        claimControlPending = false;
+                        controlOwner = clientId;
+                    }
+                    if (keys.includes(" ")) jumpPending = false;
+                    if (body.reset && submittedResetRevision === resetRevision) {
+                        if (body.clear_emergency_stop) {
+                            manualMotorStop = false;
+                            motorStopAckRevision = 0;
+                        }
+                        resetPending = clearMotorStopPending = false;
+                    }
+                } catch (error) {
+                    if (body.reset && submittedResetRevision === resetRevision) {
+                        resetPending = false;
+                        clearMotorStopPending = false;
+                        resetAwaitingState = false;
+                        claimControlPending = false;
+                    }
+                    showDisconnected(error);
+                } finally {
+                    commandInFlight = false;
+                }
+            }
+
+            async function stopMotorOutputs() {
+                if (!motorStopSupported) {
+                    clearControls(true);
+                    $("motorStopButton").title = "当前旧版服务未加载输出停止功能，请使用更新后的地址";
+                    return;
+                }
+                if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+                clearControls(false);
+                resetPending = resetAwaitingState = clearMotorStopPending = false;
+                resetRevision += 1;
+                const submittedStopRevision = resetRevision;
+                motorStopAckRevision = submittedStopRevision;
+                manualMotorStop = true;
+                stopPending = true;
+                try {
+                    const response = await fetch(API + "/command", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ keys: [], client_id: clientId, emergency_stop: true })
+                    });
+                    if (!response.ok) throw new Error("HTTP " + response.status);
+                    const stopped = await response.json();
+                    motorStopGeneration = Math.max(motorStopGeneration, stopped.motor_stop_generation ?? 0);
+                    if (motorStopAckRevision === submittedStopRevision) motorStopAckRevision = 0;
+                    pollState();
+                } catch (error) {
+                    showDisconnected(error);
+                }
+            }
+
+            function scheduleCommand(delay) {
+                if (commandImmediateTimer) clearTimeout(commandImmediateTimer);
+                commandImmediateTimer = setTimeout(() => {
+                    commandImmediateTimer = 0;
+                    sendCommand(true);
+                }, delay === undefined ? SEND_INTERVAL_MS : delay);
+            }
+
+            function clearControls(sendNow) {
+                stopHeight();
+                heldKeys.clear();
+                jumpPending = false;
+                updateButtons();
+                if (sendNow) {
+                    if (commandImmediateTimer) clearTimeout(commandImmediateTimer);
+                    commandImmediateTimer = 0;
+                    sendCommand(true);
+                }
+            }
+
+            function selectController(value) {
+                claimControlPending = true;
+                stopPending = false;
+                stopHeight();
+                selectedController = value;
+                if (value === "upstream" && selectedLocation !== "start") {
+                    selectedLocation = "start";
+                    $("locationSelect").value = selectedLocation;
+                }
+                requestReset("global");
+            }
+
+            function updateStageControls() {
+                const own = selectedController === "own";
+                const stage = Number(selectedStage);
+                const ready = ownReady;
+                const resetting = resetPending || resetAwaitingState;
+                const stepClimb = selectedLocation === "step_climb";
+                const stepCourse = stepClimb || ["large_steps", "step_jump200"].includes(selectedLocation);
+                const jumpEnabled = own && ready && stage === 3 && !stepClimb && !heldKeys.has("g");
+                $("stageSelect").disabled = !own || resetting || manualMotorStop;
+                $("controllerSelect").disabled = resetting || manualMotorStop;
+                $("locationSelect").disabled = resetting || manualMotorStop;
+                $("locationSelect").querySelectorAll("option").forEach((option) => {
+                    option.disabled = (currentTerrain === "flat" && option.value !== "start") ||
+                        (!own && option.value !== "start") ||
+                        (["step_jump200", "step_climb", "step_auto", "climb200"].includes(option.value) && !stepClimbAvailable);
+                });
+                $("riseButton").disabled = resetting || !limitedRecoverySupported || !own;
+                $("riseButton").title = !own ? "原作者对照未接入受限自起，请用 T 回入口" :
+                    limitedRecoverySupported ? "从当前姿态尝试受限自起" : "旧服务未加载本轮保护，请使用更新后的地址";
+                $("resetButton").disabled = resetting;
+                $("stageHint").hidden = !own || stage !== 2;
+                $("stageHint").textContent = stage === 2 ? "实验对照：当前参数可能失稳。" : "";
+                const lengthEnabled = (!own || stage !== 0) && !stepCourse && !resetting;
+                $("legLength").disabled = !lengthEnabled;
+                $("lowerLeg").disabled = !lengthEnabled;
+                $("raiseLeg").disabled = !lengthEnabled;
+                if (!lengthEnabled) stopHeight();
+                $("jumpProfileRow").hidden = !own || stage !== 3 || stepCourse;
+                $("driveSpeed").disabled = stepCourse || resetting;
+                $("turnSpeed").disabled = resetting;
+                $("jumpProfileSelect").disabled = resetting;
+                document.querySelectorAll("[data-key]").forEach((button) => { button.disabled = !ready; });
+                const climbAssistEnabled = climbAssistSupported && stepClimbAvailable && own && ready && stage === 3 &&
+                    !resetting && !manualMotorStop && !stepCourse;
+                $("climbAssistButton").disabled = !climbAssistEnabled;
+                if (!climbAssistEnabled && heldKeys.has("g")) setKey("g", false);
+                $("jumpButton").disabled = !jumpEnabled;
+                $("jumpButton").setAttribute("aria-disabled", String(!jumpEnabled));
+                const jumpHint = resetting ? "复位执行中，等待仿真确认后恢复操作。" :
+                    !simRunning ? (own && limitedRecoverySupported ? "控制器已停止，可按 R 尝试自起；T 强制返回场地入口。" : "控制器已停止，请按 T 返回场地入口。") :
+                    !own ? "原作者对照未接入受限自起和跳跃映射，R、空格已禁用；T 可回入口。" :
+                    (!ready ? "起身完成前不能移动或跳跃。" :
+                        (stepClimb ? "按住 W，控制器自动抬腿接近、触台收腿和站起。" :
+                            (stage === 3 ? "" : "当前阶段未启用跳跃，空格已禁用。")));
+                $("controlWarning").textContent = own && stage === 0 ? "关节保持初始角度，轮端负责平衡。 " + jumpHint : jumpHint;
+                if (contactNotice) $("controlWarning").textContent = contactNotice;
+                if (!jumpEnabled && heldKeys.has(" ")) setKey(" ", false);
+            }
+
+            function showDisconnected(error) {
+                stopPending = true;
+                clearControls(false);
+                ownReady = false;
+                simRunning = false;
+                updateStageControls();
+                setConnection("offline", "仿真连接中断");
+                $("statusText").textContent = "连接中断，控制已清空";
+                if (!frame.src) empty.hidden = false;
+                disconnectedSince = Date.now();
+                if (error) console.debug("仿真接口暂不可用", error);
+            }
+
+            function showConnected() {
+                disconnectedSince = Date.now();
+                setConnection("online", "仿真已连接");
+            }
+
+            function format(value, digits) {
+                if (value === null || value === undefined) return "—";
+                const number = Number(value);
+                return Number.isFinite(number) ? number.toFixed(digits) : "—";
+            }
+
+            function updateRecorder(recorder) {
+                recorderState = recorder ?? {};
+                const active = recorderState.active === true;
+                const finalizing = recorderState.finalizing === true;
+                if (recordDesired && (recorderState.error ||
+                    (recordDesired === "start" && active) ||
+                    (recordDesired === "stop" && !active && (finalizing || recorderState.ready)))) {
+                    recordDesired = null;
+                    recordPending = false;
+                } else if (recordDesired && Date.now()-recordRequestedAt > 5000) {
+                    recordDesired = null;
+                    recordPending = false;
+                    recordError = "记录状态尚未确认，请查看连接状态后重试";
+                }
+                $("recordStart").disabled = recordPending || active || finalizing;
+                $("recordStop").disabled = recordPending || !active || finalizing;
+                const phase = recordPending ? "正在提交记录操作" : finalizing ? "正在打包" :
+                    active ? "正在记录" : recorderState.ready ? "记录已完成" : "尚未记录";
+                $("recordStatus").textContent = phase + " · " + format(recorderState.duration ?? 0, 1) +
+                    " s · " + (recorderState.samples ?? 0) + " 样本 · 丢弃 " + (recorderState.dropped ?? 0) +
+                    ((recordError || recorderState.error) ? " · " + (recordError || recorderState.error) : "");
+                $("recordStatus").title = "已写入 " + (recorderState.written ?? 0) + " 样本，" +
+                    (recorderState.bytes ?? 0) + " 字节；ZIP 含 CSV、JSONL 与记录元数据。";
+                const filename = recorderState.filename;
+                $("recordDownload").hidden = !recorderState.ready || !filename || active || finalizing;
+                if (recorderState.ready && filename) {
+                    $("recordDownload").href = API + "/recordings/" + encodeURIComponent(filename);
+                    $("recordDownload").download = filename;
+                }
+            }
+
+            async function requestRecord(action) {
+                if (recordPending || recorderState.finalizing ||
+                    (action === "start" && recorderState.active) ||
+                    (action === "stop" && !recorderState.active)) return;
+                recordPending = true;
+                recordError = "";
+                recordDesired = action;
+                recordRequestedAt = Date.now();
+                updateRecorder(recorderState);
+                try {
+                    const response = await fetch(API + "/record", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action })
+                    });
+                    if (!response.ok) throw new Error("HTTP " + response.status);
+                    const result = await response.json();
+                    if (result.recorder) recorderState = result.recorder;
+                    else if ("active" in result) recorderState = result;
+                } catch (error) {
+                    recordError = "记录操作失败：" + String(error);
+                    recordDesired = null;
+                    recordPending = false;
+                } finally {
+                    updateRecorder(recorderState);
+                    pollState();
+                }
+            }
+
+            function drawTerrainMap() {
+                if (!$("mapPanel").open || !latestMapState) return;
+                const canvas = $("terrainMap");
+                const rect = canvas.getBoundingClientRect();
+                if (!rect.width || !rect.height) return;
+                const ratio = window.devicePixelRatio || 1;
+                canvas.width = Math.round(rect.width * ratio);
+                canvas.height = Math.round(rect.height * ratio);
+                const context = canvas.getContext("2d");
+                context.scale(ratio, ratio);
+                context.clearRect(0, 0, rect.width, rect.height);
+                const info = latestMapState.terrain_info ?? {};
+                const bounds = info.bounds_m;
+                context.font = "11px Microsoft YaHei, sans-serif";
+                context.fillStyle = "#9aa7b6";
+                if (!bounds?.x || !bounds?.y) {
+                    context.fillText("当前为无限平地", 14, 25);
+                    return;
+                }
+                const scale = Math.min((rect.width-28)/(bounds.x[1]-bounds.x[0]),
+                    (rect.height-28)/(bounds.y[1]-bounds.y[0]));
+                const width = (bounds.x[1]-bounds.x[0])*scale;
+                const height = (bounds.y[1]-bounds.y[0])*scale;
+                const left = (rect.width-width)/2, top = (rect.height-height)/2;
+                const point = (x, y) => [left+(x-bounds.x[0])*scale, top+(bounds.y[1]-y)*scale];
+                context.fillStyle = "#192530";
+                context.fillRect(left, top, width, height);
+                context.strokeStyle = "#4b6176";
+                context.strokeRect(left, top, width, height);
+                const colors = ["#276449", "#995d23", "#216a77", "#5b5366"];
+                (info.zones ?? []).forEach((zone, index) => {
+                    const [x, y] = point(zone.x_m[0], zone.y_m[1]);
+                    const w = (zone.x_m[1]-zone.x_m[0])*scale;
+                    const h = (zone.y_m[1]-zone.y_m[0])*scale;
+                    context.fillStyle = colors[index % colors.length];
+                    context.fillRect(x, y, w, h);
+                    context.fillStyle = "#e4edf5";
+                    context.save();
+                    context.beginPath(); context.rect(x, y, w, h); context.clip();
+                    context.fillText(zone.label, x+4, y+13, Math.max(1, w-8));
+                    context.restore();
+                });
+                context.fillStyle = "#91a5b8";
+                const [oldX, oldY] = point(-20, 3);
+                context.fillRect(oldX, oldY, 40*scale, 6*scale);
+                context.fillStyle = "#172330";
+                context.fillText("原试验道", oldX+4, oldY+Math.min(13, 6*scale-1));
+                const x = Number(latestMapState.course_x_m), y = Number(latestMapState.course_y_m);
+                if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+                const [px, py] = point(x, y);
+                const angle = -Number(latestMapState.yaw_deg ?? 0)*Math.PI/180;
+                context.save(); context.translate(px, py); context.rotate(angle);
+                context.beginPath(); context.moveTo(11, 0); context.lineTo(-6, -5);
+                context.lineTo(-3, 0); context.lineTo(-6, 5); context.closePath();
+                context.fillStyle = "#ffe17f"; context.fill();
+                context.strokeStyle = "#10151d"; context.stroke(); context.restore();
+                context.fillStyle = "#b4c6d7";
+                context.fillText("80 × 40 m · +x 向右 · +y 向上 · 车位 " + format(x, 1) + ", " + format(y, 1),
+                    8, rect.height-3);
+            }
+
+            function updateMotorHud(telemetry) {
+                (telemetry?.wheels ?? []).forEach((motor, index) => {
+                    if (index > 1) return;
+                    const node = $("wheelPower" + index);
+                    node.textContent = format(motor.electrical_power_estimate_w, 1) + " W";
+                    node.title = motor.name + " · " + format(motor.torque_nm, 2) + " Nm · " +
+                        format(motor.speed_radps, 1) + " rad/s · 机械功率 " +
+                        format(motor.mechanical_power_w, 1) + " W" + (motor.braking ? " · 制动中" : "");
+                });
+                (telemetry?.hips ?? []).forEach((motor, index) => {
+                    if (index > 3) return;
+                    const node = $("hipTorque" + index);
+                    node.textContent = format(motor.torque_nm, 2) + " Nm";
+                    node.title = motor.name + " · " + format(motor.speed_radps, 1) +
+                        " rad/s · 机械功率 " + format(motor.mechanical_power_w, 1) + " W";
+                });
+            }
+
+            function updateFullscreen() {
+                const native = document.fullscreenElement === $("scenePanel");
+                const viewport = $("scenePanel").classList.contains("viewport-fullscreen");
+                $("fullscreenButton").textContent = native ? "退出全屏" : viewport ? "退出网页铺满" : "全屏画面";
+                $("fullscreenButton").title = viewport ? "浏览器不支持系统全屏，当前只铺满网页；可按 Esc 退出。" : "";
+                drawTerrainMap();
+            }
+
+            function exitViewport() {
+                $("scenePanel").classList.remove("viewport-fullscreen");
+                document.body.classList.remove("viewport-fullscreen-active");
+                updateFullscreen();
+            }
+
+            async function toggleFullscreen() {
+                $("fullscreenButton").blur();
+                if (document.fullscreenElement) {
+                    await document.exitFullscreen();
+                } else if ($("scenePanel").classList.contains("viewport-fullscreen")) {
+                    exitViewport();
+                } else {
+                    try {
+                        if (!$("scenePanel").requestFullscreen) throw new Error("全屏不可用");
+                        await $("scenePanel").requestFullscreen();
+                    } catch (error) {
+                        $("scenePanel").classList.add("viewport-fullscreen");
+                        document.body.classList.add("viewport-fullscreen-active");
+                    }
+                }
+                updateFullscreen();
+            }
+
+            async function pollState() {
+                if (stateInFlight || (commandInFlight && claimControlPending)) return;
+                stateInFlight = true;
+                const requestedRevision = controlRevision;
+                const requestedResetRevision = resetRevision;
+                try {
+                    const response = await fetch(API + "/state", { cache: "no-store" });
+                    if (!response.ok) throw new Error("HTTP " + response.status);
+                    const data = await response.json();
+                    if (requestedRevision !== controlRevision || requestedResetRevision !== resetRevision) return;
+                    showConnected();
+                    simRunning = data.running === true;
+                    currentTerrain = data.terrain ?? "flat";
+                    $("cameraSelect").value = data.camera_mode ?? "follow";
+                    if (!qualityPending) $("qualitySelect").value = data.render_quality ?? "high";
+                    frameDimensions = data.frame_width && data.frame_height ?
+                        data.frame_width + "×" + data.frame_height : "";
+                    updateMotorHud(data.motor_telemetry);
+                    updateRecorder(data.recorder);
+                    latestMapState = data;
+                    drawTerrainMap();
+                    $("actualTurnSpeed").textContent = format(
+                        data.yaw_rate_radps == null ? null : data.yaw_rate_radps*180/Math.PI, 0);
+                    stepClimbAvailable = data.step_climb_available === true;
+                    contactNotice = data.contact_notice ?? "";
+                    controlOwner = data.control_owner ?? null;
+                    stateReceived = true;
+                    if (data.motor_stop_latched) manualMotorStop = true;
+                    else if (!motorStopAckRevision && data.motor_stop_generation >= motorStopGeneration) {
+                        manualMotorStop = false;
+                    }
+                    motorStopSupported = data.motor_stop_supported === true;
+                    limitedRecoverySupported = data.limited_recovery_supported === true;
+                    climbAssistSupported = data.climb_assist_supported === true;
+                    $("climbAssistNotice").hidden = ["step_jump200", "large_steps"].includes(data.location);
+                    $("climbAssistNotice").textContent = data.motor_stop_latched ? "上台动作已中止，电机输出锁定。" :
+                        !climbAssistSupported ? "此服务尚未接入按住上台准备。" :
+                        data.controller !== "own" || data.selected_stage !== 3 ? "G 上台准备用于自家控制器的完整控制阶段。" :
+                        (data.step_climb_phase > 0 && data.step_climb_phase < 7 ? "正在上台：松 G 会完成本次动作；需要中止请按 X。" :
+                            (data.climb_assist_requested ? "G 已按住：触台时更快后让、提轮，松 G 撤销待命。" :
+                                "接近台阶时按住 G，再用 W 前进；触台前松 G 撤销准备。"));
+                    motorStopGeneration = Math.max(motorStopGeneration, data.motor_stop_generation ?? 0);
+                    $("motorStopButton").disabled = !motorStopSupported;
+                    $("motorStopButton").textContent = data.motor_stop_latched ? "输出已锁住 · X" : "停止电机 · X";
+                    $("motorStopButton").title = motorStopSupported ? "输出归零后保持锁定，新的 R/T 才恢复" : "此服务版本尚未支持，请使用更新后的地址";
+                    $("motorStopNotice").hidden = !data.motor_stop_latched && !(data.rise_phase < 0);
+                    $("motorStopNotice").textContent = data.status ?? "电机输出已停止";
+                    const recoveredState = resetMode === "recover" && resetAwaitingState &&
+                        !resetPending && data.reset_pending === false;
+                    if (data.reset_pending === true) resetAwaitingState = true;
+                    if (!resetPending && data.reset_pending === false) resetAwaitingState = false;
+                    if (recoveredState || (controlOwner !== clientId &&
+                        !claimControlPending && !resetPending && heldKeys.size === 0)) {
+                        selectedController = data.controller;
+                        selectedStage = data.selected_stage ?? selectedStage;
+                        selectedLocation = data.location ?? "start";
+                        selectedJumpProfile = data.jump_profile ?? selectedJumpProfile;
+                        driveSpeed = data.drive_speed_requested_mps ?? driveSpeed;
+                        turnSpeed = data.turn_speed_requested_radps ?? turnSpeed;
+                        legLength = data.leg_length_target_m ?? legLength;
+                        $("controllerSelect").value = selectedController;
+                        $("stageSelect").value = String(selectedStage);
+                        $("locationSelect").value = selectedLocation;
+                        $("jumpProfileSelect").value = String(selectedJumpProfile);
+                        $("driveSpeed").value = String(driveSpeed);
+                        $("driveSpeedValue").textContent = driveSpeed.toFixed(2);
+                        $("turnSpeed").value = String(turnSpeed);
+                        $("turnSpeedValue").textContent = (turnSpeed*180/Math.PI).toFixed(0);
+                        $("legLength").value = String(legLength);
+                        $("legLengthValue").textContent = legLength.toFixed(3);
+                    }
+                    ownReady = selectedController === "upstream" ?
+                        (!resetPending && !resetAwaitingState && data.reset_pending !== true &&
+                            data.running && data.controller === "upstream" &&
+                            (data.location ?? "start") === selectedLocation && data.upstream_ready === true) :
+                        (!resetPending && !resetAwaitingState && data.reset_pending !== true &&
+                            data.running && data.controller === "own" &&
+                            data.stage === selectedStage &&
+                            (data.location ?? "start") === selectedLocation &&
+                            data.own_ready === true);
+                    if (!ownReady) {
+                        heldKeys.clear();
+                        jumpPending = false;
+                        updateButtons();
+                    }
+                    lastStateAt = Date.now();
+                    $("speed").textContent = format(data.v_mps, 2);
+                    $("kneeRangeNotice").textContent = data.knee_range?.mode === "stop180" ?
+                        "膝短端：180 mm 实体挡块；只限制短端，保留膝长端范围。" : data.knee_range?.mode === "cad120" ?
+                        "上台收腿：CAD 参考范围约 120 mm，动作目标 130 mm；实车挡块和气弹簧行程未标定。" :
+                        "使用上游模型膝限位，折算最短约 176 mm；这不是实车尺寸测量结果。";
+                    $("rtf").textContent = format(data.real_time_factor, 2);
+                    $("pitch").textContent = format(data.pitch_deg, 1);
+                    $("roll").textContent = format(data.roll_deg, 1);
+                    $("yaw").textContent = format(data.yaw_deg, 1);
+                    $("leg").textContent = format(data.leg_m, 3);
+                    $("actualLegLength").textContent = format(data.leg_m, 3);
+                    $("sideLegLengths").textContent = format(data.left_leg_m, 3) + " / " + format(data.right_leg_m, 3);
+                    const surfaceNames = {terrain_large100: "100 mm 台顶", terrain_large150: "150 mm 台顶",
+                        terrain_large200: "200 mm 窄台顶", terrain_climb200_platform: "200 mm 宽平台",
+                        terrain_cross10: "10° 横坡", terrain_cross15: "15° 横坡",
+                        terrain_rmul_1627: "RMUL 200 mm 台顶", floor: "地面"};
+                    $("wheelSupport").textContent = (data.wheel_support_surfaces ?? []).map((side, index) =>
+                        (index === 0 ? "左 " : "右 ") + (side.length ? side.map((name) => surfaceNames[name] ?? (name.startsWith("terrain_rmul_") ? "RMUL 地形" : "其他地形")).join(" / ") : "离地"))
+                        .join(" · ") || "—";
+                    $("appliedLegLength").textContent = format(data.leg_length_applied_m, 3);
+                    $("driveMode").textContent = data.drive_mode ?? "等待连接";
+                    $("jumpClearance").textContent = format(data.recent_jump_clearance_mm, 1);
+                    $("jumpComRise").textContent = format(data.jump_com_rise_mm, 1);
+                    $("jumpTakeoffVz").textContent = format(data.jump_takeoff_vz_mps, 2);
+                    $("hipRpm").textContent = format(data.hip_speed_max_rpm, 0);
+                    $("motorLimitLabel").textContent = (data.hip_model ?? "8009") + " · 常态 " +
+                        format(data.hip_continuous_nm, 0) + " / 动作峰值 " + format(data.hip_peak_nm, 0) + " Nm · " +
+                        (data.hip_rated_rpm == null ? "额定转速待确认。" : "额定 " + data.hip_rated_rpm + " rpm。");
+                    $("kneeRangeLabel").textContent = data.knee_range?.mode === "stop180" ?
+                        "膝短端：180 mm 实体挡块，左右独立闭链解。" :
+                        "膝范围对照：" + (data.knee_range?.mode ?? "等待配置") + "，未使用180 mm挡块配置。";
+                    $("collisionLabel").textContent = data.correct_link_collisions ?
+                        (data.link_collision?.enabled ? "已修正连杆孔洞填实和四对连杆假碰撞，保留真实表面与关节限位。" :
+                            "已修正四对连杆假碰撞，保留关节限位和地面碰撞。") :
+                        "当前为原始 CAD 碰撞，仅用于历史对照。";
+                    const totalAir = data.jump_no_contact_total_ms;
+                    const longestAir = data.jump_no_contact_longest_ms;
+                    $("airTime").textContent = totalAir !== null && longestAir !== null &&
+                        Number.isFinite(Number(totalAir)) && Number.isFinite(Number(longestAir)) ?
+                        Number(totalAir).toFixed(0) + " / " + Number(longestAir).toFixed(0) : "—";
+                    $("simTime").textContent = format(data.sim_time, 2);
+                    $("jumpPhase").textContent = data.jump_phase ?? "—";
+                    $("riseStatus").textContent = data.rise_label ?? "—";
+                    $("riseElapsed").textContent = format(data.rise_elapsed_s, 2);
+                    $("commandInhibited").textContent = data.command_inhibited ?? "无";
+                    $("jumpNotice").textContent = data.jump_notice ?? "等待跳跃状态";
+                    $("jumpProfileSelect").options[1].textContent = data.location === "step_jump200" ?
+                        "200mm带速试验" : "越台大跳 · 调试中";
+                    const zone = data.terrain_info?.zones?.find((zone) => zone.location === data.location);
+                    $("mechanicalNotice").textContent = data.guide_rollers?.mode === "passive" ?
+                        "底部：左右两侧共 " + data.guide_rollers.roller_count + " 个窄导轮，宽约 2 cm，中间留空；横轴前后滚动。" +
+                        (data.guide_rollers.end_rows_x_m?.[1] >= .275 ? "前后端轮护住壳角。" : "") +
+                        "数量及半径为参考值。" :
+                        data.guide_rollers?.mode === "fixed" ? "底部：固定导轮对照。" : "底部：原模型整体凸包对照。";
+                    $("chassisClearance").textContent = data.chassis_wheel_clearance_m == null ? "—" :
+                        (data.chassis_wheel_clearance_m * 1000).toFixed(0);
+                    $("terrainNotice").textContent = zone ? zone.label + " · " + zone.description +
+                        "。当前位置 " + format(data.course_x_m, 1) + ", " + format(data.course_y_m, 1) + " m。" :
+                        data.location === "slope_course" ?
+                        "横坡道路 · 平地 → 10° → 15° → 平地，左右腿随坡面自动调平。" : data.terrain === "course" ?
+                        "综合场地 · 前进位置 " + format(data.course_x_m, 2) + " m。前方浅坑、起伏、小台阶；右侧大台阶，左侧横坡。" : "平地场地";
+                    $("stepNotice").hidden = !["large_steps", "step_jump200", "step_climb", "step_auto", "climb200"].includes(data.location) && !data.step_climb_phase;
+                    $("stepNotice").textContent = data.location === "step_jump200" ?
+                        "200mm带速试验 · 车身中心 x=" + format(data.course_x_m, 3) +
+                        " m；空格按键参考带 x=8.02–8.06 m（台沿 x=9 m）。先用 W 稳定到 1 m/s，" +
+                        "车身中心经过参考带时按空格；准备约 0.66 s，仍属窄窗口试验。参考带只显示，不自动触发。" :
+                        ["step_climb", "step_auto", "climb200"].includes(data.location) || data.step_climb_phase > 0 ?
+                        "磕台阶段：" + (data.step_climb_label ?? "等待控制器") :
+                        (data.course_x_m <= 6.32 ?
+                            "距台边 " + format(7.0 - data.course_x_m, 2) + " m · 约 0.70 m 时按空格；落地后自动驻车，松 W 再按可继续。" :
+                            "越台后自动驻车；松开 W 再按可继续。按 T 回入口重试。");
+                    $("currentStage").textContent = data.controller === "upstream" ?
+                        "原作者 · " + (data.controller_phase ?? "状态机") :
+                        (Number.isInteger(data.stage) ? "阶段 " + data.stage + " · " + (data.stage_label ?? "") : "—");
+                    updateStageControls();
+                    $("controllerLabel").textContent = "控制核心：" + (data.controller_label ?? "—") + " · " + (data.control_dt_s === .001 ? "1 ms" : "3 ms");
+                    $("statusText").textContent = data.status ?? (data.running ? "运行中" : "已停止");
+                    if (!data.running) setConnection("", data.physics_running && data.controller === "own" && limitedRecoverySupported ? "电机已停止 · R 尝试自起" : "电机已停止 · T 强制复位");
+                } catch (error) {
+                    showDisconnected(error);
+                } finally {
+                    stateInFlight = false;
+                }
+            }
+
+            async function pollFrame() {
+                if (frameInFlight) return;
+                frameInFlight = true;
+                const started = Date.now();
+                try {
+                    const suffix = frameSeq === null ? "" : "?seq=" + encodeURIComponent(frameSeq);
+                    const response = await fetch(API + "/frame.jpg" + suffix, { cache: "no-store" });
+                    if (!response.ok) throw new Error("HTTP " + response.status);
+                    const nextSeq = response.headers.get("X-Frame-Seq");
+                    const blob = await response.blob();
+                    if (blob.size > 0) {
+                        const objectUrl = URL.createObjectURL(blob);
+                        const previousUrl = currentObjectUrl;
+                        currentObjectUrl = objectUrl;
+                        frame.onload = () => {
+                            if (previousUrl) URL.revokeObjectURL(previousUrl);
+                        };
+                        frame.onerror = () => {
+                            if (previousUrl) URL.revokeObjectURL(previousUrl);
+                        };
+                        frame.src = objectUrl;
+                        frame.hidden = false;
+                        empty.hidden = true;
+                        if (nextSeq !== null) frameSeq = nextSeq;
+                        else frameSeq = String(Date.now());
+                        lastFrameAt = Date.now();
+                        $("frameInfo").textContent = (frameDimensions ? frameDimensions + " · " : "") +
+                            (nextSeq !== null ? "帧 " + nextSeq : "实时画面");
+                    }
+                    showConnected();
+                } catch (error) {
+                    showDisconnected(error);
+                    if (!lastFrameAt || Date.now() - lastFrameAt > 1200) {
+                        frame.hidden = true;
+                        empty.hidden = false;
+                        empty.innerHTML = "<div class=\"spinner\"></div><strong>正在连接仿真</strong><span>等待第一帧真实画面…</span>";
+                        $("frameInfo").textContent = "等待图像";
+                    }
+                } finally {
+                    frameInFlight = false;
+                    const elapsed = Date.now() - started;
+                    frameTimer = setTimeout(pollFrame, Math.max(0, FRAME_INTERVAL_MS - elapsed));
+                }
+            }
+
+            function isEditable(target) {
+                return target instanceof Element && (target.closest(
+                    "input, textarea, select, button, a, summary, [contenteditable='true'], [role='textbox']") !== null);
+            }
+
+            function changeHeight(direction) {
+                if ($("legLength").disabled) return;
+                claimControlPending = true;
+                stopPending = false;
+                legLength = Math.max(.18, Math.min(.32, Math.round((legLength + direction * .01) * 100) / 100));
+                $("legLength").value = String(legLength);
+                $("legLengthValue").textContent = legLength.toFixed(3);
+                scheduleCommand(0);
+            }
+
+            function stopHeight() {
+                clearInterval(heightTimer);
+                heightTimer = 0;
+                heightDirection = 0;
+            }
+
+            function startHeight(direction) {
+                if ($("legLength").disabled) return;
+                if (heightDirection === direction) return;
+                stopHeight();
+                heightDirection = direction;
+                changeHeight(direction);
+                heightTimer = setInterval(() => changeHeight(direction), 250);
+            }
+
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape" && $("scenePanel").classList.contains("viewport-fullscreen")) {
+                    event.preventDefault();
+                    exitViewport();
+                    return;
+                }
+                const key = event.key.toLowerCase();
+                if (key === "x" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                    event.preventDefault();
+                    if (!event.repeat) stopMotorOutputs();
+                    return;
+                }
+                if (event.ctrlKey || event.metaKey || event.altKey || isEditable(event.target)) return;
+                if (["w", "a", "s", "d", "g"].includes(key)) {
+                    event.preventDefault();
+                    if (!event.repeat) setKey(key, true);
+                } else if (key === "q" || key === "e") {
+                    event.preventDefault();
+                    if (!event.repeat) startHeight(key === "q" ? -1 : 1);
+                } else if (event.code === "Space") {
+                    event.preventDefault();
+                    if (!event.repeat) setKey(" ", true);
+                } else if (key === "r" && !event.repeat) {
+                    event.preventDefault();
+                    requestReset("recover", true);
+                } else if (key === "t" && !event.repeat) {
+                    event.preventDefault();
+                    requestReset("global", true);
+                }
+            });
+
+            document.addEventListener("keyup", (event) => {
+                const key = event.key.toLowerCase();
+                if (isEditable(event.target) && !heldKeys.has(key) &&
+                    !(event.code === "Space" && heldKeys.has(" ")) && !heightDirection) return;
+                if (["w", "a", "s", "d", "g"].includes(key)) {
+                    event.preventDefault();
+                    setKey(key, false);
+                } else if (key === "q" || key === "e") {
+                    event.preventDefault();
+                    if (heightDirection === (key === "q" ? -1 : 1)) stopHeight();
+                } else if (event.code === "Space") {
+                    event.preventDefault();
+                    setKey(" ", false);
+                }
+            });
+
+            function requestReset(mode = "global", explicitRestore = false) {
+                if (resetPending || resetAwaitingState) return;
+                if (mode !== "recover" && mode !== "global") throw new Error("复位模式错误");
+                if (mode === "recover" && (!limitedRecoverySupported || selectedController !== "own")) return;
+                resetMode = mode;
+                clearMotorStopPending = explicitRestore;
+                resetPending = true;
+                resetAwaitingState = true;
+                resetRevision += 1;
+                claimControlPending = true;
+                stopPending = false;
+                stopHeight();
+                heldKeys.clear();
+                jumpPending = false;
+                ownReady = false;
+                updateButtons();
+                updateStageControls();
+                if (commandImmediateTimer) clearTimeout(commandImmediateTimer);
+                commandImmediateTimer = 0;
+                sendCommand(true);
+            }
+
+            function releasePointerKey(event) {
+                const button = event.currentTarget;
+                const key = button.dataset.key;
+                if (key) setKey(key, false);
+                button.blur();
+            }
+
+            document.querySelectorAll("[data-key]").forEach((button) => {
+                button.addEventListener("pointerdown", (event) => {
+                    if (event.button !== undefined && event.button !== 0) return;
+                    event.preventDefault();
+                    button.focus({ preventScroll: true });
+                    setKey(button.dataset.key, true);
+                });
+                ["pointerup", "pointercancel", "pointerleave", "lostpointercapture"].forEach((name) => button.addEventListener(name, releasePointerKey));
+                button.addEventListener("contextmenu", (event) => event.preventDefault());
+            });
+
+            const jumpButton = $("jumpButton");
+            jumpButton.addEventListener("pointerdown", (event) => {
+                if (event.button !== undefined && event.button !== 0) return;
+                event.preventDefault();
+                jumpButton.focus({ preventScroll: true });
+                if (!heldKeys.has(" ")) setKey(" ", true);
+            });
+            ["pointerup", "pointercancel", "pointerleave", "lostpointercapture"].forEach((name) => jumpButton.addEventListener(name, () => setKey(" ", false)));
+            jumpButton.addEventListener("contextmenu", (event) => event.preventDefault());
+            $("motorStopButton").addEventListener("click", () => stopMotorOutputs());
+            $("resetButton").addEventListener("click", (event) => {
+                event.currentTarget.blur(); requestReset("global", true);
+            });
+            $("riseButton").addEventListener("click", (event) => {
+                event.currentTarget.blur(); requestReset("recover", true);
+            });
+            $("controllerSelect").addEventListener("change", (event) => {
+                selectController(event.target.value);
+                event.target.blur();
+            });
+            $("stageSelect").addEventListener("change", (event) => {
+                if (selectedLocation !== "start") {
+                    selectedLocation = "start";
+                    $("locationSelect").value = selectedLocation;
+                }
+                claimControlPending = true;
+                stopPending = false;
+                stopHeight();
+                selectedStage = Number(event.target.value);
+                requestReset("global");
+                event.target.blur();
+            });
+            $("legLength").addEventListener("input", (event) => {
+                claimControlPending = true;
+                stopPending = false;
+                legLength = Number(event.target.value);
+                $("legLengthValue").textContent = legLength.toFixed(3);
+                scheduleCommand(0);
+            });
+            $("locationSelect").addEventListener("change", (event) => {
+                selectedLocation = event.target.value;
+                if (selectedLocation !== "start") {
+                    selectedStage = 3;
+                    $("stageSelect").value = "3";
+                }
+                if (["large_steps", "step_jump200", "step_climb", "step_auto", "climb200", "slope_course",
+                    "playground", "stairs", "ramps", "rough", "rmul2026"].includes(selectedLocation)) {
+                    selectedJumpProfile = ["large_steps", "step_jump200"].includes(selectedLocation) ? 1 : 0;
+                    driveSpeed = selectedLocation === "step_climb" ? .5 : selectedLocation === "step_auto" ? 1.25 : ["climb200", "rmul2026"].includes(selectedLocation) ? 1.35 : 1.0;
+                    legLength = ["climb200", "rmul2026"].includes(selectedLocation) ? .32 : .20;
+                    $("jumpProfileSelect").value = String(selectedJumpProfile);
+                    $("driveSpeed").value = String(driveSpeed);
+                    $("driveSpeedValue").textContent = driveSpeed.toFixed(2);
+                    $("legLength").value = String(legLength);
+                    $("legLengthValue").textContent = legLength.toFixed(3);
+                }
+                updateStageControls();
+                ownReady = false;
+                requestReset("global");
+                event.target.blur();
+            });
+            $("cameraSelect").addEventListener("change", async (event) => {
+                const mode = event.target.value;
+                event.target.blur();
+                try {
+                    const response = await fetch(API + "/camera", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ mode })
+                    });
+                    if (!response.ok) throw new Error("HTTP " + response.status);
+                } catch (error) {
+                    $("cameraSelect").title = "视角设置失败：" + String(error);
+                }
+            });
+            $("legLength").addEventListener("change", (event) => event.target.blur());
+            $("driveSpeed").addEventListener("input", (event) => {
+                claimControlPending = true;
+                stopPending = false;
+                driveSpeed = Number(event.target.value);
+                $("driveSpeedValue").textContent = driveSpeed.toFixed(2);
+                scheduleCommand(0);
+            });
+            $("driveSpeed").addEventListener("change", (event) => event.target.blur());
+            $("turnSpeed").addEventListener("input", (event) => {
+                claimControlPending = true;
+                stopPending = false;
+                turnSpeed = Number(event.target.value);
+                $("turnSpeedValue").textContent = (turnSpeed*180/Math.PI).toFixed(0);
+                scheduleCommand(0);
+            });
+            $("turnSpeed").addEventListener("change", (event) => event.target.blur());
+            $("recordStart").addEventListener("click", (event) => {
+                event.target.blur(); requestRecord("start");
+            });
+            $("recordStop").addEventListener("click", (event) => {
+                event.target.blur(); requestRecord("stop");
+            });
+            $("qualitySelect").addEventListener("change", async (event) => {
+                const quality = event.target.value;
+                event.target.blur();
+                if (qualityPending) return;
+                qualityPending = true;
+                $("qualitySelect").disabled = true;
+                try {
+                    const response = await fetch(API + "/quality", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ quality })
+                    });
+                    if (!response.ok) throw new Error("HTTP " + response.status);
+                    $("qualitySelect").title = "";
+                } catch (error) {
+                    $("qualitySelect").title = "画质设置失败：" + String(error);
+                } finally {
+                    qualityPending = false;
+                    $("qualitySelect").disabled = false;
+                    pollState();
+                }
+            });
+            $("fullscreenButton").addEventListener("click", () => toggleFullscreen().catch((error) => {
+                $("fullscreenButton").title = "全屏操作失败：" + String(error);
+            }));
+            document.addEventListener("fullscreenchange", updateFullscreen);
+            $("mapPanel").addEventListener("toggle", drawTerrainMap);
+            window.addEventListener("resize", drawTerrainMap);
+            $("jumpProfileSelect").addEventListener("change", (event) => {
+                claimControlPending = true;
+                stopPending = false;
+                stopHeight();
+                selectedJumpProfile = Number(event.target.value);
+                updateButtons();
+                updateStageControls();
+                scheduleCommand(0);
+                event.target.blur();
+            });
+            updateStageControls();
+
+            [["lowerLeg", -1], ["raiseLeg", 1]].forEach(([id, direction]) => {
+                const button = $(id);
+                button.addEventListener("pointerdown", (event) => {
+                    if (event.button !== undefined && event.button !== 0) return;
+                    event.preventDefault();
+                    startHeight(direction);
+                });
+                ["pointerup", "pointercancel", "pointerleave", "lostpointercapture"].forEach((name) =>
+                        button.addEventListener(name, () => { if (heightDirection === direction) stopHeight(); }));
+                button.addEventListener("click", (event) => { if (event.detail === 0) changeHeight(direction); });
+                button.addEventListener("contextmenu", (event) => event.preventDefault());
+            });
+
+            window.addEventListener("blur", () => { stopPending = true; clearControls(true); });
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden) { stopPending = true; clearControls(true); }
+                else {
+                    pollState();
+                    pollFrame();
+                }
+            });
+
+            commandTimer = setInterval(() => sendCommand(false), SEND_INTERVAL_MS);
+            stateTimer = setInterval(() => {
+                if (!lastStateAt || Date.now() - lastStateAt >= STATE_INTERVAL_MS) pollState();
+            }, STATE_INTERVAL_MS);
+            pollState();
+            pollFrame();
+            window.addEventListener("beforeunload", () => {
+                clearInterval(commandTimer);
+                clearInterval(stateTimer);
+                clearTimeout(commandImmediateTimer);
+                clearTimeout(frameTimer);
+                if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+            });
+        })();
+    </script>
+</body>
+</html>
