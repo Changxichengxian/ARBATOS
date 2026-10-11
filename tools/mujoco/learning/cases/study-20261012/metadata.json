@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "training_seeds": [
+    101,
+    211,
+    307
+  ],
+  "screening_seeds": [
+    41,
+    73
+  ],
+  "splits": {
+    "development": {
+      "case_count": 6,
+      "cases_sha256": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+      "primary_gate": false
+    },
+    "validation": {
+      "case_count": 45,
+      "cases_sha256": "851efabbabdb5ffdf9904c61ae1cad07e1a6f4d519b9ca0c03ebffea3d08e25b",
+      "primary_gate": true
+    },
+    "final": {
+      "case_count": 60,
+      "cases_sha256": "4bab9e7570e467f921e6cd280fe5c1e63d8b04d94a47970445357a4c062307bb",
+      "primary_gate": true
+    },
+    "pressure": {
+      "case_count": 6,
+      "cases_sha256": "302c5724cc2eb0d164f92018cc0ccf754455fb43f05c0328fa40e98177cfa00b",
+      "primary_gate": false
+    }
+  }
+}

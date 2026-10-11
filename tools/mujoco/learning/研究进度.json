@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "preparing",
+  "status": "screening_running",
   "started_at": "2026-10-12T02:10:00+08:00",
   "deadline": "2026-10-14T02:10:00+08:00",
   "goal": "轮腿停车与受推恢复的可复现控制改进；不能用训练完成代替性能提升",
@@ -10,8 +10,8 @@
   "acceptance": {
     "independent_training_seeds": 3,
     "sealed_final_scenarios": 60,
-    "stop_velocity_rms_improvement_min": 0.10,
-    "push_recovery_velocity_rms_improvement_min": 0.10,
+    "stop_velocity_rms_improvement_min": 0.1,
+    "push_recovery_velocity_rms_improvement_min": 0.1,
     "per_scenario_primary_error_regression_max": 0.05,
     "mean_hip_heat_regression_max": 0.05,
     "new_physics_failures_allowed": 0,
@@ -20,10 +20,37 @@
   "completed": [
     "接口8项检查通过",
     "首轮32768步训练及12组配对评价完成，收益不足，不接入正式控制",
-    "全仓5车型CheckZephyr静态检查通过"
+    "全仓5车型CheckZephyr静态检查通过",
+    "首轮提交1d9ab18已推送并校验远端",
+    "固定6个开发/45个验证/60个最终/6个压力场景",
+    "训练1024到2048步续训通过，网络及优化器保留；环境随机序列重新初始化",
+    "六维训练到开发集配对评价完整短流程通过，原控制及候选各6/6物理通过",
+    "对称动作与等效六维动作逐步一致、1ms峰值、错误维数清空输出检查通过",
+    "指标、绑定、最终集一次使用、队列停止及检查点回溯测试通过"
   ],
-  "next": "提交首轮实验与参考仿真依赖，固化研究数据集与统计窗口，增加训练检查点和断点继续功能，然后启动三种方案的筛选",
-  "active_process": null,
+  "next": "等待15步筛选队列。用SummarizeWbrStudy.py汇总验证集，按预登记门槛选择路线，从头训练101/211/307；无合格路线先分析负结果与动作效果，不运行最终集调参。每阶段保存关键权重、更新记录并提交推送。",
+  "active_process": {
+    "queue_pid": 8796,
+    "current_job_at_update": "A-full-41-train",
+    "note": "只表示此时间点；恢复前须检查实际进程及queue-state.json，不能只信旧PID"
+  },
   "hardware_access": false,
-  "paid_compute": false
+  "paid_compute": false,
+  "updated_at": "2026-10-12T02:40:40.178507+08:00",
+  "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
+  "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
+  "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
+  "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+  "queue_state": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\queue-state.json",
+  "queue_plan": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\plan.json",
+  "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+  "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+  "cases": {
+    "development": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+    "validation": "851efabbabdb5ffdf9904c61ae1cad07e1a6f4d519b9ca0c03ebffea3d08e25b",
+    "final": "4bab9e7570e467f921e6cd280fe5c1e63d8b04d94a47970445357a4c062307bb",
+    "pressure": "302c5724cc2eb0d164f92018cc0ccf754455fb43f05c0328fa40e98177cfa00b"
+  },
+  "stop_instructions": "在queue_plan所在目录创建stop.request，队列会请求当前子任务保存退出。用户要求暂停时还须暂停GOAL及本聊天的每小时接续。",
+  "resume_instructions": "确认同一队列和子进程均已退出、期限未到且用户没有暂停；清除队列根stop.request后使用冻结目录RunWbrStudyQueue.py --plan 原计划 --resume。不得并行启动第二份。"
 }

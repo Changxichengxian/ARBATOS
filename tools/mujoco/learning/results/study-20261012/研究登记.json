@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "stage": "screening",
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "physical_controller_sha256": "2d3600ca5d3c6d1fc42bc73895431cdcccc4c540f24753317181aa984aabbed1",
+  "physical_source_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
+  "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+  "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+  "cases_sha256": {
+    "development": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+    "validation": "851efabbabdb5ffdf9904c61ae1cad07e1a6f4d519b9ca0c03ebffea3d08e25b",
+    "final": "4bab9e7570e467f921e6cd280fe5c1e63d8b04d94a47970445357a4c062307bb",
+    "pressure": "302c5724cc2eb0d164f92018cc0ccf754455fb43f05c0328fa40e98177cfa00b"
+  },
+  "training_seeds": [
+    41,
+    73
+  ],
+  "final_seeds": [
+    101,
+    211,
+    307
+  ],
+  "screening_steps": 131072,
+  "formal_steps": 524288,
+  "linear_population": 8,
+  "linear_generations": 5,
+  "final_scenarios_used": false,
+  "verification": {
+    "training_resume": true,
+    "symmetric_equivalence": true,
+    "metric_and_stop_bindings": true,
+    "checkpoint_fallback": true,
+    "smoke_baseline_cases": 6,
+    "smoke_policy_cases": 6,
+    "smoke_physical_failures": 0
+  }
+}

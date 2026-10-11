@@ -40,7 +40,8 @@ def experiment_identity(manifest):
     # 评价脚本可改善统计，但物理模型、环境和控制代码必须与训练一致。
     selected = {k:v for k,v in manifest["files"].items()
                 if not k.startswith("tools/mujoco/learning/") or
-                k in ("tools/mujoco/learning/WbrLearningEnv.py", "tools/mujoco/learning/WbrLearningBridge.c")}
+                k in ("tools/mujoco/learning/WbrLearningEnv.py", "tools/mujoco/learning/WbrLearningBridge.c",
+                      "tools/mujoco/learning/StudyWbrPolicy.py")}
     return hashlib.sha256(json.dumps(selected, sort_keys=True).encode()).hexdigest()
 
 
@@ -60,8 +61,12 @@ def load_library():
 class WbrLearningEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, *, randomize=True, strict=False, record=False, gas_force=450.):
+    def __init__(self, *, randomize=True, strict=False, record=False, gas_force=450.,
+                 reward_mode="legacy", action_mode="full"):
         super().__init__()
+        if reward_mode not in ("legacy", "dense") or action_mode not in ("full", "symmetric"):
+            raise ValueError("未知的奖励或动作模式")
+        self.reward_mode, self.action_mode = reward_mode, action_mode
         self.randomize, self.strict, self.record = randomize, strict, record
         self.gas_force = float(gas_force)
         if not math.isfinite(self.gas_force) or not 0 <= self.gas_force <= 600:
@@ -94,7 +99,7 @@ class WbrLearningEnv(gym.Env):
             self.model.sensor(n).adr[0]+self.model.sensor(n).dim[0]) for n in names])
         self.sensor, self.command = (ctypes.c_float*28)(), (ctypes.c_float*3)()
         self.output, self.action_buffer = (ctypes.c_float*40)(), (ctypes.c_float*6)()
-        self.action_space = gym.spaces.Box(-1., 1., (6,), dtype=np.float32)
+        self.action_space = gym.spaces.Box(-1., 1., (6 if action_mode == "full" else 3,), dtype=np.float32)
         self.observation_space = gym.spaces.Box(-20., 20., (FRAME_SIZE*HISTORY,), dtype=np.float32)
         self.jac = np.zeros((3, self.model.nv))
         self.history = deque(maxlen=HISTORY)
@@ -162,6 +167,7 @@ class WbrLearningEnv(gym.Env):
         self.start_x = truth["x_m"]
         self.stop_x = None
         self.metrics = dict(samples=0, velocity_error_sq=0., pitch_sq=0., peak_pitch_deg=0.,
+            peak_roll_deg=0., peak_pitch_1ms_deg=0., peak_roll_1ms_deg=0., max_closure_1ms_m=0.,
             max_closure_m=0., hip_heat_nm2s=0., peak_hip_nm=0., peak_wheel_nm=0.,
             stop_velocity_sq=0., stop_samples=0, peak_reverse_mps=0.,
             stop_travel_m=0., reward=0., mass_scale=mass_scale, friction_scale=friction_scale,
@@ -207,7 +213,11 @@ class WbrLearningEnv(gym.Env):
             self.metrics["peak_wheel_nm"] = max(self.metrics["peak_wheel_nm"], float(np.max(np.abs(torque[[2,5]]))))
         if self.strict:
             mujoco.mj_forward(self.model, self.data)
-            self._truth()
+            truth = self._truth()
+            if not warmup:
+                self.metrics["peak_pitch_1ms_deg"] = max(self.metrics["peak_pitch_1ms_deg"], abs(math.degrees(truth["pitch_rad"])))
+                self.metrics["peak_roll_1ms_deg"] = max(self.metrics["peak_roll_1ms_deg"], abs(math.degrees(truth["roll_rad"])))
+                self.metrics["max_closure_1ms_m"] = max(self.metrics["max_closure_1ms_m"], truth["closure_m"])
 
     def _truth(self):
         rotation = self.data.xmat[self.base].reshape(3, 3)
@@ -253,9 +263,11 @@ class WbrLearningEnv(gym.Env):
         if self.completed:
             raise RuntimeError("场景结束后必须先 reset")
         action = np.asarray(action, dtype=float)
-        if action.shape != (6,) or not np.isfinite(action).all():
+        if action.shape != self.action_space.shape or not np.isfinite(action).all():
             self.data.ctrl[:] = 0.
-            raise ValueError("学习动作必须是六个有限数")
+            raise ValueError("学习动作维度不匹配或包含非有限数")
+        if self.action_mode == "symmetric":
+            action = np.tile(action, 2)
         previous = self.filtered_action.copy()
         self.filtered_action += np.clip(np.clip(action, -1., 1.)-self.filtered_action, -.2, .2)
         self.action_buffer[:] = self.filtered_action
@@ -272,6 +284,15 @@ class WbrLearningEnv(gym.Env):
                   - .01*float(np.square(self.data.actuator_force[self.aids]/LIMITS).sum())
                   - .015*float(np.square(self.filtered_action).sum())
                   - .03*float(np.square(self.filtered_action-previous).sum()))
+        if self.reward_mode == "dense":
+            focused = ((self.case == "stop" and self.elapsed >= 4.) or
+                       (self.case == "push" and 2.5 <= self.elapsed <= 4.7))
+            # 二次误差让大误差阶段也有明显评分差；权重固定后再做独立比较。
+            reward = (1. - (8. if focused else 3.)*(speed_error/.5)**2
+                      - .12*(truth["pitch_rad"]/.1)**2 - .25*(truth["roll_rad"]/.1)**2
+                      - .015*float(np.square(self.data.actuator_force[self.aids]/LIMITS).sum())
+                      - .005*float(np.square(self.filtered_action).sum())
+                      - .02*float(np.square(self.filtered_action-previous).sum()))
         if self.error:
             reward -= 100.
         m = self.metrics
@@ -279,6 +300,7 @@ class WbrLearningEnv(gym.Env):
         m["velocity_error_sq"] += speed_error**2
         m["pitch_sq"] += truth["pitch_rad"]**2
         m["peak_pitch_deg"] = max(m["peak_pitch_deg"], abs(math.degrees(truth["pitch_rad"])))
+        m["peak_roll_deg"] = max(m["peak_roll_deg"], abs(math.degrees(truth["roll_rad"])))
         m["max_closure_m"] = max(m["max_closure_m"], truth["closure_m"])
         m["reward"] += reward
         if self.elapsed >= 4.:

@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "split": "pressure",
+  "primary_gate": false,
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "generated_at": "2026-10-12T02:28:27+08:00",
+  "training_seeds": [
+    101,
+    211,
+    307
+  ],
+  "screening_seeds": [
+    41,
+    73
+  ],
+  "cases_sha256": "302c5724cc2eb0d164f92018cc0ccf754455fb43f05c0328fa40e98177cfa00b",
+  "case_count": 6,
+  "cases": [
+    {
+      "id": "pressure-stop-000",
+      "seed": 61000,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": -0.8,
+        "push": -40.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "pressure-stop-001",
+      "seed": 61001,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.8,
+        "push": 40.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "pressure-push-000",
+      "seed": 61002,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": -0.8,
+        "push": -40.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "pressure-push-001",
+      "seed": 61003,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.8,
+        "push": 40.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "pressure-combined-000",
+      "seed": 61004,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": -0.8,
+        "push": 40.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "pressure-combined-001",
+      "seed": 61005,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.8,
+        "push": -40.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    }
+  ]
+}

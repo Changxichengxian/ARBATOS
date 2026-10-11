@@ -1,0 +1,740 @@
+{
+  "schema": 1,
+  "split": "final",
+  "primary_gate": true,
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "generated_at": "2026-10-12T02:28:27+08:00",
+  "training_seeds": [
+    101,
+    211,
+    307
+  ],
+  "screening_seeds": [
+    41,
+    73
+  ],
+  "cases_sha256": "4bab9e7570e467f921e6cd280fe5c1e63d8b04d94a47970445357a4c062307bb",
+  "case_count": 60,
+  "cases": [
+    {
+      "id": "final-stop-000",
+      "seed": 51000,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": 0.697826,
+        "push": 26.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-001",
+      "seed": 51001,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.558696,
+        "push": -21.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-002",
+      "seed": 51002,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": -0.715217,
+        "push": -27.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-003",
+      "seed": 51003,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.48913,
+        "push": 20.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-004",
+      "seed": 51004,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": 0.593478,
+        "push": -29.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-005",
+      "seed": 51005,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.35,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-006",
+      "seed": 51006,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": -0.680435,
+        "push": 32.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-007",
+      "seed": 51007,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.384783,
+        "push": -31.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-008",
+      "seed": 51008,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": -0.471739,
+        "push": -19.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-009",
+      "seed": 51009,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.75,
+        "push": 16.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-010",
+      "seed": 51010,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": 0.628261,
+        "push": 28.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-011",
+      "seed": 51011,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.663043,
+        "push": -23.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-012",
+      "seed": 51012,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": -0.402174,
+        "push": -17.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-013",
+      "seed": 51013,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.436957,
+        "push": 18.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-014",
+      "seed": 51014,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": -0.61087,
+        "push": 30.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-015",
+      "seed": 51015,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.419565,
+        "push": -25.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-016",
+      "seed": 51016,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": -0.576087,
+        "push": 14.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-017",
+      "seed": 51017,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.541304,
+        "push": -13.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-018",
+      "seed": 51018,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": 0.523913,
+        "push": 24.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-019",
+      "seed": 51019,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.645652,
+        "push": 34.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-020",
+      "seed": 51020,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": -0.506522,
+        "push": -15.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-021",
+      "seed": 51021,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.367391,
+        "push": -33.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-022",
+      "seed": 51022,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": 0.732609,
+        "push": 22.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-stop-023",
+      "seed": 51023,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.454348,
+        "push": -35.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-000",
+      "seed": 51024,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": -0.75,
+        "push": -23.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-001",
+      "seed": 51025,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.35,
+        "push": 14.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-002",
+      "seed": 51026,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": 0.732609,
+        "push": -19.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-003",
+      "seed": 51027,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.471739,
+        "push": -17.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-004",
+      "seed": 51028,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": -0.541304,
+        "push": 32.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-005",
+      "seed": 51029,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.593478,
+        "push": -13.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-006",
+      "seed": 51030,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": 0.628261,
+        "push": -27.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-007",
+      "seed": 51031,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.663043,
+        "push": 24.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-008",
+      "seed": 51032,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": 0.558696,
+        "push": 26.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-009",
+      "seed": 51033,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.645652,
+        "push": 18.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-010",
+      "seed": 51034,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": -0.402174,
+        "push": -15.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-011",
+      "seed": 51035,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.454348,
+        "push": -29.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-012",
+      "seed": 51036,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": -0.576087,
+        "push": 28.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-013",
+      "seed": 51037,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.680435,
+        "push": 34.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-014",
+      "seed": 51038,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": 0.419565,
+        "push": -33.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-015",
+      "seed": 51039,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.697826,
+        "push": -31.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-016",
+      "seed": 51040,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": -0.61087,
+        "push": 16.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-017",
+      "seed": 51041,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.436957,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-018",
+      "seed": 51042,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": 0.523913,
+        "push": -35.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-019",
+      "seed": 51043,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.384783,
+        "push": 30.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-020",
+      "seed": 51044,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": -0.506522,
+        "push": -21.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-021",
+      "seed": 51045,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.48913,
+        "push": 20.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-022",
+      "seed": 51046,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": -0.715217,
+        "push": 22.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-push-023",
+      "seed": 51047,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.367391,
+        "push": -25.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-combined-000",
+      "seed": 51048,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": -0.386364,
+        "push": -24.545455,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-combined-001",
+      "seed": 51049,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.35,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-combined-002",
+      "seed": 51050,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": 0.713636,
+        "push": 32.909091,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-combined-003",
+      "seed": 51051,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.422727,
+        "push": 26.636364,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-combined-004",
+      "seed": 51052,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": -0.531818,
+        "push": -18.272727,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-combined-005",
+      "seed": 51053,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.568182,
+        "push": -35.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-combined-006",
+      "seed": 51054,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": -0.604545,
+        "push": -20.363636,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-combined-007",
+      "seed": 51055,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.677273,
+        "push": 14.090909,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-combined-008",
+      "seed": 51056,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": 0.495455,
+        "push": -28.727273,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-combined-009",
+      "seed": 51057,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.75,
+        "push": 22.454545,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-combined-010",
+      "seed": 51058,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": -0.459091,
+        "push": 30.818182,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "final-combined-011",
+      "seed": 51059,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.640909,
+        "push": -16.181818,
+        "delay": 1,
+        "duration": 8.0
+      }
+    }
+  ]
+}
