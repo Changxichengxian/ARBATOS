@@ -1,0 +1,24 @@
+{
+  "seed": 73,
+  "env_config": {
+    "reward_mode": "dense",
+    "action_mode": "symmetric",
+    "gas_force": 450.0
+  },
+  "strict_training_checks": true,
+  "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
+  "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+  "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+  "initial_steps": 0,
+  "training_source_sha256": "874c03552cfdf701acc71bed215628ade4ec6b668b227fba2359e064fe01c0f5",
+  "resume": null,
+  "requested_total_steps": 131072,
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "versions": {
+    "mujoco": "3.14.0",
+    "numpy": "2.5.3",
+    "torch": "2.9.1+cpu",
+    "gymnasium": "1.2.2",
+    "stable-baselines3": "2.7.1"
+  }
+}

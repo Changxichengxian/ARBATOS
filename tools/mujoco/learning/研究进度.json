@@ -44,47 +44,40 @@
     "B对称动作种子41完成131072步并保存最终权重；原队列已进入45例验证，尚无性能结论",
     "B对称动作首种子完成45例配对验证，收益不达门槛；已保存完整结果并核对实际评价权重，第二种子继续",
     "轮/髋速度反馈拆分接口通过零动作、共享增益等价、独立通道、限幅、旧训练和后段报错恢复检查；54条开发诊断已按事前登记启动",
-    "54条轮髋反馈拆分开发诊断完成，两道等价门均通过；实际动作及窗口/质量指标复算一致，原始轨迹归档逐项核对"
+    "54条轮髋反馈拆分开发诊断完成，两道等价门均通过；实际动作及窗口/质量指标复算一致，原始轨迹归档逐项核对",
+    "B对称动作种子73完成131072步并保存最终权重；原队列已进入45例验证，尚无性能结论"
   ],
   "next": "轮髋拆分54条诊断完整结束，所测固定参数均未达全部开发门；不采用。继续B73、C/D原筛选，同时准备成熟reference三动作的动态学习E：先离线校准评分、均衡组合训练场景并事前登记，短筛选有效才扩大预算。不得为已有负结果消耗最终60例。",
   "active_process": {
     "queue_pid": 8796,
-    "current_job_at_update": "B-symmetric-73-train",
+    "current_job_at_update": "B-symmetric-73-evaluate",
     "queue_status_at_update": "running",
-    "latest_attempt_at_update": {
+    "current_attempt_at_update": {
       "command": [
         "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
         "-u",
-        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen\\tools\\mujoco\\learning\\TrainWbrStudy.py",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
         "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\B-symmetric\\73\\evaluation",
+        "--cases",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\validation.json",
+        "--policy",
         "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\B-symmetric\\73\\train",
-        "--seed",
-        "73",
-        "--steps",
-        "131072",
-        "--envs",
-        "2",
-        "--reward-mode",
-        "dense",
-        "--action-mode",
-        "symmetric",
-        "--deadline",
-        "2026-10-14T02:10:00+08:00",
-        "--checkpoint-every",
-        "16384"
+        "--baseline-cache",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\baselines\\validation-symmetric"
       ],
-      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\logs\\B-symmetric-73-train-01.log",
-      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\B-symmetric\\73\\train",
-      "job_binding_sha256": "401d0e1a5612d5169db8429f864d3cc2190d6782b786c25ab65351c573f63072",
+      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\logs\\B-symmetric-73-evaluate-01.log",
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\B-symmetric\\73\\evaluation",
+      "job_binding_sha256": "ce0dd8bee57e53ac4018f7a64c0cbaa216d690ce90c946b90daed984d093ab9e",
       "restart_without_checkpoint": false,
-      "started_at": "2026-10-11T21:03:31.795438+00:00",
-      "pid": 30080
+      "started_at": "2026-10-11T21:35:22.357658+00:00",
+      "pid": 34220
     },
-    "note": "保存时的状态；接续须核对实际进程命令。reference_search独立运行，split_velocity_probe已经完成。"
+    "note": "保存时的状态；接续前仍须核对实际进程和命令，避免重复启动"
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T05:24:19.726211+08:00",
+  "updated_at": "2026-10-12T05:38:41.241764+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -103,11 +96,11 @@
   "resume_instructions": "确认同一队列和子进程均已退出、期限未到且用户没有暂停；清除队列根stop.request后使用冻结目录RunWbrStudyQueue.py --plan 原计划 --resume。不得并行启动第二份。",
   "study_code_commit": "5569b66003d8a14425d8b0937791d4eef6888d7c",
   "saved_checkpoint": {
-    "repository_path": "tools/mujoco/learning/results/study-20261012/screening-B-symmetric-41",
+    "repository_path": "tools/mujoco/learning/results/study-20261012/screening-B-symmetric-73",
     "steps": 131072,
-    "seed": 41,
+    "seed": 73,
     "route": "B-symmetric",
-    "checkpoint_sha256": "f432ee00ad8b865719b7e6cb9357e8141b52d8673d1d2c007d2671307c6c0aa5",
+    "checkpoint_sha256": "94749230b921097b4ab70101319e4d50b7d23c63b93be060c7ba57d5a2933aea",
     "note": "最终网络和优化器；独立配对评价尚未完成，不是性能通过"
   },
   "quality_gate_supplement": "tools/mujoco/learning/results/study-20261012/运动质量补充登记.json",
