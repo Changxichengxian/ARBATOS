@@ -43,9 +43,10 @@
     "两条路线的源码/模型/动态库及B81920步、D20候选恢复点打包；换目录读取与两条既有基线实跑精确复现通过",
     "B对称动作种子41完成131072步并保存最终权重；原队列已进入45例验证，尚无性能结论",
     "B对称动作首种子完成45例配对验证，收益不达门槛；已保存完整结果并核对实际评价权重，第二种子继续",
-    "轮/髋速度反馈拆分接口通过零动作、共享增益等价、独立通道、限幅、旧训练和后段报错恢复检查；54条开发诊断已按事前登记启动"
+    "轮/髋速度反馈拆分接口通过零动作、共享增益等价、独立通道、限幅、旧训练和后段报错恢复检查；54条开发诊断已按事前登记启动",
+    "54条轮髋反馈拆分开发诊断完成，两道等价门均通过；实际动作及窗口/质量指标复算一致，原始轨迹归档逐项核对"
   ],
-  "next": "继续B第二种子、C线性反馈与D参考参数筛选；同时完成54条轮/髋通道开发诊断。新动态参考强化学习须依据完整诊断另行登记；最终60例仍未使用。",
+  "next": "轮髋拆分54条诊断完整结束，所测固定参数均未达全部开发门；不采用。继续B73、C/D原筛选，同时准备成熟reference三动作的动态学习E：先离线校准评分、均衡组合训练场景并事前登记，短筛选有效才扩大预算。不得为已有负结果消耗最终60例。",
   "active_process": {
     "queue_pid": 8796,
     "current_job_at_update": "B-symmetric-73-train",
@@ -79,11 +80,11 @@
       "started_at": "2026-10-11T21:03:31.795438+00:00",
       "pid": 30080
     },
-    "note": "保存时的状态；接续前核对实际进程命令。另有reference_search和split_velocity_probe同时运行"
+    "note": "保存时的状态；接续须核对实际进程命令。reference_search独立运行，split_velocity_probe已经完成。"
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T05:08:37.747604+08:00",
+  "updated_at": "2026-10-12T05:24:19.726211+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -341,11 +342,9 @@
     "wrapper_pid": 23832,
     "actual_pid_at_update": 29416,
     "status_at_update": {
-      "status": "running",
+      "status": "completed",
       "pid": 29416,
-      "mode": "zero",
-      "completed_cases": 4,
-      "total_cases": 6
+      "completed_trajectories": 54
     },
     "command": [
       "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
@@ -365,8 +364,24 @@
       "2026-10-14T02:10:00+08:00"
     ],
     "planned_trajectories": 54,
-    "normal_stop": "在output目录创建stop.request；若用户要求暂停全部研究，需同时停止两条旧队列和本诊断，不能只停训练队列",
-    "resume": "先核对实际进程，确认旧进程已退出；移除本诊断stop.request后，原command末尾添加--resume。必须用原冻结目录、输入和期限；已完成时禁止重复启动",
-    "current_boundary": "已通过接口/故障/旧训练逻辑检查；完整轨迹的两道等价门按登记在前12条顺序执行，通过后才执行其余42条。这里只记录启动状态，不提前认定通过。"
-  }
+    "normal_stop": "本诊断已完成，无需停止或续跑；原command仅供研究记录。",
+    "resume": "54条全部完成，禁止重复启动。用AuditWbrSplitVelocity.py对原冻结目录和结果只读复核。",
+    "current_boundary": "两道6例等价门及完整54条动作、窗口/质量指标与汇总复算通过；没有采用新策略或使用最终集",
+    "result": "tools/mujoco/learning/results/study-20261012/轮髋反馈拆分诊断结果.json",
+    "archive": {
+      "path": "tools/mujoco/learning/results/study-20261012/轮髋反馈拆分原始轨迹.zip",
+      "sha256": "668280fd8a66add7587b607737fecd0d59485ff5ef470be890010e9f02cbe9e1",
+      "bytes": 3929880,
+      "entries": 63,
+      "all_entries_exact": true
+    },
+    "conclusion": [
+      "54条完整轨迹物理检查均通过；8组非零固定修正没有任何一组通过全部开发收益、逐例保护和运动质量门。两道等价检查精确通过。",
+      "仅轮端速度反馈增加25%：停车/受推误差降低4.040%/5.894%，热量降低0.292%，但有俯仰及组合场景退步，不能仅凭低热采用。",
+      "仅髋部速度反馈降低25%：热量降低4.208%，受推误差却增加6.462%，并有俯仰退步；降低髋负担会影响稳定控制。",
+      "额外减速0.3m/s2、轮反馈+25%、髋反馈-25%：停车误差降低14.288%，热量增加1.451%，但受推误差增加0.635%，所有6例俯仰保护失败，两个组合场景的受推误差及运动质量退步。",
+      "本批不支持直接采用所测固定拆分参数；不证明所有分通道动态策略无效。下一轮优先保留成熟reference三动作，研究覆盖组合场景、与热量/逐例要求对齐的动态学习。"
+    ]
+  },
+  "next_method_draft": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\next-rl-design-draft.json"
 }
