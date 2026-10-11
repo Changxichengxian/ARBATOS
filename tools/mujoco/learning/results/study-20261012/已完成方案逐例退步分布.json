@@ -1,0 +1,1605 @@
+{
+  "schema": 1,
+  "created_at": "2026-10-12T07:19:21.423981+08:00",
+  "rows": [
+    {
+      "label": "六维修正 · 41",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-A-full-41-evaluated\\summary.json",
+      "source_sha256": "de2972a1776199cf5ce25005c43e9da796ae220500658a468ce64d28f420a5f7",
+      "physical_complete": true,
+      "original_guards_all_pass": false,
+      "failed_cases": 45,
+      "groups": {
+        "stop": {
+          "total": 18,
+          "failed": 18
+        },
+        "push": {
+          "total": 18,
+          "failed": 18
+        },
+        "combined": {
+          "total": 9,
+          "failed": 9
+        }
+      },
+      "metric_counts": {
+        "peak_roll_deg": 45,
+        "hip_heat_case": 5,
+        "stop_reverse": 4
+      },
+      "failures": [
+        {
+          "case": "validation-combined-000",
+          "task": "combined",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.22307596168417662,
+          "learned": 0.9438184335144897,
+          "delta": 0.720742471830313,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-combined-001",
+          "task": "combined",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.19742811199227833,
+          "learned": 0.7637955845466149,
+          "delta": 0.5663674725543366,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-combined-002",
+          "task": "combined",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.21921170487359398,
+          "learned": 0.8652387112782005,
+          "delta": 0.6460270064046065,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-combined-003",
+          "task": "combined",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.2375847205492042,
+          "learned": 0.8736486363759814,
+          "delta": 0.6360639158267772,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-combined-004",
+          "task": "combined",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.2209031135967897,
+          "learned": 0.8041725651747982,
+          "delta": 0.5832694515780085,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-combined-005",
+          "task": "combined",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.3162596615628815,
+          "learned": 0.7828463654638647,
+          "delta": 0.46658670390098317,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-combined-006",
+          "task": "combined",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.22653365388873495,
+          "learned": 0.9662433979045977,
+          "delta": 0.7397097440158628,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-combined-007",
+          "task": "combined",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.19729954672499836,
+          "learned": 0.7469436603565032,
+          "delta": 0.5496441136315048,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-combined-008",
+          "task": "combined",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.23259866616486669,
+          "learned": 0.9647606301979168,
+          "delta": 0.7321619640330501,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-000",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.2087282796341684,
+          "learned": 0.7514686407673677,
+          "delta": 0.5427403611331993,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-001",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.1982708516659602,
+          "learned": 0.8095755876672327,
+          "delta": 0.6113047360012724,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-001",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 106.93910654399181,
+          "learned": 137.71459685892071,
+          "delta": 30.775490314928902,
+          "allowed_increase": 21.387821308798365
+        },
+        {
+          "case": "validation-push-002",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.22958550421691,
+          "learned": 0.9070104134093655,
+          "delta": 0.6774249091924555,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-003",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.2682073952251395,
+          "learned": 0.7474800458304018,
+          "delta": 0.47927265060526236,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-004",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.14692695883382437,
+          "learned": 0.5747136586733975,
+          "delta": 0.4277866998395732,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-004",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 50.71697362542968,
+          "learned": 67.3289392766457,
+          "delta": 16.611965651216018,
+          "allowed_increase": 10.143394725085937
+        },
+        {
+          "case": "validation-push-005",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.16682711172872736,
+          "learned": 0.8046786189137493,
+          "delta": 0.6378515071850219,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-005",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 70.90968423254793,
+          "learned": 98.50119738369588,
+          "delta": 27.59151315114795,
+          "allowed_increase": 14.181936846509586
+        },
+        {
+          "case": "validation-push-006",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.15931266857939916,
+          "learned": 0.6302665492011593,
+          "delta": 0.47095388062176013,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-006",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 60.35043652851551,
+          "learned": 78.15649534955732,
+          "delta": 17.80605882104181,
+          "allowed_increase": 12.070087305703103
+        },
+        {
+          "case": "validation-push-007",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.15694044374941957,
+          "learned": 0.6292752520436886,
+          "delta": 0.47233480829426905,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-007",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 57.30373833627391,
+          "learned": 71.14060940207884,
+          "delta": 13.836871065804928,
+          "allowed_increase": 11.460747667254783
+        },
+        {
+          "case": "validation-push-008",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.2088581102422456,
+          "learned": 0.7507399269468804,
+          "delta": 0.5418818167046349,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-009",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.18073282721578882,
+          "learned": 0.733300844822107,
+          "delta": 0.5525680176063181,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-010",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.22023032334557022,
+          "learned": 0.8820688650250821,
+          "delta": 0.6618385416795118,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-011",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.20275269779397637,
+          "learned": 0.7862095838710845,
+          "delta": 0.5834568860771081,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-012",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.21761729746835556,
+          "learned": 0.7514904579266006,
+          "delta": 0.5338731604582451,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-013",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.23023629365595716,
+          "learned": 0.7502180802010552,
+          "delta": 0.519981786545098,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-014",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.21909406343687693,
+          "learned": 0.8793260738486721,
+          "delta": 0.6602320104117951,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-015",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.2575333034676701,
+          "learned": 0.7261303630028139,
+          "delta": 0.46859705953514375,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-016",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.1922858435183859,
+          "learned": 0.721734486868843,
+          "delta": 0.529448643350457,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-017",
+          "task": "push",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.2133700221139408,
+          "learned": 0.8512503082871536,
+          "delta": 0.6378802861732129,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-000",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.21842166083979078,
+          "learned": 0.8636453403402827,
+          "delta": 0.645223679500492,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-001",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.24313722088133402,
+          "learned": 0.7965635475795263,
+          "delta": 0.5534263266981923,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-002",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.22514689677671398,
+          "learned": 0.8439927203568443,
+          "delta": 0.6188458235801303,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-003",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.07917759649966276,
+          "learned": 0.08616705046250794,
+          "delta": 0.006989453962845185,
+          "allowed_increase": 0.005
+        },
+        {
+          "case": "validation-stop-003",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.214975849126774,
+          "learned": 0.8064680893180146,
+          "delta": 0.5914922401912406,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-004",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.23796585401503423,
+          "learned": 0.9548716606903375,
+          "delta": 0.7169058066753032,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-005",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.22341156739776266,
+          "learned": 0.7855286757589854,
+          "delta": 0.5621171083612228,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-006",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.21744976855335077,
+          "learned": 0.8025736982347644,
+          "delta": 0.5851239296814137,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-007",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.10891238304350263,
+          "learned": 0.11601850960833218,
+          "delta": 0.0071061265648295485,
+          "allowed_increase": 0.005445619152175132
+        },
+        {
+          "case": "validation-stop-007",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.19126053597179404,
+          "learned": 0.8464163518811084,
+          "delta": 0.6551558159093144,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-008",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.21856556719781875,
+          "learned": 0.9906821637050715,
+          "delta": 0.7721165965072527,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-009",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.21319027690736106,
+          "learned": 0.714783035710156,
+          "delta": 0.501592758802795,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-010",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.21744976855335077,
+          "learned": 0.7999654848631749,
+          "delta": 0.5825157163098241,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-011",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.25370944685250685,
+          "learned": 0.7828512407105609,
+          "delta": 0.529141793858054,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-012",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.20959702974372346,
+          "learned": 0.8908002690753606,
+          "delta": 0.6812032393316372,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-013",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.20892499727598796,
+          "learned": 0.750210028353365,
+          "delta": 0.5412850310773771,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-014",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.2202484812323499,
+          "learned": 0.9725012174879185,
+          "delta": 0.7522527362555687,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-015",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.11113843902347287,
+          "learned": 0.11682381205747859,
+          "delta": 0.005685373034005722,
+          "allowed_increase": 0.005556921951173644
+        },
+        {
+          "case": "validation-stop-015",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.21737206296486242,
+          "learned": 0.8120219549305845,
+          "delta": 0.594649891965722,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-016",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.21744976855335077,
+          "learned": 0.8056939100027011,
+          "delta": 0.5882441414493503,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-017",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.10660676419583523,
+          "learned": 0.11396514446172866,
+          "delta": 0.00735838026589343,
+          "allowed_increase": 0.005330338209791762
+        },
+        {
+          "case": "validation-stop-017",
+          "task": "stop",
+          "metric": "peak_roll_deg",
+          "pass": false,
+          "baseline": 0.2297297833505923,
+          "learned": 0.8859817684142892,
+          "delta": 0.656251985063697,
+          "allowed_increase": 0.2
+        }
+      ],
+      "stop_improvement": -0.0028350351343180424,
+      "push_improvement": -0.0009913116542541456,
+      "heat_change": 0.061430342059510146
+    },
+    {
+      "label": "六维修正 · 73",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-A-full-73-evaluated\\summary.json",
+      "source_sha256": "2f70f2ac3521b7b85c757b8bda64e2a2d5d60793bd173f8254d79cf4607f0cb2",
+      "physical_complete": true,
+      "original_guards_all_pass": true,
+      "failed_cases": 0,
+      "groups": {
+        "stop": {
+          "total": 18,
+          "failed": 0
+        },
+        "push": {
+          "total": 18,
+          "failed": 0
+        },
+        "combined": {
+          "total": 9,
+          "failed": 0
+        }
+      },
+      "metric_counts": {},
+      "failures": [],
+      "stop_improvement": 0.007643524741763552,
+      "push_improvement": 0.006798650660177263,
+      "heat_change": 0.006566419070636265
+    },
+    {
+      "label": "对称动作 · 41",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-B-symmetric-41\\summary.json",
+      "source_sha256": "d3b1b3e26724d3d322d54060eab0258101866986ce7b7ab5e50d14deb1c98921",
+      "physical_complete": true,
+      "original_guards_all_pass": false,
+      "failed_cases": 31,
+      "groups": {
+        "stop": {
+          "total": 18,
+          "failed": 18
+        },
+        "push": {
+          "total": 18,
+          "failed": 10
+        },
+        "combined": {
+          "total": 9,
+          "failed": 3
+        }
+      },
+      "metric_counts": {
+        "hip_heat_case": 15,
+        "peak_pitch_deg": 12,
+        "stop_reverse": 18
+      },
+      "failures": [
+        {
+          "case": "validation-combined-006",
+          "task": "combined",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 161.44874381047472,
+          "learned": 214.26434334256234,
+          "delta": 52.81559953208762,
+          "allowed_increase": 32.289748762094945
+        },
+        {
+          "case": "validation-combined-007",
+          "task": "combined",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.830437685114593,
+          "learned": 3.1581417338845723,
+          "delta": 0.3277040487699794,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-combined-008",
+          "task": "combined",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 152.12256020034147,
+          "learned": 204.41030816398194,
+          "delta": 52.28774796364047,
+          "allowed_increase": 30.424512040068294
+        },
+        {
+          "case": "validation-push-000",
+          "task": "push",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 1.7654278291320844,
+          "learned": 1.990705021252167,
+          "delta": 0.22527719212008268,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-001",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 106.93910654399181,
+          "learned": 135.61317095086548,
+          "delta": 28.67406440687367,
+          "allowed_increase": 21.387821308798365
+        },
+        {
+          "case": "validation-push-002",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 154.0240918123029,
+          "learned": 186.784064739222,
+          "delta": 32.75997292691909,
+          "allowed_increase": 30.804818362460583
+        },
+        {
+          "case": "validation-push-004",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 50.71697362542968,
+          "learned": 75.97099993732287,
+          "delta": 25.254026311893192,
+          "allowed_increase": 10.143394725085937
+        },
+        {
+          "case": "validation-push-005",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 70.90968423254793,
+          "learned": 100.84663119079218,
+          "delta": 29.93694695824425,
+          "allowed_increase": 14.181936846509586
+        },
+        {
+          "case": "validation-push-006",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 60.35043652851551,
+          "learned": 75.74082212193468,
+          "delta": 15.390385593419175,
+          "allowed_increase": 12.070087305703103
+        },
+        {
+          "case": "validation-push-007",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 57.30373833627391,
+          "learned": 84.27593377099831,
+          "delta": 26.972195434724398,
+          "allowed_increase": 11.460747667254783
+        },
+        {
+          "case": "validation-push-010",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 157.46943852839,
+          "learned": 194.91697811156627,
+          "delta": 37.44753958317628,
+          "allowed_increase": 31.493887705678
+        },
+        {
+          "case": "validation-push-012",
+          "task": "push",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.730852746167958,
+          "learned": 3.0047383678479314,
+          "delta": 0.2738856216799732,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-014",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 156.59999878393708,
+          "learned": 197.07103739363777,
+          "delta": 40.471038609700685,
+          "allowed_increase": 31.319999756787418
+        },
+        {
+          "case": "validation-stop-000",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.08753532214592447,
+          "learned": 0.09642303882779939,
+          "delta": 0.008887716681874921,
+          "allowed_increase": 0.005
+        },
+        {
+          "case": "validation-stop-001",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.10545612293518729,
+          "learned": 0.11342533344399516,
+          "delta": 0.007969210508807875,
+          "allowed_increase": 0.005272806146759365
+        },
+        {
+          "case": "validation-stop-001",
+          "task": "stop",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.7197122319879385,
+          "learned": 3.0436659796099255,
+          "delta": 0.3239537476219869,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-002",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.08319941930590474,
+          "learned": 0.08921823390650235,
+          "delta": 0.006018814600597611,
+          "allowed_increase": 0.005
+        },
+        {
+          "case": "validation-stop-003",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.07917759649966276,
+          "learned": 0.08502386450483568,
+          "delta": 0.005846268005172919,
+          "allowed_increase": 0.005
+        },
+        {
+          "case": "validation-stop-004",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.10539982665582887,
+          "learned": 0.11550184381417042,
+          "delta": 0.010102017158341553,
+          "allowed_increase": 0.005269991332791444
+        },
+        {
+          "case": "validation-stop-004",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 160.461250156019,
+          "learned": 204.95369579076424,
+          "delta": 44.49244563474525,
+          "allowed_increase": 32.0922500312038
+        },
+        {
+          "case": "validation-stop-005",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.09310705037685392,
+          "learned": 0.0984732695765167,
+          "delta": 0.005366219199662778,
+          "allowed_increase": 0.005
+        },
+        {
+          "case": "validation-stop-005",
+          "task": "stop",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.6838022310726317,
+          "learned": 3.0559612439319492,
+          "delta": 0.3721590128593175,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-006",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.10981455236305594,
+          "learned": 0.11856870912549683,
+          "delta": 0.008754156762440887,
+          "allowed_increase": 0.005490727618152797
+        },
+        {
+          "case": "validation-stop-006",
+          "task": "stop",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 3.0190084394466985,
+          "learned": 3.411962389830093,
+          "delta": 0.39295395038339453,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-007",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.10891238304350263,
+          "learned": 0.11718907131431605,
+          "delta": 0.008276688270813418,
+          "allowed_increase": 0.005445619152175132
+        },
+        {
+          "case": "validation-stop-007",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 214.32483463231955,
+          "learned": 259.7145933656627,
+          "delta": 45.38975873334317,
+          "allowed_increase": 42.864966926463914
+        },
+        {
+          "case": "validation-stop-008",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.10897023901091953,
+          "learned": 0.11958501838924322,
+          "delta": 0.010614779378323697,
+          "allowed_increase": 0.005448511950545977
+        },
+        {
+          "case": "validation-stop-008",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 164.46296198368503,
+          "learned": 214.19852845443557,
+          "delta": 49.73556647075054,
+          "allowed_increase": 32.89259239673701
+        },
+        {
+          "case": "validation-stop-009",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.09616215058541419,
+          "learned": 0.1045538509226808,
+          "delta": 0.008391700337266605,
+          "allowed_increase": 0.005
+        },
+        {
+          "case": "validation-stop-009",
+          "task": "stop",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.755677658926144,
+          "learned": 3.022137099796662,
+          "delta": 0.2664594408705181,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-010",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.1010562392298723,
+          "learned": 0.109115742271312,
+          "delta": 0.008059503041439708,
+          "allowed_increase": 0.005052811961493615
+        },
+        {
+          "case": "validation-stop-010",
+          "task": "stop",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 3.0190084394466985,
+          "learned": 3.4031676499054866,
+          "delta": 0.3841592104587881,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-011",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.12667290187134392,
+          "learned": 0.1370677744506201,
+          "delta": 0.010394872579276182,
+          "allowed_increase": 0.006333645093567196
+        },
+        {
+          "case": "validation-stop-011",
+          "task": "stop",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.76894459746854,
+          "learned": 3.0917137192368966,
+          "delta": 0.3227691217683568,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-012",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.09277596685555295,
+          "learned": 0.09988931100161658,
+          "delta": 0.007113344146063627,
+          "allowed_increase": 0.005
+        },
+        {
+          "case": "validation-stop-012",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 143.46667930740207,
+          "learned": 175.5223467186674,
+          "delta": 32.05566741126532,
+          "allowed_increase": 28.693335861480417
+        },
+        {
+          "case": "validation-stop-013",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.10141257661451698,
+          "learned": 0.10881100537088363,
+          "delta": 0.007398428756366648,
+          "allowed_increase": 0.00507062883072585
+        },
+        {
+          "case": "validation-stop-013",
+          "task": "stop",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.8373149881994797,
+          "learned": 3.205060643977148,
+          "delta": 0.3677456557776684,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-014",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.11251689007571451,
+          "learned": 0.12252549974988361,
+          "delta": 0.010008609674169097,
+          "allowed_increase": 0.005625844503785726
+        },
+        {
+          "case": "validation-stop-014",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 168.04540634524596,
+          "learned": 218.8896089458299,
+          "delta": 50.84420260058394,
+          "allowed_increase": 33.60908126904919
+        },
+        {
+          "case": "validation-stop-015",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.11113843902347287,
+          "learned": 0.11958582165834643,
+          "delta": 0.00844738263487356,
+          "allowed_increase": 0.005556921951173644
+        },
+        {
+          "case": "validation-stop-015",
+          "task": "stop",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.7450390586033313,
+          "learned": 3.185526189565017,
+          "delta": 0.44048713096168557,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-016",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.11241755317873396,
+          "learned": 0.12161346004669343,
+          "delta": 0.009195906867959472,
+          "allowed_increase": 0.005620877658936698
+        },
+        {
+          "case": "validation-stop-016",
+          "task": "stop",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 3.0190084394466985,
+          "learned": 3.4121346359433677,
+          "delta": 0.39312619649666924,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-017",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.10660676419583523,
+          "learned": 0.1166406671202809,
+          "delta": 0.01003390292444567,
+          "allowed_increase": 0.005330338209791762
+        }
+      ],
+      "stop_improvement": -0.003734428346119145,
+      "push_improvement": 0.002955596952724515,
+      "heat_change": 0.06697569942587189
+    },
+    {
+      "label": "对称动作 · 73",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-B-symmetric-73\\summary.json",
+      "source_sha256": "1893b4b44fe9dd759088a904454c004deeb2da7dd2d6db503e787a931216dcd7",
+      "physical_complete": true,
+      "original_guards_all_pass": false,
+      "failed_cases": 22,
+      "groups": {
+        "stop": {
+          "total": 18,
+          "failed": 9
+        },
+        "push": {
+          "total": 18,
+          "failed": 9
+        },
+        "combined": {
+          "total": 9,
+          "failed": 4
+        }
+      },
+      "metric_counts": {
+        "hip_heat_case": 22,
+        "peak_pitch_deg": 2,
+        "stop_reverse": 4
+      },
+      "failures": [
+        {
+          "case": "validation-combined-001",
+          "task": "combined",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 214.82655648334213,
+          "learned": 260.8567719871848,
+          "delta": 46.03021550384267,
+          "allowed_increase": 42.96531129666843
+        },
+        {
+          "case": "validation-combined-003",
+          "task": "combined",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 114.84062359333127,
+          "learned": 139.0239745375314,
+          "delta": 24.183350944200114,
+          "allowed_increase": 22.968124718666257
+        },
+        {
+          "case": "validation-combined-005",
+          "task": "combined",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 117.5766449479375,
+          "learned": 142.88275579515104,
+          "delta": 25.306110847213546,
+          "allowed_increase": 23.515328989587502
+        },
+        {
+          "case": "validation-combined-007",
+          "task": "combined",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 148.55800653198904,
+          "learned": 195.73770158940349,
+          "delta": 47.17969505741445,
+          "allowed_increase": 29.71160130639781
+        },
+        {
+          "case": "validation-push-000",
+          "task": "push",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 1.7654278291320844,
+          "learned": 2.2866724236650233,
+          "delta": 0.5212445945329389,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-000",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 109.33548010285743,
+          "learned": 179.35930110170534,
+          "delta": 70.02382099884791,
+          "allowed_increase": 21.867096020571488
+        },
+        {
+          "case": "validation-push-003",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 173.86877925064434,
+          "learned": 232.79446872754482,
+          "delta": 58.92568947690049,
+          "allowed_increase": 34.77375585012887
+        },
+        {
+          "case": "validation-push-006",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 60.35043652851551,
+          "learned": 84.34420186868124,
+          "delta": 23.99376534016573,
+          "allowed_increase": 12.070087305703103
+        },
+        {
+          "case": "validation-push-008",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 173.03624007896255,
+          "learned": 242.8474440922927,
+          "delta": 69.81120401333015,
+          "allowed_increase": 34.607248015792514
+        },
+        {
+          "case": "validation-push-009",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 167.13183285910625,
+          "learned": 218.53575126414455,
+          "delta": 51.4039184050383,
+          "allowed_increase": 33.426366571821255
+        },
+        {
+          "case": "validation-push-012",
+          "task": "push",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.730852746167958,
+          "learned": 3.0399289949898654,
+          "delta": 0.3090762488219072,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-012",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 138.8719670306876,
+          "learned": 220.37834979966328,
+          "delta": 81.50638276897567,
+          "allowed_increase": 27.774393406137523
+        },
+        {
+          "case": "validation-push-013",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 181.84979821772026,
+          "learned": 239.04823817245583,
+          "delta": 57.19843995473556,
+          "allowed_increase": 36.36995964354406
+        },
+        {
+          "case": "validation-push-015",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 169.1023803393466,
+          "learned": 221.02517547359707,
+          "delta": 51.922795134250464,
+          "allowed_increase": 33.82047606786932
+        },
+        {
+          "case": "validation-push-016",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 85.97643590019788,
+          "learned": 129.5247089110854,
+          "delta": 43.54827301088753,
+          "allowed_increase": 17.19528718003958
+        },
+        {
+          "case": "validation-stop-001",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 192.37136279169385,
+          "learned": 254.66326028559467,
+          "delta": 62.29189749390082,
+          "allowed_increase": 38.474272558338775
+        },
+        {
+          "case": "validation-stop-005",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.09310705037685392,
+          "learned": 0.0985565474999759,
+          "delta": 0.005449497123121982,
+          "allowed_increase": 0.005
+        },
+        {
+          "case": "validation-stop-005",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 173.45462035546294,
+          "learned": 220.5450763744301,
+          "delta": 47.09045601896716,
+          "allowed_increase": 34.69092407109259
+        },
+        {
+          "case": "validation-stop-006",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.10981455236305594,
+          "learned": 0.11672621579982542,
+          "delta": 0.00691166343676948,
+          "allowed_increase": 0.005490727618152797
+        },
+        {
+          "case": "validation-stop-006",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 171.85093476968333,
+          "learned": 210.20336203011144,
+          "delta": 38.3524272604281,
+          "allowed_increase": 34.37018695393667
+        },
+        {
+          "case": "validation-stop-009",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 112.01150384138198,
+          "learned": 156.14287628520142,
+          "delta": 44.131372443819444,
+          "allowed_increase": 22.402300768276397
+        },
+        {
+          "case": "validation-stop-010",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.1010562392298723,
+          "learned": 0.10943429679029967,
+          "delta": 0.00837805756042738,
+          "allowed_increase": 0.005052811961493615
+        },
+        {
+          "case": "validation-stop-010",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 161.83070605880746,
+          "learned": 200.45658532414257,
+          "delta": 38.6258792653351,
+          "allowed_increase": 32.366141211761494
+        },
+        {
+          "case": "validation-stop-011",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 158.0805026735116,
+          "learned": 211.68288270676317,
+          "delta": 53.60238003325156,
+          "allowed_increase": 31.616100534702323
+        },
+        {
+          "case": "validation-stop-013",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 145.77614345886343,
+          "learned": 190.38114735108408,
+          "delta": 44.60500389222065,
+          "allowed_increase": 29.155228691772688
+        },
+        {
+          "case": "validation-stop-015",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 225.32383993010347,
+          "learned": 294.62098070560535,
+          "delta": 69.29714077550187,
+          "allowed_increase": 45.0647679860207
+        },
+        {
+          "case": "validation-stop-016",
+          "task": "stop",
+          "metric": "stop_reverse",
+          "pass": false,
+          "baseline": 0.11241755317873396,
+          "learned": 0.11976208322676213,
+          "delta": 0.007344530048028167,
+          "allowed_increase": 0.005620877658936698
+        },
+        {
+          "case": "validation-stop-016",
+          "task": "stop",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 176.48841805054252,
+          "learned": 215.6061927968552,
+          "delta": 39.117774746312676,
+          "allowed_increase": 35.29768361010851
+        }
+      ],
+      "stop_improvement": 0.0027891626584320983,
+      "push_improvement": -0.009789010379307905,
+      "heat_change": 0.13397422430293826
+    },
+    {
+      "label": "线性修正 · 41",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\linear-C-41-validation\\summary.json",
+      "source_sha256": "ae36fc49b8362f58dba64e981fd3717ba9bb22306094b636b5bcdb147b84f97d",
+      "physical_complete": true,
+      "original_guards_all_pass": false,
+      "failed_cases": 5,
+      "groups": {
+        "stop": {
+          "total": 18,
+          "failed": 2
+        },
+        "push": {
+          "total": 18,
+          "failed": 1
+        },
+        "combined": {
+          "total": 9,
+          "failed": 2
+        }
+      },
+      "metric_counts": {
+        "peak_pitch_deg": 4,
+        "push_primary": 1
+      },
+      "failures": [
+        {
+          "case": "validation-combined-005",
+          "task": "combined",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 3.1328481808411786,
+          "learned": 3.4712212475974695,
+          "delta": 0.338373066756291,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-combined-007",
+          "task": "combined",
+          "metric": "push_primary",
+          "pass": false,
+          "baseline": 0.10416917579917072,
+          "learned": 0.11141207120032162,
+          "delta": 0.007242895401150903,
+          "allowed_increase": 0.005208458789958536
+        },
+        {
+          "case": "validation-push-008",
+          "task": "push",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 3.5222732932210037,
+          "learned": 3.7228503031565974,
+          "delta": 0.2005770099355937,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-001",
+          "task": "stop",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.7197122319879385,
+          "learned": 2.9323187772816723,
+          "delta": 0.2126065452937338,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-stop-015",
+          "task": "stop",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.7450390586033313,
+          "learned": 2.9633988925019294,
+          "delta": 0.21835983389859814,
+          "allowed_increase": 0.2
+        }
+      ],
+      "stop_improvement": 0.0276040131819123,
+      "push_improvement": 0.023411024338318764,
+      "heat_change": -0.01753221138666794
+    },
+    {
+      "label": "常数参数 · 41",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-41-validation\\summary.json",
+      "source_sha256": "3f25988ad036b2f266dd01e028a999f939858411ffbbaff6b74e6a96e2fcf74b",
+      "physical_complete": true,
+      "original_guards_all_pass": false,
+      "failed_cases": 7,
+      "groups": {
+        "stop": {
+          "total": 18,
+          "failed": 0
+        },
+        "push": {
+          "total": 18,
+          "failed": 5
+        },
+        "combined": {
+          "total": 9,
+          "failed": 2
+        }
+      },
+      "metric_counts": {
+        "peak_pitch_deg": 5,
+        "push_primary": 1,
+        "hip_heat_case": 1
+      },
+      "failures": [
+        {
+          "case": "validation-combined-005",
+          "task": "combined",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 3.1328481808411786,
+          "learned": 3.6058792629168166,
+          "delta": 0.47303108207563804,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-combined-007",
+          "task": "combined",
+          "metric": "push_primary",
+          "pass": false,
+          "baseline": 0.10416917579917072,
+          "learned": 0.11190953667910167,
+          "delta": 0.007740360879930949,
+          "allowed_increase": 0.005208458789958536
+        },
+        {
+          "case": "validation-push-000",
+          "task": "push",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 1.7654278291320844,
+          "learned": 2.3558712987671737,
+          "delta": 0.5904434696350893,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-001",
+          "task": "push",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.7586101005629473,
+          "learned": 3.3093957918367605,
+          "delta": 0.5507856912738132,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-006",
+          "task": "push",
+          "metric": "hip_heat_case",
+          "pass": false,
+          "baseline": 60.35043652851551,
+          "learned": 73.41109992093695,
+          "delta": 13.06066339242144,
+          "allowed_increase": 12.070087305703103
+        },
+        {
+          "case": "validation-push-012",
+          "task": "push",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.730852746167958,
+          "learned": 3.4045572748657875,
+          "delta": 0.6737045286978294,
+          "allowed_increase": 0.2
+        },
+        {
+          "case": "validation-push-017",
+          "task": "push",
+          "metric": "peak_pitch_deg",
+          "pass": false,
+          "baseline": 2.34135580909609,
+          "learned": 2.9496663597426656,
+          "delta": 0.6083105506465754,
+          "allowed_increase": 0.2
+        }
+      ],
+      "stop_improvement": 0.045084421129922614,
+      "push_improvement": 0.08626696100260844,
+      "heat_change": 0.02178259089094814
+    }
+  ],
+  "baseline_all_45_fields_exact_across_six": true,
+  "all_original_acceptance_recomputed": true,
+  "counting": "每类按失败场景数计数，同一场景多项退步只计一次；metric_counts另列各指标失败次数。D的额外运动质量检查不混入此原指标横向计数。",
+  "boundary": "这仅描述已完成方法和固定预算的失败分布，不推断因果、收敛极限或RL总体有效性；E训练仍在进行，最终60例未使用。",
+  "figure_sha256": "391e0651aae64de83a010ac18083e47da5161bddfc00554814ec62098dbab7b6",
+  "shared_C_D_original_failures": [
+    {
+      "case": "validation-combined-005",
+      "metric": "peak_pitch_deg"
+    },
+    {
+      "case": "validation-combined-007",
+      "metric": "push_primary"
+    }
+  ],
+  "figure_visually_checked": true,
+  "observations": [
+    "六组同45例原控制基线逐字段一致，配对指标全部可以复算。",
+    "六组均通过物理完成检查；六维73通过全部原逐例指标，但两项主收益都不足1%。",
+    "当前短预算的直接修正有较多姿态或用力负担退步；线性与常数参数的失败场景更少，仍没有同时达到收益和保护门槛。",
+    "线性与常数参数共同在组合005俯仰和组合007受推主要误差上超过原阈值。"
+  ],
+  "interpretation_boundary": "观察到的分布只描述现有六组结果，不构成算法优劣的总体结论，不作为改动已登记E训练的依据。"
+}
