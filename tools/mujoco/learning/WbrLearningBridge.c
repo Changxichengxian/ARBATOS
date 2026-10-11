@@ -67,8 +67,8 @@ int WbrLearningStep(void *handle, const float *sensor, const float *command,
  * 同一倍率同时用于轮矩和髋力矩通道；每个句柄只允许单线程调用。
  * 零动作完全走原控制，不叠加 WbrLearningStep 的末端力矩修正。
  */
-int WbrLearningReferenceStep(void *handle, const float *sensor, const float *command,
-                              const float *action, float *out)
+static int WbrLearningReferenceApply(void *handle, const float *sensor, const float *command,
+                                      const float *action, float *out, int split_velocity)
 {
     if (out != NULL) {
         memset(out, 0, 40 * sizeof(*out));
@@ -108,23 +108,48 @@ int WbrLearningReferenceStep(void *handle, const float *sensor, const float *com
         return OwnWbrCommandStep(handle, sensor, command, out);
     }
     const float saved_v_ref = state->v_ref;
+    const float saved_x_ref = state->x_ref;
     const float extra_step = 1.2f * WheelLegCoreClamp(action[0], 0.0f, 1.0f) * 0.003f;
     if (extra_step > 0.0f) {
         state->v_ref += WheelLegCoreClamp(-state->v_ref, -extra_step, extra_step);
     }
     float saved_k[12];
     memcpy(saved_k, state->k, sizeof(saved_k));
-    const int indices[4] = {2, 3, 8, 9};
-    for (int i = 0; i < 4; i++) {
-        const float gain_action = action[1+i%2];
-        if (gain_action != 0.0f) {
-            state->k[indices[i]] *= 1.0f + 0.5f * WheelLegCoreClamp(gain_action, -1.0f, 1.0f);
+    if (split_velocity) {
+        /* 仅拆开轮/髋的纵向速度通道，位置和姿态反馈保持原值。 */
+        const int indices[2] = {3, 9};
+        for (int i = 0; i < 2; i++) {
+            if (action[1+i] != 0.0f) {
+                state->k[indices[i]] *= 1.0f + 0.5f * WheelLegCoreClamp(action[1+i], -1.0f, 1.0f);
+            }
+        }
+    } else {
+        const int indices[4] = {2, 3, 8, 9};
+        for (int i = 0; i < 4; i++) {
+            const float gain_action = action[1+i%2];
+            if (gain_action != 0.0f) {
+                state->k[indices[i]] *= 1.0f + 0.5f * WheelLegCoreClamp(gain_action, -1.0f, 1.0f);
+            }
         }
     }
     const int result = OwnWbrCommandStep(handle, sensor, command, out);
     memcpy(state->k, saved_k, sizeof(saved_k));
     if (result != 0) {
         state->v_ref = saved_v_ref;
+        state->x_ref = saved_x_ref;
     }
     return result;
+}
+
+int WbrLearningReferenceStep(void *handle, const float *sensor, const float *command,
+                              const float *action, float *out)
+{
+    return WbrLearningReferenceApply(handle, sensor, command, action, out, 0);
+}
+
+/* 三项为额外减速、轮速度反馈、髋速度反馈；沿用原启用条件和力矩边界。 */
+int WbrLearningSplitVelocityStep(void *handle, const float *sensor, const float *command,
+                                  const float *action, float *out)
+{
+    return WbrLearningReferenceApply(handle, sensor, command, action, out, 1);
 }

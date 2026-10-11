@@ -16,6 +16,14 @@ def encoded_hash(value):
                                     ensure_ascii=False).encode("utf-8")).hexdigest()
 
 
+def registered_deadline(registration, requested):
+    fixed = datetime.fromisoformat(registration["deadline"])
+    actual = datetime.fromisoformat(requested)
+    if fixed.utcoffset() is None or actual.utcoffset() is None or fixed != actual:
+        raise ValueError("命令行期限必须与登记的带时区期限相同")
+    return fixed.timestamp()
+
+
 def row_binding(scenario,mode,run_binding):
     return dict(run_binding_sha256=encoded_hash(run_binding),scenario=scenario,mode=mode)
 
@@ -54,11 +62,27 @@ def main():
     if cases["split"] != "development":
         raise RuntimeError("该诊断只允许开发集")
     registration = read(args.registration)
+    deadline = registered_deadline(registration, args.deadline)
+    action_mode = registration.get("action_mode", "reference")
+    if action_mode not in ("reference", "split_velocity"):
+        raise ValueError("未支持的诊断动作接口")
+    if registration.get("cases_sha256") != cases["cases_sha256"]:
+        raise RuntimeError("实际场景与诊断登记不匹配")
+    equivalent = registration.get("equivalent_reference")
+    equivalent_rows = None
+    if equivalent:
+        source_bytes = Path(equivalent["path"]).read_bytes()
+        if hashlib.sha256(source_bytes).hexdigest() != equivalent["sha256"]:
+            raise RuntimeError("等效通道对照来源哈希不符")
+        equivalent_rows = json.loads(source_bytes)["results"][equivalent["reference_mode"]]
     modes = registration["modes"]
     if not modes or modes[0] != {"name":"zero", "action":[0,0,0]}:
         raise ValueError("第一组必须为零修正基线")
     if len({mode["name"] for mode in modes}) != len(modes):
         raise ValueError("诊断模式名称重复")
+    if action_mode == "split_velocity" and (not equivalent or len(modes) < 2 or
+            modes[1]["name"] != equivalent["mode"] or equivalent["mode"] == "zero"):
+        raise ValueError("拆分诊断的第二组必须为已登记的共享通道等效对照")
     for mode in modes:
         value = np.asarray(mode["action"],dtype=float)
         if value.shape != (3,) or not np.isfinite(value).all():
@@ -71,7 +95,8 @@ def main():
     binding = dict(script_sha256=digest(Path(__file__)), registration_sha256=digest(args.registration),
         baseline_sha256=digest(args.original_baseline), cases_sha256=cases["cases_sha256"],
         library_sha256=manifest["library_sha256"], experiment_identity=experiment_identity(manifest),
-        modes=modes)
+        modes=modes, action_mode=action_mode, deadline=registration["deadline"],
+        evaluator_sha256=digest(args.snapshot/"tools/mujoco/learning/EvaluateWbrStudy.py"))
     args.output.mkdir(parents=True,exist_ok=True)
     lock_stream = (args.output/"diagnostic.lock").open("a+b")
     lock_stream.seek(0)
@@ -95,7 +120,6 @@ def main():
         if args.resume or list(args.output.glob("*.json")):
             raise RuntimeError("输出目录存在外来结果或缺少原运行绑定")
         atomic_write_json(run_path,dict(binding=binding))
-    deadline = datetime.fromisoformat(args.deadline).timestamp()
     stopped = lambda: time.time() >= deadline or (args.output/"stop.request").exists()
     class FixedPolicy:
         def __init__(self, action):
@@ -116,7 +140,7 @@ def main():
                     row = validate_saved_row(read(path),scenario,mode,binding)
                 else:
                     row = run_case(scenario,FixedPolicy(mode["action"]),
-                        dict(reward_mode="dense",action_mode="reference",gas_force=450.),
+                        dict(reward_mode="dense",action_mode=action_mode,gas_force=450.),
                         record=True,stop_requested=stopped)
                     atomic_write_json(path,dict(binding=row_binding(scenario,mode,binding),
                         result_sha256=encoded_hash(row),result=row))
@@ -125,11 +149,17 @@ def main():
                     mode=mode["name"],completed_cases=len(rows),total_cases=len(cases["cases"])))
             groups[mode["name"]] = rows
             if mode["name"] == "zero":
-                for key in ("metrics","motion_quality"):
+                for key in ("seed", "randomize", "case", "options", "metrics", "motion_quality"):
                     previous = {row["id"]:row[key] for row in original["baseline_results"]}
                     current = {row["id"]:row[key] for row in rows}
                     if current != previous:
                         raise RuntimeError(f"零动作与原冻结控制的{key}不一致，停止后续诊断")
+            if equivalent and mode["name"] == equivalent["mode"]:
+                for key in ("seed", "randomize", "case", "options", "metrics", "motion_quality"):
+                    previous = {row["id"]:row[key] for row in equivalent_rows}
+                    current = {row["id"]:row[key] for row in rows}
+                    if current != previous:
+                        raise RuntimeError(f"共享速度通道对照的{key}不等价，停止后续诊断")
             print(json.dumps(dict(mode=mode["name"],completed=len(rows)),ensure_ascii=False),flush=True)
     except EvaluationInterrupted:
         atomic_write_json(args.output/"status.json",dict(status="stopped",pid=os.getpid()))

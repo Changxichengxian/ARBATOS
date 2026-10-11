@@ -41,38 +41,49 @@
     "A-full两个种子各131072步及45例配对验证完成；收益均不足筛选门槛，不晋级，实际评价权重和完整负结果已保存",
     "完成8组有推/无推组合诊断：每组推力前333点完全相等；确认制动回摆与推力响应共同影响组合退步，保留原验收",
     "两条路线的源码/模型/动态库及B81920步、D20候选恢复点打包；换目录读取与两条既有基线实跑精确复现通过",
-    "B对称动作种子41完成131072步并保存最终权重；原队列已进入45例验证，尚无性能结论"
+    "B对称动作种子41完成131072步并保存最终权重；原队列已进入45例验证，尚无性能结论",
+    "B对称动作首种子完成45例配对验证，收益不达门槛；已保存完整结果并核对实际评价权重，第二种子继续",
+    "轮/髋速度反馈拆分接口通过零动作、共享增益等价、独立通道、限幅、旧训练和后段报错恢复检查；54条开发诊断已按事前登记启动"
   ],
-  "next": "A-full双种子筛选已完整结束并均失败，不扩大同配置训练；继续原B对称动作、C线性反馈及D三参数参考对照。达到各自原筛选门的候选才补充运动质量或进入正式三种子研究。完整最终60例仍未运行，禁止为未达门槛的A消耗最终集。",
+  "next": "继续B第二种子、C线性反馈与D参考参数筛选；同时完成54条轮/髋通道开发诊断。新动态参考强化学习须依据完整诊断另行登记；最终60例仍未使用。",
   "active_process": {
     "queue_pid": 8796,
-    "current_job_at_update": "baseline-validation-symmetric",
+    "current_job_at_update": "B-symmetric-73-train",
     "queue_status_at_update": "running",
-    "current_attempt_at_update": {
+    "latest_attempt_at_update": {
       "command": [
         "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
         "-u",
-        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen\\tools\\mujoco\\learning\\TrainWbrStudy.py",
         "--output",
-        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\baselines\\validation-symmetric",
-        "--cases",
-        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\validation.json",
-        "--baseline-only",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\B-symmetric\\73\\train",
+        "--seed",
+        "73",
+        "--steps",
+        "131072",
+        "--envs",
+        "2",
+        "--reward-mode",
+        "dense",
         "--action-mode",
-        "symmetric"
+        "symmetric",
+        "--deadline",
+        "2026-10-14T02:10:00+08:00",
+        "--checkpoint-every",
+        "16384"
       ],
-      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\logs\\baseline-validation-symmetric-01.log",
-      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\baselines\\validation-symmetric",
-      "job_binding_sha256": "32ef0fa8c01ceab6db845858537ebdbb3a8199b58ab768e2180716d57337551c",
+      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\logs\\B-symmetric-73-train-01.log",
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\B-symmetric\\73\\train",
+      "job_binding_sha256": "401d0e1a5612d5169db8429f864d3cc2190d6782b786c25ab65351c573f63072",
       "restart_without_checkpoint": false,
-      "started_at": "2026-10-11T20:41:26.244404+00:00",
-      "pid": 24380
+      "started_at": "2026-10-11T21:03:31.795438+00:00",
+      "pid": 30080
     },
-    "note": "保存时的状态；接续前仍须核对实际进程和命令，避免重复启动"
+    "note": "保存时的状态；接续前核对实际进程命令。另有reference_search和split_velocity_probe同时运行"
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T04:42:57.389625+08:00",
+  "updated_at": "2026-10-12T05:08:37.747604+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -87,7 +98,7 @@
     "final": "4bab9e7570e467f921e6cd280fe5c1e63d8b04d94a47970445357a4c062307bb",
     "pressure": "302c5724cc2eb0d164f92018cc0ccf754455fb43f05c0328fa40e98177cfa00b"
   },
-  "stop_instructions": "在queue_plan所在目录创建stop.request，队列会请求当前子任务保存退出。用户要求暂停时还须暂停GOAL及本聊天的每小时接续。",
+  "stop_instructions": "暂停全部研究时，在queue_plan父目录、reference_search.queue_plan父目录及split_velocity_probe.output目录分别创建stop.request，并核对各自保存退出；还须按用户要求暂停GOAL及本聊天的每小时接续。不能只停止其中一条队列。",
   "resume_instructions": "确认同一队列和子进程均已退出、期限未到且用户没有暂停；清除队列根stop.request后使用冻结目录RunWbrStudyQueue.py --plan 原计划 --resume。不得并行启动第二份。",
   "study_code_commit": "5569b66003d8a14425d8b0937791d4eef6888d7c",
   "saved_checkpoint": {
@@ -218,7 +229,7 @@
       "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\plan.json"
     ],
     "resume": "确认本队列及子进程均退出后，按原start_command增加--resume；不得修改冻结目录。已有进程正常运行时不重复启动。",
-    "stop": "在本queue_plan父目录创建stop.request可正常保存停止；原A/B/C有自己的停止文件，用户要求暂停研究时两个队列都应停止。",
+    "stop": "在本queue_plan父目录创建stop.request可正常保存停止；暂停全部研究时还须停止原A/B/C队列及split_velocity_probe独立诊断。",
     "scope": "固定三参数优化对照，不能称为强化学习成功；只开发搜索和独立验证，最终60例未使用"
   },
   "screening_A_full_complete": {
@@ -263,5 +274,99 @@
     "d_evaluations": 20,
     "verified_on_same_machine_after_relocation": true,
     "note": "同时包含两份完整冻结源码/模型/动态库及一致恢复点；旧任务仍继续，此包不代表最新进度"
+  },
+  "screening_B_first_seed": {
+    "result": "tools/mujoco/learning/results/study-20261012/screening-B-symmetric-41/筛选结论.json",
+    "seed": 41,
+    "primary_gates_pass": false,
+    "gate": {
+      "pass_all": false,
+      "checks": {
+        "physical_complete": true,
+        "stop_improvement": false,
+        "push_improvement": false,
+        "primary_case_regression": true,
+        "heat_mean": true,
+        "motion_quality": false
+      },
+      "primary_gates_pass": false,
+      "motion_quality_pending": true,
+      "stop_improvement": -0.003734428346119145,
+      "push_improvement": 0.002955596952724515,
+      "heat_change": 0.06697569942587189,
+      "final_thresholds_pass": false,
+      "failing_final_case_guards": [
+        "validation-combined-006",
+        "validation-combined-007",
+        "validation-combined-008",
+        "validation-push-000",
+        "validation-push-001",
+        "validation-push-002",
+        "validation-push-004",
+        "validation-push-005",
+        "validation-push-006",
+        "validation-push-007",
+        "validation-push-010",
+        "validation-push-012",
+        "validation-push-014",
+        "validation-stop-000",
+        "validation-stop-001",
+        "validation-stop-002",
+        "validation-stop-003",
+        "validation-stop-004",
+        "validation-stop-005",
+        "validation-stop-006",
+        "validation-stop-007",
+        "validation-stop-008",
+        "validation-stop-009",
+        "validation-stop-010",
+        "validation-stop-011",
+        "validation-stop-012",
+        "validation-stop-013",
+        "validation-stop-014",
+        "validation-stop-015",
+        "validation-stop-016",
+        "validation-stop-017"
+      ]
+    }
+  },
+  "split_velocity_probe": {
+    "registration": "tools/mujoco/learning/results/study-20261012/轮髋速度反馈拆分诊断登记.json",
+    "interface_check": "tools/mujoco/learning/results/study-20261012/轮髋反馈接口检查.json",
+    "started_at": "2026-10-12T05:07:19.002278+08:00",
+    "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\split-velocity-probe\\frozen-v3",
+    "output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\split-velocity-probe\\results",
+    "experiment_identity": "538301959eeafc9526f0ea9f1e1d8c43f7dac78241ec4ae4ee29f0de3e6f3e8b",
+    "library_sha256": "01f39453d81234683206e92c714847977ec2e7ed6578963ad27b04239d3dc0c6",
+    "wrapper_pid": 23832,
+    "actual_pid_at_update": 29416,
+    "status_at_update": {
+      "status": "running",
+      "pid": 29416,
+      "mode": "zero",
+      "completed_cases": 4,
+      "total_cases": 6
+    },
+    "command": [
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+      "-u",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\split-velocity-probe\\frozen-v3\\tools\\mujoco\\learning\\DiagnoseWbrReference.py",
+      "--snapshot",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\split-velocity-probe\\frozen-v3",
+      "--registration",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\split-velocity-probe\\frozen-v3\\tools\\mujoco\\learning\\results\\study-20261012\\轮髋速度反馈拆分诊断登记.json",
+      "--cases",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\split-velocity-probe\\frozen-v3\\tools\\mujoco\\learning\\cases\\study-20261012\\development.json",
+      "--original-baseline",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\quality-smoke-baseline\\summary.json",
+      "--output",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\split-velocity-probe\\results",
+      "--deadline",
+      "2026-10-14T02:10:00+08:00"
+    ],
+    "planned_trajectories": 54,
+    "normal_stop": "在output目录创建stop.request；若用户要求暂停全部研究，需同时停止两条旧队列和本诊断，不能只停训练队列",
+    "resume": "先核对实际进程，确认旧进程已退出；移除本诊断stop.request后，原command末尾添加--resume。必须用原冻结目录、输入和期限；已完成时禁止重复启动",
+    "current_boundary": "已通过接口/故障/旧训练逻辑检查；完整轨迹的两道等价门按登记在前12条顺序执行，通过后才执行其余42条。这里只记录启动状态，不提前认定通过。"
   }
 }

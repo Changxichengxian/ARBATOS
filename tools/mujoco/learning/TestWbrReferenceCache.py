@@ -2,10 +2,18 @@
 from copy import deepcopy
 import unittest
 
-from DiagnoseWbrReference import encoded_hash, row_binding, validate_saved_row
+from DiagnoseWbrReference import encoded_hash, registered_deadline, row_binding, validate_saved_row
 
 
 class ReferenceCacheTests(unittest.TestCase):
+    def test_registered_deadline_cannot_be_extended_or_lose_timezone(self):
+        registration = dict(deadline="2026-10-14T02:10:00+08:00")
+        self.assertEqual(registered_deadline(registration, "2026-10-13T18:10:00+00:00"),
+                         registered_deadline(registration, registration["deadline"]))
+        for value in ("2026-10-15T02:10:00+08:00", "2026-10-14T02:10:00"):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "期限"):
+                registered_deadline(registration, value)
+
     def setUp(self):
         self.scenario = dict(id="development-stop-000",seed=31000,randomize=False,
                              options=dict(case="stop",speed=.35,push=12.,delay=0,duration=8.))

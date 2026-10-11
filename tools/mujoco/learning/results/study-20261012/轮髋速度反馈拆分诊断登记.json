@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "registered_at": "2026-10-12T04:46:50.202113+08:00",
+  "purpose": "独立开发诊断：辨别共享纵向速度反馈的轮/髋通道作用，现有B/C/D仍按原登记运行，不提前认定其失败",
+  "basis": {
+    "参考减速诊断结果.json": "e446febfca8aaf187b38fa962945c5a43e4565fee19e62d8cd0c0224dc2c0295",
+    "停车受推衔接诊断结果.json": "a849bf1322143c033da3d7c32b64c8e4602495fb99f5f7e31d236d6e6743732f"
+  },
+  "action_mode": "split_velocity",
+  "cases_split": "development",
+  "cases_sha256": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+  "actions": [
+    "额外减速1.2*clamp(a0,0,1) m/s2，原位置参考积分不改",
+    "轮矩通道k[3]乘1+0.5*clamp(a1,-1,1)，位置反馈k[2]/k[8]保持原值",
+    "髋矩通道k[9]乘1+0.5*clamp(a2,-1,1)；左右腿共享各通道倍率"
+  ],
+  "prerequisites": [
+    "冻结继承原104个非学习源码/模型文件，气簧、传感器和随机化不变",
+    "每次调用结束恢复原反馈系数；旧reference接口语义不变",
+    "零动作同6例原指标与运动质量逐项完全相同，否则停止",
+    "shared-velocity-plus同6例须与旧velocity-plus的全部指标和运动质量完全相同，否则停止后续独立通道诊断",
+    "只在正常平衡、零速度/转向/跳跃指令下生效，不增加控制观测"
+  ],
+  "equivalent_reference": {
+    "mode": "shared-velocity-plus",
+    "reference_mode": "velocity-plus",
+    "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-probe\\results\\summary.json",
+    "sha256": "54a1279d0e537b3ff9008c80661c221ca6d443fdd874f65da44226ff576c683b"
+  },
+  "modes": [
+    {
+      "name": "zero",
+      "action": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shared-velocity-plus",
+      "action": [
+        0,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "name": "wheel-plus",
+      "action": [
+        0,
+        0.5,
+        0
+      ]
+    },
+    {
+      "name": "wheel-minus",
+      "action": [
+        0,
+        -0.5,
+        0
+      ]
+    },
+    {
+      "name": "hip-plus",
+      "action": [
+        0,
+        0,
+        0.5
+      ]
+    },
+    {
+      "name": "hip-minus",
+      "action": [
+        0,
+        0,
+        -0.5
+      ]
+    },
+    {
+      "name": "wheel-plus-hip-minus",
+      "action": [
+        0,
+        0.5,
+        -0.5
+      ]
+    },
+    {
+      "name": "brake-wheel-plus",
+      "action": [
+        0.25,
+        0.5,
+        0
+      ]
+    },
+    {
+      "name": "brake-wheel-plus-hip-minus",
+      "action": [
+        0.25,
+        0.5,
+        -0.5
+      ]
+    }
+  ],
+  "planned_trajectories": 54,
+  "acceptance": "只作开发归因；原逐例、热均值5%、运动质量及物理门均不变，完整收益仍须停车/受推各10%",
+  "next_rule": "若发现更好的可行方向，再另行登记动态参考策略与覆盖组合场景的训练；本诊断不自动启动长训练，不证明独立泛化或接口全局能力上限",
+  "stop_resume": "逐个场景原子保存；stop.request正常停止，同一冻结绑定以--resume继续",
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "final_dataset_used": false
+}

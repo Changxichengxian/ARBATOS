@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T05:06:52.842967+08:00",
+  "route": "B-symmetric",
+  "seed": 41,
+  "training_steps": 131072,
+  "validation_pairs": 45,
+  "screening_gate": {
+    "pass_all": false,
+    "checks": {
+      "physical_complete": true,
+      "stop_improvement": false,
+      "push_improvement": false,
+      "primary_case_regression": true,
+      "heat_mean": true,
+      "motion_quality": false
+    },
+    "primary_gates_pass": false,
+    "motion_quality_pending": true,
+    "stop_improvement": -0.003734428346119145,
+    "push_improvement": 0.002955596952724515,
+    "heat_change": 0.06697569942587189,
+    "final_thresholds_pass": false,
+    "failing_final_case_guards": [
+      "validation-combined-006",
+      "validation-combined-007",
+      "validation-combined-008",
+      "validation-push-000",
+      "validation-push-001",
+      "validation-push-002",
+      "validation-push-004",
+      "validation-push-005",
+      "validation-push-006",
+      "validation-push-007",
+      "validation-push-010",
+      "validation-push-012",
+      "validation-push-014",
+      "validation-stop-000",
+      "validation-stop-001",
+      "validation-stop-002",
+      "validation-stop-003",
+      "validation-stop-004",
+      "validation-stop-005",
+      "validation-stop-006",
+      "validation-stop-007",
+      "validation-stop-008",
+      "validation-stop-009",
+      "validation-stop-010",
+      "validation-stop-011",
+      "validation-stop-012",
+      "validation-stop-013",
+      "validation-stop-014",
+      "validation-stop-015",
+      "validation-stop-016",
+      "validation-stop-017"
+    ]
+  },
+  "physical_complete": true,
+  "failed_original_guard_counts": {
+    "hip_heat_case": 15,
+    "peak_pitch_deg": 12,
+    "stop_reverse": 18
+  },
+  "final_dataset_used": false,
+  "verification": {
+    "full_45_scenarios": true,
+    "saved_weights_match_evaluated": true,
+    "recomputed_acceptance_equal": true,
+    "baseline_identical_to_full_and_symmetric": true
+  },
+  "conclusion": "首种子停车误差增加约0.37%，受推误差降低约0.30%，髋热指标增加约6.70%，未过筛选收益门。第二种子按登记继续，尚无整条路线结论。",
+  "boundary": "未追加运动质量评价、未用最终集；不能据此证明其他训练预算或强化学习本身无效。"
+}
