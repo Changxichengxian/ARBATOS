@@ -59,7 +59,8 @@
     "C41完成5代共40个线性修正候选搜索，最终策略的6个开发场景实际重放后完整评分与保护结果一致。最后选中的候选改善约2.6%，但有保护项失败，旧搜索软惩罚仍选中了它；已保存状态与重放，45例独立评价继续，暂不判断通过",
     "C41完整45例配对评价及全部90条完成记录核对一致。独立45例停车误差改善2.7604%，受推恢复误差改善2.3411%，髋部用力平方积分变化-1.7532%。未通过主筛选，不晋级。第二种子按原登记继续，未使用最终60例。",
     "完成六组独立验证的逐例退步分布对照；同45例原控制基线逐字段一致，物理完成全部通过但控制指标约束仍有失败。确认C/D共同在两条组合场景出现相同指标退步，保存图和来源，未据此改动E登记",
-    "保存E41固定131072步半程恢复点；完整模型和13组优化器实际加载与原值一致，128组输入导出数值通过。没有评价或选择中途策略"
+    "保存E41固定131072步半程恢复点；完整模型和13组优化器实际加载与原值一致，128组输入导出数值通过。没有评价或选择中途策略",
+    "核对E41半程244个完整训练回合：评分账目复算误差小于1.8e-14，覆盖142/144训练场景；50个回合有控制指标超限而无物理失败。保存原始摘录与核验程序，不将带探索训练表现当作独立评价"
   ],
   "next": "C73、D73搜索及独立评价、E两种子262144步训练与24例监控继续。现有准入流程会复算晋级条件并保存结果；若两种子都达标且未过截止时间，再使用原冻结训练器启动扩展，未达标不得增加预算。最终60例尚未运行。",
   "active_process": {
@@ -90,7 +91,7 @@
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T07:29:47.476204+08:00",
+  "updated_at": "2026-10-12T07:33:53.829792+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -512,7 +513,15 @@
       "steps": 131072,
       "actual_model_and_optimizer_loaded": true,
       "performance_evaluated": false,
-      "checkpoint_sha256": "7db43c79fd46aad758a9ba564eea6076fac25d96b0ca26239bec28727576c705"
+      "checkpoint_sha256": "7db43c79fd46aad758a9ba564eea6076fac25d96b0ca26239bec28727576c705",
+      "training_log_audit": {
+        "report": "tools/mujoco/learning/results/study-20261012/aligned-E-41-midpoint/训练日志核验.json",
+        "complete_episodes": 244,
+        "unique_training_cases": 142,
+        "guard_violation_episodes": 50,
+        "maximum_reward_reconstruction_error": 1.7763568394002505e-14,
+        "independent_performance_evidence": false
+      }
     }
   },
   "reference_D_first_seed_validation": {
