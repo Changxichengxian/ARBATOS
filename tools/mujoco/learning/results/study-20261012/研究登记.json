@@ -33,6 +33,8 @@
     "checkpoint_fallback": true,
     "smoke_baseline_cases": 6,
     "smoke_policy_cases": 6,
-    "smoke_physical_failures": 0
-  }
+    "smoke_physical_failures": 0,
+    "linear_search_resume": true
+  },
+  "source_code_commit": "5569b66003d8a14425d8b0937791d4eef6888d7c"
 }
