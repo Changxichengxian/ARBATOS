@@ -1,0 +1,332 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T07:15:23.172723+08:00",
+  "route": "C-linear",
+  "seed": 41,
+  "search_evaluations": 40,
+  "validation_pairs": 45,
+  "screening_gate": {
+    "pass_all": false,
+    "checks": {
+      "physical_complete": true,
+      "stop_improvement": false,
+      "push_improvement": false,
+      "primary_case_regression": true,
+      "heat_mean": true,
+      "motion_quality": false
+    },
+    "primary_gates_pass": false,
+    "motion_quality_pending": true,
+    "stop_improvement": 0.0276040131819123,
+    "push_improvement": 0.023411024338318764,
+    "heat_change": -0.01753221138666794,
+    "final_thresholds_pass": false,
+    "failing_final_case_guards": [
+      "validation-combined-005",
+      "validation-combined-007",
+      "validation-push-008",
+      "validation-stop-001",
+      "validation-stop-015"
+    ]
+  },
+  "improvements": {
+    "stop": 0.0276040131819123,
+    "push": 0.023411024338318764,
+    "heat": -0.01753221138666794
+  },
+  "status": "failed_primary",
+  "advance": false,
+  "physical_complete": true,
+  "failed_original_guard_counts": {
+    "peak_pitch_deg": 4,
+    "push_primary": 1
+  },
+  "failed_original_cases": [
+    {
+      "id": "validation-combined-005",
+      "case": "combined",
+      "complete": true,
+      "checks": {
+        "stop_primary": {
+          "pass": true,
+          "baseline": 0.38148219088247903,
+          "learned": 0.3735544638017267,
+          "delta": -0.007927727080752345,
+          "allowed_increase": 0.019074109544123953
+        },
+        "push_primary": {
+          "pass": true,
+          "baseline": 0.1644620838908522,
+          "learned": 0.16411957634947594,
+          "delta": -0.00034250754137626904,
+          "allowed_increase": 0.008223104194542611
+        },
+        "stop_travel": {
+          "pass": true,
+          "baseline": 0.36668448883947624,
+          "learned": 0.35841868071651384,
+          "delta": -0.008265808122962404,
+          "allowed_increase": 0.01833422444197381
+        },
+        "stop_reverse": {
+          "pass": true,
+          "baseline": 0.0,
+          "learned": 0.0,
+          "delta": 0.0,
+          "allowed_increase": 0.005
+        },
+        "push_peak_velocity_error": {
+          "pass": true,
+          "baseline": 0.414711040430433,
+          "learned": 0.4238015608112115,
+          "delta": 0.00909052038077851,
+          "allowed_increase": 0.02073555202152165
+        },
+        "peak_pitch_deg": {
+          "pass": false,
+          "baseline": 3.1328481808411786,
+          "learned": 3.4712212475974695,
+          "delta": 0.338373066756291,
+          "allowed_increase": 0.2
+        },
+        "peak_roll_deg": {
+          "pass": true,
+          "baseline": 0.3162596615628815,
+          "learned": 0.3189930278918119,
+          "delta": 0.0027333663289303978,
+          "allowed_increase": 0.2
+        },
+        "hip_heat_case": {
+          "pass": true,
+          "baseline": 117.5766449479375,
+          "learned": 119.61656349779932,
+          "delta": 2.0399185498618237,
+          "allowed_increase": 23.515328989587502
+        }
+      },
+      "pass": false
+    },
+    {
+      "id": "validation-combined-007",
+      "case": "combined",
+      "complete": true,
+      "checks": {
+        "stop_primary": {
+          "pass": true,
+          "baseline": 0.7152182935009862,
+          "learned": 0.7010680883305926,
+          "delta": -0.01415020517039356,
+          "allowed_increase": 0.03576091467504931
+        },
+        "push_primary": {
+          "pass": false,
+          "baseline": 0.10416917579917072,
+          "learned": 0.11141207120032162,
+          "delta": 0.007242895401150903,
+          "allowed_increase": 0.005208458789958536
+        },
+        "stop_travel": {
+          "pass": true,
+          "baseline": 0.7002822419796098,
+          "learned": 0.6864754630904659,
+          "delta": -0.013806778889143834,
+          "allowed_increase": 0.03501411209898049
+        },
+        "stop_reverse": {
+          "pass": true,
+          "baseline": 0.0,
+          "learned": 0.0,
+          "delta": 0.0,
+          "allowed_increase": 0.005
+        },
+        "push_peak_velocity_error": {
+          "pass": true,
+          "baseline": 0.45821887507980436,
+          "learned": 0.4472325509330023,
+          "delta": -0.010986324146802062,
+          "allowed_increase": 0.02291094375399022
+        },
+        "peak_pitch_deg": {
+          "pass": true,
+          "baseline": 2.830437685114593,
+          "learned": 3.0096475329506696,
+          "delta": 0.17920984783607663,
+          "allowed_increase": 0.2
+        },
+        "peak_roll_deg": {
+          "pass": true,
+          "baseline": 0.19729954672499836,
+          "learned": 0.1981742915721946,
+          "delta": 0.0008747448471962405,
+          "allowed_increase": 0.2
+        },
+        "hip_heat_case": {
+          "pass": true,
+          "baseline": 148.55800653198904,
+          "learned": 152.01745950833586,
+          "delta": 3.4594529763468245,
+          "allowed_increase": 29.71160130639781
+        }
+      },
+      "pass": false
+    },
+    {
+      "id": "validation-push-008",
+      "case": "push",
+      "complete": true,
+      "checks": {
+        "push_primary": {
+          "pass": true,
+          "baseline": 0.1670560230952179,
+          "learned": 0.16233703448346176,
+          "delta": -0.004718988611756125,
+          "allowed_increase": 0.008352801154760895
+        },
+        "push_peak_velocity_error": {
+          "pass": true,
+          "baseline": 0.37522125779865567,
+          "learned": 0.3770726001275946,
+          "delta": 0.0018513423289389097,
+          "allowed_increase": 0.018761062889932786
+        },
+        "peak_pitch_deg": {
+          "pass": false,
+          "baseline": 3.5222732932210037,
+          "learned": 3.7228503031565974,
+          "delta": 0.2005770099355937,
+          "allowed_increase": 0.2
+        },
+        "peak_roll_deg": {
+          "pass": true,
+          "baseline": 0.2088581102422456,
+          "learned": 0.20216576179148282,
+          "delta": -0.006692348450762775,
+          "allowed_increase": 0.2
+        },
+        "hip_heat_case": {
+          "pass": true,
+          "baseline": 173.03624007896255,
+          "learned": 175.42645125709313,
+          "delta": 2.390211178130585,
+          "allowed_increase": 34.607248015792514
+        }
+      },
+      "pass": false
+    },
+    {
+      "id": "validation-stop-001",
+      "case": "stop",
+      "complete": true,
+      "checks": {
+        "stop_primary": {
+          "pass": true,
+          "baseline": 0.2685023373031949,
+          "learned": 0.26067184745917327,
+          "delta": -0.007830489844021626,
+          "allowed_increase": 0.013425116865159745
+        },
+        "stop_travel": {
+          "pass": true,
+          "baseline": 0.5724651233159095,
+          "learned": 0.5592702379990588,
+          "delta": -0.013194885316850646,
+          "allowed_increase": 0.028623256165795474
+        },
+        "stop_reverse": {
+          "pass": true,
+          "baseline": 0.10545612293518729,
+          "learned": 0.08771565923311218,
+          "delta": -0.017740463702075104,
+          "allowed_increase": 0.005272806146759365
+        },
+        "peak_pitch_deg": {
+          "pass": false,
+          "baseline": 2.7197122319879385,
+          "learned": 2.9323187772816723,
+          "delta": 0.2126065452937338,
+          "allowed_increase": 0.2
+        },
+        "peak_roll_deg": {
+          "pass": true,
+          "baseline": 0.24313722088133402,
+          "learned": 0.22729884061292174,
+          "delta": -0.015838380268412278,
+          "allowed_increase": 0.2
+        },
+        "hip_heat_case": {
+          "pass": true,
+          "baseline": 192.37136279169385,
+          "learned": 184.0282982999505,
+          "delta": -8.343064491743348,
+          "allowed_increase": 38.474272558338775
+        }
+      },
+      "pass": false
+    },
+    {
+      "id": "validation-stop-015",
+      "case": "stop",
+      "complete": true,
+      "checks": {
+        "stop_primary": {
+          "pass": true,
+          "baseline": 0.3288423026979502,
+          "learned": 0.3197553809360505,
+          "delta": -0.00908692176189968,
+          "allowed_increase": 0.01644211513489751
+        },
+        "stop_travel": {
+          "pass": true,
+          "baseline": 0.7502512440891085,
+          "learned": 0.7330774884308924,
+          "delta": -0.017173755658216106,
+          "allowed_increase": 0.037512562204455424
+        },
+        "stop_reverse": {
+          "pass": true,
+          "baseline": 0.11113843902347287,
+          "learned": 0.09186066268560664,
+          "delta": -0.01927777633786623,
+          "allowed_increase": 0.005556921951173644
+        },
+        "peak_pitch_deg": {
+          "pass": false,
+          "baseline": 2.7450390586033313,
+          "learned": 2.9633988925019294,
+          "delta": 0.21835983389859814,
+          "allowed_increase": 0.2
+        },
+        "peak_roll_deg": {
+          "pass": true,
+          "baseline": 0.21737206296486242,
+          "learned": 0.2156621595498855,
+          "delta": -0.0017099034149769266,
+          "allowed_increase": 0.2
+        },
+        "hip_heat_case": {
+          "pass": true,
+          "baseline": 225.32383993010347,
+          "learned": 216.63877229038278,
+          "delta": -8.6850676397207,
+          "allowed_increase": 45.0647679860207
+        }
+      },
+      "pass": false
+    }
+  ],
+  "final_dataset_used": false,
+  "verification": {
+    "all_45_pairs": true,
+    "all_90_completed_rows_match": true,
+    "saved_policy_matches_evaluated": true,
+    "recomputed_acceptance_exact": true
+  },
+  "sources": {
+    "summary_sha256": "ae36fc49b8362f58dba64e981fd3717ba9bb22306094b636b5bcdb147b84f97d",
+    "run_sha256": "996a4bfb033cb4916b14722536f42750bfbee6a11426c6165798587950e1be0b",
+    "saved_policy_sha256": "e4018eb8134d20796270c5e82ce48b4f4d819b51da953a94ac6bee6deb63a11a",
+    "screening_logic_sha256": "e51fd33429745b3ddb03e787e9a36588a6ba8fd8cd2a47ab4c903ec29ff78056"
+  },
+  "conclusion": "独立45例停车误差改善2.7604%，受推恢复误差改善2.3411%，髋部用力平方积分变化-1.7532%。未通过主筛选，不晋级。第二种子按原登记继续，未使用最终60例。",
+  "boundary": "这是固定预算和线性形式的控制对照；不代表所有线性控制或强化学习方案的上限。"
+}

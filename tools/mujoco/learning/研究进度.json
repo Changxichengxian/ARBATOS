@@ -56,9 +56,10 @@
     "修复E准备流程恢复时信任旧完成标记问题；已完成队列、短训实际模型、晋级记录均重新复核。正常停止归档旧等待流程并按新代码启动；144条训练基线全部物理通过",
     "E的144训练+24监控基线完成并封存；三类包装物理与观测逐步一致、在线离线评分一致、物理失败结算正确；实际1024步接续2048步证明网络和优化器精确载入并继续更新，导出推理通过，登记E41长训练已启动",
     "保存E41首段16384步完整冻结环境恢复包；同机换目录载入实际网络/优化器并逐字段重放一条开发基线一致。另保留C41的35候选、D73的31候选阶段状态并核验随机状态及可复算评分",
-    "C41完成5代共40个线性修正候选搜索，最终策略的6个开发场景实际重放后完整评分与保护结果一致。最后选中的候选改善约2.6%，但有保护项失败，旧搜索软惩罚仍选中了它；已保存状态与重放，45例独立评价继续，暂不判断通过"
+    "C41完成5代共40个线性修正候选搜索，最终策略的6个开发场景实际重放后完整评分与保护结果一致。最后选中的候选改善约2.6%，但有保护项失败，旧搜索软惩罚仍选中了它；已保存状态与重放，45例独立评价继续，暂不判断通过",
+    "C41完整45例配对评价及全部90条完成记录核对一致。独立45例停车误差改善2.7604%，受推恢复误差改善2.3411%，髋部用力平方积分变化-1.7532%。未通过主筛选，不晋级。第二种子按原登记继续，未使用最终60例。"
   ],
-  "next": "C41完整搜索已保存，先等原队列完成其45例评价，再复算全部配对指标并保存结论；C73随后自动搜索。D73与E双种子筛选仍在原活进程运行；E准备15376、筛选20360，勿重复启动。原最终60例未运行。",
+  "next": "C41主筛选未通过，不追加质量评价或扩大该种子预算；等待C73按登记完成独立重复。D73搜索及评价、E双种子筛选按原队列继续；E准备15376、筛选20360，勿重复启动。最终60例未运行。",
   "active_process": {
     "queues": [
       {
@@ -87,7 +88,7 @@
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T07:08:07.910653+08:00",
+  "updated_at": "2026-10-12T07:15:23.172723+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -541,6 +542,39 @@
     "development_stop_improvement": 0.02615370597188904,
     "development_push_improvement": 0.025752704501369683,
     "development_heat_change": -0.020693819949014758,
-    "validation_status": "running"
+    "validation_status": "completed"
+  },
+  "linear_C41_validation": {
+    "report": "tools/mujoco/learning/results/study-20261012/linear-C-41-validation/筛选结论.json",
+    "status": "failed_primary",
+    "improvements": {
+      "stop": 0.0276040131819123,
+      "push": 0.023411024338318764,
+      "heat": -0.01753221138666794
+    },
+    "screening_gate": {
+      "pass_all": false,
+      "checks": {
+        "physical_complete": true,
+        "stop_improvement": false,
+        "push_improvement": false,
+        "primary_case_regression": true,
+        "heat_mean": true,
+        "motion_quality": false
+      },
+      "primary_gates_pass": false,
+      "motion_quality_pending": true,
+      "stop_improvement": 0.0276040131819123,
+      "push_improvement": 0.023411024338318764,
+      "heat_change": -0.01753221138666794,
+      "final_thresholds_pass": false,
+      "failing_final_case_guards": [
+        "validation-combined-005",
+        "validation-combined-007",
+        "validation-push-008",
+        "validation-stop-001",
+        "validation-stop-015"
+      ]
+    }
   }
 }

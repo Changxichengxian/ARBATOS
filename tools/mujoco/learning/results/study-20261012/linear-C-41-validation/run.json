@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "binding": {
+    "schema": 1,
+    "split": "validation",
+    "scenarios_sha256": "851efabbabdb5ffdf9904c61ae1cad07e1a6f4d519b9ca0c03ebffea3d08e25b",
+    "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+    "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+    "evaluator_sha256": "766a4541a8dab9d0fc911056b64765eb4c0ab55ac4eb1f9a0bcc15286fd73fd6",
+    "env_config": {
+      "reward_mode": "dense",
+      "action_mode": "symmetric",
+      "gas_force": 450.0
+    },
+    "policy_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\C-linear\\41\\search",
+    "policy_artifacts": {
+      "policy.json": "e4018eb8134d20796270c5e82ce48b4f4d819b51da953a94ac6bee6deb63a11a",
+      "embedded_linear_coefficients": "06477d81837eaecdb55ac344b4c3b83e53683cd92c3a483e5332cd9d9d917fb9"
+    },
+    "policy_lock_sha256": null,
+    "baseline_cache_sha256": "e39b58f0b252f9502bca747b84bc83aaf448eee0e945398e1e6b99cc93e16395",
+    "record": false
+  },
+  "binding_sha256": "5a78cd80a22c522e65da5077d221b526f4c378d7413b2e192e269e447eebbb9e"
+}
