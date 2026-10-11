@@ -1,0 +1,25 @@
+{
+  "status": "training_completed_pending_validation",
+  "route": "B-symmetric",
+  "seed": 41,
+  "steps": 131072,
+  "saved_at": "2026-10-12T04:42:57.389625+08:00",
+  "source": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\B-symmetric\\41\\train",
+  "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
+  "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+  "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+  "training_job_binding_sha256": "d9ec9c6103fe6ceb4f39daff120cd7caae3e9cbf46fe8ce3b13683f41138e2be",
+  "files": {
+    "checkpoint.zip": "f432ee00ad8b865719b7e6cb9357e8141b52d8673d1d2c007d2671307c6c0aa5",
+    "policy.npz": "dc35c14fed684fcba0e69eb31d2ea3c0724e7e5c0387b8e840193541cc101927",
+    "policy.json": "44e0b320151f6a958614cfae801aff9438da6ad9abda5b589b9d91eba22e160e",
+    "status.json": "41318e406ef815f93dfc5a82c34221d1c3bfc3cff2e7ada598f8d4a1c8f19f55",
+    "run.json": "b26841549f5432f2936e4c48f04f2fbda042edcddfc657913464856935c1e1b0"
+  },
+  "segment_seconds": 2264.5652936999977,
+  "completed_episodes": 244,
+  "training_physics_failures": 0,
+  "performance_pass": null,
+  "final_dataset_used": false,
+  "note": "保存训练结束后的最终权重；45例配对尚未结束，不能用训练零失败认定控制改善。16384步周期保存点在最后梯度更新前生成，不替代本次实际待评价权重。"
+}
