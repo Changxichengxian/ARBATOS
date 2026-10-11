@@ -49,39 +49,40 @@
     "B对称动作第二种子完成45例配对验证，收益不达门槛；实际权重与结果已核对保存，双种子筛选均不通过",
     "B对称动作双种子45例验证均无足够收益，停止该配置晋级；已保存实际权重和复算结果",
     "D41完成72次开发搜索并逐项复算，保存完整搜索状态；开发两主收益4.53%/9.85%，热+1.32%，独立验证未裁决",
-    "E对齐训练完成开发评分校准与事先登记，168条训练/监控原控制基线队列已开始；尚未正式训练"
+    "E对齐训练完成开发评分校准与事先登记，168条训练/监控原控制基线队列已开始；尚未正式训练",
+    "D41常数参数搜索完成独立45例验证：4.51%/8.63%主收益、热+2.18%，仍因停车均值和逐例/运动质量条件不合格，不晋级；结果完整复算并保存",
+    "E续跑增加训练库、环境数及权重内容绑定；扩展必须继承实际晋级短训权重。旧队列检查、7项新队列/晋级边界及4项来源单测通过；尚待完整训练库后的真实网络短训/续训验收"
   ],
-  "next": "轮髋拆分54条诊断完整结束，所测固定参数均未达全部开发门；不采用。继续B73、C/D原筛选，同时准备成熟reference三动作的动态学习E：先离线校准评分、均衡组合训练场景并事前登记，短筛选有效才扩大预算。不得为已有负结果消耗最终60例。",
+  "next": "A/B两路线双种子筛选结束且不晋级；C41、D73仍在冻结队列中计算。D41独立45例验证未过停车5%及逐例/运动质量门，已保存结果。优先等待E的144+24条基线完成，再依aligned_reference.next_steps核验基线、冻结训练版本、完成真实短训/续训和三任务包装检查，之后才开两个262144步筛选。禁止重复启动仍在运行的队列。",
   "active_process": {
-    "queue_pid": 8796,
-    "current_job_at_update": "B-symmetric-73-evaluate",
-    "queue_status_at_update": "running",
-    "current_attempt_at_update": {
-      "command": [
-        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
-        "-u",
-        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
-        "--output",
-        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\B-symmetric\\73\\evaluation",
-        "--cases",
-        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen\\tools\\mujoco\\learning\\cases\\study-20261012\\validation.json",
-        "--policy",
-        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\B-symmetric\\73\\train",
-        "--baseline-cache",
-        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\baselines\\validation-symmetric"
-      ],
-      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\logs\\B-symmetric-73-evaluate-01.log",
-      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\B-symmetric\\73\\evaluation",
-      "job_binding_sha256": "ce0dd8bee57e53ac4018f7a64c0cbaa216d690ce90c946b90daed984d093ab9e",
-      "restart_without_checkpoint": false,
-      "started_at": "2026-10-11T21:35:22.357658+00:00",
-      "pid": 34220
-    },
-    "note": "保存时的状态；接续前仍须核对实际进程和命令，避免重复启动"
+    "queues": [
+      {
+        "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\queue-state.json",
+        "pid": 8796,
+        "status": "running",
+        "current_job": "C-linear-41-search",
+        "note": "保存时的队列状态，接续前仍须核对活进程，不能只凭此记录重启"
+      },
+      {
+        "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\queue-state.json",
+        "pid": 21996,
+        "status": "running",
+        "current_job": "D-reference-73-search",
+        "note": "保存时的队列状态，接续前仍须核对活进程，不能只凭此记录重启"
+      },
+      {
+        "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-queue\\queue-state.json",
+        "pid": 6396,
+        "status": "running",
+        "current_job": "baseline-training",
+        "note": "保存时的队列状态，接续前仍须核对活进程，不能只凭此记录重启"
+      }
+    ],
+    "updated_at": "2026-10-12T06:12:44.777120+08:00"
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T05:57:19.888746+08:00",
+  "updated_at": "2026-10-12T06:12:44.777120+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -447,7 +448,7 @@
     "registration_sha256": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120",
     "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
     "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
-    "baseline_training_completed": 16,
+    "baseline_training_completed": 72,
     "full_wrapper_and_real_training_preflight_pending": true,
     "next_steps": [
       "等待aligned-reference/baseline-queue完成144条training和24条monitor原控制基线，检查原控制均物理合格。",
@@ -455,9 +456,28 @@
       "以baseline-frozen为reference使用当前PrepareWbrLearning.py --reuse-library另建aligned-reference/training-frozen；核对DLL、104原文件和experiment_identity完全相同。不要修改已有冻结。",
       "运行当前TestWbrAligned.py --snapshot training-frozen --bank该冻结许可文件同目录training-bank.json，核对三个任务的原观测/物理、在线离线评分、8秒真正终止、失败末帧与篡改拒绝。",
       "实际短训seed9001一环境1024步，再新目录续到2048；核对检查点网络和优化器恢复、导出、各项绑定。尚未完成此步，不能声称训练程序全部验证。",
+      "新队列类型为aligned_train。TrainWbrAligned已记录环境数和training_lineage；扩展必须--resume实际被晋级的短训最终policy目录，之后只能恢复同来源的中间检查点。使用PromoteWbrAligned.py生成screen_expand/formal记录，训练入口会再次完整复算。",
       "通过后固定两个筛选种子41/73各262144步、2环境，完成后各跑24监控。晋级记录必须复算本登记条件，不能看着结果改阈值或选中途检查点。",
       "满足登记再扩1M、45例独立验证、101/211/307三种子正式训练与锁定60例；否则保存负结果，所有步骤受2026-10-14 02:10期限限制。"
     ],
-    "notes": "reuse-preflight-frozen只是准备工具检查，不是实际训练冻结；incompatible-reuse-rejected拒绝成功后没有manifest，均不要拿来训练。"
+    "notes": "reuse-preflight-frozen只是准备工具检查，不是实际训练冻结；incompatible-reuse-rejected拒绝成功后没有manifest，均不要拿来训练。",
+    "queue_preflight": "tools/mujoco/learning/results/study-20261012/aligned-baseline-start/续训与晋级逻辑检查.json"
+  },
+  "reference_D_first_seed_validation": {
+    "report": "tools/mujoco/learning/results/study-20261012/reference-D-41-validation/筛选结论.json",
+    "advance": false,
+    "improvements": {
+      "stop": 0.045084421129922614,
+      "push": 0.08626696100260844,
+      "heat": 0.02178259089094814
+    },
+    "screening_checks": {
+      "physical": true,
+      "original_guards": false,
+      "motion_quality": false,
+      "heat": true,
+      "stop": false,
+      "push": true
+    }
   }
 }

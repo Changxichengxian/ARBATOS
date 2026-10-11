@@ -40,6 +40,38 @@ def validate_training_bank(registration, registration_path, bank_path, manifest)
             raise RuntimeError("训练基线原始运行/汇总与冻结许可不符")
 
 
+def resume_lineage(registration, seed, resume_path, previous, promotion, promotion_sha256):
+    """扩展训练必须继承实际晋级的短训权重，之后只能接回同一来源的检查点。"""
+    stage = (promotion["stage"] if promotion else
+             "smoke" if seed == registration["smoke_seed"] else "screen_first")
+    lineage = dict(stage=stage,seed=seed,promotion_sha256=promotion_sha256)
+    if stage == "screen_expand":
+        if resume_path is None or previous is None:
+            raise RuntimeError("筛选扩展必须从被晋级的短训最终检查点续训")
+        origins = [row for row in promotion["results"] if row["seed"] == seed]
+        if len(origins) != 1:
+            raise RuntimeError("晋级记录缺少唯一同种子的短训来源")
+        origin = Path(origins[0]["policy"]).resolve()
+        origin_path = origin / "policy.json"
+        origin_contract = json.loads(origin_path.read_text(encoding="utf-8"))
+        origin_sha = hashlib.sha256(origin_path.read_bytes()).hexdigest()
+        lineage.update(origin_policy=str(origin),origin_policy_sha256=origin_sha,
+            origin_checkpoint_sha256=origin_contract["checkpoint_sha256"],
+            origin_steps=registration["screening_first"]["steps"])
+        if origin_contract["training_steps"] != lineage["origin_steps"]:
+            raise RuntimeError("晋级来源不是短训最终预算")
+        if Path(resume_path).resolve() == origin:
+            if previous != origin_contract:
+                raise RuntimeError("续训输入不是实际晋级的短训最终权重")
+        elif (previous.get("training_lineage") != lineage or
+              previous.get("requested_total_steps") != max(registration["training_steps"]) or
+              previous.get("training_steps",0) < lineage["origin_steps"]):
+            raise RuntimeError("扩展检查点不是从实际晋级权重继承的训练")
+    elif previous is not None and previous.get("training_lineage") != lineage:
+        raise RuntimeError("续训检查点的阶段或训练来源不匹配")
+    return lineage
+
+
 class AlignedProgress(StudyProgress):
     def _on_step(self):
         episodes = [info["aligned_episode"] for info in self.locals["infos"] if "aligned_episode" in info]
@@ -77,7 +109,7 @@ def main():
         raise RuntimeError("研究期限已到")
     if args.output.exists():
         raise FileExistsError("输出目录已存在；续训也使用新目录")
-    promotion_sha256 = None
+    promotion, promotion_sha256 = None, None
     if not smoke and args.steps == max(registration["training_steps"]):
         if args.promotion is None:
             raise ValueError("扩大预算或正式训练必须先复核晋级记录")
@@ -95,6 +127,8 @@ def main():
         for filename, expected in promotion["evidence_files"].items():
             if digest(Path(filename)) != expected:
                 raise RuntimeError("晋级依据发生变化")
+        from PromoteWbrAligned import verify_promotion
+        verify_promotion(args.promotion)
         promotion_sha256 = digest(args.promotion)
     if args.seed in registration["formal_seeds"] and args.steps != max(registration["training_steps"]):
         raise ValueError("正式种子必须使用登记的完整预算")
@@ -113,29 +147,32 @@ def main():
                ("WbrAlignedEnv.py", "WbrAlignedReward.py", "TrainWbrAligned.py", "TrainWbrStudy.py", "TrainWbrLearning.py")}
     protocol = dict(bank_sha256=digest(args.bank), registration_sha256=digest(args.registration),
                     sources=sources, weights=registration["weights"], algorithm=algorithm)
-    metadata = dict(seed=args.seed, env_config=bank["env_config"], training_protocol=protocol,
+    metadata = dict(seed=args.seed, envs=args.envs, env_config=bank["env_config"], training_protocol=protocol,
         strict_training_checks=True, snapshot=str(ROOT), library_sha256=manifest["library_sha256"],
         experiment_identity=experiment_identity(manifest), initial_steps=0, resume=None,
         training_source_sha256=digest(Path(__file__)), requested_total_steps=args.steps,
         deadline=registration["deadline"], promotion_sha256=promotion_sha256,
         versions={p:importlib.metadata.version(p) for p in ("mujoco","numpy","torch","gymnasium","stable-baselines3")})
+    previous = None
     if args.resume:
         previous = read(args.resume / "policy.json")
-        for key in ("seed", "env_config", "training_protocol", "library_sha256", "experiment_identity", "training_source_sha256"):
+        for key in ("seed", "envs", "env_config", "training_protocol", "library_sha256", "experiment_identity", "training_source_sha256"):
             if previous[key] != metadata[key]:
                 raise RuntimeError("续训配置不一致："+key)
         if digest(args.resume / "checkpoint.zip") != previous["checkpoint_sha256"]:
             raise RuntimeError("检查点内容不匹配")
         metadata.update(initial_steps=previous["training_steps"], resume=str(args.resume.resolve()),
             resume_semantics="保留网络和优化器；重新初始化物理回合及训练库洗牌，非逐步重放。场景选择种子为训练种子加已训练步数。")
+    metadata["training_lineage"] = resume_lineage(registration,args.seed,args.resume,previous,promotion,promotion_sha256)
     args.output.mkdir(parents=True)
     write_json(args.output / "run.json", metadata)
     torch.set_num_threads(1)
     constructors = [functools.partial(make_env, str(args.bank.resolve()), protocol["bank_sha256"], registration["weights"])
                     for _ in range(args.envs)]
-    env = DummyVecEnv(constructors) if args.envs == 1 else SubprocVecEnv(constructors, start_method="spawn")
-    callback = AlignedProgress(args.output, metadata, registration["checkpoint_every"], deadline)
+    env = None
     try:
+        env = DummyVecEnv(constructors) if args.envs == 1 else SubprocVecEnv(constructors, start_method="spawn")
+        callback = AlignedProgress(args.output, metadata, registration["checkpoint_every"], deadline)
         if args.resume:
             model = PPO.load(args.resume / "checkpoint.zip", env=env, device="cpu")
             model.set_random_seed(args.seed+metadata["initial_steps"])
@@ -166,7 +203,8 @@ def main():
         write_json(args.output / "status.json", dict(status="failed", error=repr(error), pid=os.getpid()))
         raise
     finally:
-        env.close()
+        if env is not None:
+            env.close()
 
 
 if __name__ == "__main__":

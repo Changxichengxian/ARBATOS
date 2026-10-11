@@ -11,6 +11,10 @@ import subprocess
 import sys
 import time
 
+SCRIPTS = {"train":"TrainWbrStudy.py", "aligned_train":"TrainWbrAligned.py",
+           "search":"SearchWbrLinear.py", "evaluate":"EvaluateWbrStudy.py"}
+TRAIN_KINDS = ("train", "aligned_train")
+
 
 def process_alive(pid):
     if os.name == "nt":
@@ -85,14 +89,15 @@ def input_fingerprint(path):
 
 def make_job_binding(kind, arguments, plan):
     learning = Path(plan["learning_directory"]).resolve()
-    script = {"train":"TrainWbrStudy.py", "search":"SearchWbrLinear.py",
-              "evaluate":"EvaluateWbrStudy.py"}[kind]
+    script = SCRIPTS[kind]
     inputs = {}
-    for flag in ("--cases", "--policy", "--lock", "--baseline-cache"):
+    for flag in ("--cases", "--policy", "--lock", "--baseline-cache", "--bank", "--registration", "--promotion", "--resume"):
         value = option(arguments, flag)
         if value is not None:
             inputs[flag] = input_fingerprint(value)
-    companion_names = ({"search": ("SearchWbrLinear.py", "EvaluateWbrStudy.py",
+    companion_names = ({"aligned_train": ("TrainWbrAligned.py", "WbrAlignedEnv.py", "WbrAlignedReward.py",
+                                           "TrainWbrStudy.py", "TrainWbrLearning.py"),
+                         "search": ("SearchWbrLinear.py", "EvaluateWbrStudy.py",
                                     "BuildWbrStudyCases.py")}.get(kind, (script,)))
     payload = {"kind": kind, "arguments": list(map(str, arguments)),
                "python": str(plan.get("python", sys.executable)),
@@ -111,9 +116,19 @@ def output_argument(arguments):
 
 
 def expected_env(arguments):
+    if option(arguments, "--bank"):
+        return json.loads(Path(option(arguments,"--bank")).read_text(encoding="utf-8"))["env_config"]
     return {"reward_mode": option(arguments, "--reward-mode", "dense"),
             "action_mode": option(arguments, "--action-mode", "full"),
             "gas_force": 450.0}
+
+
+def aligned_protocol(arguments, source_hashes):
+    registration = Path(option(arguments,"--registration"))
+    rule = json.loads(registration.read_text(encoding="utf-8"))
+    return dict(bank_sha256=sha256_file(option(arguments,"--bank")),
+        registration_sha256=sha256_file(registration), sources=source_hashes,
+        weights=rule["weights"], algorithm=rule["algorithm"])
 
 
 def policy_artifacts(directory):
@@ -140,12 +155,16 @@ def policy_artifacts(directory):
 def validate_output_binding(kind, directory, arguments, source, script_sha256,
                             source_hashes=None):
     directory = Path(directory)
-    if kind == "train":
+    if kind in TRAIN_KINDS:
         run = json.loads((directory/"run.json").read_text(encoding="utf-8"))
         expected = {"seed": int(option(arguments, "--seed", 41)),
                     "env_config": expected_env(arguments),
                     "requested_total_steps": int(option(arguments, "--steps", 131072)),
                     **source}
+        if kind == "aligned_train":
+            expected.update(envs=int(option(arguments,"--envs",2)),
+                training_protocol=aligned_protocol(arguments,source_hashes),
+                promotion_sha256=sha256_file(option(arguments,"--promotion")) if option(arguments,"--promotion") else None)
         for key, value in expected.items():
             if run.get(key) != value:
                 raise RuntimeError(f"训练输出绑定不匹配：{directory} {key}")
@@ -243,8 +262,18 @@ def is_complete(kind, directory, arguments, source, script_sha256,
     status = json.loads((directory/"status.json").read_text(encoding="utf-8"))
     if status.get("status") != "completed" or not (directory/"policy.json").is_file():
         return False
-    if kind == "train":
+    if kind in TRAIN_KINDS:
         expected = int(arguments[arguments.index("--steps")+1])
+        if kind == "aligned_train":
+            contract = json.loads((directory/"policy.json").read_text(encoding="utf-8"))
+            run = json.loads((directory/"run.json").read_text(encoding="utf-8"))
+            if any(contract.get(key) != value for key,value in run.items()):
+                raise RuntimeError("对齐训练最终权重与运行身份不符")
+            if contract.get("kind") != "ppo" or contract.get("training_steps") != status.get("steps"):
+                raise RuntimeError("对齐训练最终权重步数不符")
+            for filename,key in (("checkpoint.zip","checkpoint_sha256"),("policy.npz","policy_sha256")):
+                if sha256_file(directory/filename) != contract.get(key):
+                    raise RuntimeError("对齐训练最终权重内容不符")
         return int(status.get("steps", 0)) >= expected
     state = json.loads(metadata.read_text(encoding="utf-8"))
     if state.get("status") != "completed" or state.get("generation",0) < state["binding"]["generations"]:
@@ -259,7 +288,7 @@ def is_complete(kind, directory, arguments, source, script_sha256,
     return True
 
 
-def training_checkpoint(directories, arguments, source, training_source_sha256):
+def training_checkpoint(directories, arguments, source, training_source_sha256, source_hashes=None):
     candidates = []
     for directory in directories:
         directory = Path(directory)
@@ -271,6 +300,9 @@ def training_checkpoint(directories, arguments, source, training_source_sha256):
                 payload = json.loads(contract.read_text(encoding="utf-8"))
                 expected = {"seed": int(option(arguments, "--seed", 41)),
                             "env_config": expected_env(arguments), **source}
+                if option(arguments,"--bank"):
+                    expected.update(envs=int(option(arguments,"--envs",2)),
+                        training_protocol=aligned_protocol(arguments,source_hashes))
                 if any(payload.get(key) != value for key, value in expected.items()):
                     continue
                 if payload.get("training_source_sha256") != training_source_sha256:
@@ -339,7 +371,7 @@ def main():
     ids = [job["id"] for job in plan["jobs"]]
     if len(set(ids)) != len(ids):
         raise ValueError("研究步骤名称重复")
-    if any(job["kind"] not in ("train", "search", "evaluate") for job in plan["jobs"]):
+    if any(job["kind"] not in SCRIPTS for job in plan["jobs"]):
         raise ValueError("研究步骤类型错误")
     root = plan_path.parent
     planned_outputs = []
@@ -449,18 +481,26 @@ def main():
             actual_output = original_output
             restart_without_checkpoint = False
             if entry["attempts"]:
-                if not previous_output.exists() and job["kind"] != "train":
+                if not previous_output.exists() and job["kind"] not in TRAIN_KINDS:
                     raise RuntimeError(f"已知尝试的输出目录丢失：{previous_output}")
-                if job["kind"] == "train":
+                if job["kind"] in TRAIN_KINDS:
                     checkpoint = training_checkpoint(
-                        known_outputs, arguments, source, script_sha)
+                        known_outputs, arguments, source, script_sha, source_hashes)
                     actual_output = original_output.with_name(original_output.name+f"-resume-{len(entry['attempts'])+1:02d}")
                     if actual_output.exists():
                         raise RuntimeError(f"续训输出目录已存在且不属于已知尝试：{actual_output}")
                     if checkpoint:
-                        arguments += ["--resume", str(checkpoint)]
+                        if "--resume" in arguments:
+                            arguments[arguments.index("--resume")+1] = str(checkpoint)
+                        else:
+                            arguments += ["--resume", str(checkpoint)]
                     else:
-                        restart_without_checkpoint = True
+                        restart_without_checkpoint = "--resume" not in arguments
+                        promotion_path = option(arguments,"--promotion")
+                        if job["kind"] == "aligned_train" and promotion_path and restart_without_checkpoint:
+                            promotion = json.loads(Path(promotion_path).read_text(encoding="utf-8"))
+                            if promotion.get("stage") == "screen_expand":
+                                raise RuntimeError("筛选扩展缺少实际晋级来源或有效的续训检查点，不能从零重启")
                 else:
                     actual_output = previous_output
                     if not args.resume or (root/"stop.request").exists() or time.time() >= deadline:
@@ -470,8 +510,7 @@ def main():
                         stop_file.unlink()
                     arguments += ["--resume"]
             arguments[arguments.index("--output")+1] = str(actual_output)
-            script = {"train":"TrainWbrStudy.py", "search":"SearchWbrLinear.py",
-                      "evaluate":"EvaluateWbrStudy.py"}[job["kind"]]
+            script = SCRIPTS[job["kind"]]
             command = [plan.get("python", sys.executable), "-u", str(Path(plan["learning_directory"])/script), *arguments]
             logs = root/"logs"
             logs.mkdir(exist_ok=True)

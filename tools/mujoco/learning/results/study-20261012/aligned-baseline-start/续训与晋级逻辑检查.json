@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "verified_at": "2026-10-12T06:10:43.357162+08:00",
+  "tests": {
+    "TestWbrStudyQueue.py": {
+      "source_sha256": "00b466ecff9585eb82e684c26eef0ea363f0a84d9c012068d37b999c8944cc67",
+      "exit_code": 0,
+      "stdout": "{\n  \"checkpoint_fallback\": {\n    \"pass\": true,\n    \"selected_steps\": 40960\n  },\n  \"baseline_physics_gate\": {\n    \"pass\": true\n  },\n  \"graceful_child_stop\": {\n    \"pass\": true\n  }\n}\n",
+      "stderr": ""
+    },
+    "TestWbrAlignedQueue.py": {
+      "source_sha256": "9a661b2da3f8007e306aa048d8074c5a816df1abd29107cd1cd7564c0b41a442",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ".......\n----------------------------------------------------------------------\nRan 7 tests in 1.183s\n\nOK\n"
+    },
+    "TestWbrAlignedResume.py": {
+      "source_sha256": "d38dd2f0a1c6b837ffe5cd82cc3f028c765641ce7624be306fb83e5a5fa0acca",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "....\n----------------------------------------------------------------------\nRan 4 tests in 0.035s\n\nOK\n"
+    }
+  },
+  "gate_logic_checks": {
+    "feasible_development_meets_one_percent": {
+      "pass_all": true,
+      "physical_complete": true,
+      "original_case_guards": true,
+      "motion_quality": true,
+      "stop_improvement": 0.04531933493531115,
+      "push_improvement": 0.09853416110784685,
+      "heat_change": 0.013212605291874846
+    },
+    "same_development_misses_five_percent": {
+      "pass_all": false,
+      "physical_complete": true,
+      "original_case_guards": true,
+      "motion_quality": true,
+      "stop_improvement": 0.04531933493531115,
+      "push_improvement": 0.09853416110784685,
+      "heat_change": 0.013212605291874846
+    },
+    "independent_validation_rejected_at_one_percent": {
+      "pass_all": false,
+      "physical_complete": true,
+      "original_case_guards": false,
+      "motion_quality": false,
+      "stop_improvement": 0.045084421129922614,
+      "push_improvement": 0.08626696100260844,
+      "heat_change": 0.02178259089094814
+    }
+  },
+  "source_hashes": {
+    "RunWbrStudyQueue.py": "d3facba30a312907821c6dc24e6253227af684ef40e9f4763ee01f439c61bdd8",
+    "TrainWbrAligned.py": "bdf4ed1bff00b7517d7fe6dd58c149f42568f3116b579f900ee54d0f86acb50e",
+    "PromoteWbrAligned.py": "0f0c2d2dda1d230bc87a62161c95a01a2bb9e9cfb99244852b6262c2fb24ffbb"
+  },
+  "evidence": {
+    "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120",
+    "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-41-search-completed\\开发搜索核验.json": "86a19e934dbdbc7e5fa7ed2a68e05e0e2db9b38e7a3a3334c70788725b0108b4",
+    "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-41-validation\\summary.json": "3f25988ad036b2f266dd01e028a999f939858411ffbbaff6b74e6a96e2fcf74b"
+  },
+  "boundary": "只验证调度、内容绑定、完成判据和晋级逻辑；D数据仅作已有通过/不通过案例，不把常数策略冒充E训练。完整E网络训练和晋级重放仍待基线完成后验证。"
+}
