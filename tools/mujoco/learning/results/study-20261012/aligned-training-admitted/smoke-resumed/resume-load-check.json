@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "checkpoint_sha256": "3ddee054fe0f5cdd71564a15a30e9af07a15bcdb077aaee604fe41c9aa777019",
+  "loaded_steps": 1024,
+  "loaded_updates": 6,
+  "network_state_sha256": "a84f28a05d5a9387cb82f42643894cc5268868527e1e8a3a4088281558da3912",
+  "optimizer_state_sha256": "9b9063d130ebe64e7d960abfe54a4c63da18f8e46f06d2a56d27377231ade13b",
+  "training_source_sha256": "c6f562c7046a5b42533b9cbacd69f5341cbab8992b213aec1bc14ce66e437b83"
+}

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "binding": {
+    "schema": 1,
+    "split": "aligned-training",
+    "scenarios_sha256": "c4492d8429b8a857c7574fdd98073fe163c52196ea9bfb78d0747e35df75fd9f",
+    "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+    "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+    "evaluator_sha256": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+    "env_config": {
+      "reward_mode": "dense",
+      "action_mode": "reference",
+      "gas_force": 450.0
+    },
+    "policy_directory": null,
+    "policy_artifacts": null,
+    "policy_lock_sha256": null,
+    "baseline_cache_sha256": null,
+    "record": false
+  },
+  "binding_sha256": "b65bbe4bbffd3dcf58ecdb795fd41862e9b5586dc88dd5c70ee34a9f88bdc051"
+}

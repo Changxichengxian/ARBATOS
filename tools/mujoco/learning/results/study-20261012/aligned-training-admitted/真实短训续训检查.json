@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "checks": {
+    "actual_1024_to_2048": true,
+    "network_load_exact": true,
+    "optimizer_load_exact": true,
+    "optimizer_updates_continue": true,
+    "network_updated": true,
+    "export_matches": true
+  },
+  "export_max_abs_error": 5.960464477539063e-08,
+  "optimizer_states": 13,
+  "optimizer_step_before": [
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0
+  ],
+  "optimizer_step_after": [
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0
+  ],
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "first": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\first",
+  "resumed": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\resumed",
+  "test_source_sha256": "3b67ee287eadbc8422dfd0e511dbba8e1617f68593c342a3e1f971b23245f3e9",
+  "files": {
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\first\\checkpoint.zip": "3ddee054fe0f5cdd71564a15a30e9af07a15bcdb077aaee604fe41c9aa777019",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\first\\policy.json": "235eba72bfb9c846f20f41d36da7a3c9f90f6d9279e1c81e7007aba95413e8c0",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\first\\policy.npz": "b35b24b13890fd07bec8eb4b556963c686000d0f4a48d9705bfd3df6b56aec9f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\first\\run.json": "e0f008e8ef4be9ca25173892ad88939fb77ec34a244ebf6e6a31f3f31fc04f63",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\first\\status.json": "bf04298d86cdf42288b1e6e3dfad5435e3c762e7255693c61e1fc1bd9ceaa3fe",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\resumed\\checkpoint.zip": "574f178eaead5e469d2b8c9345d1f6edd730b3c07a955955bdd39fa3f4750058",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\resumed\\policy.json": "1751fc52e6bb9932a122c2b4874de994c8009450b1c8b8d30bb3e5edc9b6fb93",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\resumed\\policy.npz": "3da7858a4a1f9c4a56f5014147c492854f25316ca8f27013ba340a5b82f6b71c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\resumed\\run.json": "874d220bf82db7047fa26f50dd99303a61e7ba366ccd5c461fc636aa2f58d3a4",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\resumed\\status.json": "5c68cefa8b3fb83e5c132d2860154e0e8878f73c0a98b13b86e868fe528480f0"
+  },
+  "resume_load_check_sha256": "8e1c2b6cb4735992994815f3cc144096a474251ad662bd898a74c42b5149273e",
+  "boundary": "真实网络和优化器精确载入后继续更新；物理回合/洗牌重新开始，不宣称逐步重放，也不代表长训练已达到性能目标。"
+}

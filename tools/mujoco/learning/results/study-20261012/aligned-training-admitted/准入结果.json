@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "created_at": "2026-10-12T06:47:56.628416+08:00",
+  "baseline_counts": {
+    "training": 144,
+    "monitor": 24
+  },
+  "bank_sha256": "fe2eab74ac5d7d23bb11eb5a175fd93c2d26ffd77f25b9281cbb8005a143f3b2",
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "frozen_source_files": 239,
+  "frozen_manifest_sha256": "1d04fb34dd8ac26f497746ad5f2871c501025504424c5fe8cb207b94305684c2",
+  "wrapper_checks": {
+    "case_balance_and_seed_isolation": true,
+    "export_and_legacy_action_bounds": {
+      "reference": 0.0,
+      "symmetric": 0.0,
+      "full": 0.0
+    },
+    "six_zero_cases_all_metrics_exact": true,
+    "bank_replacement_rejected": true,
+    "wrapper_stop": {
+      "samples": 534,
+      "online_offline_error": 8.881784197001252e-16,
+      "same_original_physics": true
+    },
+    "wrapper_push": {
+      "samples": 534,
+      "online_offline_error": 4.884981308350689e-15,
+      "same_original_physics": true
+    },
+    "wrapper_combined": {
+      "samples": 534,
+      "online_offline_error": 1.7763568394002505e-15,
+      "same_original_physics": true
+    },
+    "physical_failure_terminal_and_offline_exact": true
+  },
+  "resume_checks": {
+    "actual_1024_to_2048": true,
+    "network_load_exact": true,
+    "optimizer_load_exact": true,
+    "optimizer_updates_continue": true,
+    "network_updated": true,
+    "export_matches": true
+  },
+  "optimizer_states": 13,
+  "export_max_abs_error": 5.960464477539063e-08,
+  "admission_pid": 15376,
+  "screening_queue_pid": 20360,
+  "screening_plan": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\plan.json",
+  "boundary": "证明同一物理环境下奖励计算及真实网络/优化器续训成立，尚不代表控制性能达标。正式60例未运行。"
+}
