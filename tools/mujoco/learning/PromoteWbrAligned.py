@@ -115,11 +115,11 @@ def evaluate_stage(registration_path, evaluations, baseline_path, stage, approve
         note="按登记条件复算两种子的完整配对结果；既不选中途权重，也不放宽原保护。")
 
 
-def verify_promotion(path):
+def verify_promotion(path, require_eligible=True):
     saved = read(path)
     actual = evaluate_stage(saved["registration_path"],[row["evaluation"] for row in saved["results"]],
                             saved["baseline_path"],saved["stage"],saved["approved_at"])
-    require(saved == actual and actual["eligible"],"晋级记录未通过完整复算或不符合登记条件")
+    require(saved == actual and (actual["eligible"] or not require_eligible),"晋级记录未通过完整复算或不符合登记条件")
     return actual
 
 

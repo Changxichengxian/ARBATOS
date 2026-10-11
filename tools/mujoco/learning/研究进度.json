@@ -52,9 +52,10 @@
     "E对齐训练完成开发评分校准与事先登记，168条训练/监控原控制基线队列已开始；尚未正式训练",
     "D41常数参数搜索完成独立45例验证：4.51%/8.63%主收益、热+2.18%，仍因停车均值和逐例/运动质量条件不合格，不晋级；结果完整复算并保存",
     "E续跑增加训练库、环境数及权重内容绑定；扩展必须继承实际晋级短训权重。旧队列检查、7项新队列/晋级边界及4项来源单测通过；尚待完整训练库后的真实网络短训/续训验收",
-    "启动E基线后的自动准备与筛选流程；新增真实网络/优化器载入数值核验。该核验工具使用已保存B73真实模型检验通过，E实际1024至2048短训仍待基线齐全后执行"
+    "启动E基线后的自动准备与筛选流程；新增真实网络/优化器载入数值核验。该核验工具使用已保存B73真实模型检验通过，E实际1024至2048短训仍待基线齐全后执行",
+    "修复E准备流程恢复时信任旧完成标记问题；已完成队列、短训实际模型、晋级记录均重新复核。正常停止归档旧等待流程并按新代码启动；144条训练基线全部物理通过"
   ],
-  "next": "优先检查aligned_reference.admission的活进程29312及admission/status.json。准备流程现已自动接管E的基线后续核验、冻结、真实短训和两个262144步筛选，活着时禁止手动重复Seal/Prepare/Train。若产生wrapper-preflight与training-resume-preflight且筛选开始，及时核对真实产物、保存和推送阶段结果。C41和D73旧队列继续原计算；A/B已失败、D41独立验证未通过。",
+  "next": "先查准备进程15376与aligned-reference/admission/status.json，活着时勿重复Seal/Prepare/Test/Train。训练基线144已完整完成，监控24仍在旧基线队列。待实际wrapper与1024接2048证明通过并E41产生不可变检查点后，运行已准备的ExportAlignedRecovery.py，检查换目录基线重放和实际模型加载结果，再保存、提交推送。C41/D73旧搜索继续，最终60例尚未运行。",
   "active_process": {
     "queues": [
       {
@@ -83,7 +84,7 @@
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T06:24:33.607623+08:00",
+  "updated_at": "2026-10-12T06:38:25.311980+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -449,7 +450,7 @@
     "registration_sha256": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120",
     "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
     "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
-    "baseline_training_completed": 119,
+    "baseline_training_completed": 144,
     "full_wrapper_and_real_training_preflight_pending": true,
     "next_steps": [
       "等待aligned-reference/baseline-queue完成144条training和24条monitor原控制基线，检查原控制均物理合格。",
@@ -464,7 +465,7 @@
     "notes": "reuse-preflight-frozen只是准备工具检查，不是实际训练冻结；incompatible-reuse-rejected拒绝成功后没有manifest，均不要拿来训练。",
     "queue_preflight": "tools/mujoco/learning/results/study-20261012/aligned-baseline-start/续训与晋级逻辑检查.json",
     "admission": {
-      "pid": 29312,
+      "pid": 15376,
       "status_file": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission\\status.json",
       "stage_at_update": "waiting_baselines",
       "script": "tools/mujoco/learning/PrepareWbrAlignedRun.py",
@@ -476,9 +477,12 @@
         "--original-baseline",
         "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-41-search-completed\\search-state.json"
       ],
-      "note": "先查实际进程与当前状态。此流程会自行完成基线核验、训练冻结、三任务包装检查、1024至2048真实短训续训，再运行两个262144步筛选及24例监控、生成晋级记录。它活着时不要手工重复这些步骤。若停止或失败先看具体步骤日志，不能仅因观察超时重启。"
+      "note": "先查实际进程与当前状态。此流程会自行完成基线核验、训练冻结、三任务包装检查、1024至2048真实短训续训，再运行两个262144步筛选及24例监控、生成晋级记录。它活着时不要手工重复这些步骤。若停止或失败先看具体步骤日志，不能仅因观察超时重启。",
+      "previous_stopped_before_training": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission-v1-stopped-before-training"
     },
-    "manual_recovery_order_only": true
+    "manual_recovery_order_only": true,
+    "recovery_export_script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\ExportAlignedRecovery.py",
+    "recovery_export_note": "待真实续训检查通过、E41至少一个16384步保存点完整产生后运行一次；脚本会拒绝提前打包。它尚未执行，也不能把预备脚本视为已交付恢复包。"
   },
   "reference_D_first_seed_validation": {
     "report": "tools/mujoco/learning/results/study-20261012/reference-D-41-validation/筛选结论.json",

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "created_at": "2026-10-12T06:38:25.311980+08:00",
+  "problem": "恢复时曾直接相信队列完成标记，未重新核对既有短训模型和晋级记录的实际文件。",
+  "changes": [
+    "完成队列统一经--resume逐项复查，完整任务不重复计算",
+    "短训证明核对唯一输出目录、完整10文件集合及所有哈希和载入证明哈希",
+    "现存晋级记录也由冻结版本完整复算；负结果可以记录，训练入口仍要求晋级成功"
+  ],
+  "sources": {
+    "PrepareWbrAlignedRun.py": "0538e34babfef346bbf8f86ad4c6a937011dcb8614066886666c85b87674ecd2",
+    "PromoteWbrAligned.py": "cfa3bb3e03da4aeda1ea9592d338aebc724bdb4cd243628e8473480fd39cb3f4"
+  },
+  "checks": {
+    "py_compile": true,
+    "aligned_queue_tests": 7,
+    "aligned_resume_lineage_tests": 4,
+    "tests_with_python_optimized_mode": true,
+    "independent_readonly_review": "修复覆盖原问题，未见阻断点"
+  },
+  "stopped_before_training": {
+    "pid": 29312,
+    "status": "needs_attention",
+    "stage": "waiting_baselines",
+    "error": "RuntimeError('准备流程收到停止请求')",
+    "archived": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission-v1-stopped-before-training"
+  },
+  "current_admission": {
+    "pid": 15376,
+    "stage": "waiting_baselines",
+    "status_file": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission\\status.json"
+  },
+  "completed_training_baselines": 144,
+  "training_baseline_summary_sha256": "16f624eeb789acc15a531b81beb570565ea381348e72b5ff9a85b4237ff5bc7e",
+  "boundary": "基线及C/D搜索持续运行，未重复计算；E实际包装和短训证明仍应读取随后产生的文件，不能用本修复记录替代。"
+}

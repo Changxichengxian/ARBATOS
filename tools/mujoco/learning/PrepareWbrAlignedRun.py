@@ -125,8 +125,7 @@ def main():
         if state_file.exists():
             previous = read(state_file)
             require(not process_alive(previous["pid"]),"既有队列仍在运行，禁止重复启动")
-            if previous["status"] == "completed":
-                return previous
+            # 完成标记不能代替产物核验；队列续跑会逐项复查并跳过完整步骤。
         run(stage,[frozen / "tools/mujoco/learning/RunWbrStudyQueue.py","--plan",plan_path,
                    *(["--resume"] if state_file.exists() else [])])
         queue = read(state_file)
@@ -184,6 +183,14 @@ def main():
                 "--resumed",smoke["jobs"]["resumed"]["actual_output"],"--output",smoke_proof])
         proof = read(smoke_proof)
         require(all(proof["checks"].values()) and proof["test_source_sha256"] == digest(frozen_learning / "CheckWbrAlignedSmoke.py"),"真实短训续训未通过")
+        require(proof["first"] == smoke["jobs"]["first"]["actual_output"]
+                and proof["resumed"] == smoke["jobs"]["resumed"]["actual_output"],"续训证明来自其他短训")
+        expected_files = {str(Path(smoke["jobs"][name]["actual_output"]) / filename)
+                          for name in ("first","resumed")
+                          for filename in ("checkpoint.zip","policy.json","policy.npz","run.json","status.json")}
+        require(set(proof["files"]) == expected_files
+                and all(digest(path) == expected for path,expected in proof["files"].items()),"续训证明中的实际模型或运行文件已变化")
+        require(proof["resume_load_check_sha256"] == digest(Path(proof["resumed"]) / "resume-load-check.json"),"实际网络和优化器载入证明已变化")
         jobs = []
         screening_root = base / "screening"
         for seed in rule["screening_seeds"]:
@@ -199,6 +206,7 @@ def main():
             run("screening_promotion",[frozen_learning / "PromoteWbrAligned.py","--stage","screen_expand","--registration",frozen / relative_rule,
                 "--evaluations",*[screening["jobs"]["E-aligned-"+str(seed)+"-monitor"]["actual_output"] for seed in rule["screening_seeds"]],
                 "--baseline",base / "baselines/monitor/summary.json","--output",promotion_path])
+        run("promotion_recheck",["-c","import sys; sys.path.insert(0,sys.argv[1]); from PromoteWbrAligned import verify_promotion; verify_promotion(sys.argv[2], require_eligible=False)",frozen_learning,promotion_path])
         state.update(status="completed",promotion=str(promotion_path),eligible=read(promotion_path)["eligible"])
         save("ready_for_next_stage")
     except BaseException as error:
