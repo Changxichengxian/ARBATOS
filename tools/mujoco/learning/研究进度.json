@@ -37,21 +37,28 @@
     "后续诊断缓存的模式/参数/身份/内容保护5项测试在Python -O下通过",
     "三参数联合约束搜索在启动前完成登记；7项评分、导出策略和状态保护检查通过",
     "三参数4候选1代短流程实际中断恢复成功，6组导出配对评价逐项复现，原6例零修正基线完全相同",
-    "独立启动D参考参数路线两个种子的正式开发搜索及45例验证队列，最终集仍未使用"
+    "独立启动D参考参数路线两个种子的正式开发搜索及45例验证队列，最终集仍未使用",
+    "A-full两个种子各131072步及45例配对验证完成；收益均不足筛选门槛，不晋级，实际评价权重和完整负结果已保存"
   ],
-  "next": "继续冻结A/B/C其余种子与方案，同时运行已登记D三参数联合约束搜索。A-full-41已不满足晋级条件，不追加质量评价；其他满足原筛选门的候选须补运动质量评价。D的两个种子均须过独立45例、两均值5%、全部原逐例保护/热均值5%/运动质量后才可扩展。各路线完成后比较，正式101/211/307从头独立运行并全部锁定后才使用最终60例。没有方案通过则报告负结果，不复用最终集调参。",
+  "next": "A-full双种子筛选已完整结束并均失败，不扩大同配置训练；继续原B对称动作、C线性反馈及D三参数参考对照。达到各自原筛选门的候选才补充运动质量或进入正式三种子研究。完整最终60例仍未运行，禁止为未达门槛的A消耗最终集。",
   "active_process": {
     "queue_pid": 8796,
-    "current_job_at_update": "A-full-73-evaluate",
+    "current_job_at_update": "B-symmetric-41-train",
     "queue_status_at_update": "running",
     "current_job_status_at_update": {
-      "status": "running"
+      "status": "running",
+      "steps": 4096,
+      "segment_seconds": 67.18603000001167,
+      "steps_per_s": 60.96505478890907,
+      "episodes": 6,
+      "failures": 0,
+      "pid": 34068
     },
     "note": "接续前须核对实际进程及命令，避免重复启动；这是保存时的快照"
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T04:00:24.370457+08:00",
+  "updated_at": "2026-10-12T04:05:16.318944+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -70,12 +77,12 @@
   "resume_instructions": "确认同一队列和子进程均已退出、期限未到且用户没有暂停；清除队列根stop.request后使用冻结目录RunWbrStudyQueue.py --plan 原计划 --resume。不得并行启动第二份。",
   "study_code_commit": "5569b66003d8a14425d8b0937791d4eef6888d7c",
   "saved_checkpoint": {
-    "repository_path": "tools/mujoco/learning/results/study-20261012/screening-A-full-41-evaluated",
+    "repository_path": "tools/mujoco/learning/results/study-20261012/screening-A-full-73-evaluated",
     "steps": 131072,
-    "seed": 41,
+    "seed": 73,
     "route": "A-full",
-    "checkpoint_sha256": "edc4825888fa959585d420bcced529f33882dc76e38d8d1b7475dae66eecc437",
-    "note": "含本次45例验证实际使用的最终策略及网络/优化器检查点；是否晋级见筛选结论，不接入正式控制"
+    "checkpoint_sha256": "04f56edd70b3e01aa00ab9623f9cef014cc2fe979925d29db02cb710cd94f85b",
+    "note": "本次45例实际评价权重及网络/优化器检查点；当前配置不晋级，保存用于复现负结果"
   },
   "quality_gate_supplement": "tools/mujoco/learning/results/study-20261012/运动质量补充登记.json",
   "development_diagnostic": "tools/mujoco/learning/results/study-20261012/控制修正能力诊断.json",
@@ -199,5 +206,25 @@
     "resume": "确认本队列及子进程均退出后，按原start_command增加--resume；不得修改冻结目录。已有进程正常运行时不重复启动。",
     "stop": "在本queue_plan父目录创建stop.request可正常保存停止；原A/B/C有自己的停止文件，用户要求暂停研究时两个队列都应停止。",
     "scope": "固定三参数优化对照，不能称为强化学习成功；只开发搜索和独立验证，最终60例未使用"
+  },
+  "screening_A_full_complete": {
+    "result": "tools/mujoco/learning/results/study-20261012/六维修正双种子筛选结论.json",
+    "eligible": false,
+    "seeds": [
+      {
+        "seed": 41,
+        "stop_improvement": -0.0028350351343180424,
+        "push_improvement": -0.0009913116542541456,
+        "heat_change": 0.061430342059510146,
+        "all_original_case_guards": false
+      },
+      {
+        "seed": 73,
+        "stop_improvement": 0.007643524741763552,
+        "push_improvement": 0.006798650660177263,
+        "heat_change": 0.006566419070636265,
+        "all_original_case_guards": true
+      }
+    ]
   }
 }

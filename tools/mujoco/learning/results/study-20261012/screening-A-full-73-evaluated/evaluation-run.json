@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "binding": {
+    "schema": 1,
+    "split": "validation",
+    "scenarios_sha256": "851efabbabdb5ffdf9904c61ae1cad07e1a6f4d519b9ca0c03ebffea3d08e25b",
+    "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+    "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+    "evaluator_sha256": "766a4541a8dab9d0fc911056b64765eb4c0ab55ac4eb1f9a0bcc15286fd73fd6",
+    "env_config": {
+      "reward_mode": "dense",
+      "action_mode": "full",
+      "gas_force": 450.0
+    },
+    "policy_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\A-full\\73\\train",
+    "policy_artifacts": {
+      "policy.json": "78a242f8b45aae702cbd05c21fcddd99d051c17245fa13e24de4b3064479bb25",
+      "policy.npz": "d61b68400d1f154a760ab209c288966a8d38b126404eba7190933e40ac272b19"
+    },
+    "policy_lock_sha256": null,
+    "baseline_cache_sha256": "ffc03041aa2e886aa071c8f5d7290ed41ee8bd900f7fa10cf738df9bc9f564c7",
+    "record": false
+  },
+  "binding_sha256": "a68d6050c5dd0358ccb114a029f8023c90f9ca32579403e0c4b8fb3ef401fca8"
+}

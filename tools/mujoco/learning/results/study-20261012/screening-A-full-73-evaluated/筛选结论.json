@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "seed": 73,
+  "training_steps": 131072,
+  "validation_pairs": 45,
+  "gate": {
+    "pass_all": false,
+    "checks": {
+      "physical_complete": true,
+      "stop_improvement": false,
+      "push_improvement": false,
+      "primary_case_regression": true,
+      "heat_mean": true,
+      "motion_quality": false
+    },
+    "primary_gates_pass": false,
+    "motion_quality_pending": true,
+    "stop_improvement": 0.007643524741763552,
+    "push_improvement": 0.006798650660177263,
+    "heat_change": 0.006566419070636265,
+    "final_thresholds_pass": false,
+    "failing_final_case_guards": []
+  },
+  "note": "单例原保护全部通过，但两项均值不足5%筛选要求，不晋级；未补充运动质量、未用最终集。实际评价权重与保存检查点逐项匹配。"
+}
