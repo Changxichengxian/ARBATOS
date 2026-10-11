@@ -26,6 +26,20 @@ def make_env(bank_path, bank_sha256, weights):
     return Monitor(WbrAlignedEnv(bank_path, bank_sha256, weights))
 
 
+def state_digest(value):
+    """为网络和优化器的实际数值做稳定摘要，避免依赖压缩包序列化细节。"""
+    def encode(item):
+        if isinstance(item,torch.Tensor):
+            tensor = item.detach().cpu().contiguous()
+            return ["tensor",str(tensor.dtype),list(tensor.shape),hashlib.sha256(tensor.numpy().tobytes()).hexdigest()]
+        if isinstance(item,dict):
+            return ["dict",[[type(key).__name__,repr(key),encode(item[key])] for key in sorted(item,key=repr)]]
+        if isinstance(item,(tuple,list)):
+            return [type(item).__name__,[encode(part) for part in item]]
+        return [type(item).__name__,item]
+    return hashlib.sha256(json.dumps(encode(value),sort_keys=True,separators=(",",":"),allow_nan=False).encode()).hexdigest()
+
+
 def validate_training_bank(registration, registration_path, bank_path, manifest):
     digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     lock_relative = registration["training_bank_lock"]
@@ -176,6 +190,12 @@ def main():
         if args.resume:
             model = PPO.load(args.resume / "checkpoint.zip", env=env, device="cpu")
             model.set_random_seed(args.seed+metadata["initial_steps"])
+            write_json(args.output / "resume-load-check.json",dict(schema=1,
+                checkpoint_sha256=digest(args.resume / "checkpoint.zip"),
+                loaded_steps=model.num_timesteps,loaded_updates=model._n_updates,
+                network_state_sha256=state_digest(model.policy.state_dict()),
+                optimizer_state_sha256=state_digest(model.policy.optimizer.state_dict()),
+                training_source_sha256=metadata["training_source_sha256"]))
         else:
             model = PPO("MlpPolicy", env, seed=args.seed, device="cpu", verbose=0,
                 learning_rate=algorithm["learning_rate"], n_steps=algorithm["n_steps"],

@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "checks": {
+    "network_digest_after_load": true,
+    "optimizer_digest_after_load": true,
+    "dictionary_order_independent": true,
+    "numeric_change_detected": true
+  },
+  "checkpoint_sha256": "94749230b921097b4ab70101319e4d50b7d23c63b93be060c7ba57d5a2933aea",
+  "training_source_sha256": "c6f562c7046a5b42533b9cbacd69f5341cbab8992b213aec1bc14ce66e437b83",
+  "note": "使用已保存B73真实检查点验证数值摘要和载入核对工具；没有把它当作E短训或E性能结果。"
+}
