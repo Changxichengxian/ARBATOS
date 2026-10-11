@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "registered_at": "2026-10-12T04:16:04.018732+08:00",
+  "purpose": "分清组合场景中推力前回摆与后续有推/无推闭环差值；只解释瓶颈，不选策略或修改验收",
+  "basis": {
+    "file": "参考减速诊断结果.json",
+    "sha256": "e446febfca8aaf187b38fa962945c5a43e4565fee19e62d8cd0c0224dc2c0295"
+  },
+  "source_summary_sha256": "54a1279d0e537b3ff9008c80661c221ca6d443fdd874f65da44226ff576c683b",
+  "experiment_identity": "39b6bafdf4f0313b4383986195d099a21f0a4acf88de18a37f16fb255a10583e",
+  "development_cases_sha256": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+  "modes": [
+    {
+      "name": "zero",
+      "action": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "brake-025",
+      "action": [
+        0.25,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "velocity-plus",
+      "action": [
+        0,
+        0,
+        0.5
+      ]
+    },
+    {
+      "name": "brake-velocity",
+      "action": [
+        0.25,
+        0,
+        0.5
+      ]
+    }
+  ],
+  "case_ids": [
+    "development-combined-000",
+    "development-combined-001"
+  ],
+  "source_files": {
+    "zero-development-combined-000.json": "3cb188363bc1ea9186c95bed5f876a621ea3f6280437bba48ad20745456ccbd5",
+    "zero-development-combined-001.json": "7a6bbafde99579f6208fdbde71656750357e87d4ab1abb095a66207b5e5b3f95",
+    "brake-025-development-combined-000.json": "c3a5cfa22645b11ef9408b922818bfacef82b13b2e8acd0d2670e62d07771858",
+    "brake-025-development-combined-001.json": "7ce26d3149164281bc02a805c202cdb979bf514bbebc1ead78f6842faff65351",
+    "velocity-plus-development-combined-000.json": "ad40ec545080661be8110a8ddb3855cd9101a50e8b7ec13b64cad3f11ac9f3b6",
+    "velocity-plus-development-combined-001.json": "5bd9378ac3d056e39bcfd6cdd37df5d0ef141dc390464a3a477e53df80fbbd9a",
+    "brake-velocity-development-combined-000.json": "dafda058d300e2914a455b84f18d87fc5acfa511ebcf805114cf59d92941bfdf",
+    "brake-velocity-development-combined-001.json": "0a674899862706a5994ce22c05b687fd4f228bfbea2b4ba07e63ae561df30ed1"
+  },
+  "change": "新场景仅把options.push设为0，ID附加-no-push；case仍为combined。种子、随机化开关、速度、延迟、时长及所有动作参数保持相同。复用有推力8条历史轨迹，新跑无推力8条。",
+  "precondition": "旧48条诊断全部审计通过，复用8条与历史保存的SHA-256一致；每个新旧配对在5秒前所有采样字段必须逐项完全相等，否则停止，不给出单变量结论。",
+  "measurements": "记录推力前最后一个15ms样本、5至7.2秒两条速度的峰值/RMS、同时间样本差值的峰值/RMS、原推力峰值时刻对应的无推力速度，以及各自全程髋部热指标。",
+  "interpretation": "有推减无推的差值包含闭环反馈响应与非线性状态变化；它不是外力到速度的线性传递函数，不用于放宽组合场景保护或替换原验收指标。",
+  "physics": "沿用原reference-probe冻结环境和动态库，1ms物理与安全检查。保留失败样本，不计算失败配对的改善量。",
+  "persistence": "每条完成保存完整轨迹及内容哈希；进程锁、正常停止及同绑定续跑。结果不覆盖旧诊断。",
+  "final_dataset_used": false,
+  "deadline": "2026-10-14T02:10:00+08:00"
+}

@@ -1,0 +1,629 @@
+{
+  "schema": 1,
+  "completed_at": "2026-10-12T04:23:49.906785+08:00",
+  "diagnostic_summary_sha256": "f390098c1d43000a145ba675916a1db9c6fff152b1ba16c53591fb10783522ac",
+  "binding": {
+    "script_sha256": "e5765e3691318c73bf0e69ba780feab91acede9de4b58325a41836c5d8524c43",
+    "audit_script_sha256": "928cab4d3ef32c01469d7fce3595faa3c32754b4a0709eaddb81746f0477838a",
+    "snapshot_manifest_sha256": "567749bc0f73086b335c1f349c4009205c43335f475af0ee03bbe14099c55f70",
+    "evaluator_sha256": "328f1927cb8495615b728563118ba53caac6cb0c4226653b270deb44c7d097e1",
+    "registration_sha256": "b81c73607735fa3b9835845031579a7b9d6e736265755f5b1ee5564858fbbbcc",
+    "experiment_identity": "39b6bafdf4f0313b4383986195d099a21f0a4acf88de18a37f16fb255a10583e",
+    "library_sha256": "e2ceaf5a6486bb4d3cd1d516694f21359e5f628987a23a768633369335ab1a61",
+    "source_summary_sha256": "54a1279d0e537b3ff9008c80661c221ca6d443fdd874f65da44226ff576c683b",
+    "source_files": {
+      "zero-development-combined-000.json": "3cb188363bc1ea9186c95bed5f876a621ea3f6280437bba48ad20745456ccbd5",
+      "zero-development-combined-001.json": "7a6bbafde99579f6208fdbde71656750357e87d4ab1abb095a66207b5e5b3f95",
+      "brake-025-development-combined-000.json": "c3a5cfa22645b11ef9408b922818bfacef82b13b2e8acd0d2670e62d07771858",
+      "brake-025-development-combined-001.json": "7ce26d3149164281bc02a805c202cdb979bf514bbebc1ead78f6842faff65351",
+      "velocity-plus-development-combined-000.json": "ad40ec545080661be8110a8ddb3855cd9101a50e8b7ec13b64cad3f11ac9f3b6",
+      "velocity-plus-development-combined-001.json": "5bd9378ac3d056e39bcfd6cdd37df5d0ef141dc390464a3a477e53df80fbbd9a",
+      "brake-velocity-development-combined-000.json": "dafda058d300e2914a455b84f18d87fc5acfa511ebcf805114cf59d92941bfdf",
+      "brake-velocity-development-combined-001.json": "0a674899862706a5994ce22c05b687fd4f228bfbea2b4ba07e63ae561df30ed1"
+    }
+  },
+  "pairs": [
+    {
+      "mode": {
+        "name": "zero",
+        "action": [
+          0,
+          0,
+          0
+        ]
+      },
+      "case": {
+        "id": "development-combined-000",
+        "seed": 31004,
+        "randomize": false,
+        "options": {
+          "case": "combined",
+          "speed": -0.75,
+          "push": 35.0,
+          "delay": 0,
+          "duration": 8.0
+        }
+      },
+      "source_file": "zero-development-combined-000.json",
+      "unforced_file": "zero-development-combined-000-no-push.json",
+      "unforced_sha256": "4237b561198428ea26b3d45f666b2fc233036c265552588b7836801a5fae64a4",
+      "comparison": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": -0.5514349680909271,
+        "forced_peak_abs_mps": 0.5253767981977009,
+        "unforced_peak_abs_mps": 0.5417534292352911,
+        "forced_rms_mps": 0.12909656384307133,
+        "unforced_rms_mps": 0.23066844478837903,
+        "paired_delta_peak_abs_mps": 0.5342855172218134,
+        "paired_delta_rms_mps": 0.21541493383253263,
+        "forced_peak_sample": {
+          "time_s": 5.010000000000208,
+          "forced_v_mps": -0.5253767981977009,
+          "unforced_v_mps": -0.5417534292352911,
+          "delta_v_mps": 0.01637663103759024
+        },
+        "forced_hip_heat_nm2s": 182.87801468757536,
+        "unforced_hip_heat_nm2s": 180.32300991070943
+      }
+    },
+    {
+      "mode": {
+        "name": "zero",
+        "action": [
+          0,
+          0,
+          0
+        ]
+      },
+      "case": {
+        "id": "development-combined-001",
+        "seed": 31005,
+        "randomize": true,
+        "options": {
+          "case": "combined",
+          "speed": 0.35,
+          "push": -12.0,
+          "delay": 0,
+          "duration": 8.0
+        }
+      },
+      "source_file": "zero-development-combined-001.json",
+      "unforced_file": "zero-development-combined-001-no-push.json",
+      "unforced_sha256": "0b189a6a8357ecc21459b9b273e637e7e4a46d314af59793c66b2d2c92a5666b",
+      "comparison": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": 0.10876077663425884,
+        "forced_peak_abs_mps": 0.19832903302458638,
+        "unforced_peak_abs_mps": 0.10144492289400822,
+        "forced_rms_mps": 0.09240676364446272,
+        "unforced_rms_mps": 0.06438116053351674,
+        "paired_delta_peak_abs_mps": 0.20027916540016896,
+        "paired_delta_rms_mps": 0.07295582822876816,
+        "forced_peak_sample": {
+          "time_s": 5.280000000000298,
+          "forced_v_mps": -0.19832903302458638,
+          "unforced_v_mps": -0.0010085665776048398,
+          "delta_v_mps": -0.19732046644698154
+        },
+        "forced_hip_heat_nm2s": 161.40665407891905,
+        "unforced_hip_heat_nm2s": 160.03935614794938
+      }
+    },
+    {
+      "mode": {
+        "name": "brake-025",
+        "action": [
+          0.25,
+          0,
+          0
+        ]
+      },
+      "case": {
+        "id": "development-combined-000",
+        "seed": 31004,
+        "randomize": false,
+        "options": {
+          "case": "combined",
+          "speed": -0.75,
+          "push": 35.0,
+          "delay": 0,
+          "duration": 8.0
+        }
+      },
+      "source_file": "brake-025-development-combined-000.json",
+      "unforced_file": "brake-025-development-combined-000-no-push.json",
+      "unforced_sha256": "a96502d9aea06f57f08407c06764796127162bf9ddee74a392fa16e65d971008",
+      "comparison": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": -0.3021627743279566,
+        "forced_peak_abs_mps": 0.4060688288856127,
+        "unforced_peak_abs_mps": 0.28808987563780686,
+        "forced_rms_mps": 0.1694395370698199,
+        "unforced_rms_mps": 0.13565027843556723,
+        "paired_delta_peak_abs_mps": 0.4954577936535548,
+        "paired_delta_rms_mps": 0.23479133319760986,
+        "forced_peak_sample": {
+          "time_s": 5.250000000000288,
+          "forced_v_mps": 0.4060688288856127,
+          "unforced_v_mps": -0.06020911512714339,
+          "delta_v_mps": 0.4662779440127561
+        },
+        "forced_hip_heat_nm2s": 200.0310330240324,
+        "unforced_hip_heat_nm2s": 208.0598951702581
+      }
+    },
+    {
+      "mode": {
+        "name": "brake-025",
+        "action": [
+          0.25,
+          0,
+          0
+        ]
+      },
+      "case": {
+        "id": "development-combined-001",
+        "seed": 31005,
+        "randomize": true,
+        "options": {
+          "case": "combined",
+          "speed": 0.35,
+          "push": -12.0,
+          "delay": 0,
+          "duration": 8.0
+        }
+      },
+      "source_file": "brake-025-development-combined-001.json",
+      "unforced_file": "brake-025-development-combined-001-no-push.json",
+      "unforced_sha256": "cc7ea55aea419e93de85bb52645d993d16d57beab0adf28676ae50b7442b991f",
+      "comparison": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": -0.037357855057453794,
+        "forced_peak_abs_mps": 0.2697664650943535,
+        "unforced_peak_abs_mps": 0.12090971286815745,
+        "forced_rms_mps": 0.11273584120847085,
+        "unforced_rms_mps": 0.09242488944171937,
+        "paired_delta_peak_abs_mps": 0.17384384057118069,
+        "paired_delta_rms_mps": 0.07558010693760339,
+        "forced_peak_sample": {
+          "time_s": 5.220000000000278,
+          "forced_v_mps": -0.2697664650943535,
+          "unforced_v_mps": -0.09717231483034015,
+          "delta_v_mps": -0.1725941502640133
+        },
+        "forced_hip_heat_nm2s": 170.79443830348694,
+        "unforced_hip_heat_nm2s": 178.21771356312414
+      }
+    },
+    {
+      "mode": {
+        "name": "velocity-plus",
+        "action": [
+          0,
+          0,
+          0.5
+        ]
+      },
+      "case": {
+        "id": "development-combined-000",
+        "seed": 31004,
+        "randomize": false,
+        "options": {
+          "case": "combined",
+          "speed": -0.75,
+          "push": 35.0,
+          "delay": 0,
+          "duration": 8.0
+        }
+      },
+      "source_file": "velocity-plus-development-combined-000.json",
+      "unforced_file": "velocity-plus-development-combined-000-no-push.json",
+      "unforced_sha256": "8f5914f9d42234e7f3ee8787cba58dabacd7a161a1a8422a18075c737182f41d",
+      "comparison": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": -0.4999139018716347,
+        "forced_peak_abs_mps": 0.4776318160962265,
+        "unforced_peak_abs_mps": 0.49338100644236843,
+        "forced_rms_mps": 0.13836383233042276,
+        "unforced_rms_mps": 0.20677003196524407,
+        "paired_delta_peak_abs_mps": 0.506694069088612,
+        "paired_delta_rms_mps": 0.17390904809240973,
+        "forced_peak_sample": {
+          "time_s": 5.010000000000208,
+          "forced_v_mps": -0.4776318160962265,
+          "unforced_v_mps": -0.49338100644236843,
+          "delta_v_mps": 0.015749190346141917
+        },
+        "forced_hip_heat_nm2s": 183.75693667806675,
+        "unforced_hip_heat_nm2s": 177.98712217343865
+      }
+    },
+    {
+      "mode": {
+        "name": "velocity-plus",
+        "action": [
+          0,
+          0,
+          0.5
+        ]
+      },
+      "case": {
+        "id": "development-combined-001",
+        "seed": 31005,
+        "randomize": true,
+        "options": {
+          "case": "combined",
+          "speed": 0.35,
+          "push": -12.0,
+          "delay": 0,
+          "duration": 8.0
+        }
+      },
+      "source_file": "velocity-plus-development-combined-001.json",
+      "unforced_file": "velocity-plus-development-combined-001-no-push.json",
+      "unforced_sha256": "78afa1bf482270fdd69f841bea86c8ed724f50e362ab14dedacd3b6739de8570",
+      "comparison": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": 0.06493664418293794,
+        "forced_peak_abs_mps": 0.23338376177256343,
+        "unforced_peak_abs_mps": 0.06955275722522192,
+        "forced_rms_mps": 0.08695275965920306,
+        "unforced_rms_mps": 0.04917458900651896,
+        "paired_delta_peak_abs_mps": 0.20402962018199539,
+        "paired_delta_rms_mps": 0.07007553318330217,
+        "forced_peak_sample": {
+          "time_s": 5.250000000000288,
+          "forced_v_mps": -0.23338376177256343,
+          "unforced_v_mps": -0.03155735958352563,
+          "delta_v_mps": -0.2018264021890378
+        },
+        "forced_hip_heat_nm2s": 168.92637819855963,
+        "unforced_hip_heat_nm2s": 160.0016096407322
+      }
+    },
+    {
+      "mode": {
+        "name": "brake-velocity",
+        "action": [
+          0.25,
+          0,
+          0.5
+        ]
+      },
+      "case": {
+        "id": "development-combined-000",
+        "seed": 31004,
+        "randomize": false,
+        "options": {
+          "case": "combined",
+          "speed": -0.75,
+          "push": 35.0,
+          "delay": 0,
+          "duration": 8.0
+        }
+      },
+      "source_file": "brake-velocity-development-combined-000.json",
+      "unforced_file": "brake-velocity-development-combined-000-no-push.json",
+      "unforced_sha256": "5e1d4c3745d7b794c4bbbfa56f3c75119259c707eae2732c4c5e1635420005a0",
+      "comparison": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": -0.23791034652478385,
+        "forced_peak_abs_mps": 0.4071554825480442,
+        "unforced_peak_abs_mps": 0.22539844842937398,
+        "forced_rms_mps": 0.1550917231508664,
+        "unforced_rms_mps": 0.1002944667031414,
+        "paired_delta_peak_abs_mps": 0.45433317270823703,
+        "paired_delta_rms_mps": 0.20447037750944883,
+        "forced_peak_sample": {
+          "time_s": 5.220000000000278,
+          "forced_v_mps": 0.4071554825480442,
+          "unforced_v_mps": -0.03349666125787072,
+          "delta_v_mps": 0.4406521438059149
+        },
+        "forced_hip_heat_nm2s": 206.73795814785132,
+        "unforced_hip_heat_nm2s": 208.39454814001164
+      }
+    },
+    {
+      "mode": {
+        "name": "brake-velocity",
+        "action": [
+          0.25,
+          0,
+          0.5
+        ]
+      },
+      "case": {
+        "id": "development-combined-001",
+        "seed": 31005,
+        "randomize": true,
+        "options": {
+          "case": "combined",
+          "speed": 0.35,
+          "push": -12.0,
+          "delay": 0,
+          "duration": 8.0
+        }
+      },
+      "source_file": "brake-velocity-development-combined-001.json",
+      "unforced_file": "brake-velocity-development-combined-001-no-push.json",
+      "unforced_sha256": "b323e8c2c7f7500c84f9568e3bb6dd435f150b41bbf1805f5d98d24d95bbfb94",
+      "comparison": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": -0.10441684699083573,
+        "forced_peak_abs_mps": 0.24949422505150545,
+        "unforced_peak_abs_mps": 0.12041874861816643,
+        "forced_rms_mps": 0.09848667249321554,
+        "unforced_rms_mps": 0.0791131757118932,
+        "paired_delta_peak_abs_mps": 0.13100051800043855,
+        "paired_delta_rms_mps": 0.09624160135047315,
+        "forced_peak_sample": {
+          "time_s": 5.205000000000273,
+          "forced_v_mps": -0.24949422505150545,
+          "unforced_v_mps": -0.11849370705106689,
+          "delta_v_mps": -0.13100051800043855
+        },
+        "forced_hip_heat_nm2s": 180.7616145716965,
+        "unforced_hip_heat_nm2s": 190.0316852373953
+      }
+    }
+  ],
+  "comparisons": {
+    "development-combined-000": {
+      "zero": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": -0.5514349680909271,
+        "forced_peak_abs_mps": 0.5253767981977009,
+        "unforced_peak_abs_mps": 0.5417534292352911,
+        "forced_rms_mps": 0.12909656384307133,
+        "unforced_rms_mps": 0.23066844478837903,
+        "paired_delta_peak_abs_mps": 0.5342855172218134,
+        "paired_delta_rms_mps": 0.21541493383253263,
+        "forced_peak_sample": {
+          "time_s": 5.010000000000208,
+          "forced_v_mps": -0.5253767981977009,
+          "unforced_v_mps": -0.5417534292352911,
+          "delta_v_mps": 0.01637663103759024
+        },
+        "forced_hip_heat_nm2s": 182.87801468757536,
+        "unforced_hip_heat_nm2s": 180.32300991070943,
+        "forced_rms_change_fraction": 0.0,
+        "unforced_rms_change_fraction": 0.0
+      },
+      "brake-025": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": -0.3021627743279566,
+        "forced_peak_abs_mps": 0.4060688288856127,
+        "unforced_peak_abs_mps": 0.28808987563780686,
+        "forced_rms_mps": 0.1694395370698199,
+        "unforced_rms_mps": 0.13565027843556723,
+        "paired_delta_peak_abs_mps": 0.4954577936535548,
+        "paired_delta_rms_mps": 0.23479133319760986,
+        "forced_peak_sample": {
+          "time_s": 5.250000000000288,
+          "forced_v_mps": 0.4060688288856127,
+          "unforced_v_mps": -0.06020911512714339,
+          "delta_v_mps": 0.4662779440127561
+        },
+        "forced_hip_heat_nm2s": 200.0310330240324,
+        "unforced_hip_heat_nm2s": 208.0598951702581,
+        "forced_rms_change_fraction": 0.3125023008032122,
+        "unforced_rms_change_fraction": -0.41192529147185186
+      },
+      "velocity-plus": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": -0.4999139018716347,
+        "forced_peak_abs_mps": 0.4776318160962265,
+        "unforced_peak_abs_mps": 0.49338100644236843,
+        "forced_rms_mps": 0.13836383233042276,
+        "unforced_rms_mps": 0.20677003196524407,
+        "paired_delta_peak_abs_mps": 0.506694069088612,
+        "paired_delta_rms_mps": 0.17390904809240973,
+        "forced_peak_sample": {
+          "time_s": 5.010000000000208,
+          "forced_v_mps": -0.4776318160962265,
+          "unforced_v_mps": -0.49338100644236843,
+          "delta_v_mps": 0.015749190346141917
+        },
+        "forced_hip_heat_nm2s": 183.75693667806675,
+        "unforced_hip_heat_nm2s": 177.98712217343865,
+        "forced_rms_change_fraction": 0.07178555502543538,
+        "unforced_rms_change_fraction": -0.10360503728656933
+      },
+      "brake-velocity": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": -0.23791034652478385,
+        "forced_peak_abs_mps": 0.4071554825480442,
+        "unforced_peak_abs_mps": 0.22539844842937398,
+        "forced_rms_mps": 0.1550917231508664,
+        "unforced_rms_mps": 0.1002944667031414,
+        "paired_delta_peak_abs_mps": 0.45433317270823703,
+        "paired_delta_rms_mps": 0.20447037750944883,
+        "forced_peak_sample": {
+          "time_s": 5.220000000000278,
+          "forced_v_mps": 0.4071554825480442,
+          "unforced_v_mps": -0.03349666125787072,
+          "delta_v_mps": 0.4406521438059149
+        },
+        "forced_hip_heat_nm2s": 206.73795814785132,
+        "unforced_hip_heat_nm2s": 208.39454814001164,
+        "forced_rms_change_fraction": 0.20136213183330387,
+        "unforced_rms_change_fraction": -0.5652007503880557
+      }
+    },
+    "development-combined-001": {
+      "zero": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": 0.10876077663425884,
+        "forced_peak_abs_mps": 0.19832903302458638,
+        "unforced_peak_abs_mps": 0.10144492289400822,
+        "forced_rms_mps": 0.09240676364446272,
+        "unforced_rms_mps": 0.06438116053351674,
+        "paired_delta_peak_abs_mps": 0.20027916540016896,
+        "paired_delta_rms_mps": 0.07295582822876816,
+        "forced_peak_sample": {
+          "time_s": 5.280000000000298,
+          "forced_v_mps": -0.19832903302458638,
+          "unforced_v_mps": -0.0010085665776048398,
+          "delta_v_mps": -0.19732046644698154
+        },
+        "forced_hip_heat_nm2s": 161.40665407891905,
+        "unforced_hip_heat_nm2s": 160.03935614794938,
+        "forced_rms_change_fraction": 0.0,
+        "unforced_rms_change_fraction": 0.0
+      },
+      "brake-025": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": -0.037357855057453794,
+        "forced_peak_abs_mps": 0.2697664650943535,
+        "unforced_peak_abs_mps": 0.12090971286815745,
+        "forced_rms_mps": 0.11273584120847085,
+        "unforced_rms_mps": 0.09242488944171937,
+        "paired_delta_peak_abs_mps": 0.17384384057118069,
+        "paired_delta_rms_mps": 0.07558010693760339,
+        "forced_peak_sample": {
+          "time_s": 5.220000000000278,
+          "forced_v_mps": -0.2697664650943535,
+          "unforced_v_mps": -0.09717231483034015,
+          "delta_v_mps": -0.1725941502640133
+        },
+        "forced_hip_heat_nm2s": 170.79443830348694,
+        "unforced_hip_heat_nm2s": 178.21771356312414,
+        "forced_rms_change_fraction": 0.21999555835787898,
+        "unforced_rms_change_fraction": 0.435589055490901
+      },
+      "velocity-plus": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": 0.06493664418293794,
+        "forced_peak_abs_mps": 0.23338376177256343,
+        "unforced_peak_abs_mps": 0.06955275722522192,
+        "forced_rms_mps": 0.08695275965920306,
+        "unforced_rms_mps": 0.04917458900651896,
+        "paired_delta_peak_abs_mps": 0.20402962018199539,
+        "paired_delta_rms_mps": 0.07007553318330217,
+        "forced_peak_sample": {
+          "time_s": 5.250000000000288,
+          "forced_v_mps": -0.23338376177256343,
+          "unforced_v_mps": -0.03155735958352563,
+          "delta_v_mps": -0.2018264021890378
+        },
+        "forced_hip_heat_nm2s": 168.92637819855963,
+        "unforced_hip_heat_nm2s": 160.0016096407322,
+        "forced_rms_change_fraction": -0.05902169679098468,
+        "unforced_rms_change_fraction": -0.2361959834365095
+      },
+      "brake-velocity": {
+        "complete": true,
+        "pre_push_exact": true,
+        "pre_push_samples": 333,
+        "before_push_time_s": 4.995000000000203,
+        "before_push_velocity_mps": -0.10441684699083573,
+        "forced_peak_abs_mps": 0.24949422505150545,
+        "unforced_peak_abs_mps": 0.12041874861816643,
+        "forced_rms_mps": 0.09848667249321554,
+        "unforced_rms_mps": 0.0791131757118932,
+        "paired_delta_peak_abs_mps": 0.13100051800043855,
+        "paired_delta_rms_mps": 0.09624160135047315,
+        "forced_peak_sample": {
+          "time_s": 5.205000000000273,
+          "forced_v_mps": -0.24949422505150545,
+          "unforced_v_mps": -0.11849370705106689,
+          "delta_v_mps": -0.13100051800043855
+        },
+        "forced_hip_heat_nm2s": 180.7616145716965,
+        "unforced_hip_heat_nm2s": 190.0316852373953,
+        "forced_rms_change_fraction": 0.06579506314218952,
+        "unforced_rms_change_fraction": 0.22882493972296447
+      }
+    }
+  },
+  "verification": {
+    "complete_pairs": 8,
+    "pre_push_identical_samples_each": 333,
+    "original_and_new_file_hashes_verified": true,
+    "analysis_recomputed_exactly": true,
+    "physical_complete": true,
+    "zip_crc_and_contents_verified": true,
+    "logic_tests_passed": 6
+  },
+  "archive": {
+    "file": "停车受推衔接配对轨迹.zip",
+    "sha256": "a3ac9c27b66a145e4c30f222fc42ea344237bbbd4945dbc24cb85e4b5d6987cd",
+    "bytes": 1148270,
+    "entries": {
+      "run.json": "af7be689850b0d0e929b616911bd4e5c4d1ce7a44a8d147031253fc02b941995",
+      "summary.json": "f390098c1d43000a145ba675916a1db9c6fff152b1ba16c53591fb10783522ac",
+      "registration.json": "b81c73607735fa3b9835845031579a7b9d6e736265755f5b1ee5564858fbbbcc",
+      "frozen-manifest.json": "567749bc0f73086b335c1f349c4009205c43335f475af0ee03bbe14099c55f70",
+      "forced/zero-development-combined-000.json": "3cb188363bc1ea9186c95bed5f876a621ea3f6280437bba48ad20745456ccbd5",
+      "unforced/zero-development-combined-000-no-push.json": "4237b561198428ea26b3d45f666b2fc233036c265552588b7836801a5fae64a4",
+      "forced/zero-development-combined-001.json": "7a6bbafde99579f6208fdbde71656750357e87d4ab1abb095a66207b5e5b3f95",
+      "unforced/zero-development-combined-001-no-push.json": "0b189a6a8357ecc21459b9b273e637e7e4a46d314af59793c66b2d2c92a5666b",
+      "forced/brake-025-development-combined-000.json": "c3a5cfa22645b11ef9408b922818bfacef82b13b2e8acd0d2670e62d07771858",
+      "unforced/brake-025-development-combined-000-no-push.json": "a96502d9aea06f57f08407c06764796127162bf9ddee74a392fa16e65d971008",
+      "forced/brake-025-development-combined-001.json": "7ce26d3149164281bc02a805c202cdb979bf514bbebc1ead78f6842faff65351",
+      "unforced/brake-025-development-combined-001-no-push.json": "cc7ea55aea419e93de85bb52645d993d16d57beab0adf28676ae50b7442b991f",
+      "forced/velocity-plus-development-combined-000.json": "ad40ec545080661be8110a8ddb3855cd9101a50e8b7ec13b64cad3f11ac9f3b6",
+      "unforced/velocity-plus-development-combined-000-no-push.json": "8f5914f9d42234e7f3ee8787cba58dabacd7a161a1a8422a18075c737182f41d",
+      "forced/velocity-plus-development-combined-001.json": "5bd9378ac3d056e39bcfd6cdd37df5d0ef141dc390464a3a477e53df80fbbd9a",
+      "unforced/velocity-plus-development-combined-001-no-push.json": "78afa1bf482270fdd69f841bea86c8ed724f50e362ab14dedacd3b6739de8570",
+      "forced/brake-velocity-development-combined-000.json": "dafda058d300e2914a455b84f18d87fc5acfa511ebcf805114cf59d92941bfdf",
+      "unforced/brake-velocity-development-combined-000-no-push.json": "5e1d4c3745d7b794c4bbbfa56f3c75119259c707eae2732c4c5e1635420005a0",
+      "forced/brake-velocity-development-combined-001.json": "0a674899862706a5994ce22c05b687fd4f228bfbea2b4ba07e63ae561df30ed1",
+      "unforced/brake-velocity-development-combined-001-no-push.json": "b323e8c2c7f7500c84f9568e3bb6dd435f150b41bbf1805f5d98d24d95bbfb94"
+    }
+  },
+  "conclusion": [
+    "快退场景原控制在5秒推力前仍以约-0.551m/s运动；反向推力使5至7.2秒速度RMS从无推的0.231降到有推的0.129。该组合的原指标同时包含制动进度与外力作用。",
+    "低速前进场景中，减速加速度反馈模式在推力前已以约-0.104m/s回摆，原控制仍为+0.109m/s。在该模式有推轨迹的反向峰值时刻，无推轨迹也为约-0.118m/s；较高峰值包含已存在的制动回摆。",
+    "这个模式低速场景的有推/无推差值峰值虽比原控制小，但差值RMS更大；不能只挑峰值说明抗扰改善。",
+    "差值包含非线性闭环响应，而且不同控制器受推前状态不相同，只用于解释机制；原逐例保护、完整运动质量与最终10%指标均不改变。"
+  ],
+  "next": "继续B/C/D既定对照。若仍无可行收益，再登记能按观察器速度/内部参考改变动作的参考层策略，并在训练中覆盖停车后受推的衔接；不能把场景标签、是否取消推力或真值速度送入策略。",
+  "final_dataset_used": false
+}
