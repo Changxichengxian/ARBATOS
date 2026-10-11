@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "protocol": "motion-quality-20261012",
+  "registered_at": "2026-10-12T02:54:31.972469+08:00",
+  "registered_before_any_validation_evaluation": true,
+  "queue_current_job": "A-full-41-train",
+  "purpose": "堵住少跑、偏航或侧移造成的假改善；只收紧原验收，物理模型与动作上限均不改",
+  "scope": "每个候选与原控制同场景配对，补充评价通过才可进入正式训练；最终评价也必须同时通过",
+  "drive_window_s": [
+    1.0,
+    4.0
+  ],
+  "steady_drive_window_s": [
+    3.5,
+    4.0
+  ],
+  "relative_regression_max": 0.05,
+  "drive_tracking_absolute_tolerance_mps": 0.005,
+  "progress_loss_absolute_tolerance_m": 0.005,
+  "world_speed_absolute_tolerance_mps": 0.001,
+  "lateral_absolute_tolerance_m": 0.005,
+  "yaw_absolute_tolerance_deg": 0.5,
+  "tolerance_rule": "各项允许增量取原值5%与对应绝对容差较大者；进度项检查减少量",
+  "sampling": "运动质量额外遥测每15ms，物理失败/力矩/闭链/俯仰横滚峰值仍按冻结环境每1ms检查",
+  "physical_source": "work/study-20261012/frozen，与首轮筛选完全相同DLL与环境",
+  "implementation": "EvaluateWbrStudy.py --snapshot 原冻结目录；不修改原frozen文件。旧版筛选分数不能单独宣称最终通过",
+  "normal_driving_check": "停车及组合例的世界x速度与输入指令之差，drive和steady两窗RMS均检查；t=4纵向进度不能显著降低",
+  "coordinate_check": "停车/受推窗口世界x速度RMS和平面速度RMS不能恶化；全程相对初始横移和偏航峰值不能显著增加",
+  "unchanged": "原10%均值改善、单例5%主要误差、热量和物理边界仍须同时满足；最终集未使用"
+}

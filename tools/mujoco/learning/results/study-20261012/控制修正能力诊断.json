@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "kind": "development_diagnostic",
+  "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+  "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+  "cases_sha256": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+  "diagnostic_script_sha256": "241e82fc64884a05483d64060779273bdd30526631e224d2925ffeabad4decfc",
+  "raw_summary_sha256": "0a79bd41832119d49fe3be2b9af1359059756aed76b6bfe2ccdfc760efd6525b",
+  "completed_trajectories": 30,
+  "baseline_stop_decomposition": [
+    {
+      "id": "development-stop-000",
+      "command_speed_mps": 0.35,
+      "early_velocity_rms": 0.23902092187371565,
+      "late_velocity_rms": 0.05529320120643267,
+      "late_error_energy_fraction": 0.050832560649188396,
+      "optimistic_total_rms_gain_if_only_late_error_zeroed": 0.025747753735814283,
+      "reference_zero_after_stop_s": 0.8900000000001675,
+      "observer_error_rms_early": 0.008457774580658136
+    },
+    {
+      "id": "development-stop-001",
+      "command_speed_mps": -0.75,
+      "early_velocity_rms": 0.5885033867911517,
+      "late_velocity_rms": 0.09903504047160569,
+      "late_error_energy_fraction": 0.027540032833807272,
+      "optimistic_total_rms_gain_if_only_late_error_zeroed": 0.01386615149555237,
+      "reference_zero_after_stop_s": 1.8800000000004982,
+      "observer_error_rms_early": 0.010184747557662702
+    }
+  ],
+  "comparisons": {
+    "wheel-positive": {
+      "physical_complete": true,
+      "stop_improvement": 0.026596721869360906,
+      "push_improvement": 0.04095103980102244,
+      "heat_change": -0.0023805260366477343,
+      "failing_guards": [
+        {
+          "id": "development-combined-000",
+          "checks": [
+            "peak_pitch_deg"
+          ]
+        },
+        {
+          "id": "development-combined-001",
+          "checks": [
+            "push_peak_velocity_error"
+          ]
+        },
+        {
+          "id": "development-push-001",
+          "checks": [
+            "peak_pitch_deg"
+          ]
+        }
+      ]
+    },
+    "wheel-negative": {
+      "physical_complete": true,
+      "stop_improvement": -0.03423615382669354,
+      "push_improvement": -0.03638841182540009,
+      "heat_change": 0.003294317461545182,
+      "failing_guards": [
+        {
+          "id": "development-combined-001",
+          "checks": [
+            "push_primary"
+          ]
+        },
+        {
+          "id": "development-stop-000",
+          "checks": [
+            "stop_primary",
+            "stop_reverse"
+          ]
+        },
+        {
+          "id": "development-stop-001",
+          "checks": [
+            "stop_reverse"
+          ]
+        }
+      ]
+    },
+    "leg-positive": {
+      "physical_complete": true,
+      "stop_improvement": 0.019549238006616898,
+      "push_improvement": 0.062003930134225005,
+      "heat_change": 0.07100910326154253,
+      "failing_guards": [
+        {
+          "id": "development-combined-001",
+          "checks": [
+            "push_peak_velocity_error"
+          ]
+        },
+        {
+          "id": "development-push-001",
+          "checks": [
+            "hip_heat_case"
+          ]
+        },
+        {
+          "id": "development-stop-000",
+          "checks": [
+            "stop_reverse"
+          ]
+        },
+        {
+          "id": "development-stop-001",
+          "checks": [
+            "stop_reverse"
+          ]
+        }
+      ]
+    },
+    "leg-negative": {
+      "physical_complete": true,
+      "stop_improvement": -0.014809088586130947,
+      "push_improvement": -0.05674132659754805,
+      "heat_change": -0.048745249312322825,
+      "failing_guards": [
+        {
+          "id": "development-combined-000",
+          "checks": [
+            "peak_pitch_deg"
+          ]
+        },
+        {
+          "id": "development-combined-001",
+          "checks": [
+            "peak_pitch_deg"
+          ]
+        },
+        {
+          "id": "development-push-000",
+          "checks": [
+            "push_primary",
+            "peak_pitch_deg"
+          ]
+        },
+        {
+          "id": "development-stop-000",
+          "checks": [
+            "peak_pitch_deg"
+          ]
+        },
+        {
+          "id": "development-stop-001",
+          "checks": [
+            "peak_pitch_deg"
+          ]
+        }
+      ]
+    }
+  },
+  "interpretation": [
+    "仅6个开发场景，每种模式6次，共30次。不是验证集/最终验收，不能据此宣称泛化。",
+    "4到8秒主指标包含内部速度参考的缓慢减速。后两秒回摆即使理想地全消掉，也不足以单独达到10%总RMS改善。",
+    "正向轮反馈在开发集改善停车约2.66%、受推约4.10%，仍有组合/姿态保护项失败。",
+    "正向腿反馈受推改善约6.20%，但髋热均值增加约7.10%，超出原5%门槛。",
+    "由这些探针不能证明当前残差接口的全局最优上限；它们只支持在筛选无明显收益时优先研究参考层减速与阻尼，而非盲目延长相同训练。"
+  ],
+  "reproducibility": {
+    "script": "tools/mujoco/learning/DiagnoseWbrLearning.py",
+    "modes": [
+      "zero",
+      "wheel-positive",
+      "wheel-negative",
+      "leg-positive",
+      "leg-negative"
+    ],
+    "snapshot": "work/study-20261012/frozen",
+    "cases": "development.json",
+    "raw_directory": "work/study-20261012/diagnostics-authority"
+  }
+}

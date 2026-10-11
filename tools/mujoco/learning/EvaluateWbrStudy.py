@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import sys
 import time
 
 import numpy as np
@@ -30,6 +31,70 @@ THRESHOLDS = {
     "speed_absolute_mps": 0.005,
     "angle_absolute_deg": 0.2,
 }
+
+MOTION_QUALITY_THRESHOLDS = {
+    "relative_regression": 0.05,
+    "drive_tracking_absolute_mps": 0.005,
+    "world_speed_absolute_mps": 0.001,
+    "progress_absolute_m": 0.005,
+    "lateral_absolute_m": 0.005,
+    "yaw_absolute_deg": 0.5,
+}
+
+
+def motion_quality_metrics(case, trace):
+    """只读额外遥测，不改变仿真积分、观测或控制输入。"""
+    rms = lambda values: float(np.sqrt(np.mean(np.square(values))))
+    result = dict(max_lateral_m=float(max(abs(row["lateral_m"]) for row in trace)),
+                  max_yaw_deg=math.degrees(max(abs(row["yaw_relative_rad"]) for row in trace)),
+                  windows={})
+    for name,bounds in WINDOWS[case["options"]["case"]].items():
+        rows = _window(trace,bounds)
+        vx = np.array([row["world_vx_mps"] for row in rows])
+        vy = np.array([row["world_vy_mps"] for row in rows])
+        result["windows"][name] = dict(world_vx_rms_mps=rms(vx),
+                                      plane_speed_rms_mps=float(np.sqrt(np.mean(vx*vx+vy*vy))))
+    if case["options"]["case"] != "push":
+        for name,bounds in (("drive",(1.,4.)),("steady_drive",(3.5,4.))):
+            rows = _window(trace,bounds)
+            result[name+"_tracking_rms_mps"] = rms([row["world_vx_mps"]-row["command_v_mps"] for row in rows])
+        rows = _window(trace,(1.,4.))
+        result["progress_at_stop_m"] = math.copysign(1.,case["options"]["speed"])*rows[-1]["longitudinal_m"]
+    return result
+
+
+def motion_quality_acceptance(baseline, learned):
+    by_base, by_learned = ({row["id"]:row for row in rows} for rows in (baseline,learned))
+    if set(by_base) != set(by_learned) or len(by_base) != len(baseline) or len(by_learned) != len(learned):
+        raise RuntimeError("运动质量检查的场景集合不一致或重复")
+    results = []
+    threshold = MOTION_QUALITY_THRESHOLDS
+    for case_id in sorted(by_base):
+        a,b = by_base[case_id], by_learned[case_id]
+        complete = a["metrics"]["passed"] and b["metrics"]["passed"]
+        checks = {}
+        if complete and "motion_quality" in a and "motion_quality" in b:
+            aq,bq = a["motion_quality"], b["motion_quality"]
+            for key,tolerance in (("max_lateral_m",threshold["lateral_absolute_m"]),
+                                  ("max_yaw_deg",threshold["yaw_absolute_deg"])):
+                checks[key] = _regression_check(aq[key],bq[key],threshold["relative_regression"],tolerance)
+            for name in WINDOWS[a["case"]]:
+                for metric in ("world_vx_rms_mps","plane_speed_rms_mps"):
+                    checks[name+"_"+metric] = _regression_check(aq["windows"][name][metric],
+                        bq["windows"][name][metric], threshold["relative_regression"],threshold["world_speed_absolute_mps"])
+            if a["case"] != "push":
+                for key in ("drive_tracking_rms_mps","steady_drive_tracking_rms_mps"):
+                    checks[key] = _regression_check(aq[key],bq[key],threshold["relative_regression"],
+                                                    threshold["drive_tracking_absolute_mps"])
+                # 行驶进度越小越差，与误差指标的方向相反。
+                progress = _regression_check(-aq["progress_at_stop_m"],-bq["progress_at_stop_m"],
+                    threshold["relative_regression"],threshold["progress_absolute_m"])
+                progress["baseline_progress_m"],progress["learned_progress_m"] = aq["progress_at_stop_m"],bq["progress_at_stop_m"]
+                checks["progress_at_stop_m"] = progress
+        results.append(dict(id=case_id, checks=checks, **{"pass":bool(complete and checks and all(
+            value["pass"] for value in checks.values()))}))
+    return {"pass":bool(results and all(row["pass"] for row in results)),
+            "protocol":"motion-quality-20261012", "thresholds":threshold, "cases":results}
 
 
 def sha256_file(path: Path) -> str:
@@ -463,12 +528,22 @@ def run_case(scenario: dict, policy_or_none, env_config: dict, record: bool = Fa
     try:
         observation, _ = env.reset(seed=int(scenario["seed"]),
                                    options=dict(scenario["options"]))
+        origin = env.data.xpos[env.base].copy()
+        origin_rotation = env.data.xmat[env.base].reshape(3,3)
+        origin_yaw = math.atan2(origin_rotation[1,0],origin_rotation[0,0])
         while True:
             if stop_requested and stop_requested():
                 raise EvaluationInterrupted("评价收到停止请求；未完成场景留待恢复")
             action = (np.zeros(env.action_space.shape, dtype=np.float32)
                       if policy_or_none is None else policy_or_none.predict(observation))
             observation, _, terminated, truncated, _ = env.step(action)
+            velocity = env.jac @ env.data.qvel
+            rotation = env.data.xmat[env.base].reshape(3,3)
+            yaw = math.atan2(rotation[1,0],rotation[0,0])-origin_yaw
+            env.trace[-1].update(world_vx_mps=float(velocity[0]),world_vy_mps=float(velocity[1]),
+                lateral_m=float(env.data.xpos[env.base,1]-origin[1]),
+                longitudinal_m=float(env.data.xpos[env.base,0]-origin[0]),
+                yaw_relative_rad=math.atan2(math.sin(yaw),math.cos(yaw)))
             if terminated or truncated:
                 break
         summary = env.summary()
@@ -476,6 +551,8 @@ def run_case(scenario: dict, policy_or_none, env_config: dict, record: bool = Fa
                "randomize": scenario["randomize"], "case": scenario["options"]["case"],
                "options": scenario["options"],
                "metrics": summarize_trace(scenario, env.trace, summary)}
+        if summary["passed"]:
+            row["motion_quality"] = motion_quality_metrics(scenario,env.trace)
         if record:
             row["trace"] = list(env.trace)
         return row
@@ -546,8 +623,11 @@ def main():
     parser.add_argument("--record", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--deadline", default="2026-10-14T02:10:00+08:00")
+    parser.add_argument("--snapshot", type=Path, help="使用已有冻结物理快照；评价脚本单独绑定其SHA")
     args = parser.parse_args()
     cases = load_cases(args.cases)
+    if args.snapshot:
+        sys.path.insert(0,str(args.snapshot.resolve()/"tools/mujoco/learning"))
     from WbrLearningEnv import experiment_identity, verify_snapshot
     manifest = verify_snapshot()
     identity = experiment_identity(manifest)
@@ -592,6 +672,8 @@ def main():
     if args.baseline_cache:
         cached_baseline = load_baseline_cache(
             args.baseline_cache, cases, manifest, identity, env_config)
+        if any(row["metrics"]["passed"] and "motion_quality" not in row for row in cached_baseline):
+            raise RuntimeError("基线缓存缺少新增运动质量遥测，请用当前评价器重新生成基线")
     binding = run_binding(cases, manifest, identity, env_config, args.policy,
                           lock, args.baseline_cache, args.record)
     expected_binding_hash = hashlib.sha256(canonical_bytes(binding)).hexdigest()
@@ -646,6 +728,11 @@ def main():
             "cases": [{"id": row["id"], "pass": row["metrics"]["passed"],
                        "failure": row["metrics"]["failure"]} for row in baseline]},
     }
+    if policy:
+        quality = motion_quality_acceptance(baseline,learned)
+        result["acceptance"]["checks"]["motion_quality"] = quality
+        result["acceptance"]["overall_pass"] = bool(result["acceptance"]["overall_pass"] and quality["pass"])
+    result["motion_quality_protocol"] = "motion-quality-20261012"
     atomic_write_json(summary_path, result)
     if lock:
         complete_final_lock(args.cases, cases, lock, output, summary_path)

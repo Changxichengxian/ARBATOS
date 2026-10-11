@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "kind": "development_evaluator_verification",
+  "checked_at": "2026-10-12T03:09:05.328107+08:00",
+  "evaluator_sha256": "328f1927cb8495615b728563118ba53caac6cb0c4226653b270deb44c7d097e1",
+  "scenarios_sha256": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+  "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+  "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+  "baseline_cases": 6,
+  "original_baseline_metrics_exactly_unchanged": true,
+  "baseline_modes": [
+    "combined",
+    "push",
+    "stop"
+  ],
+  "baseline_signed_stop_speeds": [
+    0.35,
+    -0.75
+  ],
+  "policy_cases": 6,
+  "policy_training_steps": 16384,
+  "policy_artifacts": {
+    "policy.json": "24ca76814aafe69f7a3fde898e02a9ed99e96dc134fbe8484e6e1138a2504fb9",
+    "policy.npz": "08ec33d20ef15f307179846a76ccd99e6f3053aa7ee57308728983acc6bd985e"
+  },
+  "policy_checks": {
+    "physical_complete": true,
+    "all_case_guards": true,
+    "stop_mean_improvement": false,
+    "push_mean_improvement": false,
+    "hip_heat_mean": true,
+    "motion_quality": true
+  },
+  "sources": {
+    "work\\study-20261012\\screening\\baselines\\development-full\\summary.json": "275ddc669c330f29bc8b9005d68e0c182780cc1d023b99dbb5f9fa9cf6292e64",
+    "work\\study-20261012\\quality-smoke-baseline\\summary.json": "08cadcaf1474df2c489cd355683c3ac5a9eee6397bdc0dbb36dcbaaa35349203",
+    "work\\study-20261012\\quality-smoke-policy-16384\\summary.json": "0fe60f505ab5237d8dc348954e869b204263c1b39e82f23dbd4d2ea596b23cf7"
+  },
+  "note": "用于确认新增质量遥测、缓存和冻结快照兼容；中间权重不满足两项性能改善门槛。不是正式筛选结果，最终集未使用。"
+}

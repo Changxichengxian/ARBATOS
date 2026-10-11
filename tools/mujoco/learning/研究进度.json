@@ -27,26 +27,27 @@
     "六维训练到开发集配对评价完整短流程通过，原控制及候选各6/6物理通过",
     "对称动作与等效六维动作逐步一致、1ms峰值、错误维数清空输出检查通过",
     "指标、绑定、最终集一次使用、队列停止及检查点回溯测试通过",
-    "线性搜索中途停止后恢复完成4个候选，原6个基线结果哈希未变"
+    "线性搜索中途停止后恢复完成4个候选，原6个基线结果哈希未变",
+    "运动质量门在验证开始前登记；开发集原控制6例的原指标逐项不变，16384步中间策略6例完成补充评价",
+    "开发集30条控制修正诊断全部完成，停车主要误差在前两秒减速；各探针均未达到完整采用条件",
+    "A-full种子41完成131072步，已自动进入45例原控制验证基线评价"
   ],
-  "next": "等待15步筛选队列。用SummarizeWbrStudy.py汇总验证集，按预登记门槛选择路线，从头训练101/211/307；无合格路线先分析负结果与动作效果，不运行最终集调参。每阶段保存关键权重、更新记录并提交推送。",
+  "next": "先完成原冻结A/B/C筛选；原筛选分数不可独立宣称通过。所有拟晋级候选须用当前EvaluateWbrStudy.py --snapshot 原冻结目录通过运动质量补充门，再按原门槛从头做三种子复验；最终评价也用包含补充门的版本。",
   "active_process": {
     "queue_pid": 8796,
-    "current_job_at_update": "A-full-41-train",
-    "training_status_at_update": {
-      "status": "running",
-      "steps": 20480,
-      "segment_seconds": 227.70165190001717,
-      "steps_per_s": 89.94225482822883,
-      "episodes": 38,
-      "failures": 0,
-      "pid": 32248
+    "current_job_at_update": "baseline-validation-full",
+    "previous_training_status": {
+      "status": "completed",
+      "steps": 131072,
+      "stop_reason": null,
+      "pid": 32248,
+      "updated_at": "2026-10-11T19:08:06.059364+00:00"
     },
     "note": "只表示此时间点；接续前核对实际进程及queue-state，避免重复启动"
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T02:44:55.145167+08:00",
+  "updated_at": "2026-10-12T03:09:05.328107+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -65,11 +66,14 @@
   "resume_instructions": "确认同一队列和子进程均已退出、期限未到且用户没有暂停；清除队列根stop.request后使用冻结目录RunWbrStudyQueue.py --plan 原计划 --resume。不得并行启动第二份。",
   "study_code_commit": "5569b66003d8a14425d8b0937791d4eef6888d7c",
   "saved_checkpoint": {
-    "repository_path": "tools/mujoco/learning/results/study-20261012/screening-A-full-41-checkpoint-16384",
-    "steps": 16384,
+    "repository_path": "tools/mujoco/learning/results/study-20261012/screening-A-full-41-checkpoint-131072",
+    "steps": 131072,
     "seed": 41,
     "route": "A-full",
-    "checkpoint_sha256": "a13f7356041de11acfab560b5d36ccfed69065bb671fa8f97ce81bf43dbecb73",
-    "note": "中间权重，仅用于恢复研究；尚未独立验证，不用于正式控制"
-  }
+    "checkpoint_sha256": "66a4b6168a49251e435b9b7200a744f29e5c12f74ceffe28f7239632b65af859",
+    "note": "首个筛选训练已完成；尚待45例独立验证，不用于正式控制"
+  },
+  "quality_gate_supplement": "tools/mujoco/learning/results/study-20261012/运动质量补充登记.json",
+  "development_diagnostic": "tools/mujoco/learning/results/study-20261012/控制修正能力诊断.json",
+  "quality_verification": "tools/mujoco/learning/results/study-20261012/运动质量实测检查.json"
 }

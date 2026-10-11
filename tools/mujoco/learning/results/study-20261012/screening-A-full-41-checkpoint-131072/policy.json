@@ -1,0 +1,45 @@
+{
+  "layers": [
+    93,
+    64,
+    64,
+    6
+  ],
+  "parameters": 10566,
+  "export_max_abs_error": 1.1920928955078125e-07,
+  "policy_dt_s": 0.015,
+  "history_frames": 3,
+  "frame_size": 31,
+  "scope": "仅限本次平地停车/纵向抗扰，不支持起身或跳跃的学习控制",
+  "seed": 41,
+  "env_config": {
+    "reward_mode": "dense",
+    "action_mode": "full",
+    "gas_force": 450.0
+  },
+  "strict_training_checks": true,
+  "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
+  "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+  "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+  "initial_steps": 0,
+  "training_source_sha256": "874c03552cfdf701acc71bed215628ade4ec6b668b227fba2359e064fe01c0f5",
+  "resume": null,
+  "requested_total_steps": 131072,
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "versions": {
+    "mujoco": "3.14.0",
+    "numpy": "2.5.3",
+    "torch": "2.9.1+cpu",
+    "gymnasium": "1.2.2",
+    "stable-baselines3": "2.7.1"
+  },
+  "kind": "ppo",
+  "training_steps": 131072,
+  "segment_seconds": 1647.232406199997,
+  "segment_episodes": 244,
+  "segment_failures": 0,
+  "stop_reason": null,
+  "checkpoint_sha256": "66a4b6168a49251e435b9b7200a744f29e5c12f74ceffe28f7239632b65af859",
+  "policy_sha256": "288bc8f0179580af05a5688df86b26f72f6a5f9e588e84b4875d2c9f4b464634",
+  "created_at": "2026-10-11T19:08:05.880142+00:00"
+}
