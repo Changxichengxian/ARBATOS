@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "created_at": "2026-10-12T08:34:06.223180+08:00",
+  "parameters_changed": {
+    "gae_lambda": [
+      0.97,
+      1.0
+    ]
+  },
+  "algorithm_execution_identical": true,
+  "original_144_baselines_reverified": true,
+  "training_bank_bytes_identical": true,
+  "physical_identity_unchanged": true,
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "parent_manifest_sha256": "1d04fb34dd8ac26f497746ad5f2871c501025504424c5fe8cb207b94305684c2",
+  "manifest_sha256": "63c4e9323a923dfec0a30b395529b3f55906314c3008183449dbfd11f346ab35",
+  "registration_sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
+  "bank_sha256": "fe2eab74ac5d7d23bb11eb5a175fd93c2d26ffd77f25b9281cbb8005a143f3b2",
+  "monitor_cases_sha256": "a935e32db4cf96af9fe74013be09cc718a60b9686646b4983c8691f6130b4226",
+  "builder_sha256": "7378c809caf28a51e8dd45d81036ae9c39d7003dd93662c714f38d4e09aa9c75",
+  "changed_existing_snapshot_files": [
+    "tools/mujoco/learning/TrainWbrAligned.py"
+  ],
+  "added_snapshot_files": [
+    "tools/mujoco/learning/results/study-20261012/长程反馈单变量训练登记.json",
+    "tools/mujoco/learning/cases/trace-20261012/monitor.json",
+    "tools/mujoco/learning/results/study-20261012/trace-F-admitted/训练库许可.json"
+  ],
+  "long_training_started": false
+}

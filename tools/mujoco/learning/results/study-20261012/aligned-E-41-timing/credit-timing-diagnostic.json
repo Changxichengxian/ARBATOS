@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T08:22:03.094845+08:00",
+  "gamma": 0.999,
+  "gae_lambda": 0.97,
+  "policy_dt_seconds": 0.015,
+  "rollout_steps": 1024,
+  "envs": 2,
+  "isolated_episode_steps": 534,
+  "scenario": "零价值估计，完整回合末尾单位负奖励；其它奖励为零，之后明确开始新回合。",
+  "actual_training_library_used": true,
+  "formula": "direct_coefficient = (gamma * gae_lambda) ** lag_steps",
+  "current_maximum_absolute_formula_error": 2.787720099206581e-07,
+  "reference_maximum_absolute_formula_error": 4.080689863350528e-06,
+  "rows": [
+    {
+      "lag_steps": 0,
+      "lag_seconds": 0.0,
+      "current_direct_coefficient": 1.0,
+      "lambda_one_reference": 1.0
+    },
+    {
+      "lag_steps": 33,
+      "lag_seconds": 0.495,
+      "current_direct_coefficient": 0.354102224111557,
+      "lambda_one_reference": 0.967522919178009
+    },
+    {
+      "lag_steps": 67,
+      "lag_seconds": 1.005,
+      "current_direct_coefficient": 0.12150512635707855,
+      "lambda_one_reference": 0.9351646900177002
+    },
+    {
+      "lag_steps": 133,
+      "lag_seconds": 1.9949999999999999,
+      "current_direct_coefficient": 0.015235330909490585,
+      "lambda_one_reference": 0.8754080533981323
+    },
+    {
+      "lag_steps": 200,
+      "lag_seconds": 3.0,
+      "current_direct_coefficient": 0.0018511698581278324,
+      "lambda_one_reference": 0.8186508417129517
+    },
+    {
+      "lag_steps": 333,
+      "lag_seconds": 4.995,
+      "current_direct_coefficient": 2.8203174224472605e-05,
+      "lambda_one_reference": 0.7166538834571838
+    }
+  ],
+  "no_cross_episode_leakage": true,
+  "source_files": {
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Lib\\site-packages\\stable_baselines3\\common\\buffers.py": "eadb4950eff1722663cbe98e025b6b505f85a7d67a2382db8cb21c36f8cb028a",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\WbrAlignedEnv.py": "1d5926155659bdb323c69a2e001a619042c0f49e0f36b161230f127356bc3294",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py": "c6f562c7046a5b42533b9cbacd69f5341cbab8992b213aec1bc14ce66e437b83",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\ProbeAlignedCreditTiming.py": "727341f71bf6e1195388e656a1b9d1a2e83c0072f08fb676576a28cb03eacc07"
+  },
+  "references": [
+    "https://arxiv.org/abs/1506.02438",
+    "https://people.eecs.berkeley.edu/~russell/papers/icml99-shaping.pdf"
+  ],
+  "findings": "登记实现将逐例约束罚分放在回合末尾。实际库的直接末尾误差项随时间间隔指数衰减，提示反馈时序值得进一步检验。",
+  "limitations": [
+    "没有运行新策略训练，没有更改正在运行的评分或超参数。",
+    "这是隔离单位信号的诊断，不是实际策略梯度大小、完整学习能力或控制性能。",
+    "实际价值函数可传播未来约束信息，密集奖励及优势归一化也会影响训练；不能据此断言退步原因已证明。",
+    "lambda=1只作数值参照，增大该参数会改变偏差与方差，未证明会改善控制。",
+    "任何新评分时序都须独立登记、验证完整与折扣回报及终止边界，再用新监控场景评价。"
+  ]
+}

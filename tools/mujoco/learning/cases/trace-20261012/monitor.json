@@ -1,0 +1,308 @@
+{
+  "schema": 1,
+  "split": "trace-monitor",
+  "primary_gate": false,
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "generated_at": "2026-10-12T08:34:06+08:00",
+  "training_seeds": [
+    101,
+    211,
+    307
+  ],
+  "screening_seeds": [
+    41,
+    73
+  ],
+  "cases_sha256": "a935e32db4cf96af9fe74013be09cc718a60b9686646b4983c8691f6130b4226",
+  "case_count": 24,
+  "cases": [
+    {
+      "id": "trace-monitor-stop-000",
+      "seed": 91000,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": -0.75,
+        "push": -35.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-stop-001",
+      "seed": 91001,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.407143,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-stop-002",
+      "seed": 91002,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": 0.35,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-stop-003",
+      "seed": 91003,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": -0.521429,
+        "push": 12.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-stop-004",
+      "seed": 91004,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": 0.464286,
+        "push": -28.428571,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-stop-005",
+      "seed": 91005,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.692857,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-stop-006",
+      "seed": 91006,
+      "randomize": false,
+      "options": {
+        "case": "stop",
+        "speed": -0.635714,
+        "push": 18.571429,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-stop-007",
+      "seed": 91007,
+      "randomize": true,
+      "options": {
+        "case": "stop",
+        "speed": 0.578571,
+        "push": 31.714286,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-push-000",
+      "seed": 91008,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": 0.578571,
+        "push": 31.714286,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-push-001",
+      "seed": 91009,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.35,
+        "push": 18.571429,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-push-002",
+      "seed": 91010,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": -0.75,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-push-003",
+      "seed": 91011,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.521429,
+        "push": -28.428571,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-push-004",
+      "seed": 91012,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": 0.692857,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-push-005",
+      "seed": 91013,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": -0.635714,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-push-006",
+      "seed": 91014,
+      "randomize": false,
+      "options": {
+        "case": "push",
+        "speed": -0.407143,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-push-007",
+      "seed": 91015,
+      "randomize": true,
+      "options": {
+        "case": "push",
+        "speed": 0.464286,
+        "push": -35.0,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-combined-000",
+      "seed": 91016,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": 0.578571,
+        "push": 35.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-combined-001",
+      "seed": 91017,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.75,
+        "push": -28.428571,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-combined-002",
+      "seed": 91018,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": 0.464286,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-combined-003",
+      "seed": 91019,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": 0.35,
+        "push": -31.714286,
+        "delay": 1,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-combined-004",
+      "seed": 91020,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": -0.407143,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-combined-005",
+      "seed": 91021,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.635714,
+        "push": 18.571429,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-combined-006",
+      "seed": 91022,
+      "randomize": false,
+      "options": {
+        "case": "combined",
+        "speed": 0.692857,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      }
+    },
+    {
+      "id": "trace-monitor-combined-007",
+      "seed": 91023,
+      "randomize": true,
+      "options": {
+        "case": "combined",
+        "speed": -0.521429,
+        "push": 25.142857,
+        "delay": 1,
+        "duration": 8.0
+      }
+    }
+  ]
+}

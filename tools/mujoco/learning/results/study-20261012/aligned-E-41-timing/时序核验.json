@@ -1,0 +1,44 @@
+{
+  "checked_at": "2026-10-12T08:29:32.135797+08:00",
+  "case_id": "aligned-training-push-008",
+  "baseline_replay_exact": true,
+  "policy_steps": 534,
+  "terminal_time_s": 8.010000000000668,
+  "physical_pass": true,
+  "pitch_guard": {
+    "pass": false,
+    "baseline": 1.7999753231304247,
+    "learned": 2.3988981741449527,
+    "delta": 0.5989228510145279,
+    "allowed_increase": 0.2
+  },
+  "sampled_threshold_deg": 1.9999753231304247,
+  "first_sampled_exceedance": {
+    "index": 251,
+    "time_s": 3.779999999999797,
+    "absolute_pitch_deg": 2.0127870352677313,
+    "steps_before_terminal_penalty": 282,
+    "seconds_before_terminal_penalty": 4.2299999999999995,
+    "isolated_direct_terminal_coefficient": 0.00014031262281128005
+  },
+  "maximum_sampled_pitch": {
+    "index": 296,
+    "time_s": 4.455000000000022,
+    "absolute_pitch_deg": 2.3987211029804185,
+    "steps_before_terminal_penalty": 237,
+    "seconds_before_terminal_penalty": 3.5549999999999997,
+    "isolated_direct_terminal_coefficient": 0.0005779918712713099
+  },
+  "guard_cost": 1.9946142550726393,
+  "violations": {
+    "control/peak_pitch_deg": 1.9946142550726393
+  },
+  "first_witness_is_not_exact_1ms_time": true,
+  "independent_evaluation": false,
+  "evidence_sha256": {
+    "原控制重放.json": "59d154a0e1d0327e73d877be31a0b0fbc8e8ed5933adcee43bdc6b97143eed31",
+    "最终策略重放.json": "2c9090d376ec1f757b9e5bb1764c47567065c42df2299d0ef8465a5d2b3f3f18",
+    "选例登记.json": "b066c5369f3fd58a694606251109451d9b2ebf4a77bffe8ba3e4a6ce9d9676de"
+  },
+  "interpretation": "1ms峰值仍裁决原保护；15ms轨迹只定位可见超限。指数项只是隔离的末尾误差直接贡献，未考虑价值函数和其他奖励，不能证明其导致训练失败。"
+}

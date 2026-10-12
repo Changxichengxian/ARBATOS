@@ -1,0 +1,49 @@
+{
+  "created_at": "2026-10-12T08:29:06.330834+08:00",
+  "selection": "在E41已完成训练日志的push回合中，选control/peak_pitch_deg归一化超限最大者；并列按场景编号、训练步排序。",
+  "selected_training_log_row": {
+    "step": 2136,
+    "id": "aligned-training-push-008",
+    "case": "push",
+    "return_sum": -10.686670693410022,
+    "dense_costs": {
+      "primary": 0.9593169460351869,
+      "drive": 0.0,
+      "heat": 0.7448303873021656,
+      "pose": 0.10256536848624108,
+      "action_change": 33.382898205341,
+      "action_magnitude": 0.7199647056771928
+    },
+    "guard_cost": 3.038801480991977,
+    "violations": {
+      "control/peak_pitch_deg": 3.038801480991977,
+      "control/hip_heat_case": 0.1578091985890148
+    }
+  },
+  "scenario": {
+    "id": "aligned-training-push-008",
+    "seed": 71056,
+    "randomize": true,
+    "options": {
+      "case": "push",
+      "speed": 0.35,
+      "push": -19.340426,
+      "delay": 0,
+      "duration": 8.0
+    }
+  },
+  "source_files": {
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json": "fe2eab74ac5d7d23bb11eb5a175fd93c2d26ffd77f25b9281cbb8005a143f3b2",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\aligned-episodes.jsonl": "34c21b431a6705213508544bbd3a73ab5c711f27e9f8faa34f64dc11de1c03ec",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\policy.json": "f25f5dfa6f22ec170cd2fc4cb1a4a14f8d1149415ad6aa9d8852b7275f7c4299",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\policy.npz": "8fb2ce8b8b0ec675ddd7e3402ece00afbdfbafbf73057d6436ec85307f95c815",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\manifest.json": "1d04fb34dd8ac26f497746ad5f2871c501025504424c5fe8cb207b94305684c2",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\WbrLearningEnv.py": "26472ce386ea5cdab1d7db7416422cb1be341dddba64eb27426c273fe2475e5c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\ProbeAlignedPitchTiming.py": "2e7cfb65150d0dd184a9167f66c774dabdb2d1c1825ec55b07b1313e9f1c50b9"
+  },
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "boundary": "只定位一个训练场景最终确定性策略的15ms姿态采样；不是重现训练随机动作，不是独立性能验证。"
+}
