@@ -77,7 +77,8 @@
     "用户明确继续后，已先汇报完整研究进度；续训预检发现42496步不对齐2048步批次。固定选最近可用32768检查点，网络和13组优化器实际读取一致，242份冻结文件与原计划不变。旧暂停模型保留，尚未进行F性能评价。",
     "实际优化器更新计数否决了32768步续训方案，该方案未执行。保留原42496步模型，从原seed73重新完整训练，以保持最终候选262144步和768更新计数；未选择性能较好的随机种子或模型。",
     "原seed73重跑已实际运行到4096步，run.json证明从零开始且原262144预算未变；F41仍为原完成尝试。",
-    "完成真实模型末批检查：E41/E73/F41自然完成，计数均768、内部剩余进度0；实际F41最后采样回调模型虽也是262144步，但762计数且内部进度未归零，被新检查拒绝。主动停止及未完成四模型同样拒绝。原KL优化提前结束规则保留。"
+    "完成真实模型末批检查：E41/E73/F41自然完成，计数均768、内部剩余进度0；实际F41最后采样回调模型虽也是262144步，但762计数且内部进度未归零，被新检查拒绝。主动停止及未完成四模型同样拒绝。原KL优化提前结束规则保留。",
+    "全新独立Python3.12.14环境安装原完整35个依赖后，从旧交付包重新解压，三种冻结控制环境各首份策略共18条历史轨迹逐字段一致。补全依赖的新包目录实际生成，运行输入字节与已验证旧包一致；未评价F控制性能。"
   ],
   "next": "完成F73从原seed73重跑的262144步后，核对自然完成标记和真实循环进度；优化轮次计数上限768，允许原KL阈值提前结束优化。按trace-F-final-budget-check内最新工具保存模型和新尝试日志，再锁定四策略进行唯一新24例比较。旧42496步尝试不计入新模型训练。",
   "active_process": {
@@ -88,7 +89,7 @@
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T11:50:40.620406+08:00",
+  "updated_at": "2026-10-12T12:03:21.084851+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -795,8 +796,8 @@
     "boundary": "所有四个E/F最终权重锁定后统一使用新监控集；仅一次单变量对照，未获扩展/最终评价许可。",
     "queue_pid": 22716,
     "trainer_pid": 7308,
-    "training_steps_at_save": 81920,
-    "os_processes_checked_at": "2026-10-12T11:50:40.620406+08:00",
+    "training_steps_at_save": 143360,
+    "os_processes_checked_at": "2026-10-12T12:03:21.084851+08:00",
     "admission_sha256": "73e47e09a694f43a8fba83b85e2e53e0ef28a1c3cc2b30371414b788d79afa75",
     "first_checkpoint_steps": 16384,
     "recovery_archive": "tools/mujoco/learning/results/study-20261012/阶段恢复包-F首段.zip",
@@ -848,7 +849,20 @@
     "all_fields_exact": true,
     "archive": "tools/mujoco/learning/results/study-20261012/completed-strategy-replay/已完成策略复现包.zip",
     "archive_sha256": "b186e70f2a7ee3ad7ddf8fd5cf26bdf96f34914ea8b38447b8b313136d7b36af",
-    "F_included": false
+    "F_included": false,
+    "clean_environment": {
+      "python": "3.12.14",
+      "packages": 35,
+      "policies": [
+        "A-41",
+        "D-41",
+        "E-41"
+      ],
+      "trajectories": 18,
+      "all_fields_exact": true,
+      "proof": "tools/mujoco/learning/results/study-20261012/clean-environment-replay/独立依赖环境复现.json",
+      "package_builder": "tools/mujoco/learning/results/study-20261012/clean-environment-replay/BuildStudyDeliveryPackage.py"
+    }
   },
   "paused_at": "2026-10-12T09:54:16.592171+08:00",
   "pause_record": "tools/mujoco/learning/results/study-20261012/trace-F-73-paused/暂停保存记录.json",

@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "new_package": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\package-full-dependency-check",
+  "new_inventory_sha256": "2db68fcace19dccf9855e43976b4fbc8c56955e424ab2605e615ce0a866bdd74",
+  "old_inventory_sha256": "c045f005e732266ce0839fe226e482330df713b6421ff52a776aceeb6cf896dd",
+  "unchanged_runtime_files": 597,
+  "changed_files": [
+    "requirements.txt",
+    "使用说明.txt"
+  ],
+  "added_files": [
+    "依赖环境实际核验.json"
+  ],
+  "packages": 35,
+  "builder_sha256": "31ce7324eb1c03d626fd890642e877f29c5aa1cbe5c25115e5ecdcbb4b2bf5ca",
+  "simulation_repeated": false,
+  "boundary": "新目录实际生成且清单核对通过。运行输入字节与刚完成18条重放的旧包相同；没有声称新目录又实跑了全部十份策略，旧发布压缩包保留原样。"
+}

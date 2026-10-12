@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "started_at": "2026-10-12T11:55:29.804885+08:00",
+  "checked_at": "2026-10-12T12:00:11.761353+08:00",
+  "python_version": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "python_executable": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\package-clean-env\\Scripts\\python.exe",
+  "independent_prefix": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\package-clean-env",
+  "system_site_packages": false,
+  "packages": {
+    "absl-py": "2.5.1",
+    "cloudpickle": "3.1.2",
+    "contourpy": "1.4.0",
+    "cycler": "0.12.1",
+    "etils": "1.14.0",
+    "farama-notifications": "0.0.6",
+    "filelock": "3.32.3",
+    "fonttools": "4.66.1",
+    "fsspec": "2026.7.0",
+    "glfw": "2.10.2",
+    "gymnasium": "1.2.2",
+    "jinja2": "3.1.6",
+    "kiwisolver": "1.5.1",
+    "markupsafe": "3.0.3",
+    "matplotlib": "3.11.2",
+    "mpmath": "1.3.0",
+    "mujoco": "3.14.0",
+    "networkx": "3.6.1",
+    "numpy": "2.5.3",
+    "packaging": "26.3",
+    "pandas": "3.0.6",
+    "pillow": "12.3.0",
+    "pyopengl": "3.1.10",
+    "pyparsing": "3.3.3",
+    "python-dateutil": "2.9.0.post0",
+    "scipy": "1.18.1",
+    "setuptools": "78.1.0",
+    "six": "1.17.0",
+    "stable-baselines3": "2.7.1",
+    "sympy": "1.14.0",
+    "torch": "2.9.1+cpu",
+    "typing-extensions": "4.16.0",
+    "tzdata": "2026.5",
+    "websockets": "17.2",
+    "zipp": "4.1.1"
+  },
+  "requirements_sha256": "027cdbaace74b7987f18d36fed7933977eac0a624d3ad0a7e0ca97816a6b6aba",
+  "archive_sha256": "b186e70f2a7ee3ad7ddf8fd5cf26bdf96f34914ea8b38447b8b313136d7b36af",
+  "package_inventory_sha256": "c045f005e732266ce0839fe226e482330df713b6421ff52a776aceeb6cf896dd",
+  "selected_policies": [
+    "A-41",
+    "D-41",
+    "E-41"
+  ],
+  "selection_rule": "每种旧冻结控制环境按名称排序的第一份已完成策略；每种任务取原输入排序的首个随机场景。",
+  "trajectories": 18,
+  "all_fields_exact": true,
+  "results": {
+    "A-41": {
+      "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-package-clean-check\\复现输出\\A-41.json",
+      "sha256": "c0cccabbcbb7c1fa1b668f327bc737687777d2256be67e57e1a94a3c93ab7b80"
+    },
+    "D-41": {
+      "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-package-clean-check\\复现输出\\D-41.json",
+      "sha256": "6fbe4398392818cf34edf657976ac2ad4732e8775e08140d4994522fa1003bad"
+    },
+    "E-41": {
+      "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-package-clean-check\\复现输出\\E-41.json",
+      "sha256": "fb7ee0d5054709a39b0baec62c3f12a01dedb29f1a6d75c665b0a4d0ba0ccc21"
+    }
+  },
+  "source_sha256": "2885538a8ea5056c5d43e3fadf26f3fe1353cae1dfcf278c0ad62c44cd444e89",
+  "boundary": "同机新建独立Python依赖环境、新目录解压的18条历史轨迹实跑；不是另一电脑或全体十份策略的第二次完整验收，不包含尚未完成的F，也未运行最终60例。"
+}
