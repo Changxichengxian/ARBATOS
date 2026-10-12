@@ -1,0 +1,204 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T09:13:32.206976+08:00",
+  "route": "E-aligned-reference",
+  "seed": 73,
+  "training_steps": 262144,
+  "monitor_pairs": 24,
+  "criteria": {
+    "steps": 262144,
+    "dataset": "aligned-monitor",
+    "minimum_stop_improvement": 0.01,
+    "minimum_push_improvement": 0.01,
+    "both_seeds_required": true,
+    "all_original_case_guards": true,
+    "motion_quality": true,
+    "mean_hip_heat_increase_max": 0.05,
+    "physics_complete": true,
+    "selection": "只评价最终权重，不按监控成绩挑中途检查点"
+  },
+  "single_seed_gate": {
+    "pass_all": false,
+    "physical_complete": true,
+    "original_case_guards": false,
+    "motion_quality": true,
+    "stop_improvement": 0.04616286618827381,
+    "push_improvement": 0.08324717449626629,
+    "heat_change": 0.008127952825071727
+  },
+  "expansion_authorized": false,
+  "both_seeds_required": true,
+  "final_dataset_used": false,
+  "failed_original_cases": [
+    {
+      "id": "aligned-monitor-combined-003",
+      "case": "combined",
+      "complete": true,
+      "checks": {
+        "stop_primary": {
+          "pass": true,
+          "baseline": 0.4555620475074197,
+          "learned": 0.44045446146163725,
+          "delta": -0.01510758604578244,
+          "allowed_increase": 0.022778102375370986
+        },
+        "push_primary": {
+          "pass": true,
+          "baseline": 0.1729105248087486,
+          "learned": 0.16148583921304815,
+          "delta": -0.011424685595700451,
+          "allowed_increase": 0.008645526240437431
+        },
+        "stop_travel": {
+          "pass": true,
+          "baseline": 0.44126698727951874,
+          "learned": 0.42297344258747493,
+          "delta": -0.018293544692043806,
+          "allowed_increase": 0.02206334936397594
+        },
+        "stop_reverse": {
+          "pass": true,
+          "baseline": 0.0,
+          "learned": 0.0,
+          "delta": 0.0,
+          "allowed_increase": 0.005
+        },
+        "push_peak_velocity_error": {
+          "pass": true,
+          "baseline": 0.43249916929539156,
+          "learned": 0.423943587450486,
+          "delta": -0.008555581844905569,
+          "allowed_increase": 0.02162495846476958
+        },
+        "peak_pitch_deg": {
+          "pass": false,
+          "baseline": 3.3512993637546518,
+          "learned": 3.6538787822491963,
+          "delta": 0.3025794184945445,
+          "allowed_increase": 0.2
+        },
+        "peak_roll_deg": {
+          "pass": true,
+          "baseline": 0.23061411626373823,
+          "learned": 0.23548294907626854,
+          "delta": 0.00486883281253031,
+          "allowed_increase": 0.2
+        },
+        "hip_heat_case": {
+          "pass": true,
+          "baseline": 252.03537861515977,
+          "learned": 259.06178279511784,
+          "delta": 7.026404179958064,
+          "allowed_increase": 50.40707572303196
+        }
+      },
+      "pass": false
+    },
+    {
+      "id": "aligned-monitor-push-002",
+      "case": "push",
+      "complete": true,
+      "checks": {
+        "push_primary": {
+          "pass": true,
+          "baseline": 0.1403091746271222,
+          "learned": 0.13112422649897254,
+          "delta": -0.009184948128149656,
+          "allowed_increase": 0.00701545873135611
+        },
+        "push_peak_velocity_error": {
+          "pass": true,
+          "baseline": 0.31981675695852957,
+          "learned": 0.31333227894379084,
+          "delta": -0.006484478014738726,
+          "allowed_increase": 0.01599083784792648
+        },
+        "peak_pitch_deg": {
+          "pass": false,
+          "baseline": 2.8758047347621534,
+          "learned": 3.146512112968093,
+          "delta": 0.2707073782059397,
+          "allowed_increase": 0.2
+        },
+        "peak_roll_deg": {
+          "pass": true,
+          "baseline": 0.21497119657771965,
+          "learned": 0.21596278954292314,
+          "delta": 0.000991592965203486,
+          "allowed_increase": 0.2
+        },
+        "hip_heat_case": {
+          "pass": true,
+          "baseline": 143.34608414235242,
+          "learned": 155.40320585007217,
+          "delta": 12.057121707719745,
+          "allowed_increase": 28.669216828470486
+        }
+      },
+      "pass": false
+    },
+    {
+      "id": "aligned-monitor-push-007",
+      "case": "push",
+      "complete": true,
+      "checks": {
+        "push_primary": {
+          "pass": true,
+          "baseline": 0.11372174070028322,
+          "learned": 0.10725072601397206,
+          "delta": -0.006471014686311158,
+          "allowed_increase": 0.005686087035014161
+        },
+        "push_peak_velocity_error": {
+          "pass": true,
+          "baseline": 0.2837918586863488,
+          "learned": 0.27726824045233034,
+          "delta": -0.00652361823401848,
+          "allowed_increase": 0.014189592934317442
+        },
+        "peak_pitch_deg": {
+          "pass": false,
+          "baseline": 1.7288785501394939,
+          "learned": 2.2174458318148482,
+          "delta": 0.48856728167535435,
+          "allowed_increase": 0.2
+        },
+        "peak_roll_deg": {
+          "pass": true,
+          "baseline": 0.25155945350613074,
+          "learned": 0.25579097150402136,
+          "delta": 0.0042315179978906214,
+          "allowed_increase": 0.2
+        },
+        "hip_heat_case": {
+          "pass": true,
+          "baseline": 93.37743890944857,
+          "learned": 109.68817760761021,
+          "delta": 16.310738698161643,
+          "allowed_increase": 18.675487781889714
+        }
+      },
+      "pass": false
+    }
+  ],
+  "failed_motion_cases": [],
+  "original_guard_failure_counts": {
+    "peak_pitch_deg": 3
+  },
+  "motion_quality_failure_counts": {},
+  "verification": {
+    "all_24_pairs": true,
+    "all_48_completed_rows_match": true,
+    "final_policy_exact": true,
+    "acceptance_and_quality_recomputed": true
+  },
+  "sources": {
+    "summary_sha256": "5a5664505ad12cc3a6003ff1ff336b40361d2eaee4c52a7e73408113a5f0e946",
+    "run_sha256": "266c0e1bc19372d3f2234c0431d3be1ba34c09f922b13ba686cc51d641068cef",
+    "checkpoint_sha256": "0642788d13e88f2474ac3460046e42dd5ff1fb6eceb2eb5a28574bb42837908c",
+    "training_proof_sha256": "018a3047b64074306a3d6535c7785bf8ee9e040b05c0610dee84618ba5280e1a",
+    "registration_sha256": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120",
+    "verifier_sha256": "25cae87477d35b9ce97db6c4c2ef2a6810db29710f21b86636347f7d018d7f74"
+  },
+  "boundary": "这是单种子独立24例监控，不能与45例验证或60例最终验收混合。只有两种子均通过登记条件、在截止时间内且正式晋级复算通过，才可扩大训练。本记录不是扩大训练许可。"
+}

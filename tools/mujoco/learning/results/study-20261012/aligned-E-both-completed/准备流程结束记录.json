@@ -1,0 +1,198 @@
+{
+  "schema": 1,
+  "binding": {
+    "study_dir": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference",
+    "deadline": "2026-10-14T02:10:00+08:00",
+    "inputs": {
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\AuditWbrReference.py": "928cab4d3ef32c01469d7fce3595faa3c32754b4a0709eaddb81746f0477838a",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\AuditWbrSplitVelocity.py": "d76c5aaa30cb0f2b810487f646c19003979a4e900550ac63540c0dc220d23a6a",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\BuildWbrAlignedBank.py": "b7d073ccbbe1672fb277fcb8ade3727abbc555da7da4b125a55e584dd9fc253f",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\BuildWbrAlignedCases.py": "23032c5a35a6d6da4e8aa9546784ce748dadb885797fca6ec43378d120235b8f",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\BuildWbrStudyCases.py": "91b1e3d129fd70cdea9b5ffa5cca5a6a2880a8b12568b3671d3534846f69b582",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\BuildWbrStudyPlan.py": "56439f0c3345c55f4b12edc3234ce916dad61af735b1c63557df0d2c74c65a18",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\CalibrateWbrAlignedReward.py": "f9272226d343454ccad2e9f973401f40f7fd7936d7c257a333f1fbe4255b5fc8",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\CheckWbrAlignedSmoke.py": "3b67ee287eadbc8422dfd0e511dbba8e1617f68593c342a3e1f971b23245f3e9",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\DiagnoseWbrLearning.py": "241e82fc64884a05483d64060779273bdd30526631e224d2925ffeabad4decfc",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\DiagnoseWbrReference.py": "31567c726c2806d113450e4c278583d8fa79136f9b19e4b109b724fb2ba61824",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\DiagnoseWbrStopPush.py": "e5765e3691318c73bf0e69ba780feab91acede9de4b58325a41836c5d8524c43",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\EvaluateWbrLearning.py": "94fd16a4df8d7f59d29739c7300ad768fa5e94477330cf13641fffd512d40abb",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\EvaluateWbrStudy.py": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\PrepareWbrAlignedRun.py": "0538e34babfef346bbf8f86ad4c6a937011dcb8614066886666c85b87674ecd2",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\PrepareWbrLearning.py": "a6f4515f692b1e3bc1a545cb63e4dff1c8b6aec0b79f7dc42717928547747bc4",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\PromoteWbrAligned.py": "cfa3bb3e03da4aeda1ea9592d338aebc724bdb4cd243628e8473480fd39cb3f4",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\RunWbrStudyQueue.py": "d3facba30a312907821c6dc24e6253227af684ef40e9f4763ee01f439c61bdd8",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\SealWbrAlignedBank.py": "6ac99d310a41c3a6090a26fc7bbcb7a52c6484ebc7f69a934976bccf87541f4f",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\SearchWbrLinear.py": "5b93f26b60b6a1e041a0669c3237a88a56a102cf52a66f5b561fbf75ae2bf28d",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\StudyWbrPolicy.py": "2bfbb81e5643618fc901171544f1f1f77e5fa83b7f4337ca1aa41aecfd908ba7",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\SummarizeWbrStudy.py": "e51fd33429745b3ddb03e787e9a36588a6ba8fd8cd2a47ab4c903ec29ff78056",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrAligned.py": "71c69d4bd2671399612f740de0de9d6df2d64fab386acddc546bcdc3b78856d0",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrAlignedQueue.py": "9a661b2da3f8007e306aa048d8074c5a816df1abd29107cd1cd7564c0b41a442",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrAlignedResume.py": "d38dd2f0a1c6b837ffe5cd82cc3f028c765641ce7624be306fb83e5a5fa0acca",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrLearning.py": "9100be581c2d3787ba958f8c831683ff2ddb80ba3bcc5c7c12463093727ad4ef",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrMotionQuality.py": "7d0f54b18bb7ea7c994f5a0776ffcd0b8412e20c7ec7ea2aef589a90fd90636c",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrReference.py": "b3a837bfc18e6ae46f311bcafc010cbe7a6f099aff77389b7d242626fdc9df16",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrReferenceCache.py": "48edcc2ebb59fe6ddcfad2e873060c9cbcc65217fbe097884ed65b9c9f05ca12",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrReferenceFailure.py": "94ca1a1fc6a97b4445ff832eb6adb6092a9d3fa4eb79da8b3f08fca4e085d6ed",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrReferenceSearch.py": "a034eabbf297fd9b77de380a758610fda99b0edcb61d258da17f2ecd99698045",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrSplitVelocity.py": "cda432dc2650fec4f7b1266f3a52d09c815a0b17d2e35b2631c3f1af3846e35f",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrStopPush.py": "ba0c414f8fb4a5799d4134972d4a5d9a0f6cc48e2e8dbc200b2190c4521ca083",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrStudyMetrics.py": "a031edc9c1047a3ebdc2e32140c0f3063423e215c4e70c4122b7183187a92114",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrStudyQueue.py": "00b466ecff9585eb82e684c26eef0ea363f0a84d9c012068d37b999c8944cc67",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TestWbrStudyTraining.py": "141f3394f856fe0ab60f921a2e88ff8049188a49fd75211fd53270aa6e428fde",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TrainWbrAligned.py": "c6f562c7046a5b42533b9cbacd69f5341cbab8992b213aec1bc14ce66e437b83",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TrainWbrLearning.py": "50974f2dc5310ceef035e250a8fce5a5222760ea82b1a3542b0dfbc6cfbc45a9",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\TrainWbrStudy.py": "874c03552cfdf701acc71bed215628ade4ec6b668b227fba2359e064fe01c0f5",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\WbrAlignedEnv.py": "1d5926155659bdb323c69a2e001a619042c0f49e0f36b161230f127356bc3294",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\WbrAlignedReward.py": "ae5bd58bf63115c16985deba9fb8cf0a4a2f3ee9e3ee3e4995229ab4b2af334a",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\WbrLearningEnv.py": "26472ce386ea5cdab1d7db7416422cb1be341dddba64eb27426c273fe2475e5c",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120",
+      "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-41-search-completed\\search-state.json": "76b07fc267c15a107caea05f48dc4c98582d3d76772584be0397bb854f4387ba",
+      "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-queue\\plan.json": "193f8a52ae386849869c50c1faa74ad96f591b07fd469e671883c2f94b0c262d"
+    },
+    "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe"
+  },
+  "steps": {
+    "seal_bank": {
+      "command": [
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+        "-u",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-frozen\\tools\\mujoco\\learning\\SealWbrAlignedBank.py",
+        "--cases",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-frozen\\tools\\mujoco\\learning\\cases\\aligned-20261012\\training.json",
+        "--baseline",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\training\\summary.json",
+        "--registration",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json",
+        "--destination-root",
+        "D:\\ARBATOS"
+      ],
+      "started_at": "2026-10-12T06:43:25.116663+08:00",
+      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission\\seal_bank.log",
+      "exit_code": 0,
+      "finished_at": "2026-10-12T06:43:29.133299+08:00"
+    },
+    "freeze_training": {
+      "command": [
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+        "-u",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\PrepareWbrLearning.py",
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen",
+        "--reference-snapshot",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-frozen",
+        "--reuse-library"
+      ],
+      "started_at": "2026-10-12T06:43:29.185752+08:00",
+      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission\\freeze_training.log",
+      "exit_code": 0,
+      "finished_at": "2026-10-12T06:43:35.205409+08:00"
+    },
+    "wrapper_check": {
+      "command": [
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+        "-u",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\TestWbrAligned.py",
+        "--snapshot",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen",
+        "--bank",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+        "--baseline",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\development\\summary.json",
+        "--original-baseline",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-41-search-completed\\search-state.json",
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission\\wrapper-preflight.json"
+      ],
+      "started_at": "2026-10-12T06:43:35.420523+08:00",
+      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission\\wrapper_check.log",
+      "exit_code": 0,
+      "finished_at": "2026-10-12T06:45:37.517273+08:00"
+    },
+    "real_training_smoke": {
+      "command": [
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+        "-u",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\RunWbrStudyQueue.py",
+        "--plan",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\plan.json"
+      ],
+      "started_at": "2026-10-12T06:45:37.879859+08:00",
+      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission\\real_training_smoke.log",
+      "exit_code": 0,
+      "finished_at": "2026-10-12T06:47:30.005960+08:00"
+    },
+    "resume_check": {
+      "command": [
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+        "-u",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\CheckWbrAlignedSmoke.py",
+        "--first",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\first",
+        "--resumed",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\resumed",
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission\\training-resume-preflight.json"
+      ],
+      "started_at": "2026-10-12T06:47:30.581657+08:00",
+      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission\\resume_check.log",
+      "exit_code": 0,
+      "finished_at": "2026-10-12T06:47:44.609548+08:00"
+    },
+    "screening_first": {
+      "command": [
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+        "-u",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\RunWbrStudyQueue.py",
+        "--plan",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\plan.json"
+      ],
+      "started_at": "2026-10-12T06:47:44.658347+08:00",
+      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission\\screening_first.log",
+      "exit_code": 0,
+      "finished_at": "2026-10-12T09:12:23.529551+08:00"
+    },
+    "screening_promotion": {
+      "command": [
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+        "-u",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\PromoteWbrAligned.py",
+        "--stage",
+        "screen_expand",
+        "--registration",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json",
+        "--evaluations",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\monitor",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\monitor",
+        "--baseline",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\monitor\\summary.json",
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\screen-expand-promotion.json"
+      ],
+      "started_at": "2026-10-12T09:12:23.822326+08:00",
+      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission\\screening_promotion.log",
+      "exit_code": 0,
+      "finished_at": "2026-10-12T09:12:25.839130+08:00"
+    },
+    "promotion_recheck": {
+      "command": [
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+        "-u",
+        "-c",
+        "import sys; sys.path.insert(0,sys.argv[1]); from PromoteWbrAligned import verify_promotion; verify_promotion(sys.argv[2], require_eligible=False)",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\screen-expand-promotion.json"
+      ],
+      "started_at": "2026-10-12T09:12:25.857570+08:00",
+      "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\admission\\promotion_recheck.log",
+      "exit_code": 0,
+      "finished_at": "2026-10-12T09:12:27.869817+08:00"
+    }
+  },
+  "status": "completed",
+  "pid": 15376,
+  "child_pid": null,
+  "stage": "ready_for_next_stage",
+  "updated_at": "2026-10-12T09:12:27.873090+08:00",
+  "promotion": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\screen-expand-promotion.json",
+  "eligible": false
+}

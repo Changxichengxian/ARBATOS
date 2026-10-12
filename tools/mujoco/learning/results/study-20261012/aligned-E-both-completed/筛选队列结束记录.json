@@ -1,0 +1,328 @@
+{
+  "schema": 1,
+  "plan_sha256": "526b2b55109c523cddb46497cb967e7746fed1c8e6a51fdf52ac8cf9a2acd092",
+  "jobs": {
+    "E-aligned-41-train": {
+      "status": "completed",
+      "attempts": [
+        {
+          "command": [
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "-u",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py",
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+            "--bank",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+            "--registration",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json",
+            "--seed",
+            "41",
+            "--envs",
+            "2",
+            "--steps",
+            "262144"
+          ],
+          "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\logs\\E-aligned-41-train-01.log",
+          "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+          "job_binding_sha256": "0fffcd01b4954425a332c570891a0cdfcd99270f230fa100a2d699891862bdce",
+          "restart_without_checkpoint": false,
+          "started_at": "2026-10-11T22:47:44.953889+00:00",
+          "pid": 18576,
+          "exit_code": 0,
+          "finished_at": "2026-10-12T00:01:16.411319+00:00"
+        }
+      ],
+      "job_binding": {
+        "payload": {
+          "kind": "aligned_train",
+          "arguments": [
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+            "--bank",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+            "--registration",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json",
+            "--seed",
+            "41",
+            "--envs",
+            "2",
+            "--steps",
+            "262144"
+          ],
+          "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+          "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py",
+          "script_sha256": "c6f562c7046a5b42533b9cbacd69f5341cbab8992b213aec1bc14ce66e437b83",
+          "source_hashes": {
+            "TrainWbrAligned.py": "c6f562c7046a5b42533b9cbacd69f5341cbab8992b213aec1bc14ce66e437b83",
+            "WbrAlignedEnv.py": "1d5926155659bdb323c69a2e001a619042c0f49e0f36b161230f127356bc3294",
+            "WbrAlignedReward.py": "ae5bd58bf63115c16985deba9fb8cf0a4a2f3ee9e3ee3e4995229ab4b2af334a",
+            "TrainWbrStudy.py": "874c03552cfdf701acc71bed215628ade4ec6b668b227fba2359e064fe01c0f5",
+            "TrainWbrLearning.py": "50974f2dc5310ceef035e250a8fce5a5222760ea82b1a3542b0dfbc6cfbc45a9"
+          },
+          "source": {
+            "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+            "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d"
+          },
+          "inputs": {
+            "--bank": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+              "sha256": "fe2eab74ac5d7d23bb11eb5a175fd93c2d26ffd77f25b9281cbb8005a143f3b2"
+            },
+            "--registration": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json",
+              "sha256": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120"
+            }
+          }
+        },
+        "sha256": "0fffcd01b4954425a332c570891a0cdfcd99270f230fa100a2d699891862bdce"
+      },
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train"
+    },
+    "E-aligned-41-monitor": {
+      "status": "completed",
+      "attempts": [
+        {
+          "command": [
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "-u",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\monitor",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\cases\\aligned-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\monitor\\summary.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\logs\\E-aligned-41-monitor-01.log",
+          "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\monitor",
+          "job_binding_sha256": "2d90e69b5c2979804f093661bdee06572fb2b84634e7cf06a579f47df8afbb85",
+          "restart_without_checkpoint": false,
+          "started_at": "2026-10-12T00:01:16.454205+00:00",
+          "pid": 33500,
+          "exit_code": 0,
+          "finished_at": "2026-10-12T00:06:11.517361+00:00"
+        }
+      ],
+      "job_binding": {
+        "payload": {
+          "kind": "evaluate",
+          "arguments": [
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\monitor",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\cases\\aligned-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\monitor\\summary.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+          "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+          "script_sha256": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+          "source_hashes": {
+            "EvaluateWbrStudy.py": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405"
+          },
+          "source": {
+            "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+            "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d"
+          },
+          "inputs": {
+            "--cases": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\cases\\aligned-20261012\\monitor.json",
+              "sha256": "a745d63f6733949dea0d88ce97d4595c4f49ac492025aceb7e0b264824e77da0"
+            },
+            "--policy": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+              "files": [
+                {
+                  "name": "policy.json",
+                  "sha256": "f25f5dfa6f22ec170cd2fc4cb1a4a14f8d1149415ad6aa9d8852b7275f7c4299"
+                },
+                {
+                  "name": "policy.npz",
+                  "sha256": "8fb2ce8b8b0ec675ddd7e3402ece00afbdfbafbf73057d6436ec85307f95c815"
+                }
+              ]
+            },
+            "--baseline-cache": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\monitor\\summary.json",
+              "sha256": "22a7cb6b4ccaf7b8dfe3df56cfc5c9e47c32099cc0fe7f4aa335bf12f4e2b9d4"
+            }
+          }
+        },
+        "sha256": "2d90e69b5c2979804f093661bdee06572fb2b84634e7cf06a579f47df8afbb85"
+      },
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\monitor"
+    },
+    "E-aligned-73-train": {
+      "status": "completed",
+      "attempts": [
+        {
+          "command": [
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "-u",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py",
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train",
+            "--bank",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+            "--registration",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json",
+            "--seed",
+            "73",
+            "--envs",
+            "2",
+            "--steps",
+            "262144"
+          ],
+          "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\logs\\E-aligned-73-train-01.log",
+          "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train",
+          "job_binding_sha256": "3d9523c48c67689e81621774255b1c4a26050e4017002f31d2d22c38b4bbb821",
+          "restart_without_checkpoint": false,
+          "started_at": "2026-10-12T00:06:11.544421+00:00",
+          "pid": 20028,
+          "exit_code": 0,
+          "finished_at": "2026-10-12T01:07:22.000939+00:00"
+        }
+      ],
+      "job_binding": {
+        "payload": {
+          "kind": "aligned_train",
+          "arguments": [
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train",
+            "--bank",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+            "--registration",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json",
+            "--seed",
+            "73",
+            "--envs",
+            "2",
+            "--steps",
+            "262144"
+          ],
+          "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+          "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py",
+          "script_sha256": "c6f562c7046a5b42533b9cbacd69f5341cbab8992b213aec1bc14ce66e437b83",
+          "source_hashes": {
+            "TrainWbrAligned.py": "c6f562c7046a5b42533b9cbacd69f5341cbab8992b213aec1bc14ce66e437b83",
+            "WbrAlignedEnv.py": "1d5926155659bdb323c69a2e001a619042c0f49e0f36b161230f127356bc3294",
+            "WbrAlignedReward.py": "ae5bd58bf63115c16985deba9fb8cf0a4a2f3ee9e3ee3e4995229ab4b2af334a",
+            "TrainWbrStudy.py": "874c03552cfdf701acc71bed215628ade4ec6b668b227fba2359e064fe01c0f5",
+            "TrainWbrLearning.py": "50974f2dc5310ceef035e250a8fce5a5222760ea82b1a3542b0dfbc6cfbc45a9"
+          },
+          "source": {
+            "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+            "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d"
+          },
+          "inputs": {
+            "--bank": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+              "sha256": "fe2eab74ac5d7d23bb11eb5a175fd93c2d26ffd77f25b9281cbb8005a143f3b2"
+            },
+            "--registration": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json",
+              "sha256": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120"
+            }
+          }
+        },
+        "sha256": "3d9523c48c67689e81621774255b1c4a26050e4017002f31d2d22c38b4bbb821"
+      },
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train"
+    },
+    "E-aligned-73-monitor": {
+      "status": "completed",
+      "attempts": [
+        {
+          "command": [
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "-u",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\monitor",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\cases\\aligned-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\monitor\\summary.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\logs\\E-aligned-73-monitor-01.log",
+          "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\monitor",
+          "job_binding_sha256": "bd9b72b2eefba0d875ccf4cf622f57bf4e4163764ed8476e9e6c5ba702feb33e",
+          "restart_without_checkpoint": false,
+          "started_at": "2026-10-12T01:07:22.042986+00:00",
+          "pid": 24412,
+          "exit_code": 0,
+          "finished_at": "2026-10-12T01:12:22.091348+00:00"
+        }
+      ],
+      "job_binding": {
+        "payload": {
+          "kind": "evaluate",
+          "arguments": [
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\monitor",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\cases\\aligned-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\monitor\\summary.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+          "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+          "script_sha256": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+          "source_hashes": {
+            "EvaluateWbrStudy.py": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405"
+          },
+          "source": {
+            "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+            "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d"
+          },
+          "inputs": {
+            "--cases": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\cases\\aligned-20261012\\monitor.json",
+              "sha256": "a745d63f6733949dea0d88ce97d4595c4f49ac492025aceb7e0b264824e77da0"
+            },
+            "--policy": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train",
+              "files": [
+                {
+                  "name": "policy.json",
+                  "sha256": "84b2943b889c96a01c938444177294b907b6781e00bfccb0bcb04cbbd99c7770"
+                },
+                {
+                  "name": "policy.npz",
+                  "sha256": "5c9b38cd3d6bdd36dacc277bebc77d9bb892d659e1b1a814e03e1bfbdff49224"
+                }
+              ]
+            },
+            "--baseline-cache": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\monitor\\summary.json",
+              "sha256": "22a7cb6b4ccaf7b8dfe3df56cfc5c9e47c32099cc0fe7f4aa335bf12f4e2b9d4"
+            }
+          }
+        },
+        "sha256": "bd9b72b2eefba0d875ccf4cf622f57bf4e4163764ed8476e9e6c5ba702feb33e"
+      },
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\monitor"
+    }
+  },
+  "status": "completed",
+  "pid": 20360,
+  "current_job": null,
+  "updated_at": "2026-10-12T01:12:22.112848+00:00"
+}

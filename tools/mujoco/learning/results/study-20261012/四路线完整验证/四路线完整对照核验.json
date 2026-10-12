@@ -1,0 +1,476 @@
+{
+  "schema": 1,
+  "verified_at": "2026-10-12T09:02:06.759425+08:00",
+  "rows": [
+    {
+      "route": "A",
+      "label": "六维修正",
+      "seed": 41,
+      "validation_pairs": 45,
+      "stop_improvement": -0.0028350351343180424,
+      "push_improvement": -0.0009913116542541456,
+      "hip_heat_change": 0.061430342059510146,
+      "mean_case_counts": {
+        "stop": 18,
+        "push": 18,
+        "heat": 45
+      },
+      "physical_complete": true,
+      "original_guard_failing_cases": 45,
+      "original_guard_counts": {
+        "peak_roll_deg": 45,
+        "hip_heat_case": 5,
+        "stop_reverse": 4
+      },
+      "failed_case_ids": [
+        "validation-combined-000",
+        "validation-combined-001",
+        "validation-combined-002",
+        "validation-combined-003",
+        "validation-combined-004",
+        "validation-combined-005",
+        "validation-combined-006",
+        "validation-combined-007",
+        "validation-combined-008",
+        "validation-push-000",
+        "validation-push-001",
+        "validation-push-002",
+        "validation-push-003",
+        "validation-push-004",
+        "validation-push-005",
+        "validation-push-006",
+        "validation-push-007",
+        "validation-push-008",
+        "validation-push-009",
+        "validation-push-010",
+        "validation-push-011",
+        "validation-push-012",
+        "validation-push-013",
+        "validation-push-014",
+        "validation-push-015",
+        "validation-push-016",
+        "validation-push-017",
+        "validation-stop-000",
+        "validation-stop-001",
+        "validation-stop-002",
+        "validation-stop-003",
+        "validation-stop-004",
+        "validation-stop-005",
+        "validation-stop-006",
+        "validation-stop-007",
+        "validation-stop-008",
+        "validation-stop-009",
+        "validation-stop-010",
+        "validation-stop-011",
+        "validation-stop-012",
+        "validation-stop-013",
+        "validation-stop-014",
+        "validation-stop-015",
+        "validation-stop-016",
+        "validation-stop-017"
+      ],
+      "failures_by_case_kind": {
+        "combined": 9,
+        "push": 18,
+        "stop": 18
+      },
+      "extra_motion_quality": "not_evaluated",
+      "screening_pass": false,
+      "training_or_search_wall_seconds": 1660.437784,
+      "execution_attempts": 1,
+      "evaluation_wall_seconds": 610.4614798999974,
+      "budget": {
+        "kind": "PPO_steps",
+        "count": 131072
+      },
+      "source": {
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-A-full-41-evaluated\\summary.json": "de2972a1776199cf5ce25005c43e9da796ae220500658a468ce64d28f420a5f7",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-A-full-41-evaluated\\evaluation-run.json": "0ebabea419f293ac9a7894ada9f1b5cfc94ea12cd7864e2014401da802b94a3e",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-A-full-41-evaluated\\筛选结论.json": "a7ffa6ba128fc87009bae80edf34a694f0a054099342700c974c079454357cb4"
+      },
+      "queue_source": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\queue-state.json",
+      "training_or_search_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\A-full\\41\\train"
+    },
+    {
+      "route": "A",
+      "label": "六维修正",
+      "seed": 73,
+      "validation_pairs": 45,
+      "stop_improvement": 0.007643524741763552,
+      "push_improvement": 0.006798650660177263,
+      "hip_heat_change": 0.006566419070636265,
+      "mean_case_counts": {
+        "stop": 18,
+        "push": 18,
+        "heat": 45
+      },
+      "physical_complete": true,
+      "original_guard_failing_cases": 0,
+      "original_guard_counts": {},
+      "failed_case_ids": [],
+      "failures_by_case_kind": {},
+      "extra_motion_quality": "not_evaluated",
+      "screening_pass": false,
+      "training_or_search_wall_seconds": 1615.305695,
+      "execution_attempts": 1,
+      "evaluation_wall_seconds": 526.9020128999837,
+      "budget": {
+        "kind": "PPO_steps",
+        "count": 131072
+      },
+      "source": {
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-A-full-73-evaluated\\summary.json": "2f70f2ac3521b7b85c757b8bda64e2a2d5d60793bd173f8254d79cf4607f0cb2",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-A-full-73-evaluated\\evaluation-run.json": "625c3ac7721178c4a57155abaa9077a0d5e274ac4eb90c01656931f1475dc6a4",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-A-full-73-evaluated\\筛选结论.json": "fc02a32a0867404e8d77f3b6ec666d952c1285e7a4cf8e8a0caee770f5b6c8d1"
+      },
+      "queue_source": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\queue-state.json",
+      "training_or_search_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\A-full\\73\\train"
+    },
+    {
+      "route": "B",
+      "label": "对称动作",
+      "seed": 41,
+      "validation_pairs": 45,
+      "stop_improvement": -0.003734428346119145,
+      "push_improvement": 0.002955596952724515,
+      "hip_heat_change": 0.06697569942587189,
+      "mean_case_counts": {
+        "stop": 18,
+        "push": 18,
+        "heat": 45
+      },
+      "physical_complete": true,
+      "original_guard_failing_cases": 31,
+      "original_guard_counts": {
+        "hip_heat_case": 15,
+        "peak_pitch_deg": 12,
+        "stop_reverse": 18
+      },
+      "failed_case_ids": [
+        "validation-combined-006",
+        "validation-combined-007",
+        "validation-combined-008",
+        "validation-push-000",
+        "validation-push-001",
+        "validation-push-002",
+        "validation-push-004",
+        "validation-push-005",
+        "validation-push-006",
+        "validation-push-007",
+        "validation-push-010",
+        "validation-push-012",
+        "validation-push-014",
+        "validation-stop-000",
+        "validation-stop-001",
+        "validation-stop-002",
+        "validation-stop-003",
+        "validation-stop-004",
+        "validation-stop-005",
+        "validation-stop-006",
+        "validation-stop-007",
+        "validation-stop-008",
+        "validation-stop-009",
+        "validation-stop-010",
+        "validation-stop-011",
+        "validation-stop-012",
+        "validation-stop-013",
+        "validation-stop-014",
+        "validation-stop-015",
+        "validation-stop-016",
+        "validation-stop-017"
+      ],
+      "failures_by_case_kind": {
+        "combined": 3,
+        "push": 10,
+        "stop": 18
+      },
+      "extra_motion_quality": "not_evaluated",
+      "screening_pass": false,
+      "training_or_search_wall_seconds": 2285.870794,
+      "execution_attempts": 1,
+      "evaluation_wall_seconds": 744.2644788000034,
+      "budget": {
+        "kind": "PPO_steps",
+        "count": 131072
+      },
+      "source": {
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-B-symmetric-41\\summary.json": "d3b1b3e26724d3d322d54060eab0258101866986ce7b7ab5e50d14deb1c98921",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-B-symmetric-41\\evaluation-run.json": "2fe5e3154f286779149e223a7a7efc79c1fe553c2c1d1cddb4c3de37a450f348",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-B-symmetric-41\\筛选结论.json": "ec64c56699f1ae32119c4dc7d1f2420f996ef9a32b1ecbd140f73c40291a2302"
+      },
+      "queue_source": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\queue-state.json",
+      "training_or_search_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\B-symmetric\\41\\train"
+    },
+    {
+      "route": "B",
+      "label": "对称动作",
+      "seed": 73,
+      "validation_pairs": 45,
+      "stop_improvement": 0.0027891626584320983,
+      "push_improvement": -0.009789010379307905,
+      "hip_heat_change": 0.13397422430293826,
+      "mean_case_counts": {
+        "stop": 18,
+        "push": 18,
+        "heat": 45
+      },
+      "physical_complete": true,
+      "original_guard_failing_cases": 22,
+      "original_guard_counts": {
+        "hip_heat_case": 22,
+        "peak_pitch_deg": 2,
+        "stop_reverse": 4
+      },
+      "failed_case_ids": [
+        "validation-combined-001",
+        "validation-combined-003",
+        "validation-combined-005",
+        "validation-combined-007",
+        "validation-push-000",
+        "validation-push-003",
+        "validation-push-006",
+        "validation-push-008",
+        "validation-push-009",
+        "validation-push-012",
+        "validation-push-013",
+        "validation-push-015",
+        "validation-push-016",
+        "validation-stop-001",
+        "validation-stop-005",
+        "validation-stop-006",
+        "validation-stop-009",
+        "validation-stop-010",
+        "validation-stop-011",
+        "validation-stop-013",
+        "validation-stop-015",
+        "validation-stop-016"
+      ],
+      "failures_by_case_kind": {
+        "combined": 4,
+        "push": 9,
+        "stop": 9
+      },
+      "extra_motion_quality": "not_evaluated",
+      "screening_pass": false,
+      "training_or_search_wall_seconds": 1910.519525,
+      "execution_attempts": 1,
+      "evaluation_wall_seconds": 647.7331544999906,
+      "budget": {
+        "kind": "PPO_steps",
+        "count": 131072
+      },
+      "source": {
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-B-symmetric-73\\summary.json": "1893b4b44fe9dd759088a904454c004deeb2da7dd2d6db503e787a931216dcd7",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-B-symmetric-73\\evaluation-run.json": "34b6451c7504a8f8d3d5ed0a39fafba94f7ca6e10408edf5bdaf2c4bd127b089",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-B-symmetric-73\\筛选结论.json": "3b27de77bde0c2e62920ca5bab3db16d2927ffa28a46479e1a257cf1e5ff5f21"
+      },
+      "queue_source": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\queue-state.json",
+      "training_or_search_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\B-symmetric\\73\\train"
+    },
+    {
+      "route": "C",
+      "label": "线性修正",
+      "seed": 41,
+      "validation_pairs": 45,
+      "stop_improvement": 0.0276040131819123,
+      "push_improvement": 0.023411024338318764,
+      "hip_heat_change": -0.01753221138666794,
+      "mean_case_counts": {
+        "stop": 18,
+        "push": 18,
+        "heat": 45
+      },
+      "physical_complete": true,
+      "original_guard_failing_cases": 5,
+      "original_guard_counts": {
+        "peak_pitch_deg": 4,
+        "push_primary": 1
+      },
+      "failed_case_ids": [
+        "validation-combined-005",
+        "validation-combined-007",
+        "validation-push-008",
+        "validation-stop-001",
+        "validation-stop-015"
+      ],
+      "failures_by_case_kind": {
+        "combined": 2,
+        "push": 1,
+        "stop": 2
+      },
+      "extra_motion_quality": "not_evaluated",
+      "screening_pass": false,
+      "training_or_search_wall_seconds": 4582.201077,
+      "execution_attempts": 1,
+      "evaluation_wall_seconds": 759.375804499985,
+      "budget": {
+        "kind": "candidate_parameters",
+        "count": 40
+      },
+      "source": {
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\linear-C-41-validation\\summary.json": "ae36fc49b8362f58dba64e981fd3717ba9bb22306094b636b5bcdb147b84f97d",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\linear-C-41-validation\\run.json": "996a4bfb033cb4916b14722536f42750bfbee6a11426c6165798587950e1be0b",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\linear-C-41-validation\\筛选结论.json": "e3047b0f0d787a081ec55f455c87b2b0bd99c9ee72a531647e4186978452b975"
+      },
+      "queue_source": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\queue-state.json",
+      "training_or_search_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\C-linear\\41\\search"
+    },
+    {
+      "route": "C",
+      "label": "线性修正",
+      "seed": 73,
+      "validation_pairs": 45,
+      "stop_improvement": 0.030314862345876326,
+      "push_improvement": 0.027026788947093205,
+      "hip_heat_change": -0.016205674622943644,
+      "mean_case_counts": {
+        "stop": 18,
+        "push": 18,
+        "heat": 45
+      },
+      "physical_complete": true,
+      "original_guard_failing_cases": 4,
+      "original_guard_counts": {
+        "peak_pitch_deg": 3,
+        "push_primary": 1
+      },
+      "failed_case_ids": [
+        "validation-combined-005",
+        "validation-combined-007",
+        "validation-stop-001",
+        "validation-stop-015"
+      ],
+      "failures_by_case_kind": {
+        "combined": 2,
+        "stop": 2
+      },
+      "extra_motion_quality": "not_evaluated",
+      "screening_pass": false,
+      "training_or_search_wall_seconds": 3430.484127,
+      "execution_attempts": 1,
+      "evaluation_wall_seconds": 572.5573352999927,
+      "budget": {
+        "kind": "candidate_parameters",
+        "count": 40
+      },
+      "source": {
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\linear-C-73-validation\\summary.json": "d525967b90fdd9dce5299a27b6365e3e55a2c3d4656097b365e264d4bed6f207",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\linear-C-73-validation\\run.json": "824a6634a67f2b2617d27058dc6ac17b795c6aa4c07983bed4006554b7e8798f",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\linear-C-73-validation\\筛选结论.json": "7230fa440f77f69b9af23447114a3ae1ea6362de6828f012fdce2a5e83edc37c"
+      },
+      "queue_source": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\queue-state.json",
+      "training_or_search_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\C-linear\\73\\search"
+    },
+    {
+      "route": "D",
+      "label": "常数参考参数",
+      "seed": 41,
+      "validation_pairs": 45,
+      "stop_improvement": 0.045084421129922614,
+      "push_improvement": 0.08626696100260844,
+      "hip_heat_change": 0.02178259089094814,
+      "mean_case_counts": {
+        "stop": 18,
+        "push": 18,
+        "heat": 45
+      },
+      "physical_complete": true,
+      "original_guard_failing_cases": 7,
+      "original_guard_counts": {
+        "peak_pitch_deg": 5,
+        "push_primary": 1,
+        "hip_heat_case": 1
+      },
+      "failed_case_ids": [
+        "validation-combined-005",
+        "validation-combined-007",
+        "validation-push-000",
+        "validation-push-001",
+        "validation-push-006",
+        "validation-push-012",
+        "validation-push-017"
+      ],
+      "failures_by_case_kind": {
+        "combined": 2,
+        "push": 5
+      },
+      "extra_motion_quality": "failed",
+      "screening_pass": false,
+      "training_or_search_wall_seconds": 5802.023874,
+      "execution_attempts": 1,
+      "evaluation_wall_seconds": 765.1303292000084,
+      "budget": {
+        "kind": "candidate_parameters",
+        "count": 72
+      },
+      "source": {
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-41-validation\\summary.json": "3f25988ad036b2f266dd01e028a999f939858411ffbbaff6b74e6a96e2fcf74b",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-41-validation\\run.json": "55174f66a1477b9b75badecb052ff18669411cb379492ad1c314bc431a852edc",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-41-validation\\筛选结论.json": "ded4e21f238afa038cc106c02a00ce7dba8c13c11222fbf6f8ccac9d3dc0b8a4"
+      },
+      "queue_source": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\queue-state.json",
+      "training_or_search_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\D-reference\\41\\search"
+    },
+    {
+      "route": "D",
+      "label": "常数参考参数",
+      "seed": 73,
+      "validation_pairs": 45,
+      "stop_improvement": 0.03633418111204445,
+      "push_improvement": 0.05893420581676134,
+      "hip_heat_change": 0.013642242510660818,
+      "mean_case_counts": {
+        "stop": 18,
+        "push": 18,
+        "heat": 45
+      },
+      "physical_complete": true,
+      "original_guard_failing_cases": 5,
+      "original_guard_counts": {
+        "peak_pitch_deg": 5
+      },
+      "failed_case_ids": [
+        "validation-combined-005",
+        "validation-push-000",
+        "validation-push-001",
+        "validation-push-012",
+        "validation-push-017"
+      ],
+      "failures_by_case_kind": {
+        "combined": 1,
+        "push": 4
+      },
+      "extra_motion_quality": "passed",
+      "screening_pass": false,
+      "training_or_search_wall_seconds": 6457.592648,
+      "execution_attempts": 1,
+      "evaluation_wall_seconds": 648.7956395999936,
+      "budget": {
+        "kind": "candidate_parameters",
+        "count": 72
+      },
+      "source": {
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-73-validation\\summary.json": "42a8b9ce3946e6f4691e02f76ddafd2fbeba9b93021ecd239d3eaaf70ed8fb89",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-73-validation\\run.json": "e9360b0dfd2b4fabc01da538119a0eded58ffef4a61d367296a91aa195d2ab17",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-73-validation\\筛选结论.json": "e4defb84ef679083d73a0d9fe44f75ca9bedc496df30141c009d2df750613318"
+      },
+      "queue_source": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\queue-state.json",
+      "training_or_search_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\D-reference\\73\\search"
+    }
+  ],
+  "candidates_evaluated": 360,
+  "completed_record_rows_checked": 720,
+  "common_baseline_45_metrics_exact": true,
+  "common_nonlearning_source_files": 104,
+  "validation_cases_sha256": "851efabbabdb5ffdf9904c61ae1cad07e1a6f4d519b9ca0c03ebffea3d08e25b",
+  "physical_controller_sha256": "2d3600ca5d3c6d1fc42bc73895431cdcccc4c540f24753317181aa984aabbed1",
+  "interpretation": [
+    "停车和受推的平均收益分别用18个单项场景；9个组合场景参加逐例约束，45例全部参加平均髋部热指标。",
+    "平均收益是原控制与候选均值之比，不是逐例百分比的简单平均。",
+    "原逐例保护含最终5%主要误差和姿态/峰值/用力等检查；这些失败数不能等同于物理失败数。",
+    "A/B/C未达到原主要收益筛选时不追加运动质量评价，未评价不应标成已证实质量失败。",
+    "四类预算和搜索方法不同，耗时包含同机并行任务的竞争，仅作实际工作量记录，不能视为严格等算力排名。",
+    "E旧24例和F新24例监控属于另一批场景，不并入本45例比较。"
+  ],
+  "source_script_sha256": "7854a830188dde066ca41c820cbbd8cc4c9e142d3874f873abcfed38371a54fe"
+}

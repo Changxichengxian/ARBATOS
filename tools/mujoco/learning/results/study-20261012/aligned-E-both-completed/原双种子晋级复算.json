@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "stage": "screen_expand",
+  "eligible": false,
+  "approved_at": "2026-10-12T09:12:25.024657+08:00",
+  "before_cutoff": true,
+  "registration_sha256": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120",
+  "verifier_sha256": "cfa3bb3e03da4aeda1ea9592d338aebc724bdb4cd243628e8473480fd39cb3f4",
+  "criteria": {
+    "steps": 262144,
+    "dataset": "aligned-monitor",
+    "minimum_stop_improvement": 0.01,
+    "minimum_push_improvement": 0.01,
+    "both_seeds_required": true,
+    "all_original_case_guards": true,
+    "motion_quality": true,
+    "mean_hip_heat_increase_max": 0.05,
+    "physics_complete": true,
+    "selection": "只评价最终权重，不按监控成绩挑中途检查点"
+  },
+  "results": [
+    {
+      "seed": 41,
+      "evaluation": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\monitor",
+      "policy": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+      "gate": {
+        "pass_all": false,
+        "physical_complete": true,
+        "original_case_guards": false,
+        "motion_quality": false,
+        "stop_improvement": 0.07224353065004463,
+        "push_improvement": 0.06676187554462365,
+        "heat_change": 0.02169722585383327
+      }
+    },
+    {
+      "seed": 73,
+      "evaluation": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\monitor",
+      "policy": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train",
+      "gate": {
+        "pass_all": false,
+        "physical_complete": true,
+        "original_case_guards": false,
+        "motion_quality": true,
+        "stop_improvement": 0.04616286618827381,
+        "push_improvement": 0.08324717449626629,
+        "heat_change": 0.008127952825071727
+      }
+    }
+  ],
+  "evidence_files": {
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\cases\\aligned-20261012\\monitor.json": "a745d63f6733949dea0d88ce97d4595c4f49ac492025aceb7e0b264824e77da0",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\monitor\\summary.json": "22a7cb6b4ccaf7b8dfe3df56cfc5c9e47c32099cc0fe7f4aa335bf12f4e2b9d4",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\monitor\\summary.json": "4020e0e406d32d10cebf543ab66f0b23910f16596aba19983ccc706b723354e6",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\monitor\\run.json": "2cedfee2eb6d1c327648777282561fe1284639b6c573ffde97eb7b6dc5e80f1f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\policy.json": "f25f5dfa6f22ec170cd2fc4cb1a4a14f8d1149415ad6aa9d8852b7275f7c4299",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\policy.npz": "8fb2ce8b8b0ec675ddd7e3402ece00afbdfbafbf73057d6436ec85307f95c815",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\checkpoint.zip": "0ab1e703d645c1c69079e739fb7e7cb34691d102ba46f6ed32582e0b0993d242",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\run.json": "9649f8473e09ded051d2d84e9136c1e616a4812a7995b1c02136701e0c015537",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\status.json": "60c9f359b96d0b9453b8c952a0d3b12487475fb52f96681ea144eeee61b4565d",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\monitor\\summary.json": "5a5664505ad12cc3a6003ff1ff336b40361d2eaee4c52a7e73408113a5f0e946",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\monitor\\run.json": "266c0e1bc19372d3f2234c0431d3be1ba34c09f922b13ba686cc51d641068cef",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train\\policy.json": "84b2943b889c96a01c938444177294b907b6781e00bfccb0bcb04cbbd99c7770",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train\\policy.npz": "5c9b38cd3d6bdd36dacc277bebc77d9bb892d659e1b1a814e03e1bfbdff49224",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train\\checkpoint.zip": "0642788d13e88f2474ac3460046e42dd5ff1fb6eceb2eb5a28574bb42837908c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train\\run.json": "ba27f59d7e0e9bf9f49688818c441e570b26e55944553c6b7d3c22ff3d241763",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train\\status.json": "28952e3ab6c7c4b27f054e5b85f1d8705c1bbd12f31c0c2893f3051e66ecb200"
+  },
+  "baseline_path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baselines\\monitor\\summary.json",
+  "registration_path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-frozen\\tools\\mujoco\\learning\\results\\study-20261012\\对齐评分参考策略训练登记.json",
+  "note": "按登记条件复算两种子的完整配对结果；既不选中途权重，也不放宽原保护。"
+}

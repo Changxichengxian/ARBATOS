@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T09:13:45.886166+08:00",
+  "route": "E-aligned-reference",
+  "rows": [
+    {
+      "seed": 41,
+      "gate": {
+        "pass_all": false,
+        "physical_complete": true,
+        "original_case_guards": false,
+        "motion_quality": false,
+        "stop_improvement": 0.07224353065004463,
+        "push_improvement": 0.06676187554462365,
+        "heat_change": 0.02169722585383327
+      },
+      "original_guard_failing_cases": 3,
+      "motion_quality_failing_cases": 1,
+      "original_guard_failure_counts": {
+        "peak_pitch_deg": 2,
+        "push_primary": 1
+      },
+      "motion_quality_failure_counts": {
+        "push_world_vx_rms_mps": 1,
+        "push_plane_speed_rms_mps": 1
+      },
+      "trained_directory": "tools/mujoco/learning/results/study-20261012/aligned-E-41-trained",
+      "monitor_directory": "tools/mujoco/learning/results/study-20261012/aligned-E-41-monitor",
+      "training_steps": 262144,
+      "training_episodes": 490,
+      "elapsed_training_seconds": 4385.298072100006,
+      "training_guard_violation_episodes": 91,
+      "sources": {
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-E-41-trained\\训练完成核验.json": "1ff418b21bcd021c2f2fd56f9d5a2ccf76b628686212eb9d2ad6c6ff92071f37",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-E-41-monitor\\单种子监控核验.json": "0c21e71af146a97169458ea69f30a84aef4331a139edfc0dba52b841e537d08d",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\completed-log-audit-41\\训练日志核验.json": "9482196d90c73d1dc4fcd6208b3df9c962b9fc769fdd782483b121fc314e32e0"
+      }
+    },
+    {
+      "seed": 73,
+      "gate": {
+        "pass_all": false,
+        "physical_complete": true,
+        "original_case_guards": false,
+        "motion_quality": true,
+        "stop_improvement": 0.04616286618827381,
+        "push_improvement": 0.08324717449626629,
+        "heat_change": 0.008127952825071727
+      },
+      "original_guard_failing_cases": 3,
+      "motion_quality_failing_cases": 0,
+      "original_guard_failure_counts": {
+        "peak_pitch_deg": 3
+      },
+      "motion_quality_failure_counts": {},
+      "trained_directory": "tools/mujoco/learning/results/study-20261012/aligned-E-73-trained",
+      "monitor_directory": "tools/mujoco/learning/results/study-20261012/aligned-E-73-monitor",
+      "training_steps": 262144,
+      "training_episodes": 490,
+      "elapsed_training_seconds": 3653.4950795999903,
+      "training_guard_violation_episodes": 84,
+      "sources": {
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-E-73-trained\\训练完成核验.json": "018a3047b64074306a3d6535c7785bf8ee9e040b05c0610dee84618ba5280e1a",
+        "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-E-73-monitor\\单种子监控核验.json": "66592230dfc772c4973793ec79647542131fa7be2da35dc0551ad08b300a05a9",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\completed-log-audit-73\\训练日志核验.json": "b6dac1104d4f07d6b78ffa853de3766c2199c1481029ef16eb6922109e540175"
+      }
+    }
+  ],
+  "both_seed_gate_pass": false,
+  "training_steps_each": 262144,
+  "monitor_pairs_each": 24,
+  "completed_evaluation_records_checked": 96,
+  "promotion_recomputed_exact": true,
+  "expansion_authorized": false,
+  "final_dataset_used": false,
+  "promotion_sha256": "8fe959109f67f39ec4c0b00a74c521e2ebb5c514f43317e1a3fb110a85b7c422",
+  "source_script_sha256": "0fe815c3433cf1e149b27bba2a8bf08e1e863f901e2ecd25eb7cf2fc62ea8564",
+  "boundary": "E原24例监控：两种子原预算全部完成但未通过逐例条件，停止扩大训练。后续在F新24例上仅作事前登记的单变量对照，不改变此结论。"
+}

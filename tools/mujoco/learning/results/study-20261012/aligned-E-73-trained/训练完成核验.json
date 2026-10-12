@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T09:10:48.287472+08:00",
+  "status": "passed",
+  "seed": 73,
+  "training_steps": 262144,
+  "completed_training_episodes": 490,
+  "training_physical_failures": 0,
+  "elapsed_training_seconds": 3653.4950795999903,
+  "actual_model_steps": 262144,
+  "network_load_exact": true,
+  "optimizer_load_exact": true,
+  "optimizer_states": 13,
+  "network_state_sha256": "c3339700db11ee522b71acb2a690362ebf6a32a89efde6d98a5de3733a0c2e53",
+  "optimizer_state_sha256": "bfa04786ad00d279c58df51ede41db686a038e16fff67c393cfbaf325575adcf",
+  "export_inputs": 128,
+  "export_max_abs_error": 1.1920928955078125e-07,
+  "files": {
+    "checkpoint.zip": "0642788d13e88f2474ac3460046e42dd5ff1fb6eceb2eb5a28574bb42837908c",
+    "policy.npz": "5c9b38cd3d6bdd36dacc277bebc77d9bb892d659e1b1a814e03e1bfbdff49224",
+    "policy.json": "84b2943b889c96a01c938444177294b907b6781e00bfccb0bcb04cbbd99c7770",
+    "run.json": "ba27f59d7e0e9bf9f49688818c441e570b26e55944553c6b7d3c22ff3d241763",
+    "status.json": "28952e3ab6c7c4b27f054e5b85f1d8705c1bbd12f31c0c2893f3051e66ecb200",
+    "aligned-episodes.jsonl": "23bc39334a222828531562baffdf38fd3801f6f180f7ffb264e3cdd382db4ba1",
+    "progress.jsonl": "c4ce1cbadc376e2bf9fcd834495eb01f2efa4cb0ac86d5ccc804f2b301961f48"
+  },
+  "source": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train",
+  "source_script_sha256": "3d5ca5661a11cdbf2842b273c6943a599ee0366d66ab5a4b9bfde87551a368aa",
+  "frozen_manifest_sha256": "1d04fb34dd8ac26f497746ad5f2871c501025504424c5fe8cb207b94305684c2",
+  "frozen_environment_archive": "tools/mujoco/learning/results/study-20261012/阶段恢复包-E首段.zip",
+  "independent_performance_verified": false,
+  "boundary": "训练完成及实际模型载入核验，不代表控制改善。只评价固定预算最终模型；扩展必须两种子监控共同达标并通过原晋级复算。"
+}
