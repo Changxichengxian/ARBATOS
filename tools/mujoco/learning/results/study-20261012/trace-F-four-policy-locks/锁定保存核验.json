@@ -1,0 +1,21 @@
+{
+  "saved_at": "2026-10-12T12:34:17.453166+08:00",
+  "four_models_locked_before_evaluation": true,
+  "files": {
+    "comparison-locks/E-41.json": "e208e3314115a8e22edd1db7791be66481a9629398e76634bf6f48fb74e2b914",
+    "comparison-locks/E-73.json": "b48a09dd6ad37740df3ea814d1c818f5276bb3eebc6baff3c14434aff144820c",
+    "comparison-locks/F-41.json": "92c324caebaace95322eb82d15d5df8ac7abe5c4420099aa6c0263e21b3f57ba",
+    "comparison-locks/F-73.json": "b2a5190e12cb6b723852850a52c5992c2e2c8333841ef049351316f1a55e5d22",
+    "四策略锁定.json": "11f9a1072ee59ebc4834ca29b563ac9b946900b4810d8a6edd7174658806a1b8",
+    "评价计划.json": "a7769c31de98ab522eca3622a13c611b229b349cb8eade74cd357a37c4b9b459",
+    "评价启动记录.json": "616fb9680b2186781c688ceb87c193f987fd47b97b7f70575619c72b30be96e4",
+    "LockTraceComparison.py": "e68d62c1a8bad59b23e403e966ee3bea5ff7e2e2985b6458ea15ebc5a0b4ea2f",
+    "WbrFinalModelChecks.py": "b89df332f2b5672178346f6233a579c695e377d1cf0b184b1d1e84dde6ad6d11"
+  },
+  "actual_queue_process": {
+    "ProcessId": 19688,
+    "CreationDate": "2026-10-12T12:33:14.730029+08:00",
+    "CommandLine": "\"C:\\Users\\28111\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" -u .\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\RunWbrStudyQueue.py --plan .\\work\\study-20261012\\long-trace\\evaluation\\plan.json"
+  },
+  "boundary": "完整最终模型已锁定，唯一新24例评价正在执行；不代表筛选通过或允许扩大训练。"
+}

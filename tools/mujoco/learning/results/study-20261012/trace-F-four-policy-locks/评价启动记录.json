@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "plan_sha256": "a7769c31de98ab522eca3622a13c611b229b349cb8eade74cd357a37c4b9b459",
+  "jobs": {
+    "E-41": {
+      "status": "running",
+      "attempts": [
+        {
+          "command": [
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "-u",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+            "--lock",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\E-41.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\logs\\E-41-01.log",
+          "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41",
+          "job_binding_sha256": "5c437feb40b218bf0eaffb78a9fd783cf60472a3d2e08cfee8885ba5152831c9",
+          "restart_without_checkpoint": false,
+          "started_at": "2026-10-12T04:33:14.949803+00:00",
+          "pid": 12972
+        }
+      ],
+      "job_binding": {
+        "payload": {
+          "kind": "evaluate",
+          "arguments": [
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+            "--lock",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\E-41.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+          "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+          "script_sha256": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+          "source_hashes": {
+            "EvaluateWbrStudy.py": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405"
+          },
+          "source": {
+            "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+            "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d"
+          },
+          "inputs": {
+            "--cases": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+              "sha256": "a43846dd9c0d00aa94ddf482a182f6955d5f8f5be37731567f8cc15e0c363ea8"
+            },
+            "--policy": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+              "files": [
+                {
+                  "name": "policy.json",
+                  "sha256": "f25f5dfa6f22ec170cd2fc4cb1a4a14f8d1149415ad6aa9d8852b7275f7c4299"
+                },
+                {
+                  "name": "policy.npz",
+                  "sha256": "8fb2ce8b8b0ec675ddd7e3402ece00afbdfbafbf73057d6436ec85307f95c815"
+                }
+              ]
+            },
+            "--lock": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\E-41.json",
+              "sha256": "e208e3314115a8e22edd1db7791be66481a9629398e76634bf6f48fb74e2b914"
+            },
+            "--baseline-cache": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+              "sha256": "a143cee69e9aaf0d35bd3749ed584ceb8dcad6038af5da397bc9b02b6298f0e3"
+            }
+          }
+        },
+        "sha256": "5c437feb40b218bf0eaffb78a9fd783cf60472a3d2e08cfee8885ba5152831c9"
+      },
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41"
+    },
+    "E-73": {
+      "status": "queued",
+      "attempts": []
+    },
+    "F-41": {
+      "status": "queued",
+      "attempts": []
+    },
+    "F-73": {
+      "status": "queued",
+      "attempts": []
+    }
+  },
+  "status": "running",
+  "pid": 19688,
+  "current_job": "E-41",
+  "updated_at": "2026-10-12T04:33:14.961580+00:00"
+}

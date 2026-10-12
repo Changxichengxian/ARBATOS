@@ -1,0 +1,146 @@
+{
+  "schema": 1,
+  "locked_at": "2026-10-12T12:32:55.481190+08:00",
+  "registration_sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
+  "cases_sha256": "a935e32db4cf96af9fe74013be09cc718a60b9686646b4983c8691f6130b4226",
+  "baseline_summary_sha256": "a143cee69e9aaf0d35bd3749ed584ceb8dcad6038af5da397bc9b02b6298f0e3",
+  "all_four_completed_and_checked": true,
+  "steps_each": 262144,
+  "models": [
+    {
+      "route": "E",
+      "seed": 41,
+      "directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+      "files": {
+        "policy.json": "f25f5dfa6f22ec170cd2fc4cb1a4a14f8d1149415ad6aa9d8852b7275f7c4299",
+        "policy.npz": "8fb2ce8b8b0ec675ddd7e3402ece00afbdfbafbf73057d6436ec85307f95c815",
+        "checkpoint.zip": "0ab1e703d645c1c69079e739fb7e7cb34691d102ba46f6ed32582e0b0993d242",
+        "run.json": "9649f8473e09ded051d2d84e9136c1e616a4812a7995b1c02136701e0c015537",
+        "status.json": "60c9f359b96d0b9453b8c952a0d3b12487475fb52f96681ea144eeee61b4565d"
+      },
+      "actual_steps": 262144,
+      "actual_lambda": 0.97,
+      "export_error": 1.1920928955078125e-07,
+      "resume_chain": [],
+      "completion": {
+        "natural_budget_completion": true,
+        "sampled_steps": 262144,
+        "total_timesteps": 262144,
+        "progress_remaining": 0.0,
+        "rollout_steps": 2048,
+        "rollout_batches": 128,
+        "batch_size": 256,
+        "actual_epoch_counter": 768,
+        "maximum_epoch_counter": 768,
+        "target_kl": 0.025,
+        "note": "以自然完成标记和循环进度检查最后一批已处理；轮次计数允许原KL阈值提前结束，不等于梯度更新次数。"
+      },
+      "registration_sha256": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120",
+      "snapshot_sha256": "1d04fb34dd8ac26f497746ad5f2871c501025504424c5fe8cb207b94305684c2",
+      "lock_sha256": "2f6f7c2d69a7ad59024ae805bdbc11732090d0938e1caea72a8d94faeb9a8c94",
+      "lock_file_sha256": "e208e3314115a8e22edd1db7791be66481a9629398e76634bf6f48fb74e2b914"
+    },
+    {
+      "route": "E",
+      "seed": 73,
+      "directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train",
+      "files": {
+        "policy.json": "84b2943b889c96a01c938444177294b907b6781e00bfccb0bcb04cbbd99c7770",
+        "policy.npz": "5c9b38cd3d6bdd36dacc277bebc77d9bb892d659e1b1a814e03e1bfbdff49224",
+        "checkpoint.zip": "0642788d13e88f2474ac3460046e42dd5ff1fb6eceb2eb5a28574bb42837908c",
+        "run.json": "ba27f59d7e0e9bf9f49688818c441e570b26e55944553c6b7d3c22ff3d241763",
+        "status.json": "28952e3ab6c7c4b27f054e5b85f1d8705c1bbd12f31c0c2893f3051e66ecb200"
+      },
+      "actual_steps": 262144,
+      "actual_lambda": 0.97,
+      "export_error": 1.1920928955078125e-07,
+      "resume_chain": [],
+      "completion": {
+        "natural_budget_completion": true,
+        "sampled_steps": 262144,
+        "total_timesteps": 262144,
+        "progress_remaining": 0.0,
+        "rollout_steps": 2048,
+        "rollout_batches": 128,
+        "batch_size": 256,
+        "actual_epoch_counter": 768,
+        "maximum_epoch_counter": 768,
+        "target_kl": 0.025,
+        "note": "以自然完成标记和循环进度检查最后一批已处理；轮次计数允许原KL阈值提前结束，不等于梯度更新次数。"
+      },
+      "registration_sha256": "1dd313f53677530fc8f5e39f7e8bafd68b91813f3c445d1cf6ac3817f04ed120",
+      "snapshot_sha256": "1d04fb34dd8ac26f497746ad5f2871c501025504424c5fe8cb207b94305684c2",
+      "lock_sha256": "d9eb2965850382300ce4691cc1335aab1405c5264cbb5fee05b822c70b5d7f4b",
+      "lock_file_sha256": "b48a09dd6ad37740df3ea814d1c818f5276bb3eebc6baff3c14434aff144820c"
+    },
+    {
+      "route": "F",
+      "seed": 41,
+      "directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train",
+      "files": {
+        "policy.json": "fcc11d536b65514696bbfdd9c8a61ccdec90cce7b366d2677205a8521b36bdac",
+        "policy.npz": "ef7036a7051c9d4562640fdafbb55558113cd645da5366ab07eee5b008029a52",
+        "checkpoint.zip": "e68cd25b59b11487495c6fe04524bd306ad2c53d0941012e10422b261efe11b6",
+        "run.json": "2e1cfd98b558419ff125a73582ae4a6342cd441b5ff2c1714e812459f32f9f0f",
+        "status.json": "deb91d497f7b93e06cd859a0af1bcc033ff2eabe560b0e6238bf289c5e1d947b"
+      },
+      "actual_steps": 262144,
+      "actual_lambda": 1.0,
+      "export_error": 1.1920928955078125e-07,
+      "resume_chain": [],
+      "completion": {
+        "natural_budget_completion": true,
+        "sampled_steps": 262144,
+        "total_timesteps": 262144,
+        "progress_remaining": 0.0,
+        "rollout_steps": 2048,
+        "rollout_batches": 128,
+        "batch_size": 256,
+        "actual_epoch_counter": 768,
+        "maximum_epoch_counter": 768,
+        "target_kl": 0.025,
+        "note": "以自然完成标记和循环进度检查最后一批已处理；轮次计数允许原KL阈值提前结束，不等于梯度更新次数。"
+      },
+      "registration_sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
+      "snapshot_sha256": "63c4e9323a923dfec0a30b395529b3f55906314c3008183449dbfd11f346ab35",
+      "lock_sha256": "2c8c5a36b9299cbb7215c465f32e6dd1d95da1f88a17556974759774dba9ac17",
+      "lock_file_sha256": "92c324caebaace95322eb82d15d5df8ac7abe5c4420099aa6c0263e21b3f57ba"
+    },
+    {
+      "route": "F",
+      "seed": 73,
+      "directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02",
+      "files": {
+        "policy.json": "d83239933de8287954e90c97a28c44d83b6b509a472c117affe1383577fb3290",
+        "policy.npz": "f4d950d313c315f15a963bb37523bf5bfff6b81eca5c6379b64cc318273ccbc9",
+        "checkpoint.zip": "cc776a7279cffee40fccbea29cd4b2e20beee414e8a48f61c507c01e09d38258",
+        "run.json": "748f02ab1491672521e1925c81d1c2bbb3df9026e60460047237742d880aa6c2",
+        "status.json": "bf27265697c95d6c1355cdc47a7309e2de427e9533ee2a305fc2fef80e903fff"
+      },
+      "actual_steps": 262144,
+      "actual_lambda": 1.0,
+      "export_error": 1.7881393432617188e-07,
+      "resume_chain": [],
+      "completion": {
+        "natural_budget_completion": true,
+        "sampled_steps": 262144,
+        "total_timesteps": 262144,
+        "progress_remaining": 0.0,
+        "rollout_steps": 2048,
+        "rollout_batches": 128,
+        "batch_size": 256,
+        "actual_epoch_counter": 768,
+        "maximum_epoch_counter": 768,
+        "target_kl": 0.025,
+        "note": "以自然完成标记和循环进度检查最后一批已处理；轮次计数允许原KL阈值提前结束，不等于梯度更新次数。"
+      },
+      "registration_sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
+      "snapshot_sha256": "63c4e9323a923dfec0a30b395529b3f55906314c3008183449dbfd11f346ab35",
+      "lock_sha256": "4e92192a53557e3ec49aa5e96b218ed19990752e4bc0bb84570e500e388f4d29",
+      "lock_file_sha256": "b2a5190e12cb6b723852850a52c5992c2e2c8333841ef049351316f1a55e5d22"
+    }
+  ],
+  "source_sha256": "e68d62c1a8bad59b23e403e966ee3bea5ff7e2e2985b6458ea15ebc5a0b4ea2f",
+  "completion_checker_sha256": "b89df332f2b5672178346f6233a579c695e377d1cf0b184b1d1e84dde6ad6d11",
+  "boundary": "这只是一次性新监控的四策略锁定，未启动评价；不授权扩展、旧验证或最终集。"
+}
