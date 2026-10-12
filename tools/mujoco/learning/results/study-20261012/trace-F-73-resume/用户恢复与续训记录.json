@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "observed_at": "2026-10-12T11:27:50.635373+08:00",
+  "user_message": "继续，不过先给我汇报进度，从最开始到现在",
+  "scope": "已先汇报历史阶段；继续原截止时间与原验收标准下的离线研究。用户这次明确继续撤销前次暂停。",
+  "goal_tool_status_observed": "paused",
+  "goal_tool_pause_updated_at_unix": 1791769664,
+  "goal_status_boundary": "目标卡片仍是这次用户继续之前的旧暂停记录；本入口没有也不能修改该卡片状态。旧记录不构成新暂停指令。后续新的用户暂停、取消或目标暂停更新时间变化须立即遵守。",
+  "selected_steps": 0,
+  "old_saved_steps": 42496,
+  "unchanged_plan_sha256": "19cb27160aab686d3dfe06f2b4e3e1348fb1b9121d67f2fd38e4b1f6ea0703ce",
+  "recovery_entry_sha256": "c9b27f957384fc714e40d93c95bfca5ac900a022472977b748949858a3a733cf",
+  "old_checkpoint_preserved": true,
+  "evaluation_started": false,
+  "formal_cases_unused": true,
+  "reason": "原检查点在采样回调中保存，32768计数对应90次更新而非96次；42496计数对应120次更新且不对齐批次。为保持最终完整训练预算，保留旧尝试并从原seed73重跑。",
+  "boundary": "额外耗费先前42496步计算；最终候选仍是原种子、算法、数据及262144步。F41不重跑，旧模型不删除，未读取F性能结果。",
+  "action": "restart_seed_73_from_zero",
+  "decision_updated_at": "2026-10-12T11:30:41.518482+08:00",
+  "rejected_proposal": "原32768步续训方案经更新次数核对否决，未启动过；旧模型全部保留。"
+}

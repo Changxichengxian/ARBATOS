@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T03:26:07.383999+00:00",
+  "selected": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train\\checkpoints\\step-000032768",
+  "selected_steps": 32768,
+  "paused_steps": 42496,
+  "discarded_step_count": 9728,
+  "requested_steps": 262144,
+  "checkpoint_sha256": "a2cc6c7df02b4b4351452b8d1391bfc454606721772fb422e9fdf8202784067b",
+  "optimizer_states": 13,
+  "network_state_sha256": "9558404d5280c6d705439e854e73abca5b59aa182e085a8fb9c8dc86db9d95a5",
+  "optimizer_state_sha256": "990cdcb7142479f8dd3dc4239553766968fd16a430cfd32a4d75510ab361e98c",
+  "plan_sha256": "19cb27160aab686d3dfe06f2b4e3e1348fb1b9121d67f2fd38e4b1f6ea0703ce",
+  "frozen_queue_sha256": "d3facba30a312907821c6dc24e6253227af684ef40e9f4763ee01f439c61bdd8",
+  "recovery_entry_sha256": "fd2a4f737d09e098a8101b5b332c2316161dac2d6a1126bf5a9a2432ecd48f8f",
+  "frozen_file_count": 242,
+  "reason": "直接从42496步续训会按2048步批次向上取整到263680；固定选择最近可用整批次点32768。未读取任何F性能结果。",
+  "boundary": "暂停42496模型和日志仍完整保留；恢复网络和优化器，重新初始化物理回合及场景洗牌；不保证逐步重放。原登记、训练预算和最终验收不变。",
+  "executed": false,
+  "rejected": true,
+  "rejection_reason": "原检查点在采样回调中保存，32768计数对应90次更新而非96次；42496计数对应120次更新且不对齐批次。为保持最终完整训练预算，保留旧尝试并从原seed73重跑。"
+}

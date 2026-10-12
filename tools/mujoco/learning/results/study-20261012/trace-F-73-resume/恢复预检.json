@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T03:29:31.958404+00:00",
+  "action": "restart_seed_73_from_zero",
+  "same_seed": 73,
+  "final_training_steps": 262144,
+  "discarded_attempt_steps": 42496,
+  "expected_final_update_counter": 768,
+  "checkpoints": [
+    {
+      "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train",
+      "steps": 42496,
+      "n_updates": 120,
+      "expected_full_batch_updates": 120,
+      "steps_aligned": false,
+      "full_update_boundary": false,
+      "checkpoint_sha256": "471659866b8b1adae1105946c9343d32a0024b2092ca0d199c41753a661df389",
+      "network_state_sha256": "86510777ff1654d6dc7469412e533c5650bac22a1c536d9f432241aac62e0683",
+      "optimizer_state_sha256": "706e785fbdb3e98bb4d34362bd8e6d20651cd844788ab75fbe2ae611f985e722"
+    },
+    {
+      "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train\\checkpoints\\step-000016384",
+      "steps": 16384,
+      "n_updates": 42,
+      "expected_full_batch_updates": 48,
+      "steps_aligned": true,
+      "full_update_boundary": false,
+      "checkpoint_sha256": "439444450b99f43720069e87bcc995b64abbc8e7a3ea5a107752ee3da98012d7",
+      "network_state_sha256": "686e49de408a4aebcb1336af0fcbb85b73813e797206d911cde976b3a1583949",
+      "optimizer_state_sha256": "a05d285a7d8bb227b9f0faba2aac7d5fe852b6ee9406c34adae50324a643875b"
+    },
+    {
+      "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train\\checkpoints\\step-000032768",
+      "steps": 32768,
+      "n_updates": 90,
+      "expected_full_batch_updates": 96,
+      "steps_aligned": true,
+      "full_update_boundary": false,
+      "checkpoint_sha256": "a2cc6c7df02b4b4351452b8d1391bfc454606721772fb422e9fdf8202784067b",
+      "network_state_sha256": "9558404d5280c6d705439e854e73abca5b59aa182e085a8fb9c8dc86db9d95a5",
+      "optimizer_state_sha256": "990cdcb7142479f8dd3dc4239553766968fd16a430cfd32a4d75510ab361e98c"
+    }
+  ],
+  "plan_sha256": "19cb27160aab686d3dfe06f2b4e3e1348fb1b9121d67f2fd38e4b1f6ea0703ce",
+  "frozen_file_count": 242,
+  "recovery_entry_sha256": "c9b27f957384fc714e40d93c95bfca5ac900a022472977b748949858a3a733cf",
+  "wrong_source_checks_passed": 2,
+  "reason": "原检查点在采样回调中保存，32768计数对应90次更新而非96次；42496计数对应120次更新且不对齐批次。为保持最终完整训练预算，保留旧尝试并从原seed73重跑。",
+  "performance_selection": false,
+  "frozen_sources_changed": false,
+  "boundary": "额外耗费先前42496步计算；最终候选仍是原种子、算法、数据及262144步。F41不重跑，旧模型不删除，未读取F性能结果。"
+}

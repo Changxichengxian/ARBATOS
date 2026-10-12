@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "paused",
+  "status": "resume_authorized",
   "started_at": "2026-10-12T02:10:00+08:00",
   "deadline": "2026-10-14T02:10:00+08:00",
   "goal": "轮腿停车与受推恢复的可复现控制改进；不能用训练完成代替性能提升",
@@ -73,9 +73,11 @@
     "四策略结果读取程序用旧E的96条实际记录复算一致，并通过策略/测试集错配、汇总与完成记录不符、未开始评价等拒绝检查；物理失败时不以剩余成功场景比较。完整新24例正向链仍待训练结束。",
     "A至E十份最终策略已在独立目录实际重放停车/受推/组合及对应原控制，共60条轨迹逐字段一致；实际网络/13组优化器及导出推理通过，保存含599份源文件与模型报告的可运行复现包。F尚未包含。",
     "F41完成262144步；实际网络及13组优化器精确载入，算法lambda=1，导出推理通过。490个完整训练回合日志评分可复算，覆盖144/144场景，物理失败0次。尚未运行新监控候选评价。",
-    "目标已暂停；F73在42496步响应停止文件后保存网络、优化器和日志并正常退出。队列和训练进程均已退出，不自动恢复；未进行F独立性能评价。"
+    "目标已暂停；F73在42496步响应停止文件后保存网络、优化器和日志并正常退出。队列和训练进程均已退出，不自动恢复；未进行F独立性能评价。",
+    "用户明确继续后，已先汇报完整研究进度；续训预检发现42496步不对齐2048步批次。固定选最近可用32768检查点，网络和13组优化器实际读取一致，242份冻结文件与原计划不变。旧暂停模型保留，尚未进行F性能评价。",
+    "实际优化器更新计数否决了32768步续训方案，该方案未执行。保留原42496步模型，从原seed73重新完整训练，以保持最终候选262144步和768更新计数；未选择性能较好的随机种子或模型。"
   ],
-  "next": "F按原计划完成41/73各262144步，逐组用work/SaveTraceCompleted.py保存实际模型及优化器；两组均结束后运行work/LockTraceComparison.py，执行唯一新24例评价，再用work/CompareTraceResults.py完整复算。原E队列已结束不重启，最终60例未使用。",
+  "next": "从原seed73重新完成F73的262144步，旧42496步暂停尝试不计入最终候选。完成后核对模型更新计数768和实际来源，再锁定E/F四份模型并只执行登记的新24例比较。保存工具须支持train-resume-02路径。",
   "active_process": {
     "updated_at": "2026-10-12T09:46:06.475848+08:00",
     "os_processes_at_save": [
@@ -125,7 +127,7 @@
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T09:46:06.475848+08:00",
+  "updated_at": "2026-10-12T11:30:41.518482+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -140,8 +142,8 @@
     "final": "4bab9e7570e467f921e6cd280fe5c1e63d8b04d94a47970445357a4c062307bb",
     "pressure": "302c5724cc2eb0d164f92018cc0ccf754455fb43f05c0328fa40e98177cfa00b"
   },
-  "stop_instructions": "暂停全部研究时，在queue_plan父目录、reference_search.queue_plan父目录及split_velocity_probe.output目录分别创建stop.request，并核对各自保存退出；还须按用户要求暂停GOAL及本聊天的每小时接续。不能只停止其中一条队列。",
-  "resume_instructions": "确认同一队列和子进程均已退出、期限未到且用户没有暂停；清除队列根stop.request后使用冻结目录RunWbrStudyQueue.py --plan 原计划 --resume。不得并行启动第二份。",
+  "stop_instructions": "当前恢复后的F训练队列：在long-trace/training/stop.request创建停止文件，等待训练自行保存并退出；不得按旧PID盲目终止。",
+  "resume_instructions": "本次用户已明确继续，旧goal paused记录更新时间1791769664早于本授权，不应据其再次停机；新的暂停/取消或较新的目标暂停记录仍优先。此次使用work/RestartTraceAfterPause.py，仅允许F73重跑一次；如再次中断需重新核对训练计数和更新次数，不能盲用旧恢复入口。",
   "study_code_commit": "5569b66003d8a14425d8b0937791d4eef6888d7c",
   "saved_checkpoint": {
     "repository_path": "tools/mujoco/learning/results/study-20261012/screening-B-symmetric-73",
@@ -812,7 +814,7 @@
     ]
   },
   "long_trace_F": {
-    "stage": "paused_second_seed",
+    "stage": "restart_authorized_second_seed",
     "registration": "tools/mujoco/learning/results/study-20261012/长程反馈单变量训练登记.json",
     "registration_sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
     "training_steps_each": 262144,
@@ -857,7 +859,12 @@
     "current_job_at_save": "F-trace-73-train",
     "independent_performance_verified": false,
     "os_processes_at_save": [],
-    "pause_record": "tools/mujoco/learning/results/study-20261012/trace-F-73-paused/暂停保存记录.json"
+    "pause_record": "tools/mujoco/learning/results/study-20261012/trace-F-73-paused/暂停保存记录.json",
+    "selected_resume_steps": 0,
+    "resumed_output_expected": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02",
+    "pause_checkpoint_preserved": true,
+    "resume_record": "tools/mujoco/learning/results/study-20261012/trace-F-73-resume/用户恢复与续训记录.json",
+    "restart_reason": "原检查点在采样回调中保存，32768计数对应90次更新而非96次；42496计数对应120次更新且不对齐批次。为保持最终完整训练预算，保留旧尝试并从原seed73重跑。"
   },
   "completed_strategy_replay": {
     "policy_count": 10,
@@ -869,5 +876,26 @@
   },
   "paused_at": "2026-10-12T09:54:16.592171+08:00",
   "pause_record": "tools/mujoco/learning/results/study-20261012/trace-F-73-paused/暂停保存记录.json",
-  "resume_requires_user": true
+  "resume_requires_user": false,
+  "user_resume": {
+    "schema": 1,
+    "observed_at": "2026-10-12T11:27:50.635373+08:00",
+    "user_message": "继续，不过先给我汇报进度，从最开始到现在",
+    "scope": "已先汇报历史阶段；继续原截止时间与原验收标准下的离线研究。用户这次明确继续撤销前次暂停。",
+    "goal_tool_status_observed": "paused",
+    "goal_tool_pause_updated_at_unix": 1791769664,
+    "goal_status_boundary": "目标卡片仍是这次用户继续之前的旧暂停记录；本入口没有也不能修改该卡片状态。旧记录不构成新暂停指令。后续新的用户暂停、取消或目标暂停更新时间变化须立即遵守。",
+    "selected_steps": 0,
+    "old_saved_steps": 42496,
+    "unchanged_plan_sha256": "19cb27160aab686d3dfe06f2b4e3e1348fb1b9121d67f2fd38e4b1f6ea0703ce",
+    "recovery_entry_sha256": "c9b27f957384fc714e40d93c95bfca5ac900a022472977b748949858a3a733cf",
+    "old_checkpoint_preserved": true,
+    "evaluation_started": false,
+    "formal_cases_unused": true,
+    "reason": "原检查点在采样回调中保存，32768计数对应90次更新而非96次；42496计数对应120次更新且不对齐批次。为保持最终完整训练预算，保留旧尝试并从原seed73重跑。",
+    "boundary": "额外耗费先前42496步计算；最终候选仍是原种子、算法、数据及262144步。F41不重跑，旧模型不删除，未读取F性能结果。",
+    "action": "restart_seed_73_from_zero",
+    "decision_updated_at": "2026-10-12T11:30:41.518482+08:00",
+    "rejected_proposal": "原32768步续训方案经更新次数核对否决，未启动过；旧模型全部保留。"
+  }
 }
