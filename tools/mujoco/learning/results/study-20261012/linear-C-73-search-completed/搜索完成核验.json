@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "created_at": "2026-10-12T08:14:08.772714+08:00",
+  "search_completed": true,
+  "seed": 73,
+  "generations": 5,
+  "population": 8,
+  "evaluations": 40,
+  "policy_sha256": "ad6d03d3ba4f0ff9241a0505607f2e725083d8c9a691a731c978e1c96c0cb2c2",
+  "search_state_sha256": "19db205552fe2369094af4d6bba4595c5826b68da59e8ea6ce358c7b1191cc97",
+  "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+  "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+  "best_coefficients": [
+    -4.0,
+    0.7693084296550913,
+    -1.1903689543609925,
+    0.1019198778190667,
+    -0.4612968979763619,
+    0.0021248989830814705
+  ],
+  "best_score": 0.03183853582971255,
+  "development_checks": {
+    "physical_complete": {
+      "pass": true
+    },
+    "all_case_guards": {
+      "pass": false
+    },
+    "stop_mean_improvement": {
+      "pass": false,
+      "paired_cases": 2,
+      "baseline_mean": 0.2982541796260695,
+      "learned_mean": 0.28961569814861876,
+      "metric": "velocity_rms_mps",
+      "improvement_fraction": 0.028963488418774386
+    },
+    "push_mean_improvement": {
+      "pass": false,
+      "paired_cases": 2,
+      "baseline_mean": 0.13601682219789585,
+      "learned_mean": 0.1319853133050036,
+      "metric": "velocity_error_rms_mps",
+      "improvement_fraction": 0.02963978151927904
+    },
+    "hip_heat_mean": {
+      "pass": true,
+      "baseline_mean": 148.82678282051992,
+      "learned_mean": 145.4326920374593,
+      "change_fraction": -0.0228056450508225
+    }
+  },
+  "selection_and_score_consistent": true,
+  "rng_state_restored": true,
+  "chosen_policy_six_cases_replayed": true,
+  "two_seeds_baseline_exact": true,
+  "failed_guards": [
+    {
+      "case": "development-combined-000",
+      "metric": "push_primary",
+      "pass": false,
+      "baseline": 0.12909656384307133,
+      "learned": 0.13578164147421798,
+      "delta": 0.0066850776311466464,
+      "allowed_increase": 0.006454828192153567
+    },
+    {
+      "case": "development-combined-001",
+      "metric": "push_peak_velocity_error",
+      "pass": false,
+      "baseline": 0.19832903302458638,
+      "learned": 0.209121377833875,
+      "delta": 0.010792344809288618,
+      "allowed_increase": 0.00991645165122932
+    }
+  ],
+  "source_script_sha256": "e1057c86bee6f3f8d30799553a993673682b8ae9d546e382690615077080d8c5",
+  "final_dataset_used": false,
+  "boundary": "旧C保存40候选评分及来源，逐场景缓存随代结束清空。最终策略6个开发场景已实际重放，完整评分和保护结果一致；没有重新仿真或逐项重算全部40个候选。筛选结论仍需完整45例独立评价。"
+}

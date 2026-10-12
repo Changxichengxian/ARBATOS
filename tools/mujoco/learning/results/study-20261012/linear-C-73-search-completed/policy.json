@@ -1,0 +1,37 @@
+{
+  "kind": "linear",
+  "seed": 73,
+  "scenarios_sha256": "51f89abaa1e705a85683ac7d9a189e2450d4df15d04094c435a051a84289440a",
+  "library_sha256": "5549404f97d10ba8a16392e7d27669186ae702592e987380b9d42b0227d710b8",
+  "experiment_identity": "c4768a2f75055ce060682ea4b9d551de18cda3362d5356cb4442d691e3805eab",
+  "env_config": {
+    "reward_mode": "dense",
+    "action_mode": "symmetric",
+    "gas_force": 450.0
+  },
+  "generations": 5,
+  "population": 8,
+  "coefficient_bounds": [
+    4.0,
+    2.0,
+    4.0,
+    0.5,
+    2.0,
+    0.25
+  ],
+  "source_hashes": {
+    "SearchWbrLinear.py": "ac521794a598e6ce127ad980b60f22f4b71ac042d269a40c42494831b0b700f8",
+    "EvaluateWbrStudy.py": "766a4541a8dab9d0fc911056b64765eb4c0ab55ac4eb1f9a0bcc15286fd73fd6",
+    "BuildWbrStudyCases.py": "91b1e3d129fd70cdea9b5ffa5cca5a6a2880a8b12568b3671d3534846f69b582"
+  },
+  "coefficients": [
+    -4.0,
+    0.7693084296550913,
+    -1.1903689543609925,
+    0.1019198778190667,
+    -0.4612968979763619,
+    0.0021248989830814705
+  ],
+  "development_score": 0.03183853582971255,
+  "created_at": "2026-10-12T00:12:25.567104+00:00"
+}
