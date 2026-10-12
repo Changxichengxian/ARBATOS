@@ -1,0 +1,5241 @@
+{
+  "schema": 1,
+  "created_at": "2026-10-12T08:06:08+08:00",
+  "split": "aligned-monitor",
+  "scenarios_sha256": "5d22cd9b2336125b4c681964ce28ce74c6a362577e630a3e542e0404424b43ff",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "env_config": {
+    "reward_mode": "dense",
+    "action_mode": "reference",
+    "gas_force": 450.0
+  },
+  "policy_lock_sha256": null,
+  "run_binding_sha256": "6d312c2837aedeeeabef6df5617e93f0a7347645bb49c3330d06b6e267b8ff8a",
+  "elapsed_s": 290.7738887000014,
+  "baseline_results": [
+    {
+      "id": "aligned-monitor-stop-000",
+      "seed": 81000,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.35,
+        "push": -35.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.17373907659501056,
+            "velocity_error_rms_mps": 0.17373907659501056,
+            "peak_speed_mps": 0.4110498267967144,
+            "peak_velocity_error_mps": 0.4110498267967144,
+            "travel_m": 0.33343675022418506,
+            "peak_reverse_mps": 0.07675608900555583,
+            "peak_pitch_deg": 2.5491000087804445,
+            "peak_roll_deg": 0.22181401643724363,
+            "max_closure_m": 7.785005618465804e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 122.24795126030808,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.9298645515006223,
+        "peak_roll_1ms_deg": 0.2218556262135009,
+        "max_closure_1ms_m": 7.857400951570185e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0018922369320101915,
+        "max_yaw_deg": 0.11311956388363202,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.17373904171219937,
+            "plane_speed_rms_mps": 0.1737392363693955
+          }
+        },
+        "drive_tracking_rms_mps": 0.18184311094102965,
+        "steady_drive_tracking_rms_mps": 0.054588296497994696,
+        "progress_at_stop_m": 0.8567887399384445
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-stop-001",
+      "seed": 81001,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.578571,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.30924264193875683,
+            "velocity_error_rms_mps": 0.30924264193875683,
+            "peak_speed_mps": 0.6768271090593416,
+            "peak_velocity_error_mps": 0.6768271090593416,
+            "travel_m": 0.6908813816691037,
+            "peak_reverse_mps": 0.11261954853773848,
+            "peak_pitch_deg": 2.422369723281839,
+            "peak_roll_deg": 0.24693719395841665,
+            "max_closure_m": 7.008600804103025e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 111.68003054140404,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.853698078615495,
+        "peak_roll_1ms_deg": 0.2640334659274112,
+        "max_closure_1ms_m": 7.246832707429337e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.00305457239905239,
+        "max_yaw_deg": 0.2502198899802259,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.3092416228023535,
+            "plane_speed_rms_mps": 0.30924287780242155
+          }
+        },
+        "drive_tracking_rms_mps": 0.32010898155815226,
+        "steady_drive_tracking_rms_mps": 0.10204534232614773,
+        "progress_at_stop_m": 1.2344652112346888
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-stop-002",
+      "seed": 81002,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.635714,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.3469119862125815,
+            "velocity_error_rms_mps": 0.3469119862125815,
+            "peak_speed_mps": 0.739799689761948,
+            "peak_velocity_error_mps": 0.739799689761948,
+            "travel_m": 0.8118603702993412,
+            "peak_reverse_mps": 0.1080111291255882,
+            "peak_pitch_deg": 2.542281171147278,
+            "peak_roll_deg": 0.2214222593997668,
+            "max_closure_m": 7.440221334078653e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 170.6458880648025,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.0190084394466985,
+        "peak_roll_1ms_deg": 0.2214304122902092,
+        "max_closure_1ms_m": 7.86697669249314e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.003793465317218861,
+        "max_yaw_deg": 0.23609062759473293,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.3469119173670558,
+            "plane_speed_rms_mps": 0.3469121152627915
+          }
+        },
+        "drive_tracking_rms_mps": 0.36477996006973107,
+        "steady_drive_tracking_rms_mps": 0.10526151667649206,
+        "progress_at_stop_m": 1.2647145849649961
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-stop-003",
+      "seed": 81003,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.521429,
+        "push": 31.714286,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.2720075927094786,
+            "velocity_error_rms_mps": 0.2720075927094786,
+            "peak_speed_mps": 0.6091540792638241,
+            "peak_velocity_error_mps": 0.6091540792638241,
+            "travel_m": 0.5817238128636304,
+            "peak_reverse_mps": 0.10737248371570518,
+            "peak_pitch_deg": 2.5799550687906216,
+            "peak_roll_deg": 0.3140225818248215,
+            "max_closure_m": 7.695320266244139e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 182.30521918620764,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.7480535814669733,
+        "peak_roll_1ms_deg": 0.31405209234739523,
+        "max_closure_1ms_m": 7.900593108062576e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.00443301358731211,
+        "max_yaw_deg": 0.33990793570174027,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.27200607364102947,
+            "plane_speed_rms_mps": 0.2720083660424831
+          }
+        },
+        "drive_tracking_rms_mps": 0.2873163146884271,
+        "steady_drive_tracking_rms_mps": 0.08880693938972345,
+        "progress_at_stop_m": 1.1446018666758089
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-stop-004",
+      "seed": 81004,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.75,
+        "push": -28.428571,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.42673678202792226,
+            "velocity_error_rms_mps": 0.42673678202792226,
+            "peak_speed_mps": 0.8788252285504916,
+            "peak_velocity_error_mps": 0.8788252285504916,
+            "travel_m": 1.0642376993617195,
+            "peak_reverse_mps": 0.11541800237111119,
+            "peak_pitch_deg": 2.4959769795209548,
+            "peak_roll_deg": 0.20703833920466427,
+            "max_closure_m": 7.324952442954019e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 180.32300991070943,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.0190084394466985,
+        "peak_roll_1ms_deg": 0.21744976855335077,
+        "max_closure_1ms_m": 7.979546155055384e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.00560989248548909,
+        "max_yaw_deg": 0.2620787302386796,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.426736447457347,
+            "plane_speed_rms_mps": 0.42673691764689575
+          }
+        },
+        "drive_tracking_rms_mps": 0.4455046069403695,
+        "steady_drive_tracking_rms_mps": 0.12391301295277032,
+        "progress_at_stop_m": 1.3665650243190184
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-stop-005",
+      "seed": 81005,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.407143,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.2046272675962818,
+            "velocity_error_rms_mps": 0.2046272675962818,
+            "peak_speed_mps": 0.4768928415639138,
+            "peak_velocity_error_mps": 0.4768928415639138,
+            "travel_m": 0.40372999749083593,
+            "peak_reverse_mps": 0.09144620293383078,
+            "peak_pitch_deg": 2.650895059593549,
+            "peak_roll_deg": 0.24855629991134465,
+            "max_closure_m": 7.140083836487664e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 97.99826556476992,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.818271019727429,
+        "peak_roll_1ms_deg": 0.2486943172648434,
+        "max_closure_1ms_m": 7.283856095219223e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.007461108016137241,
+        "max_yaw_deg": 0.5345349135808923,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.20462558098208952,
+            "plane_speed_rms_mps": 0.20462783710750754
+          }
+        },
+        "drive_tracking_rms_mps": 0.21910904838608097,
+        "steady_drive_tracking_rms_mps": 0.06448107267662559,
+        "progress_at_stop_m": 0.9555790095594918
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-stop-006",
+      "seed": 81006,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.692857,
+        "push": 18.571429,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.38869811602615023,
+            "velocity_error_rms_mps": 0.38869811602615023,
+            "peak_speed_mps": 0.8154927545213083,
+            "peak_velocity_error_mps": 0.8154927545213083,
+            "travel_m": 0.9424949258185302,
+            "peak_reverse_mps": 0.10982035456707644,
+            "peak_pitch_deg": 2.418271765498763,
+            "peak_roll_deg": 0.22924825359476023,
+            "max_closure_m": 7.749549562154627e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 164.91624894188473,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.0187589600497087,
+        "peak_roll_1ms_deg": 0.22929503184024905,
+        "max_closure_1ms_m": 7.981763252297669e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004690113605648018,
+        "max_yaw_deg": 0.12860859260283775,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.3886974616611907,
+            "plane_speed_rms_mps": 0.38869824303233697
+          }
+        },
+        "drive_tracking_rms_mps": 0.4021444684554618,
+        "steady_drive_tracking_rms_mps": 0.1231090144771853,
+        "progress_at_stop_m": 1.3413410476403487
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-stop-007",
+      "seed": 81007,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.464286,
+        "push": -21.857143,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.2390587859142434,
+            "velocity_error_rms_mps": 0.2390587859142434,
+            "peak_speed_mps": 0.5462725178952132,
+            "peak_velocity_error_mps": 0.5462725178952132,
+            "travel_m": 0.489667977986628,
+            "peak_reverse_mps": 0.1043092403595929,
+            "peak_pitch_deg": 2.538265448233795,
+            "peak_roll_deg": 0.22470145554843765,
+            "max_closure_m": 8.102949938534147e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 236.41365846422477,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.6037797429831278,
+        "peak_roll_1ms_deg": 0.22483324920869993,
+        "max_closure_1ms_m": 8.170585985698404e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0005475154730270305,
+        "max_yaw_deg": 0.16559404097496877,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.23905873644055212,
+            "plane_speed_rms_mps": 0.239059566369631
+          }
+        },
+        "drive_tracking_rms_mps": 0.24879650845377238,
+        "steady_drive_tracking_rms_mps": 0.08245284304265496,
+        "progress_at_stop_m": 1.0811476247183265
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-push-000",
+      "seed": 81008,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.635714,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.09618155240280474,
+            "velocity_error_rms_mps": 0.09618155240280474,
+            "peak_speed_mps": 0.24287027908470316,
+            "peak_velocity_error_mps": 0.24287027908470316,
+            "travel_m": 0.0954796557125836,
+            "peak_reverse_mps": 0.06744330238521382,
+            "peak_pitch_deg": 1.8300199464879168,
+            "peak_roll_deg": 0.18351335200168414,
+            "max_closure_m": 7.537271384954917e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 78.87548281749602,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 1.8309648192501788,
+        "peak_roll_1ms_deg": 0.18353292840935764,
+        "max_closure_1ms_m": 7.585596388367849e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0004405100520408638,
+        "max_yaw_deg": 0.16633975949393634,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.096181818528758,
+            "plane_speed_rms_mps": 0.09618366569197816
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-push-001",
+      "seed": 81009,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.521429,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.07408985153095536,
+            "velocity_error_rms_mps": 0.07408985153095536,
+            "peak_speed_mps": 0.19560424604462334,
+            "peak_velocity_error_mps": 0.19560424604462334,
+            "travel_m": 0.08563785993555355,
+            "peak_reverse_mps": 0.19560424604462334,
+            "peak_pitch_deg": 1.6228007796315929,
+            "peak_roll_deg": 0.07418646472255004,
+            "max_closure_m": 7.135939268788486e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 45.5815104286303,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 1.6228834922181399,
+        "peak_roll_1ms_deg": 0.07419752575721153,
+        "max_closure_1ms_m": 7.204844958274511e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.00014907104573582607,
+        "max_yaw_deg": 0.1998602479807554,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.07408986677690402,
+            "plane_speed_rms_mps": 0.07409073555977706
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-push-002",
+      "seed": 81010,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.464286,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.1403091746271222,
+            "velocity_error_rms_mps": 0.1403091746271222,
+            "peak_speed_mps": 0.31981675695852957,
+            "peak_velocity_error_mps": 0.31981675695852957,
+            "travel_m": 0.11661600228584258,
+            "peak_reverse_mps": 0.31981675695852957,
+            "peak_pitch_deg": 2.875719465162947,
+            "peak_roll_deg": 0.21472325679216164,
+            "max_closure_m": 7.499216723938345e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 143.34608414235242,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.8758047347621534,
+        "peak_roll_1ms_deg": 0.21497119657771965,
+        "max_closure_1ms_m": 7.586803528724991e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0004924011321874766,
+        "max_yaw_deg": 0.12984522530738793,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.1403094031693944,
+            "plane_speed_rms_mps": 0.14031065268319692
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-push-003",
+      "seed": 81011,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.578571,
+        "push": -35.0,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.18465216421172403,
+            "velocity_error_rms_mps": 0.18465216421172403,
+            "peak_speed_mps": 0.44263934481350853,
+            "peak_velocity_error_mps": 0.44263934481350853,
+            "travel_m": 0.14806203717430078,
+            "peak_reverse_mps": 0.44263934481350853,
+            "peak_pitch_deg": 3.5940709346775392,
+            "peak_roll_deg": 0.21146073962537035,
+            "max_closure_m": 6.959833290938251e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 121.1251322769633,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.594508014805703,
+        "peak_roll_1ms_deg": 0.21156493193411402,
+        "max_closure_1ms_m": 7.204990841657676e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004072829092580521,
+        "max_yaw_deg": 0.9613347972323494,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.18464292427783943,
+            "plane_speed_rms_mps": 0.18465705455207662
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-push-004",
+      "seed": 81012,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.692857,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.15547907382772103,
+            "velocity_error_rms_mps": 0.15547907382772103,
+            "peak_speed_mps": 0.35599524183790354,
+            "peak_velocity_error_mps": 0.35599524183790354,
+            "travel_m": 0.12958139938693236,
+            "peak_reverse_mps": 0.13784092950843344,
+            "peak_pitch_deg": 3.6086525936586007,
+            "peak_roll_deg": 0.2366717860048113,
+            "max_closure_m": 7.774909048821904e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 155.14068323782666,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.6087163357955157,
+        "peak_roll_1ms_deg": 0.2371979878918324,
+        "max_closure_1ms_m": 8.016595692575928e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0005501129050985324,
+        "max_yaw_deg": 0.1466762383512632,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.15547916613221668,
+            "plane_speed_rms_mps": 0.15548118714473713
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-push-005",
+      "seed": 81013,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.75,
+        "push": 31.714286,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.1772540056837309,
+            "velocity_error_rms_mps": 0.1772540056837309,
+            "peak_speed_mps": 0.4209535667297618,
+            "peak_velocity_error_mps": 0.4209535667297618,
+            "travel_m": 0.1489840202049506,
+            "peak_reverse_mps": 0.4209535667297618,
+            "peak_pitch_deg": 3.6208773074768215,
+            "peak_roll_deg": 0.21362114951902147,
+            "max_closure_m": 6.971500697890813e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 116.58776364168938,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.620882941942826,
+        "peak_roll_1ms_deg": 0.21378830102472196,
+        "max_closure_1ms_m": 7.33231779834689e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.001833912359304477,
+        "max_yaw_deg": 0.4256775924407414,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.1772513413294581,
+            "plane_speed_rms_mps": 0.17725546428505776
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-push-006",
+      "seed": 81014,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.407143,
+        "push": -28.428571,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.1725417030859715,
+            "velocity_error_rms_mps": 0.1725417030859715,
+            "peak_speed_mps": 0.3918001222526357,
+            "peak_velocity_error_mps": 0.3918001222526357,
+            "travel_m": 0.13634097776137535,
+            "peak_reverse_mps": 0.16275067536866689,
+            "peak_pitch_deg": 3.536815125284054,
+            "peak_roll_deg": 0.22035193901252328,
+            "max_closure_m": 7.899414268028436e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 173.61282625208466,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.5369485765000697,
+        "peak_roll_1ms_deg": 0.2205637389752358,
+        "max_closure_1ms_m": 7.899414268028436e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0005116880284697795,
+        "max_yaw_deg": 0.11511224432847565,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.1725420359133068,
+            "plane_speed_rms_mps": 0.17254330409013305
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-push-007",
+      "seed": 81015,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.35,
+        "push": 18.571429,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.11372174070028322,
+            "velocity_error_rms_mps": 0.11372174070028322,
+            "peak_speed_mps": 0.2837918586863488,
+            "peak_velocity_error_mps": 0.2837918586863488,
+            "travel_m": 0.10945752489553798,
+            "peak_reverse_mps": 0.08144999124174601,
+            "peak_pitch_deg": 1.7285624334446688,
+            "peak_roll_deg": 0.25155618192620016,
+            "max_closure_m": 7.827245046768155e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 93.37743890944857,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 1.7288785501394939,
+        "peak_roll_1ms_deg": 0.25155945350613074,
+        "max_closure_1ms_m": 7.827245046768155e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0009346362771508209,
+        "max_yaw_deg": 0.2836026014164421,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.11372054314006877,
+            "plane_speed_rms_mps": 0.11372609173984073
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-combined-000",
+      "seed": 81016,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.692857,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.7145763276121198,
+            "velocity_error_rms_mps": 0.7145763276121198,
+            "peak_speed_mps": 0.8154927545213083,
+            "peak_velocity_error_mps": 0.8154927545213083,
+            "travel_m": 0.7006975273582134,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.418271765498763,
+            "peak_roll_deg": 0.2207597083794591,
+            "max_closure_m": 7.693281240419886e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.2932618112725532,
+            "velocity_error_rms_mps": 0.2932618112725532,
+            "peak_speed_mps": 0.6667319451154863,
+            "peak_velocity_error_mps": 0.6667319451154863,
+            "travel_m": 0.2843724552220648,
+            "peak_reverse_mps": 0.207407967130097,
+            "peak_pitch_deg": 4.219860932006033,
+            "peak_roll_deg": 0.2271813299207447,
+            "max_closure_m": 7.478630528313515e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 187.29322284867234,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 4.22034908851302,
+        "peak_roll_1ms_deg": 0.22721893493590528,
+        "max_closure_1ms_m": 7.981763252297669e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0046981341737451785,
+        "max_yaw_deg": 0.16834868982635182,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.7145749425113329,
+            "plane_speed_rms_mps": 0.7145763924329466
+          },
+          "push": {
+            "world_vx_rms_mps": 0.29326169135358243,
+            "plane_speed_rms_mps": 0.2932619684691365
+          }
+        },
+        "drive_tracking_rms_mps": 0.4021444684554618,
+        "steady_drive_tracking_rms_mps": 0.1231090144771853,
+        "progress_at_stop_m": 1.3413410476403487
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-combined-001",
+      "seed": 81017,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.407143,
+        "push": -31.714286,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.38938219237821603,
+            "velocity_error_rms_mps": 0.38938219237821603,
+            "peak_speed_mps": 0.47645009846986025,
+            "peak_velocity_error_mps": 0.47645009846986025,
+            "travel_m": 0.3739852205936719,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.6916049154431763,
+            "peak_roll_deg": 0.27602009759714996,
+            "max_closure_m": 7.191794870209815e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.20193059846166705,
+            "velocity_error_rms_mps": 0.20193059846166705,
+            "peak_speed_mps": 0.4335220983200704,
+            "peak_velocity_error_mps": 0.4335220983200704,
+            "travel_m": 0.14102660002804113,
+            "peak_reverse_mps": 0.2178063509584666,
+            "peak_pitch_deg": 3.6363896798647226,
+            "peak_roll_deg": 0.33449014337673066,
+            "max_closure_m": 7.11450693084307e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 165.92373916711153,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.6363962488218995,
+        "peak_roll_1ms_deg": 0.3345534725172353,
+        "max_closure_1ms_m": 7.597673923143028e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.006337861029893238,
+        "max_yaw_deg": 0.3919397064947599,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.38938131622036454,
+            "plane_speed_rms_mps": 0.3893824063433557
+          },
+          "push": {
+            "world_vx_rms_mps": 0.20192990241726078,
+            "plane_speed_rms_mps": 0.20193280515962278
+          }
+        },
+        "drive_tracking_rms_mps": 0.21752595407729383,
+        "steady_drive_tracking_rms_mps": 0.06687936274964604,
+        "progress_at_stop_m": 0.9630618295961255
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-combined-002",
+      "seed": 81018,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.35,
+        "push": 28.428571,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.3330875026758698,
+            "velocity_error_rms_mps": 0.3330875026758698,
+            "peak_speed_mps": 0.4110498267967144,
+            "peak_velocity_error_mps": 0.4110498267967144,
+            "travel_m": 0.3180140172407946,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.5491000087804445,
+            "peak_roll_deg": 0.22181401643724363,
+            "max_closure_m": 7.785005618465804e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.18579054361588151,
+            "velocity_error_rms_mps": 0.18579054361588151,
+            "peak_speed_mps": 0.3814689728039396,
+            "peak_velocity_error_mps": 0.3814689728039396,
+            "travel_m": 0.12586115349048277,
+            "peak_reverse_mps": 0.2028971739158471,
+            "peak_pitch_deg": 3.7416045570553527,
+            "peak_roll_deg": 0.23499601424702865,
+            "max_closure_m": 8.04371268064267e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 159.15383982327302,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.741699311149591,
+        "peak_roll_1ms_deg": 0.2350601076700659,
+        "max_closure_1ms_m": 8.096113695773377e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0020142897405017388,
+        "max_yaw_deg": 0.17069003293379809,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.3330874353446292,
+            "plane_speed_rms_mps": 0.33308755771413745
+          },
+          "push": {
+            "world_vx_rms_mps": 0.18579047977487853,
+            "plane_speed_rms_mps": 0.1857906757964968
+          }
+        },
+        "drive_tracking_rms_mps": 0.18184311094102965,
+        "steady_drive_tracking_rms_mps": 0.054588296497994696,
+        "progress_at_stop_m": 0.8567887399384445
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-combined-003",
+      "seed": 81019,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.464286,
+        "push": -35.0,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.4555620475074197,
+            "velocity_error_rms_mps": 0.4555620475074197,
+            "peak_speed_mps": 0.5450029385947494,
+            "peak_velocity_error_mps": 0.5450029385947494,
+            "travel_m": 0.44126698727951874,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.6814408316630964,
+            "peak_roll_deg": 0.21813572218425742,
+            "max_closure_m": 8.155054969361718e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.1729105248087486,
+            "velocity_error_rms_mps": 0.1729105248087486,
+            "peak_speed_mps": 0.43249916929539156,
+            "peak_velocity_error_mps": 0.43249916929539156,
+            "travel_m": 0.1589101326916864,
+            "peak_reverse_mps": 0.43249916929539156,
+            "peak_pitch_deg": 3.351250485733401,
+            "peak_roll_deg": 0.2305249409701746,
+            "max_closure_m": 8.2116809356347e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 252.03537861515977,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.3512993637546518,
+        "peak_roll_1ms_deg": 0.23061411626373823,
+        "max_closure_1ms_m": 8.288262050284925e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.012693574271813376,
+        "max_yaw_deg": 1.0235124413011802,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.4555555529164399,
+            "plane_speed_rms_mps": 0.45556207956646594
+          },
+          "push": {
+            "world_vx_rms_mps": 0.1728985932751795,
+            "plane_speed_rms_mps": 0.17291290089423483
+          }
+        },
+        "drive_tracking_rms_mps": 0.24886325580337215,
+        "steady_drive_tracking_rms_mps": 0.08022171874621103,
+        "progress_at_stop_m": 1.0755532646868196
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-combined-004",
+      "seed": 81020,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.578571,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.5839999882788535,
+            "velocity_error_rms_mps": 0.5839999882788535,
+            "peak_speed_mps": 0.6765026756523008,
+            "peak_velocity_error_mps": 0.6765026756523008,
+            "travel_m": 0.570493521015172,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.4557741138708495,
+            "peak_roll_deg": 0.2197814845811434,
+            "max_closure_m": 7.765640631066745e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.08234423986197617,
+            "velocity_error_rms_mps": 0.08234423986197617,
+            "peak_speed_mps": 0.34979627098266,
+            "peak_velocity_error_mps": 0.34979627098266,
+            "travel_m": 0.08383393345462653,
+            "peak_reverse_mps": 0.11678216172434913,
+            "peak_pitch_deg": 2.500327446950236,
+            "peak_roll_deg": 0.22423161700581357,
+            "max_closure_m": 6.966800812407941e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 149.15177502995482,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.0187589600497087,
+        "peak_roll_1ms_deg": 0.2242341901710465,
+        "max_closure_1ms_m": 7.819791561023043e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0032010635553638726,
+        "max_yaw_deg": 0.14521736269771696,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.5839998599735546,
+            "plane_speed_rms_mps": 0.5840000569697644
+          },
+          "push": {
+            "world_vx_rms_mps": 0.0823442160403792,
+            "plane_speed_rms_mps": 0.08234576127131346
+          }
+        },
+        "drive_tracking_rms_mps": 0.3244057334812709,
+        "steady_drive_tracking_rms_mps": 0.10082179672477566,
+        "progress_at_stop_m": 1.2198706869441793
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-combined-005",
+      "seed": 81021,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.635714,
+        "push": -12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.641437950174066,
+            "velocity_error_rms_mps": 0.641437950174066,
+            "peak_speed_mps": 0.7444034713825826,
+            "peak_velocity_error_mps": 0.7444034713825826,
+            "travel_m": 0.6270230065777465,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.5237816045762873,
+            "peak_roll_deg": 0.24569428166210938,
+            "max_closure_m": 6.764262667026101e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.22190071617470067,
+            "velocity_error_rms_mps": 0.22190071617470067,
+            "peak_speed_mps": 0.4489135951772431,
+            "peak_velocity_error_mps": 0.4489135951772431,
+            "travel_m": 0.20183024902466729,
+            "peak_reverse_mps": 0.1904287015236181,
+            "peak_pitch_deg": 3.492547370542335,
+            "peak_roll_deg": 0.19091595025781996,
+            "max_closure_m": 7.087043189392995e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 159.52198991884117,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.492735192871723,
+        "peak_roll_1ms_deg": 0.27564212654776793,
+        "max_closure_1ms_m": 7.602888826778108e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.002464898095866177,
+        "max_yaw_deg": 0.17953348078273815,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.6414379437036394,
+            "plane_speed_rms_mps": 0.6414381347107694
+          },
+          "push": {
+            "world_vx_rms_mps": 0.22190057145744943,
+            "plane_speed_rms_mps": 0.22190103487300547
+          }
+        },
+        "drive_tracking_rms_mps": 0.3655518125760425,
+        "steady_drive_tracking_rms_mps": 0.11168344964264718,
+        "progress_at_stop_m": 1.2767415710121393
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-combined-006",
+      "seed": 81022,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.75,
+        "push": 15.285714,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.7763557342532149,
+            "velocity_error_rms_mps": 0.7763557342532149,
+            "peak_speed_mps": 0.8788252285504916,
+            "peak_velocity_error_mps": 0.8788252285504916,
+            "travel_m": 0.7622642945578666,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.4959769795209548,
+            "peak_roll_deg": 0.19868027388505086,
+            "max_closure_m": 7.324952442954019e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.15662293066621621,
+            "velocity_error_rms_mps": 0.15662293066621621,
+            "peak_speed_mps": 0.5348462803936437,
+            "peak_velocity_error_mps": 0.5348462803936437,
+            "travel_m": 0.19857951011524566,
+            "peak_reverse_mps": 0.08281587207961966,
+            "peak_pitch_deg": 2.431826938373519,
+            "peak_roll_deg": 0.2011773327852538,
+            "max_closure_m": 4.98035477349166e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 174.4553064073367,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.0190084394466985,
+        "peak_roll_1ms_deg": 0.21744976855335077,
+        "max_closure_1ms_m": 7.979546155055384e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.005471718513141537,
+        "max_yaw_deg": 0.2620787302386796,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.7763550364823455,
+            "plane_speed_rms_mps": 0.7763558475864453
+          },
+          "push": {
+            "world_vx_rms_mps": 0.15662290591055703,
+            "plane_speed_rms_mps": 0.15662325957049653
+          }
+        },
+        "drive_tracking_rms_mps": 0.4455046069403695,
+        "steady_drive_tracking_rms_mps": 0.12391301295277032,
+        "progress_at_stop_m": 1.3665650243190184
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "aligned-monitor-combined-007",
+      "seed": 81023,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.521429,
+        "push": 18.571429,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.5157679588995163,
+            "velocity_error_rms_mps": 0.5157679588995163,
+            "peak_speed_mps": 0.6102574775668189,
+            "peak_velocity_error_mps": 0.6102574775668189,
+            "travel_m": 0.501714444652553,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.6965098200432407,
+            "peak_roll_deg": 0.2530095322611046,
+            "max_closure_m": 7.34494214669281e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.08741772183044307,
+            "velocity_error_rms_mps": 0.08741772183044307,
+            "peak_speed_mps": 0.28067072049447683,
+            "peak_velocity_error_mps": 0.28067072049447683,
+            "travel_m": 0.12373113698191629,
+            "peak_reverse_mps": 0.12620014537047544,
+            "peak_pitch_deg": 2.6571576036009197,
+            "peak_roll_deg": 0.23729871292864985,
+            "max_closure_m": 7.067295704513583e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 130.2650393681039,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.8434251835971276,
+        "peak_roll_1ms_deg": 0.253041731605735,
+        "max_closure_1ms_m": 7.509990554598221e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004748147301339123,
+        "max_yaw_deg": 0.28243985254935045,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.5157666167560554,
+            "plane_speed_rms_mps": 0.5157680692991218
+          },
+          "push": {
+            "world_vx_rms_mps": 0.08741733042514137,
+            "plane_speed_rms_mps": 0.0874184145345544
+          }
+        },
+        "drive_tracking_rms_mps": 0.2895831375782549,
+        "steady_drive_tracking_rms_mps": 0.08707976097030366,
+        "progress_at_stop_m": 1.134702319228246
+      },
+      "controller": "baseline"
+    }
+  ],
+  "learned_results": [
+    {
+      "id": "aligned-monitor-stop-000",
+      "seed": 81000,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.35,
+        "push": -35.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.16798464873105598,
+            "velocity_error_rms_mps": 0.16798464873105598,
+            "peak_speed_mps": 0.4129022373056894,
+            "peak_velocity_error_mps": 0.4129022373056894,
+            "travel_m": 0.32672613715926535,
+            "peak_reverse_mps": 0.05105568088539355,
+            "peak_pitch_deg": 2.6075843323603785,
+            "peak_roll_deg": 0.20745401749883824,
+            "max_closure_m": 7.816763046699866e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 121.28561082481866,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.929662450391208,
+        "peak_roll_1ms_deg": 0.20751967973960223,
+        "max_closure_1ms_m": 7.848176272755003e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.002021209222221634,
+        "max_yaw_deg": 0.1385969959084443,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.16798454493278844,
+            "plane_speed_rms_mps": 0.16798491017248174
+          }
+        },
+        "drive_tracking_rms_mps": 0.18144155469682305,
+        "steady_drive_tracking_rms_mps": 0.054569076579486966,
+        "progress_at_stop_m": 0.8566113787206965
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-stop-001",
+      "seed": 81001,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.578571,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.30206747524407035,
+            "velocity_error_rms_mps": 0.30206747524407035,
+            "peak_speed_mps": 0.6799952625235003,
+            "peak_velocity_error_mps": 0.6799952625235003,
+            "travel_m": 0.6852279065544924,
+            "peak_reverse_mps": 0.07674527664299836,
+            "peak_pitch_deg": 2.4399483380488025,
+            "peak_roll_deg": 0.2783999705687124,
+            "max_closure_m": 6.898516411003291e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 110.2242421012076,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.8502274323191608,
+        "peak_roll_1ms_deg": 0.28125133822558757,
+        "max_closure_1ms_m": 7.317650705399805e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.00303778093449504,
+        "max_yaw_deg": 0.23724627087786485,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.3020668961616729,
+            "plane_speed_rms_mps": 0.30206794571275164
+          }
+        },
+        "drive_tracking_rms_mps": 0.32016890201569714,
+        "steady_drive_tracking_rms_mps": 0.10196690673309071,
+        "progress_at_stop_m": 1.2342544489371008
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-stop-002",
+      "seed": 81002,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.635714,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.3057364764269487,
+            "velocity_error_rms_mps": 0.3057364764269487,
+            "peak_speed_mps": 0.7538380633982535,
+            "peak_velocity_error_mps": 0.7538380633982535,
+            "travel_m": 0.6430385019287874,
+            "peak_reverse_mps": 0.08652432590253051,
+            "peak_pitch_deg": 2.3261409864013323,
+            "peak_roll_deg": 0.21993375396919437,
+            "max_closure_m": 7.331314526280781e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 172.78905170128743,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.024712276851714,
+        "peak_roll_1ms_deg": 0.21999728268611043,
+        "max_closure_1ms_m": 7.812476840964247e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004787645633319909,
+        "max_yaw_deg": 0.2829535134743574,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.3057362845559214,
+            "plane_speed_rms_mps": 0.30573672469669877
+          }
+        },
+        "drive_tracking_rms_mps": 0.3649297234995278,
+        "steady_drive_tracking_rms_mps": 0.10517043535563578,
+        "progress_at_stop_m": 1.2641845551746849
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-stop-003",
+      "seed": 81003,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.521429,
+        "push": 31.714286,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.24506471986625777,
+            "velocity_error_rms_mps": 0.24506471986625777,
+            "peak_speed_mps": 0.617366656288402,
+            "peak_velocity_error_mps": 0.617366656288402,
+            "travel_m": 0.48447075220413516,
+            "peak_reverse_mps": 0.08367110522828082,
+            "peak_pitch_deg": 2.454741328864701,
+            "peak_roll_deg": 0.3176096430864056,
+            "max_closure_m": 7.301521679201315e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 182.30275391657435,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.7468018078889447,
+        "peak_roll_1ms_deg": 0.31776229551592833,
+        "max_closure_1ms_m": 7.890469872111213e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004060870552676868,
+        "max_yaw_deg": 0.42873520597213644,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.24506243813765474,
+            "plane_speed_rms_mps": 0.2450657398448701
+          }
+        },
+        "drive_tracking_rms_mps": 0.2873908308986452,
+        "steady_drive_tracking_rms_mps": 0.088327183566146,
+        "progress_at_stop_m": 1.143721248889832
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-stop-004",
+      "seed": 81004,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.75,
+        "push": -28.428571,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.36869903854745767,
+            "velocity_error_rms_mps": 0.36869903854745767,
+            "peak_speed_mps": 0.8935460925327351,
+            "peak_velocity_error_mps": 0.8935460925327351,
+            "travel_m": 0.8135572510541749,
+            "peak_reverse_mps": 0.09510351153932858,
+            "peak_pitch_deg": 2.21601845701841,
+            "peak_roll_deg": 0.22882450605472282,
+            "max_closure_m": 7.213359724738178e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 184.0446803423656,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.024712276851714,
+        "peak_roll_1ms_deg": 0.22902021923503837,
+        "max_closure_1ms_m": 7.914320403861117e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.005214451542376813,
+        "max_yaw_deg": 0.3383793437576497,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.3686984536596775,
+            "plane_speed_rms_mps": 0.3686992622391583
+          }
+        },
+        "drive_tracking_rms_mps": 0.4457115524665205,
+        "steady_drive_tracking_rms_mps": 0.12438566686943088,
+        "progress_at_stop_m": 1.3665940534106784
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-stop-005",
+      "seed": 81005,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.407143,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.18744412027545576,
+            "velocity_error_rms_mps": 0.18744412027545576,
+            "peak_speed_mps": 0.48356859508799166,
+            "peak_velocity_error_mps": 0.48356859508799166,
+            "travel_m": 0.3463427471289985,
+            "peak_reverse_mps": 0.06940038126117025,
+            "peak_pitch_deg": 2.5579922986384878,
+            "peak_roll_deg": 0.23945939301646746,
+            "max_closure_m": 6.975400952209615e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 98.80440040440979,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.824246299337637,
+        "peak_roll_1ms_deg": 0.23955000221765035,
+        "max_closure_1ms_m": 7.161263063027258e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.006778965219972049,
+        "max_yaw_deg": 0.5153144768988339,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.18744246186622887,
+            "plane_speed_rms_mps": 0.18744515513986826
+          }
+        },
+        "drive_tracking_rms_mps": 0.21878488954425315,
+        "steady_drive_tracking_rms_mps": 0.06405943863253438,
+        "progress_at_stop_m": 0.9546729068323111
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-stop-006",
+      "seed": 81006,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.692857,
+        "push": 18.571429,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.3810161464104276,
+            "velocity_error_rms_mps": 0.3810161464104276,
+            "peak_speed_mps": 0.8204275546672339,
+            "peak_velocity_error_mps": 0.8204275546672339,
+            "travel_m": 0.9357731663035309,
+            "peak_reverse_mps": 0.07340281584884364,
+            "peak_pitch_deg": 2.4493314238429345,
+            "peak_roll_deg": 0.21926025965019705,
+            "max_closure_m": 7.674841780029606e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 166.7914553473545,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.023519162594747,
+        "peak_roll_1ms_deg": 0.21926025965019705,
+        "max_closure_1ms_m": 7.791451073315881e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004983695594878913,
+        "max_yaw_deg": 0.1572188864651736,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.3810153858261359,
+            "plane_speed_rms_mps": 0.38101627573960106
+          }
+        },
+        "drive_tracking_rms_mps": 0.4019203155505504,
+        "steady_drive_tracking_rms_mps": 0.12335801177416252,
+        "progress_at_stop_m": 1.3415955597686269
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-stop-007",
+      "seed": 81007,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.464286,
+        "push": -21.857143,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.23244104030620663,
+            "velocity_error_rms_mps": 0.23244104030620663,
+            "peak_speed_mps": 0.5492731674780986,
+            "peak_velocity_error_mps": 0.5492731674780986,
+            "travel_m": 0.4843508702756605,
+            "peak_reverse_mps": 0.07182701362612902,
+            "peak_pitch_deg": 2.5622473328435333,
+            "peak_roll_deg": 0.20183929256591598,
+            "max_closure_m": 8.17476161961923e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 236.7238124003694,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.598466439169529,
+        "peak_roll_1ms_deg": 0.20228416424814577,
+        "max_closure_1ms_m": 8.289382008527941e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0005196814427829305,
+        "max_yaw_deg": 0.12441149937391852,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.23244097632210203,
+            "plane_speed_rms_mps": 0.23244262635829627
+          }
+        },
+        "drive_tracking_rms_mps": 0.24890153157585185,
+        "steady_drive_tracking_rms_mps": 0.08248461753079091,
+        "progress_at_stop_m": 1.0812490655858404
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-push-000",
+      "seed": 81008,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.635714,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.09099907618598031,
+            "velocity_error_rms_mps": 0.09099907618598031,
+            "peak_speed_mps": 0.2389695904615034,
+            "peak_velocity_error_mps": 0.2389695904615034,
+            "travel_m": 0.08493637865588344,
+            "peak_reverse_mps": 0.06134699059435824,
+            "peak_pitch_deg": 1.7815430853877177,
+            "peak_roll_deg": 0.1959970514159039,
+            "max_closure_m": 7.64879860035238e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 90.61388770728645,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 1.7816065202672244,
+        "peak_roll_1ms_deg": 0.19626419638079767,
+        "max_closure_1ms_m": 7.675166010170939e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0005873765882840701,
+        "max_yaw_deg": 0.3490944900876093,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.09099935090023098,
+            "plane_speed_rms_mps": 0.09100207113460433
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-push-001",
+      "seed": 81009,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.521429,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.07044862689293756,
+            "velocity_error_rms_mps": 0.07044862689293756,
+            "peak_speed_mps": 0.19633720836303717,
+            "peak_velocity_error_mps": 0.19633720836303717,
+            "travel_m": 0.08141845625172665,
+            "peak_reverse_mps": 0.19633720836303717,
+            "peak_pitch_deg": 1.6726739338364407,
+            "peak_roll_deg": 0.09679823251934296,
+            "max_closure_m": 6.984593006359956e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 46.19862703355648,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 1.6726739338364407,
+        "peak_roll_1ms_deg": 0.09682210595477167,
+        "max_closure_1ms_m": 7.012894523735028e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.00014873924006103136,
+        "max_yaw_deg": 0.23254144096554977,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.07044871378265954,
+            "plane_speed_rms_mps": 0.07045004317041
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-push-002",
+      "seed": 81010,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.464286,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.13615532736325622,
+            "velocity_error_rms_mps": 0.13615532736325622,
+            "peak_speed_mps": 0.31310596011429803,
+            "peak_velocity_error_mps": 0.31310596011429803,
+            "travel_m": 0.1028574797300796,
+            "peak_reverse_mps": 0.31310596011429803,
+            "peak_pitch_deg": 3.5416199692549135,
+            "peak_roll_deg": 0.21002140544438916,
+            "max_closure_m": 7.643443667158692e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 169.73961881621375,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.5416275988956,
+        "peak_roll_1ms_deg": 0.2100327291720744,
+        "max_closure_1ms_m": 7.840797473903543e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0005403776266646779,
+        "max_yaw_deg": 0.12743388001858458,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.13615561399821763,
+            "plane_speed_rms_mps": 0.1361569049957593
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-push-003",
+      "seed": 81011,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.578571,
+        "push": -35.0,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.16761303930716412,
+            "velocity_error_rms_mps": 0.16761303930716412,
+            "peak_speed_mps": 0.43142958297433137,
+            "peak_velocity_error_mps": 0.43142958297433137,
+            "travel_m": 0.13185764236808895,
+            "peak_reverse_mps": 0.43142958297433137,
+            "peak_pitch_deg": 3.5704532252742247,
+            "peak_roll_deg": 0.21732350123318403,
+            "max_closure_m": 6.992175145581299e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 124.13719274135904,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.5704708794700797,
+        "peak_roll_1ms_deg": 0.21738093116643306,
+        "max_closure_1ms_m": 7.157767097192414e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.00346647462209469,
+        "max_yaw_deg": 0.8193334827949249,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.16760671662518858,
+            "plane_speed_rms_mps": 0.16761853460519532
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-push-004",
+      "seed": 81012,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.692857,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.14551032853292845,
+            "velocity_error_rms_mps": 0.14551032853292845,
+            "peak_speed_mps": 0.3514763227517359,
+            "peak_velocity_error_mps": 0.3514763227517359,
+            "travel_m": 0.1214492220780834,
+            "peak_reverse_mps": 0.12478446219462772,
+            "peak_pitch_deg": 3.642292689792372,
+            "peak_roll_deg": 0.21453387283420175,
+            "max_closure_m": 7.868105440924205e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 154.6959589362557,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.642339171559232,
+        "peak_roll_1ms_deg": 0.21472038502926485,
+        "max_closure_1ms_m": 7.98667705496134e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0005369571373382218,
+        "max_yaw_deg": 0.1544117859410905,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.14551033512870384,
+            "plane_speed_rms_mps": 0.1455120550573592
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-push-005",
+      "seed": 81013,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.75,
+        "push": 31.714286,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.16376723004048435,
+            "velocity_error_rms_mps": 0.16376723004048435,
+            "peak_speed_mps": 0.41454297849837085,
+            "peak_velocity_error_mps": 0.41454297849837085,
+            "travel_m": 0.14040874156941635,
+            "peak_reverse_mps": 0.41454297849837085,
+            "peak_pitch_deg": 3.5887116942404096,
+            "peak_roll_deg": 0.2107888479277053,
+            "max_closure_m": 7.16724126894567e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 115.73998659947561,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.589099923909552,
+        "peak_roll_1ms_deg": 0.21148415654384758,
+        "max_closure_1ms_m": 7.34435726621338e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0014968179389700609,
+        "max_yaw_deg": 0.3903718571583435,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.16376536241025105,
+            "plane_speed_rms_mps": 0.16376881058926254
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-push-006",
+      "seed": 81014,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.407143,
+        "push": -28.428571,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.15733172780223778,
+            "velocity_error_rms_mps": 0.15733172780223778,
+            "peak_speed_mps": 0.3813349365846006,
+            "peak_velocity_error_mps": 0.3813349365846006,
+            "travel_m": 0.12114954604627345,
+            "peak_reverse_mps": 0.14077286697461056,
+            "peak_pitch_deg": 3.5342581342094053,
+            "peak_roll_deg": 0.21207607289596833,
+            "max_closure_m": 7.813662480560458e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 178.7958388133925,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.5342952380248964,
+        "peak_roll_1ms_deg": 0.2121004202161331,
+        "max_closure_1ms_m": 7.817013127411268e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0005287581560017881,
+        "max_yaw_deg": 0.13694332024988354,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.15733203297099718,
+            "plane_speed_rms_mps": 0.1573332102543731
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-push-007",
+      "seed": 81015,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.35,
+        "push": 18.571429,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.10801587435576063,
+            "velocity_error_rms_mps": 0.10801587435576063,
+            "peak_speed_mps": 0.28059460770706696,
+            "peak_velocity_error_mps": 0.28059460770706696,
+            "travel_m": 0.10110618027769219,
+            "peak_reverse_mps": 0.07187543489552596,
+            "peak_pitch_deg": 1.8558346275043869,
+            "peak_roll_deg": 0.25231713999009514,
+            "max_closure_m": 7.61755292994465e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 99.14861375647493,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 1.8559815938958826,
+        "peak_roll_1ms_deg": 0.2524172122084875,
+        "max_closure_1ms_m": 7.852610386022356e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0007823062656480556,
+        "max_yaw_deg": 0.17708496680537003,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.10801443886125324,
+            "plane_speed_rms_mps": 0.10802090848225211
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-combined-000",
+      "seed": 81016,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.692857,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.7041213655042482,
+            "velocity_error_rms_mps": 0.7041213655042482,
+            "peak_speed_mps": 0.8204275546672339,
+            "peak_velocity_error_mps": 0.8204275546672339,
+            "travel_m": 0.6892239387017305,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.4493314238429345,
+            "peak_roll_deg": 0.2161323474776478,
+            "max_closure_m": 7.674841780029606e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.2770195170894301,
+            "velocity_error_rms_mps": 0.2770195170894301,
+            "peak_speed_mps": 0.6600933546834588,
+            "peak_velocity_error_mps": 0.6600933546834588,
+            "travel_m": 0.27952636723963975,
+            "peak_reverse_mps": 0.1609404591628513,
+            "peak_pitch_deg": 4.1441797667292235,
+            "peak_roll_deg": 0.21661611511673695,
+            "max_closure_m": 7.460186017798434e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 187.19397524276044,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 4.14432264012198,
+        "peak_roll_1ms_deg": 0.22505339786092168,
+        "max_closure_1ms_m": 7.791451073315881e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004983695594878913,
+        "max_yaw_deg": 0.2232752060173346,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.7041197996595928,
+            "plane_speed_rms_mps": 0.7041214215589788
+          },
+          "push": {
+            "world_vx_rms_mps": 0.2770192669575191,
+            "plane_speed_rms_mps": 0.2770196286889118
+          }
+        },
+        "drive_tracking_rms_mps": 0.4019203155505504,
+        "steady_drive_tracking_rms_mps": 0.12335801177416252,
+        "progress_at_stop_m": 1.3415955597686269
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-combined-001",
+      "seed": 81017,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.407143,
+        "push": -31.714286,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.36373693343218727,
+            "velocity_error_rms_mps": 0.36373693343218727,
+            "peak_speed_mps": 0.48304081569693563,
+            "peak_velocity_error_mps": 0.48304081569693563,
+            "travel_m": 0.3389278116970802,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.6159351879967363,
+            "peak_roll_deg": 0.25668890483214574,
+            "max_closure_m": 7.47023723998322e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.16880598838695302,
+            "velocity_error_rms_mps": 0.16880598838695302,
+            "peak_speed_mps": 0.39741400649891917,
+            "peak_velocity_error_mps": 0.39741400649891917,
+            "travel_m": 0.12128217257871143,
+            "peak_reverse_mps": 0.16858375744543697,
+            "peak_pitch_deg": 3.4560929123429203,
+            "peak_roll_deg": 0.3234628992467507,
+            "max_closure_m": 7.963564602065026e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 165.89893200293486,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.4562327532419848,
+        "peak_roll_1ms_deg": 0.32410377265296103,
+        "max_closure_1ms_m": 7.965203288005301e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.006017073023886107,
+        "max_yaw_deg": 0.45933170929521966,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.3637363550562465,
+            "plane_speed_rms_mps": 0.3637372577605237
+          },
+          "push": {
+            "world_vx_rms_mps": 0.1688052065776384,
+            "plane_speed_rms_mps": 0.1688086508975496
+          }
+        },
+        "drive_tracking_rms_mps": 0.21740791355013936,
+        "steady_drive_tracking_rms_mps": 0.06669952171526818,
+        "progress_at_stop_m": 0.9629888752103124
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-combined-002",
+      "seed": 81018,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.35,
+        "push": 28.428571,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.3282544405671241,
+            "velocity_error_rms_mps": 0.3282544405671241,
+            "peak_speed_mps": 0.4129022373056894,
+            "peak_velocity_error_mps": 0.4129022373056894,
+            "travel_m": 0.3120554691969273,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.6075843323603785,
+            "peak_roll_deg": 0.20745401749883824,
+            "max_closure_m": 7.816763046699866e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.16582838209589063,
+            "velocity_error_rms_mps": 0.16582838209589063,
+            "peak_speed_mps": 0.3815597906455084,
+            "peak_velocity_error_mps": 0.3815597906455084,
+            "travel_m": 0.12445463419903668,
+            "peak_reverse_mps": 0.1625304918058169,
+            "peak_pitch_deg": 3.6397726049063945,
+            "peak_roll_deg": 0.2022628459912837,
+            "max_closure_m": 7.805393733064843e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 156.7694093040834,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.639890886396331,
+        "peak_roll_1ms_deg": 0.20751967973960223,
+        "max_closure_1ms_m": 7.848176272755003e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.002028892618541078,
+        "max_yaw_deg": 0.15004173806425172,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.32825423326579745,
+            "plane_speed_rms_mps": 0.3282545074781145
+          },
+          "push": {
+            "world_vx_rms_mps": 0.1658283025551016,
+            "plane_speed_rms_mps": 0.1658285214024188
+          }
+        },
+        "drive_tracking_rms_mps": 0.18144155469682305,
+        "steady_drive_tracking_rms_mps": 0.054569076579486966,
+        "progress_at_stop_m": 0.8566113787206965
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-combined-003",
+      "seed": 81019,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.464286,
+        "push": -35.0,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.4499355248502347,
+            "velocity_error_rms_mps": 0.4499355248502347,
+            "peak_speed_mps": 0.54602173946696,
+            "peak_velocity_error_mps": 0.54602173946696,
+            "travel_m": 0.43482916410508343,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.712870081249808,
+            "peak_roll_deg": 0.20206474845162323,
+            "max_closure_m": 8.12108341770637e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.1597785638179917,
+            "velocity_error_rms_mps": 0.1597785638179917,
+            "peak_speed_mps": 0.41671977090205026,
+            "peak_velocity_error_mps": 0.41671977090205026,
+            "travel_m": 0.12717748540300278,
+            "peak_reverse_mps": 0.41671977090205026,
+            "peak_pitch_deg": 3.6738100289118565,
+            "peak_roll_deg": 0.2294361181497817,
+            "max_closure_m": 8.606457239202921e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 259.1834582431261,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.6741355227970436,
+        "peak_roll_1ms_deg": 0.22946219662185383,
+        "max_closure_1ms_m": 8.638024298419708e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.011341683231604493,
+        "max_yaw_deg": 0.987742261602328,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.449930612994658,
+            "plane_speed_rms_mps": 0.44993559030275193
+          },
+          "push": {
+            "world_vx_rms_mps": 0.15977179897887503,
+            "plane_speed_rms_mps": 0.15978191345344955
+          }
+        },
+        "drive_tracking_rms_mps": 0.24871895309714748,
+        "steady_drive_tracking_rms_mps": 0.08012554491863369,
+        "progress_at_stop_m": 1.0753734531788643
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-combined-004",
+      "seed": 81020,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.578571,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.5759090871476565,
+            "velocity_error_rms_mps": 0.5759090871476565,
+            "peak_speed_mps": 0.6808540241898464,
+            "peak_velocity_error_mps": 0.6808540241898464,
+            "travel_m": 0.5614158171971104,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.5015454040131195,
+            "peak_roll_deg": 0.22229823742573765,
+            "max_closure_m": 7.876747763565017e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.07297997095275656,
+            "velocity_error_rms_mps": 0.07297997095275656,
+            "peak_speed_mps": 0.34067549395752306,
+            "peak_velocity_error_mps": 0.34067549395752306,
+            "travel_m": 0.05220699222502212,
+            "peak_reverse_mps": 0.12388489910376488,
+            "peak_pitch_deg": 2.5406247155575516,
+            "peak_roll_deg": 0.21507353423429068,
+            "max_closure_m": 7.069244173229275e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 149.30859193687627,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.023519162594747,
+        "peak_roll_1ms_deg": 0.2223732446688863,
+        "max_closure_1ms_m": 7.928169058322108e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0035857758897791157,
+        "max_yaw_deg": 0.14256487078009766,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.5759085760941645,
+            "plane_speed_rms_mps": 0.5759092032387055
+          },
+          "push": {
+            "world_vx_rms_mps": 0.07297996463998811,
+            "plane_speed_rms_mps": 0.07298151868320928
+          }
+        },
+        "drive_tracking_rms_mps": 0.32412829694807227,
+        "steady_drive_tracking_rms_mps": 0.10095102962445052,
+        "progress_at_stop_m": 1.22016201344306
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-combined-005",
+      "seed": 81021,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.635714,
+        "push": -12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.5853711100210015,
+            "velocity_error_rms_mps": 0.5853711100210015,
+            "peak_speed_mps": 0.7536930323289579,
+            "peak_velocity_error_mps": 0.7536930323289579,
+            "travel_m": 0.5595945562578561,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.332156776504202,
+            "peak_roll_deg": 0.2336060788977136,
+            "max_closure_m": 6.843718410955138e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.15719529757929715,
+            "velocity_error_rms_mps": 0.15719529757929715,
+            "peak_speed_mps": 0.3252659543023943,
+            "peak_velocity_error_mps": 0.3252659543023943,
+            "travel_m": 0.11718568625208592,
+            "peak_reverse_mps": 0.14742321541134684,
+            "peak_pitch_deg": 3.5033767027633944,
+            "peak_roll_deg": 0.18146631005899905,
+            "max_closure_m": 7.143338981978231e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 160.46806778622246,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.5035724810579136,
+        "peak_roll_1ms_deg": 0.2631673311608278,
+        "max_closure_1ms_m": 7.724772090527669e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.002079987647715491,
+        "max_yaw_deg": 0.1682347090476057,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.5853708322944398,
+            "plane_speed_rms_mps": 0.5853712383446129
+          },
+          "push": {
+            "world_vx_rms_mps": 0.15719520298178744,
+            "plane_speed_rms_mps": 0.1571957230104306
+          }
+        },
+        "drive_tracking_rms_mps": 0.3656004932967674,
+        "steady_drive_tracking_rms_mps": 0.1121269016439278,
+        "progress_at_stop_m": 1.2769532061901545
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-combined-006",
+      "seed": 81022,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.75,
+        "push": 15.285714,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.7040456436572184,
+            "velocity_error_rms_mps": 0.7040456436572184,
+            "peak_speed_mps": 0.8935460925327351,
+            "peak_velocity_error_mps": 0.8935460925327351,
+            "travel_m": 0.6778327249518019,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.21601845701841,
+            "peak_roll_deg": 0.2186059324742693,
+            "max_closure_m": 7.213359724738178e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.08615546479465833,
+            "velocity_error_rms_mps": 0.08615546479465833,
+            "peak_speed_mps": 0.36639742908184014,
+            "peak_velocity_error_mps": 0.36639742908184014,
+            "travel_m": 0.055106533963491966,
+            "peak_reverse_mps": 0.07197373634514413,
+            "peak_pitch_deg": 2.1652502615131817,
+            "peak_roll_deg": 0.2266332005689665,
+            "max_closure_m": 5.222211061662759e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 185.664787382993,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.024712276851714,
+        "peak_roll_1ms_deg": 0.22704755776266894,
+        "max_closure_1ms_m": 7.914320403861117e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.005150872900267165,
+        "max_yaw_deg": 0.2552105618110906,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.7040444664248183,
+            "plane_speed_rms_mps": 0.7040457714128262
+          },
+          "push": {
+            "world_vx_rms_mps": 0.08615538683018055,
+            "plane_speed_rms_mps": 0.08615612461457353
+          }
+        },
+        "drive_tracking_rms_mps": 0.4457115524665205,
+        "steady_drive_tracking_rms_mps": 0.12438566686943088,
+        "progress_at_stop_m": 1.3665940534106784
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "aligned-monitor-combined-007",
+      "seed": 81023,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.521429,
+        "push": 18.571429,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.475548932203318,
+            "velocity_error_rms_mps": 0.475548932203318,
+            "peak_speed_mps": 0.6173898937283876,
+            "peak_velocity_error_mps": 0.6173898937283876,
+            "travel_m": 0.4511663883706807,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.5597685773206624,
+            "peak_roll_deg": 0.23154354744473257,
+            "max_closure_m": 7.2672286662511e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.10122939423628587,
+            "velocity_error_rms_mps": 0.10122939423628587,
+            "peak_speed_mps": 0.2411884420733099,
+            "peak_velocity_error_mps": 0.2411884420733099,
+            "travel_m": 0.15182804394064275,
+            "peak_reverse_mps": 0.2411884420733099,
+            "peak_pitch_deg": 2.191548592403446,
+            "peak_roll_deg": 0.240627745789834,
+            "max_closure_m": 6.682458651777584e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 132.95653371078802,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.846198539262066,
+        "peak_roll_1ms_deg": 0.24069818226611236,
+        "max_closure_1ms_m": 7.554194952488267e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0044063854226145905,
+        "max_yaw_deg": 0.2935722923474287,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.4755479769456891,
+            "plane_speed_rms_mps": 0.47554900451926885
+          },
+          "push": {
+            "world_vx_rms_mps": 0.10122853491591911,
+            "plane_speed_rms_mps": 0.10123007790845168
+          }
+        },
+        "drive_tracking_rms_mps": 0.28951449719875616,
+        "steady_drive_tracking_rms_mps": 0.08673209580668743,
+        "progress_at_stop_m": 1.1343340853497903
+      },
+      "controller": "learned"
+    }
+  ],
+  "acceptance": {
+    "overall_pass": false,
+    "thresholds": {
+      "mean_improvement": 0.1,
+      "case_relative_regression": 0.05,
+      "case_speed_absolute_mps": 0.001,
+      "heat_mean_regression": 0.05,
+      "heat_case_regression": 0.2,
+      "secondary_relative_regression": 0.05,
+      "travel_absolute_m": 0.005,
+      "speed_absolute_mps": 0.005,
+      "angle_absolute_deg": 0.2
+    },
+    "checks": {
+      "physical_complete": {
+        "pass": true
+      },
+      "all_case_guards": {
+        "pass": false
+      },
+      "stop_mean_improvement": {
+        "pass": false,
+        "paired_cases": 8,
+        "baseline_mean": 0.2951277811275531,
+        "learned_mean": 0.2738067082259851,
+        "metric": "velocity_rms_mps",
+        "improvement_fraction": 0.07224353065004463
+      },
+      "push_mean_improvement": {
+        "pass": false,
+        "paired_cases": 8,
+        "baseline_mean": 0.13927865825878913,
+        "learned_mean": 0.12998015381009367,
+        "metric": "velocity_error_rms_mps",
+        "improvement_fraction": 0.06676187554462365
+      },
+      "hip_heat_mean": {
+        "pass": true,
+        "baseline_mean": 148.83239520080232,
+        "learned_mean": 152.0616452938411,
+        "change_fraction": 0.02169722585383327
+      },
+      "motion_quality": {
+        "pass": false,
+        "protocol": "motion-quality-20261012",
+        "thresholds": {
+          "relative_regression": 0.05,
+          "drive_tracking_absolute_mps": 0.005,
+          "world_speed_absolute_mps": 0.001,
+          "progress_absolute_m": 0.005,
+          "lateral_absolute_m": 0.005,
+          "yaw_absolute_deg": 0.5
+        },
+        "cases": [
+          {
+            "id": "aligned-monitor-combined-000",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0046981341737451785,
+                "learned": 0.004983695594878913,
+                "delta": 0.0002855614211337348,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.16834868982635182,
+                "learned": 0.2232752060173346,
+                "delta": 0.054926516190982794,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.7145749425113329,
+                "learned": 0.7041197996595928,
+                "delta": -0.010455142851740096,
+                "allowed_increase": 0.035728747125566646
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.7145763924329466,
+                "learned": 0.7041214215589788,
+                "delta": -0.01045497087396774,
+                "allowed_increase": 0.03572881962164733
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.29326169135358243,
+                "learned": 0.2770192669575191,
+                "delta": -0.016242424396063326,
+                "allowed_increase": 0.014663084567679122
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.2932619684691365,
+                "learned": 0.2770196286889118,
+                "delta": -0.016242339780224713,
+                "allowed_increase": 0.014663098423456825
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.4021444684554618,
+                "learned": 0.4019203155505504,
+                "delta": -0.00022415290491140105,
+                "allowed_increase": 0.02010722342277309
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.1231090144771853,
+                "learned": 0.12335801177416252,
+                "delta": 0.0002489972969772214,
+                "allowed_increase": 0.006155450723859265
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.3413410476403487,
+                "learned": -1.3415955597686269,
+                "delta": -0.0002545121282782059,
+                "allowed_increase": 0.06706705238201743,
+                "baseline_progress_m": 1.3413410476403487,
+                "learned_progress_m": 1.3415955597686269
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-combined-001",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.006337861029893238,
+                "learned": 0.006017073023886107,
+                "delta": -0.0003207880060071312,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.3919397064947599,
+                "learned": 0.45933170929521966,
+                "delta": 0.06739200280045976,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.38938131622036454,
+                "learned": 0.3637363550562465,
+                "delta": -0.02564496116411802,
+                "allowed_increase": 0.01946906581101823
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.3893824063433557,
+                "learned": 0.3637372577605237,
+                "delta": -0.02564514858283201,
+                "allowed_increase": 0.019469120317167785
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.20192990241726078,
+                "learned": 0.1688052065776384,
+                "delta": -0.03312469583962238,
+                "allowed_increase": 0.010096495120863039
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.20193280515962278,
+                "learned": 0.1688086508975496,
+                "delta": -0.033124154262073185,
+                "allowed_increase": 0.01009664025798114
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.21752595407729383,
+                "learned": 0.21740791355013936,
+                "delta": -0.00011804052715447266,
+                "allowed_increase": 0.010876297703864692
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.06687936274964604,
+                "learned": 0.06669952171526818,
+                "delta": -0.0001798410343778617,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -0.9630618295961255,
+                "learned": -0.9629888752103124,
+                "delta": 7.295438581311764e-05,
+                "allowed_increase": 0.04815309147980628,
+                "baseline_progress_m": 0.9630618295961255,
+                "learned_progress_m": 0.9629888752103124
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-combined-002",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0020142897405017388,
+                "learned": 0.002028892618541078,
+                "delta": 1.460287803933943e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.17069003293379809,
+                "learned": 0.15004173806425172,
+                "delta": -0.020648294869546363,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.3330874353446292,
+                "learned": 0.32825423326579745,
+                "delta": -0.004833202078831755,
+                "allowed_increase": 0.01665437176723146
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.33308755771413745,
+                "learned": 0.3282545074781145,
+                "delta": -0.004833050236022929,
+                "allowed_increase": 0.016654377885706874
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.18579047977487853,
+                "learned": 0.1658283025551016,
+                "delta": -0.019962177219776944,
+                "allowed_increase": 0.009289523988743926
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.1857906757964968,
+                "learned": 0.1658285214024188,
+                "delta": -0.019962154394078002,
+                "allowed_increase": 0.00928953378982484
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.18184311094102965,
+                "learned": 0.18144155469682305,
+                "delta": -0.00040155624420659675,
+                "allowed_increase": 0.009092155547051483
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.054588296497994696,
+                "learned": 0.054569076579486966,
+                "delta": -1.9219918507729084e-05,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -0.8567887399384445,
+                "learned": -0.8566113787206965,
+                "delta": 0.00017736121774802882,
+                "allowed_increase": 0.04283943699692223,
+                "baseline_progress_m": 0.8567887399384445,
+                "learned_progress_m": 0.8566113787206965
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-combined-003",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.012693574271813376,
+                "learned": 0.011341683231604493,
+                "delta": -0.001351891040208884,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 1.0235124413011802,
+                "learned": 0.987742261602328,
+                "delta": -0.03577017969885221,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.4555555529164399,
+                "learned": 0.449930612994658,
+                "delta": -0.005624939921781924,
+                "allowed_increase": 0.022777777645821996
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.45556207956646594,
+                "learned": 0.44993559030275193,
+                "delta": -0.005626489263714007,
+                "allowed_increase": 0.0227781039783233
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.1728985932751795,
+                "learned": 0.15977179897887503,
+                "delta": -0.013126794296304478,
+                "allowed_increase": 0.008644929663758976
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.17291290089423483,
+                "learned": 0.15978191345344955,
+                "delta": -0.01313098744078528,
+                "allowed_increase": 0.008645645044711742
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.24886325580337215,
+                "learned": 0.24871895309714748,
+                "delta": -0.0001443027062246749,
+                "allowed_increase": 0.012443162790168608
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.08022171874621103,
+                "learned": 0.08012554491863369,
+                "delta": -9.617382757734494e-05,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.0755532646868196,
+                "learned": -1.0753734531788643,
+                "delta": 0.00017981150795520762,
+                "allowed_increase": 0.05377766323434098,
+                "baseline_progress_m": 1.0755532646868196,
+                "learned_progress_m": 1.0753734531788643
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-combined-004",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0032010635553638726,
+                "learned": 0.0035857758897791157,
+                "delta": 0.00038471233441524305,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.14521736269771696,
+                "learned": 0.14256487078009766,
+                "delta": -0.002652491917619293,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.5839998599735546,
+                "learned": 0.5759085760941645,
+                "delta": -0.008091283879390176,
+                "allowed_increase": 0.029199992998677732
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.5840000569697644,
+                "learned": 0.5759092032387055,
+                "delta": -0.008090853731058889,
+                "allowed_increase": 0.029200002848488223
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.0823442160403792,
+                "learned": 0.07297996463998811,
+                "delta": -0.009364251400391085,
+                "allowed_increase": 0.00411721080201896
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.08234576127131346,
+                "learned": 0.07298151868320928,
+                "delta": -0.009364242588104185,
+                "allowed_increase": 0.004117288063565673
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.3244057334812709,
+                "learned": 0.32412829694807227,
+                "delta": -0.00027743653319861616,
+                "allowed_increase": 0.016220286674063545
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.10082179672477566,
+                "learned": 0.10095102962445052,
+                "delta": 0.0001292328996748554,
+                "allowed_increase": 0.005041089836238783
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.2198706869441793,
+                "learned": -1.22016201344306,
+                "delta": -0.00029132649888063966,
+                "allowed_increase": 0.06099353434720897,
+                "baseline_progress_m": 1.2198706869441793,
+                "learned_progress_m": 1.22016201344306
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-combined-005",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.002464898095866177,
+                "learned": 0.002079987647715491,
+                "delta": -0.00038491044815068586,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.17953348078273815,
+                "learned": 0.1682347090476057,
+                "delta": -0.01129877173513244,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.6414379437036394,
+                "learned": 0.5853708322944398,
+                "delta": -0.05606711140919962,
+                "allowed_increase": 0.03207189718518197
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.6414381347107694,
+                "learned": 0.5853712383446129,
+                "delta": -0.05606689636615647,
+                "allowed_increase": 0.03207190673553847
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.22190057145744943,
+                "learned": 0.15719520298178744,
+                "delta": -0.064705368475662,
+                "allowed_increase": 0.011095028572872472
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.22190103487300547,
+                "learned": 0.1571957230104306,
+                "delta": -0.06470531186257486,
+                "allowed_increase": 0.011095051743650275
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.3655518125760425,
+                "learned": 0.3656004932967674,
+                "delta": 4.8680720724891824e-05,
+                "allowed_increase": 0.018277590628802128
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.11168344964264718,
+                "learned": 0.1121269016439278,
+                "delta": 0.00044345200128062534,
+                "allowed_increase": 0.005584172482132359
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.2767415710121393,
+                "learned": -1.2769532061901545,
+                "delta": -0.000211635178015257,
+                "allowed_increase": 0.06383707855060697,
+                "baseline_progress_m": 1.2767415710121393,
+                "learned_progress_m": 1.2769532061901545
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-combined-006",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.005471718513141537,
+                "learned": 0.005150872900267165,
+                "delta": -0.0003208456128743712,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.2620787302386796,
+                "learned": 0.2552105618110906,
+                "delta": -0.006868168427589028,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.7763550364823455,
+                "learned": 0.7040444664248183,
+                "delta": -0.07231057005752717,
+                "allowed_increase": 0.03881775182411728
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.7763558475864453,
+                "learned": 0.7040457714128262,
+                "delta": -0.07231007617361906,
+                "allowed_increase": 0.038817792379322265
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.15662290591055703,
+                "learned": 0.08615538683018055,
+                "delta": -0.07046751908037648,
+                "allowed_increase": 0.007831145295527852
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.15662325957049653,
+                "learned": 0.08615612461457353,
+                "delta": -0.070467134955923,
+                "allowed_increase": 0.007831162978524826
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.4455046069403695,
+                "learned": 0.4457115524665205,
+                "delta": 0.00020694552615102557,
+                "allowed_increase": 0.022275230347018476
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.12391301295277032,
+                "learned": 0.12438566686943088,
+                "delta": 0.00047265391666055645,
+                "allowed_increase": 0.006195650647638516
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.3665650243190184,
+                "learned": -1.3665940534106784,
+                "delta": -2.902909166002665e-05,
+                "allowed_increase": 0.06832825121595092,
+                "baseline_progress_m": 1.3665650243190184,
+                "learned_progress_m": 1.3665940534106784
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-combined-007",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.004748147301339123,
+                "learned": 0.0044063854226145905,
+                "delta": -0.0003417618787245327,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.28243985254935045,
+                "learned": 0.2935722923474287,
+                "delta": 0.011132439798078264,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.5157666167560554,
+                "learned": 0.4755479769456891,
+                "delta": -0.040218639810366275,
+                "allowed_increase": 0.02578833083780277
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.5157680692991218,
+                "learned": 0.47554900451926885,
+                "delta": -0.04021906477985293,
+                "allowed_increase": 0.02578840346495609
+              },
+              "push_world_vx_rms_mps": {
+                "pass": false,
+                "baseline": 0.08741733042514137,
+                "learned": 0.10122853491591911,
+                "delta": 0.013811204490777745,
+                "allowed_increase": 0.004370866521257069
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": false,
+                "baseline": 0.0874184145345544,
+                "learned": 0.10123007790845168,
+                "delta": 0.013811663373897276,
+                "allowed_increase": 0.00437092072672772
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.2895831375782549,
+                "learned": 0.28951449719875616,
+                "delta": -6.864037949871893e-05,
+                "allowed_increase": 0.014479156878912745
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.08707976097030366,
+                "learned": 0.08673209580668743,
+                "delta": -0.0003476651636162287,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.134702319228246,
+                "learned": -1.1343340853497903,
+                "delta": 0.00036823387845563715,
+                "allowed_increase": 0.0567351159614123,
+                "baseline_progress_m": 1.134702319228246,
+                "learned_progress_m": 1.1343340853497903
+              }
+            },
+            "pass": false
+          },
+          {
+            "id": "aligned-monitor-push-000",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0004405100520408638,
+                "learned": 0.0005873765882840701,
+                "delta": 0.00014686653624320636,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.16633975949393634,
+                "learned": 0.3490944900876093,
+                "delta": 0.18275473059367295,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.096181818528758,
+                "learned": 0.09099935090023098,
+                "delta": -0.005182467628527018,
+                "allowed_increase": 0.004809090926437901
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.09618366569197816,
+                "learned": 0.09100207113460433,
+                "delta": -0.005181594557373825,
+                "allowed_increase": 0.0048091832845989085
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-push-001",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.00014907104573582607,
+                "learned": 0.00014873924006103136,
+                "delta": -3.3180567479470916e-07,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.1998602479807554,
+                "learned": 0.23254144096554977,
+                "delta": 0.032681192984794355,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.07408986677690402,
+                "learned": 0.07044871378265954,
+                "delta": -0.003641152994244473,
+                "allowed_increase": 0.003704493338845201
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.07409073555977706,
+                "learned": 0.07045004317041,
+                "delta": -0.0036406923893670673,
+                "allowed_increase": 0.0037045367779888535
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-push-002",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0004924011321874766,
+                "learned": 0.0005403776266646779,
+                "delta": 4.7976494477201294e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.12984522530738793,
+                "learned": 0.12743388001858458,
+                "delta": -0.0024113452888033515,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.1403094031693944,
+                "learned": 0.13615561399821763,
+                "delta": -0.004153789171176758,
+                "allowed_increase": 0.007015470158469719
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.14031065268319692,
+                "learned": 0.1361569049957593,
+                "delta": -0.00415374768743762,
+                "allowed_increase": 0.007015532634159847
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-push-003",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.004072829092580521,
+                "learned": 0.00346647462209469,
+                "delta": -0.0006063544704858312,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.9613347972323494,
+                "learned": 0.8193334827949249,
+                "delta": -0.14200131443742448,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.18464292427783943,
+                "learned": 0.16760671662518858,
+                "delta": -0.017036207652650848,
+                "allowed_increase": 0.009232146213891972
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.18465705455207662,
+                "learned": 0.16761853460519532,
+                "delta": -0.017038519946881298,
+                "allowed_increase": 0.009232852727603831
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-push-004",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0005501129050985324,
+                "learned": 0.0005369571373382218,
+                "delta": -1.3155767760310668e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.1466762383512632,
+                "learned": 0.1544117859410905,
+                "delta": 0.007735547589827307,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.15547916613221668,
+                "learned": 0.14551033512870384,
+                "delta": -0.00996883100351284,
+                "allowed_increase": 0.007773958306610835
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.15548118714473713,
+                "learned": 0.1455120550573592,
+                "delta": -0.00996913208737793,
+                "allowed_increase": 0.007774059357236857
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-push-005",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.001833912359304477,
+                "learned": 0.0014968179389700609,
+                "delta": -0.00033709442033441617,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.4256775924407414,
+                "learned": 0.3903718571583435,
+                "delta": -0.03530573528239789,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.1772513413294581,
+                "learned": 0.16376536241025105,
+                "delta": -0.013485978919207053,
+                "allowed_increase": 0.008862567066472905
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.17725546428505776,
+                "learned": 0.16376881058926254,
+                "delta": -0.013486653695795214,
+                "allowed_increase": 0.008862773214252889
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-push-006",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0005116880284697795,
+                "learned": 0.0005287581560017881,
+                "delta": 1.7070127532008606e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.11511224432847565,
+                "learned": 0.13694332024988354,
+                "delta": 0.021831075921407886,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.1725420359133068,
+                "learned": 0.15733203297099718,
+                "delta": -0.01521000294230962,
+                "allowed_increase": 0.00862710179566534
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.17254330409013305,
+                "learned": 0.1573332102543731,
+                "delta": -0.015210093835759941,
+                "allowed_increase": 0.008627165204506652
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-push-007",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0009346362771508209,
+                "learned": 0.0007823062656480556,
+                "delta": -0.00015233001150276532,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.2836026014164421,
+                "learned": 0.17708496680537003,
+                "delta": -0.10651763461107208,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.11372054314006877,
+                "learned": 0.10801443886125324,
+                "delta": -0.00570610427881553,
+                "allowed_increase": 0.005686027157003439
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.11372609173984073,
+                "learned": 0.10802090848225211,
+                "delta": -0.00570518325758862,
+                "allowed_increase": 0.005686304586992037
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-stop-000",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0018922369320101915,
+                "learned": 0.002021209222221634,
+                "delta": 0.00012897229021144232,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.11311956388363202,
+                "learned": 0.1385969959084443,
+                "delta": 0.02547743202481227,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.17373904171219937,
+                "learned": 0.16798454493278844,
+                "delta": -0.0057544967794109225,
+                "allowed_increase": 0.008686952085609968
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.1737392363693955,
+                "learned": 0.16798491017248174,
+                "delta": -0.005754326196913767,
+                "allowed_increase": 0.008686961818469776
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.18184311094102965,
+                "learned": 0.18144155469682305,
+                "delta": -0.00040155624420659675,
+                "allowed_increase": 0.009092155547051483
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.054588296497994696,
+                "learned": 0.054569076579486966,
+                "delta": -1.9219918507729084e-05,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -0.8567887399384445,
+                "learned": -0.8566113787206965,
+                "delta": 0.00017736121774802882,
+                "allowed_increase": 0.04283943699692223,
+                "baseline_progress_m": 0.8567887399384445,
+                "learned_progress_m": 0.8566113787206965
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-stop-001",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.00305457239905239,
+                "learned": 0.00303778093449504,
+                "delta": -1.6791464557349995e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.2502198899802259,
+                "learned": 0.23724627087786485,
+                "delta": -0.012973619102361028,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.3092416228023535,
+                "learned": 0.3020668961616729,
+                "delta": -0.007174726640680584,
+                "allowed_increase": 0.015462081140117677
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.30924287780242155,
+                "learned": 0.30206794571275164,
+                "delta": -0.007174932089669905,
+                "allowed_increase": 0.015462143890121079
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.32010898155815226,
+                "learned": 0.32016890201569714,
+                "delta": 5.9920457544881955e-05,
+                "allowed_increase": 0.016005449077907612
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.10204534232614773,
+                "learned": 0.10196690673309071,
+                "delta": -7.843559305702186e-05,
+                "allowed_increase": 0.005102267116307387
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.2344652112346888,
+                "learned": -1.2342544489371008,
+                "delta": 0.00021076229758798526,
+                "allowed_increase": 0.06172326056173444,
+                "baseline_progress_m": 1.2344652112346888,
+                "learned_progress_m": 1.2342544489371008
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-stop-002",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.003793465317218861,
+                "learned": 0.004787645633319909,
+                "delta": 0.0009941803161010476,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.23609062759473293,
+                "learned": 0.2829535134743574,
+                "delta": 0.04686288587962445,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.3469119173670558,
+                "learned": 0.3057362845559214,
+                "delta": -0.0411756328111344,
+                "allowed_increase": 0.01734559586835279
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.3469121152627915,
+                "learned": 0.30573672469669877,
+                "delta": -0.04117539056609271,
+                "allowed_increase": 0.017345605763139576
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.36477996006973107,
+                "learned": 0.3649297234995278,
+                "delta": 0.0001497634297967232,
+                "allowed_increase": 0.018238998003486554
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.10526151667649206,
+                "learned": 0.10517043535563578,
+                "delta": -9.108132085627885e-05,
+                "allowed_increase": 0.005263075833824603
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.2647145849649961,
+                "learned": -1.2641845551746849,
+                "delta": 0.0005300297903112483,
+                "allowed_increase": 0.06323572924824981,
+                "baseline_progress_m": 1.2647145849649961,
+                "learned_progress_m": 1.2641845551746849
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-stop-003",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.00443301358731211,
+                "learned": 0.004060870552676868,
+                "delta": -0.00037214303463524185,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.33990793570174027,
+                "learned": 0.42873520597213644,
+                "delta": 0.08882727027039616,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.27200607364102947,
+                "learned": 0.24506243813765474,
+                "delta": -0.026943635503374724,
+                "allowed_increase": 0.013600303682051474
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.2720083660424831,
+                "learned": 0.2450657398448701,
+                "delta": -0.02694262619761298,
+                "allowed_increase": 0.013600418302124155
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.2873163146884271,
+                "learned": 0.2873908308986452,
+                "delta": 7.451621021808963e-05,
+                "allowed_increase": 0.014365815734421356
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.08880693938972345,
+                "learned": 0.088327183566146,
+                "delta": -0.0004797558235774546,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.1446018666758089,
+                "learned": -1.143721248889832,
+                "delta": 0.0008806177859768116,
+                "allowed_increase": 0.05723009333379045,
+                "baseline_progress_m": 1.1446018666758089,
+                "learned_progress_m": 1.143721248889832
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-stop-004",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.00560989248548909,
+                "learned": 0.005214451542376813,
+                "delta": -0.000395440943112277,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.2620787302386796,
+                "learned": 0.3383793437576497,
+                "delta": 0.0763006135189701,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.426736447457347,
+                "learned": 0.3686984536596775,
+                "delta": -0.058037993797669496,
+                "allowed_increase": 0.021336822372867353
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.42673691764689575,
+                "learned": 0.3686992622391583,
+                "delta": -0.058037655407737476,
+                "allowed_increase": 0.021336845882344788
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.4455046069403695,
+                "learned": 0.4457115524665205,
+                "delta": 0.00020694552615102557,
+                "allowed_increase": 0.022275230347018476
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.12391301295277032,
+                "learned": 0.12438566686943088,
+                "delta": 0.00047265391666055645,
+                "allowed_increase": 0.006195650647638516
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.3665650243190184,
+                "learned": -1.3665940534106784,
+                "delta": -2.902909166002665e-05,
+                "allowed_increase": 0.06832825121595092,
+                "baseline_progress_m": 1.3665650243190184,
+                "learned_progress_m": 1.3665940534106784
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-stop-005",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.007461108016137241,
+                "learned": 0.006778965219972049,
+                "delta": -0.0006821427961651921,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.5345349135808923,
+                "learned": 0.5153144768988339,
+                "delta": -0.019220436682058417,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.20462558098208952,
+                "learned": 0.18744246186622887,
+                "delta": -0.01718311911586065,
+                "allowed_increase": 0.010231279049104477
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.20462783710750754,
+                "learned": 0.18744515513986826,
+                "delta": -0.01718268196763928,
+                "allowed_increase": 0.010231391855375378
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.21910904838608097,
+                "learned": 0.21878488954425315,
+                "delta": -0.00032415884182782073,
+                "allowed_increase": 0.010955452419304049
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.06448107267662559,
+                "learned": 0.06405943863253438,
+                "delta": -0.00042163404409120697,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -0.9555790095594918,
+                "learned": -0.9546729068323111,
+                "delta": 0.0009061027271807243,
+                "allowed_increase": 0.04777895047797459,
+                "baseline_progress_m": 0.9555790095594918,
+                "learned_progress_m": 0.9546729068323111
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-stop-006",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.004690113605648018,
+                "learned": 0.004983695594878913,
+                "delta": 0.00029358198923089534,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.12860859260283775,
+                "learned": 0.1572188864651736,
+                "delta": 0.02861029386233585,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.3886974616611907,
+                "learned": 0.3810153858261359,
+                "delta": -0.007682075835054758,
+                "allowed_increase": 0.019434873083059537
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.38869824303233697,
+                "learned": 0.38101627573960106,
+                "delta": -0.007681967292735903,
+                "allowed_increase": 0.01943491215161685
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.4021444684554618,
+                "learned": 0.4019203155505504,
+                "delta": -0.00022415290491140105,
+                "allowed_increase": 0.02010722342277309
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.1231090144771853,
+                "learned": 0.12335801177416252,
+                "delta": 0.0002489972969772214,
+                "allowed_increase": 0.006155450723859265
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.3413410476403487,
+                "learned": -1.3415955597686269,
+                "delta": -0.0002545121282782059,
+                "allowed_increase": 0.06706705238201743,
+                "baseline_progress_m": 1.3413410476403487,
+                "learned_progress_m": 1.3415955597686269
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "aligned-monitor-stop-007",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0005475154730270305,
+                "learned": 0.0005196814427829305,
+                "delta": -2.7834030244099995e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.16559404097496877,
+                "learned": 0.12441149937391852,
+                "delta": -0.041182541601050254,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.23905873644055212,
+                "learned": 0.23244097632210203,
+                "delta": -0.006617760118450083,
+                "allowed_increase": 0.011952936822027607
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.239059566369631,
+                "learned": 0.23244262635829627,
+                "delta": -0.0066169400113347265,
+                "allowed_increase": 0.01195297831848155
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.24879650845377238,
+                "learned": 0.24890153157585185,
+                "delta": 0.00010502312207946729,
+                "allowed_increase": 0.01243982542268862
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.08245284304265496,
+                "learned": 0.08248461753079091,
+                "delta": 3.177448813594663e-05,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.0811476247183265,
+                "learned": -1.0812490655858404,
+                "delta": -0.00010144086751395776,
+                "allowed_increase": 0.05405738123591633,
+                "baseline_progress_m": 1.0811476247183265,
+                "learned_progress_m": 1.0812490655858404
+              }
+            },
+            "pass": true
+          }
+        ]
+      }
+    },
+    "cases": [
+      {
+        "id": "aligned-monitor-combined-000",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.7145763276121198,
+            "learned": 0.7041213655042482,
+            "delta": -0.010454962107871557,
+            "allowed_increase": 0.03572881638060599
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.2932618112725532,
+            "learned": 0.2770195170894301,
+            "delta": -0.016242294183123063,
+            "allowed_increase": 0.01466309056362766
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.7006975273582134,
+            "learned": 0.6892239387017305,
+            "delta": -0.011473588656482958,
+            "allowed_increase": 0.035034876367910674
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.6667319451154863,
+            "learned": 0.6600933546834588,
+            "delta": -0.006638590432027525,
+            "allowed_increase": 0.033336597255774314
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 4.22034908851302,
+            "learned": 4.14432264012198,
+            "delta": -0.07602644839103956,
+            "allowed_increase": 0.211017454425651
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.22721893493590528,
+            "learned": 0.22505339786092168,
+            "delta": -0.002165537074983598,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 187.29322284867234,
+            "learned": 187.19397524276044,
+            "delta": -0.09924760591189852,
+            "allowed_increase": 37.45864456973447
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-combined-001",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.38938219237821603,
+            "learned": 0.36373693343218727,
+            "delta": -0.02564525894602876,
+            "allowed_increase": 0.019469109618910803
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.20193059846166705,
+            "learned": 0.16880598838695302,
+            "delta": -0.03312461007471404,
+            "allowed_increase": 0.010096529923083353
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.3739852205936719,
+            "learned": 0.3389278116970802,
+            "delta": -0.0350574088965917,
+            "allowed_increase": 0.018699261029683594
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.4335220983200704,
+            "learned": 0.39741400649891917,
+            "delta": -0.03610809182115121,
+            "allowed_increase": 0.02167610491600352
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.6363962488218995,
+            "learned": 3.4562327532419848,
+            "delta": -0.18016349557991473,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.3345534725172353,
+            "learned": 0.32410377265296103,
+            "delta": -0.010449699864274242,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 165.92373916711153,
+            "learned": 165.89893200293486,
+            "delta": -0.024807164176678498,
+            "allowed_increase": 33.18474783342231
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-combined-002",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.3330875026758698,
+            "learned": 0.3282544405671241,
+            "delta": -0.004833062108745678,
+            "allowed_increase": 0.01665437513379349
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.18579054361588151,
+            "learned": 0.16582838209589063,
+            "delta": -0.01996216151999089,
+            "allowed_increase": 0.009289527180794076
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.3180140172407946,
+            "learned": 0.3120554691969273,
+            "delta": -0.005958548043867307,
+            "allowed_increase": 0.01590070086203973
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.3814689728039396,
+            "learned": 0.3815597906455084,
+            "delta": 9.081784156877992e-05,
+            "allowed_increase": 0.019073448640196982
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.741699311149591,
+            "learned": 3.639890886396331,
+            "delta": -0.10180842475326024,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2350601076700659,
+            "learned": 0.20751967973960223,
+            "delta": -0.027540427930463685,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 159.15383982327302,
+            "learned": 156.7694093040834,
+            "delta": -2.384430519189607,
+            "allowed_increase": 31.830767964654605
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-combined-003",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.4555620475074197,
+            "learned": 0.4499355248502347,
+            "delta": -0.005626522657184996,
+            "allowed_increase": 0.022778102375370986
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.1729105248087486,
+            "learned": 0.1597785638179917,
+            "delta": -0.013131960990756919,
+            "allowed_increase": 0.008645526240437431
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.44126698727951874,
+            "learned": 0.43482916410508343,
+            "delta": -0.006437823174435309,
+            "allowed_increase": 0.02206334936397594
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.43249916929539156,
+            "learned": 0.41671977090205026,
+            "delta": -0.015779398393341304,
+            "allowed_increase": 0.02162495846476958
+          },
+          "peak_pitch_deg": {
+            "pass": false,
+            "baseline": 3.3512993637546518,
+            "learned": 3.6741355227970436,
+            "delta": 0.3228361590423918,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.23061411626373823,
+            "learned": 0.22946219662185383,
+            "delta": -0.001151919641884408,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 252.03537861515977,
+            "learned": 259.1834582431261,
+            "delta": 7.148079627966325,
+            "allowed_increase": 50.40707572303196
+          }
+        },
+        "pass": false
+      },
+      {
+        "id": "aligned-monitor-combined-004",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.5839999882788535,
+            "learned": 0.5759090871476565,
+            "delta": -0.008090901131196926,
+            "allowed_increase": 0.029199999413942676
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.08234423986197617,
+            "learned": 0.07297997095275656,
+            "delta": -0.009364268909219611,
+            "allowed_increase": 0.004117211993098809
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.570493521015172,
+            "learned": 0.5614158171971104,
+            "delta": -0.009077703818061611,
+            "allowed_increase": 0.028524676050758604
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.34979627098266,
+            "learned": 0.34067549395752306,
+            "delta": -0.009120777025136917,
+            "allowed_increase": 0.017489813549133
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.0187589600497087,
+            "learned": 3.023519162594747,
+            "delta": 0.004760202545038172,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2242341901710465,
+            "learned": 0.2223732446688863,
+            "delta": -0.001860945502160205,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 149.15177502995482,
+            "learned": 149.30859193687627,
+            "delta": 0.15681690692144912,
+            "allowed_increase": 29.830355005990967
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-combined-005",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.641437950174066,
+            "learned": 0.5853711100210015,
+            "delta": -0.05606684015306451,
+            "allowed_increase": 0.032071897508703304
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.22190071617470067,
+            "learned": 0.15719529757929715,
+            "delta": -0.06470541859540352,
+            "allowed_increase": 0.011095035808735033
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.6270230065777465,
+            "learned": 0.5595945562578561,
+            "delta": -0.06742845031989031,
+            "allowed_increase": 0.03135115032888732
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.4489135951772431,
+            "learned": 0.3252659543023943,
+            "delta": -0.12364764087484881,
+            "allowed_increase": 0.022445679758862157
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.492735192871723,
+            "learned": 3.5035724810579136,
+            "delta": 0.010837288186190452,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.27564212654776793,
+            "learned": 0.2631673311608278,
+            "delta": -0.01247479538694013,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 159.52198991884117,
+            "learned": 160.46806778622246,
+            "delta": 0.9460778673812911,
+            "allowed_increase": 31.904397983768234
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-combined-006",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.7763557342532149,
+            "learned": 0.7040456436572184,
+            "delta": -0.07231009059599647,
+            "allowed_increase": 0.03881778671266075
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.15662293066621621,
+            "learned": 0.08615546479465833,
+            "delta": -0.07046746587155789,
+            "allowed_increase": 0.007831146533310811
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.7622642945578666,
+            "learned": 0.6778327249518019,
+            "delta": -0.08443156960606468,
+            "allowed_increase": 0.038113214727893335
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.5348462803936437,
+            "learned": 0.36639742908184014,
+            "delta": -0.16844885131180354,
+            "allowed_increase": 0.026742314019682186
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.0190084394466985,
+            "learned": 3.024712276851714,
+            "delta": 0.005703837405015566,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.21744976855335077,
+            "learned": 0.22704755776266894,
+            "delta": 0.00959778920931817,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 174.4553064073367,
+            "learned": 185.664787382993,
+            "delta": 11.209480975656305,
+            "allowed_increase": 34.891061281467344
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-combined-007",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.5157679588995163,
+            "learned": 0.475548932203318,
+            "delta": -0.04021902669619831,
+            "allowed_increase": 0.025788397944975817
+          },
+          "push_primary": {
+            "pass": false,
+            "baseline": 0.08741772183044307,
+            "learned": 0.10122939423628587,
+            "delta": 0.013811672405842801,
+            "allowed_increase": 0.004370886091522154
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.501714444652553,
+            "learned": 0.4511663883706807,
+            "delta": -0.05054805628187231,
+            "allowed_increase": 0.02508572223262765
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.28067072049447683,
+            "learned": 0.2411884420733099,
+            "delta": -0.039482278421166944,
+            "allowed_increase": 0.014033536024723842
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.8434251835971276,
+            "learned": 2.846198539262066,
+            "delta": 0.002773355664938304,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.253041731605735,
+            "learned": 0.24069818226611236,
+            "delta": -0.012343549339622645,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 130.2650393681039,
+            "learned": 132.95653371078802,
+            "delta": 2.691494342684109,
+            "allowed_increase": 26.053007873620786
+          }
+        },
+        "pass": false
+      },
+      {
+        "id": "aligned-monitor-push-000",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.09618155240280474,
+            "learned": 0.09099907618598031,
+            "delta": -0.005182476216824425,
+            "allowed_increase": 0.004809077620140237
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.24287027908470316,
+            "learned": 0.2389695904615034,
+            "delta": -0.003900688623199755,
+            "allowed_increase": 0.012143513954235158
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 1.8309648192501788,
+            "learned": 1.7816065202672244,
+            "delta": -0.04935829898295441,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.18353292840935764,
+            "learned": 0.19626419638079767,
+            "delta": 0.01273126797144003,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 78.87548281749602,
+            "learned": 90.61388770728645,
+            "delta": 11.73840488979043,
+            "allowed_increase": 15.775096563499204
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-push-001",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.07408985153095536,
+            "learned": 0.07044862689293756,
+            "delta": -0.0036412246380178037,
+            "allowed_increase": 0.003704492576547768
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.19560424604462334,
+            "learned": 0.19633720836303717,
+            "delta": 0.0007329623184138268,
+            "allowed_increase": 0.009780212302231167
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 1.6228834922181399,
+            "learned": 1.6726739338364407,
+            "delta": 0.04979044161830082,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.07419752575721153,
+            "learned": 0.09682210595477167,
+            "delta": 0.02262458019756014,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 45.5815104286303,
+            "learned": 46.19862703355648,
+            "delta": 0.6171166049261743,
+            "allowed_increase": 9.11630208572606
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-push-002",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.1403091746271222,
+            "learned": 0.13615532736325622,
+            "delta": -0.004153847263865973,
+            "allowed_increase": 0.00701545873135611
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.31981675695852957,
+            "learned": 0.31310596011429803,
+            "delta": -0.006710796844231537,
+            "allowed_increase": 0.01599083784792648
+          },
+          "peak_pitch_deg": {
+            "pass": false,
+            "baseline": 2.8758047347621534,
+            "learned": 3.5416275988956,
+            "delta": 0.6658228641334465,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.21497119657771965,
+            "learned": 0.2100327291720744,
+            "delta": -0.0049384674056452416,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 143.34608414235242,
+            "learned": 169.73961881621375,
+            "delta": 26.393534673861325,
+            "allowed_increase": 28.669216828470486
+          }
+        },
+        "pass": false
+      },
+      {
+        "id": "aligned-monitor-push-003",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.18465216421172403,
+            "learned": 0.16761303930716412,
+            "delta": -0.017039124904559916,
+            "allowed_increase": 0.009232608210586203
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.44263934481350853,
+            "learned": 0.43142958297433137,
+            "delta": -0.011209761839177157,
+            "allowed_increase": 0.022131967240675426
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.594508014805703,
+            "learned": 3.5704708794700797,
+            "delta": -0.02403713533562346,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.21156493193411402,
+            "learned": 0.21738093116643306,
+            "delta": 0.005815999232319041,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 121.1251322769633,
+            "learned": 124.13719274135904,
+            "delta": 3.012060464395745,
+            "allowed_increase": 24.225026455392662
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-push-004",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.15547907382772103,
+            "learned": 0.14551032853292845,
+            "delta": -0.00996874529479258,
+            "allowed_increase": 0.007773953691386052
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.35599524183790354,
+            "learned": 0.3514763227517359,
+            "delta": -0.004518919086167639,
+            "allowed_increase": 0.01779976209189518
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.6087163357955157,
+            "learned": 3.642339171559232,
+            "delta": 0.033622835763716274,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2371979878918324,
+            "learned": 0.21472038502926485,
+            "delta": -0.02247760286256756,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 155.14068323782666,
+            "learned": 154.6959589362557,
+            "delta": -0.44472430157097165,
+            "allowed_increase": 31.028136647565333
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-push-005",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.1772540056837309,
+            "learned": 0.16376723004048435,
+            "delta": -0.013486775643246546,
+            "allowed_increase": 0.008862700284186545
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.4209535667297618,
+            "learned": 0.41454297849837085,
+            "delta": -0.006410588231390957,
+            "allowed_increase": 0.02104767833648809
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.620882941942826,
+            "learned": 3.589099923909552,
+            "delta": -0.03178301803327388,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.21378830102472196,
+            "learned": 0.21148415654384758,
+            "delta": -0.002304144480874376,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 116.58776364168938,
+            "learned": 115.73998659947561,
+            "delta": -0.8477770422137638,
+            "allowed_increase": 23.317552728337876
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-push-006",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.1725417030859715,
+            "learned": 0.15733172780223778,
+            "delta": -0.015209975283733718,
+            "allowed_increase": 0.008627085154298575
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.3918001222526357,
+            "learned": 0.3813349365846006,
+            "delta": -0.010465185668035115,
+            "allowed_increase": 0.019590006112631786
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.5369485765000697,
+            "learned": 3.5342952380248964,
+            "delta": -0.002653338475173239,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2205637389752358,
+            "learned": 0.2121004202161331,
+            "delta": -0.008463318759102695,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 173.61282625208466,
+            "learned": 178.7958388133925,
+            "delta": 5.183012561307834,
+            "allowed_increase": 34.722565250416935
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-push-007",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.11372174070028322,
+            "learned": 0.10801587435576063,
+            "delta": -0.005705866344522595,
+            "allowed_increase": 0.005686087035014161
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.2837918586863488,
+            "learned": 0.28059460770706696,
+            "delta": -0.0031972509792818626,
+            "allowed_increase": 0.014189592934317442
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 1.7288785501394939,
+            "learned": 1.8559815938958826,
+            "delta": 0.1271030437563887,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.25155945350613074,
+            "learned": 0.2524172122084875,
+            "delta": 0.0008577587023567701,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 93.37743890944857,
+            "learned": 99.14861375647493,
+            "delta": 5.771174847026359,
+            "allowed_increase": 18.675487781889714
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-stop-000",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.17373907659501056,
+            "learned": 0.16798464873105598,
+            "delta": -0.005754427863954581,
+            "allowed_increase": 0.008686953829750528
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.33343675022418506,
+            "learned": 0.32672613715926535,
+            "delta": -0.006710613064919713,
+            "allowed_increase": 0.016671837511209254
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.07675608900555583,
+            "learned": 0.05105568088539355,
+            "delta": -0.025700408120162284,
+            "allowed_increase": 0.005
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.9298645515006223,
+            "learned": 2.929662450391208,
+            "delta": -0.00020210110941443205,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2218556262135009,
+            "learned": 0.20751967973960223,
+            "delta": -0.014335946473898686,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 122.24795126030808,
+            "learned": 121.28561082481866,
+            "delta": -0.9623404354894234,
+            "allowed_increase": 24.44959025206162
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-stop-001",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.30924264193875683,
+            "learned": 0.30206747524407035,
+            "delta": -0.007175166694686486,
+            "allowed_increase": 0.015462132096937843
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.6908813816691037,
+            "learned": 0.6852279065544924,
+            "delta": -0.005653475114611339,
+            "allowed_increase": 0.03454406908345519
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.11261954853773848,
+            "learned": 0.07674527664299836,
+            "delta": -0.035874271894740115,
+            "allowed_increase": 0.005630977426886924
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.853698078615495,
+            "learned": 2.8502274323191608,
+            "delta": -0.003470646296334312,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2640334659274112,
+            "learned": 0.28125133822558757,
+            "delta": 0.01721787229817634,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 111.68003054140404,
+            "learned": 110.2242421012076,
+            "delta": -1.455788440196443,
+            "allowed_increase": 22.33600610828081
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-stop-002",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.3469119862125815,
+            "learned": 0.3057364764269487,
+            "delta": -0.041175509785632836,
+            "allowed_increase": 0.017345599310629078
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.8118603702993412,
+            "learned": 0.6430385019287874,
+            "delta": -0.1688218683705538,
+            "allowed_increase": 0.040593018514967064
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.1080111291255882,
+            "learned": 0.08652432590253051,
+            "delta": -0.021486803223057696,
+            "allowed_increase": 0.005400556456279411
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.0190084394466985,
+            "learned": 3.024712276851714,
+            "delta": 0.005703837405015566,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2214304122902092,
+            "learned": 0.21999728268611043,
+            "delta": -0.0014331296040987762,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 170.6458880648025,
+            "learned": 172.78905170128743,
+            "delta": 2.1431636364849282,
+            "allowed_increase": 34.129177612960504
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-stop-003",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.2720075927094786,
+            "learned": 0.24506471986625777,
+            "delta": -0.026942872843220833,
+            "allowed_increase": 0.013600379635473931
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.5817238128636304,
+            "learned": 0.48447075220413516,
+            "delta": -0.09725306065949524,
+            "allowed_increase": 0.02908619064318152
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.10737248371570518,
+            "learned": 0.08367110522828082,
+            "delta": -0.02370137848742436,
+            "allowed_increase": 0.005368624185785259
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.7480535814669733,
+            "learned": 2.7468018078889447,
+            "delta": -0.0012517735780286365,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.31405209234739523,
+            "learned": 0.31776229551592833,
+            "delta": 0.0037102031685330994,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 182.30521918620764,
+            "learned": 182.30275391657435,
+            "delta": -0.0024652696332907453,
+            "allowed_increase": 36.461043837241526
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-stop-004",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.42673678202792226,
+            "learned": 0.36869903854745767,
+            "delta": -0.05803774348046459,
+            "allowed_increase": 0.021336839101396114
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 1.0642376993617195,
+            "learned": 0.8135572510541749,
+            "delta": -0.25068044830754466,
+            "allowed_increase": 0.05321188496808598
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.11541800237111119,
+            "learned": 0.09510351153932858,
+            "delta": -0.020314490831782606,
+            "allowed_increase": 0.00577090011855556
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.0190084394466985,
+            "learned": 3.024712276851714,
+            "delta": 0.005703837405015566,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.21744976855335077,
+            "learned": 0.22902021923503837,
+            "delta": 0.011570450681687605,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 180.32300991070943,
+            "learned": 184.0446803423656,
+            "delta": 3.721670431656179,
+            "allowed_increase": 36.06460198214189
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-stop-005",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.2046272675962818,
+            "learned": 0.18744412027545576,
+            "delta": -0.017183147320826042,
+            "allowed_increase": 0.01023136337981409
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.40372999749083593,
+            "learned": 0.3463427471289985,
+            "delta": -0.05738725036183745,
+            "allowed_increase": 0.020186499874541797
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.09144620293383078,
+            "learned": 0.06940038126117025,
+            "delta": -0.02204582167266053,
+            "allowed_increase": 0.005
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.818271019727429,
+            "learned": 2.824246299337637,
+            "delta": 0.005975279610207718,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2486943172648434,
+            "learned": 0.23955000221765035,
+            "delta": -0.009144315047193041,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 97.99826556476992,
+            "learned": 98.80440040440979,
+            "delta": 0.8061348396398671,
+            "allowed_increase": 19.599653112953987
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-stop-006",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.38869811602615023,
+            "learned": 0.3810161464104276,
+            "delta": -0.00768196961572265,
+            "allowed_increase": 0.019434905801307512
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.9424949258185302,
+            "learned": 0.9357731663035309,
+            "delta": -0.006721759514999315,
+            "allowed_increase": 0.047124746290926514
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.10982035456707644,
+            "learned": 0.07340281584884364,
+            "delta": -0.03641753871823279,
+            "allowed_increase": 0.0054910177283538225
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.0187589600497087,
+            "learned": 3.023519162594747,
+            "delta": 0.004760202545038172,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.22929503184024905,
+            "learned": 0.21926025965019705,
+            "delta": -0.010034772190052,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 164.91624894188473,
+            "learned": 166.7914553473545,
+            "delta": 1.8752064054697826,
+            "allowed_increase": 32.983249788376945
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "aligned-monitor-stop-007",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.2390587859142434,
+            "learned": 0.23244104030620663,
+            "delta": -0.006617745608036768,
+            "allowed_increase": 0.011952939295712171
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.489667977986628,
+            "learned": 0.4843508702756605,
+            "delta": -0.005317107710967495,
+            "allowed_increase": 0.0244833988993314
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.1043092403595929,
+            "learned": 0.07182701362612902,
+            "delta": -0.032482226733463876,
+            "allowed_increase": 0.005215462017979645
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.6037797429831278,
+            "learned": 2.598466439169529,
+            "delta": -0.005313303813598846,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.22483324920869993,
+            "learned": 0.20228416424814577,
+            "delta": -0.02254908496055416,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 236.41365846422477,
+            "learned": 236.7238124003694,
+            "delta": 0.31015393614464415,
+            "allowed_increase": 47.282731692844955
+          }
+        },
+        "pass": true
+      }
+    ]
+  },
+  "motion_quality_protocol": "motion-quality-20261012"
+}

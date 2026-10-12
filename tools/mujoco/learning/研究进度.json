@@ -62,38 +62,58 @@
     "保存E41固定131072步半程恢复点；完整模型和13组优化器实际加载与原值一致，128组输入导出数值通过。没有评价或选择中途策略",
     "核对E41半程244个完整训练回合：评分账目复算误差小于1.8e-14，覆盖142/144训练场景；50个回合有控制指标超限而无物理失败。保存原始摘录与核验程序，不将带探索训练表现当作独立评价",
     "D73完成登记的72次参考参数搜索，全部候选评分及保护项用缓存复算一致，最优策略归属和随机状态核验通过；两种子开发原控制基线完全一致。独立评价仍按原45例执行",
-    "独立45例停车误差降低3.6334%、受推误差降低5.8934%、髋热变化+1.3642%。双种子筛选未通过，此路线不晋级。这只描述当前常数参考参数形式、固定搜索预算及原冻结模型，不是全部控制方法或强化学习的上限。 两种子全部180条逐场景完成记录及原控制来源核对一致，保护和运动质量完整复算一致"
+    "独立45例停车误差降低3.6334%、受推误差降低5.8934%、髋热变化+1.3642%。双种子筛选未通过，此路线不晋级。这只描述当前常数参考参数形式、固定搜索预算及原冻结模型，不是全部控制方法或强化学习的上限。 两种子全部180条逐场景完成记录及原控制来源核对一致，保护和运动质量完整复算一致",
+    "E41完成262144步训练及24例配对监控：停车/受推平均改善7.2244%/6.6762%，热增加2.1697%，但2例俯仰和1例受推误差超限，未通过单种子筛选。实际模型、13组优化器、490回合日志及48条评价完成记录均已核验保存"
   ],
-  "next": "C73继续原预算搜索及独立评价；E两种子固定262144步训练与24例监控继续，完成后复算原登记晋级条件。D双种子独立结论已保存，最终60例未运行。",
+  "next": "E73按原预算训练后完成24例监控；准备流程会完整复算双种子晋级条件，E41未通过，不得提前扩大。C73继续原40候选搜索及45例验证。最终60例未运行，已完成的D队列不要重启。",
   "active_process": {
     "queues": [
       {
         "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\screening\\queue-state.json",
         "pid": 8796,
         "status": "running",
-        "current_job": "C-linear-41-search",
-        "note": "保存时的队列状态，接续前仍须核对活进程，不能只凭此记录重启"
+        "current_job": "C-linear-73-search",
+        "process_alive_at_save": true,
+        "note": "保存时的状态与活进程检查；接续前仍须重新核查，不能凭历史PID重启。"
       },
       {
         "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\queue-state.json",
         "pid": 21996,
-        "status": "running",
-        "current_job": "D-reference-73-search",
-        "note": "保存时的队列状态，接续前仍须核对活进程，不能只凭此记录重启"
+        "status": "completed",
+        "current_job": null,
+        "process_alive_at_save": false,
+        "note": "保存时的状态与活进程检查；接续前仍须重新核查，不能凭历史PID重启。"
       },
       {
         "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-queue\\queue-state.json",
         "pid": 6396,
+        "status": "completed",
+        "current_job": null,
+        "process_alive_at_save": false,
+        "note": "保存时的状态与活进程检查；接续前仍须重新核查，不能凭历史PID重启。"
+      },
+      {
+        "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\training-smoke\\queue-state.json",
+        "pid": 16600,
+        "status": "completed",
+        "current_job": null,
+        "process_alive_at_save": false,
+        "note": "保存时的状态与活进程检查；接续前仍须重新核查，不能凭历史PID重启。"
+      },
+      {
+        "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\queue-state.json",
+        "pid": 20360,
         "status": "running",
-        "current_job": "baseline-training",
-        "note": "保存时的队列状态，接续前仍须核对活进程，不能只凭此记录重启"
+        "current_job": "E-aligned-73-train",
+        "process_alive_at_save": true,
+        "note": "保存时的状态与活进程检查；接续前仍须重新核查，不能凭历史PID重启。"
       }
     ],
-    "updated_at": "2026-10-12T06:12:44.777120+08:00"
+    "updated_at": "2026-10-12T08:08:40.226218+08:00"
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T08:00:48.397808+08:00",
+  "updated_at": "2026-10-12T08:08:40.226218+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -450,7 +470,7 @@
   "aligned_reference": {
     "schema": 1,
     "updated_at": "2026-10-12T05:57:19.888746+08:00",
-    "stage": "baselines_running",
+    "stage": "screening_second_seed_running",
     "baseline_snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-frozen",
     "baseline_queue": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\baseline-queue\\plan.json",
     "queue_pid": 6396,
@@ -524,6 +544,23 @@
         "maximum_reward_reconstruction_error": 1.7763568394002505e-14,
         "independent_performance_evidence": false
       }
+    },
+    "first_seed_completed": {
+      "training_steps": 262144,
+      "training_directory": "tools/mujoco/learning/results/study-20261012/aligned-E-41-trained",
+      "monitor_directory": "tools/mujoco/learning/results/study-20261012/aligned-E-41-monitor",
+      "gate": {
+        "pass_all": false,
+        "physical_complete": true,
+        "original_case_guards": false,
+        "motion_quality": false,
+        "stop_improvement": 0.07224353065004463,
+        "push_improvement": 0.06676187554462365,
+        "heat_change": 0.02169722585383327
+      },
+      "expansion_authorized": false,
+      "completed_training_episodes": 490,
+      "training_guard_violation_episodes": 91
     }
   },
   "reference_D_first_seed_validation": {
