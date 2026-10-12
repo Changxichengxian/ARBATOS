@@ -1,0 +1,98 @@
+{
+  "layers": [
+    93,
+    64,
+    64,
+    3
+  ],
+  "parameters": 10371,
+  "export_max_abs_error": 1.7881393432617188e-07,
+  "action_low": [
+    0.0,
+    -1.0,
+    -1.0
+  ],
+  "action_high": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "policy_dt_s": 0.015,
+  "history_frames": 3,
+  "frame_size": 31,
+  "scope": "仅限本次平地停车/纵向抗扰，不支持起身或跳跃的学习控制",
+  "seed": 73,
+  "envs": 2,
+  "env_config": {
+    "reward_mode": "dense",
+    "action_mode": "reference",
+    "gas_force": 450.0
+  },
+  "training_protocol": {
+    "bank_sha256": "fe2eab74ac5d7d23bb11eb5a175fd93c2d26ffd77f25b9281cbb8005a143f3b2",
+    "registration_sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
+    "sources": {
+      "WbrAlignedEnv.py": "1d5926155659bdb323c69a2e001a619042c0f49e0f36b161230f127356bc3294",
+      "WbrAlignedReward.py": "ae5bd58bf63115c16985deba9fb8cf0a4a2f3ee9e3ee3e4995229ab4b2af334a",
+      "TrainWbrAligned.py": "5be441202b843b7dc1f3484f0163186a822cf420c287a46a7b0f077051bf2ff0",
+      "TrainWbrStudy.py": "874c03552cfdf701acc71bed215628ade4ec6b668b227fba2359e064fe01c0f5",
+      "TrainWbrLearning.py": "50974f2dc5310ceef035e250a8fce5a5222760ea82b1a3542b0dfbc6cfbc45a9"
+    },
+    "weights": {
+      "primary": 1.0,
+      "drive": 0.2,
+      "heat": 4.0,
+      "pose": 0.02,
+      "action_change": 0.02,
+      "action_magnitude": 0.001,
+      "guard": 2.0
+    },
+    "algorithm": {
+      "learning_rate": 0.0003,
+      "n_steps": 1024,
+      "batch_size": 256,
+      "n_epochs": 6,
+      "gamma": 0.999,
+      "gae_lambda": 1.0,
+      "clip_range": 0.15,
+      "target_kl": 0.025,
+      "log_std_init": -1.6,
+      "initial_action": [
+        0.0,
+        -0.7649057549197802,
+        0.3239571563657214
+      ]
+    }
+  },
+  "strict_training_checks": true,
+  "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "initial_steps": 0,
+  "resume": null,
+  "training_source_sha256": "5be441202b843b7dc1f3484f0163186a822cf420c287a46a7b0f077051bf2ff0",
+  "requested_total_steps": 262144,
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "promotion_sha256": null,
+  "versions": {
+    "mujoco": "3.14.0",
+    "numpy": "2.5.3",
+    "torch": "2.9.1+cpu",
+    "gymnasium": "1.2.2",
+    "stable-baselines3": "2.7.1"
+  },
+  "training_lineage": {
+    "stage": "screen_first",
+    "seed": 73,
+    "promotion_sha256": null
+  },
+  "kind": "ppo",
+  "training_steps": 262144,
+  "segment_seconds": 3546.3000459000004,
+  "segment_episodes": 490,
+  "segment_failures": 0,
+  "stop_reason": null,
+  "checkpoint_sha256": "cc776a7279cffee40fccbea29cd4b2e20beee414e8a48f61c507c01e09d38258",
+  "policy_sha256": "f4d950d313c315f15a963bb37523bf5bfff6b81eca5c6379b64cc318273ccbc9",
+  "created_at": "2026-10-12T04:31:17.362851+00:00"
+}
