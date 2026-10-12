@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T09:18:06.745965+08:00",
+  "actual_old_E_evaluations": [
+    {
+      "seed": 41,
+      "completed_records": 48,
+      "original_gate_exact": true,
+      "summary_sha256": "4020e0e406d32d10cebf543ab66f0b23910f16596aba19983ccc706b723354e6"
+    },
+    {
+      "seed": 73,
+      "completed_records": 48,
+      "original_gate_exact": true,
+      "summary_sha256": "5a5664505ad12cc3a6003ff1ff336b40361d2eaee4c52a7e73408113a5f0e946"
+    }
+  ],
+  "negative_checks": [
+    {
+      "test": "错误策略来源",
+      "rejected": true,
+      "reason": "评价策略不是登记模型"
+    },
+    {
+      "test": "错误测试集",
+      "rejected": true,
+      "reason": "评价来源改变：split"
+    },
+    {
+      "test": "汇总与真实完成记录不一致",
+      "rejected": true,
+      "reason": "实际完成记录与汇总不一致"
+    },
+    {
+      "test": "评价尚未开始时禁止形成对照结论",
+      "rejected": true,
+      "reason": "唯一新监控队列尚未开始"
+    }
+  ],
+  "new_F_candidate_results_read": false,
+  "all_four_comparison_positive_path_executed": false,
+  "reader_sha256": "cb72163e5eb72ca09184d63b512f31209e4e191051db4984b9a87fd53fb1850e",
+  "checker_sha256": "f7b9bb9a5c073ce30d1fae84c0a8ed3d478f668b4b9aa46bc9723d0b758884d3",
+  "boundary": "真实旧E的96条评价记录用于检查公共读取器及拒绝路径；四个新24例结果的完整正向检查仍待原训练和评价完成。"
+}

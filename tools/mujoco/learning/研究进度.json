@@ -69,9 +69,10 @@
     "末尾误差信号传播已用实际训练库隔离核验，并对只从训练日志选出的push-008完成原控制/最终策略真实重放；基线逐字段一致。该结果只支持继续试验，不证明失败原因。",
     "F的新24例原控制全部物理通过，真实续训、算法参数、预算拒绝及四策略评价前置检查通过；F41已启动，16384步完整冻结恢复包实际换目录载入模型/优化器并精确重放一条原控制场景，已保存。",
     "E两个种子各262144步与原24例监控均已完成，96条评价记录和双种子晋级条件完整复算，均未通过；最终模型、优化器及完整日志已保存。不扩大这条训练配置。",
-    "A至D八组45例共同验证的720条原控制/候选完成记录已核对，原控制指标逐字段一致，原验收可复算。明确单项均值、组合逐例保护及热指标口径，保存对照图和完整结果表。"
+    "A至D八组45例共同验证的720条原控制/候选完成记录已核对，原控制指标逐字段一致，原验收可复算。明确单项均值、组合逐例保护及热指标口径，保存对照图和完整结果表。",
+    "四策略结果读取程序用旧E的96条实际记录复算一致，并通过策略/测试集错配、汇总与完成记录不符、未开始评价等拒绝检查；物理失败时不以剩余成功场景比较。完整新24例正向链仍待训练结束。"
   ],
-  "next": "F按原固定计划完成41/73各262144步；E原队列和准备流程已完成且不晋级，不重启。所有E/F四模型完成后，先执行work/LockTraceComparison.py核验并锁定，再运行唯一新24例监控计划。保存完整对照及负结果/后续判断；最终60例仍未使用。",
+  "next": "F按原计划完成41/73各262144步，逐组用work/SaveTraceCompleted.py保存实际模型及优化器；两组均结束后运行work/LockTraceComparison.py，执行唯一新24例评价，再用work/CompareTraceResults.py完整复算。原E队列已结束不重启，最终60例未使用。",
   "active_process": {
     "updated_at": "2026-10-12T09:13:45.886166+08:00",
     "os_processes_at_save": [
@@ -118,7 +119,7 @@
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T09:13:45.886166+08:00",
+  "updated_at": "2026-10-12T09:21:34.296854+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -831,6 +832,8 @@
     "first_checkpoint_steps": 16384,
     "recovery_archive": "tools/mujoco/learning/results/study-20261012/阶段恢复包-F首段.zip",
     "recovery_archive_sha256": "01e864f7b490bbcb6df4ab567602f7631afd76a3efc3365f2a5ccbeb51c900bb",
-    "recovery_check": "tools/mujoco/learning/results/study-20261012/trace-F-admitted/恢复核验结果.json"
+    "recovery_check": "tools/mujoco/learning/results/study-20261012/trace-F-admitted/恢复核验结果.json",
+    "result_reader_preflight": "tools/mujoco/learning/results/study-20261012/trace-F-admitted/对照结果读取检查.json",
+    "full_comparison_verified": false
   }
 }
