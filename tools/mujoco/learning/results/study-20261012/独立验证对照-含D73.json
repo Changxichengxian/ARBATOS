@@ -1,0 +1,61 @@
+{
+  "rows": [
+    {
+      "label": "六维修正 · 41",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-A-full-41-evaluated\\summary.json",
+      "sha256": "de2972a1776199cf5ce25005c43e9da796ae220500658a468ce64d28f420a5f7",
+      "stop": -0.28350351343180424,
+      "push": -0.09913116542541456,
+      "heat": 6.143034205951015
+    },
+    {
+      "label": "六维修正 · 73",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-A-full-73-evaluated\\summary.json",
+      "sha256": "2f70f2ac3521b7b85c757b8bda64e2a2d5d60793bd173f8254d79cf4607f0cb2",
+      "stop": 0.7643524741763552,
+      "push": 0.6798650660177263,
+      "heat": 0.6566419070636265
+    },
+    {
+      "label": "对称动作 · 41",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-B-symmetric-41\\summary.json",
+      "sha256": "d3b1b3e26724d3d322d54060eab0258101866986ce7b7ab5e50d14deb1c98921",
+      "stop": -0.3734428346119145,
+      "push": 0.2955596952724515,
+      "heat": 6.697569942587189
+    },
+    {
+      "label": "对称动作 · 73",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\screening-B-symmetric-73\\summary.json",
+      "sha256": "1893b4b44fe9dd759088a904454c004deeb2da7dd2d6db503e787a931216dcd7",
+      "stop": 0.27891626584320983,
+      "push": -0.9789010379307905,
+      "heat": 13.397422430293826
+    },
+    {
+      "label": "线性修正 · 41",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\linear-C-41-validation\\summary.json",
+      "sha256": "ae36fc49b8362f58dba64e981fd3717ba9bb22306094b636b5bcdb147b84f97d",
+      "stop": 2.76040131819123,
+      "push": 2.3411024338318764,
+      "heat": -1.753221138666794
+    },
+    {
+      "label": "常数参数 · 41",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-41-validation\\summary.json",
+      "sha256": "3f25988ad036b2f266dd01e028a999f939858411ffbbaff6b74e6a96e2fcf74b",
+      "stop": 4.508442112992261,
+      "push": 8.626696100260844,
+      "heat": 2.178259089094814
+    },
+    {
+      "label": "常数参数 · 73",
+      "source": "D:\\ARBATOS\\tools\\mujoco\\learning\\results\\study-20261012\\reference-D-73-validation\\summary.json",
+      "sha256": "42a8b9ce3946e6f4691e02f76ddafd2fbeba9b93021ecd239d3eaaf70ed8fb89",
+      "stop": 3.633418111204445,
+      "push": 5.893420581676134,
+      "heat": 1.3642242510660818
+    }
+  ],
+  "figure_sha256": "2d15a084ec3e9f7a7131636aed1b9ceb5bf0327178e4d120f0530f5421eed478"
+}

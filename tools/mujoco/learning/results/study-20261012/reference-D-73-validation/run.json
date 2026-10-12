@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "binding": {
+    "schema": 1,
+    "split": "validation",
+    "scenarios_sha256": "851efabbabdb5ffdf9904c61ae1cad07e1a6f4d519b9ca0c03ebffea3d08e25b",
+    "library_sha256": "1181b692d52915926ec5825269f66bb2fe1e75169d82ecb5dd4391aa96cd2858",
+    "experiment_identity": "419ae6b535c37b453b622caeb3f452eccc0f8ed5c076992f224c8669fa5b5672",
+    "evaluator_sha256": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+    "env_config": {
+      "reward_mode": "dense",
+      "action_mode": "reference",
+      "gas_force": 450.0
+    },
+    "policy_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\reference-search\\screening\\D-reference\\73\\search",
+    "policy_artifacts": {
+      "policy.json": "80ca7ce53782b92b63fe28260d7839944bfa371846c93651913e90c3d1edc40d",
+      "embedded_reference_coefficients": "a2c2accdab97a4fc4420f42743f22c473a6b44cc973cc2998e6cf0e5edb4bf8d"
+    },
+    "policy_lock_sha256": null,
+    "baseline_cache_sha256": "6915de460abca0bd84370634b256c79d98a7f0a0318d9acfcadb3c5100c5e768",
+    "record": false
+  },
+  "binding_sha256": "71024890662b9e0aa7791d4c72744d43c76153a160696c48b44efba1052b4df1"
+}
