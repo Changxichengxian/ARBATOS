@@ -1,0 +1,9 @@
+{
+  "status": "running",
+  "steps": 4096,
+  "segment_seconds": 52.37236429999939,
+  "steps_per_s": 78.20918636663588,
+  "episodes": 6,
+  "failures": 0,
+  "pid": 7308
+}
