@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "binding_sha256": "17b8c3ae53295b0b6155f944a2078878afdba483a72f05535a1549d7c1b2fa2e",
+  "row": {
+    "id": "trace-monitor-stop-003",
+    "seed": 91003,
+    "randomize": true,
+    "case": "stop",
+    "options": {
+      "case": "stop",
+      "speed": -0.521429,
+      "push": 12.0,
+      "delay": 1,
+      "duration": 8.0
+    },
+    "metrics": {
+      "windows": {
+        "stop": {
+          "velocity_rms_mps": 0.24647178759180588,
+          "velocity_error_rms_mps": 0.24647178759180588,
+          "peak_speed_mps": 0.6179594569039271,
+          "peak_velocity_error_mps": 0.6179594569039271,
+          "travel_m": 0.4905478856491374,
+          "peak_reverse_mps": 0.0808534488237245,
+          "peak_pitch_deg": 2.6195087257115772,
+          "peak_roll_deg": 0.21745686024936742,
+          "max_closure_m": 7.660602686422099e-05,
+          "samples": 267
+        }
+      },
+      "hip_heat_nm2s": 174.18624281302854,
+      "simulated_s": 8.010000000000668,
+      "peak_pitch_1ms_deg": 2.807724309013195,
+      "peak_roll_1ms_deg": 0.2199089202136171,
+      "max_closure_1ms_m": 7.753384000734048e-05,
+      "passed": true,
+      "failure": null
+    },
+    "motion_quality": {
+      "max_lateral_m": 0.0005508416733767816,
+      "max_yaw_deg": 0.24156761221254364,
+      "windows": {
+        "stop": {
+          "world_vx_rms_mps": 0.2464717515873681,
+          "plane_speed_rms_mps": 0.2464719969484762
+        }
+      },
+      "drive_tracking_rms_mps": 0.2880487958406242,
+      "steady_drive_tracking_rms_mps": 0.08753378754462275,
+      "progress_at_stop_m": 1.1396391079788066
+    },
+    "controller": "learned"
+  }
+}

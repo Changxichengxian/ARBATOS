@@ -1,0 +1,5241 @@
+{
+  "schema": 1,
+  "created_at": "2026-10-12T12:51:11+08:00",
+  "split": "trace-monitor",
+  "scenarios_sha256": "a935e32db4cf96af9fe74013be09cc718a60b9686646b4983c8691f6130b4226",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "env_config": {
+    "reward_mode": "dense",
+    "action_mode": "reference",
+    "gas_force": 450.0
+  },
+  "policy_lock_sha256": null,
+  "run_binding_sha256": "c6cb3aa78776e03d1e12e7278bc023d6546819529db4038fa1f68461c74ef408",
+  "elapsed_s": 285.5113215000001,
+  "baseline_results": [
+    {
+      "id": "trace-monitor-stop-000",
+      "seed": 91000,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.75,
+        "push": -35.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.42673678202792226,
+            "velocity_error_rms_mps": 0.42673678202792226,
+            "peak_speed_mps": 0.8788252285504916,
+            "peak_velocity_error_mps": 0.8788252285504916,
+            "travel_m": 1.0642376993617195,
+            "peak_reverse_mps": 0.11541800237111119,
+            "peak_pitch_deg": 2.4959769795209548,
+            "peak_roll_deg": 0.20703833920466427,
+            "max_closure_m": 7.324952442954019e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 180.32300991070943,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.0190084394466985,
+        "peak_roll_1ms_deg": 0.21744976855335077,
+        "max_closure_1ms_m": 7.979546155055384e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.00560989248548909,
+        "max_yaw_deg": 0.2620787302386796,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.426736447457347,
+            "plane_speed_rms_mps": 0.42673691764689575
+          }
+        },
+        "drive_tracking_rms_mps": 0.4455046069403695,
+        "steady_drive_tracking_rms_mps": 0.12391301295277032,
+        "progress_at_stop_m": 1.3665650243190184
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-stop-001",
+      "seed": 91001,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.407143,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.20532068473050408,
+            "velocity_error_rms_mps": 0.20532068473050408,
+            "peak_speed_mps": 0.4757619457721154,
+            "peak_velocity_error_mps": 0.4757619457721154,
+            "travel_m": 0.4050172045703123,
+            "peak_reverse_mps": 0.09344098004965341,
+            "peak_pitch_deg": 2.7115084274185235,
+            "peak_roll_deg": 0.1929345633607149,
+            "max_closure_m": 7.735068811738916e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 166.49062526252447,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.8003721631773835,
+        "peak_roll_1ms_deg": 0.1992729388991347,
+        "max_closure_1ms_m": 7.799512753921942e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.005730111610552889,
+        "max_yaw_deg": 0.45794785395964777,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.20532018548874592,
+            "plane_speed_rms_mps": 0.20532091517622333
+          }
+        },
+        "drive_tracking_rms_mps": 0.21619628711358888,
+        "steady_drive_tracking_rms_mps": 0.06403799269284961,
+        "progress_at_stop_m": 0.9594014741228467
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-stop-002",
+      "seed": 91002,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.35,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.17373907659501056,
+            "velocity_error_rms_mps": 0.17373907659501056,
+            "peak_speed_mps": 0.4110498267967144,
+            "peak_velocity_error_mps": 0.4110498267967144,
+            "travel_m": 0.33343675022418506,
+            "peak_reverse_mps": 0.07675608900555583,
+            "peak_pitch_deg": 2.5491000087804445,
+            "peak_roll_deg": 0.22181401643724363,
+            "max_closure_m": 7.785005618465804e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 122.24795126030808,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.9298645515006223,
+        "peak_roll_1ms_deg": 0.2218556262135009,
+        "max_closure_1ms_m": 7.857400951570185e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0018922369320101915,
+        "max_yaw_deg": 0.11311956388363202,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.17373904171219937,
+            "plane_speed_rms_mps": 0.1737392363693955
+          }
+        },
+        "drive_tracking_rms_mps": 0.18184311094102965,
+        "steady_drive_tracking_rms_mps": 0.054588296497994696,
+        "progress_at_stop_m": 0.8567887399384445
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-stop-003",
+      "seed": 91003,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.521429,
+        "push": 12.0,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.2736088598304202,
+            "velocity_error_rms_mps": 0.2736088598304202,
+            "peak_speed_mps": 0.6078837825154291,
+            "peak_velocity_error_mps": 0.6078837825154291,
+            "travel_m": 0.5888406637576846,
+            "peak_reverse_mps": 0.10437077957025445,
+            "peak_pitch_deg": 2.7576688689470408,
+            "peak_roll_deg": 0.21742828381210322,
+            "max_closure_m": 7.655373193434432e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 174.28387758662396,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.809556951408508,
+        "peak_roll_1ms_deg": 0.22185553990453108,
+        "max_closure_1ms_m": 7.698740700116931e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0005497849774834715,
+        "max_yaw_deg": 0.2376599219270975,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.27360878146519607,
+            "plane_speed_rms_mps": 0.2736090144848611
+          }
+        },
+        "drive_tracking_rms_mps": 0.2880766770543916,
+        "steady_drive_tracking_rms_mps": 0.08738171156397513,
+        "progress_at_stop_m": 1.1394822820409367
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-stop-004",
+      "seed": 91004,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.464286,
+        "push": -28.428571,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.23983021121193906,
+            "velocity_error_rms_mps": 0.23983021121193906,
+            "peak_speed_mps": 0.5437129418992465,
+            "peak_velocity_error_mps": 0.5437129418992465,
+            "travel_m": 0.5027608499307639,
+            "peak_reverse_mps": 0.09081950495861686,
+            "peak_pitch_deg": 2.5010064651241435,
+            "peak_roll_deg": 0.21629656981895845,
+            "max_closure_m": 7.676220442329155e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 140.63537076575076,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.0183489575311215,
+        "peak_roll_1ms_deg": 0.2164914842244328,
+        "max_closure_1ms_m": 7.715510065775412e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.002633321574528742,
+        "max_yaw_deg": 0.1642593935070232,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.23983012449911806,
+            "plane_speed_rms_mps": 0.23983038414923213
+          }
+        },
+        "drive_tracking_rms_mps": 0.25101220109017147,
+        "steady_drive_tracking_rms_mps": 0.07720950380586133,
+        "progress_at_stop_m": 1.0591749456008848
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-stop-005",
+      "seed": 91005,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.692857,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.3849183430900952,
+            "velocity_error_rms_mps": 0.3849183430900952,
+            "peak_speed_mps": 0.8172514647849299,
+            "peak_velocity_error_mps": 0.8172514647849299,
+            "travel_m": 0.9205778133861464,
+            "peak_reverse_mps": 0.12109149521593843,
+            "peak_pitch_deg": 2.355212871941329,
+            "peak_roll_deg": 0.22626416334542315,
+            "max_closure_m": 7.297984732546131e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 152.99960589684974,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.846280984393679,
+        "peak_roll_1ms_deg": 0.22628101037397824,
+        "max_closure_1ms_m": 7.914608063348617e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0020149001563557517,
+        "max_yaw_deg": 0.27568364392792355,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.38491822728656117,
+            "plane_speed_rms_mps": 0.38491859256960104
+          }
+        },
+        "drive_tracking_rms_mps": 0.3980100593099533,
+        "steady_drive_tracking_rms_mps": 0.127498457544373,
+        "progress_at_stop_m": 1.360015715794372
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-stop-006",
+      "seed": 91006,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.635714,
+        "push": 18.571429,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.3469119862125815,
+            "velocity_error_rms_mps": 0.3469119862125815,
+            "peak_speed_mps": 0.739799689761948,
+            "peak_velocity_error_mps": 0.739799689761948,
+            "travel_m": 0.8118603702993412,
+            "peak_reverse_mps": 0.1080111291255882,
+            "peak_pitch_deg": 2.542281171147278,
+            "peak_roll_deg": 0.2214222593997668,
+            "max_closure_m": 7.440221334078653e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 170.6458880648025,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.0190084394466985,
+        "peak_roll_1ms_deg": 0.2214304122902092,
+        "max_closure_1ms_m": 7.86697669249314e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.003793465317218861,
+        "max_yaw_deg": 0.23609062759473293,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.3469119173670558,
+            "plane_speed_rms_mps": 0.3469121152627915
+          }
+        },
+        "drive_tracking_rms_mps": 0.36477996006973107,
+        "steady_drive_tracking_rms_mps": 0.10526151667649206,
+        "progress_at_stop_m": 1.2647145849649961
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-stop-007",
+      "seed": 91007,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.578571,
+        "push": 31.714286,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.30898807403195194,
+            "velocity_error_rms_mps": 0.30898807403195194,
+            "peak_speed_mps": 0.6796296141939239,
+            "peak_velocity_error_mps": 0.6796296141939239,
+            "travel_m": 0.6877704747021627,
+            "peak_reverse_mps": 0.11291217332271788,
+            "peak_pitch_deg": 2.3504117615097866,
+            "peak_roll_deg": 0.20954174116702984,
+            "max_closure_m": 7.248536490732602e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 117.41272115448916,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.8987155101294118,
+        "peak_roll_1ms_deg": 0.22100216155284005,
+        "max_closure_1ms_m": 7.364660957631833e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.006792460536597053,
+        "max_yaw_deg": 0.41839612270454807,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.30898722448378635,
+            "plane_speed_rms_mps": 0.30898837452505656
+          }
+        },
+        "drive_tracking_rms_mps": 0.3198532707136362,
+        "steady_drive_tracking_rms_mps": 0.10371058473012972,
+        "progress_at_stop_m": 1.2384101677745518
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-push-000",
+      "seed": 91008,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.578571,
+        "push": 31.714286,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.1799865562524151,
+            "velocity_error_rms_mps": 0.1799865562524151,
+            "peak_speed_mps": 0.42724196054424124,
+            "peak_velocity_error_mps": 0.42724196054424124,
+            "travel_m": 0.14966128322228486,
+            "peak_reverse_mps": 0.15918643126841572,
+            "peak_pitch_deg": 3.6804027429908963,
+            "peak_roll_deg": 0.22330166737610477,
+            "max_closure_m": 7.942920453917863e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 156.91023647612624,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.680409049763186,
+        "peak_roll_1ms_deg": 0.22331173202966367,
+        "max_closure_1ms_m": 7.981659207638557e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0008162422706994454,
+        "max_yaw_deg": 0.249172123983559,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.17998650222408175,
+            "plane_speed_rms_mps": 0.1799880548700276
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-push-001",
+      "seed": 91009,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.35,
+        "push": 18.571429,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.11328911481879146,
+            "velocity_error_rms_mps": 0.11328911481879146,
+            "peak_speed_mps": 0.28618219021456326,
+            "peak_velocity_error_mps": 0.28618219021456326,
+            "travel_m": 0.11104504368283873,
+            "peak_reverse_mps": 0.07852623658765197,
+            "peak_pitch_deg": 1.758974830919958,
+            "peak_roll_deg": 0.18973911872793708,
+            "max_closure_m": 7.779560444954353e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 130.87403521621792,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 1.7603597952415115,
+        "peak_roll_1ms_deg": 0.2092572252434264,
+        "max_closure_1ms_m": 7.94363622402758e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.00033005064255665727,
+        "max_yaw_deg": 0.19032325202631123,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.11328945815815071,
+            "plane_speed_rms_mps": 0.11329023726176524
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-push-002",
+      "seed": 91010,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.75,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.15547907382772103,
+            "velocity_error_rms_mps": 0.15547907382772103,
+            "peak_speed_mps": 0.35599524183790354,
+            "peak_velocity_error_mps": 0.35599524183790354,
+            "travel_m": 0.12958139938693236,
+            "peak_reverse_mps": 0.35599524183790354,
+            "peak_pitch_deg": 3.6086525936586007,
+            "peak_roll_deg": 0.2366717860048113,
+            "max_closure_m": 7.774909048821904e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 155.14068323782666,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.6087163357955157,
+        "peak_roll_1ms_deg": 0.2371979878918324,
+        "max_closure_1ms_m": 8.016595692575928e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0005501129050985324,
+        "max_yaw_deg": 0.1466762383512632,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.15547916613221668,
+            "plane_speed_rms_mps": 0.15548118714473713
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-push-003",
+      "seed": 91011,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.521429,
+        "push": -28.428571,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.17446989715905536,
+            "velocity_error_rms_mps": 0.17446989715905536,
+            "peak_speed_mps": 0.406212014663975,
+            "peak_velocity_error_mps": 0.406212014663975,
+            "travel_m": 0.13985868988256475,
+            "peak_reverse_mps": 0.1639592081319626,
+            "peak_pitch_deg": 3.524393713154096,
+            "peak_roll_deg": 0.19116925507786953,
+            "max_closure_m": 7.526450659571712e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 235.32076227995904,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.524656073314236,
+        "peak_roll_1ms_deg": 0.1915243280369187,
+        "max_closure_1ms_m": 7.936277224229433e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.001628245786425143,
+        "max_yaw_deg": 0.4203028309608375,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.17446880079413937,
+            "plane_speed_rms_mps": 0.1744714248436115
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-push-004",
+      "seed": 91012,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.692857,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.09618155240280474,
+            "velocity_error_rms_mps": 0.09618155240280474,
+            "peak_speed_mps": 0.24287027908470316,
+            "peak_velocity_error_mps": 0.24287027908470316,
+            "travel_m": 0.0954796557125836,
+            "peak_reverse_mps": 0.24287027908470316,
+            "peak_pitch_deg": 1.8300199464879168,
+            "peak_roll_deg": 0.18351335200168414,
+            "max_closure_m": 7.537271384954917e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 78.87548281749602,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 1.8309648192501788,
+        "peak_roll_1ms_deg": 0.18353292840935764,
+        "max_closure_1ms_m": 7.585596388367849e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0004405100520408638,
+        "max_yaw_deg": 0.16633975949393634,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.096181818528758,
+            "plane_speed_rms_mps": 0.09618366569197816
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-push-005",
+      "seed": 91013,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.635714,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.13350079639023815,
+            "velocity_error_rms_mps": 0.13350079639023815,
+            "peak_speed_mps": 0.3085598735197234,
+            "peak_velocity_error_mps": 0.3085598735197234,
+            "travel_m": 0.11227946542711247,
+            "peak_reverse_mps": 0.11795812248948456,
+            "peak_pitch_deg": 2.5073234276320755,
+            "peak_roll_deg": 0.20098510632238037,
+            "max_closure_m": 7.305546529230124e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 107.15589873984153,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.5092985943650414,
+        "peak_roll_1ms_deg": 0.22606927919224137,
+        "max_closure_1ms_m": 7.305546529230124e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0009034239097397491,
+        "max_yaw_deg": 0.29708747995767526,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.13350166559344084,
+            "plane_speed_rms_mps": 0.1335030157882838
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-push-006",
+      "seed": 91014,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.407143,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.07505637379144652,
+            "velocity_error_rms_mps": 0.07505637379144652,
+            "peak_speed_mps": 0.19914256510910558,
+            "peak_velocity_error_mps": 0.19914256510910558,
+            "travel_m": 0.08245830982891592,
+            "peak_reverse_mps": 0.19914256510910558,
+            "peak_pitch_deg": 1.5681867731315298,
+            "peak_roll_deg": 0.14526457823166478,
+            "max_closure_m": 7.37996114272055e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 50.71697362542968,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 1.5683889846777874,
+        "peak_roll_1ms_deg": 0.14692695883382437,
+        "max_closure_1ms_m": 7.537014231472723e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.00029052085354721083,
+        "max_yaw_deg": 0.16070863523260184,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.07505652560410878,
+            "plane_speed_rms_mps": 0.07505757559836482
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-push-007",
+      "seed": 91015,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.464286,
+        "push": -35.0,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.18732895021378723,
+            "velocity_error_rms_mps": 0.18732895021378723,
+            "peak_speed_mps": 0.4525839309339538,
+            "peak_velocity_error_mps": 0.4525839309339538,
+            "travel_m": 0.15155438094352688,
+            "peak_reverse_mps": 0.4525839309339538,
+            "peak_pitch_deg": 3.5565643621154273,
+            "peak_roll_deg": 0.211166057430469,
+            "max_closure_m": 7.212996360500274e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 150.59925405451196,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.556784194729497,
+        "peak_roll_1ms_deg": 0.21118146066823412,
+        "max_closure_1ms_m": 7.42804384940481e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.001965538630461636,
+        "max_yaw_deg": 0.4082405816515419,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.18732686681941846,
+            "plane_speed_rms_mps": 0.18733043612669364
+          }
+        }
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-combined-000",
+      "seed": 91016,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.578571,
+        "push": 35.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.5839999882788535,
+            "velocity_error_rms_mps": 0.5839999882788535,
+            "peak_speed_mps": 0.6765026756523008,
+            "peak_velocity_error_mps": 0.6765026756523008,
+            "travel_m": 0.570493521015172,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.4557741138708495,
+            "peak_roll_deg": 0.2197814845811434,
+            "max_closure_m": 7.765640631066745e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.27553499237246365,
+            "velocity_error_rms_mps": 0.27553499237246365,
+            "peak_speed_mps": 0.6496433119372351,
+            "peak_velocity_error_mps": 0.6496433119372351,
+            "travel_m": 0.23590725448987393,
+            "peak_reverse_mps": 0.23268471489523515,
+            "peak_pitch_deg": 4.388241723873061,
+            "peak_roll_deg": 0.2100799016544617,
+            "max_closure_m": 7.34400835602973e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 183.15228732848385,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 4.389282756526589,
+        "peak_roll_1ms_deg": 0.22000104768869552,
+        "max_closure_1ms_m": 7.819791561023043e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004010067735155062,
+        "max_yaw_deg": 0.3266800381528835,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.5839998599735546,
+            "plane_speed_rms_mps": 0.5840000569697644
+          },
+          "push": {
+            "world_vx_rms_mps": 0.27553447138263704,
+            "plane_speed_rms_mps": 0.27553510641067785
+          }
+        },
+        "drive_tracking_rms_mps": 0.3244057334812709,
+        "steady_drive_tracking_rms_mps": 0.10082179672477566,
+        "progress_at_stop_m": 1.2198706869441793
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-combined-001",
+      "seed": 91017,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.75,
+        "push": -28.428571,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.7732337776332286,
+            "velocity_error_rms_mps": 0.7732337776332286,
+            "peak_speed_mps": 0.8843863255415129,
+            "peak_velocity_error_mps": 0.8843863255415129,
+            "travel_m": 0.7582115398509146,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.3665858526813572,
+            "peak_roll_deg": 0.178382850478952,
+            "max_closure_m": 7.455321557678173e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.32708248022977426,
+            "velocity_error_rms_mps": 0.32708248022977426,
+            "peak_speed_mps": 0.765278751970609,
+            "peak_velocity_error_mps": 0.765278751970609,
+            "travel_m": 0.32968822721356394,
+            "peak_reverse_mps": 0.2037910271674489,
+            "peak_pitch_deg": 4.668672360498337,
+            "peak_roll_deg": 0.1878320448558282,
+            "max_closure_m": 7.790739097598634e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 259.0378206425385,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 4.669660586521247,
+        "peak_roll_1ms_deg": 0.1938011807568601,
+        "max_closure_1ms_m": 8.147849794501441e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.016226085141184374,
+        "max_yaw_deg": 0.6099456240711307,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.773227644983892,
+            "plane_speed_rms_mps": 0.7732338319493454
+          },
+          "push": {
+            "world_vx_rms_mps": 0.32708189414277716,
+            "plane_speed_rms_mps": 0.3270842964169135
+          }
+        },
+        "drive_tracking_rms_mps": 0.44350852949340064,
+        "steady_drive_tracking_rms_mps": 0.1343637689396841,
+        "progress_at_stop_m": 1.3865046289524598
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-combined-002",
+      "seed": 91018,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.464286,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.4566115702849965,
+            "velocity_error_rms_mps": 0.4566115702849965,
+            "peak_speed_mps": 0.5437129418992465,
+            "peak_velocity_error_mps": 0.5437129418992465,
+            "travel_m": 0.4428346427374994,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.5010064651241435,
+            "peak_roll_deg": 0.20852662835530614,
+            "max_closure_m": 7.676220442329155e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.16091470559266147,
+            "velocity_error_rms_mps": 0.16091470559266147,
+            "peak_speed_mps": 0.2779133614759906,
+            "peak_velocity_error_mps": 0.2779133614759906,
+            "travel_m": 0.12606974778875601,
+            "peak_reverse_mps": 0.17833427467183485,
+            "peak_pitch_deg": 3.6325524586129583,
+            "peak_roll_deg": 0.1986104694104599,
+            "max_closure_m": 7.962211289592344e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 167.71765192863734,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.632556176635566,
+        "peak_roll_1ms_deg": 0.2085513604894029,
+        "max_closure_1ms_m": 7.97412600196797e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0028004948456224134,
+        "max_yaw_deg": 0.20155952983015368,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.4566114033425357,
+            "plane_speed_rms_mps": 0.4566116304067701
+          },
+          "push": {
+            "world_vx_rms_mps": 0.16091449620354756,
+            "plane_speed_rms_mps": 0.16091490613895976
+          }
+        },
+        "drive_tracking_rms_mps": 0.25101220109017147,
+        "steady_drive_tracking_rms_mps": 0.07720950380586133,
+        "progress_at_stop_m": 1.0591749456008848
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-combined-003",
+      "seed": 91019,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.35,
+        "push": -31.714286,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.331109914464651,
+            "velocity_error_rms_mps": 0.331109914464651,
+            "peak_speed_mps": 0.41256698516834406,
+            "peak_velocity_error_mps": 0.41256698516834406,
+            "travel_m": 0.31545874218199277,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.5286996582590104,
+            "peak_roll_deg": 0.25004241751346795,
+            "max_closure_m": 7.495483760226866e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.17524108708586358,
+            "velocity_error_rms_mps": 0.17524108708586358,
+            "peak_speed_mps": 0.44220509412931436,
+            "peak_velocity_error_mps": 0.44220509412931436,
+            "travel_m": 0.16624017283275272,
+            "peak_reverse_mps": 0.44220509412931436,
+            "peak_pitch_deg": 3.4663782548993707,
+            "peak_roll_deg": 0.24667824801361649,
+            "max_closure_m": 8.05826385625473e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 158.0012901020634,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.466815568710838,
+        "peak_roll_1ms_deg": 0.25013238250380015,
+        "max_closure_1ms_m": 8.05826385625473e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004238027290460749,
+        "max_yaw_deg": 0.220463043446373,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.33110909787539033,
+            "plane_speed_rms_mps": 0.33111004217560747
+          },
+          "push": {
+            "world_vx_rms_mps": 0.17524110003675802,
+            "plane_speed_rms_mps": 0.1752428312438103
+          }
+        },
+        "drive_tracking_rms_mps": 0.17733161070526074,
+        "steady_drive_tracking_rms_mps": 0.05516758959196528,
+        "progress_at_stop_m": 0.8659101604275763
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-combined-004",
+      "seed": 91020,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.407143,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.39051267050665084,
+            "velocity_error_rms_mps": 0.39051267050665084,
+            "peak_speed_mps": 0.4716238249746709,
+            "peak_velocity_error_mps": 0.4716238249746709,
+            "travel_m": 0.3766128197933606,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.621383224361046,
+            "peak_roll_deg": 0.17803181009538352,
+            "max_closure_m": 7.716501494624899e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.17733725437624537,
+            "velocity_error_rms_mps": 0.17733725437624537,
+            "peak_speed_mps": 0.33663545721634364,
+            "peak_velocity_error_mps": 0.33663545721634364,
+            "travel_m": 0.13304331048489138,
+            "peak_reverse_mps": 0.1981334655414597,
+            "peak_pitch_deg": 3.5538142706586897,
+            "peak_roll_deg": 0.1907972155412001,
+            "max_closure_m": 7.877922835184215e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 177.7527769889528,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.553960893908625,
+        "peak_roll_1ms_deg": 0.21744976855335077,
+        "max_closure_1ms_m": 7.952934793183507e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.002245607633431039,
+        "max_yaw_deg": 0.21765499219636575,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.39051239027224305,
+            "plane_speed_rms_mps": 0.3905127365241896
+          },
+          "push": {
+            "world_vx_rms_mps": 0.17733728875110413,
+            "plane_speed_rms_mps": 0.1773375957221263
+          }
+        },
+        "drive_tracking_rms_mps": 0.21604037990187944,
+        "steady_drive_tracking_rms_mps": 0.05873461433900664,
+        "progress_at_stop_m": 0.9425088030724305
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-combined-005",
+      "seed": 91021,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.635714,
+        "push": 18.571429,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.644402989910653,
+            "velocity_error_rms_mps": 0.644402989910653,
+            "peak_speed_mps": 0.7462739573349434,
+            "peak_velocity_error_mps": 0.7462739573349434,
+            "travel_m": 0.6300068910397272,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.529259581722468,
+            "peak_roll_deg": 0.20359845818526928,
+            "max_closure_m": 7.637683093477246e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.08705215936123588,
+            "velocity_error_rms_mps": 0.08705215936123588,
+            "peak_speed_mps": 0.3989929979140605,
+            "peak_velocity_error_mps": 0.3989929979140605,
+            "travel_m": 0.0401133894005945,
+            "peak_reverse_mps": 0.0658722442204189,
+            "peak_pitch_deg": 2.364273281954326,
+            "peak_roll_deg": 0.17314018883452575,
+            "max_closure_m": 7.353374721825708e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 215.72372074731769,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.796265495197587,
+        "peak_roll_1ms_deg": 0.20410546689404777,
+        "max_closure_1ms_m": 8.203788657442053e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0012521538020688978,
+        "max_yaw_deg": 0.2694062885362039,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.6444024086714965,
+            "plane_speed_rms_mps": 0.6444030725573592
+          },
+          "push": {
+            "world_vx_rms_mps": 0.08705215962734981,
+            "plane_speed_rms_mps": 0.08705403144496987
+          }
+        },
+        "drive_tracking_rms_mps": 0.36419263621253123,
+        "steady_drive_tracking_rms_mps": 0.11412811105205238,
+        "progress_at_stop_m": 1.279637109710212
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-combined-006",
+      "seed": 91022,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.692857,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.7145763276121198,
+            "velocity_error_rms_mps": 0.7145763276121198,
+            "peak_speed_mps": 0.8154927545213083,
+            "peak_velocity_error_mps": 0.8154927545213083,
+            "travel_m": 0.7006975273582134,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.418271765498763,
+            "peak_roll_deg": 0.2207597083794591,
+            "max_closure_m": 7.693281240419886e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.12509554642590634,
+            "velocity_error_rms_mps": 0.12509554642590634,
+            "peak_speed_mps": 0.47667996337080665,
+            "peak_velocity_error_mps": 0.47667996337080665,
+            "travel_m": 0.1352569471768832,
+            "peak_reverse_mps": 0.07532082625370545,
+            "peak_pitch_deg": 2.3740171295804586,
+            "peak_roll_deg": 0.23515327824865703,
+            "max_closure_m": 7.49774494876726e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 155.5328919497371,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.0187589600497087,
+        "peak_roll_1ms_deg": 0.23544961964317238,
+        "max_closure_1ms_m": 7.981763252297669e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004777045497596204,
+        "max_yaw_deg": 0.13467645647148352,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.7145749425113329,
+            "plane_speed_rms_mps": 0.7145763924329466
+          },
+          "push": {
+            "world_vx_rms_mps": 0.1250955389773577,
+            "plane_speed_rms_mps": 0.1250960860053036
+          }
+        },
+        "drive_tracking_rms_mps": 0.4021444684554618,
+        "steady_drive_tracking_rms_mps": 0.1231090144771853,
+        "progress_at_stop_m": 1.3413410476403487
+      },
+      "controller": "baseline"
+    },
+    {
+      "id": "trace-monitor-combined-007",
+      "seed": 91023,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.521429,
+        "push": 25.142857,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.5148419797581254,
+            "velocity_error_rms_mps": 0.5148419797581254,
+            "peak_speed_mps": 0.6092257623576453,
+            "peak_velocity_error_mps": 0.6092257623576453,
+            "travel_m": 0.5005913227564593,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.733413124733525,
+            "peak_roll_deg": 0.2736544138198634,
+            "max_closure_m": 7.937216938056595e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.11141990834267228,
+            "velocity_error_rms_mps": 0.11141990834267228,
+            "peak_speed_mps": 0.2765938383020631,
+            "peak_velocity_error_mps": 0.2765938383020631,
+            "travel_m": 0.1511311680085503,
+            "peak_reverse_mps": 0.2535482907885267,
+            "peak_pitch_deg": 2.7095481300159254,
+            "peak_roll_deg": 0.27893813978609217,
+            "max_closure_m": 6.692342532926154e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 219.41395379447957,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.73355369908534,
+        "peak_roll_1ms_deg": 0.2791425567755848,
+        "max_closure_1ms_m": 8.248207716549138e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0010483839575364615,
+        "max_yaw_deg": 0.19677527636984957,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.5148412917536492,
+            "plane_speed_rms_mps": 0.5148421375031383
+          },
+          "push": {
+            "world_vx_rms_mps": 0.11141970808400557,
+            "plane_speed_rms_mps": 0.11142050510392276
+          }
+        },
+        "drive_tracking_rms_mps": 0.2862322536301159,
+        "steady_drive_tracking_rms_mps": 0.08707125080174141,
+        "progress_at_stop_m": 1.1433493503926333
+      },
+      "controller": "baseline"
+    }
+  ],
+  "learned_results": [
+    {
+      "id": "trace-monitor-stop-000",
+      "seed": 91000,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.75,
+        "push": -35.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.41245050734911287,
+            "velocity_error_rms_mps": 0.41245050734911287,
+            "peak_speed_mps": 0.8886879887844706,
+            "peak_velocity_error_mps": 0.8886879887844706,
+            "travel_m": 1.0445856348990736,
+            "peak_reverse_mps": 0.06959543593597661,
+            "peak_pitch_deg": 2.4927700264916663,
+            "peak_roll_deg": 0.22381066131699634,
+            "max_closure_m": 7.436867986019466e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 177.61465485449887,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.022220223745939,
+        "peak_roll_1ms_deg": 0.223918132352214,
+        "max_closure_1ms_m": 7.99365277874765e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004857402049588616,
+        "max_yaw_deg": 0.25086321155644253,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.41245036122759654,
+            "plane_speed_rms_mps": 0.41245064369673806
+          }
+        },
+        "drive_tracking_rms_mps": 0.44571937672138157,
+        "steady_drive_tracking_rms_mps": 0.12401744726543437,
+        "progress_at_stop_m": 1.366158997691187
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-stop-001",
+      "seed": 91001,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.407143,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.19653617897284834,
+            "velocity_error_rms_mps": 0.19653617897284834,
+            "peak_speed_mps": 0.4787431383260859,
+            "peak_velocity_error_mps": 0.4787431383260859,
+            "travel_m": 0.39401818224728935,
+            "peak_reverse_mps": 0.05796313853942001,
+            "peak_pitch_deg": 2.7370666614264447,
+            "peak_roll_deg": 0.19544841206681832,
+            "max_closure_m": 7.572575431449727e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 165.29842041876657,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.7998138803571053,
+        "peak_roll_1ms_deg": 0.20433216552775957,
+        "max_closure_1ms_m": 7.843054575494612e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.005880087685242379,
+        "max_yaw_deg": 0.47958050620033266,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.19653528690456415,
+            "plane_speed_rms_mps": 0.19653630033644884
+          }
+        },
+        "drive_tracking_rms_mps": 0.21616403603238415,
+        "steady_drive_tracking_rms_mps": 0.06418941234527004,
+        "progress_at_stop_m": 0.9594813896259985
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-stop-002",
+      "seed": 91002,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.35,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.16429501825426748,
+            "velocity_error_rms_mps": 0.16429501825426748,
+            "peak_speed_mps": 0.4148368998375342,
+            "peak_velocity_error_mps": 0.4148368998375342,
+            "travel_m": 0.3149973227449151,
+            "peak_reverse_mps": 0.04443413364000646,
+            "peak_pitch_deg": 2.6117089349509746,
+            "peak_roll_deg": 0.22047863428728062,
+            "max_closure_m": 7.782062111396547e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 120.9790748312278,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.931419947105735,
+        "peak_roll_1ms_deg": 0.22047863428728062,
+        "max_closure_1ms_m": 7.792459592788574e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0018644072890616002,
+        "max_yaw_deg": 0.17438186336879588,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.16429493144404603,
+            "plane_speed_rms_mps": 0.16429538888285844
+          }
+        },
+        "drive_tracking_rms_mps": 0.18131179977762557,
+        "steady_drive_tracking_rms_mps": 0.05413771851271158,
+        "progress_at_stop_m": 0.8562501453591669
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-stop-003",
+      "seed": 91003,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.521429,
+        "push": 12.0,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.2632539620241564,
+            "velocity_error_rms_mps": 0.2632539620241564,
+            "peak_speed_mps": 0.6134968243594443,
+            "peak_velocity_error_mps": 0.6134968243594443,
+            "travel_m": 0.5761945706720137,
+            "peak_reverse_mps": 0.06378790362301448,
+            "peak_pitch_deg": 2.77998631682279,
+            "peak_roll_deg": 0.21777332189983375,
+            "max_closure_m": 7.632643065476207e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 173.08295256078856,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.8042977982044692,
+        "peak_roll_1ms_deg": 0.22789221715701743,
+        "max_closure_1ms_m": 7.825774126942439e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0005545160229151367,
+        "max_yaw_deg": 0.18880181758921824,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.2632539314272237,
+            "plane_speed_rms_mps": 0.26325411288781747
+          }
+        },
+        "drive_tracking_rms_mps": 0.28810760402207697,
+        "steady_drive_tracking_rms_mps": 0.08757864425634403,
+        "progress_at_stop_m": 1.1395846200815083
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-stop-004",
+      "seed": 91004,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.464286,
+        "push": -28.428571,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.22772223452443008,
+            "velocity_error_rms_mps": 0.22772223452443008,
+            "peak_speed_mps": 0.5477486664517233,
+            "peak_velocity_error_mps": 0.5477486664517233,
+            "travel_m": 0.47861330590187134,
+            "peak_reverse_mps": 0.05102776600532917,
+            "peak_pitch_deg": 2.5400052547820273,
+            "peak_roll_deg": 0.21305459756189987,
+            "max_closure_m": 7.715510192504999e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 140.53206012187024,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.0210860235556916,
+        "peak_roll_1ms_deg": 0.21307922355559727,
+        "max_closure_1ms_m": 7.737469251574617e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.002713708655818446,
+        "max_yaw_deg": 0.14245350346767308,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.22772219238157032,
+            "plane_speed_rms_mps": 0.2277225558204848
+          }
+        },
+        "drive_tracking_rms_mps": 0.25051493695391785,
+        "steady_drive_tracking_rms_mps": 0.07655630418246043,
+        "progress_at_stop_m": 1.0587633974236277
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-stop-005",
+      "seed": 91005,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.692857,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.35950462856889337,
+            "velocity_error_rms_mps": 0.35950462856889337,
+            "peak_speed_mps": 0.8267076897803823,
+            "peak_velocity_error_mps": 0.8267076897803823,
+            "travel_m": 0.854105955700809,
+            "peak_reverse_mps": 0.07326873850181888,
+            "peak_pitch_deg": 2.280425891283777,
+            "peak_roll_deg": 0.23896764908201118,
+            "max_closure_m": 7.386884735308325e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 150.44139437972143,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.848572322824128,
+        "peak_roll_1ms_deg": 0.2390102660406973,
+        "max_closure_1ms_m": 7.938714435469342e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0030171333361241385,
+        "max_yaw_deg": 0.24647613366480675,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.3595041828174016,
+            "plane_speed_rms_mps": 0.3595049909388198
+          }
+        },
+        "drive_tracking_rms_mps": 0.39828888047220173,
+        "steady_drive_tracking_rms_mps": 0.12823404837432542,
+        "progress_at_stop_m": 1.3604309190949442
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-stop-006",
+      "seed": 91006,
+      "randomize": false,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": -0.635714,
+        "push": 18.571429,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.335176636532473,
+            "velocity_error_rms_mps": 0.335176636532473,
+            "peak_speed_mps": 0.748512677507159,
+            "peak_velocity_error_mps": 0.748512677507159,
+            "travel_m": 0.7962171199066574,
+            "peak_reverse_mps": 0.06311070609801919,
+            "peak_pitch_deg": 2.57308660136302,
+            "peak_roll_deg": 0.21351001521608334,
+            "max_closure_m": 7.61965329326369e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 168.11627365908953,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.022220223745939,
+        "peak_roll_1ms_deg": 0.21741439412868982,
+        "max_closure_1ms_m": 7.837566237671845e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004458061822051682,
+        "max_yaw_deg": 0.25086321155644253,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.3351764516020067,
+            "plane_speed_rms_mps": 0.3351767862622462
+          }
+        },
+        "drive_tracking_rms_mps": 0.3649423613757368,
+        "steady_drive_tracking_rms_mps": 0.10497250651037633,
+        "progress_at_stop_m": 1.2639127760986797
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-stop-007",
+      "seed": 91007,
+      "randomize": true,
+      "case": "stop",
+      "options": {
+        "case": "stop",
+        "speed": 0.578571,
+        "push": 31.714286,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.29226532636959834,
+            "velocity_error_rms_mps": 0.29226532636959834,
+            "peak_speed_mps": 0.6867541153457044,
+            "peak_velocity_error_mps": 0.6867541153457044,
+            "travel_m": 0.6533519022368315,
+            "peak_reverse_mps": 0.06817843524097847,
+            "peak_pitch_deg": 2.337383920575279,
+            "peak_roll_deg": 0.20468450885747097,
+            "max_closure_m": 7.056779431832148e-05,
+            "samples": 267
+          }
+        },
+        "hip_heat_nm2s": 114.65982536018717,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.895815361568266,
+        "peak_roll_1ms_deg": 0.20493347244280316,
+        "max_closure_1ms_m": 7.459197174131164e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.006740704636586254,
+        "max_yaw_deg": 0.297345367842053,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.29226368186585283,
+            "plane_speed_rms_mps": 0.292265776262587
+          }
+        },
+        "drive_tracking_rms_mps": 0.3201936445359492,
+        "steady_drive_tracking_rms_mps": 0.10374403115026097,
+        "progress_at_stop_m": 1.2378960856322594
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-push-000",
+      "seed": 91008,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.578571,
+        "push": 31.714286,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.1598623314072946,
+            "velocity_error_rms_mps": 0.1598623314072946,
+            "peak_speed_mps": 0.41660143018904505,
+            "peak_velocity_error_mps": 0.41660143018904505,
+            "travel_m": 0.13056224528793509,
+            "peak_reverse_mps": 0.1324728152127483,
+            "peak_pitch_deg": 3.6157530179507806,
+            "peak_roll_deg": 0.2190895393572454,
+            "max_closure_m": 7.933588382049465e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 154.25080064978872,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.615893965644453,
+        "peak_roll_1ms_deg": 0.21912484503835764,
+        "max_closure_1ms_m": 7.949558156294785e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0008215161489170854,
+        "max_yaw_deg": 0.2788155892117355,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.15986221573219767,
+            "plane_speed_rms_mps": 0.15986413312682934
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-push-001",
+      "seed": 91009,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.35,
+        "push": 18.571429,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.10699142291587016,
+            "velocity_error_rms_mps": 0.10699142291587016,
+            "peak_speed_mps": 0.2802943175510268,
+            "peak_velocity_error_mps": 0.2802943175510268,
+            "travel_m": 0.0956981465172115,
+            "peak_reverse_mps": 0.07474912230868828,
+            "peak_pitch_deg": 2.10271046879781,
+            "peak_roll_deg": 0.18702833340005193,
+            "max_closure_m": 8.01002571202877e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 149.61572540912212,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.1034249660782147,
+        "peak_roll_1ms_deg": 0.20719561218227286,
+        "max_closure_1ms_m": 8.01002571202877e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0003375097447268627,
+        "max_yaw_deg": 0.21468055392961186,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.1069917331586118,
+            "plane_speed_rms_mps": 0.10699299838205749
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-push-002",
+      "seed": 91010,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.75,
+        "push": 25.142857,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.14127555014434562,
+            "velocity_error_rms_mps": 0.14127555014434562,
+            "peak_speed_mps": 0.34811155650882636,
+            "peak_velocity_error_mps": 0.34811155650882636,
+            "travel_m": 0.11269468740629397,
+            "peak_reverse_mps": 0.34811155650882636,
+            "peak_pitch_deg": 3.624240876472987,
+            "peak_roll_deg": 0.2174179667450455,
+            "max_closure_m": 7.896478858396863e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 152.42977688739498,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.624246462892735,
+        "peak_roll_1ms_deg": 0.21742627979513598,
+        "max_closure_1ms_m": 7.974264794665924e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0005413532274344591,
+        "max_yaw_deg": 0.14447964824182635,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.1412755746809887,
+            "plane_speed_rms_mps": 0.1412773319995012
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-push-003",
+      "seed": 91011,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.521429,
+        "push": -28.428571,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.15888389515545642,
+            "velocity_error_rms_mps": 0.15888389515545642,
+            "peak_speed_mps": 0.39865774590612246,
+            "peak_velocity_error_mps": 0.39865774590612246,
+            "travel_m": 0.13037617127941475,
+            "peak_reverse_mps": 0.13546922189799498,
+            "peak_pitch_deg": 3.5110576215064397,
+            "peak_roll_deg": 0.22330528473579803,
+            "max_closure_m": 7.749213547307152e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 237.97677544817674,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.5112583819317242,
+        "peak_roll_1ms_deg": 0.22339788254547127,
+        "max_closure_1ms_m": 7.840156118745117e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0017751519894318737,
+        "max_yaw_deg": 0.4045924885523259,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.1588828915301164,
+            "plane_speed_rms_mps": 0.1588859936927011
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-push-004",
+      "seed": 91012,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.692857,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.08961890072748975,
+            "velocity_error_rms_mps": 0.08961890072748975,
+            "peak_speed_mps": 0.2385215534127397,
+            "peak_velocity_error_mps": 0.2385215534127397,
+            "travel_m": 0.08639344895939889,
+            "peak_reverse_mps": 0.2385215534127397,
+            "peak_pitch_deg": 1.7863249910693373,
+            "peak_roll_deg": 0.19312535741076717,
+            "max_closure_m": 7.424847686655414e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 86.23971847712582,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 1.787389584088782,
+        "peak_roll_1ms_deg": 0.19314887304395112,
+        "max_closure_1ms_m": 7.568162914968906e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0004142996914607701,
+        "max_yaw_deg": 0.12766986105986142,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.0896192739120009,
+            "plane_speed_rms_mps": 0.08962122696091676
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-push-005",
+      "seed": 91013,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.635714,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.1251141483457404,
+            "velocity_error_rms_mps": 0.1251141483457404,
+            "peak_speed_mps": 0.30397291503661,
+            "peak_velocity_error_mps": 0.30397291503661,
+            "travel_m": 0.10334708014281987,
+            "peak_reverse_mps": 0.10525614146348636,
+            "peak_pitch_deg": 2.77668937042214,
+            "peak_roll_deg": 0.21001186946546854,
+            "max_closure_m": 7.304815025887127e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 114.53671522126838,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.777004383987668,
+        "peak_roll_1ms_deg": 0.2319885684758641,
+        "max_closure_1ms_m": 7.43061987891532e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0008345912604420938,
+        "max_yaw_deg": 0.27177808150450516,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.12511513740466718,
+            "plane_speed_rms_mps": 0.12511634833358795
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-push-006",
+      "seed": 91014,
+      "randomize": false,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": -0.407143,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.07036443938003042,
+            "velocity_error_rms_mps": 0.07036443938003042,
+            "peak_speed_mps": 0.20283534338283576,
+            "peak_velocity_error_mps": 0.20283534338283576,
+            "travel_m": 0.07614454517068664,
+            "peak_reverse_mps": 0.20283534338283576,
+            "peak_pitch_deg": 1.6897567399501305,
+            "peak_roll_deg": 0.17440405231719452,
+            "max_closure_m": 7.638931483720248e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 60.73716193653919,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 1.6897567399501305,
+        "peak_roll_1ms_deg": 0.1745510645513872,
+        "max_closure_1ms_m": 7.672507340711884e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.00042082096012691376,
+        "max_yaw_deg": 0.27517226536661976,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.07036451857562495,
+            "plane_speed_rms_mps": 0.07036663625255654
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-push-007",
+      "seed": 91015,
+      "randomize": true,
+      "case": "push",
+      "options": {
+        "case": "push",
+        "speed": 0.464286,
+        "push": -35.0,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "push": {
+            "velocity_rms_mps": 0.17102312773903078,
+            "velocity_error_rms_mps": 0.17102312773903078,
+            "peak_speed_mps": 0.4441073211187521,
+            "peak_velocity_error_mps": 0.4441073211187521,
+            "travel_m": 0.14217286055572256,
+            "peak_reverse_mps": 0.4441073211187521,
+            "peak_pitch_deg": 3.4875873748761026,
+            "peak_roll_deg": 0.22083803505481733,
+            "max_closure_m": 7.475551960693257e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 151.17518305315798,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.4878177747521932,
+        "peak_roll_1ms_deg": 0.22133579625708125,
+        "max_closure_1ms_m": 7.545564844637297e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0017877735444216942,
+        "max_yaw_deg": 0.41807377776605825,
+        "windows": {
+          "push": {
+            "world_vx_rms_mps": 0.17102121169748818,
+            "plane_speed_rms_mps": 0.17102493345243433
+          }
+        }
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-combined-000",
+      "seed": 91016,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.578571,
+        "push": 35.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.5628022275440347,
+            "velocity_error_rms_mps": 0.5628022275440347,
+            "peak_speed_mps": 0.6861063077165012,
+            "peak_velocity_error_mps": 0.6861063077165012,
+            "travel_m": 0.545921157645515,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.472992604329555,
+            "peak_roll_deg": 0.21504448937443632,
+            "max_closure_m": 7.661600624298918e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.23451870212704953,
+            "velocity_error_rms_mps": 0.23451870212704953,
+            "peak_speed_mps": 0.6127927868032265,
+            "peak_velocity_error_mps": 0.6127927868032265,
+            "travel_m": 0.20560106168493175,
+            "peak_reverse_mps": 0.179950527176164,
+            "peak_pitch_deg": 4.079302295844607,
+            "peak_roll_deg": 0.21963022949310332,
+            "max_closure_m": 7.87486559327695e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 178.90217561667595,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 4.079302295844607,
+        "peak_roll_1ms_deg": 0.23033638540216284,
+        "max_closure_1ms_m": 7.999781485840002e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.00394671371182611,
+        "max_yaw_deg": 0.32075122290430413,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.5628021754799545,
+            "plane_speed_rms_mps": 0.5628023218753408
+          },
+          "push": {
+            "world_vx_rms_mps": 0.23451831962380393,
+            "plane_speed_rms_mps": 0.23451897500765578
+          }
+        },
+        "drive_tracking_rms_mps": 0.3240417551451829,
+        "steady_drive_tracking_rms_mps": 0.10116599035829539,
+        "progress_at_stop_m": 1.2205661492125457
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-combined-001",
+      "seed": 91017,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.75,
+        "push": -28.428571,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.7502595533767079,
+            "velocity_error_rms_mps": 0.7502595533767079,
+            "peak_speed_mps": 0.8934951596457277,
+            "peak_velocity_error_mps": 0.8934951596457277,
+            "travel_m": 0.7332048067737456,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.341202581962832,
+            "peak_roll_deg": 0.1708357594417954,
+            "max_closure_m": 7.373751915702229e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.3099302756768306,
+            "velocity_error_rms_mps": 0.3099302756768306,
+            "peak_speed_mps": 0.7538896416785457,
+            "peak_velocity_error_mps": 0.7538896416785457,
+            "travel_m": 0.3268173485690835,
+            "peak_reverse_mps": 0.14659159188590182,
+            "peak_pitch_deg": 4.571685566601247,
+            "peak_roll_deg": 0.187336522900611,
+            "max_closure_m": 8.005178939603573e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 258.832053341956,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 4.572239057058662,
+        "peak_roll_1ms_deg": 0.19456026219374767,
+        "max_closure_1ms_m": 8.191413849516166e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0160963277495612,
+        "max_yaw_deg": 0.6314175249488985,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.7502537013255811,
+            "plane_speed_rms_mps": 0.7502596071340141
+          },
+          "push": {
+            "world_vx_rms_mps": 0.3099300205474074,
+            "plane_speed_rms_mps": 0.3099319355263357
+          }
+        },
+        "drive_tracking_rms_mps": 0.4436950151006399,
+        "steady_drive_tracking_rms_mps": 0.1345902698401486,
+        "progress_at_stop_m": 1.386484598810685
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-combined-002",
+      "seed": 91018,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.464286,
+        "push": 12.0,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.4421479773075168,
+            "velocity_error_rms_mps": 0.4421479773075168,
+            "peak_speed_mps": 0.5477486664517233,
+            "peak_velocity_error_mps": 0.5477486664517233,
+            "travel_m": 0.4254689058209642,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.5400052547820273,
+            "peak_roll_deg": 0.20988558358027043,
+            "max_closure_m": 7.715510192504999e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.1345738639165791,
+            "velocity_error_rms_mps": 0.1345738639165791,
+            "peak_speed_mps": 0.26066466493178575,
+            "peak_velocity_error_mps": 0.26066466493178575,
+            "travel_m": 0.08949998062689546,
+            "peak_reverse_mps": 0.13654210056754412,
+            "peak_pitch_deg": 3.659430143841514,
+            "peak_roll_deg": 0.20042356110692677,
+            "max_closure_m": 8.015517707829913e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 170.45909931717142,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.6595862341376555,
+        "peak_roll_1ms_deg": 0.2099295840359214,
+        "max_closure_1ms_m": 8.019152299226812e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0027477974518090773,
+        "max_yaw_deg": 0.168219855532115,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.4421479014278852,
+            "plane_speed_rms_mps": 0.44214803049757523
+          },
+          "push": {
+            "world_vx_rms_mps": 0.13457368615090357,
+            "plane_speed_rms_mps": 0.13457427503640684
+          }
+        },
+        "drive_tracking_rms_mps": 0.25051493695391785,
+        "steady_drive_tracking_rms_mps": 0.07655630418246043,
+        "progress_at_stop_m": 1.0587633974236277
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-combined-003",
+      "seed": 91019,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.35,
+        "push": -31.714286,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.32078269427120326,
+            "velocity_error_rms_mps": 0.32078269427120326,
+            "peak_speed_mps": 0.4155567452052662,
+            "peak_velocity_error_mps": 0.4155567452052662,
+            "travel_m": 0.3015054503755217,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.549104814330988,
+            "peak_roll_deg": 0.25027397972209653,
+            "max_closure_m": 7.615493808995087e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.16122002199808005,
+            "velocity_error_rms_mps": 0.16122002199808005,
+            "peak_speed_mps": 0.4310872222322511,
+            "peak_velocity_error_mps": 0.4310872222322511,
+            "travel_m": 0.1412499220264476,
+            "peak_reverse_mps": 0.4310872222322511,
+            "peak_pitch_deg": 3.507465143962606,
+            "peak_roll_deg": 0.2534168565826713,
+            "max_closure_m": 7.98015394553142e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 160.42085469348828,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.5076343018781757,
+        "peak_roll_1ms_deg": 0.2536092209514093,
+        "max_closure_1ms_m": 8.040100429394841e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004353679206649917,
+        "max_yaw_deg": 0.31282995538868086,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.32078173420265305,
+            "plane_speed_rms_mps": 0.32078280021740796
+          },
+          "push": {
+            "world_vx_rms_mps": 0.16122044092749374,
+            "plane_speed_rms_mps": 0.16122203180729439
+          }
+        },
+        "drive_tracking_rms_mps": 0.17775161171284748,
+        "steady_drive_tracking_rms_mps": 0.05526411202882424,
+        "progress_at_stop_m": 0.8659887877225049
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-combined-004",
+      "seed": 91020,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.407143,
+        "push": -21.857143,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.3815295675676925,
+            "velocity_error_rms_mps": 0.3815295675676925,
+            "peak_speed_mps": 0.4748226098489595,
+            "peak_velocity_error_mps": 0.4748226098489595,
+            "travel_m": 0.3658296086412868,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.7058694890836863,
+            "peak_roll_deg": 0.20908835453283828,
+            "max_closure_m": 7.783192573044074e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.15582486203429788,
+            "velocity_error_rms_mps": 0.15582486203429788,
+            "peak_speed_mps": 0.3340185510374889,
+            "peak_velocity_error_mps": 0.3340185510374889,
+            "travel_m": 0.11271247331252798,
+            "peak_reverse_mps": 0.15206549840685873,
+            "peak_pitch_deg": 3.5371242432066694,
+            "peak_roll_deg": 0.20355806635329915,
+            "max_closure_m": 7.780374490081968e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 179.0437510165462,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.537134022247907,
+        "peak_roll_1ms_deg": 0.21741439412868982,
+        "max_closure_1ms_m": 7.908344020450395e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.002641533336061183,
+        "max_yaw_deg": 0.24454683494552792,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.38152936192353526,
+            "plane_speed_rms_mps": 0.3815296399315717
+          },
+          "push": {
+            "world_vx_rms_mps": 0.15582489046333692,
+            "plane_speed_rms_mps": 0.1558250994827474
+          }
+        },
+        "drive_tracking_rms_mps": 0.21620279252771712,
+        "steady_drive_tracking_rms_mps": 0.05882314536945495,
+        "progress_at_stop_m": 0.9422131106141073
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-combined-005",
+      "seed": 91021,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.635714,
+        "push": 18.571429,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.6269473244771343,
+            "velocity_error_rms_mps": 0.6269473244771343,
+            "peak_speed_mps": 0.7529974790699682,
+            "peak_velocity_error_mps": 0.7529974790699682,
+            "travel_m": 0.610693648013162,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.531709353354609,
+            "peak_roll_deg": 0.19793490362210914,
+            "max_closure_m": 7.523986202796365e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.07700375193754243,
+            "velocity_error_rms_mps": 0.07700375193754243,
+            "peak_speed_mps": 0.3797251729924662,
+            "peak_velocity_error_mps": 0.3797251729924662,
+            "travel_m": 0.04716885732805087,
+            "peak_reverse_mps": 0.042983904453469286,
+            "peak_pitch_deg": 2.2943470262650947,
+            "peak_roll_deg": 0.1688283306983196,
+            "max_closure_m": 7.791830627643861e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 213.43221875828868,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.797069102799832,
+        "peak_roll_1ms_deg": 0.19796168024903762,
+        "max_closure_1ms_m": 8.051083740562394e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0011033090267057743,
+        "max_yaw_deg": 0.2790614676129078,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.6269466544666088,
+            "plane_speed_rms_mps": 0.6269474249173169
+          },
+          "push": {
+            "world_vx_rms_mps": 0.07700370010262482,
+            "plane_speed_rms_mps": 0.0770052185262062
+          }
+        },
+        "drive_tracking_rms_mps": 0.36376243601799985,
+        "steady_drive_tracking_rms_mps": 0.11371874819064699,
+        "progress_at_stop_m": 1.2794756901269264
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-combined-006",
+      "seed": 91022,
+      "randomize": false,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": 0.692857,
+        "push": -15.285714,
+        "delay": 0,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.6805125933365843,
+            "velocity_error_rms_mps": 0.6805125933365843,
+            "peak_speed_mps": 0.8255163847582846,
+            "peak_velocity_error_mps": 0.8255163847582846,
+            "travel_m": 0.6620630165275379,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.361093230560242,
+            "peak_roll_deg": 0.21978804488291837,
+            "max_closure_m": 7.84206140721282e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.10348549520998314,
+            "velocity_error_rms_mps": 0.10348549520998314,
+            "peak_speed_mps": 0.4176167031817115,
+            "peak_velocity_error_mps": 0.4176167031817115,
+            "travel_m": 0.11735376361987981,
+            "peak_reverse_mps": 0.044571479291242576,
+            "peak_pitch_deg": 2.0791168762519603,
+            "peak_roll_deg": 0.2258272752251415,
+            "max_closure_m": 6.863275066051731e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 158.9964295090265,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 3.021882852504212,
+        "peak_roll_1ms_deg": 0.22632079698319232,
+        "max_closure_1ms_m": 7.874057935835768e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.004591459632839547,
+        "max_yaw_deg": 0.19124907371012853,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.6805121212289399,
+            "plane_speed_rms_mps": 0.680512663788017
+          },
+          "push": {
+            "world_vx_rms_mps": 0.10348547560163167,
+            "plane_speed_rms_mps": 0.10348696467995792
+          }
+        },
+        "drive_tracking_rms_mps": 0.4018457377834408,
+        "steady_drive_tracking_rms_mps": 0.12330602342704454,
+        "progress_at_stop_m": 1.342165338711982
+      },
+      "controller": "learned"
+    },
+    {
+      "id": "trace-monitor-combined-007",
+      "seed": 91023,
+      "randomize": true,
+      "case": "combined",
+      "options": {
+        "case": "combined",
+        "speed": -0.521429,
+        "push": 25.142857,
+        "delay": 1,
+        "duration": 8.0
+      },
+      "metrics": {
+        "windows": {
+          "stop": {
+            "velocity_rms_mps": 0.5029576740062637,
+            "velocity_error_rms_mps": 0.5029576740062637,
+            "peak_speed_mps": 0.6141323781860802,
+            "peak_velocity_error_mps": 0.6141323781860802,
+            "travel_m": 0.48711579929840276,
+            "peak_reverse_mps": 0.0,
+            "peak_pitch_deg": 2.7502289132353255,
+            "peak_roll_deg": 0.2630116326901429,
+            "max_closure_m": 7.78944094401288e-05,
+            "samples": 67
+          },
+          "push": {
+            "velocity_rms_mps": 0.09398072879669045,
+            "velocity_error_rms_mps": 0.09398072879669045,
+            "peak_speed_mps": 0.26545708389207606,
+            "peak_velocity_error_mps": 0.26545708389207606,
+            "travel_m": 0.09561793567380783,
+            "peak_reverse_mps": 0.243856329558851,
+            "peak_pitch_deg": 2.693292171014576,
+            "peak_roll_deg": 0.25287841168862163,
+            "max_closure_m": 7.143860532776886e-05,
+            "samples": 147
+          }
+        },
+        "hip_heat_nm2s": 215.19400319440814,
+        "simulated_s": 8.010000000000668,
+        "peak_pitch_1ms_deg": 2.750756526498204,
+        "peak_roll_1ms_deg": 0.2631363208776921,
+        "max_closure_1ms_m": 7.956976955323477e-05,
+        "passed": true,
+        "failure": null
+      },
+      "motion_quality": {
+        "max_lateral_m": 0.0007661212051757353,
+        "max_yaw_deg": 0.18767145753729364,
+        "windows": {
+          "stop": {
+            "world_vx_rms_mps": 0.5029570780742081,
+            "plane_speed_rms_mps": 0.5029578196128334
+          },
+          "push": {
+            "world_vx_rms_mps": 0.09398071091876274,
+            "plane_speed_rms_mps": 0.09398100228912798
+          }
+        },
+        "drive_tracking_rms_mps": 0.2861350456933189,
+        "steady_drive_tracking_rms_mps": 0.08657409930005633,
+        "progress_at_stop_m": 1.1428708949269077
+      },
+      "controller": "learned"
+    }
+  ],
+  "acceptance": {
+    "overall_pass": false,
+    "thresholds": {
+      "mean_improvement": 0.1,
+      "case_relative_regression": 0.05,
+      "case_speed_absolute_mps": 0.001,
+      "heat_mean_regression": 0.05,
+      "heat_case_regression": 0.2,
+      "secondary_relative_regression": 0.05,
+      "travel_absolute_m": 0.005,
+      "speed_absolute_mps": 0.005,
+      "angle_absolute_deg": 0.2
+    },
+    "checks": {
+      "physical_complete": {
+        "pass": true
+      },
+      "all_case_guards": {
+        "pass": false
+      },
+      "stop_mean_improvement": {
+        "pass": false,
+        "paired_cases": 8,
+        "baseline_mean": 0.2950067522163031,
+        "learned_mean": 0.28140056157447246,
+        "metric": "velocity_rms_mps",
+        "improvement_fraction": 0.046121624469986355
+      },
+      "push_mean_improvement": {
+        "pass": false,
+        "paired_cases": 8,
+        "baseline_mean": 0.13941153935703246,
+        "learned_mean": 0.12789172697690726,
+        "metric": "velocity_error_rms_mps",
+        "improvement_fraction": 0.08263169916389057
+      },
+      "hip_heat_mean": {
+        "pass": true,
+        "baseline_mean": 159.45686540965323,
+        "learned_mean": 160.54029577984522,
+        "change_fraction": 0.006794504378401012
+      },
+      "motion_quality": {
+        "pass": true,
+        "protocol": "motion-quality-20261012",
+        "thresholds": {
+          "relative_regression": 0.05,
+          "drive_tracking_absolute_mps": 0.005,
+          "world_speed_absolute_mps": 0.001,
+          "progress_absolute_m": 0.005,
+          "lateral_absolute_m": 0.005,
+          "yaw_absolute_deg": 0.5
+        },
+        "cases": [
+          {
+            "id": "trace-monitor-combined-000",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.004010067735155062,
+                "learned": 0.00394671371182611,
+                "delta": -6.335402332895146e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.3266800381528835,
+                "learned": 0.32075122290430413,
+                "delta": -0.0059288152485793555,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.5839998599735546,
+                "learned": 0.5628021754799545,
+                "delta": -0.021197684493600155,
+                "allowed_increase": 0.029199992998677732
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.5840000569697644,
+                "learned": 0.5628023218753408,
+                "delta": -0.021197735094423575,
+                "allowed_increase": 0.029200002848488223
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.27553447138263704,
+                "learned": 0.23451831962380393,
+                "delta": -0.04101615175883311,
+                "allowed_increase": 0.013776723569131852
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.27553510641067785,
+                "learned": 0.23451897500765578,
+                "delta": -0.04101613140302207,
+                "allowed_increase": 0.013776755320533893
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.3244057334812709,
+                "learned": 0.3240417551451829,
+                "delta": -0.0003639783360879778,
+                "allowed_increase": 0.016220286674063545
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.10082179672477566,
+                "learned": 0.10116599035829539,
+                "delta": 0.0003441936335197293,
+                "allowed_increase": 0.005041089836238783
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.2198706869441793,
+                "learned": -1.2205661492125457,
+                "delta": -0.0006954622683663647,
+                "allowed_increase": 0.06099353434720897,
+                "baseline_progress_m": 1.2198706869441793,
+                "learned_progress_m": 1.2205661492125457
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-combined-001",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.016226085141184374,
+                "learned": 0.0160963277495612,
+                "delta": -0.00012975739162317604,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.6099456240711307,
+                "learned": 0.6314175249488985,
+                "delta": 0.021471900877767736,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.773227644983892,
+                "learned": 0.7502537013255811,
+                "delta": -0.022973943658310847,
+                "allowed_increase": 0.038661382249194604
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.7732338319493454,
+                "learned": 0.7502596071340141,
+                "delta": -0.02297422481533129,
+                "allowed_increase": 0.03866169159746727
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.32708189414277716,
+                "learned": 0.3099300205474074,
+                "delta": -0.017151873595369738,
+                "allowed_increase": 0.016354094707138857
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.3270842964169135,
+                "learned": 0.3099319355263357,
+                "delta": -0.01715236089057781,
+                "allowed_increase": 0.016354214820845675
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.44350852949340064,
+                "learned": 0.4436950151006399,
+                "delta": 0.00018648560723927288,
+                "allowed_increase": 0.022175426474670034
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.1343637689396841,
+                "learned": 0.1345902698401486,
+                "delta": 0.0002265009004644991,
+                "allowed_increase": 0.006718188446984206
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.3865046289524598,
+                "learned": -1.386484598810685,
+                "delta": 2.003014177476281e-05,
+                "allowed_increase": 0.069325231447623,
+                "baseline_progress_m": 1.3865046289524598,
+                "learned_progress_m": 1.386484598810685
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-combined-002",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0028004948456224134,
+                "learned": 0.0027477974518090773,
+                "delta": -5.2697393813336095e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.20155952983015368,
+                "learned": 0.168219855532115,
+                "delta": -0.03333967429803869,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.4566114033425357,
+                "learned": 0.4421479014278852,
+                "delta": -0.014463501914650512,
+                "allowed_increase": 0.022830570167126786
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.4566116304067701,
+                "learned": 0.44214803049757523,
+                "delta": -0.01446359990919488,
+                "allowed_increase": 0.022830581520338507
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.16091449620354756,
+                "learned": 0.13457368615090357,
+                "delta": -0.026340810052643993,
+                "allowed_increase": 0.008045724810177379
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.16091490613895976,
+                "learned": 0.13457427503640684,
+                "delta": -0.026340631102552914,
+                "allowed_increase": 0.008045745306947988
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.25101220109017147,
+                "learned": 0.25051493695391785,
+                "delta": -0.0004972641362536168,
+                "allowed_increase": 0.012550610054508575
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.07720950380586133,
+                "learned": 0.07655630418246043,
+                "delta": -0.0006531996234009074,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.0591749456008848,
+                "learned": -1.0587633974236277,
+                "delta": 0.0004115481772570817,
+                "allowed_increase": 0.05295874728004424,
+                "baseline_progress_m": 1.0591749456008848,
+                "learned_progress_m": 1.0587633974236277
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-combined-003",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.004238027290460749,
+                "learned": 0.004353679206649917,
+                "delta": 0.00011565191618916754,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.220463043446373,
+                "learned": 0.31282995538868086,
+                "delta": 0.09236691194230787,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.33110909787539033,
+                "learned": 0.32078173420265305,
+                "delta": -0.010327363672737289,
+                "allowed_increase": 0.016555454893769517
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.33111004217560747,
+                "learned": 0.32078280021740796,
+                "delta": -0.010327241958199507,
+                "allowed_increase": 0.016555502108780373
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.17524110003675802,
+                "learned": 0.16122044092749374,
+                "delta": -0.014020659109264283,
+                "allowed_increase": 0.0087620550018379
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.1752428312438103,
+                "learned": 0.16122203180729439,
+                "delta": -0.014020799436515907,
+                "allowed_increase": 0.008762141562190516
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.17733161070526074,
+                "learned": 0.17775161171284748,
+                "delta": 0.00042000100758673997,
+                "allowed_increase": 0.008866580535263038
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.05516758959196528,
+                "learned": 0.05526411202882424,
+                "delta": 9.652243685896039e-05,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -0.8659101604275763,
+                "learned": -0.8659887877225049,
+                "delta": -7.862729492857934e-05,
+                "allowed_increase": 0.04329550802137882,
+                "baseline_progress_m": 0.8659101604275763,
+                "learned_progress_m": 0.8659887877225049
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-combined-004",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.002245607633431039,
+                "learned": 0.002641533336061183,
+                "delta": 0.00039592570263014383,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.21765499219636575,
+                "learned": 0.24454683494552792,
+                "delta": 0.026891842749162176,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.39051239027224305,
+                "learned": 0.38152936192353526,
+                "delta": -0.008983028348707789,
+                "allowed_increase": 0.019525619513612154
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.3905127365241896,
+                "learned": 0.3815296399315717,
+                "delta": -0.008983096592617923,
+                "allowed_increase": 0.019525636826209482
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.17733728875110413,
+                "learned": 0.15582489046333692,
+                "delta": -0.021512398287767215,
+                "allowed_increase": 0.008866864437555208
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.1773375957221263,
+                "learned": 0.1558250994827474,
+                "delta": -0.021512496239378898,
+                "allowed_increase": 0.008866879786106315
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.21604037990187944,
+                "learned": 0.21620279252771712,
+                "delta": 0.0001624126258376879,
+                "allowed_increase": 0.010802018995093973
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.05873461433900664,
+                "learned": 0.05882314536945495,
+                "delta": 8.853103044831334e-05,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -0.9425088030724305,
+                "learned": -0.9422131106141073,
+                "delta": 0.00029569245832317126,
+                "allowed_increase": 0.04712544015362152,
+                "baseline_progress_m": 0.9425088030724305,
+                "learned_progress_m": 0.9422131106141073
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-combined-005",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0012521538020688978,
+                "learned": 0.0011033090267057743,
+                "delta": -0.0001488447753631235,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.2694062885362039,
+                "learned": 0.2790614676129078,
+                "delta": 0.00965517907670388,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.6444024086714965,
+                "learned": 0.6269466544666088,
+                "delta": -0.017455754204887652,
+                "allowed_increase": 0.03222012043357483
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.6444030725573592,
+                "learned": 0.6269474249173169,
+                "delta": -0.01745564764004226,
+                "allowed_increase": 0.03222015362786796
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.08705215962734981,
+                "learned": 0.07700370010262482,
+                "delta": -0.010048459524724995,
+                "allowed_increase": 0.004352607981367491
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.08705403144496987,
+                "learned": 0.0770052185262062,
+                "delta": -0.010048812918763667,
+                "allowed_increase": 0.004352701572248494
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.36419263621253123,
+                "learned": 0.36376243601799985,
+                "delta": -0.0004302001945313827,
+                "allowed_increase": 0.018209631810626563
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.11412811105205238,
+                "learned": 0.11371874819064699,
+                "delta": -0.0004093628614053879,
+                "allowed_increase": 0.005706405552602619
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.279637109710212,
+                "learned": -1.2794756901269264,
+                "delta": 0.00016141958328552697,
+                "allowed_increase": 0.0639818554855106,
+                "baseline_progress_m": 1.279637109710212,
+                "learned_progress_m": 1.2794756901269264
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-combined-006",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.004777045497596204,
+                "learned": 0.004591459632839547,
+                "delta": -0.00018558586475665717,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.13467645647148352,
+                "learned": 0.19124907371012853,
+                "delta": 0.05657261723864501,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.7145749425113329,
+                "learned": 0.6805121212289399,
+                "delta": -0.03406282128239302,
+                "allowed_increase": 0.035728747125566646
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.7145763924329466,
+                "learned": 0.680512663788017,
+                "delta": -0.03406372864492957,
+                "allowed_increase": 0.03572881962164733
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.1250955389773577,
+                "learned": 0.10348547560163167,
+                "delta": -0.021610063375726032,
+                "allowed_increase": 0.006254776948867885
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.1250960860053036,
+                "learned": 0.10348696467995792,
+                "delta": -0.021609121325345662,
+                "allowed_increase": 0.00625480430026518
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.4021444684554618,
+                "learned": 0.4018457377834408,
+                "delta": -0.0002987306720210192,
+                "allowed_increase": 0.02010722342277309
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.1231090144771853,
+                "learned": 0.12330602342704454,
+                "delta": 0.00019700894985924533,
+                "allowed_increase": 0.006155450723859265
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.3413410476403487,
+                "learned": -1.342165338711982,
+                "delta": -0.0008242910716333984,
+                "allowed_increase": 0.06706705238201743,
+                "baseline_progress_m": 1.3413410476403487,
+                "learned_progress_m": 1.342165338711982
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-combined-007",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0010483839575364615,
+                "learned": 0.0007661212051757353,
+                "delta": -0.00028226275236072627,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.19677527636984957,
+                "learned": 0.18767145753729364,
+                "delta": -0.009103818832555927,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.5148412917536492,
+                "learned": 0.5029570780742081,
+                "delta": -0.011884213679441147,
+                "allowed_increase": 0.025742064587682464
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.5148421375031383,
+                "learned": 0.5029578196128334,
+                "delta": -0.011884317890304974,
+                "allowed_increase": 0.02574210687515692
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.11141970808400557,
+                "learned": 0.09398071091876274,
+                "delta": -0.01743899716524283,
+                "allowed_increase": 0.005570985404200279
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.11142050510392276,
+                "learned": 0.09398100228912798,
+                "delta": -0.017439502814794783,
+                "allowed_increase": 0.005571025255196139
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.2862322536301159,
+                "learned": 0.2861350456933189,
+                "delta": -9.720793679701689e-05,
+                "allowed_increase": 0.014311612681505796
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.08707125080174141,
+                "learned": 0.08657409930005633,
+                "delta": -0.0004971515016850836,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.1433493503926333,
+                "learned": -1.1428708949269077,
+                "delta": 0.00047845546572555797,
+                "allowed_increase": 0.05716746751963167,
+                "baseline_progress_m": 1.1433493503926333,
+                "learned_progress_m": 1.1428708949269077
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-push-000",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0008162422706994454,
+                "learned": 0.0008215161489170854,
+                "delta": 5.2738782176399695e-06,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.249172123983559,
+                "learned": 0.2788155892117355,
+                "delta": 0.029643465228176485,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.17998650222408175,
+                "learned": 0.15986221573219767,
+                "delta": -0.02012428649188408,
+                "allowed_increase": 0.008999325111204088
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.1799880548700276,
+                "learned": 0.15986413312682934,
+                "delta": -0.020123921743198242,
+                "allowed_increase": 0.00899940274350138
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-push-001",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.00033005064255665727,
+                "learned": 0.0003375097447268627,
+                "delta": 7.459102170205426e-06,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.19032325202631123,
+                "learned": 0.21468055392961186,
+                "delta": 0.024357301903300627,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.11328945815815071,
+                "learned": 0.1069917331586118,
+                "delta": -0.0062977249995389145,
+                "allowed_increase": 0.005664472907907536
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.11329023726176524,
+                "learned": 0.10699299838205749,
+                "delta": -0.006297238879707748,
+                "allowed_increase": 0.005664511863088262
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-push-002",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0005501129050985324,
+                "learned": 0.0005413532274344591,
+                "delta": -8.759677664073296e-06,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.1466762383512632,
+                "learned": 0.14447964824182635,
+                "delta": -0.0021965901094368467,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.15547916613221668,
+                "learned": 0.1412755746809887,
+                "delta": -0.014203591451227987,
+                "allowed_increase": 0.007773958306610835
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.15548118714473713,
+                "learned": 0.1412773319995012,
+                "delta": -0.014203855145235922,
+                "allowed_increase": 0.007774059357236857
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-push-003",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.001628245786425143,
+                "learned": 0.0017751519894318737,
+                "delta": 0.0001469062030067306,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.4203028309608375,
+                "learned": 0.4045924885523259,
+                "delta": -0.0157103424085116,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.17446880079413937,
+                "learned": 0.1588828915301164,
+                "delta": -0.015585909264022979,
+                "allowed_increase": 0.00872344003970697
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.1744714248436115,
+                "learned": 0.1588859936927011,
+                "delta": -0.015585431150910406,
+                "allowed_increase": 0.008723571242180575
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-push-004",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0004405100520408638,
+                "learned": 0.0004142996914607701,
+                "delta": -2.621036058009365e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.16633975949393634,
+                "learned": 0.12766986105986142,
+                "delta": -0.03866989843407492,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.096181818528758,
+                "learned": 0.0896192739120009,
+                "delta": -0.006562544616757093,
+                "allowed_increase": 0.004809090926437901
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.09618366569197816,
+                "learned": 0.08962122696091676,
+                "delta": -0.006562438731061396,
+                "allowed_increase": 0.0048091832845989085
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-push-005",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0009034239097397491,
+                "learned": 0.0008345912604420938,
+                "delta": -6.883264929765536e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.29708747995767526,
+                "learned": 0.27177808150450516,
+                "delta": -0.025309398453170096,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.13350166559344084,
+                "learned": 0.12511513740466718,
+                "delta": -0.008386528188773668,
+                "allowed_increase": 0.0066750832796720425
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.1335030157882838,
+                "learned": 0.12511634833358795,
+                "delta": -0.00838666745469585,
+                "allowed_increase": 0.006675150789414191
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-push-006",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.00029052085354721083,
+                "learned": 0.00042082096012691376,
+                "delta": 0.00013030010657970293,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.16070863523260184,
+                "learned": 0.27517226536661976,
+                "delta": 0.11446363013401792,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.07505652560410878,
+                "learned": 0.07036451857562495,
+                "delta": -0.0046920070284838244,
+                "allowed_increase": 0.003752826280205439
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.07505757559836482,
+                "learned": 0.07036663625255654,
+                "delta": -0.004690939345808276,
+                "allowed_increase": 0.003752878779918241
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-push-007",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.001965538630461636,
+                "learned": 0.0017877735444216942,
+                "delta": -0.00017776508603994197,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.4082405816515419,
+                "learned": 0.41807377776605825,
+                "delta": 0.00983319611451633,
+                "allowed_increase": 0.5
+              },
+              "push_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.18732686681941846,
+                "learned": 0.17102121169748818,
+                "delta": -0.016305655121930274,
+                "allowed_increase": 0.009366343340970923
+              },
+              "push_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.18733043612669364,
+                "learned": 0.17102493345243433,
+                "delta": -0.016305502674259315,
+                "allowed_increase": 0.009366521806334682
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-stop-000",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.00560989248548909,
+                "learned": 0.004857402049588616,
+                "delta": -0.0007524904359004743,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.2620787302386796,
+                "learned": 0.25086321155644253,
+                "delta": -0.01121551868223708,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.426736447457347,
+                "learned": 0.41245036122759654,
+                "delta": -0.014286086229750472,
+                "allowed_increase": 0.021336822372867353
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.42673691764689575,
+                "learned": 0.41245064369673806,
+                "delta": -0.01428627395015769,
+                "allowed_increase": 0.021336845882344788
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.4455046069403695,
+                "learned": 0.44571937672138157,
+                "delta": 0.00021476978101209188,
+                "allowed_increase": 0.022275230347018476
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.12391301295277032,
+                "learned": 0.12401744726543437,
+                "delta": 0.0001044343126640479,
+                "allowed_increase": 0.006195650647638516
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.3665650243190184,
+                "learned": -1.366158997691187,
+                "delta": 0.00040602662783140175,
+                "allowed_increase": 0.06832825121595092,
+                "baseline_progress_m": 1.3665650243190184,
+                "learned_progress_m": 1.366158997691187
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-stop-001",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.005730111610552889,
+                "learned": 0.005880087685242379,
+                "delta": 0.00014997607468949029,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.45794785395964777,
+                "learned": 0.47958050620033266,
+                "delta": 0.02163265224068489,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.20532018548874592,
+                "learned": 0.19653528690456415,
+                "delta": -0.008784898584181772,
+                "allowed_increase": 0.010266009274437297
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.20532091517622333,
+                "learned": 0.19653630033644884,
+                "delta": -0.008784614839774496,
+                "allowed_increase": 0.010266045758811168
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.21619628711358888,
+                "learned": 0.21616403603238415,
+                "delta": -3.225108120472053e-05,
+                "allowed_increase": 0.010809814355679445
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.06403799269284961,
+                "learned": 0.06418941234527004,
+                "delta": 0.0001514196524204231,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -0.9594014741228467,
+                "learned": -0.9594813896259985,
+                "delta": -7.991550315178397e-05,
+                "allowed_increase": 0.04797007370614234,
+                "baseline_progress_m": 0.9594014741228467,
+                "learned_progress_m": 0.9594813896259985
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-stop-002",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0018922369320101915,
+                "learned": 0.0018644072890616002,
+                "delta": -2.7829642948591334e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.11311956388363202,
+                "learned": 0.17438186336879588,
+                "delta": 0.06126229948516386,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.17373904171219937,
+                "learned": 0.16429493144404603,
+                "delta": -0.009444110268153338,
+                "allowed_increase": 0.008686952085609968
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.1737392363693955,
+                "learned": 0.16429538888285844,
+                "delta": -0.009443847486537066,
+                "allowed_increase": 0.008686961818469776
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.18184311094102965,
+                "learned": 0.18131179977762557,
+                "delta": -0.0005313111634040746,
+                "allowed_increase": 0.009092155547051483
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.054588296497994696,
+                "learned": 0.05413771851271158,
+                "delta": -0.00045057798528311266,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -0.8567887399384445,
+                "learned": -0.8562501453591669,
+                "delta": 0.0005385945792776292,
+                "allowed_increase": 0.04283943699692223,
+                "baseline_progress_m": 0.8567887399384445,
+                "learned_progress_m": 0.8562501453591669
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-stop-003",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0005497849774834715,
+                "learned": 0.0005545160229151367,
+                "delta": 4.731045431665163e-06,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.2376599219270975,
+                "learned": 0.18880181758921824,
+                "delta": -0.048858104337879266,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.27360878146519607,
+                "learned": 0.2632539314272237,
+                "delta": -0.010354850037972374,
+                "allowed_increase": 0.013680439073259804
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.2736090144848611,
+                "learned": 0.26325411288781747,
+                "delta": -0.010354901597043609,
+                "allowed_increase": 0.013680450724243055
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.2880766770543916,
+                "learned": 0.28810760402207697,
+                "delta": 3.092696768536296e-05,
+                "allowed_increase": 0.01440383385271958
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.08738171156397513,
+                "learned": 0.08757864425634403,
+                "delta": 0.0001969326923688952,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.1394822820409367,
+                "learned": -1.1395846200815083,
+                "delta": -0.00010233804057158125,
+                "allowed_increase": 0.056974114102046836,
+                "baseline_progress_m": 1.1394822820409367,
+                "learned_progress_m": 1.1395846200815083
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-stop-004",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.002633321574528742,
+                "learned": 0.002713708655818446,
+                "delta": 8.038708128970404e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.1642593935070232,
+                "learned": 0.14245350346767308,
+                "delta": -0.02180589003935013,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.23983012449911806,
+                "learned": 0.22772219238157032,
+                "delta": -0.012107932117547737,
+                "allowed_increase": 0.011991506224955904
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.23983038414923213,
+                "learned": 0.2277225558204848,
+                "delta": -0.012107828328747322,
+                "allowed_increase": 0.011991519207461608
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.25101220109017147,
+                "learned": 0.25051493695391785,
+                "delta": -0.0004972641362536168,
+                "allowed_increase": 0.012550610054508575
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.07720950380586133,
+                "learned": 0.07655630418246043,
+                "delta": -0.0006531996234009074,
+                "allowed_increase": 0.005
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.0591749456008848,
+                "learned": -1.0587633974236277,
+                "delta": 0.0004115481772570817,
+                "allowed_increase": 0.05295874728004424,
+                "baseline_progress_m": 1.0591749456008848,
+                "learned_progress_m": 1.0587633974236277
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-stop-005",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.0020149001563557517,
+                "learned": 0.0030171333361241385,
+                "delta": 0.0010022331797683868,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.27568364392792355,
+                "learned": 0.24647613366480675,
+                "delta": -0.029207510263116798,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.38491822728656117,
+                "learned": 0.3595041828174016,
+                "delta": -0.02541404446915957,
+                "allowed_increase": 0.01924591136432806
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.38491859256960104,
+                "learned": 0.3595049909388198,
+                "delta": -0.025413601630781213,
+                "allowed_increase": 0.019245929628480055
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.3980100593099533,
+                "learned": 0.39828888047220173,
+                "delta": 0.00027882116224842157,
+                "allowed_increase": 0.01990050296549767
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.127498457544373,
+                "learned": 0.12823404837432542,
+                "delta": 0.0007355908299524205,
+                "allowed_increase": 0.00637492287721865
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.360015715794372,
+                "learned": -1.3604309190949442,
+                "delta": -0.0004152033005722089,
+                "allowed_increase": 0.0680007857897186,
+                "baseline_progress_m": 1.360015715794372,
+                "learned_progress_m": 1.3604309190949442
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-stop-006",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.003793465317218861,
+                "learned": 0.004458061822051682,
+                "delta": 0.0006645965048328209,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.23609062759473293,
+                "learned": 0.25086321155644253,
+                "delta": 0.014772583961709607,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.3469119173670558,
+                "learned": 0.3351764516020067,
+                "delta": -0.01173546576504908,
+                "allowed_increase": 0.01734559586835279
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.3469121152627915,
+                "learned": 0.3351767862622462,
+                "delta": -0.011735329000545303,
+                "allowed_increase": 0.017345605763139576
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.36477996006973107,
+                "learned": 0.3649423613757368,
+                "delta": 0.00016240130600575498,
+                "allowed_increase": 0.018238998003486554
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.10526151667649206,
+                "learned": 0.10497250651037633,
+                "delta": -0.0002890101661157246,
+                "allowed_increase": 0.005263075833824603
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.2647145849649961,
+                "learned": -1.2639127760986797,
+                "delta": 0.0008018088663164225,
+                "allowed_increase": 0.06323572924824981,
+                "baseline_progress_m": 1.2647145849649961,
+                "learned_progress_m": 1.2639127760986797
+              }
+            },
+            "pass": true
+          },
+          {
+            "id": "trace-monitor-stop-007",
+            "checks": {
+              "max_lateral_m": {
+                "pass": true,
+                "baseline": 0.006792460536597053,
+                "learned": 0.006740704636586254,
+                "delta": -5.175590001079908e-05,
+                "allowed_increase": 0.005
+              },
+              "max_yaw_deg": {
+                "pass": true,
+                "baseline": 0.41839612270454807,
+                "learned": 0.297345367842053,
+                "delta": -0.12105075486249506,
+                "allowed_increase": 0.5
+              },
+              "stop_world_vx_rms_mps": {
+                "pass": true,
+                "baseline": 0.30898722448378635,
+                "learned": 0.29226368186585283,
+                "delta": -0.016723542617933518,
+                "allowed_increase": 0.015449361224189318
+              },
+              "stop_plane_speed_rms_mps": {
+                "pass": true,
+                "baseline": 0.30898837452505656,
+                "learned": 0.292265776262587,
+                "delta": -0.01672259826246958,
+                "allowed_increase": 0.015449418726252828
+              },
+              "drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.3198532707136362,
+                "learned": 0.3201936445359492,
+                "delta": 0.0003403738223130004,
+                "allowed_increase": 0.01599266353568181
+              },
+              "steady_drive_tracking_rms_mps": {
+                "pass": true,
+                "baseline": 0.10371058473012972,
+                "learned": 0.10374403115026097,
+                "delta": 3.344642013125565e-05,
+                "allowed_increase": 0.005185529236506486
+              },
+              "progress_at_stop_m": {
+                "pass": true,
+                "baseline": -1.2384101677745518,
+                "learned": -1.2378960856322594,
+                "delta": 0.0005140821422924269,
+                "allowed_increase": 0.06192050838872759,
+                "baseline_progress_m": 1.2384101677745518,
+                "learned_progress_m": 1.2378960856322594
+              }
+            },
+            "pass": true
+          }
+        ]
+      }
+    },
+    "cases": [
+      {
+        "id": "trace-monitor-combined-000",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.5839999882788535,
+            "learned": 0.5628022275440347,
+            "delta": -0.021197760734818716,
+            "allowed_increase": 0.029199999413942676
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.27553499237246365,
+            "learned": 0.23451870212704953,
+            "delta": -0.041016290245414116,
+            "allowed_increase": 0.013776749618623184
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.570493521015172,
+            "learned": 0.545921157645515,
+            "delta": -0.02457236336965707,
+            "allowed_increase": 0.028524676050758604
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.6496433119372351,
+            "learned": 0.6127927868032265,
+            "delta": -0.03685052513400866,
+            "allowed_increase": 0.032482165596861755
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 4.389282756526589,
+            "learned": 4.079302295844607,
+            "delta": -0.3099804606819818,
+            "allowed_increase": 0.21946413782632945
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.22000104768869552,
+            "learned": 0.23033638540216284,
+            "delta": 0.010335337713467313,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 183.15228732848385,
+            "learned": 178.90217561667595,
+            "delta": -4.250111711807904,
+            "allowed_increase": 36.63045746569677
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-combined-001",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.7732337776332286,
+            "learned": 0.7502595533767079,
+            "delta": -0.022974224256520737,
+            "allowed_increase": 0.03866168888166144
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.32708248022977426,
+            "learned": 0.3099302756768306,
+            "delta": -0.01715220455294364,
+            "allowed_increase": 0.016354124011488714
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.7582115398509146,
+            "learned": 0.7332048067737456,
+            "delta": -0.025006733077169052,
+            "allowed_increase": 0.037910576992545734
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.765278751970609,
+            "learned": 0.7538896416785457,
+            "delta": -0.011389110292063354,
+            "allowed_increase": 0.03826393759853045
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 4.669660586521247,
+            "learned": 4.572239057058662,
+            "delta": -0.09742152946258464,
+            "allowed_increase": 0.23348302932606235
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.1938011807568601,
+            "learned": 0.19456026219374767,
+            "delta": 0.0007590814368875765,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 259.0378206425385,
+            "learned": 258.832053341956,
+            "delta": -0.20576730058252224,
+            "allowed_increase": 51.80756412850771
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-combined-002",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.4566115702849965,
+            "learned": 0.4421479773075168,
+            "delta": -0.014463592977479678,
+            "allowed_increase": 0.022830578514249827
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.16091470559266147,
+            "learned": 0.1345738639165791,
+            "delta": -0.02634084167608236,
+            "allowed_increase": 0.008045735279633074
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.4428346427374994,
+            "learned": 0.4254689058209642,
+            "delta": -0.0173657369165352,
+            "allowed_increase": 0.02214173213687497
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.2779133614759906,
+            "learned": 0.26066466493178575,
+            "delta": -0.017248696544204856,
+            "allowed_increase": 0.01389566807379953
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.632556176635566,
+            "learned": 3.6595862341376555,
+            "delta": 0.027030057502089644,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2085513604894029,
+            "learned": 0.2099295840359214,
+            "delta": 0.0013782235465185089,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 167.71765192863734,
+            "learned": 170.45909931717142,
+            "delta": 2.741447388534084,
+            "allowed_increase": 33.54353038572747
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-combined-003",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.331109914464651,
+            "learned": 0.32078269427120326,
+            "delta": -0.010327220193447728,
+            "allowed_increase": 0.01655549572323255
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.17524108708586358,
+            "learned": 0.16122002199808005,
+            "delta": -0.01402106508778353,
+            "allowed_increase": 0.00876205435429318
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.31545874218199277,
+            "learned": 0.3015054503755217,
+            "delta": -0.013953291806471091,
+            "allowed_increase": 0.01577293710909964
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.44220509412931436,
+            "learned": 0.4310872222322511,
+            "delta": -0.011117871897063258,
+            "allowed_increase": 0.02211025470646572
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.466815568710838,
+            "learned": 3.5076343018781757,
+            "delta": 0.04081873316733775,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.25013238250380015,
+            "learned": 0.2536092209514093,
+            "delta": 0.003476838447609154,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 158.0012901020634,
+            "learned": 160.42085469348828,
+            "delta": 2.419564591424887,
+            "allowed_increase": 31.60025802041268
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-combined-004",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.39051267050665084,
+            "learned": 0.3815295675676925,
+            "delta": -0.00898310293895832,
+            "allowed_increase": 0.019525633525332542
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.17733725437624537,
+            "learned": 0.15582486203429788,
+            "delta": -0.02151239234194749,
+            "allowed_increase": 0.008866862718812268
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.3766128197933606,
+            "learned": 0.3658296086412868,
+            "delta": -0.010783211152073813,
+            "allowed_increase": 0.01883064098966803
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.33663545721634364,
+            "learned": 0.3340185510374889,
+            "delta": -0.0026169061788547388,
+            "allowed_increase": 0.016831772860817183
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.553960893908625,
+            "learned": 3.537134022247907,
+            "delta": -0.016826871660717835,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.21744976855335077,
+            "learned": 0.21741439412868982,
+            "delta": -3.537442466094998e-05,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 177.7527769889528,
+            "learned": 179.0437510165462,
+            "delta": 1.2909740275933927,
+            "allowed_increase": 35.55055539779056
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-combined-005",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.644402989910653,
+            "learned": 0.6269473244771343,
+            "delta": -0.01745566543351873,
+            "allowed_increase": 0.03222014949553265
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.08705215936123588,
+            "learned": 0.07700375193754243,
+            "delta": -0.01004840742369345,
+            "allowed_increase": 0.0043526079680617944
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.6300068910397272,
+            "learned": 0.610693648013162,
+            "delta": -0.01931324302656523,
+            "allowed_increase": 0.03150034455198636
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.3989929979140605,
+            "learned": 0.3797251729924662,
+            "delta": -0.01926782492159429,
+            "allowed_increase": 0.019949649895703025
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.796265495197587,
+            "learned": 2.797069102799832,
+            "delta": 0.0008036076022448491,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.20410546689404777,
+            "learned": 0.19796168024903762,
+            "delta": -0.006143786645010141,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 215.72372074731769,
+            "learned": 213.43221875828868,
+            "delta": -2.291501989029001,
+            "allowed_increase": 43.14474414946354
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-combined-006",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.7145763276121198,
+            "learned": 0.6805125933365843,
+            "delta": -0.03406373427553544,
+            "allowed_increase": 0.03572881638060599
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.12509554642590634,
+            "learned": 0.10348549520998314,
+            "delta": -0.0216100512159232,
+            "allowed_increase": 0.006254777321295317
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.7006975273582134,
+            "learned": 0.6620630165275379,
+            "delta": -0.038634510830675595,
+            "allowed_increase": 0.035034876367910674
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.47667996337080665,
+            "learned": 0.4176167031817115,
+            "delta": -0.059063260189095135,
+            "allowed_increase": 0.023833998168540333
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.0187589600497087,
+            "learned": 3.021882852504212,
+            "delta": 0.0031238924545031743,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.23544961964317238,
+            "learned": 0.22632079698319232,
+            "delta": -0.009128822659980051,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 155.5328919497371,
+            "learned": 158.9964295090265,
+            "delta": 3.4635375592894206,
+            "allowed_increase": 31.10657838994742
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-combined-007",
+        "case": "combined",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.5148419797581254,
+            "learned": 0.5029576740062637,
+            "delta": -0.011884305751861723,
+            "allowed_increase": 0.025742098987906272
+          },
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.11141990834267228,
+            "learned": 0.09398072879669045,
+            "delta": -0.01743917954598183,
+            "allowed_increase": 0.005570995417133615
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.5005913227564593,
+            "learned": 0.48711579929840276,
+            "delta": -0.013475523458056582,
+            "allowed_increase": 0.025029566137822968
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.0,
+            "learned": 0.0,
+            "delta": 0.0,
+            "allowed_increase": 0.005
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.2765938383020631,
+            "learned": 0.26545708389207606,
+            "delta": -0.011136754409987015,
+            "allowed_increase": 0.013829691915103155
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.73355369908534,
+            "learned": 2.750756526498204,
+            "delta": 0.017202827412864163,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2791425567755848,
+            "learned": 0.2631363208776921,
+            "delta": -0.016006235897892684,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 219.41395379447957,
+            "learned": 215.19400319440814,
+            "delta": -4.219950600071428,
+            "allowed_increase": 43.882790758895915
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-push-000",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.1799865562524151,
+            "learned": 0.1598623314072946,
+            "delta": -0.020124224845120497,
+            "allowed_increase": 0.008999327812620755
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.42724196054424124,
+            "learned": 0.41660143018904505,
+            "delta": -0.010640530355196187,
+            "allowed_increase": 0.021362098027212062
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.680409049763186,
+            "learned": 3.615893965644453,
+            "delta": -0.06451508411873297,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.22331173202966367,
+            "learned": 0.21912484503835764,
+            "delta": -0.004186886991306038,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 156.91023647612624,
+            "learned": 154.25080064978872,
+            "delta": -2.6594358263375284,
+            "allowed_increase": 31.38204729522525
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-push-001",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.11328911481879146,
+            "learned": 0.10699142291587016,
+            "delta": -0.006297691902921301,
+            "allowed_increase": 0.005664455740939573
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.28618219021456326,
+            "learned": 0.2802943175510268,
+            "delta": -0.005887872663536464,
+            "allowed_increase": 0.014309109510728163
+          },
+          "peak_pitch_deg": {
+            "pass": false,
+            "baseline": 1.7603597952415115,
+            "learned": 2.1034249660782147,
+            "delta": 0.3430651708367032,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2092572252434264,
+            "learned": 0.20719561218227286,
+            "delta": -0.0020616130611535444,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 130.87403521621792,
+            "learned": 149.61572540912212,
+            "delta": 18.7416901929042,
+            "allowed_increase": 26.174807043243586
+          }
+        },
+        "pass": false
+      },
+      {
+        "id": "trace-monitor-push-002",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.15547907382772103,
+            "learned": 0.14127555014434562,
+            "delta": -0.014203523683375407,
+            "allowed_increase": 0.007773953691386052
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.35599524183790354,
+            "learned": 0.34811155650882636,
+            "delta": -0.007883685329077184,
+            "allowed_increase": 0.01779976209189518
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.6087163357955157,
+            "learned": 3.624246462892735,
+            "delta": 0.01553012709721946,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2371979878918324,
+            "learned": 0.21742627979513598,
+            "delta": -0.019771708096696428,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 155.14068323782666,
+            "learned": 152.42977688739498,
+            "delta": -2.710906350431685,
+            "allowed_increase": 31.028136647565333
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-push-003",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.17446989715905536,
+            "learned": 0.15888389515545642,
+            "delta": -0.015586002003598942,
+            "allowed_increase": 0.008723494857952768
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.406212014663975,
+            "learned": 0.39865774590612246,
+            "delta": -0.007554268757852534,
+            "allowed_increase": 0.02031060073319875
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.524656073314236,
+            "learned": 3.5112583819317242,
+            "delta": -0.013397691382511567,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.1915243280369187,
+            "learned": 0.22339788254547127,
+            "delta": 0.03187355450855256,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 235.32076227995904,
+            "learned": 237.97677544817674,
+            "delta": 2.6560131682176973,
+            "allowed_increase": 47.06415245599181
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-push-004",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.09618155240280474,
+            "learned": 0.08961890072748975,
+            "delta": -0.006562651675314987,
+            "allowed_increase": 0.004809077620140237
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.24287027908470316,
+            "learned": 0.2385215534127397,
+            "delta": -0.004348725671963455,
+            "allowed_increase": 0.012143513954235158
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 1.8309648192501788,
+            "learned": 1.787389584088782,
+            "delta": -0.04357523516139694,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.18353292840935764,
+            "learned": 0.19314887304395112,
+            "delta": 0.009615944634593476,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 78.87548281749602,
+            "learned": 86.23971847712582,
+            "delta": 7.364235659629799,
+            "allowed_increase": 15.775096563499204
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-push-005",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.13350079639023815,
+            "learned": 0.1251141483457404,
+            "delta": -0.008386648044497763,
+            "allowed_increase": 0.006675039819511908
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.3085598735197234,
+            "learned": 0.30397291503661,
+            "delta": -0.0045869584831134125,
+            "allowed_increase": 0.01542799367598617
+          },
+          "peak_pitch_deg": {
+            "pass": false,
+            "baseline": 2.5092985943650414,
+            "learned": 2.777004383987668,
+            "delta": 0.2677057896226267,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.22606927919224137,
+            "learned": 0.2319885684758641,
+            "delta": 0.005919289283622731,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 107.15589873984153,
+            "learned": 114.53671522126838,
+            "delta": 7.380816481426848,
+            "allowed_increase": 21.431179747968308
+          }
+        },
+        "pass": false
+      },
+      {
+        "id": "trace-monitor-push-006",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.07505637379144652,
+            "learned": 0.07036443938003042,
+            "delta": -0.0046919344114160905,
+            "allowed_increase": 0.003752818689572326
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.19914256510910558,
+            "learned": 0.20283534338283576,
+            "delta": 0.003692778273730185,
+            "allowed_increase": 0.00995712825545528
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 1.5683889846777874,
+            "learned": 1.6897567399501305,
+            "delta": 0.12136775527234311,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.14692695883382437,
+            "learned": 0.1745510645513872,
+            "delta": 0.027624105717562825,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 50.71697362542968,
+            "learned": 60.73716193653919,
+            "delta": 10.020188311109507,
+            "allowed_increase": 10.143394725085937
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-push-007",
+        "case": "push",
+        "complete": true,
+        "checks": {
+          "push_primary": {
+            "pass": true,
+            "baseline": 0.18732895021378723,
+            "learned": 0.17102312773903078,
+            "delta": -0.016305822474756454,
+            "allowed_increase": 0.009366447510689362
+          },
+          "push_peak_velocity_error": {
+            "pass": true,
+            "baseline": 0.4525839309339538,
+            "learned": 0.4441073211187521,
+            "delta": -0.008476609815201708,
+            "allowed_increase": 0.02262919654669769
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.556784194729497,
+            "learned": 3.4878177747521932,
+            "delta": -0.06896641997730368,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.21118146066823412,
+            "learned": 0.22133579625708125,
+            "delta": 0.010154335588847124,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 150.59925405451196,
+            "learned": 151.17518305315798,
+            "delta": 0.5759289986460203,
+            "allowed_increase": 30.119850810902392
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-stop-000",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.42673678202792226,
+            "learned": 0.41245050734911287,
+            "delta": -0.014286274678809385,
+            "allowed_increase": 0.021336839101396114
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 1.0642376993617195,
+            "learned": 1.0445856348990736,
+            "delta": -0.01965206446264589,
+            "allowed_increase": 0.05321188496808598
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.11541800237111119,
+            "learned": 0.06959543593597661,
+            "delta": -0.045822566435134576,
+            "allowed_increase": 0.00577090011855556
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.0190084394466985,
+            "learned": 3.022220223745939,
+            "delta": 0.0032117842992405166,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.21744976855335077,
+            "learned": 0.223918132352214,
+            "delta": 0.00646836379886323,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 180.32300991070943,
+            "learned": 177.61465485449887,
+            "delta": -2.7083550562105643,
+            "allowed_increase": 36.06460198214189
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-stop-001",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.20532068473050408,
+            "learned": 0.19653617897284834,
+            "delta": -0.008784505757655742,
+            "allowed_increase": 0.010266034236525204
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.4050172045703123,
+            "learned": 0.39401818224728935,
+            "delta": -0.010999022323022967,
+            "allowed_increase": 0.02025086022851562
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.09344098004965341,
+            "learned": 0.05796313853942001,
+            "delta": -0.0354778415102334,
+            "allowed_increase": 0.005
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.8003721631773835,
+            "learned": 2.7998138803571053,
+            "delta": -0.0005582828202781442,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.1992729388991347,
+            "learned": 0.20433216552775957,
+            "delta": 0.005059226628624874,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 166.49062526252447,
+            "learned": 165.29842041876657,
+            "delta": -1.1922048437579065,
+            "allowed_increase": 33.29812505250489
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-stop-002",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.17373907659501056,
+            "learned": 0.16429501825426748,
+            "delta": -0.009444058340743078,
+            "allowed_increase": 0.008686953829750528
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.33343675022418506,
+            "learned": 0.3149973227449151,
+            "delta": -0.018439427479269965,
+            "allowed_increase": 0.016671837511209254
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.07675608900555583,
+            "learned": 0.04443413364000646,
+            "delta": -0.032321955365549375,
+            "allowed_increase": 0.005
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.9298645515006223,
+            "learned": 2.931419947105735,
+            "delta": 0.0015553956051128637,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2218556262135009,
+            "learned": 0.22047863428728062,
+            "delta": -0.001376991926220289,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 122.24795126030808,
+            "learned": 120.9790748312278,
+            "delta": -1.2688764290802794,
+            "allowed_increase": 24.44959025206162
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-stop-003",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.2736088598304202,
+            "learned": 0.2632539620241564,
+            "delta": -0.010354897806263808,
+            "allowed_increase": 0.013680442991521012
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.5888406637576846,
+            "learned": 0.5761945706720137,
+            "delta": -0.012646093085670884,
+            "allowed_increase": 0.029442033187884232
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.10437077957025445,
+            "learned": 0.06378790362301448,
+            "delta": -0.04058287594723997,
+            "allowed_increase": 0.005218538978512723
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.809556951408508,
+            "learned": 2.8042977982044692,
+            "delta": -0.005259153204038913,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.22185553990453108,
+            "learned": 0.22789221715701743,
+            "delta": 0.0060366772524863554,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 174.28387758662396,
+            "learned": 173.08295256078856,
+            "delta": -1.200925025835403,
+            "allowed_increase": 34.85677551732479
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-stop-004",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.23983021121193906,
+            "learned": 0.22772223452443008,
+            "delta": -0.012107976687508987,
+            "allowed_increase": 0.011991510560596955
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.5027608499307639,
+            "learned": 0.47861330590187134,
+            "delta": -0.02414754402889252,
+            "allowed_increase": 0.025138042496538195
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.09081950495861686,
+            "learned": 0.05102776600532917,
+            "delta": -0.03979173895328769,
+            "allowed_increase": 0.005
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.0183489575311215,
+            "learned": 3.0210860235556916,
+            "delta": 0.002737066024570023,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2164914842244328,
+            "learned": 0.21307922355559727,
+            "delta": -0.003412260668835515,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 140.63537076575076,
+            "learned": 140.53206012187024,
+            "delta": -0.10331064388051914,
+            "allowed_increase": 28.127074153150154
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-stop-005",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.3849183430900952,
+            "learned": 0.35950462856889337,
+            "delta": -0.025413714521201836,
+            "allowed_increase": 0.01924591715450476
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.9205778133861464,
+            "learned": 0.854105955700809,
+            "delta": -0.06647185768533737,
+            "allowed_increase": 0.04602889066930732
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.12109149521593843,
+            "learned": 0.07326873850181888,
+            "delta": -0.04782275671411955,
+            "allowed_increase": 0.006054574760796922
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.846280984393679,
+            "learned": 2.848572322824128,
+            "delta": 0.0022913384304490414,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.22628101037397824,
+            "learned": 0.2390102660406973,
+            "delta": 0.012729255666719064,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 152.99960589684974,
+            "learned": 150.44139437972143,
+            "delta": -2.5582115171283135,
+            "allowed_increase": 30.59992117936995
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-stop-006",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.3469119862125815,
+            "learned": 0.335176636532473,
+            "delta": -0.011735349680108531,
+            "allowed_increase": 0.017345599310629078
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.8118603702993412,
+            "learned": 0.7962171199066574,
+            "delta": -0.015643250392683772,
+            "allowed_increase": 0.040593018514967064
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.1080111291255882,
+            "learned": 0.06311070609801919,
+            "delta": -0.04490042302756901,
+            "allowed_increase": 0.005400556456279411
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 3.0190084394466985,
+            "learned": 3.022220223745939,
+            "delta": 0.0032117842992405166,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.2214304122902092,
+            "learned": 0.21741439412868982,
+            "delta": -0.004016018161519391,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 170.6458880648025,
+            "learned": 168.11627365908953,
+            "delta": -2.5296144057129766,
+            "allowed_increase": 34.129177612960504
+          }
+        },
+        "pass": true
+      },
+      {
+        "id": "trace-monitor-stop-007",
+        "case": "stop",
+        "complete": true,
+        "checks": {
+          "stop_primary": {
+            "pass": true,
+            "baseline": 0.30898807403195194,
+            "learned": 0.29226532636959834,
+            "delta": -0.0167227476623536,
+            "allowed_increase": 0.015449403701597598
+          },
+          "stop_travel": {
+            "pass": true,
+            "baseline": 0.6877704747021627,
+            "learned": 0.6533519022368315,
+            "delta": -0.0344185724653312,
+            "allowed_increase": 0.03438852373510814
+          },
+          "stop_reverse": {
+            "pass": true,
+            "baseline": 0.11291217332271788,
+            "learned": 0.06817843524097847,
+            "delta": -0.044733738081739416,
+            "allowed_increase": 0.005645608666135895
+          },
+          "peak_pitch_deg": {
+            "pass": true,
+            "baseline": 2.8987155101294118,
+            "learned": 2.895815361568266,
+            "delta": -0.0029001485611459543,
+            "allowed_increase": 0.2
+          },
+          "peak_roll_deg": {
+            "pass": true,
+            "baseline": 0.22100216155284005,
+            "learned": 0.20493347244280316,
+            "delta": -0.016068689110036893,
+            "allowed_increase": 0.2
+          },
+          "hip_heat_case": {
+            "pass": true,
+            "baseline": 117.41272115448916,
+            "learned": 114.65982536018717,
+            "delta": -2.752895794301992,
+            "allowed_increase": 23.482544230897833
+          }
+        },
+        "pass": true
+      }
+    ]
+  },
+  "motion_quality_protocol": "motion-quality-20261012"
+}

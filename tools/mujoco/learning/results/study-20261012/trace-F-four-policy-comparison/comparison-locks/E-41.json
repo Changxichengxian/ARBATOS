@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "created_at": "2026-10-12T12:32:55+08:00",
+  "scenarios_sha256": "a935e32db4cf96af9fe74013be09cc718a60b9686646b4983c8691f6130b4226",
+  "split": "trace-monitor",
+  "policy_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+  "policy_seed": 41,
+  "policy_artifacts": {
+    "policy.json": "f25f5dfa6f22ec170cd2fc4cb1a4a14f8d1149415ad6aa9d8852b7275f7c4299",
+    "policy.npz": "8fb2ce8b8b0ec675ddd7e3402ece00afbdfbafbf73057d6436ec85307f95c815"
+  },
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "env_config": {
+    "reward_mode": "dense",
+    "action_mode": "reference",
+    "gas_force": 450.0
+  },
+  "lock_sha256": "2f6f7c2d69a7ad59024ae805bdbc11732090d0938e1caea72a8d94faeb9a8c94"
+}

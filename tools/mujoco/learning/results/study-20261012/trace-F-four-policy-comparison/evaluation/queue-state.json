@@ -1,0 +1,371 @@
+{
+  "schema": 1,
+  "plan_sha256": "a7769c31de98ab522eca3622a13c611b229b349cb8eade74cd357a37c4b9b459",
+  "jobs": {
+    "E-41": {
+      "status": "completed",
+      "attempts": [
+        {
+          "command": [
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "-u",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+            "--lock",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\E-41.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\logs\\E-41-01.log",
+          "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41",
+          "job_binding_sha256": "5c437feb40b218bf0eaffb78a9fd783cf60472a3d2e08cfee8885ba5152831c9",
+          "restart_without_checkpoint": false,
+          "started_at": "2026-10-12T04:33:14.949803+00:00",
+          "pid": 12972,
+          "exit_code": 0,
+          "finished_at": "2026-10-12T04:38:55.006334+00:00"
+        }
+      ],
+      "job_binding": {
+        "payload": {
+          "kind": "evaluate",
+          "arguments": [
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+            "--lock",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\E-41.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+          "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+          "script_sha256": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+          "source_hashes": {
+            "EvaluateWbrStudy.py": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405"
+          },
+          "source": {
+            "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+            "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d"
+          },
+          "inputs": {
+            "--cases": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+              "sha256": "a43846dd9c0d00aa94ddf482a182f6955d5f8f5be37731567f8cc15e0c363ea8"
+            },
+            "--policy": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train",
+              "files": [
+                {
+                  "name": "policy.json",
+                  "sha256": "f25f5dfa6f22ec170cd2fc4cb1a4a14f8d1149415ad6aa9d8852b7275f7c4299"
+                },
+                {
+                  "name": "policy.npz",
+                  "sha256": "8fb2ce8b8b0ec675ddd7e3402ece00afbdfbafbf73057d6436ec85307f95c815"
+                }
+              ]
+            },
+            "--lock": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\E-41.json",
+              "sha256": "e208e3314115a8e22edd1db7791be66481a9629398e76634bf6f48fb74e2b914"
+            },
+            "--baseline-cache": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+              "sha256": "a143cee69e9aaf0d35bd3749ed584ceb8dcad6038af5da397bc9b02b6298f0e3"
+            }
+          }
+        },
+        "sha256": "5c437feb40b218bf0eaffb78a9fd783cf60472a3d2e08cfee8885ba5152831c9"
+      },
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41"
+    },
+    "E-73": {
+      "status": "completed",
+      "attempts": [
+        {
+          "command": [
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "-u",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+            "--lock",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\E-73.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\logs\\E-73-01.log",
+          "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73",
+          "job_binding_sha256": "70bf43998c118540bb2eee5cd56ecc43c129b1f9933083d6acee69c57264e558",
+          "restart_without_checkpoint": false,
+          "started_at": "2026-10-12T04:46:25.142646+00:00",
+          "pid": 26076,
+          "exit_code": 0,
+          "finished_at": "2026-10-12T04:51:15.187068+00:00"
+        }
+      ],
+      "job_binding": {
+        "payload": {
+          "kind": "evaluate",
+          "arguments": [
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+            "--lock",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\E-73.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+          "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+          "script_sha256": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+          "source_hashes": {
+            "EvaluateWbrStudy.py": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405"
+          },
+          "source": {
+            "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+            "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d"
+          },
+          "inputs": {
+            "--cases": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+              "sha256": "a43846dd9c0d00aa94ddf482a182f6955d5f8f5be37731567f8cc15e0c363ea8"
+            },
+            "--policy": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train",
+              "files": [
+                {
+                  "name": "policy.json",
+                  "sha256": "84b2943b889c96a01c938444177294b907b6781e00bfccb0bcb04cbbd99c7770"
+                },
+                {
+                  "name": "policy.npz",
+                  "sha256": "5c9b38cd3d6bdd36dacc277bebc77d9bb892d659e1b1a814e03e1bfbdff49224"
+                }
+              ]
+            },
+            "--lock": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\E-73.json",
+              "sha256": "b48a09dd6ad37740df3ea814d1c818f5276bb3eebc6baff3c14434aff144820c"
+            },
+            "--baseline-cache": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+              "sha256": "a143cee69e9aaf0d35bd3749ed584ceb8dcad6038af5da397bc9b02b6298f0e3"
+            }
+          }
+        },
+        "sha256": "70bf43998c118540bb2eee5cd56ecc43c129b1f9933083d6acee69c57264e558"
+      },
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73"
+    },
+    "F-41": {
+      "status": "completed",
+      "attempts": [
+        {
+          "command": [
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "-u",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+            "--lock",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\F-41.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\logs\\F-41-01.log",
+          "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41",
+          "job_binding_sha256": "571cb1c7f56e8a4eca538668b837cd389e8747fab7bfeafd1b330c42a0b27ec1",
+          "restart_without_checkpoint": false,
+          "started_at": "2026-10-12T04:51:15.541765+00:00",
+          "pid": 25560,
+          "exit_code": 0,
+          "finished_at": "2026-10-12T04:55:55.590533+00:00"
+        }
+      ],
+      "job_binding": {
+        "payload": {
+          "kind": "evaluate",
+          "arguments": [
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+            "--lock",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\F-41.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+          "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+          "script_sha256": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+          "source_hashes": {
+            "EvaluateWbrStudy.py": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405"
+          },
+          "source": {
+            "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+            "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d"
+          },
+          "inputs": {
+            "--cases": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+              "sha256": "a43846dd9c0d00aa94ddf482a182f6955d5f8f5be37731567f8cc15e0c363ea8"
+            },
+            "--policy": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train",
+              "files": [
+                {
+                  "name": "policy.json",
+                  "sha256": "fcc11d536b65514696bbfdd9c8a61ccdec90cce7b366d2677205a8521b36bdac"
+                },
+                {
+                  "name": "policy.npz",
+                  "sha256": "ef7036a7051c9d4562640fdafbb55558113cd645da5366ab07eee5b008029a52"
+                }
+              ]
+            },
+            "--lock": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\F-41.json",
+              "sha256": "92c324caebaace95322eb82d15d5df8ac7abe5c4420099aa6c0263e21b3f57ba"
+            },
+            "--baseline-cache": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+              "sha256": "a143cee69e9aaf0d35bd3749ed584ceb8dcad6038af5da397bc9b02b6298f0e3"
+            }
+          }
+        },
+        "sha256": "571cb1c7f56e8a4eca538668b837cd389e8747fab7bfeafd1b330c42a0b27ec1"
+      },
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41"
+    },
+    "F-73": {
+      "status": "completed",
+      "attempts": [
+        {
+          "command": [
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "-u",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+            "--lock",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\F-73.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\logs\\F-73-01.log",
+          "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73",
+          "job_binding_sha256": "9b2f6ccffc1d2e07ef56c975ab81463fdc6b764a56993a894d86e79c7eae56c9",
+          "restart_without_checkpoint": false,
+          "started_at": "2026-10-12T04:55:56.025023+00:00",
+          "pid": 27288,
+          "exit_code": 0,
+          "finished_at": "2026-10-12T05:00:51.088364+00:00"
+        }
+      ],
+      "job_binding": {
+        "payload": {
+          "kind": "evaluate",
+          "arguments": [
+            "--output",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73",
+            "--cases",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+            "--policy",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02",
+            "--baseline-cache",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+            "--lock",
+            "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\F-73.json",
+            "--deadline",
+            "2026-10-14T02:10:00+08:00"
+          ],
+          "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+          "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\EvaluateWbrStudy.py",
+          "script_sha256": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+          "source_hashes": {
+            "EvaluateWbrStudy.py": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405"
+          },
+          "source": {
+            "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+            "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d"
+          },
+          "inputs": {
+            "--cases": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json",
+              "sha256": "a43846dd9c0d00aa94ddf482a182f6955d5f8f5be37731567f8cc15e0c363ea8"
+            },
+            "--policy": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02",
+              "files": [
+                {
+                  "name": "policy.json",
+                  "sha256": "d83239933de8287954e90c97a28c44d83b6b509a472c117affe1383577fb3290"
+                },
+                {
+                  "name": "policy.npz",
+                  "sha256": "f4d950d313c315f15a963bb37523bf5bfff6b81eca5c6379b64cc318273ccbc9"
+                }
+              ]
+            },
+            "--lock": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\F-73.json",
+              "sha256": "b2a5190e12cb6b723852850a52c5992c2e2c8333841ef049351316f1a55e5d22"
+            },
+            "--baseline-cache": {
+              "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json",
+              "sha256": "a143cee69e9aaf0d35bd3749ed584ceb8dcad6038af5da397bc9b02b6298f0e3"
+            }
+          }
+        },
+        "sha256": "9b2f6ccffc1d2e07ef56c975ab81463fdc6b764a56993a894d86e79c7eae56c9"
+      },
+      "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73"
+    }
+  },
+  "status": "completed",
+  "pid": 24964,
+  "current_job": null,
+  "updated_at": "2026-10-12T05:00:51.315579+00:00",
+  "error": "RuntimeError('评价锁绑定不匹配：C:\\\\Users\\\\28111\\\\Documents\\\\Codex\\\\2026-10-12\\\\codex-threads-01a10020-bff3-7030-a437\\\\work\\\\study-20261012\\\\long-trace\\\\evaluation\\\\E-41')"
+}

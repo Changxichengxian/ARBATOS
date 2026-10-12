@@ -1,0 +1,864 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T13:01:31.869899+08:00",
+  "rows": [
+    {
+      "route": "E",
+      "seed": 41,
+      "gate": {
+        "pass_all": false,
+        "physical_complete": true,
+        "original_case_guards": false,
+        "motion_quality": false,
+        "stop_improvement": 0.07209318411539867,
+        "push_improvement": 0.06888343570499367,
+        "heat_change": 0.01291548961739486
+      },
+      "means": {
+        "stop_mean_improvement": 0.2737387761134874,
+        "push_mean_improvement": 0.12980839354919813,
+        "hip_heat_mean": 161.51632889927393
+      },
+      "complete_mean_comparison_available": true,
+      "mean_pair_counts": {
+        "stop_mean_improvement": 8,
+        "push_mean_improvement": 8
+      },
+      "failed_original_cases": [
+        {
+          "id": "trace-monitor-combined-007",
+          "case": "combined",
+          "complete": true,
+          "checks": {
+            "stop_primary": {
+              "pass": true,
+              "baseline": 0.5148419797581254,
+              "learned": 0.4755860202305752,
+              "delta": -0.03925595952755018,
+              "allowed_increase": 0.025742098987906272
+            },
+            "push_primary": {
+              "pass": false,
+              "baseline": 0.11141990834267228,
+              "learned": 0.11941149326854482,
+              "delta": 0.007991584925872541,
+              "allowed_increase": 0.005570995417133615
+            },
+            "stop_travel": {
+              "pass": true,
+              "baseline": 0.5005913227564593,
+              "learned": 0.4513393043290499,
+              "delta": -0.04925201842740945,
+              "allowed_increase": 0.025029566137822968
+            },
+            "stop_reverse": {
+              "pass": true,
+              "baseline": 0.0,
+              "learned": 0.0,
+              "delta": 0.0,
+              "allowed_increase": 0.005
+            },
+            "push_peak_velocity_error": {
+              "pass": false,
+              "baseline": 0.2765938383020631,
+              "learned": 0.3165278554981703,
+              "delta": 0.03993401719610723,
+              "allowed_increase": 0.013829691915103155
+            },
+            "peak_pitch_deg": {
+              "pass": true,
+              "baseline": 2.73355369908534,
+              "learned": 2.614813396506762,
+              "delta": -0.11874030257857804,
+              "allowed_increase": 0.2
+            },
+            "peak_roll_deg": {
+              "pass": true,
+              "baseline": 0.2791425567755848,
+              "learned": 0.2876191332333601,
+              "delta": 0.008476576457775276,
+              "allowed_increase": 0.2
+            },
+            "hip_heat_case": {
+              "pass": true,
+              "baseline": 219.41395379447957,
+              "learned": 215.51164872102234,
+              "delta": -3.902305073457228,
+              "allowed_increase": 43.882790758895915
+            }
+          },
+          "pass": false
+        },
+        {
+          "id": "trace-monitor-push-005",
+          "case": "push",
+          "complete": true,
+          "checks": {
+            "push_primary": {
+              "pass": true,
+              "baseline": 0.13350079639023815,
+              "learned": 0.12797292230236923,
+              "delta": -0.0055278740878689225,
+              "allowed_increase": 0.006675039819511908
+            },
+            "push_peak_velocity_error": {
+              "pass": true,
+              "baseline": 0.3085598735197234,
+              "learned": 0.3032616437298062,
+              "delta": -0.00529822978991723,
+              "allowed_increase": 0.01542799367598617
+            },
+            "peak_pitch_deg": {
+              "pass": false,
+              "baseline": 2.5092985943650414,
+              "learned": 3.01236216729639,
+              "delta": 0.5030635729313486,
+              "allowed_increase": 0.2
+            },
+            "peak_roll_deg": {
+              "pass": true,
+              "baseline": 0.22606927919224137,
+              "learned": 0.22381668986339207,
+              "delta": -0.002252589328849308,
+              "allowed_increase": 0.2
+            },
+            "hip_heat_case": {
+              "pass": true,
+              "baseline": 107.15589873984153,
+              "learned": 118.78499561132946,
+              "delta": 11.629096871487931,
+              "allowed_increase": 21.431179747968308
+            }
+          },
+          "pass": false
+        }
+      ],
+      "failed_motion_cases": [
+        {
+          "id": "trace-monitor-combined-007",
+          "checks": {
+            "max_lateral_m": {
+              "pass": true,
+              "baseline": 0.0010483839575364615,
+              "learned": 0.00141302497353751,
+              "delta": 0.00036464101600104854,
+              "allowed_increase": 0.005
+            },
+            "max_yaw_deg": {
+              "pass": true,
+              "baseline": 0.19677527636984957,
+              "learned": 0.22136669109230234,
+              "delta": 0.02459141472245277,
+              "allowed_increase": 0.5
+            },
+            "stop_world_vx_rms_mps": {
+              "pass": true,
+              "baseline": 0.5148412917536492,
+              "learned": 0.47558547909271465,
+              "delta": -0.039255812660934586,
+              "allowed_increase": 0.025742064587682464
+            },
+            "stop_plane_speed_rms_mps": {
+              "pass": true,
+              "baseline": 0.5148421375031383,
+              "learned": 0.475586172385125,
+              "delta": -0.039255965118013325,
+              "allowed_increase": 0.02574210687515692
+            },
+            "push_world_vx_rms_mps": {
+              "pass": false,
+              "baseline": 0.11141970808400557,
+              "learned": 0.11941141378854551,
+              "delta": 0.007991705704539942,
+              "allowed_increase": 0.005570985404200279
+            },
+            "push_plane_speed_rms_mps": {
+              "pass": false,
+              "baseline": 0.11142050510392276,
+              "learned": 0.11941276576075553,
+              "delta": 0.00799226065683277,
+              "allowed_increase": 0.005571025255196139
+            },
+            "drive_tracking_rms_mps": {
+              "pass": true,
+              "baseline": 0.2862322536301159,
+              "learned": 0.2865172851935884,
+              "delta": 0.00028503156347248204,
+              "allowed_increase": 0.014311612681505796
+            },
+            "steady_drive_tracking_rms_mps": {
+              "pass": true,
+              "baseline": 0.08707125080174141,
+              "learned": 0.08752303279700864,
+              "delta": 0.00045178199526722806,
+              "allowed_increase": 0.005
+            },
+            "progress_at_stop_m": {
+              "pass": true,
+              "baseline": -1.1433493503926333,
+              "learned": -1.1444516391098334,
+              "delta": -0.001102288717200084,
+              "allowed_increase": 0.05716746751963167,
+              "baseline_progress_m": 1.1433493503926333,
+              "learned_progress_m": 1.1444516391098334
+            }
+          },
+          "pass": false
+        }
+      ],
+      "completed_records_checked": 48,
+      "evaluation_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41",
+      "policy_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train"
+    },
+    {
+      "route": "E",
+      "seed": 73,
+      "gate": {
+        "pass_all": false,
+        "physical_complete": true,
+        "original_case_guards": false,
+        "motion_quality": true,
+        "stop_improvement": 0.046121624469986355,
+        "push_improvement": 0.08263169916389057,
+        "heat_change": 0.006794504378401012
+      },
+      "means": {
+        "stop_mean_improvement": 0.28140056157447246,
+        "push_mean_improvement": 0.12789172697690726,
+        "hip_heat_mean": 160.54029577984522
+      },
+      "complete_mean_comparison_available": true,
+      "mean_pair_counts": {
+        "stop_mean_improvement": 8,
+        "push_mean_improvement": 8
+      },
+      "failed_original_cases": [
+        {
+          "id": "trace-monitor-push-001",
+          "case": "push",
+          "complete": true,
+          "checks": {
+            "push_primary": {
+              "pass": true,
+              "baseline": 0.11328911481879146,
+              "learned": 0.10699142291587016,
+              "delta": -0.006297691902921301,
+              "allowed_increase": 0.005664455740939573
+            },
+            "push_peak_velocity_error": {
+              "pass": true,
+              "baseline": 0.28618219021456326,
+              "learned": 0.2802943175510268,
+              "delta": -0.005887872663536464,
+              "allowed_increase": 0.014309109510728163
+            },
+            "peak_pitch_deg": {
+              "pass": false,
+              "baseline": 1.7603597952415115,
+              "learned": 2.1034249660782147,
+              "delta": 0.3430651708367032,
+              "allowed_increase": 0.2
+            },
+            "peak_roll_deg": {
+              "pass": true,
+              "baseline": 0.2092572252434264,
+              "learned": 0.20719561218227286,
+              "delta": -0.0020616130611535444,
+              "allowed_increase": 0.2
+            },
+            "hip_heat_case": {
+              "pass": true,
+              "baseline": 130.87403521621792,
+              "learned": 149.61572540912212,
+              "delta": 18.7416901929042,
+              "allowed_increase": 26.174807043243586
+            }
+          },
+          "pass": false
+        },
+        {
+          "id": "trace-monitor-push-005",
+          "case": "push",
+          "complete": true,
+          "checks": {
+            "push_primary": {
+              "pass": true,
+              "baseline": 0.13350079639023815,
+              "learned": 0.1251141483457404,
+              "delta": -0.008386648044497763,
+              "allowed_increase": 0.006675039819511908
+            },
+            "push_peak_velocity_error": {
+              "pass": true,
+              "baseline": 0.3085598735197234,
+              "learned": 0.30397291503661,
+              "delta": -0.0045869584831134125,
+              "allowed_increase": 0.01542799367598617
+            },
+            "peak_pitch_deg": {
+              "pass": false,
+              "baseline": 2.5092985943650414,
+              "learned": 2.777004383987668,
+              "delta": 0.2677057896226267,
+              "allowed_increase": 0.2
+            },
+            "peak_roll_deg": {
+              "pass": true,
+              "baseline": 0.22606927919224137,
+              "learned": 0.2319885684758641,
+              "delta": 0.005919289283622731,
+              "allowed_increase": 0.2
+            },
+            "hip_heat_case": {
+              "pass": true,
+              "baseline": 107.15589873984153,
+              "learned": 114.53671522126838,
+              "delta": 7.380816481426848,
+              "allowed_increase": 21.431179747968308
+            }
+          },
+          "pass": false
+        }
+      ],
+      "failed_motion_cases": [],
+      "completed_records_checked": 48,
+      "evaluation_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73",
+      "policy_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train"
+    },
+    {
+      "route": "F",
+      "seed": 41,
+      "gate": {
+        "pass_all": false,
+        "physical_complete": true,
+        "original_case_guards": false,
+        "motion_quality": true,
+        "stop_improvement": 0.05034177239393678,
+        "push_improvement": 0.08641361220568378,
+        "heat_change": 0.011030924625224925
+      },
+      "means": {
+        "stop_mean_improvement": 0.2801555894415555,
+        "push_mean_improvement": 0.12736448465803643,
+        "hip_heat_mean": 161.21582207296174
+      },
+      "complete_mean_comparison_available": true,
+      "mean_pair_counts": {
+        "stop_mean_improvement": 8,
+        "push_mean_improvement": 8
+      },
+      "failed_original_cases": [
+        {
+          "id": "trace-monitor-push-001",
+          "case": "push",
+          "complete": true,
+          "checks": {
+            "push_primary": {
+              "pass": true,
+              "baseline": 0.11328911481879146,
+              "learned": 0.10787564098892406,
+              "delta": -0.005413473829867399,
+              "allowed_increase": 0.005664455740939573
+            },
+            "push_peak_velocity_error": {
+              "pass": true,
+              "baseline": 0.28618219021456326,
+              "learned": 0.27923534049524545,
+              "delta": -0.006946849719317805,
+              "allowed_increase": 0.014309109510728163
+            },
+            "peak_pitch_deg": {
+              "pass": false,
+              "baseline": 1.7603597952415115,
+              "learned": 2.3721310411492533,
+              "delta": 0.6117712459077418,
+              "allowed_increase": 0.2
+            },
+            "peak_roll_deg": {
+              "pass": true,
+              "baseline": 0.2092572252434264,
+              "learned": 0.19467654165419407,
+              "delta": -0.01458068358923234,
+              "allowed_increase": 0.2
+            },
+            "hip_heat_case": {
+              "pass": false,
+              "baseline": 130.87403521621792,
+              "learned": 159.48542640448943,
+              "delta": 28.61139118827151,
+              "allowed_increase": 26.174807043243586
+            }
+          },
+          "pass": false
+        },
+        {
+          "id": "trace-monitor-push-005",
+          "case": "push",
+          "complete": true,
+          "checks": {
+            "push_primary": {
+              "pass": true,
+              "baseline": 0.13350079639023815,
+              "learned": 0.1253913846132025,
+              "delta": -0.008109411777035641,
+              "allowed_increase": 0.006675039819511908
+            },
+            "push_peak_velocity_error": {
+              "pass": true,
+              "baseline": 0.3085598735197234,
+              "learned": 0.3027213219683442,
+              "delta": -0.00583855155137919,
+              "allowed_increase": 0.01542799367598617
+            },
+            "peak_pitch_deg": {
+              "pass": false,
+              "baseline": 2.5092985943650414,
+              "learned": 2.870049131714162,
+              "delta": 0.36075053734912066,
+              "allowed_increase": 0.2
+            },
+            "peak_roll_deg": {
+              "pass": true,
+              "baseline": 0.22606927919224137,
+              "learned": 0.224337381836849,
+              "delta": -0.0017318973553923644,
+              "allowed_increase": 0.2
+            },
+            "hip_heat_case": {
+              "pass": true,
+              "baseline": 107.15589873984153,
+              "learned": 115.75469285141823,
+              "delta": 8.598794111576694,
+              "allowed_increase": 21.431179747968308
+            }
+          },
+          "pass": false
+        },
+        {
+          "id": "trace-monitor-push-006",
+          "case": "push",
+          "complete": true,
+          "checks": {
+            "push_primary": {
+              "pass": true,
+              "baseline": 0.07505637379144652,
+              "learned": 0.07099192999624401,
+              "delta": -0.004064443795202502,
+              "allowed_increase": 0.003752818689572326
+            },
+            "push_peak_velocity_error": {
+              "pass": true,
+              "baseline": 0.19914256510910558,
+              "learned": 0.20237720310166396,
+              "delta": 0.0032346379925583812,
+              "allowed_increase": 0.00995712825545528
+            },
+            "peak_pitch_deg": {
+              "pass": true,
+              "baseline": 1.5683889846777874,
+              "learned": 1.7221922601752047,
+              "delta": 0.15380327549741724,
+              "allowed_increase": 0.2
+            },
+            "peak_roll_deg": {
+              "pass": true,
+              "baseline": 0.14692695883382437,
+              "learned": 0.1744841040984819,
+              "delta": 0.027557145264657523,
+              "allowed_increase": 0.2
+            },
+            "hip_heat_case": {
+              "pass": false,
+              "baseline": 50.71697362542968,
+              "learned": 65.18550244117829,
+              "delta": 14.468528815748606,
+              "allowed_increase": 10.143394725085937
+            }
+          },
+          "pass": false
+        }
+      ],
+      "failed_motion_cases": [],
+      "completed_records_checked": 48,
+      "evaluation_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41",
+      "policy_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train"
+    },
+    {
+      "route": "F",
+      "seed": 73,
+      "gate": {
+        "pass_all": false,
+        "physical_complete": true,
+        "original_case_guards": false,
+        "motion_quality": true,
+        "stop_improvement": 0.056315368066403915,
+        "push_improvement": 0.07861031251460593,
+        "heat_change": 0.0020933387370523082
+      },
+      "means": {
+        "stop_mean_improvement": 0.2783933383831676,
+        "push_mean_improvement": 0.12845235468003385,
+        "hip_heat_mean": 159.79066264290418
+      },
+      "complete_mean_comparison_available": true,
+      "mean_pair_counts": {
+        "stop_mean_improvement": 8,
+        "push_mean_improvement": 8
+      },
+      "failed_original_cases": [
+        {
+          "id": "trace-monitor-push-001",
+          "case": "push",
+          "complete": true,
+          "checks": {
+            "push_primary": {
+              "pass": true,
+              "baseline": 0.11328911481879146,
+              "learned": 0.10770982775839083,
+              "delta": -0.005579287060400631,
+              "allowed_increase": 0.005664455740939573
+            },
+            "push_peak_velocity_error": {
+              "pass": true,
+              "baseline": 0.28618219021456326,
+              "learned": 0.28087432234177856,
+              "delta": -0.0053078678727846995,
+              "allowed_increase": 0.014309109510728163
+            },
+            "peak_pitch_deg": {
+              "pass": false,
+              "baseline": 1.7603597952415115,
+              "learned": 2.1306305633678875,
+              "delta": 0.37027076812637594,
+              "allowed_increase": 0.2
+            },
+            "peak_roll_deg": {
+              "pass": true,
+              "baseline": 0.2092572252434264,
+              "learned": 0.19751033486641054,
+              "delta": -0.011746890377015873,
+              "allowed_increase": 0.2
+            },
+            "hip_heat_case": {
+              "pass": true,
+              "baseline": 130.87403521621792,
+              "learned": 151.03376250496189,
+              "delta": 20.159727288743966,
+              "allowed_increase": 26.174807043243586
+            }
+          },
+          "pass": false
+        },
+        {
+          "id": "trace-monitor-push-006",
+          "case": "push",
+          "complete": true,
+          "checks": {
+            "push_primary": {
+              "pass": true,
+              "baseline": 0.07505637379144652,
+              "learned": 0.07088375448943628,
+              "delta": -0.004172619302010239,
+              "allowed_increase": 0.003752818689572326
+            },
+            "push_peak_velocity_error": {
+              "pass": true,
+              "baseline": 0.19914256510910558,
+              "learned": 0.20306585798228818,
+              "delta": 0.0039232928731826044,
+              "allowed_increase": 0.00995712825545528
+            },
+            "peak_pitch_deg": {
+              "pass": true,
+              "baseline": 1.5683889846777874,
+              "learned": 1.6999105317271497,
+              "delta": 0.13152154704936225,
+              "allowed_increase": 0.2
+            },
+            "peak_roll_deg": {
+              "pass": true,
+              "baseline": 0.14692695883382437,
+              "learned": 0.1746724521032948,
+              "delta": 0.027745493269470428,
+              "allowed_increase": 0.2
+            },
+            "hip_heat_case": {
+              "pass": false,
+              "baseline": 50.71697362542968,
+              "learned": 61.061989849040245,
+              "delta": 10.345016223610564,
+              "allowed_increase": 10.143394725085937
+            }
+          },
+          "pass": false
+        }
+      ],
+      "failed_motion_cases": [],
+      "completed_records_checked": 48,
+      "evaluation_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73",
+      "policy_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02"
+    }
+  ],
+  "paired_method_comparison": [
+    {
+      "seed": 41,
+      "F_relative_to_E": {
+        "stop_mean_improvement": -0.023441375091878713,
+        "push_mean_improvement": 0.018827048269690172
+      },
+      "F_heat_increase_relative_to_E": -0.0018605352682302678
+    },
+    {
+      "seed": 73,
+      "F_relative_to_E": {
+        "stop_mean_improvement": 0.0106866282514827,
+        "push_mean_improvement": -0.004383611953475475
+      },
+      "F_heat_increase_relative_to_E": -0.004669439116824825
+    }
+  ],
+  "F_both_seed_screen_pass": false,
+  "expansion_authorized": false,
+  "old_E_screening_decision_changed": false,
+  "final_dataset_used": false,
+  "completed_records_checked": 192,
+  "all_four_locked_before_evaluation": true,
+  "monitor_lock_binding": "原监控脚本内部字段为空；保持原始记录，按事前唯一计划及四模型锁执行严格外层核验",
+  "source_script_sha256": "1e51515ba64e99cf75fc024ad9a25d207d41be7c60d3248c5193c2abede29358",
+  "source_files": {
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\四策略锁定.json": "11f9a1072ee59ebc4834ca29b563ac9b946900b4810d8a6edd7174658806a1b8",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\plan.json": "a7769c31de98ab522eca3622a13c611b229b349cb8eade74cd357a37c4b9b459",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\queue-state.json": "7936a1a0cbc8c0d342c2677dd8c7a29462edebd2ad1a46efc54faab275d92d79",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json": "a143cee69e9aaf0d35bd3749ed584ceb8dcad6038af5da397bc9b02b6298f0e3",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\LockTraceComparison.py": "e68d62c1a8bad59b23e403e966ee3bea5ff7e2e2985b6458ea15ebc5a0b4ea2f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\TraceMonitorLockCompatibility.py": "01cccd5d2fccd56ac00cffa9f5e6a04008a75efedffc9237bdcdc4cbecc8f502",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\ContinueTraceComparison.py": "eacc6d31ee95fa1410cd18b57ccba49a5b7d50dea7e78e782d4cd1853b21ec9d",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-123a1d17f53880b8.json": "9faebc8619b592145ee174a82bfd424646535346d897676302af5d8b795959e4",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-5c3016fe7141deb2.json": "e9e03bd835de3dcbe20376bb2f461620c31658ce741b8bb681db3d5e897a164c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-38e94efae95c873f.json": "6f617c64ebd982789f1065fa1bcac75eaf7337aed59db118e00c94f2348922fa",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-8a91d5a7e5008b01.json": "5af9dc61d59bc07ca1457553c70cf165cc8a45101fe34b4369323dac62ab5ba2",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-45c6d2b601c83308.json": "961002b4c07b12c5d19750f67d6081b7d90bd273bb79d0215a397c8073302f88",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-bfa7035def1bfc7a.json": "f35014be185289e8ef101980a187a24e0aff28eb4250d70d933e04cb70b59e97",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-85db92b3328301ca.json": "25ecbad9988d4f9ebb6188a3e503d173612e342e13d011798b31c87f496f05b7",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-6ff317667fc29fdb.json": "e6bc55d12372341c2517db191f0271a5ae0946981ae6f3629adc8c718fe8ac10",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-ea5b4fc4b95749c3.json": "8939627c0dc772275d3efa20bd2943fe7ed38b8acafb3d604a0285744eecebc0",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-bf10853631bb8175.json": "9f00456c0f0701faa0b42a0616b59c13eccd6d3be8d13f9427341f85db242d72",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-780bb10fa14ceab8.json": "4110b6826f7ff47330774432a6d9f3923227f7a668c668845b2e773e84efa571",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-61d7438b86d4dc52.json": "d6d904462b3b471f6bdfb1a1309e41d4cd5362d814c0939691406fbac2750012",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-9b37d886c0bf43b2.json": "4f646b45a9fdedff8a2d18bc3f5a96a13e521c0903cc1d96a2484372abf14128",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-b21c2b16bd381163.json": "f65be995040498d5b965dfc9054f5b6c75dc576bb5399bee36f6916a003c8fd4",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-34242931e33af82e.json": "9bfd6a51f7aa520aa4a003970bccd41f3fbb64f9ab7a72f285b633516338f871",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-da6e57fe966530f2.json": "9a55c5dcd00b652f1d75866c015665b2fe2ec80be19d937fe6e5a7b5d85f7b18",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-3c4fb313c1a12aa7.json": "8a15cc170360f69a178a46a00a9bc7a9c76590253f206c7743dec68c8d65aeb1",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-08d0c701c75d1f24.json": "0b15eb55a7deaa856126772ed086396bca776c3cb58886c36f2ff74e9a2a45ad",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-fa5689d4a68ed217.json": "4d955617e58a090799d5d2b59977282149efe1b9c1e947ba73127eba0b67251b",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-995291a21fc47d27.json": "543e3631d621052e2ca31ccfc5cecbadcd9b62ef797eead7382cb81eb63e2fbc",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-914ea31f44cf5711.json": "923518ffa34bfa15a4e2a393be4b38cdb015b03eaf57bb7dfc19b13f81a697df",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-5bff9e88314e3c83.json": "dd6643d0a0c3d5150e514171045c3a76a4537ced868205e9015df9dc3cb54e0e",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-5af2c9ff7525135d.json": "64ef9041ebf8d50be8c41eaa07dc1bfa23ef34177998dd3e5a29641141db794f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\baseline-12d85fa26e4523c9.json": "100042d5026f28cfab72f7f5f38dfb40a4db813ec94a682f4869cf64c753abf0",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-123a1d17f53880b8.json": "0ebbc206c30bff5082afc45504ed756ea8e9674f6ece2872835a7cc9dffff4e8",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-5c3016fe7141deb2.json": "ddf3e636f8f4836c9b2cb9ddd0c72ff19ea429213a26d2102ae14e63f4caef16",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-38e94efae95c873f.json": "c974c25749981ae859e740c4cc7ae4436183c78e985d6e2ed19c26fc1c9cbc19",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-8a91d5a7e5008b01.json": "5bfc3b45e8a8dda9ed2aba31a138fa7ef0e1dc3cb0ed21fcce123549ef9cdf2d",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-45c6d2b601c83308.json": "c1a7fed93fe57a995ad9bd9e362c3cb4f7b4226ac4ffaccbd9397bd32de3a648",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-bfa7035def1bfc7a.json": "0f5494834824e06737e28d7130eb4499e122a0d36e51bb7bbfe05f8b83fbf0b1",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-85db92b3328301ca.json": "0badba5a90110d36135861813926163364d8bb8a5a55b8f29e7fd8812b8101a9",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-6ff317667fc29fdb.json": "cb39496a5de10b1565e09327ffe9ff3f4dea60ea6c1cbc3102f602c4bbdc8f08",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-ea5b4fc4b95749c3.json": "212a28da1164c3bce6b3ab5e52232ba6749af37d782e7abf4de3ceaec882a7f0",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-bf10853631bb8175.json": "fa8fadf7d649d8153cf7cfcbc10e3b6e7d47a0ca1e8c72a1c06c2a10d11e4497",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-780bb10fa14ceab8.json": "251e5b6c56f0a12bc66e37f397628e11e5f1e3180662c9f5940f441bd24673a3",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-61d7438b86d4dc52.json": "1293cee5e4b2a40db29a0c5ff5f10d6511546b6a82033d7d1acbc4dde112e4a7",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-9b37d886c0bf43b2.json": "56632823bbf87abe27b0fba2660fb16bd652132301808968f64f074abecd9bfb",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-b21c2b16bd381163.json": "d62116b7295546adf16ce48e65c45c2813d57d333cef6d239d00a69cbd3b14cd",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-34242931e33af82e.json": "a21737c8acc3c3d9a5b0e1f05442ea1fff61bd4b1c0dca0769043ed3a7089f1b",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-da6e57fe966530f2.json": "b5ed39747ff320872c1446db8a6712178cbeb6e97d7ad2f5570bea03f2181232",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-3c4fb313c1a12aa7.json": "a377221e2feb5959750f63d4cac214f3d2ebfaca9b08761dcb724519053ecb43",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-08d0c701c75d1f24.json": "4bea383c1321e768dd2fae5312614e090bca2cee2a687e9ceacd6287e9149f95",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-fa5689d4a68ed217.json": "19aeb8a757727278ac8564358e0afabb8bfb7f9769572340f649d72e8bc1de17",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-995291a21fc47d27.json": "79ec597ab3b9167fbc1a03de3f1a7102af34b5387e1c578f59c8482ca4f50bcd",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-914ea31f44cf5711.json": "b496d586fbe2bd7fe50b704b45e2b3b457814023ee3e741511b0911c7324159c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-5bff9e88314e3c83.json": "2e15164f6e73ca7c28342e9972831835e8669942103056873f13198effbc09da",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-5af2c9ff7525135d.json": "831f01839d4a2575e8b1aba25bdff2afd875f3f834140654f9db0c6e36d46f95",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\completed\\learned-12d85fa26e4523c9.json": "b3d1290a9de11a2e806914f8da42c26db2b3563db57f22e61313a0f376eb8252",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\summary.json": "b33047223b6794c1f488fe8c3be0c9daecf72861b048a6d32d245864b93c0632",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-41\\run.json": "bbf5a055fad7cd98b78ed8359ed655c653ac0d4d0ed5e7a2d99b0da9fb698935",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\E-41.json": "e208e3314115a8e22edd1db7791be66481a9629398e76634bf6f48fb74e2b914",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\policy.json": "f25f5dfa6f22ec170cd2fc4cb1a4a14f8d1149415ad6aa9d8852b7275f7c4299",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\policy.npz": "8fb2ce8b8b0ec675ddd7e3402ece00afbdfbafbf73057d6436ec85307f95c815",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\checkpoint.zip": "0ab1e703d645c1c69079e739fb7e7cb34691d102ba46f6ed32582e0b0993d242",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\run.json": "9649f8473e09ded051d2d84e9136c1e616a4812a7995b1c02136701e0c015537",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\41\\train\\status.json": "60c9f359b96d0b9453b8c952a0d3b12487475fb52f96681ea144eeee61b4565d",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-123a1d17f53880b8.json": "acc046bfa4deb0e9836209d6bccf406a97b737824542771d76d6a7879f15a3da",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-5c3016fe7141deb2.json": "a07d2543bf5e7683e0bf5db1e6fa4ecb734e21fdd32a3edf5f75f4ff9b4da458",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-38e94efae95c873f.json": "dbf37933e6026db908e25368a8031785cd0e41ba6cfcdaf194a9fe26e5a382dd",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-8a91d5a7e5008b01.json": "dca9746663663e44895acfc15ba1be9ea80ab61ffe6d60cb7ba843ee11d2c362",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-45c6d2b601c83308.json": "aa12bd187940d628bba44ba786485a5c97854a4ec6a4fa1acb2b6046c42fb895",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-bfa7035def1bfc7a.json": "b799c9f16487ccfa0c44e58b7ecf7119bab3ca5981a447fa3f81125a69833140",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-85db92b3328301ca.json": "40fcf45db9d4f2855122465862ac372bdd3f8ad6a5e7c79394c024158d660204",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-6ff317667fc29fdb.json": "e699f00e440eef7f1798aed956102cf55601f527eabce33c243c2fda783262dc",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-ea5b4fc4b95749c3.json": "30e2e7f9fa917296674082bc3066457664918e6b9a3db613b77b134362a69b66",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-bf10853631bb8175.json": "6f8ba49b07454327cca41d0fc961615f46edcdc7336d60070f6e55f29a1d0770",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-780bb10fa14ceab8.json": "b4971afe3e263453b7d8f79c07c3b9fd209bcab124d4f97ac4f9864cf1b9a497",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-61d7438b86d4dc52.json": "df9598531ff806960c419ca2c10bc8d4f489c5c3817523bf693e19f4cb28e2f1",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-9b37d886c0bf43b2.json": "cbd401514e076f34000b7902351ec57516c962c5fe56a84f971a8d60c3e9c3ee",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-b21c2b16bd381163.json": "1d9405ad0c6898d468cdc3c1fe5305ae8d477aa52b80a93df6238d75ecb2d212",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-34242931e33af82e.json": "dd6552cf9d7aea7b3f07fd5f5ef983e46d47d329e59bfe5d80a8f0c258c65745",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-da6e57fe966530f2.json": "bd92497609457888f6020a855812546804e8080ef20a7e736cca9b386d788ae1",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-3c4fb313c1a12aa7.json": "c5a7b391140e9f4fcd2b7355d2e9c22f2f42b71c8b09c8a9fa0655584e1eeed1",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-08d0c701c75d1f24.json": "0a32f62943c62fbb102e6d7b65576ba97799a06e4c036a04aa227a7edb74a9fc",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-fa5689d4a68ed217.json": "2301764b2de942b2296f90a6a2e70085c544b6b6e59a7cf842fcb57b4609fd50",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-995291a21fc47d27.json": "1b9264b933adf0264c7187e7480c8033284ab28b7d4f91755ef5f9812d8610fe",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-914ea31f44cf5711.json": "256497e05874b2aa4117216e943982d337aa2055b85f1f89f9f5a71b77eaea1b",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-5bff9e88314e3c83.json": "10557b793c770f42565780a36659b2ea7c24076095d5efbe2fe5af7f39b3c3e7",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-5af2c9ff7525135d.json": "48837a020417a3aefcff41439b06698790d71bfb5732901365c8902feaa4ee53",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\baseline-12d85fa26e4523c9.json": "0959af9f525dd54541cc201715f26fc59b41319f40cfc07c9282bbc13b17a417",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-123a1d17f53880b8.json": "ce45a82d8c8933d5bb901e4bd55cdb553164488ed9bc89da113667d76941a151",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-5c3016fe7141deb2.json": "d2da39a0c368049e046d84cb23478d7812007effd0dc276bae2bf361c14b051e",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-38e94efae95c873f.json": "fd982ba9dfbe642aa1b634ef7e4fcdb1fa6ce2abf4f45251de7aeaea4d384581",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-8a91d5a7e5008b01.json": "cc1348cfd2bc0546dfcd8b2842932195fbadecb4f99680eb00a965ca3a84d31e",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-45c6d2b601c83308.json": "62008e82ef845cefde8e9f25d063016e443f5865e9f5e7cbb6d48e04ca4e04a6",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-bfa7035def1bfc7a.json": "fe48afaf4e9315545e6c6f4877960b021388ae009fd9ebc4c287a8893ce8ed26",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-85db92b3328301ca.json": "3427bdd31d2461faed7fecd13b6e38d481e78d0920f077dd7472f3a93c586fc3",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-6ff317667fc29fdb.json": "54b39899102c801422c4d9f43b2a74aebbf4037ba3881d7092ebfe70aca732dc",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-ea5b4fc4b95749c3.json": "cbad07d41ed4471004b196bbf67813b96aed541064d373e15d2731bcc0a1b401",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-bf10853631bb8175.json": "540ef6e2a98dba1798844dc70358f563e23a572198331597a01db2a94c801f71",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-780bb10fa14ceab8.json": "87b9be43e03b7e3dfee4242dc95dbf979ce3a9c64f2a44adb811e0ee3c0deefa",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-61d7438b86d4dc52.json": "f515a3f2d7da19bfe157e3293521c2a7b1c2b5069af6a7dc58fc9d696836cc5d",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-9b37d886c0bf43b2.json": "4c91fe152ec01eca93954ef1ba1237471db0a55cba872be0c3532c0fd46d8a95",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-b21c2b16bd381163.json": "98fc9aa54194e295d41ebd38dd89c901b45d160222a969dad49a2e3222c7c9c5",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-34242931e33af82e.json": "5ef3e3ed7bf5dc6c88578d79fb61485ed862cc6db6625e5529b6e7da170d6d2e",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-da6e57fe966530f2.json": "e3f5405a970270d4a0727d8eec867602e54e65e8d02387e791c79d41df2e7ef7",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-3c4fb313c1a12aa7.json": "52f493b75ce93a0dc369f8cb80c086a8815259d114e685d23e8ba1b51081eef8",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-08d0c701c75d1f24.json": "c202f375a2d510803929d95d72498e1901d1e5c768b29aec1a879c61df88eaea",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-fa5689d4a68ed217.json": "b13e53e8cd4d23541dbeb87400f441c6657a2954bc60069967d4efb357b84c3a",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-995291a21fc47d27.json": "0b99077cf29763f8e177d257cd0632f121183af864670803dcfa33e44c242adf",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-914ea31f44cf5711.json": "27d3687a4f71b6be0b3f6efd6882b76d35f30dcfb2a058c48f71b47a669a2345",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-5bff9e88314e3c83.json": "12bb88131d3007562bfe5b9b6e34a5b1bfa5ad64804e243030a836710e0546df",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-5af2c9ff7525135d.json": "7b46ce262b423eaa00a33e65ff6c8d0aa59f57b597de95c9ff9f4a36a2e9ce1f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\completed\\learned-12d85fa26e4523c9.json": "f8604435bcafff2cc82aee329ef070c1b580d2b5d8f9b97be2613e788f1d7f6e",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\summary.json": "98b7c7e2cc63923e3f5e13c4be921b25c8ebef840b449ae2db1668388aa73c01",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\E-73\\run.json": "ca54f6d24da2d6ec22db97af7491b30dee7aadb3a10a630b2f0349024ccca7b9",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\E-73.json": "b48a09dd6ad37740df3ea814d1c818f5276bb3eebc6baff3c14434aff144820c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train\\policy.json": "84b2943b889c96a01c938444177294b907b6781e00bfccb0bcb04cbbd99c7770",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train\\policy.npz": "5c9b38cd3d6bdd36dacc277bebc77d9bb892d659e1b1a814e03e1bfbdff49224",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train\\checkpoint.zip": "0642788d13e88f2474ac3460046e42dd5ff1fb6eceb2eb5a28574bb42837908c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train\\run.json": "ba27f59d7e0e9bf9f49688818c441e570b26e55944553c6b7d3c22ff3d241763",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\aligned-reference\\screening\\73\\train\\status.json": "28952e3ab6c7c4b27f054e5b85f1d8705c1bbd12f31c0c2893f3051e66ecb200",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-123a1d17f53880b8.json": "1219d622a3ea119b66c007ca374f11b304b6c008f97103ecbf443950b2a3346a",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-5c3016fe7141deb2.json": "85d8f869176aedb83aa1a29c45af50ba3f32fb400471c01d4e8d3e62fb553cd6",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-38e94efae95c873f.json": "61207264037a4db21d6a2ac945170252bd9c312d833ad956c3c78bf23b43c238",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-8a91d5a7e5008b01.json": "5dd3471fb058278ffb1447abceed14d0673ce6fb22dc7b4047bf240c229ffadb",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-45c6d2b601c83308.json": "bb38ef365ac65729992e36d79a07504833a07e38584c6e2f2add8986a3e18b22",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-bfa7035def1bfc7a.json": "4862cdc12ce92cb787eeceb490cc7e6f8bb92333f9decca53ead3e028d2db7f9",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-85db92b3328301ca.json": "98986266964d6f6119ea9bfbd76cb0382f4eb68904d3bd1c72c0d69c17b91737",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-6ff317667fc29fdb.json": "b93ed91412b63b3569d722e0915bc1cea5caf96e9eb65e8da05b541835891632",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-ea5b4fc4b95749c3.json": "aff5b44a97026032ba36a36432b94ec9cbb4473cc269bdacc8a0842c698893c4",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-bf10853631bb8175.json": "3ef849c5c745acb77fe760a16a20d6b7a92238a7211571cd752616d402242fe8",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-780bb10fa14ceab8.json": "f7c5f207cfd7cd7b3acee36f9402c7477032d4d89fd3e484ac8e3903c5fd5468",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-61d7438b86d4dc52.json": "15b9dbf91edda02fabdced08ec11f721fef89a244fe45de57dd4e13f56dedb71",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-9b37d886c0bf43b2.json": "146b5d57134d3255bfba03c991dcfe5ed05cbcf304343169ad32bdf15d7398f2",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-b21c2b16bd381163.json": "0bde9d6aa9092e850cb6ed50b9dea7013f9eb81b25407995bc98f98b469c8164",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-34242931e33af82e.json": "87a60e350d168539543f79d27340f054e8c07e1f3420ed5ea9843be334227f1f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-da6e57fe966530f2.json": "df1be8493b7610aed62b12343b67c7ddcf34403e539dfb812171c25990e7ee53",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-3c4fb313c1a12aa7.json": "7b84086505bb60c36b4f66e0cefb96a5148c985b08491679cbf4e44e51cc1fa3",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-08d0c701c75d1f24.json": "e136c2916ca1d756daef1b7d34ed23ef1d8f494e187929c8c3cfd3d3fac3dacc",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-fa5689d4a68ed217.json": "e2606e7ca632a9925ab402a9cbd62d663d425cd53069055267997e82b91559e6",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-995291a21fc47d27.json": "fd85126ec921dc2985a6b2bd43fb624b19c9520d1505f91d288337f201b2436e",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-914ea31f44cf5711.json": "1173829ef78e2340e2e72070f06261da25b972dfc9960f1e443971b07d7a7dc6",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-5bff9e88314e3c83.json": "ec2c07b865fe44b1c704212793ef82d70a6098c9946f1356a654ddd83a0f17ad",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-5af2c9ff7525135d.json": "db9ac674129d9de87ca66b7305553de5ec7cc04240f7ad1369b8b03a1c111a44",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\baseline-12d85fa26e4523c9.json": "0cbe3105d1686cb5a745c3f3d335631bb5aa9409edbd69eb645bcb4393888e3e",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-123a1d17f53880b8.json": "c6d85262ec83135614e3fb582816a9d037e781304a6b44f659aef8717cb2138d",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-5c3016fe7141deb2.json": "70173f6d23d14ce1858d185de7394af0b5e9d881a39172a8c88ebc9eeb9d5015",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-38e94efae95c873f.json": "d4f4ee1092c1afe0bb5bc6f988113737d8125732528ddea1706070715e2e9aaf",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-8a91d5a7e5008b01.json": "3a005ada5d189b663511481e46fe21746c6d568719bf0bdaf30496b2327ef941",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-45c6d2b601c83308.json": "58b8b8fcffcfcb3bc89197f851b66bea29b1efbe65f1f0a11f17fdbdd75512d1",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-bfa7035def1bfc7a.json": "0574bd17316d81560ef6ce3649291d72124242ceba9fcd05e68cd061353f48d4",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-85db92b3328301ca.json": "24ca979ae8a511fe9c5cda446042b8808c9171708cb350971158ef2b5c3e321f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-6ff317667fc29fdb.json": "c39e93781570f84110b05fe343d98812814f2f90080fcf79109df053fe989e6c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-ea5b4fc4b95749c3.json": "f9dc2155331e67b08c938c93a52eeff2e869eaeb7e9d51400c8527a4e984597d",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-bf10853631bb8175.json": "b6e97f18512d6dc06857dc36abb592dece38122d953a25cb96d8cd0a636e30d5",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-780bb10fa14ceab8.json": "81a8229398e3bad0dd0fc7dc7ca863a736689e6bc4484d4c04a9439835372a38",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-61d7438b86d4dc52.json": "5597d20b29a7d820dbdf4d85e9b05fade89d7fbbfcfa3ca8e67ce1eaea921a9f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-9b37d886c0bf43b2.json": "4809679beccb180a779f8221c4fa3c3d602c69ac4476e5658dc4323f3ccc1821",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-b21c2b16bd381163.json": "cf0d03845ee07473b05c40bc539edaaeab808dee792394b4e12e9182657a36ca",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-34242931e33af82e.json": "6ec577ac89156d4e24ca67b7d8c64caa23a8d330d0a32d39c158f56bf3e28e7a",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-da6e57fe966530f2.json": "4cf94a2b6c8a14520d514e37d2c4b24558b9e61b99c71e85501505986a082da1",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-3c4fb313c1a12aa7.json": "9ef159b2ef6c6f2007698cac2bb25251c5df32daa20cb92aa6b6322ff99e633c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-08d0c701c75d1f24.json": "dda2fb91fda9461f6c8a6ede862bacae126b76c876e40727b6fdb638d7d0c0fc",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-fa5689d4a68ed217.json": "6185a32da064c4201016e15ee98661d32dabd57256cf60ea1ba1d92c2200fd86",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-995291a21fc47d27.json": "baed16ce75b5c27d316cc1b360a0675fafe3875cfea9cba4ac0282712d7225dd",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-914ea31f44cf5711.json": "a7a06df8d6058d8081b22a659d7091652f52c3fd8becde099c02aa37a22e3f7c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-5bff9e88314e3c83.json": "2028d1e8ff0dbbc774258c15a769cf745a7de07bdc98863e80d03fa49021c50b",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-5af2c9ff7525135d.json": "93c37b5abd31aeba93275db24a578421caef315914490349dc3a7bd570ef45b3",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\completed\\learned-12d85fa26e4523c9.json": "368ca854c256eb5bee60fa551ddc63316a0d631bbf21f58547c237b9f08b8efc",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\summary.json": "2f2776c86c6d0f878048b2995a794c79e265a5be4b283deed8a6f94437360f04",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-41\\run.json": "294952f29aac418e48ef3c5cb578a843dbdaa70bf4bd18ac153d8e327f367d8f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\F-41.json": "92c324caebaace95322eb82d15d5df8ac7abe5c4420099aa6c0263e21b3f57ba",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train\\policy.json": "fcc11d536b65514696bbfdd9c8a61ccdec90cce7b366d2677205a8521b36bdac",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train\\policy.npz": "ef7036a7051c9d4562640fdafbb55558113cd645da5366ab07eee5b008029a52",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train\\checkpoint.zip": "e68cd25b59b11487495c6fe04524bd306ad2c53d0941012e10422b261efe11b6",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train\\run.json": "2e1cfd98b558419ff125a73582ae4a6342cd441b5ff2c1714e812459f32f9f0f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train\\status.json": "deb91d497f7b93e06cd859a0af1bcc033ff2eabe560b0e6238bf289c5e1d947b",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-123a1d17f53880b8.json": "659fb2d97dd8edda0ba50c35e846ff8eed5c9f6b69091dfd0ff12b6652379851",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-5c3016fe7141deb2.json": "25e44d2ac4135e35d837210f0e002b80bda35a9040f74ffe9aa3cb0f50fbc8ef",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-38e94efae95c873f.json": "99c8a9ba2da5b1ce6663a56ff00313428e9b79b78d38ea3e15aca4d57731e369",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-8a91d5a7e5008b01.json": "085b0a876d7eadf14c11cb2d70a9c20db73361fbe7f05ebdc2f492c66bb1e590",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-45c6d2b601c83308.json": "80714759f5c11ad69fc4709fd1a82ef78d3c76ce392d7d5b3e4ecf57cd211411",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-bfa7035def1bfc7a.json": "6fe5c5aea6dc521e00ea91b2a8cf31e9354efd8ff98e6c274e2477519939f80b",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-85db92b3328301ca.json": "a3802d50647c809a2390b0d9b26e511a53e67fa6bb5c2472b4967b6556ef686c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-6ff317667fc29fdb.json": "f69bae5c418f0dd87a3984b2a774ba8597ab31e0ed353eb46062aa44d8bcbe80",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-ea5b4fc4b95749c3.json": "3c1972d67ba75c501b1d7d42d65bc388ce18e698002468094e45256df511f26f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-bf10853631bb8175.json": "7eccb422bd080728103e951588d9888aead94d0cd15dd1923dd9fb7b2fc672ee",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-780bb10fa14ceab8.json": "94a9a92a6c1420298078cef75a834f8c53e90f99bb5049aebab079089915499a",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-61d7438b86d4dc52.json": "82a6334afee4a44194a221a7ab059a002397d04d22c10e35f28749a672957cde",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-9b37d886c0bf43b2.json": "74f3d7fe0edaf3dfdb9db722fc6d7b5e09379eefd90e794513df5ebf870448f2",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-b21c2b16bd381163.json": "bab4fa4d7e6468bbd15d6c6e38ad1a49f26f9da915837010b278edaf525a3187",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-34242931e33af82e.json": "4d306fa2aa3add13cc78c41c1a6a4572f67c71e52f34304c1ee726dee6202389",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-da6e57fe966530f2.json": "8977af729f7db06eb27730b4602bdef8f1f2f8bc7032264c0070f4f60713cb38",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-3c4fb313c1a12aa7.json": "9d908e2e8b54aff2fe0ab18f45cee35980bc91b9cf1d7ba80d7118b6f65b8cc8",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-08d0c701c75d1f24.json": "6cc57952f6f5cbf247665501e080b556c8e36ca5b36e5c6aa4871d840fe99f51",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-fa5689d4a68ed217.json": "1544460add7cd31e7740e7af82699ab6edfdaf10abd320b9e054ec64560330bf",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-995291a21fc47d27.json": "9fcebdcd2904ea7200eb120512915eed168bd2ee6dcf4ea127a85597709c4eb3",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-914ea31f44cf5711.json": "8cd10410cec3dd16237eaa627191372f00e8e9cb6fc45b5892680cb626db0389",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-5bff9e88314e3c83.json": "69015cfade5cb2b20659039e851fcb22fd9f21b8b1f7b1e895d5d5fa89044942",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-5af2c9ff7525135d.json": "e26725d64f97d35756503f0631cd66872dbf341a0a00e83e39ef9c2485200aa0",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\baseline-12d85fa26e4523c9.json": "545ae281edfbff9e67e8174b2455bc2106499400b985d0cfe66aba0d02871884",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-123a1d17f53880b8.json": "57b64727022087ea0ac693d590a85ad1f5a538e7ced96f98248878ae4dd3c6e9",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-5c3016fe7141deb2.json": "aa7c00f4cb8501a94d12f650672434742f7d06154b025e0bb2c9bbd557a72c37",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-38e94efae95c873f.json": "656d66cc9ad291bf7906f548e2c2b175db9b40bcabeaad4266877fee3c3daf9f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-8a91d5a7e5008b01.json": "d2040e699de15ea500d6dbcbd644aa5510c176452014908abf9bb39847637fcd",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-45c6d2b601c83308.json": "775bde9b2fe4b489fc1f9a268d026b74cd5953e61a945a85cd7ac6aae4772e8c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-bfa7035def1bfc7a.json": "9664b7fe68da4b7df2ca6d683f62b339c4e8d8a9303271a62beb648f71531c86",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-85db92b3328301ca.json": "fa7b3eaf24c8010911b15a24d37d9607d10c5a8bd78592548ce14573b6202103",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-6ff317667fc29fdb.json": "787b54e3336967762bc2929743fb5a106d16974e9832f9237e318585a6f8009d",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-ea5b4fc4b95749c3.json": "75ab46f800e515a5d49ccc5afa942a295ee98a9fe643735b48d5a0f461cb3707",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-bf10853631bb8175.json": "26480c6ea4439c4f48d65de61c779cf983ebc40ccf5b51b16f68a5619f2ea284",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-780bb10fa14ceab8.json": "de22012f52f5ffd4ffb647798907207b249fd4fc7c03e72997456ae298a011e3",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-61d7438b86d4dc52.json": "671cf665f8947d6aa4159ab27b130520fe9f635a2d804ce83708dfb08407bb3f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-9b37d886c0bf43b2.json": "9d7f3191176f97384d60b92f5cf8d0ba4c0cec86b893a0b1ab04d1a0638e99b9",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-b21c2b16bd381163.json": "082fae51672845689dba9c1750018cfb9c6575eb5e2825502a3ec58ae24f086c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-34242931e33af82e.json": "6540fc2f7d4e92345988f4100884eabe0de2273e8d85af89796b28b952f697a3",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-da6e57fe966530f2.json": "7437593b67239f18d8bf4e72435cc2854ff59959f34db874deadb317f0a8a188",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-3c4fb313c1a12aa7.json": "72cc838f6fa3ebb8abbb4fbbdef3c91792ad3174a1c3c67da1d18757f6c19c15",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-08d0c701c75d1f24.json": "a521cb60d21c10d2008fb378918f2ee8205001e4d76c533e1cb6d2ca702786cc",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-fa5689d4a68ed217.json": "2033798501a14a7677c113c60f52142cd029377e4f1c0c2a2ddd2fe2910d5a5a",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-995291a21fc47d27.json": "9ae6e60f8afa9bc1dad20f7f74bdb280281460eb1cf0b53f91a115c55f2bdc7f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-914ea31f44cf5711.json": "99007872047971d5e9b704d69808380fa904889fc9e543a72ed955cfa8ad2fa6",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-5bff9e88314e3c83.json": "5e6239408709a793571933eb0509528328fb8e43ae7229136938cbcdf5b36337",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-5af2c9ff7525135d.json": "92dd960ee14d4896d59afe658e9af37f98e727def7799f7d01fe00adf698434c",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\completed\\learned-12d85fa26e4523c9.json": "7fa62e0346c9acebeb121ff9bfb61aebc028cdf714d80c64fba3227b9687adfc",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\summary.json": "24bb03e803111e91826486d13499a0421786fcd8082baff07e4a2143f52c223e",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\F-73\\run.json": "eafcc2b9f2fa5b0da09ab8ee8f4a18ef5ff728bc223c6b9d50f12a9b41a976f5",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\comparison-locks\\F-73.json": "b2a5190e12cb6b723852850a52c5992c2e2c8333841ef049351316f1a55e5d22",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02\\policy.json": "d83239933de8287954e90c97a28c44d83b6b509a472c117affe1383577fb3290",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02\\policy.npz": "f4d950d313c315f15a963bb37523bf5bfff6b81eca5c6379b64cc318273ccbc9",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02\\checkpoint.zip": "cc776a7279cffee40fccbea29cd4b2e20beee414e8a48f61c507c01e09d38258",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02\\run.json": "748f02ab1491672521e1925c81d1c2bbb3df9026e60460047237742d880aa6c2",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02\\status.json": "bf27265697c95d6c1355cdc47a7309e2de427e9533ee2a305fc2fef80e903fff"
+  },
+  "next_step": "停止此固定配置，不依据新监控继续改lambda或替换场景",
+  "boundary": "同一新24例中停车/受推均值各用8个单项场景，另8个组合场景参加逐例保护；热指标使用全部24例。仅两个种子的有限配置对照，不作普遍因果或实车承诺。F相对E的百分比以E候选均值为分母，与相对原控制的收益分开。"
+}

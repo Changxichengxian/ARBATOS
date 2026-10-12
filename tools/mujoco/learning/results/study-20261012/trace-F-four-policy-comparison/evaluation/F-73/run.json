@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "binding": {
+    "schema": 1,
+    "split": "trace-monitor",
+    "scenarios_sha256": "a935e32db4cf96af9fe74013be09cc718a60b9686646b4983c8691f6130b4226",
+    "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+    "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+    "evaluator_sha256": "155d89d7199f3b5a892fb18551a7cace3c3e8fc10e19fe747aeea94250a4a405",
+    "env_config": {
+      "reward_mode": "dense",
+      "action_mode": "reference",
+      "gas_force": 450.0
+    },
+    "policy_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02",
+    "policy_artifacts": {
+      "policy.json": "d83239933de8287954e90c97a28c44d83b6b509a472c117affe1383577fb3290",
+      "policy.npz": "f4d950d313c315f15a963bb37523bf5bfff6b81eca5c6379b64cc318273ccbc9"
+    },
+    "policy_lock_sha256": null,
+    "baseline_cache_sha256": "a143cee69e9aaf0d35bd3749ed584ceb8dcad6038af5da397bc9b02b6298f0e3",
+    "record": false
+  },
+  "binding_sha256": "7c91b70a3b45f985ea7282b50263d2da5bc3fa7b4bd8758a534e1aa840aa7209"
+}

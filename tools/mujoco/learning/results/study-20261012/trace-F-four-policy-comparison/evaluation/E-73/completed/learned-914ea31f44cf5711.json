@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "binding_sha256": "c6cb3aa78776e03d1e12e7278bc023d6546819529db4038fa1f68461c74ef408",
+  "row": {
+    "id": "trace-monitor-combined-004",
+    "seed": 91020,
+    "randomize": false,
+    "case": "combined",
+    "options": {
+      "case": "combined",
+      "speed": -0.407143,
+      "push": -21.857143,
+      "delay": 0,
+      "duration": 8.0
+    },
+    "metrics": {
+      "windows": {
+        "stop": {
+          "velocity_rms_mps": 0.3815295675676925,
+          "velocity_error_rms_mps": 0.3815295675676925,
+          "peak_speed_mps": 0.4748226098489595,
+          "peak_velocity_error_mps": 0.4748226098489595,
+          "travel_m": 0.3658296086412868,
+          "peak_reverse_mps": 0.0,
+          "peak_pitch_deg": 2.7058694890836863,
+          "peak_roll_deg": 0.20908835453283828,
+          "max_closure_m": 7.783192573044074e-05,
+          "samples": 67
+        },
+        "push": {
+          "velocity_rms_mps": 0.15582486203429788,
+          "velocity_error_rms_mps": 0.15582486203429788,
+          "peak_speed_mps": 0.3340185510374889,
+          "peak_velocity_error_mps": 0.3340185510374889,
+          "travel_m": 0.11271247331252798,
+          "peak_reverse_mps": 0.15206549840685873,
+          "peak_pitch_deg": 3.5371242432066694,
+          "peak_roll_deg": 0.20355806635329915,
+          "max_closure_m": 7.780374490081968e-05,
+          "samples": 147
+        }
+      },
+      "hip_heat_nm2s": 179.0437510165462,
+      "simulated_s": 8.010000000000668,
+      "peak_pitch_1ms_deg": 3.537134022247907,
+      "peak_roll_1ms_deg": 0.21741439412868982,
+      "max_closure_1ms_m": 7.908344020450395e-05,
+      "passed": true,
+      "failure": null
+    },
+    "motion_quality": {
+      "max_lateral_m": 0.002641533336061183,
+      "max_yaw_deg": 0.24454683494552792,
+      "windows": {
+        "stop": {
+          "world_vx_rms_mps": 0.38152936192353526,
+          "plane_speed_rms_mps": 0.3815296399315717
+        },
+        "push": {
+          "world_vx_rms_mps": 0.15582489046333692,
+          "plane_speed_rms_mps": 0.1558250994827474
+        }
+      },
+      "drive_tracking_rms_mps": 0.21620279252771712,
+      "steady_drive_tracking_rms_mps": 0.05882314536945495,
+      "progress_at_stop_m": 0.9422131106141073
+    },
+    "controller": "learned"
+  }
+}

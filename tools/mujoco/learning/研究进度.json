@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "comparison_running",
+  "status": "comparison_complete",
   "started_at": "2026-10-12T02:10:00+08:00",
   "deadline": "2026-10-14T02:10:00+08:00",
   "goal": "轮腿停车与受推恢复的可复现控制改进；不能用训练完成代替性能提升",
@@ -81,17 +81,19 @@
     "全新独立Python3.12.14环境安装原完整35个依赖后，从旧交付包重新解压，三种冻结控制环境各首份策略共18条历史轨迹逐字段一致。补全依赖的新包目录实际生成，运行输入字节与已验证旧包一致；未评价F控制性能。",
     "F73完成262144步；实际网络及13组优化器精确载入，算法lambda=1，导出推理通过。490个完整训练回合日志评分可复算，覆盖144/144场景，物理失败0次。尚未运行新监控候选评价。",
     "E/F四份完整最终模型全部核验并锁定，唯一新24例评价已启动；实际队列进程已确认，尚无完整对照结论。",
-    "旧评价器对监控集未填内部锁，首组48条记录完成后队列拒绝。以事前模型提交、原启动命令绑定及四模型锁完成严格外层核验，错锁/改计划/改启动绑定等检查均拒绝；原始结果字节不变，首组未重跑，其余三组按原队列接续。"
+    "旧评价器对监控集未填内部锁，首组48条记录完成后队列拒绝。以事前模型提交、原启动命令绑定及四模型锁完成严格外层核验，错锁/改计划/改启动绑定等检查均拒绝；原始结果字节不变，首组未重跑，其余三组按原队列接续。",
+    "E/F四份完整模型已事前锁定并完成唯一新24例对照，192条配对记录、原验收和运动质量完整复算；F双种子筛选未通过，不扩大此配置。"
   ],
-  "next": "等待原唯一新24例队列完成，使用已保存外层锁兼容与新版CompareTraceResults.py复算全部192条完成记录；不改原始结果内部锁字段，不重跑训练或打开最终60例。",
+  "next": "六类方案均未通过各自筛选；完成跨方案负结果、瓶颈和可复现交付核验，再按原目标负结果分支结束研究。",
   "active_process": {
-    "kind": "EF_new24_comparison",
-    "queue_pid": 24964,
-    "current_job": "E-73"
+    "kind": "none",
+    "queue_pid": null,
+    "trainer_pid": null,
+    "updated_at": "2026-10-12T13:02:18.505037+08:00"
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T12:47:46.556567+08:00",
+  "updated_at": "2026-10-12T13:02:18.505037+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -778,7 +780,7 @@
     ]
   },
   "long_trace_F": {
-    "stage": "four_policy_comparison_running",
+    "stage": "comparison_complete",
     "registration": "tools/mujoco/learning/results/study-20261012/长程反馈单变量训练登记.json",
     "registration_sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
     "training_steps_each": 262144,
@@ -796,7 +798,7 @@
     "working_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace",
     "long_training_started": true,
     "boundary": "所有四个E/F最终权重锁定后统一使用新监控集；仅一次单变量对照，未获扩展/最终评价许可。",
-    "queue_pid": 24964,
+    "queue_pid": null,
     "trainer_pid": null,
     "training_steps_at_save": null,
     "os_processes_checked_at": "2026-10-12T12:32:10.599132+08:00",
@@ -831,7 +833,7 @@
     },
     "queue_status_at_save": "completed",
     "current_job_at_save": null,
-    "independent_performance_verified": false,
+    "independent_performance_verified": true,
     "os_processes_at_save": [],
     "pause_record": "tools/mujoco/learning/results/study-20261012/trace-F-73-paused/暂停保存记录.json",
     "selected_resume_steps": 0,
@@ -846,7 +848,10 @@
     "evaluation_plan": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\plan.json",
     "all_four_lock_sha256": "11f9a1072ee59ebc4834ca29b563ac9b946900b4810d8a6edd7174658806a1b8",
     "evaluation_started": true,
-    "lock_compatibility_record": "tools/mujoco/learning/results/study-20261012/trace-monitor-lock-compatibility/兼容接续记录.json"
+    "lock_compatibility_record": "tools/mujoco/learning/results/study-20261012/trace-monitor-lock-compatibility/兼容接续记录.json",
+    "both_seed_screen_pass": false,
+    "expansion_authorized": false,
+    "conclusion": "tools/mujoco/learning/results/study-20261012/trace-F-four-policy-comparison/四策略完整对照结论.json"
   },
   "completed_strategy_replay": {
     "policy_count": 10,
