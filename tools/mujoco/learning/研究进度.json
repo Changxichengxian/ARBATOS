@@ -64,9 +64,10 @@
     "D73完成登记的72次参考参数搜索，全部候选评分及保护项用缓存复算一致，最优策略归属和随机状态核验通过；两种子开发原控制基线完全一致。独立评价仍按原45例执行",
     "独立45例停车误差降低3.6334%、受推误差降低5.8934%、髋热变化+1.3642%。双种子筛选未通过，此路线不晋级。这只描述当前常数参考参数形式、固定搜索预算及原冻结模型，不是全部控制方法或强化学习的上限。 两种子全部180条逐场景完成记录及原控制来源核对一致，保护和运动质量完整复算一致",
     "E41完成262144步训练及24例配对监控：停车/受推平均改善7.2244%/6.6762%，热增加2.1697%，但2例俯仰和1例受推误差超限，未通过单种子筛选。实际模型、13组优化器、490回合日志及48条评价完成记录均已核验保存",
-    "C73完成原40候选搜索，实际重放最终策略6个开发场景后，完整评分和保护项与搜索记录一致；两种子开发原控制基线相同。旧格式没有保留全部历史轨迹，未声称逐个重新计算40个候选"
+    "C73完成原40候选搜索，实际重放最终策略6个开发场景后，完整评分和保护项与搜索记录一致；两种子开发原控制基线相同。旧格式没有保留全部历史轨迹，未声称逐个重新计算40个候选",
+    "独立45例停车误差改善3.0315%、受推误差改善2.7027%、髋部用力平方积分变化-1.6206%。双种子主筛选未通过，此路线不晋级，不追加运动质量补评。 两种子共180条逐场景完成记录与汇总一致，完整原指标复算一致。"
   ],
-  "next": "等待C73的45例独立评价，以及E73固定262144步训练与24例监控；按原登记形成完整双种子结论。E41未通过监控，不扩大预算。最终60例未运行。",
+  "next": "等待E73固定262144步训练和24例监控，并复算完整双种子晋级条件。A/B/C/D的原筛选计算均已结束；继续分析约束退步的原因，最终60例未运行。",
   "active_process": {
     "queues": [
       {
@@ -114,7 +115,7 @@
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T08:14:08.772714+08:00",
+  "updated_at": "2026-10-12T08:22:15.391601+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -725,6 +726,76 @@
       "push": 0.02963978151927904,
       "heat": -0.0228056450508225
     },
-    "validation_status": "running"
+    "validation_status": "completed"
+  },
+  "linear_C_two_seed_screening": {
+    "report": "tools/mujoco/learning/results/study-20261012/线性修正双种子筛选结论.json",
+    "advance": false,
+    "status": "failed_primary",
+    "results": [
+      {
+        "seed": 41,
+        "improvements": {
+          "stop": 0.0276040131819123,
+          "push": 0.023411024338318764,
+          "heat": -0.01753221138666794
+        },
+        "gate": {
+          "pass_all": false,
+          "checks": {
+            "physical_complete": true,
+            "stop_improvement": false,
+            "push_improvement": false,
+            "primary_case_regression": true,
+            "heat_mean": true,
+            "motion_quality": false
+          },
+          "primary_gates_pass": false,
+          "motion_quality_pending": true,
+          "stop_improvement": 0.0276040131819123,
+          "push_improvement": 0.023411024338318764,
+          "heat_change": -0.01753221138666794,
+          "final_thresholds_pass": false,
+          "failing_final_case_guards": [
+            "validation-combined-005",
+            "validation-combined-007",
+            "validation-push-008",
+            "validation-stop-001",
+            "validation-stop-015"
+          ]
+        }
+      },
+      {
+        "seed": 73,
+        "improvements": {
+          "stop": 0.030314862345876326,
+          "push": 0.027026788947093205,
+          "heat": -0.016205674622943644
+        },
+        "gate": {
+          "pass_all": false,
+          "checks": {
+            "physical_complete": true,
+            "stop_improvement": false,
+            "push_improvement": false,
+            "primary_case_regression": true,
+            "heat_mean": true,
+            "motion_quality": false
+          },
+          "primary_gates_pass": false,
+          "motion_quality_pending": true,
+          "stop_improvement": 0.030314862345876326,
+          "push_improvement": 0.027026788947093205,
+          "heat_change": -0.016205674622943644,
+          "final_thresholds_pass": false,
+          "failing_final_case_guards": [
+            "validation-combined-005",
+            "validation-combined-007",
+            "validation-stop-001",
+            "validation-stop-015"
+          ]
+        }
+      }
+    ]
   }
 }
