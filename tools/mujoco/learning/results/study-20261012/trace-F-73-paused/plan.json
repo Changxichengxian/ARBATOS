@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "stage": "F_fixed_two_seed_training",
+  "deadline": "2026-10-14T02:10:00+08:00",
+  "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+  "learning_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning",
+  "admission_sha256": "73e47e09a694f43a8fba83b85e2e53e0ef28a1c3cc2b30371414b788d79afa75",
+  "jobs": [
+    {
+      "id": "F-trace-41-train",
+      "kind": "aligned_train",
+      "arguments": [
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train",
+        "--bank",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+        "--registration",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json",
+        "--seed",
+        "41",
+        "--envs",
+        "2",
+        "--steps",
+        "262144"
+      ]
+    },
+    {
+      "id": "F-trace-73-train",
+      "kind": "aligned_train",
+      "arguments": [
+        "--output",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train",
+        "--bank",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+        "--registration",
+        "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json",
+        "--seed",
+        "73",
+        "--envs",
+        "2",
+        "--steps",
+        "262144"
+      ]
+    }
+  ]
+}

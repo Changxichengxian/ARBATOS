@@ -1,0 +1,10 @@
+{"steps": 4096, "segment_seconds": 53.198225900006946, "steps_per_s": 76.99504881420238, "episodes": 6, "failures": 0, "pid": 30472}
+{"steps": 8192, "segment_seconds": 105.27423370000906, "steps_per_s": 77.81581220856035, "episodes": 14, "failures": 0, "pid": 30472}
+{"steps": 12288, "segment_seconds": 158.70506659999955, "steps_per_s": 77.42663963571302, "episodes": 22, "failures": 0, "pid": 30472}
+{"steps": 16384, "segment_seconds": 213.69797179999296, "steps_per_s": 76.6689541411948, "episodes": 30, "failures": 0, "pid": 30472}
+{"steps": 20480, "segment_seconds": 264.16926200001035, "steps_per_s": 77.52605221723032, "episodes": 38, "failures": 0, "pid": 30472}
+{"steps": 24576, "segment_seconds": 309.43209590000333, "steps_per_s": 79.42291806710972, "episodes": 46, "failures": 0, "pid": 30472}
+{"steps": 28672, "segment_seconds": 354.40773239999544, "steps_per_s": 80.90116941252258, "episodes": 52, "failures": 0, "pid": 30472}
+{"steps": 32768, "segment_seconds": 399.4322875000071, "steps_per_s": 82.0364327708471, "episodes": 60, "failures": 0, "pid": 30472}
+{"steps": 36864, "segment_seconds": 444.32234049998806, "steps_per_s": 82.96679378875614, "episodes": 68, "failures": 0, "pid": 30472}
+{"steps": 40960, "segment_seconds": 493.31305610001436, "steps_per_s": 83.0304397856759, "episodes": 76, "failures": 0, "pid": 30472}

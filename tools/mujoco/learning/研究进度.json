@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "screening_running",
+  "status": "paused",
   "started_at": "2026-10-12T02:10:00+08:00",
   "deadline": "2026-10-14T02:10:00+08:00",
   "goal": "轮腿停车与受推恢复的可复现控制改进；不能用训练完成代替性能提升",
@@ -72,7 +72,8 @@
     "A至D八组45例共同验证的720条原控制/候选完成记录已核对，原控制指标逐字段一致，原验收可复算。明确单项均值、组合逐例保护及热指标口径，保存对照图和完整结果表。",
     "四策略结果读取程序用旧E的96条实际记录复算一致，并通过策略/测试集错配、汇总与完成记录不符、未开始评价等拒绝检查；物理失败时不以剩余成功场景比较。完整新24例正向链仍待训练结束。",
     "A至E十份最终策略已在独立目录实际重放停车/受推/组合及对应原控制，共60条轨迹逐字段一致；实际网络/13组优化器及导出推理通过，保存含599份源文件与模型报告的可运行复现包。F尚未包含。",
-    "F41完成262144步；实际网络及13组优化器精确载入，算法lambda=1，导出推理通过。490个完整训练回合日志评分可复算，覆盖144/144场景，物理失败0次。尚未运行新监控候选评价。"
+    "F41完成262144步；实际网络及13组优化器精确载入，算法lambda=1，导出推理通过。490个完整训练回合日志评分可复算，覆盖144/144场景，物理失败0次。尚未运行新监控候选评价。",
+    "目标已暂停；F73在42496步响应停止文件后保存网络、优化器和日志并正常退出。队列和训练进程均已退出，不自动恢复；未进行F独立性能评价。"
   ],
   "next": "F按原计划完成41/73各262144步，逐组用work/SaveTraceCompleted.py保存实际模型及优化器；两组均结束后运行work/LockTraceComparison.py，执行唯一新24例评价，再用work/CompareTraceResults.py完整复算。原E队列已结束不重启，最终60例未使用。",
   "active_process": {
@@ -811,7 +812,7 @@
     ]
   },
   "long_trace_F": {
-    "stage": "second_seed_training",
+    "stage": "paused_second_seed",
     "registration": "tools/mujoco/learning/results/study-20261012/长程反馈单变量训练登记.json",
     "registration_sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
     "training_steps_each": 262144,
@@ -829,10 +830,10 @@
     "working_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace",
     "long_training_started": true,
     "boundary": "所有四个E/F最终权重锁定后统一使用新监控集；仅一次单变量对照，未获扩展/最终评价许可。",
-    "queue_pid": 1504,
-    "trainer_pid": 30472,
-    "training_steps_at_save": 4096,
-    "os_processes_checked_at": "2026-10-12T09:46:06.475848+08:00",
+    "queue_pid": null,
+    "trainer_pid": null,
+    "training_steps_at_save": 42496,
+    "os_processes_checked_at": "2026-10-12T09:54:16.592171+08:00",
     "admission_sha256": "73e47e09a694f43a8fba83b85e2e53e0ef28a1c3cc2b30371414b788d79afa75",
     "first_checkpoint_steps": 16384,
     "recovery_archive": "tools/mujoco/learning/results/study-20261012/阶段恢复包-F首段.zip",
@@ -852,26 +853,11 @@
         "control_guard_violation_episodes": 106
       }
     },
-    "queue_status_at_save": "running",
+    "queue_status_at_save": "needs_attention",
     "current_job_at_save": "F-trace-73-train",
     "independent_performance_verified": false,
-    "os_processes_at_save": [
-      {
-        "ProcessId": 1504,
-        "CreationDate": "2026-10-12T08:44:05.193372+08:00",
-        "CommandLine": "\"C:\\Users\\28111\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" -u .\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\RunWbrStudyQueue.py --plan .\\work\\study-20261012\\long-trace\\training\\plan.json"
-      },
-      {
-        "ProcessId": 26556,
-        "CreationDate": "2026-10-12T09:44:25.796711+08:00",
-        "CommandLine": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe -u C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py --output C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train --bank C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json --registration C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json --seed 73 --envs 2 --steps 262144"
-      },
-      {
-        "ProcessId": 30472,
-        "CreationDate": "2026-10-12T09:44:25.834819+08:00",
-        "CommandLine": "\"C:\\Users\\28111\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" -u C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py --output C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train --bank C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json --registration C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json --seed 73 --envs 2 --steps 262144"
-      }
-    ]
+    "os_processes_at_save": [],
+    "pause_record": "tools/mujoco/learning/results/study-20261012/trace-F-73-paused/暂停保存记录.json"
   },
   "completed_strategy_replay": {
     "policy_count": 10,
@@ -880,5 +866,8 @@
     "archive": "tools/mujoco/learning/results/study-20261012/completed-strategy-replay/已完成策略复现包.zip",
     "archive_sha256": "b186e70f2a7ee3ad7ddf8fd5cf26bdf96f34914ea8b38447b8b313136d7b36af",
     "F_included": false
-  }
+  },
+  "paused_at": "2026-10-12T09:54:16.592171+08:00",
+  "pause_record": "tools/mujoco/learning/results/study-20261012/trace-F-73-paused/暂停保存记录.json",
+  "resume_requires_user": true
 }

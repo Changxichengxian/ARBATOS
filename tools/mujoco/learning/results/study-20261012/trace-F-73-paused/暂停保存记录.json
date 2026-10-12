@@ -1,0 +1,27 @@
+{
+  "status": "paused",
+  "recorded_at": "2026-10-12T09:54:16.592171+08:00",
+  "reason": "目标状态已为 paused；定时跟进遵守暂停，不恢复研究。后台训练收到停止文件后自行保存退出。",
+  "seed": 73,
+  "saved_steps": 42496,
+  "requested_steps": 262144,
+  "queue_stop_mode": "graceful",
+  "process_check": "队列及训练父子进程1504/17560/30472/26556均已退出",
+  "source": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train",
+  "checkpoint_sha256": "471659866b8b1adae1105946c9343d32a0024b2092ca0d199c41753a661df389",
+  "policy_sha256": "228cb7f099112ce84b6f3d39f0c2132657f037d9d22c57a85d3570585330f3e9",
+  "files": {
+    "checkpoint.zip": "471659866b8b1adae1105946c9343d32a0024b2092ca0d199c41753a661df389",
+    "policy.npz": "228cb7f099112ce84b6f3d39f0c2132657f037d9d22c57a85d3570585330f3e9",
+    "policy.json": "7808927d117ac7ac80decd134d046eed398bb85ec8f36b13e5f5df9ab678ad28",
+    "run.json": "748f02ab1491672521e1925c81d1c2bbb3df9026e60460047237742d880aa6c2",
+    "status.json": "2e19c0a16a49c368dd576bbf281416fc81be762130ec45cdf3b1f4eebe66f33a",
+    "aligned-episodes.jsonl": "0855b3dd517660b0373444eb91aaf522914f98d818f64942c431a9717174f0d2",
+    "progress.jsonl": "9b867b8c260fd661cd51cbc777dba555f6c3150f95d60f257651ca430ee0908f",
+    "latest-checkpoint.json": "5b0a27bc70cdeafcd688abbd7544461c9d8ee2ff230ff0361028725ddffe3a5d",
+    "stop.request": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "checks": "检查点与元数据摘要、压缩包完整性、网络和优化器文件存在及复制一致性；本次未恢复训练、未评价策略。",
+  "resume_requires_user": true,
+  "independent_performance_verified": false
+}
