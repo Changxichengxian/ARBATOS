@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "verified_at": "2026-10-12T08:44:01.747424+08:00",
+  "eligible": true,
+  "baseline_count": 24,
+  "all_baseline_physical_pass": true,
+  "all_completed_records_exact": true,
+  "training_bank_sha256": "fe2eab74ac5d7d23bb11eb5a175fd93c2d26ffd77f25b9281cbb8005a143f3b2",
+  "registration_sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
+  "source_files": {
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\实际续训核验.json": "14117886db143467035567741ba8c4a0793e228efb22a8a9294b6f89417f9a3a",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\参数及权限核验.json": "2d8ebe5ed23145f0cb4c25a2eb8e66e92c1ab01e464326fa5019542911f8ae75",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\summary.json": "a143cee69e9aaf0d35bd3749ed584ceb8dcad6038af5da397bc9b02b6298f0e3",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\baseline\\run.json": "95997afc2777da67c72eec35babdcee0389089a6000db853877b4f9d8268a7b0",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\cases\\trace-20261012\\monitor.json": "a43846dd9c0d00aa94ddf482a182f6955d5f8f5be37731567f8cc15e0c363ea8",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\manifest.json": "63c4e9323a923dfec0a30b395529b3f55906314c3008183449dbfd11f346ab35",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\AdmitTraceTrial.py": "e9e8d34f36415ab9d55eda5d9e156d19d94d02da379f2fb9608350f26ec47b9b"
+  },
+  "source_model_files": {
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\first\\checkpoint.zip": "15fd99e739e3c5d491be5a82d0074dd9571bcf6cc51f1b5897670a6f1f7e7247",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\first\\policy.json": "335334930e9f30eb2d321cfaaa0d5ffb21f610bde8b6cffbf913ff7e1d7d808f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\first\\policy.npz": "40f465889b5b6fbc3f923dc1eb00a2a59302416477c9a5307f47f54a40dc6942",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\first\\run.json": "c4c2dd022ef3ff20d09dfbde939d96ff442155342b7a50d2a2e0ceb865ed131e",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\first\\status.json": "ed97e3242325d7d1ecef7c1c07b2c4666c6433ef8bbdfa6ab17f1c19fa7ca9a7",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\resumed\\checkpoint.zip": "8ab0f8dc41f25fd333861f204e12569bf20754f3b20c8d17742de39d3a00734a",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\resumed\\policy.json": "a939f7834c59ce7dcf422baa97755491296edab573f15c185461f9f47333c079",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\resumed\\policy.npz": "776c0e5d7a115f0f52a97b409bbb905ad51d4e940c2f0a88725e525f4ea799f5",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\resumed\\run.json": "4656efd8f273013f07b7eb7f15a3c336b107ad9bf1eeb923e5e5d465afa827cd",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\resumed\\status.json": "82100f91343710b4eb70b89e5a06d9b7bcd019f9b0e740bc313b72419af40ee1"
+  },
+  "resume_load_check_sha256": "18f3c425510c66fd7aa27670b07b620ec2b2cc311725fa6d081a4c90c83f6b97",
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "permitted_steps_each": 262144,
+  "seeds": [
+    41,
+    73
+  ],
+  "policy_evaluation_permitted": false,
+  "note": "只准固定两次长训练；所有四个E/F最终权重须再独立锁定才准运行新监控。任何旧评价或最终集均未获准。"
+}

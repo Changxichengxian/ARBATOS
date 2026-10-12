@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "checks": {
+    "actual_1024_to_2048": true,
+    "network_load_exact": true,
+    "optimizer_load_exact": true,
+    "optimizer_updates_continue": true,
+    "network_updated": true,
+    "export_matches": true
+  },
+  "export_max_abs_error": 5.960464477539063e-08,
+  "optimizer_states": 13,
+  "optimizer_step_before": [
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0
+  ],
+  "optimizer_step_after": [
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0,
+    48.0
+  ],
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "first": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\first",
+  "resumed": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\resumed",
+  "test_source_sha256": "3b67ee287eadbc8422dfd0e511dbba8e1617f68593c342a3e1f971b23245f3e9",
+  "files": {
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\first\\checkpoint.zip": "15fd99e739e3c5d491be5a82d0074dd9571bcf6cc51f1b5897670a6f1f7e7247",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\first\\policy.json": "335334930e9f30eb2d321cfaaa0d5ffb21f610bde8b6cffbf913ff7e1d7d808f",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\first\\policy.npz": "40f465889b5b6fbc3f923dc1eb00a2a59302416477c9a5307f47f54a40dc6942",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\first\\run.json": "c4c2dd022ef3ff20d09dfbde939d96ff442155342b7a50d2a2e0ceb865ed131e",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\first\\status.json": "ed97e3242325d7d1ecef7c1c07b2c4666c6433ef8bbdfa6ab17f1c19fa7ca9a7",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\resumed\\checkpoint.zip": "8ab0f8dc41f25fd333861f204e12569bf20754f3b20c8d17742de39d3a00734a",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\resumed\\policy.json": "a939f7834c59ce7dcf422baa97755491296edab573f15c185461f9f47333c079",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\resumed\\policy.npz": "776c0e5d7a115f0f52a97b409bbb905ad51d4e940c2f0a88725e525f4ea799f5",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\resumed\\run.json": "4656efd8f273013f07b7eb7f15a3c336b107ad9bf1eeb923e5e5d465afa827cd",
+    "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\resumed\\status.json": "82100f91343710b4eb70b89e5a06d9b7bcd019f9b0e740bc313b72419af40ee1"
+  },
+  "resume_load_check_sha256": "18f3c425510c66fd7aa27670b07b620ec2b2cc311725fa6d081a4c90c83f6b97",
+  "boundary": "真实网络和优化器精确载入后继续更新；物理回合/洗牌重新开始，不宣称逐步重放，也不代表长训练已达到性能目标。"
+}

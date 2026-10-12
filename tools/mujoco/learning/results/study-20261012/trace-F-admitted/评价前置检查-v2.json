@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T08:53:25.381078+08:00",
+  "pending_training_rejected": true,
+  "no_evaluation_artifacts_created": true,
+  "actual_smoke_resume_chain": {
+    "actual_resume_chain_checked": true,
+    "chain": [
+      {
+        "from_checkpoint": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\smoke\\first",
+        "initial_steps": 1024,
+        "resume_load_proof_sha256": "18f3c425510c66fd7aa27670b07b620ec2b2cc311725fa6d081a4c90c83f6b97"
+      }
+    ]
+  },
+  "locker_sha256": "e574ee4bea1f8cee3ef7a88525ba951c28309e121aa42a973fb1a2d69066af98",
+  "checker_sha256": "2756901a3731ba16bdef2659408ea8913e757fb3f97961ecfc05965ab40fab43",
+  "publication_checks": {
+    "same_record_reused": true,
+    "missing_plan_completed": true,
+    "different_plan_rejected": true,
+    "competing_writer_preserved": true,
+    "temporary_files_cleaned": true
+  },
+  "boundary": "验证未完成时阻止评价和真实短训恢复来源；四个最终模型完成后的正向锁定仍待执行。"
+}

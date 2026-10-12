@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T08:38:08.977574+08:00",
+  "actual_ppo_parameters": [
+    {
+      "gamma": 0.999,
+      "gae_lambda": 1.0,
+      "n_steps": 1024,
+      "batch_size": 256,
+      "n_epochs": 6,
+      "target_kl": 0.025,
+      "learning_rate": 0.0003,
+      "clip_range": 0.15
+    },
+    {
+      "gamma": 0.999,
+      "gae_lambda": 1.0,
+      "n_steps": 1024,
+      "batch_size": 256,
+      "n_epochs": 6,
+      "target_kl": 0.025,
+      "learning_rate": 0.0003,
+      "clip_range": 0.15
+    }
+  ],
+  "actual_rollout_lambda_one": true,
+  "actual_rollout_gamma_unchanged": true,
+  "observation93_action3": true,
+  "rejected": {
+    "expanded_budget": {
+      "returncode": 1,
+      "expected_error": "种子或预算未登记",
+      "output_not_created": true
+    },
+    "formal_seed": {
+      "returncode": 1,
+      "expected_error": "种子或预算未登记",
+      "output_not_created": true
+    },
+    "promotion": {
+      "returncode": 1,
+      "expected_error": "F有限对照不接受晋级或扩展训练",
+      "output_not_created": true
+    }
+  },
+  "smoke_proof_sha256": "14117886db143467035567741ba8c4a0793e228efb22a8a9294b6f89417f9a3a",
+  "registration_sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
+  "source_sha256": "30d6665f0ed4eba7373294ba602f2bd173471716e67ca3c52d53b4eb20df0998",
+  "checks_pass": true
+}

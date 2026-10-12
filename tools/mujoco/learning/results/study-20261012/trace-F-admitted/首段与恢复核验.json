@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "saved_at": "2026-10-12T08:55:20.556519+08:00",
+  "steps_in_package": 16384,
+  "current_training_status": {
+    "status": "running",
+    "steps": 40960,
+    "segment_seconds": 627.723810800002,
+    "steps_per_s": 65.25162706158712,
+    "episodes": 76,
+    "failures": 0,
+    "pid": 21632
+  },
+  "os_processes_at_save": [
+    {
+      "ProcessId": 1504,
+      "ParentProcessId": 17560,
+      "CreationDate": "2026-10-12T08:44:05.193372+08:00",
+      "CommandLine": "\"C:\\Users\\28111\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" -u .\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\RunWbrStudyQueue.py --plan .\\work\\study-20261012\\long-trace\\training\\plan.json"
+    },
+    {
+      "ProcessId": 21632,
+      "ParentProcessId": 33236,
+      "CreationDate": "2026-10-12T08:44:05.357562+08:00",
+      "CommandLine": "\"C:\\Users\\28111\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" -u C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py --output C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train --bank C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json --registration C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json --seed 41 --envs 2 --steps 262144"
+    }
+  ],
+  "actual_recovery": {
+    "schema": 1,
+    "status": "passed",
+    "steps": 16384,
+    "optimizer_states": 13,
+    "actual_gae_lambda": 1.0,
+    "export_max_abs_error": 5.960464477539063e-08,
+    "baseline_case": "trace-monitor-stop-000",
+    "baseline_all_fields_exact": true,
+    "bank_admission_revalidated": true,
+    "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+    "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+    "boundary": "同机换目录实际模型载入与原控制重放；未在另一电脑验证，未运行F候选监控、续训或最终集。"
+  },
+  "archive_sha256": "01e864f7b490bbcb6df4ab567602f7631afd76a3efc3365f2a5ccbeb51c900bb",
+  "archive_bytes": 7318529,
+  "archive_files": 272,
+  "archive": "tools/mujoco/learning/results/study-20261012/阶段恢复包-F首段.zip",
+  "evaluation_guard_sha256": "d15a54c0f098c62ebebf788caf70a4cf66bdef372cd0465ce563e47eec266be8",
+  "independent_performance_tested": false,
+  "boundary": "保存及同机换目录恢复检查已通过，F两组完整训练和一次性监控尚未完成；进程状态只代表保存时刻。"
+}

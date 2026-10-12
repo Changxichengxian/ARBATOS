@@ -66,9 +66,10 @@
     "E41完成262144步训练及24例配对监控：停车/受推平均改善7.2244%/6.6762%，热增加2.1697%，但2例俯仰和1例受推误差超限，未通过单种子筛选。实际模型、13组优化器、490回合日志及48条评价完成记录均已核验保存",
     "C73完成原40候选搜索，实际重放最终策略6个开发场景后，完整评分和保护项与搜索记录一致；两种子开发原控制基线相同。旧格式没有保留全部历史轨迹，未声称逐个重新计算40个候选",
     "独立45例停车误差改善3.0315%、受推误差改善2.7027%、髋部用力平方积分变化-1.6206%。双种子主筛选未通过，此路线不晋级，不追加运动质量补评。 两种子共180条逐场景完成记录与汇总一致，完整原指标复算一致。",
-    "末尾误差信号传播已用实际训练库隔离核验，并对只从训练日志选出的push-008完成原控制/最终策略真实重放；基线逐字段一致。该结果只支持继续试验，不证明失败原因。"
+    "末尾误差信号传播已用实际训练库隔离核验，并对只从训练日志选出的push-008完成原控制/最终策略真实重放；基线逐字段一致。该结果只支持继续试验，不证明失败原因。",
+    "F的新24例原控制全部物理通过，真实续训、算法参数、预算拒绝及四策略评价前置检查通过；F41已启动，16384步完整冻结恢复包实际换目录载入模型/优化器并精确重放一条原控制场景，已保存。"
   ],
-  "next": "完成原E73训练及双种子监控结论；F先完成真实续训和新监控基线检查，通过后各训练262144步，四个E/F最终策略全锁定才统一对照。",
+  "next": "E73继续原262144步和旧24例监控，结束后保存模型日志并核验双种子失败/晋级结果。F队列依次完成41/73各262144步；所有E/F四模型完成后，先用work/LockTraceComparison.py锁定并创建唯一新监控计划，再执行和保存完整配对结论。检查真实进程，不重复启动活任务，不打开最终集。",
   "active_process": {
     "queues": [
       {
@@ -116,7 +117,7 @@
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T08:36:10.615852+08:00",
+  "updated_at": "2026-10-12T08:55:20.556519+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -800,7 +801,7 @@
     ]
   },
   "long_trace_F": {
-    "stage": "smoke_preflight",
+    "stage": "first_seed_training",
     "registration": "tools/mujoco/learning/results/study-20261012/长程反馈单变量训练登记.json",
     "registration_sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db",
     "training_steps_each": 262144,
@@ -816,7 +817,16 @@
       ]
     },
     "working_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace",
-    "long_training_started": false,
-    "boundary": "所有四个E/F最终权重锁定后统一使用新监控集；仅一次单变量对照，未获扩展/最终评价许可。"
+    "long_training_started": true,
+    "boundary": "所有四个E/F最终权重锁定后统一使用新监控集；仅一次单变量对照，未获扩展/最终评价许可。",
+    "queue_pid": 1504,
+    "trainer_pid": 21632,
+    "training_steps_at_save": 40960,
+    "os_processes_checked_at": "2026-10-12T08:55:20.556519+08:00",
+    "admission_sha256": "73e47e09a694f43a8fba83b85e2e53e0ef28a1c3cc2b30371414b788d79afa75",
+    "first_checkpoint_steps": 16384,
+    "recovery_archive": "tools/mujoco/learning/results/study-20261012/阶段恢复包-F首段.zip",
+    "recovery_archive_sha256": "01e864f7b490bbcb6df4ab567602f7631afd76a3efc3365f2a5ccbeb51c900bb",
+    "recovery_check": "tools/mujoco/learning/results/study-20261012/trace-F-admitted/恢复核验结果.json"
   }
 }

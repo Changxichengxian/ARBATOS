@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "steps": 16384,
+  "optimizer_states": 13,
+  "actual_gae_lambda": 1.0,
+  "export_max_abs_error": 5.960464477539063e-08,
+  "baseline_case": "trace-monitor-stop-000",
+  "baseline_all_fields_exact": true,
+  "bank_admission_revalidated": true,
+  "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d",
+  "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+  "boundary": "同机换目录实际模型载入与原控制重放；未在另一电脑验证，未运行F候选监控、续训或最终集。"
+}
