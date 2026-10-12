@@ -1,0 +1,24 @@
+{
+  "checked_at": "2026-10-12T12:46:11.210948+08:00",
+  "positive_actual_state_passed": true,
+  "negative_checks": {
+    "wrong_start_lock": true,
+    "wrong_actual_command": true
+  },
+  "in_memory_mutations_only": true,
+  "verifier_sha256": "01cccd5d2fccd56ac00cffa9f5e6a04008a75efedffc9237bdcdc4cbecc8f502",
+  "proof": {
+    "label": "E-41",
+    "plan_sha256": "a7769c31de98ab522eca3622a13c611b229b349cb8eade74cd357a37c4b9b459",
+    "four_model_lock_sha256": "11f9a1072ee59ebc4834ca29b563ac9b946900b4810d8a6edd7174658806a1b8",
+    "policy_lock_sha256": "2f6f7c2d69a7ad59024ae805bdbc11732090d0938e1caea72a8d94faeb9a8c94",
+    "verifier_sha256": "01cccd5d2fccd56ac00cffa9f5e6a04008a75efedffc9237bdcdc4cbecc8f502",
+    "committed_evidence": {
+      "model_commit_before_evaluation": "ecbabfc9ea69f2888e9c02eb280fd4f1f8a458ec",
+      "locks_and_plan_commit_during_first_evaluation": "1fdb9e1b9209442836eb429c63628ae7c450c334",
+      "boundary": "四模型在评价前已提交；锁实际生成早于启动，锁和计划的Git保存发生于首组运行中。没有将后一次提交冒称评价前提交。"
+    },
+    "inner_lock_field_expected": null,
+    "boundary": "旧监控评价内部锁字段为空；原始记录不改写，由原唯一计划、事前四模型锁、完整模型哈希与原队列绑定共同核验。"
+  }
+}

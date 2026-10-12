@@ -80,17 +80,18 @@
     "完成真实模型末批检查：E41/E73/F41自然完成，计数均768、内部剩余进度0；实际F41最后采样回调模型虽也是262144步，但762计数且内部进度未归零，被新检查拒绝。主动停止及未完成四模型同样拒绝。原KL优化提前结束规则保留。",
     "全新独立Python3.12.14环境安装原完整35个依赖后，从旧交付包重新解压，三种冻结控制环境各首份策略共18条历史轨迹逐字段一致。补全依赖的新包目录实际生成，运行输入字节与已验证旧包一致；未评价F控制性能。",
     "F73完成262144步；实际网络及13组优化器精确载入，算法lambda=1，导出推理通过。490个完整训练回合日志评分可复算，覆盖144/144场景，物理失败0次。尚未运行新监控候选评价。",
-    "E/F四份完整最终模型全部核验并锁定，唯一新24例评价已启动；实际队列进程已确认，尚无完整对照结论。"
+    "E/F四份完整最终模型全部核验并锁定，唯一新24例评价已启动；实际队列进程已确认，尚无完整对照结论。",
+    "旧评价器对监控集未填内部锁，首组48条记录完成后队列拒绝。以事前模型提交、原启动命令绑定及四模型锁完成严格外层核验，错锁/改计划/改启动绑定等检查均拒绝；原始结果字节不变，首组未重跑，其余三组按原队列接续。"
   ],
-  "next": "等待唯一E/F四策略新24例队列完成，再运行CompareTraceResults.py复算192条记录；不重启训练，不使用最终60例。",
+  "next": "等待原唯一新24例队列完成，使用已保存外层锁兼容与新版CompareTraceResults.py复算全部192条完成记录；不改原始结果内部锁字段，不重跑训练或打开最终60例。",
   "active_process": {
     "kind": "EF_new24_comparison",
-    "queue_pid": 19688,
-    "current_job": "E-41"
+    "queue_pid": 24964,
+    "current_job": "E-73"
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T12:34:17.453166+08:00",
+  "updated_at": "2026-10-12T12:47:46.556567+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -795,7 +796,7 @@
     "working_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace",
     "long_training_started": true,
     "boundary": "所有四个E/F最终权重锁定后统一使用新监控集；仅一次单变量对照，未获扩展/最终评价许可。",
-    "queue_pid": 19688,
+    "queue_pid": 24964,
     "trainer_pid": null,
     "training_steps_at_save": null,
     "os_processes_checked_at": "2026-10-12T12:32:10.599132+08:00",
@@ -844,7 +845,8 @@
     "latest_lock_helper_sha256": "e68d62c1a8bad59b23e403e966ee3bea5ff7e2e2985b6458ea15ebc5a0b4ea2f",
     "evaluation_plan": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\evaluation\\plan.json",
     "all_four_lock_sha256": "11f9a1072ee59ebc4834ca29b563ac9b946900b4810d8a6edd7174658806a1b8",
-    "evaluation_started": true
+    "evaluation_started": true,
+    "lock_compatibility_record": "tools/mujoco/learning/results/study-20261012/trace-monitor-lock-compatibility/兼容接续记录.json"
   },
   "completed_strategy_replay": {
     "policy_count": 10,
