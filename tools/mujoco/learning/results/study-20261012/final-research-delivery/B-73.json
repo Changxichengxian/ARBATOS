@@ -1,0 +1,529 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T13:15:11.302229+08:00",
+  "label": "B-73",
+  "status": "passed",
+  "model_check": {
+    "actual_steps": 131072,
+    "optimizer_states": 13,
+    "export_max_abs_error": 9.685754776000977e-08
+  },
+  "scenes": 3,
+  "trajectories": 6,
+  "elapsed_s": 77.03099999999904,
+  "original_summary_sha256": "1893b4b44fe9dd759088a904454c004deeb2da7dd2d6db503e787a931216dcd7",
+  "package_inventory_sha256": "3f05cf0d1d01fede85d1ec16696fe16eef410ed260622263b5501660fe8ea099",
+  "results": [
+    {
+      "controller": "baseline",
+      "id": "validation-stop-001",
+      "all_fields_exact": true,
+      "actual": {
+        "id": "validation-stop-001",
+        "seed": 41001,
+        "randomize": true,
+        "case": "stop",
+        "options": {
+          "case": "stop",
+          "speed": -0.514706,
+          "push": -29.588235,
+          "delay": 0,
+          "duration": 8.0
+        },
+        "metrics": {
+          "windows": {
+            "stop": {
+              "velocity_rms_mps": 0.2685023373031949,
+              "velocity_error_rms_mps": 0.2685023373031949,
+              "peak_speed_mps": 0.6028521721174578,
+              "peak_velocity_error_mps": 0.6028521721174578,
+              "travel_m": 0.5724651233159095,
+              "peak_reverse_mps": 0.10545612293518729,
+              "peak_pitch_deg": 2.71959701002764,
+              "peak_roll_deg": 0.24313722088133402,
+              "max_closure_m": 7.550715941015853e-05,
+              "samples": 267
+            }
+          },
+          "hip_heat_nm2s": 192.37136279169385,
+          "simulated_s": 8.010000000000668,
+          "peak_pitch_1ms_deg": 2.7197122319879385,
+          "peak_roll_1ms_deg": 0.24313722088133402,
+          "max_closure_1ms_m": 7.936338082099723e-05,
+          "passed": true,
+          "failure": null
+        }
+      },
+      "expected": {
+        "id": "validation-stop-001",
+        "seed": 41001,
+        "randomize": true,
+        "case": "stop",
+        "options": {
+          "case": "stop",
+          "speed": -0.514706,
+          "push": -29.588235,
+          "delay": 0,
+          "duration": 8.0
+        },
+        "metrics": {
+          "windows": {
+            "stop": {
+              "velocity_rms_mps": 0.2685023373031949,
+              "velocity_error_rms_mps": 0.2685023373031949,
+              "peak_speed_mps": 0.6028521721174578,
+              "peak_velocity_error_mps": 0.6028521721174578,
+              "travel_m": 0.5724651233159095,
+              "peak_reverse_mps": 0.10545612293518729,
+              "peak_pitch_deg": 2.71959701002764,
+              "peak_roll_deg": 0.24313722088133402,
+              "max_closure_m": 7.550715941015853e-05,
+              "samples": 267
+            }
+          },
+          "hip_heat_nm2s": 192.37136279169385,
+          "simulated_s": 8.010000000000668,
+          "peak_pitch_1ms_deg": 2.7197122319879385,
+          "peak_roll_1ms_deg": 0.24313722088133402,
+          "max_closure_1ms_m": 7.936338082099723e-05,
+          "passed": true,
+          "failure": null
+        }
+      }
+    },
+    {
+      "controller": "learned",
+      "id": "validation-stop-001",
+      "all_fields_exact": true,
+      "actual": {
+        "id": "validation-stop-001",
+        "seed": 41001,
+        "randomize": true,
+        "case": "stop",
+        "options": {
+          "case": "stop",
+          "speed": -0.514706,
+          "push": -29.588235,
+          "delay": 0,
+          "duration": 8.0
+        },
+        "metrics": {
+          "windows": {
+            "stop": {
+              "velocity_rms_mps": 0.26694724678782433,
+              "velocity_error_rms_mps": 0.26694724678782433,
+              "peak_speed_mps": 0.597538212068822,
+              "peak_velocity_error_mps": 0.597538212068822,
+              "travel_m": 0.5666290899038213,
+              "peak_reverse_mps": 0.10872705035358217,
+              "peak_pitch_deg": 2.8093409367366653,
+              "peak_roll_deg": 0.25555864120263216,
+              "max_closure_m": 7.688150888753732e-05,
+              "samples": 267
+            }
+          },
+          "hip_heat_nm2s": 254.66326028559467,
+          "simulated_s": 8.010000000000668,
+          "peak_pitch_1ms_deg": 2.809451382188027,
+          "peak_roll_1ms_deg": 0.2558143651449957,
+          "max_closure_1ms_m": 8.223618299243008e-05,
+          "passed": true,
+          "failure": null
+        }
+      },
+      "expected": {
+        "id": "validation-stop-001",
+        "seed": 41001,
+        "randomize": true,
+        "case": "stop",
+        "options": {
+          "case": "stop",
+          "speed": -0.514706,
+          "push": -29.588235,
+          "delay": 0,
+          "duration": 8.0
+        },
+        "metrics": {
+          "windows": {
+            "stop": {
+              "velocity_rms_mps": 0.26694724678782433,
+              "velocity_error_rms_mps": 0.26694724678782433,
+              "peak_speed_mps": 0.597538212068822,
+              "peak_velocity_error_mps": 0.597538212068822,
+              "travel_m": 0.5666290899038213,
+              "peak_reverse_mps": 0.10872705035358217,
+              "peak_pitch_deg": 2.8093409367366653,
+              "peak_roll_deg": 0.25555864120263216,
+              "max_closure_m": 7.688150888753732e-05,
+              "samples": 267
+            }
+          },
+          "hip_heat_nm2s": 254.66326028559467,
+          "simulated_s": 8.010000000000668,
+          "peak_pitch_1ms_deg": 2.809451382188027,
+          "peak_roll_1ms_deg": 0.2558143651449957,
+          "max_closure_1ms_m": 8.223618299243008e-05,
+          "passed": true,
+          "failure": null
+        }
+      }
+    },
+    {
+      "controller": "baseline",
+      "id": "validation-push-001",
+      "all_fields_exact": true,
+      "actual": {
+        "id": "validation-push-001",
+        "seed": 41019,
+        "randomize": true,
+        "case": "push",
+        "options": {
+          "case": "push",
+          "speed": 0.726471,
+          "push": 22.823529,
+          "delay": 0,
+          "duration": 8.0
+        },
+        "metrics": {
+          "windows": {
+            "push": {
+              "velocity_rms_mps": 0.13741057258527967,
+              "velocity_error_rms_mps": 0.13741057258527967,
+              "peak_speed_mps": 0.3236283383969143,
+              "peak_velocity_error_mps": 0.3236283383969143,
+              "travel_m": 0.12011319618721793,
+              "peak_reverse_mps": 0.11438655520550432,
+              "peak_pitch_deg": 2.7586101005629473,
+              "peak_roll_deg": 0.1980440490799703,
+              "max_closure_m": 7.549105782048971e-05,
+              "samples": 147
+            }
+          },
+          "hip_heat_nm2s": 106.93910654399181,
+          "simulated_s": 8.010000000000668,
+          "peak_pitch_1ms_deg": 2.7586101005629473,
+          "peak_roll_1ms_deg": 0.1982708516659602,
+          "max_closure_1ms_m": 7.55064223207805e-05,
+          "passed": true,
+          "failure": null
+        }
+      },
+      "expected": {
+        "id": "validation-push-001",
+        "seed": 41019,
+        "randomize": true,
+        "case": "push",
+        "options": {
+          "case": "push",
+          "speed": 0.726471,
+          "push": 22.823529,
+          "delay": 0,
+          "duration": 8.0
+        },
+        "metrics": {
+          "windows": {
+            "push": {
+              "velocity_rms_mps": 0.13741057258527967,
+              "velocity_error_rms_mps": 0.13741057258527967,
+              "peak_speed_mps": 0.3236283383969143,
+              "peak_velocity_error_mps": 0.3236283383969143,
+              "travel_m": 0.12011319618721793,
+              "peak_reverse_mps": 0.11438655520550432,
+              "peak_pitch_deg": 2.7586101005629473,
+              "peak_roll_deg": 0.1980440490799703,
+              "max_closure_m": 7.549105782048971e-05,
+              "samples": 147
+            }
+          },
+          "hip_heat_nm2s": 106.93910654399181,
+          "simulated_s": 8.010000000000668,
+          "peak_pitch_1ms_deg": 2.7586101005629473,
+          "peak_roll_1ms_deg": 0.1982708516659602,
+          "max_closure_1ms_m": 7.55064223207805e-05,
+          "passed": true,
+          "failure": null
+        }
+      }
+    },
+    {
+      "controller": "learned",
+      "id": "validation-push-001",
+      "all_fields_exact": true,
+      "actual": {
+        "id": "validation-push-001",
+        "seed": 41019,
+        "randomize": true,
+        "case": "push",
+        "options": {
+          "case": "push",
+          "speed": 0.726471,
+          "push": 22.823529,
+          "delay": 0,
+          "duration": 8.0
+        },
+        "metrics": {
+          "windows": {
+            "push": {
+              "velocity_rms_mps": 0.13626600388814766,
+              "velocity_error_rms_mps": 0.13626600388814766,
+              "peak_speed_mps": 0.3303744842269167,
+              "peak_velocity_error_mps": 0.3303744842269167,
+              "travel_m": 0.12624751070872026,
+              "peak_reverse_mps": 0.10547586790722825,
+              "peak_pitch_deg": 2.5389418651678,
+              "peak_roll_deg": 0.25333164728847074,
+              "max_closure_m": 7.630691545996513e-05,
+              "samples": 147
+            }
+          },
+          "hip_heat_nm2s": 107.68961542479657,
+          "simulated_s": 8.010000000000668,
+          "peak_pitch_1ms_deg": 2.5391204694959795,
+          "peak_roll_1ms_deg": 0.2533959521437333,
+          "max_closure_1ms_m": 7.692017508051434e-05,
+          "passed": true,
+          "failure": null
+        }
+      },
+      "expected": {
+        "id": "validation-push-001",
+        "seed": 41019,
+        "randomize": true,
+        "case": "push",
+        "options": {
+          "case": "push",
+          "speed": 0.726471,
+          "push": 22.823529,
+          "delay": 0,
+          "duration": 8.0
+        },
+        "metrics": {
+          "windows": {
+            "push": {
+              "velocity_rms_mps": 0.13626600388814766,
+              "velocity_error_rms_mps": 0.13626600388814766,
+              "peak_speed_mps": 0.3303744842269167,
+              "peak_velocity_error_mps": 0.3303744842269167,
+              "travel_m": 0.12624751070872026,
+              "peak_reverse_mps": 0.10547586790722825,
+              "peak_pitch_deg": 2.5389418651678,
+              "peak_roll_deg": 0.25333164728847074,
+              "max_closure_m": 7.630691545996513e-05,
+              "samples": 147
+            }
+          },
+          "hip_heat_nm2s": 107.68961542479657,
+          "simulated_s": 8.010000000000668,
+          "peak_pitch_1ms_deg": 2.5391204694959795,
+          "peak_roll_1ms_deg": 0.2533959521437333,
+          "max_closure_1ms_m": 7.692017508051434e-05,
+          "passed": true,
+          "failure": null
+        }
+      }
+    },
+    {
+      "controller": "baseline",
+      "id": "validation-combined-001",
+      "all_fields_exact": true,
+      "actual": {
+        "id": "validation-combined-001",
+        "seed": 41037,
+        "randomize": true,
+        "case": "combined",
+        "options": {
+          "case": "combined",
+          "speed": -0.5,
+          "push": -26.375,
+          "delay": 0,
+          "duration": 8.0
+        },
+        "metrics": {
+          "windows": {
+            "stop": {
+              "velocity_rms_mps": 0.491147941343881,
+              "velocity_error_rms_mps": 0.491147941343881,
+              "peak_speed_mps": 0.5840364164278994,
+              "peak_velocity_error_mps": 0.5840364164278994,
+              "travel_m": 0.47686812505874143,
+              "peak_reverse_mps": 0.0,
+              "peak_pitch_deg": 2.604625451921493,
+              "peak_roll_deg": 0.18253587521998424,
+              "max_closure_m": 7.66777304124099e-05,
+              "samples": 67
+            },
+            "push": {
+              "velocity_rms_mps": 0.2163744143637778,
+              "velocity_error_rms_mps": 0.2163744143637778,
+              "peak_speed_mps": 0.46816084624017235,
+              "peak_velocity_error_mps": 0.46816084624017235,
+              "travel_m": 0.159755106715449,
+              "peak_reverse_mps": 0.22084706536045595,
+              "peak_pitch_deg": 3.8481361899119313,
+              "peak_roll_deg": 0.1972181958118968,
+              "max_closure_m": 7.625652619424545e-05,
+              "samples": 147
+            }
+          },
+          "hip_heat_nm2s": 214.82655648334213,
+          "simulated_s": 8.010000000000668,
+          "peak_pitch_1ms_deg": 3.8482672891880623,
+          "peak_roll_1ms_deg": 0.19742811199227833,
+          "max_closure_1ms_m": 8.04301381184197e-05,
+          "passed": true,
+          "failure": null
+        }
+      },
+      "expected": {
+        "id": "validation-combined-001",
+        "seed": 41037,
+        "randomize": true,
+        "case": "combined",
+        "options": {
+          "case": "combined",
+          "speed": -0.5,
+          "push": -26.375,
+          "delay": 0,
+          "duration": 8.0
+        },
+        "metrics": {
+          "windows": {
+            "stop": {
+              "velocity_rms_mps": 0.491147941343881,
+              "velocity_error_rms_mps": 0.491147941343881,
+              "peak_speed_mps": 0.5840364164278994,
+              "peak_velocity_error_mps": 0.5840364164278994,
+              "travel_m": 0.47686812505874143,
+              "peak_reverse_mps": 0.0,
+              "peak_pitch_deg": 2.604625451921493,
+              "peak_roll_deg": 0.18253587521998424,
+              "max_closure_m": 7.66777304124099e-05,
+              "samples": 67
+            },
+            "push": {
+              "velocity_rms_mps": 0.2163744143637778,
+              "velocity_error_rms_mps": 0.2163744143637778,
+              "peak_speed_mps": 0.46816084624017235,
+              "peak_velocity_error_mps": 0.46816084624017235,
+              "travel_m": 0.159755106715449,
+              "peak_reverse_mps": 0.22084706536045595,
+              "peak_pitch_deg": 3.8481361899119313,
+              "peak_roll_deg": 0.1972181958118968,
+              "max_closure_m": 7.625652619424545e-05,
+              "samples": 147
+            }
+          },
+          "hip_heat_nm2s": 214.82655648334213,
+          "simulated_s": 8.010000000000668,
+          "peak_pitch_1ms_deg": 3.8482672891880623,
+          "peak_roll_1ms_deg": 0.19742811199227833,
+          "max_closure_1ms_m": 8.04301381184197e-05,
+          "passed": true,
+          "failure": null
+        }
+      }
+    },
+    {
+      "controller": "learned",
+      "id": "validation-combined-001",
+      "all_fields_exact": true,
+      "actual": {
+        "id": "validation-combined-001",
+        "seed": 41037,
+        "randomize": true,
+        "case": "combined",
+        "options": {
+          "case": "combined",
+          "speed": -0.5,
+          "push": -26.375,
+          "delay": 0,
+          "duration": 8.0
+        },
+        "metrics": {
+          "windows": {
+            "stop": {
+              "velocity_rms_mps": 0.48607869507636114,
+              "velocity_error_rms_mps": 0.48607869507636114,
+              "peak_speed_mps": 0.579666832643205,
+              "peak_velocity_error_mps": 0.579666832643205,
+              "travel_m": 0.4713911660936052,
+              "peak_reverse_mps": 0.0,
+              "peak_pitch_deg": 2.690385069779365,
+              "peak_roll_deg": 0.169361445234724,
+              "max_closure_m": 7.907743604987607e-05,
+              "samples": 67
+            },
+            "push": {
+              "velocity_rms_mps": 0.2170753268445464,
+              "velocity_error_rms_mps": 0.2170753268445464,
+              "peak_speed_mps": 0.4601737299188518,
+              "peak_velocity_error_mps": 0.4601737299188518,
+              "travel_m": 0.15575801777254394,
+              "peak_reverse_mps": 0.23062772211170596,
+              "peak_pitch_deg": 3.831319485915179,
+              "peak_roll_deg": 0.161769259076756,
+              "max_closure_m": 7.692008268862266e-05,
+              "samples": 147
+            }
+          },
+          "hip_heat_nm2s": 260.8567719871848,
+          "simulated_s": 8.010000000000668,
+          "peak_pitch_1ms_deg": 3.8314154591851444,
+          "peak_roll_1ms_deg": 0.20062910917967755,
+          "max_closure_1ms_m": 8.311165439632186e-05,
+          "passed": true,
+          "failure": null
+        }
+      },
+      "expected": {
+        "id": "validation-combined-001",
+        "seed": 41037,
+        "randomize": true,
+        "case": "combined",
+        "options": {
+          "case": "combined",
+          "speed": -0.5,
+          "push": -26.375,
+          "delay": 0,
+          "duration": 8.0
+        },
+        "metrics": {
+          "windows": {
+            "stop": {
+              "velocity_rms_mps": 0.48607869507636114,
+              "velocity_error_rms_mps": 0.48607869507636114,
+              "peak_speed_mps": 0.579666832643205,
+              "peak_velocity_error_mps": 0.579666832643205,
+              "travel_m": 0.4713911660936052,
+              "peak_reverse_mps": 0.0,
+              "peak_pitch_deg": 2.690385069779365,
+              "peak_roll_deg": 0.169361445234724,
+              "max_closure_m": 7.907743604987607e-05,
+              "samples": 67
+            },
+            "push": {
+              "velocity_rms_mps": 0.2170753268445464,
+              "velocity_error_rms_mps": 0.2170753268445464,
+              "peak_speed_mps": 0.4601737299188518,
+              "peak_velocity_error_mps": 0.4601737299188518,
+              "travel_m": 0.15575801777254394,
+              "peak_reverse_mps": 0.23062772211170596,
+              "peak_pitch_deg": 3.831319485915179,
+              "peak_roll_deg": 0.161769259076756,
+              "max_closure_m": 7.692008268862266e-05,
+              "samples": 147
+            }
+          },
+          "hip_heat_nm2s": 260.8567719871848,
+          "simulated_s": 8.010000000000668,
+          "peak_pitch_1ms_deg": 3.8314154591851444,
+          "peak_roll_1ms_deg": 0.20062910917967755,
+          "max_closure_1ms_m": 8.311165439632186e-05,
+          "passed": true,
+          "failure": null
+        }
+      }
+    }
+  ],
+  "boundary": "同机换目录重放已评价场景，逐字段比较；不是新独立性能评价，也不是另一电脑或实车验证。"
+}

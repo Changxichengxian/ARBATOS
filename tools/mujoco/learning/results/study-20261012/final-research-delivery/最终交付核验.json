@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "saved_at": "2026-10-12T13:21:42.754574+08:00",
+  "status": "passed",
+  "policy_count": 12,
+  "replay_trajectories": 72,
+  "all_fields_exact": true,
+  "independent_python_environment": true,
+  "same_computer": true,
+  "archive_sha256": "4ef6d2a6445549525cef045f3b9785544589467538a3ad11a0604f9d8eb81879",
+  "archive_bytes": 28414083,
+  "archive_entries": 1163,
+  "inventory_sha256": "3f05cf0d1d01fede85d1ec16696fe16eef410ed260622263b5501660fe8ea099",
+  "replay_proof_sha256": "cdca223f59eedbe2dd080f13d1f11e119086c9a0091f2923e445f1fa18b1da66",
+  "environment_proof_sha256": "ba0b8532058d3af29aeb7800cee6254fa3cc1e4470a91f915fa79a8c68713609",
+  "source_script_sha256": "d3afa02ce5e68075f88dbe1c19c459c527d5e8e2fab0242d7149e9c0e909cba2",
+  "archive": "tools/mujoco/learning/results/study-20261012/final-research-delivery/轮腿研究最终复现包.zip",
+  "final_dataset_used": false,
+  "conclusion": "六类有限配置均未通过筛选，按原研究目标负结果分支交付",
+  "boundary": "同机新Python环境和独立目录，每份策略三例及对应原控制。没有将全45例/24例重新跑一遍，也没有另一电脑或实车验收。"
+}

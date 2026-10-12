@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "checked_at": "2026-10-12T13:21:21.405614+08:00",
+  "policies": [
+    "A-41",
+    "B-41",
+    "C-41",
+    "D-41",
+    "E-41",
+    "A-73",
+    "B-73",
+    "C-73",
+    "D-73",
+    "E-73",
+    "F-41",
+    "F-73"
+  ],
+  "trajectories": 72,
+  "all_fields_exact": true,
+  "inventory_sha256": "3f05cf0d1d01fede85d1ec16696fe16eef410ed260622263b5501660fe8ea099",
+  "result_files": {
+    "A-41.json": "6998c6304ee87b900653efe9d84bdba96a9753f7834d9ca3df840316df7c1ca6",
+    "B-41.json": "36027ca393ed72dae7490c0e83bc30a2e65690b46fbd91d949276bf451dc028e",
+    "C-41.json": "fb6a723d64644c1c40e53bea69020e8fbdf4d4afe9ceca4d796b4be4998d0a99",
+    "D-41.json": "44c0621f2354eb3c0b20db4d7acf6ad3a8bccc827114121940e311f1b4a1d08b",
+    "E-41.json": "6afa0e13ae772409af4fca6092e7a30d2168ec5abd06237b733de8b53ebba476",
+    "A-73.json": "1766b45a105b3aac20d96ed3074080a33a57490e4284054d9e592a62c666700a",
+    "B-73.json": "75f2254a15dbaddf2b5e7d21e6143b605126b57b642509473f2cb083de808c8d",
+    "C-73.json": "7e6ac28ae17abf3e80f8e71b08e0d3c68a951b10266838577013a3e56609ebb9",
+    "D-73.json": "78d5037c7f3c22570c7fa51149bdf3ff227f775b8607c0cc22e7cc8c8e731699",
+    "E-73.json": "c568ca6acbdc809a02c3819b20a3c2054521c2ba62fae3f8749dca297985084c",
+    "F-41.json": "edbb552fcb09328a3e76dffbe630b6d7f288f5b96bae76330b076822639b496d",
+    "F-73.json": "45df3511d73d86a6d18d493b2314a45b5b1ed165a866d552ac87c400bad63a29"
+  },
+  "boundary": "只覆盖各策略已评价过的停车/受推/组合三例及对应原控制，不声称整套独立评价已在另一目录全部重跑。"
+}

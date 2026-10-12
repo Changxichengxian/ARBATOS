@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "final_replay_running",
+  "status": "research_complete_negative_result",
   "started_at": "2026-10-12T02:10:00+08:00",
   "deadline": "2026-10-14T02:10:00+08:00",
   "goal": "轮腿停车与受推恢复的可复现控制改进；不能用训练完成代替性能提升",
@@ -83,29 +83,19 @@
     "E/F四份完整最终模型全部核验并锁定，唯一新24例评价已启动；实际队列进程已确认，尚无完整对照结论。",
     "旧评价器对监控集未填内部锁，首组48条记录完成后队列拒绝。以事前模型提交、原启动命令绑定及四模型锁完成严格外层核验，错锁/改计划/改启动绑定等检查均拒绝；原始结果字节不变，首组未重跑，其余三组按原队列接续。",
     "E/F四份完整模型已事前锁定并完成唯一新24例对照，192条配对记录、原验收和运动质量完整复算；F双种子筛选未通过，不扩大此配置。",
-    "六类方案、12份最终策略、14组比较的负结果总表已完成；504次候选评价和1008条配对记录分别列明来源。最终12策略包已生成，正在独立Python环境逐份实跑72条历史轨迹。"
+    "六类方案、12份最终策略、14组比较的负结果总表已完成；504次候选评价和1008条配对记录分别列明来源。最终12策略包已生成，正在独立Python环境逐份实跑72条历史轨迹。",
+    "六类方案筛选负结果已形成带来源总表。最终12份模型在全新独立Python环境中真实重放72条历史轨迹，逐字段一致；含暂停重跑、四锁、新24例全部记录及冻结环境的最终包逐项字节核验通过。"
   ],
-  "next": "继续现有RunFinalPackageReplay.py进程，检查work/final-package/复现输出及实际执行环境.json，禁止重复启动；72条全部完成后运行SaveFinalResearchDelivery.py保存归档、提交推送、结束目标和定时跟进。",
+  "next": "研究已按负结果分支完成，停止定时跟进；后续新模型或新算法研究需另行安排。",
   "active_process": {
-    "kind": "final_package_replay",
-    "processes": [
-      {
-        "ProcessId": 25284,
-        "ParentProcessId": 23548,
-        "CreationDate": "2026-10-12T13:05:10.33699+08:00",
-        "CommandLine": "\"C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\package-clean-env\\Scripts\\python.exe\" -u .\\work\\RunFinalPackageReplay.py"
-      },
-      {
-        "ProcessId": 26108,
-        "ParentProcessId": 25284,
-        "CreationDate": "2026-10-12T13:05:10.353787+08:00",
-        "CommandLine": "\"C:\\Users\\28111\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" -u .\\work\\RunFinalPackageReplay.py"
-      }
-    ]
+    "kind": "none",
+    "queue_pid": null,
+    "trainer_pid": null,
+    "updated_at": "2026-10-12T13:21:42.754574+08:00"
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T13:06:28.732500+08:00",
+  "updated_at": "2026-10-12T13:21:42.754574+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -941,5 +931,27 @@
       "SaveFinalResearchDelivery.py": "d3afa02ce5e68075f88dbe1c19c459c527d5e8e2fab0242d7149e9c0e909cba2"
     },
     "boundary": "六方案统计完成；最终新包正实际重放，此登记不能代替最终复现通过证明。"
+  },
+  "final_dataset_used": false,
+  "final_delivery": {
+    "schema": 1,
+    "saved_at": "2026-10-12T13:21:42.754574+08:00",
+    "status": "passed",
+    "policy_count": 12,
+    "replay_trajectories": 72,
+    "all_fields_exact": true,
+    "independent_python_environment": true,
+    "same_computer": true,
+    "archive_sha256": "4ef6d2a6445549525cef045f3b9785544589467538a3ad11a0604f9d8eb81879",
+    "archive_bytes": 28414083,
+    "archive_entries": 1163,
+    "inventory_sha256": "3f05cf0d1d01fede85d1ec16696fe16eef410ed260622263b5501660fe8ea099",
+    "replay_proof_sha256": "cdca223f59eedbe2dd080f13d1f11e119086c9a0091f2923e445f1fa18b1da66",
+    "environment_proof_sha256": "ba0b8532058d3af29aeb7800cee6254fa3cc1e4470a91f915fa79a8c68713609",
+    "source_script_sha256": "d3afa02ce5e68075f88dbe1c19c459c527d5e8e2fab0242d7149e9c0e909cba2",
+    "archive": "tools/mujoco/learning/results/study-20261012/final-research-delivery/轮腿研究最终复现包.zip",
+    "final_dataset_used": false,
+    "conclusion": "六类有限配置均未通过筛选，按原研究目标负结果分支交付",
+    "boundary": "同机新Python环境和独立目录，每份策略三例及对应原控制。没有将全45例/24例重新跑一遍，也没有另一电脑或实车验收。"
   }
 }
