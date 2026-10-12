@@ -1,0 +1,28 @@
+{
+  "started_checked_at": "2026-10-12T13:06:28.732500+08:00",
+  "status": "running",
+  "policy_count": 12,
+  "planned_trajectories": 72,
+  "inventory_sha256": "3f05cf0d1d01fede85d1ec16696fe16eef410ed260622263b5501660fe8ea099",
+  "actual_runtime_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\final-package",
+  "actual_processes": [
+    {
+      "ProcessId": 25284,
+      "ParentProcessId": 23548,
+      "CreationDate": "2026-10-12T13:05:10.33699+08:00",
+      "CommandLine": "\"C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\package-clean-env\\Scripts\\python.exe\" -u .\\work\\RunFinalPackageReplay.py"
+    },
+    {
+      "ProcessId": 26108,
+      "ParentProcessId": 25284,
+      "CreationDate": "2026-10-12T13:05:10.353787+08:00",
+      "CommandLine": "\"C:\\Users\\28111\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" -u .\\work\\RunFinalPackageReplay.py"
+    }
+  ],
+  "source_files": {
+    "BuildStudyDeliveryPackage.py": "c369e150e070497175797d8410cf556e939e9189aa1437da793b46fc694afe91",
+    "RunFinalPackageReplay.py": "6a943315f848e659aa0eb0d2ab4314a35a90176b14cdef9c3965c65f2a45486e",
+    "SaveFinalResearchDelivery.py": "d3afa02ce5e68075f88dbe1c19c459c527d5e8e2fab0242d7149e9c0e909cba2"
+  },
+  "boundary": "六方案统计完成；最终新包正实际重放，此登记不能代替最终复现通过证明。"
+}
