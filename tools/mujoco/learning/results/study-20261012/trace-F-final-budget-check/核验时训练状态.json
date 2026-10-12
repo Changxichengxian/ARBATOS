@@ -1,0 +1,214 @@
+{
+  "status": {
+    "status": "running",
+    "steps": 81920,
+    "segment_seconds": 1061.7814825999994,
+    "steps_per_s": 77.15335155346779,
+    "episodes": 152,
+    "failures": 0,
+    "pid": 7308
+  },
+  "os_processes": [
+    {
+      "ProcessId": 22716,
+      "CreationDate": "2026-10-12T11:31:54.68065+08:00",
+      "CommandLine": "\"C:\\Users\\28111\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" -u .\\work\\RestartTraceAfterPause.py"
+    },
+    {
+      "ProcessId": 7308,
+      "CreationDate": "2026-10-12T11:32:00.890514+08:00",
+      "CommandLine": "\"C:\\Users\\28111\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" -u C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py --output C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02 --bank C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json --registration C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json --seed 73 --envs 2 --steps 262144"
+    }
+  ],
+  "queue_state": {
+    "schema": 1,
+    "plan_sha256": "19cb27160aab686d3dfe06f2b4e3e1348fb1b9121d67f2fd38e4b1f6ea0703ce",
+    "jobs": {
+      "F-trace-41-train": {
+        "status": "completed",
+        "attempts": [
+          {
+            "command": [
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+              "-u",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py",
+              "--output",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train",
+              "--bank",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+              "--registration",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json",
+              "--seed",
+              "41",
+              "--envs",
+              "2",
+              "--steps",
+              "262144"
+            ],
+            "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\logs\\F-trace-41-train-01.log",
+            "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train",
+            "job_binding_sha256": "7e75898526bc9ea4eb3027ffcddd46233a1d49e7abf402b47732c005d4265660",
+            "restart_without_checkpoint": false,
+            "started_at": "2026-10-12T00:44:05.320543+00:00",
+            "pid": 33236,
+            "exit_code": 0,
+            "finished_at": "2026-10-12T01:44:25.747197+00:00"
+          }
+        ],
+        "job_binding": {
+          "payload": {
+            "kind": "aligned_train",
+            "arguments": [
+              "--output",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train",
+              "--bank",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+              "--registration",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json",
+              "--seed",
+              "41",
+              "--envs",
+              "2",
+              "--steps",
+              "262144"
+            ],
+            "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py",
+            "script_sha256": "5be441202b843b7dc1f3484f0163186a822cf420c287a46a7b0f077051bf2ff0",
+            "source_hashes": {
+              "TrainWbrAligned.py": "5be441202b843b7dc1f3484f0163186a822cf420c287a46a7b0f077051bf2ff0",
+              "WbrAlignedEnv.py": "1d5926155659bdb323c69a2e001a619042c0f49e0f36b161230f127356bc3294",
+              "WbrAlignedReward.py": "ae5bd58bf63115c16985deba9fb8cf0a4a2f3ee9e3ee3e4995229ab4b2af334a",
+              "TrainWbrStudy.py": "874c03552cfdf701acc71bed215628ade4ec6b668b227fba2359e064fe01c0f5",
+              "TrainWbrLearning.py": "50974f2dc5310ceef035e250a8fce5a5222760ea82b1a3542b0dfbc6cfbc45a9"
+            },
+            "source": {
+              "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+              "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d"
+            },
+            "inputs": {
+              "--bank": {
+                "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+                "sha256": "fe2eab74ac5d7d23bb11eb5a175fd93c2d26ffd77f25b9281cbb8005a143f3b2"
+              },
+              "--registration": {
+                "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json",
+                "sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db"
+              }
+            }
+          },
+          "sha256": "7e75898526bc9ea4eb3027ffcddd46233a1d49e7abf402b47732c005d4265660"
+        },
+        "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train"
+      },
+      "F-trace-73-train": {
+        "status": "running",
+        "attempts": [
+          {
+            "command": [
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+              "-u",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py",
+              "--output",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train",
+              "--bank",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+              "--registration",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json",
+              "--seed",
+              "73",
+              "--envs",
+              "2",
+              "--steps",
+              "262144"
+            ],
+            "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\logs\\F-trace-73-train-01.log",
+            "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train",
+            "job_binding_sha256": "a00bc69366640645e396e1682305600cb8a4d17494194305193d62088ca97327",
+            "restart_without_checkpoint": false,
+            "started_at": "2026-10-12T01:44:25.793302+00:00",
+            "pid": 26556,
+            "stop_requested_at": "2026-10-12T01:53:05.868210+00:00",
+            "stop_mode": "graceful",
+            "exit_code": 0,
+            "finished_at": "2026-10-12T01:53:12.882013+00:00"
+          },
+          {
+            "command": [
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+              "-u",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py",
+              "--output",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02",
+              "--bank",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+              "--registration",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json",
+              "--seed",
+              "73",
+              "--envs",
+              "2",
+              "--steps",
+              "262144"
+            ],
+            "log": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\logs\\F-trace-73-train-02.log",
+            "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02",
+            "job_binding_sha256": "a00bc69366640645e396e1682305600cb8a4d17494194305193d62088ca97327",
+            "restart_without_checkpoint": true,
+            "started_at": "2026-10-12T03:32:00.854484+00:00",
+            "pid": 10712
+          }
+        ],
+        "job_binding": {
+          "payload": {
+            "kind": "aligned_train",
+            "arguments": [
+              "--output",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train",
+              "--bank",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+              "--registration",
+              "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json",
+              "--seed",
+              "73",
+              "--envs",
+              "2",
+              "--steps",
+              "262144"
+            ],
+            "python": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\rl-env\\Scripts\\python.exe",
+            "script": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py",
+            "script_sha256": "5be441202b843b7dc1f3484f0163186a822cf420c287a46a7b0f077051bf2ff0",
+            "source_hashes": {
+              "TrainWbrAligned.py": "5be441202b843b7dc1f3484f0163186a822cf420c287a46a7b0f077051bf2ff0",
+              "WbrAlignedEnv.py": "1d5926155659bdb323c69a2e001a619042c0f49e0f36b161230f127356bc3294",
+              "WbrAlignedReward.py": "ae5bd58bf63115c16985deba9fb8cf0a4a2f3ee9e3ee3e4995229ab4b2af334a",
+              "TrainWbrStudy.py": "874c03552cfdf701acc71bed215628ade4ec6b668b227fba2359e064fe01c0f5",
+              "TrainWbrLearning.py": "50974f2dc5310ceef035e250a8fce5a5222760ea82b1a3542b0dfbc6cfbc45a9"
+            },
+            "source": {
+              "library_sha256": "e26dbe00b78a24be1e8d3cbe1c471fe7c01bd0957b055daf06b905dec8956198",
+              "experiment_identity": "fb01b3885d168eb6f2bb163f41edd17ab0b5f7bac6ad979272f99d56874ee00d"
+            },
+            "inputs": {
+              "--bank": {
+                "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json",
+                "sha256": "fe2eab74ac5d7d23bb11eb5a175fd93c2d26ffd77f25b9281cbb8005a143f3b2"
+              },
+              "--registration": {
+                "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json",
+                "sha256": "8213ad57535e58151e2548b5df5bb39f33797972ee699a5ee845eade2a5863db"
+              }
+            }
+          },
+          "sha256": "a00bc69366640645e396e1682305600cb8a4d17494194305193d62088ca97327"
+        },
+        "actual_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02"
+      }
+    },
+    "status": "running",
+    "pid": 22716,
+    "current_job": "F-trace-73-train",
+    "updated_at": "2026-10-12T03:32:00.865374+00:00"
+  }
+}

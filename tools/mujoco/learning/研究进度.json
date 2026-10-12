@@ -76,9 +76,10 @@
     "目标已暂停；F73在42496步响应停止文件后保存网络、优化器和日志并正常退出。队列和训练进程均已退出，不自动恢复；未进行F独立性能评价。",
     "用户明确继续后，已先汇报完整研究进度；续训预检发现42496步不对齐2048步批次。固定选最近可用32768检查点，网络和13组优化器实际读取一致，242份冻结文件与原计划不变。旧暂停模型保留，尚未进行F性能评价。",
     "实际优化器更新计数否决了32768步续训方案，该方案未执行。保留原42496步模型，从原seed73重新完整训练，以保持最终候选262144步和768更新计数；未选择性能较好的随机种子或模型。",
-    "原seed73重跑已实际运行到4096步，run.json证明从零开始且原262144预算未变；F41仍为原完成尝试。"
+    "原seed73重跑已实际运行到4096步，run.json证明从零开始且原262144预算未变；F41仍为原完成尝试。",
+    "完成真实模型末批检查：E41/E73/F41自然完成，计数均768、内部剩余进度0；实际F41最后采样回调模型虽也是262144步，但762计数且内部进度未归零，被新检查拒绝。主动停止及未完成四模型同样拒绝。原KL优化提前结束规则保留。"
   ],
-  "next": "从原seed73重新完成F73的262144步，旧42496步暂停尝试不计入最终候选。完成后核对模型更新计数768和实际来源，再锁定E/F四份模型并只执行登记的新24例比较。保存工具须支持train-resume-02路径。",
+  "next": "完成F73从原seed73重跑的262144步后，核对自然完成标记和真实循环进度；优化轮次计数上限768，允许原KL阈值提前结束优化。按trace-F-final-budget-check内最新工具保存模型和新尝试日志，再锁定四策略进行唯一新24例比较。旧42496步尝试不计入新模型训练。",
   "active_process": {
     "kind": "F73_restart",
     "queue_pid": 22716,
@@ -87,7 +88,7 @@
   },
   "hardware_access": false,
   "paid_compute": false,
-  "updated_at": "2026-10-12T11:33:27.443760+08:00",
+  "updated_at": "2026-10-12T11:50:40.620406+08:00",
   "code_baseline_commit": "1d9ab183d0aa45e400b50e24ccac439643d3e929",
   "run_root": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012",
   "snapshot": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\frozen",
@@ -794,8 +795,8 @@
     "boundary": "所有四个E/F最终权重锁定后统一使用新监控集；仅一次单变量对照，未获扩展/最终评价许可。",
     "queue_pid": 22716,
     "trainer_pid": 7308,
-    "training_steps_at_save": 4096,
-    "os_processes_checked_at": "2026-10-12T11:33:27.443760+08:00",
+    "training_steps_at_save": 81920,
+    "os_processes_checked_at": "2026-10-12T11:50:40.620406+08:00",
     "admission_sha256": "73e47e09a694f43a8fba83b85e2e53e0ef28a1c3cc2b30371414b788d79afa75",
     "first_checkpoint_steps": 16384,
     "recovery_archive": "tools/mujoco/learning/results/study-20261012/阶段恢复包-F首段.zip",
@@ -818,14 +819,28 @@
     "queue_status_at_save": "running",
     "current_job_at_save": "F-trace-73-train",
     "independent_performance_verified": false,
-    "os_processes_at_save": [],
+    "os_processes_at_save": [
+      {
+        "ProcessId": 22716,
+        "CreationDate": "2026-10-12T11:31:54.68065+08:00",
+        "CommandLine": "\"C:\\Users\\28111\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" -u .\\work\\RestartTraceAfterPause.py"
+      },
+      {
+        "ProcessId": 7308,
+        "CreationDate": "2026-10-12T11:32:00.890514+08:00",
+        "CommandLine": "\"C:\\Users\\28111\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" -u C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\TrainWbrAligned.py --output C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02 --bank C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\aligned-training-baseline\\training-bank.json --registration C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\frozen\\tools\\mujoco\\learning\\results\\study-20261012\\长程反馈单变量训练登记.json --seed 73 --envs 2 --steps 262144"
+      }
+    ],
     "pause_record": "tools/mujoco/learning/results/study-20261012/trace-F-73-paused/暂停保存记录.json",
     "selected_resume_steps": 0,
     "resumed_output_expected": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02",
     "pause_checkpoint_preserved": true,
     "resume_record": "tools/mujoco/learning/results/study-20261012/trace-F-73-resume/用户恢复与续训记录.json",
     "restart_reason": "原检查点在采样回调中保存，32768计数对应90次更新而非96次；42496计数对应120次更新且不对齐批次。为保持最终完整训练预算，保留旧尝试并从原seed73重跑。",
-    "actual_training_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02"
+    "actual_training_output": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\73\\train-resume-02",
+    "final_budget_check": "tools/mujoco/learning/results/study-20261012/trace-F-final-budget-check/训练完成边界补检.json",
+    "final_model_checker_sha256": "b89df332f2b5672178346f6233a579c695e377d1cf0b184b1d1e84dde6ad6d11",
+    "latest_lock_helper_sha256": "e68d62c1a8bad59b23e403e966ee3bea5ff7e2e2985b6458ea15ebc5a0b4ea2f"
   },
   "completed_strategy_replay": {
     "policy_count": 10,
@@ -858,5 +873,9 @@
     "action": "restart_seed_73_from_zero",
     "decision_updated_at": "2026-10-12T11:30:41.518482+08:00",
     "rejected_proposal": "原32768步续训方案经更新次数核对否决，未启动过；旧模型全部保留。"
+  },
+  "goal_control_observed": {
+    "status": "active",
+    "updated_at_unix": 1791776611
   }
 }

@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-12T11:49:48.765853+08:00",
+  "completed_models": [
+    {
+      "name": "E-41",
+      "checkpoint_sha256": "0ab1e703d645c1c69079e739fb7e7cb34691d102ba46f6ed32582e0b0993d242",
+      "result": {
+        "natural_budget_completion": true,
+        "sampled_steps": 262144,
+        "total_timesteps": 262144,
+        "progress_remaining": 0.0,
+        "rollout_steps": 2048,
+        "rollout_batches": 128,
+        "batch_size": 256,
+        "actual_epoch_counter": 768,
+        "maximum_epoch_counter": 768,
+        "target_kl": 0.025,
+        "note": "以自然完成标记和循环进度检查最后一批已处理；轮次计数允许原KL阈值提前结束，不等于梯度更新次数。"
+      }
+    },
+    {
+      "name": "E-73",
+      "checkpoint_sha256": "0642788d13e88f2474ac3460046e42dd5ff1fb6eceb2eb5a28574bb42837908c",
+      "result": {
+        "natural_budget_completion": true,
+        "sampled_steps": 262144,
+        "total_timesteps": 262144,
+        "progress_remaining": 0.0,
+        "rollout_steps": 2048,
+        "rollout_batches": 128,
+        "batch_size": 256,
+        "actual_epoch_counter": 768,
+        "maximum_epoch_counter": 768,
+        "target_kl": 0.025,
+        "note": "以自然完成标记和循环进度检查最后一批已处理；轮次计数允许原KL阈值提前结束，不等于梯度更新次数。"
+      }
+    },
+    {
+      "name": "F-41",
+      "checkpoint_sha256": "e68cd25b59b11487495c6fe04524bd306ad2c53d0941012e10422b261efe11b6",
+      "result": {
+        "natural_budget_completion": true,
+        "sampled_steps": 262144,
+        "total_timesteps": 262144,
+        "progress_remaining": 0.0,
+        "rollout_steps": 2048,
+        "rollout_batches": 128,
+        "batch_size": 256,
+        "actual_epoch_counter": 768,
+        "maximum_epoch_counter": 768,
+        "target_kl": 0.025,
+        "note": "以自然完成标记和循环进度检查最后一批已处理；轮次计数允许原KL阈值提前结束，不等于梯度更新次数。"
+      }
+    }
+  ],
+  "actual_final_sampling_checkpoint": {
+    "path": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-20261012\\long-trace\\training\\41\\train\\checkpoints\\step-000262144",
+    "checkpoint_sha256": "46f29783569166dab393d76bffc3671b3ec532f10deb9d7d500b4135bbd1c88c",
+    "sampled_steps": 262144,
+    "epoch_counter": 762,
+    "progress_remaining": 0.0078125,
+    "rejected": "实际模型尚未完成最后一批训练循环"
+  },
+  "stopped_status_rejected": true,
+  "existing_F41_saver_check_passed": true,
+  "premature_four_model_lock_rejected": true,
+  "evaluation_plan_created": false,
+  "helpers": {
+    "WbrFinalModelChecks.py": "b89df332f2b5672178346f6233a579c695e377d1cf0b184b1d1e84dde6ad6d11",
+    "SaveTraceCompleted.py": "eb884582d9375400a7a084a99d7f09663f459012905130a6b040188dba77a321",
+    "LockTraceComparison.py": "e68d62c1a8bad59b23e403e966ee3bea5ff7e2e2985b6458ea15ebc5a0b4ea2f",
+    "StageTraceCompletedSeed.py": "6b282f7cbdc28327ee7a595129a4dc1cda7d5d3e428bcd0cf53764e8eca95db5",
+    "CheckFinalTrainingBudget.py": "da7e8851ce3d9ea03560ef1c51fe3baf82de8f184c2ffec453736a1d1c338189"
+  },
+  "boundary": "三个已完成实际模型均自然完成且计数768；这不是强制未来每批优化满6轮。原KL阈值允许较少轮次。F73完整最终模型尚未产生，本次未评价任何F控制性能。"
+}
