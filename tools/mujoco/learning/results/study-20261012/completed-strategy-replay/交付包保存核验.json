@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "saved_at": "2026-10-12T09:40:10.599604+08:00",
+  "policy_count": 10,
+  "trajectories": 60,
+  "all_fields_exact": true,
+  "actual_runtime_directory": "C:\\Users\\28111\\Documents\\Codex\\2026-10-12\\codex-threads-01a10020-bff3-7030-a437\\work\\study-package-check",
+  "actual_proof_sha256": "7bc89b11f6cfa9b029e9db008f33bcb11144c26c9b4b4488c69d620f49cb9329",
+  "archive_sha256": "b186e70f2a7ee3ad7ddf8fd5cf26bdf96f34914ea8b38447b8b313136d7b36af",
+  "archive_bytes": 20456575,
+  "archive_entries": 611,
+  "inventory_sha256": "c045f005e732266ce0839fe226e482330df713b6421ff52a776aceeb6cf896dd",
+  "source_script_sha256": "071d8e324a6a1a563e85e195f83be3b1a929eefe91bf8955f43f557ba9a166f2",
+  "evidence": {
+    "A-41.json": "2f806dff55b16bc8490ee71ebc71875477281bc7b47b10d4fccb0591ae8b5dfc",
+    "A-73.json": "b472a8905f5715145f2768083934f1bfdb48e47a811518385502da90992c2490",
+    "B-41.json": "acbde9362162bddbc90a4507d22be2b311c2d2989031f6a6a93b8eaece7f2d7d",
+    "B-73.json": "9603ef7d03e8d1ff6404751ba9877b7d1200da817be473572cadef3b232694ba",
+    "C-41.json": "9d978ca58c611a3e12e1fae6bb1bc0064a32b2a38b1e2b1e415ec987a4a0cd45",
+    "C-73.json": "ff45fba0e831a29538cfb7c2c5bde7bd0710df341dd4f72f203a3d2175bbc5f2",
+    "D-41.json": "4708d8ddd58f4cd4041b1d82d583ffd3238343da2ef3b68256d149a085510b62",
+    "D-73.json": "539ba2911392b24c697fc91f5fd9d089fed68174879cc2353ef3faf834257a9a",
+    "E-41.json": "2b159b0eb20089b1958c3f384ea6ae7ab350fb1cbe163a4115419dbc55766df9",
+    "E-73.json": "85c06838318c7cb65c949dcdfbe02ddc77b8601f335f634bfc416ee7a0fbf968",
+    "交付清单.json": "c045f005e732266ce0839fe226e482330df713b6421ff52a776aceeb6cf896dd",
+    "汇总.json": "7bc89b11f6cfa9b029e9db008f33bcb11144c26c9b4b4488c69d620f49cb9329"
+  },
+  "archive": "tools/mujoco/learning/results/study-20261012/completed-strategy-replay/已完成策略复现包.zip",
+  "F_included": false,
+  "boundary": "同机独立目录里实际重放A至E十份最终策略，逐份三种场景及原控制共60条轨迹逐字段一致。归档字节与实测目录完全相同。不是另一电脑验证，不代表独立性能通过或整个目标完成。"
+}
