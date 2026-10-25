@@ -14,6 +14,10 @@
 #include "RuntimeInstance.h"
 #include "Types.h"
 
+#ifndef ROBOT_WATCH_FULL_ENABLED
+#define ROBOT_WATCH_FULL_ENABLED 1
+#endif
+
 #ifndef WATCH_ENABLE_LOCOMOTION_CLASSIC
 #define WATCH_ENABLE_LOCOMOTION_CLASSIC 1
 #endif
@@ -142,6 +146,7 @@ typedef enum
     WATCH_TASK_ELRS,
     WATCH_TASK_ARM,
     WATCH_TASK_WHEELLEG_MIT,
+    WATCH_TASK_SHOOT_CONTROL,
 } WatchTaskId;
 
 typedef enum
@@ -205,6 +210,9 @@ typedef struct
 #endif
 #if WATCH_ENABLE_LOCOMOTION_WHEELLEG_MIT
     WatchTaskDiagEntry WheelLegMitTask;
+#endif
+#if WATCH_ENABLE_SHOOT_RM
+    WatchTaskDiagEntry ShootControlTask;
 #endif
 } WatchTaskDiag;
 
@@ -1104,7 +1112,9 @@ typedef struct
 #endif
 } Watch;
 
+#if ROBOT_WATCH_FULL_ENABLED
 extern Watch g_watch;
+#endif
 void WatchInit(void);
 void WatchUpdate(void);
 void WatchDiagSetBootStage(WatchBootStage stage);

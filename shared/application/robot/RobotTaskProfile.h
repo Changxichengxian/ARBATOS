@@ -204,6 +204,14 @@ static inline void RobotProfileFillIdentity(RobotProfileIdentity *out)
 #define ROBOT_PROFILE_CHASSIS_CONTROL_DEFAULT_PERIOD_MS 2u
 #endif
 
+#ifndef ROBOT_PROFILE_SHOOT_CONTROL_DEFAULT_PERIOD_MS
+#define ROBOT_PROFILE_SHOOT_CONTROL_DEFAULT_PERIOD_MS 1u
+#endif
+
+#ifndef ROBOT_PROFILE_SHOOT_CONTROL_BUDGET_US
+#define ROBOT_PROFILE_SHOOT_CONTROL_BUDGET_US 500u
+#endif
+
 #ifndef ROBOT_PROFILE_CAN_COMMAND_TX_PERIOD_MS
 #define ROBOT_PROFILE_CAN_COMMAND_TX_PERIOD_MS 1u
 #endif
@@ -283,6 +291,12 @@ static inline uint16_t RobotProfileGimbalControlPeriodMs(void)
 {
     return RobotProfilePeriodOrDefaultU16(g_config.gimbal.control_period_ms,
                                                ROBOT_PROFILE_GIMBAL_CONTROL_DEFAULT_PERIOD_MS);
+}
+
+static inline uint16_t RobotProfileShootControlPeriodMs(void)
+{
+    return RobotProfilePeriodOrDefaultU16(g_config.shoot.control_period_ms,
+                                         ROBOT_PROFILE_SHOOT_CONTROL_DEFAULT_PERIOD_MS);
 }
 
 static inline uint16_t RobotProfileChassisControlPeriodMs(void)

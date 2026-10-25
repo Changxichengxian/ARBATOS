@@ -53,8 +53,10 @@
 #define ARB_THREAD_CREATE(thread_id, entry) \
     osThreadNew((osThreadFunc_t)(entry), NULL, &thread_id##_attr)
 
+#if ROBOT_WATCH_FULL_ENABLED
 static osThreadId_t ArbDefaultTaskHandle;
 ARB_STATIC_THREAD(defaultTask, osPriorityNormal, ROBOT_RUNTIME_DEFAULT_STACK_WORDS);
+#endif
 
 #define ROBOT_RUNTIME_TASK(symbol, entry, threadName, priority, stackWords) \
     static osThreadId_t ArbTaskHandle_##symbol;                          \
@@ -62,6 +64,7 @@ ARB_STATIC_THREAD(defaultTask, osPriorityNormal, ROBOT_RUNTIME_DEFAULT_STACK_WOR
 #include "RobotTargetTasks.inc"
 #undef ROBOT_RUNTIME_TASK
 
+#if ROBOT_WATCH_FULL_ENABLED
 static void ArbDefaultTask(void *argument)
 {
     (void)argument;
@@ -77,7 +80,7 @@ static void ArbDefaultTask(void *argument)
         (void)osDelay(ROBOT_WATCH_UPDATE_PERIOD_MS);
     }
 }
-
+#endif
 
 #define ROBOT_RUNTIME_TASK(symbol, entry, threadName, priority, stackWords) \
     static osThreadId_t ArbCreateTask_##symbol(void)                        \
@@ -157,17 +160,23 @@ ArbatosRuntimeStatus ArbatosRuntimeStart(void)
     cali_param_init();
 #endif
 
-#if ROBOT_TASK_BUILD_HOST_LINK
+#if ROBOT_TASK_BUILD_HOST_LINK || ROBOT_TASK_BUILD_IMU
     /* HostLink/VisionLink uses USB CDC even when StartupServiceTask is absent. */
     BspUsbDeviceInit();
 #endif
 
+#if ROBOT_WATCH_FULL_ENABLED
     ArbDefaultTaskHandle = ARB_THREAD_CREATE(defaultTask, ArbDefaultTask);
     if (ArbDefaultTaskHandle == NULL)
     {
         result = ARBATOS_RUNTIME_DEFAULT_TASK_FAILED;
         return result;
     }
+#else
+    /* 轻量诊断没有周期复制工作，不为它单独预留线程和栈。 */
+    WatchInit();
+    WatchDiagSetBootStage(WATCH_BOOT_STAGE_DEFAULT_TASK_START);
+#endif
     if (ArbCreateModuleTasks() != 0u)
     {
         result = ARBATOS_RUNTIME_MODULE_TASK_FAILED;
@@ -177,6 +186,13 @@ ArbatosRuntimeStatus ArbatosRuntimeStart(void)
 #if defined(CONFIG_ARBATOS_SUBBOARD_MUSIC)
     if (SubBoardMusicStart() != 0) {
         result = ARBATOS_RUNTIME_MODULE_TASK_FAILED;
+    }
+#endif
+
+#if !ROBOT_WATCH_FULL_ENABLED
+    if (result == ARBATOS_RUNTIME_OK)
+    {
+        WatchDiagSetBootStage(WATCH_BOOT_STAGE_RUN);
     }
 #endif
 

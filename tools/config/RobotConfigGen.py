@@ -29,14 +29,14 @@ BOARDS = {
     "dji_a_f427": {"directory": "boards/DjiAF427", "kind": "STM32F427", "cpu_hz": 168000000,
                    "can_buses": 2, "rs485_ports": 0, "fpu": 1, "stack": 1024},
     "dji_c_f407": {"directory": "boards/DjiCF407", "kind": "STM32F407", "cpu_hz": 168000000,
-                   "can_buses": 2, "rs485_ports": 0, "fpu": 1, "stack": 256},
+                   "can_buses": 2, "rs485_ports": 0, "fpu": 1, "stack": 1024},
 }
 BUILTINS = {
     "chassis": {"classic": "CLASSIC_CHASSIS"},
     "gimbal": {"single": "SINGLE_GIMBAL", "dual_yaw": "DUAL_YAW_GIMBAL"},
     "wheelleg": {"mit": "WHEELLEG_MIT"},
     "arm": {"standard": "ARM"},
-    "shoot": {"rm": None},
+    "shoot": {"rm": "SHOOT_RM"},
 }
 PRIORITIES = {"Low", "Normal", "AboveNormal", "High", "Realtime"}
 IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
@@ -45,7 +45,7 @@ PORT_ID = re.compile(r"[a-z][a-z0-9_]*\Z")
 
 # F427 已有 CAN、DBUS、MPU6500 和经典控制链的 Zephyr 适配；其余整车
 # 服务还没有逐项完成实板迁移，不能因能通过生成就被意外启用。
-A_F427_ALLOWED_TASKS = {
+F4_CLASSIC_ALLOWED_TASKS = {
     "RC_SBUS",
     "HEALTH_MONITOR",
     "SDLOG",
@@ -53,8 +53,12 @@ A_F427_ALLOWED_TASKS = {
     "CAN_FEEDBACK_RX",
     "CLASSIC_CHASSIS",
     "SINGLE_GIMBAL",
+    "SHOOT_RM",
     "IMU",
 }
+# A/C 都有 DBUS、外接 CRSF、裁判、SD、经典底盘、单云台和 RM 发射控制链。
+# 没有声明 PWM 舵机引脚、RS485 收发器或轮腿适配时，不自动开放这些服务。
+F4_CLASSIC_ALLOWED_TASKS |= {"ELRS_LINK", "REFEREE_RX"}
 
 
 class ConfigError(ValueError):
@@ -494,8 +498,6 @@ def resolve(root, requested, config_text=None):
     require(data.get("schema") == 1, f"{path}: schema 必须为 1")
     require(data.get("board") in BOARDS, f"{target['name']}: 未支持的开发板 {data.get('board')}")
     target["board"] = data["board"]
-    require(target["board"] != "dji_c_f407",
-            "dji_c_f407: 板级定义保留，但完整机器人运行栈尚未迁移")
     profile = data.get("profile", "custom")
     require(profile in {"hero", "infantry", "wheelleg", "sentry", "carrier", "custom"}, "未知 profile")
     catalog = task_catalog(root)
@@ -537,11 +539,7 @@ def resolve(root, requested, config_text=None):
         if name in BUILTINS[domain]:
             require(set(selection) == {"type"}, f"内置 {domain}/{name} 参数仍在 ConfigTuning.inc 设置")
             module = BUILTINS[domain][name]
-            if module:
-                add(module, f"controllers.{domain}={name}")
-            else:
-                add("CAN_COMMAND_TX", "shoot.rm")
-                add("CAN_FEEDBACK_RX", "shoot.rm")
+            add(module, f"controllers.{domain}={name}")
             resolved_controls.append(dict(domain=domain, type=name, builtin=True))
             continue
         require((domain, name) in available, f"找不到控制器 {domain}/{name}；检查 shared/controllers/*/Controller.toml")
@@ -579,15 +577,22 @@ def resolve(root, requested, config_text=None):
         chosen = set(group) & set(selected)
         require(len(chosen) <= 1, f"控制输出冲突: {', '.join(sorted(chosen))}")
     if target["board"] == "dji_a_f427":
-        unsupported = sorted(set(selected) - A_F427_ALLOWED_TASKS)
+        unsupported = sorted(set(selected) - F4_CLASSIC_ALLOWED_TASKS)
         require(not unsupported,
-                "dji_a_f427 当前只支持 DBUS、健康检测、SD 日志、经典底盘、单云台和 RM 射击控制链；"
+                "dji_a_f427 当前支持 DBUS/ELRS、健康检测、SD 日志、裁判、经典底盘、单云台和 RM 射击控制链；"
+                "未迁移模块: " + ", ".join(unsupported))
+    if target["board"] == "dji_c_f407":
+        unsupported = sorted(set(selected) - F4_CLASSIC_ALLOWED_TASKS)
+        require(not unsupported,
+                "dji_c_f407 当前支持 DBUS/ELRS、健康检测、SD 日志、裁判、经典底盘、单云台和 RM 射击控制链；"
                 "未迁移模块: " + ", ".join(unsupported))
     require(target["board"] == "dm_mc02_h7" or "SERVO" not in selected,
             "SERVO 需要 M 板 P11 的四路 servo-pwms；当前开发板没有该资源")
-    if any(c["domain"] == "shoot" and c["type"] == "rm" for c in resolved_controls):
-        require(bool({"SINGLE_GIMBAL", "DUAL_YAW_GIMBAL"} & set(selected)),
-                "shoot.rm 当前由 single/dual_yaw 云台任务调用；其他机构请关闭 shoot，不能只选择却没有执行入口")
+    if "SHOOT_RM" in selected:
+        for control in resolved_controls:
+            if control["domain"] == "gimbal" and not control["builtin"]:
+                require(control["period_ms"] <= 20,
+                        "通用云台与 shoot.rm 组合时周期不能超过 20 ms 的发射许可有效期")
     used_motors = set()
     for control in resolved_controls:
         for motor in control.get("motors", []):
@@ -595,21 +600,30 @@ def resolve(root, requested, config_text=None):
             used_motors.add(motor)
     require(len(selected) <= 16, "任务数量超过现有固定容量 16；请减少服务或调整并验证容量")
     overrides = data.get("tasks", {})
-    keys(overrides, selected, "tasks（只能覆盖已启用的任务）")
+    # 服务临时取消时保留已经实测过的栈和优先级，重新启用后无需手工找回。
+    # 未选任务不会出现在生成任务表，也不会因此分配栈或链接实现。
+    keys(overrides, catalog, "tasks（只能覆盖已知任务）")
     board = BOARDS[target["board"]]
+    for symbol, override in overrides.items():
+        keys(override, {"stack_words", "priority"}, f"tasks.{symbol}")
+        number(override.get("stack_words", catalog[symbol]["stack_m"] if board["kind"] == "STM32H7" else catalog[symbol]["stack_other"]),
+               f"{symbol}.stack_words", 128, 4096, integer=True)
+        priority = override.get("priority", catalog[symbol]["priority"])
+        require(priority in PRIORITIES, f"{symbol}: 未知优先级")
     task_rows = []
     for symbol in selected:
         row = dict(catalog[symbol])
         override = overrides.get(symbol, {})
-        keys(override, {"stack_words", "priority"}, f"tasks.{symbol}")
         row["stack_words"] = number(override.get("stack_words", row["stack_m"] if board["kind"] == "STM32H7" else row["stack_other"]),
                                      f"{symbol}.stack_words", 128, 4096, integer=True)
         row["priority"] = override.get("priority", row["priority"])
         require(row["priority"] in PRIORITIES, f"{symbol}: 未知优先级")
         task_rows.append(row)
-    features = data.get("features", {})
-    keys(features, {"subboard_music", "imu_mount", "external_5v"}, "features")
+    features = dict(data.get("features", {}))
+    keys(features, {"subboard_music", "imu_mount", "external_5v", "watch_full"}, "features")
     require(all(type(x) is bool for x in features.values()), "features 只能为 true/false")
+    # 完整 Watch 用于调试器大块观测；日常车只保留异常阶段记录，默认不占用该镜像。
+    features.setdefault("watch_full", False)
     require(not features.get("subboard_music") or target["board"] == "dm_mc02_h7", "副板音乐需要 MC02 H7")
     require(not features.get("external_5v") or target["board"] == "dm_mc02_h7", "受控外供 5 V 需要 MC02 H7")
     if features.get("imu_mount"):
@@ -758,6 +772,7 @@ def generate(root, target, out):
               f'#define ROBOT_RUNTIME_DEFAULT_STACK_WORDS {board["stack"]}u',
               f'#define ROBOT_IMU_MOUNT_CONFIGURED {int(target["features"].get("imu_mount", False))}',
               f'#define ROBOT_EXTERNAL_5V_ENABLED {int(target["features"].get("external_5v", False))}',
+              f'#define ROBOT_WATCH_FULL_ENABLED {int(target["features"].get("watch_full", False))}',
               '#define ROBOT_SUBBOARD_RTC_SERVICE ' + str(int(
                   "shared/zephyr/port/subboard/SubBoardBringupZephyr.c" in target["port_sources"])),
               f'#define ROBOT_CONFIG_FINGERPRINT "{target["fingerprint"]}"',
@@ -770,7 +785,6 @@ def generate(root, target, out):
                        f'#define ROBOT_TASK_STACK_{symbol} {row.get("stack_words", stack)}u',
                        f'#define ROBOT_TASK_PRIORITY_{symbol} RobotModulePriority{row["priority"]}'])
     shoot = any(c["domain"] == "shoot" for c in target["controllers"])
-    header.append(f"#define ROBOT_TASK_BUILD_SHOOT_RM {int(shoot)}")
     for domain in ("chassis", "gimbal"):
         period = next((c["period_ms"] for c in target["controllers"]
                        if c["domain"] == domain and not c["builtin"]), 2)
@@ -808,6 +822,8 @@ def generate(root, target, out):
     variables = {"ARBATOS_TARGET_DIR": target["name"], "ARBATOS_BOARD_DIR": board["directory"],
                   "ARBATOS_BOARD": target["board"], "ARBATOS_TARGET_SOURCES": target["sources"],
                   "ARBATOS_TARGET_PORT_SOURCES": target["port_sources"], "ARBATOS_TARGET_OVERLAY": overlays,
+                  "ARBATOS_TARGET_HAS_SDLOG": int("SDLOG" in selected),
+                  "ARBATOS_TARGET_WATCH_FULL": int(target["features"].get("watch_full", False)),
                   "ARBATOS_TARGET_GENERATED_DIR": out.as_posix()}
     cmake = ["# 自动生成；路径来自已校验的车型声明。"]
     for name, values in variables.items():
@@ -885,7 +901,7 @@ def write_plugin_parameters(root, out):
         write_changed(out / f"{symbol}Params.h", "\n".join(lines) + "\n")
 
 
-def create_robot(root, name, source):
+def create_robot(root, name, source, config_text=None, post_create=None):
     root = Path(root).resolve()
     require(TARGET_NAME.fullmatch(name) is not None and name.lower() != "all", "新车型名字无效")
     base = resolve(root, source)
@@ -902,10 +918,21 @@ def create_robot(root, name, source):
     text, changed = re.subn(r"(\.target_motor\s*=\s*)[^,]+", r"\g<1>(uint8_t)MotorCount", text, count=1)
     require(changed == 1, "模板缺少目标电机，不能保证新车默认停机；未创建新车型")
     text = re.sub(r"(\.variant\s*=\s*)ROBOT_RUN_VARIANT_\w+", r"\g<1>ROBOT_RUN_VARIANT_NORMAL", text, count=1)
-    shutil.copytree(origin, destination)
-    operation = destination / "ConfigOperation.inc"
-    operation.write_bytes(text.encode("utf-8"))
-    result = resolve(root, name)
+    try:
+        shutil.copytree(origin, destination)
+        operation = destination / "ConfigOperation.inc"
+        operation.write_bytes(text.encode("utf-8"))
+        if config_text is not None:
+            require(isinstance(config_text, str), "新车型配置必须是文本")
+            (destination / "RobotConfig.toml").write_text(config_text, encoding="utf-8")
+        if post_create is not None:
+            post_create(destination)
+        result = resolve(root, name)
+    except BaseException:
+        # 只回收本调用刚创建的目录；既有车型在前面的 exists 检查后绝不触碰。
+        if destination.exists():
+            shutil.rmtree(destination)
+        raise
     return dict(name=name, path=str(destination), based_on=base["name"],
                 output="单电机模式且未选择电机；核对装配后在 ConfigOperation.inc 显式启用",
                 board=result["board"])

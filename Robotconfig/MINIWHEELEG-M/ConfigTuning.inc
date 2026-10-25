@@ -158,11 +158,12 @@
             .task_init_time_ms = 1000u,
             .control_period_ms = 3u,
             .l1_m = 0.05000f,
-            .l2_m = 0.11404f,
-            .l3_m = 0.11404f,
+            .l2_m = 0.10500f,
+            .l3_m = 0.10500f,
             .l4_m = 0.05000f,
-            .l5_m = 0.06000f,
+            .l5_m = 0.07000f,
             .wheel_radius_m = 0.03275f,
+            // 旧几何和估算质量下的平衡增益；本车质量、惯量确认后再重算。
             .lqr_poly =
                 {
                     {-243.932f, 105.148f, -19.1838f, -0.199759f},
@@ -245,12 +246,13 @@
             .pitch_trim_rate_radps = 0.015f, // [643]
             .pitch_trim_v_deadband_mps = 0.015f, // [644]
             .pitch_trim_lpf = 0.03f, // [645]
-            .right_front_actuator = (uint8_t)Motor15,
-            .right_back_actuator = (uint8_t)Motor16,
-            .right_wheel_actuator = (uint8_t)Motor12,
-            .left_front_actuator = (uint8_t)Motor13,
-            .left_back_actuator = (uint8_t)Motor14,
-            .left_wheel_actuator = (uint8_t)Motor17,
+            // 2026-10-24 手动辨位：右前2、右后1、右轮5；左前4、左后3、左轮6。
+            .right_front_actuator = (uint8_t)Motor14,
+            .right_back_actuator = (uint8_t)Motor13,
+            .right_wheel_actuator = (uint8_t)Motor17,
+            .left_front_actuator = (uint8_t)Motor16,
+            .left_back_actuator = (uint8_t)Motor15,
+            .left_wheel_actuator = (uint8_t)Motor12,
         },
 
     // Shoot config
@@ -317,11 +319,12 @@
 
     .power =
         {
+            .limitMode = ChassisPowerLimitAuto, // 仅经典四轮底盘使用，轮腿控制器不读取
             .power_limit = 80.0f,                  // [161] 功率上限：裁判功率阈值，越大越易超限
             .warning_power = 40.0f,                // [162] 告警功率：超过开始线性降流
             .warning_power_buffer = 50.0f,         // [163] 缓冲阈值：缓冲能量低于此值强制限流
-            // 无裁判电流上限：调试用，防止失控。参考（粗略按裁判功率比例）：
-            // 40W≈18000，60W≈27000，80W≈36000，放开测试可用 64000
+            // 四轮命令刻度绝对值之和；36000 沿用调试值，不代表安培或瓦特。
+            // Auto 离线时使用，TotalCommand / ModelAndTotal 始终使用。
             .no_judge_total_current_limit = 36000.0f, // [164]
             .buffer_total_current_limit = 16000.0f,   // [165] 缓冲段电流：最低保底电流
             .power_total_current_limit = 20000.0f,    // [166] 正常段电流：在告警区间线性缩放

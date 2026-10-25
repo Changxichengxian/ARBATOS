@@ -23,6 +23,7 @@
  * low-level port.
  */
 extern void VisionLinkRxCallback(uint8_t *buf, uint32_t len);
+__weak void ImuServiceReceive(const uint8_t *buf, uint32_t len) { ARG_UNUSED(buf); ARG_UNUSED(len); }
 
 typedef struct
 {
@@ -362,6 +363,7 @@ static void ArbUsbCdcRx(const struct device *dev)
         ArbUsbCdc.diag.rx_bytes += (uint32_t)received;
         k_spin_unlock(&ArbUsbCdc.lock, key);
         VisionLinkRxCallback(chunk, (uint32_t)received);
+        ImuServiceReceive(chunk, (uint32_t)received);
     }
 }
 

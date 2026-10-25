@@ -262,6 +262,7 @@ static uint8_t LowCmdWriterValid(uint16_t writer)
     case (uint16_t)LOWCMD_WRITER_MANUAL:
     case (uint16_t)LOWCMD_WRITER_HOST:
     case (uint16_t)LOWCMD_WRITER_SAFETY:
+    case (uint16_t)LOWCMD_WRITER_MAINTENANCE:
     case (uint16_t)LOWCMD_WRITER_FAULT:
         return 1u;
     default:
@@ -822,14 +823,34 @@ uint8_t LowCmdRecoverSafetyInhibitWithPermit(MotorId id,
 
 uint8_t LowCmdGetInhibitWriter(MotorId id, uint16_t *out)
 {
-    if (MotorIdValid(id) == 0u || out == NULL)
+    return LowCmdGetInhibitWriters(&id, out, 1u);
+}
+
+uint8_t LowCmdGetInhibitWriters(const MotorId *ids, uint16_t *out, uint8_t count)
+{
+    if (count > (uint8_t)MotorCount ||
+        (count != 0u && (ids == NULL || out == NULL)))
     {
         return 0u;
     }
 
-    LowCmdCriticalState critical = LowCmdEnterCritical();
-    *out = gLowCmdInhibitWriter[id];
-    LowCmdExitCritical(critical);
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (MotorIdValid(ids[i]) == 0u)
+        {
+            return 0u;
+        }
+    }
+
+    {
+        LowCmdCriticalState critical = LowCmdEnterCritical();
+
+        for (uint8_t i = 0u; i < count; i++)
+        {
+            out[i] = gLowCmdInhibitWriter[ids[i]];
+        }
+        LowCmdExitCritical(critical);
+    }
     return 1u;
 }
 
@@ -1359,6 +1380,39 @@ uint8_t LowCmdGetMotorManyStamped(const MotorId *ids,
     return 1u;
 }
 
+uint8_t LowCmdGetMotorManyStampedIndexed(const MotorId *ids,
+                                         MotorCmd *cmdsById,
+                                         ControlOutputStamp *ownersById,
+                                         uint8_t count)
+{
+    if (count > (uint8_t)MotorCount ||
+        (count != 0u && (ids == NULL || cmdsById == NULL || ownersById == NULL)))
+    {
+        return 0u;
+    }
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (MotorIdValid(ids[i]) == 0u)
+        {
+            return 0u;
+        }
+    }
+
+    {
+        LowCmdCriticalState critical = LowCmdEnterCritical();
+
+        for (uint8_t i = 0u; i < count; i++)
+        {
+            const MotorId id = ids[i];
+
+            cmdsById[id] = gLowCmdRecord[id].cmd;
+            ownersById[id] = gLowCmdRecord[id].owner;
+        }
+        LowCmdExitCritical(critical);
+    }
+    return 1u;
+}
+
 uint8_t LowCmdOutputSnapshotAuthorized(MotorId id,
                                        const MotorCmd *cached,
                                        const ControlOutputStamp *cachedOwner)
@@ -1438,6 +1492,10 @@ uint8_t LowCmdEnterEmergencyStop(uint16_t writer)
     }
 
     LowCmdCriticalState critical = LowCmdEnterCritical();
+    if (gLowCmdDiag.emergency_active != 0u && resolved_writer < gLowCmdDiag.emergency_writer) {
+        LowCmdExitCritical(critical);
+        return 0u;
+    }
     const LowCmdVersion version = LowCmdAdvanceVersionLocked();
     gLowCmdDiag.emergency_active = 1u;
     gLowCmdDiag.emergency_writer = resolved_writer;

@@ -135,6 +135,17 @@ static int TestCachedAuthoritySeq(uint32_t expectedSeq, const char *message)
                      message);
 }
 
+static int TestMaintenanceLatched(uint8_t expected, const char *message)
+{
+    RobotLifecycleSnapshot snapshot;
+    const uint32_t readsBefore = s_manualReadCount;
+
+    return TestCheck(RobotLifecycleGetSnapshot(&snapshot) != 0u &&
+                         snapshot.maintenance_latched == expected &&
+                         s_manualReadCount == readsBefore,
+                     message);
+}
+
 int main(void)
 {
     uint32_t readsBefore;
@@ -178,8 +189,13 @@ int main(void)
                          ROBOT_LIFECYCLE_REASON_NONE,
                          1u,
                          0u,
-                         1u,
-                         "安全档后切到运行档才允许输出")) return 1;
+                          1u,
+                          "安全档后切到运行档才允许输出")) return 1;
+    readsBefore = s_manualReadCount;
+    if (!TestCheck(RobotLifecycleEnterMaintenance() == 0u &&
+                       s_manualReadCount == readsBefore,
+                   "输出已放行时不得进入维护锁")) return 1;
+    if (!TestMaintenanceLatched(0u, "拒绝维护锁时不得留下锁存状态")) return 1;
 
     TestSetInput(1u, 0u, TEST_SWITCH_RUN,
                  TEST_SWITCH_SAFE, TEST_SEMANTICS_OLD_SEQ);
@@ -324,8 +340,32 @@ int main(void)
                          ROBOT_LIFECYCLE_REASON_MANUAL_SAFE_SWITCH,
                          0u,
                          0u,
+                          1u,
+                          "换权帧本身已在安全档时应建立新代安全资格")) return 1;
+
+    readsBefore = s_manualReadCount;
+    s_tickMs++;
+    if (!TestCheck(RobotLifecycleEnterMaintenance() != 0u &&
+                       s_manualReadCount == readsBefore,
+                   "安全状态应能进入维护锁且不得读取输入")) return 1;
+    if (!TestCachedState(ROBOT_LIFECYCLE_SAFE,
+                         ROBOT_LIFECYCLE_REASON_MAINTENANCE,
+                         0u,
+                         0u,
                          1u,
-                         "换权帧本身已在安全档时应建立新代安全资格")) return 1;
+                         "维护锁必须立即保持生命周期输出关闭") ||
+        !TestMaintenanceLatched(1u, "维护锁必须记录到生命周期快照")) return 1;
+
+    TestSetInput(1u, 1u, TEST_SWITCH_RUN,
+                 TEST_SWITCH_SAFE, TEST_SEMANTICS_NEW_SEQ);
+    if (!TestUpdateReadsOnce("维护锁后的运行档 Update 必须且只能读取一次快照")) return 1;
+    if (!TestCachedState(ROBOT_LIFECYCLE_SAFE,
+                         ROBOT_LIFECYCLE_REASON_MAINTENANCE,
+                         0u,
+                         0u,
+                         1u,
+                         "运行档不得解除本次启动内的维护锁") ||
+        !TestMaintenanceLatched(1u, "运行档不得清除维护锁存位")) return 1;
 
     /* 致命故障不可在线恢复，因此必须放在全部可恢复状态回归之后。 */
     readsBefore = s_manualReadCount;
@@ -337,8 +377,11 @@ int main(void)
                          ROBOT_LIFECYCLE_REASON_FATAL_FAULT,
                          0u,
                          1u,
-                         1u,
-                         "EnterFatalFault 必须立即锁存致命故障并清除输出许可")) return 1;
+                          1u,
+                          "EnterFatalFault 必须立即锁存致命故障并清除输出许可")) return 1;
+    if (!TestCheck(RobotLifecycleEnterMaintenance() == 0u,
+                   "致命故障锁存后不得重新进入维护状态")) return 1;
+    if (!TestMaintenanceLatched(1u, "致命故障不得清除已有维护锁存证据")) return 1;
 
     TestSetInput(1u, 1u, TEST_SWITCH_SAFE,
                  TEST_SWITCH_SAFE, TEST_SEMANTICS_NEW_SEQ);

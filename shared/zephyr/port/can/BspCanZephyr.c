@@ -6,6 +6,9 @@
 #include "BspCan.h"
 #include "BspCanZephyr.h"
 #include "BspCanFaultPort.h"
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+#include "WheelLegBenchGate.h"
+#endif
 
 #include <errno.h>
 #include <string.h>
@@ -697,13 +700,25 @@ static int BspCanTxFlagsInternal(uint8_t busNumber,
      * 与 BspCanFaultLock 共用提交互斥量。这样故障锁取得该锁后，任何普通帧
      * 都不可能再从“已检查”跨到 can_send() 的硬件提交步骤。
      */
-    if (k_is_in_isr() || k_is_pre_kernel() ||
-        k_mutex_lock(&CanTxSubmitLock, K_FOREVER) != 0)
+    if (k_is_in_isr() || k_is_pre_kernel())
     {
         return BSP_CAN_STATUS_ERROR;
     }
+    /* 上层 MIT 发送可能仍在短临界区内；竞争时返回忙让下周期重试，
+     * 不能等待诊断线程释放锁，否则会在关中断时切换线程并触发断言。 */
+    if (k_mutex_lock(&CanTxSubmitLock, K_NO_WAIT) != 0)
+    {
+        return BSP_CAN_STATUS_BUSY;
+    }
 
     unsigned int key = irq_lock();
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    if (!WheelLegBenchFrameAllowed(busNumber, stdId, data, dlc, k_uptime_get_32())) {
+        irq_unlock(key);
+        k_mutex_unlock(&CanTxSubmitLock);
+        return BSP_CAN_STATUS_ERROR;
+    }
+#endif
     bus->txCount++;
     bus->lastTxStdId = stdId;
     bus->lastTxDlc = dlc;

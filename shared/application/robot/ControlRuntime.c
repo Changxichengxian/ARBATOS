@@ -500,3 +500,37 @@ uint16_t ControlRuntimePeriodMs(ControlDomain domain)
     }
     return 1u;
 }
+
+uint8_t ControlRuntimeOutputReady(ControlDomain domain, uint32_t maxAgeMs)
+{
+    MotorCmd commands[CONTROL_ALGORITHM_MAX_OUTPUTS];
+    ControlOutputStamp owners[CONTROL_ALGORITHM_MAX_OUTPUTS];
+    const uint32_t nowMs = BspTimeGetTickMs();
+
+    if (maxAgeMs == 0u || RobotLifecycleOutputAllowed() == 0u) {
+        return 0u;
+    }
+    /* 配置和绑定只在任务启动前写入；跨任务仅读取 LowCmd 的一致快照。 */
+    for (uint8_t i = 0u; i < s_controlRuntimeCount; i++) {
+        const ControlRuntimeSlot *slot = &s_controlRuntime[i];
+        if (slot->controller.domain != domain || slot->configured == 0u) {
+            continue;
+        }
+        if (slot->spec.outputCount == 0u ||
+            LowCmdGetMotorManyStamped(slot->motorIds, commands, owners, slot->spec.outputCount) == 0u) {
+            return 0u;
+        }
+        for (uint8_t j = 0u; j < slot->spec.outputCount; j++) {
+            const MotorCmd *cmd = &commands[j];
+            if (cmd->active == 0u || cmd->mode == MotorModeNone || cmd->mode == MotorModeDisable ||
+                cmd->writer != LOWCMD_WRITER_CONTROL || cmd->timeoutMs == 0u ||
+                (nowMs - cmd->tick) > maxAgeMs || (nowMs - cmd->tick) > cmd->timeoutMs ||
+                owners[j].domain != (uint8_t)domain || owners[j].controllerId != slot->controller.id ||
+                LowCmdOutputSnapshotAuthorized(slot->motorIds[j], cmd, &owners[j]) == 0u) {
+                return 0u;
+            }
+        }
+        return 1u;
+    }
+    return 0u;
+}

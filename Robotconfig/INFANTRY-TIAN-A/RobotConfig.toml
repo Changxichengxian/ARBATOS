@@ -16,6 +16,7 @@ type = "rm"
 [features]
 subboard_music = false
 imu_mount = true
+watch_full = false
 
 # SD 初始化和文件系统调用需要比普通控制任务更大的栈。
 [tasks.SDLOG]
@@ -24,3 +25,6 @@ stack_words = 2048
 [build]
 sources = ["RobotConfig.c", "DetectTask.c", "ArmMotorTable.c", "InfantryDiag.c"]
 shared_sources = ["shared/application/comm/host/HostLinkTaskStub.c"]
+
+[ports]
+rc_sbus = "usart1"

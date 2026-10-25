@@ -67,10 +67,11 @@ pwsh -NoProfile -File .\tools\tests\TestLowCmd.ps1
 | 故障管理、电机健康、机械臂/射击故障、复位记录 | 故障进入、保持、恢复与边界条件 |
 | 控制域、机器人生命周期、状态存储、单写者规则 | 启动和切换顺序、状态一致性 |
 | 底盘、云台反馈、轮腿输出、射击控制 | 各控制模块的计算、反馈和输出限制 |
+| `TestChassisPowerMode.ps1` | 真实功率控制入口的自动/总指令/模型/组合模式、裁判在线与离线、模型不可用及故障轴预算 |
 | 宇树电机策略 | 宇树驱动相关的控制策略 |
 | `TestCheckZephyr.py` | 工程检查器能否识别缺文件、错误车型和非法源码引用 |
-| `TestBuildInfo.py`、`TestSdLogViewerPowerMeter.py` | 版本变化、子模块、无变化增量构建，以及功率计/模型/源码状态解码 |
-| `PowerMeter`、`CanFaultPort`、`Rs485FaultPort`、`ResetEvidencePort`、`RobotFaultZephyr` | 功率计协议与队列，以及真实异常处理源码在模拟寄存器下的行为 |
+| `TestBuildInfo.py`、`TestSdLogViewerRecords.py` | 版本变化、子模块、无变化增量构建，以及历史记录/源码状态解码 |
+| `CanFaultPort`、`Rs485FaultPort`、`ResetEvidencePort`、`RobotFaultZephyr` | 真实异常处理源码在模拟寄存器下的行为 |
 
 C 回归脚本要求 Zig 提供编译器；统一入口也能找到 WinGet 安装但尚未加入当前 PATH 的 Zig。工程检查器回归使用 Python。缺少依赖或测试失败会返回失败，不跳过后冒充通过。测试源码和模拟接口也在 `tests/`，删除它们会让对应入口失效。
 

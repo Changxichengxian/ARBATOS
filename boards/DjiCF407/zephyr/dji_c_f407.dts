@@ -15,6 +15,7 @@
 		zephyr,shell-uart = &usart1;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
+		zephyr,code-partition = &application_partition;
 		zephyr,dtcm = &ccm0;
 		zephyr,canbus = &can1;
 	};
@@ -58,6 +59,17 @@
 };
 
 &clk_lsi { status = "okay"; };
+
+/* 末尾两个独立 128 KiB 扇区仅用于 IMU 零偏双副本。 */
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		application_partition: partition@0 { label = "application"; reg = <0x0 0xc0000>; };
+		imu_cal_partition: partition@c0000 { label = "imu-calibration"; reg = <0xc0000 0x40000>; };
+	};
+};
 &clk_lse { status = "okay"; };
 &clk_hse { clock-frequency = <DT_FREQ_M(12)>; status = "okay"; };
 

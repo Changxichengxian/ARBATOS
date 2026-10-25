@@ -1,0 +1,57 @@
+schema = 1
+board = "dji_a_f427"
+
+[[roles]]
+id = "rc_sbus"
+label = "大疆 DBUS 接收机"
+service = "RC_SBUS"
+required_when_service = true
+default_baud = 100000
+baud_editable = false
+protocols = ["sbus"]
+required_capabilities = ["rx", "sbus"]
+note = "使用板载 DBUS 接收口 USART1 / PB7。"
+
+[[roles]]
+id = "elrs_crsf"
+label = "ELRS / CRSF 接收机"
+service = "ELRS_LINK"
+required_when_service = true
+default_baud = 420000
+baud_editable = false
+protocols = ["crsf"]
+required_capabilities = ["rx", "crsf"]
+note = "使用 UART8 / PE0 RX、PE1 TX，接 3.3 V TTL；仅接收通道和链路状态。"
+
+[[roles]]
+id = "referee"
+label = "裁判系统"
+note = "启用后 USART6 归裁判独占，车型的 InfantryDiag 文本诊断不再编入。"
+service = "REFEREE_RX"
+required_when_service = true
+default_baud = 115200
+baud_editable = false
+protocols = ["rm_referee"]
+required_capabilities = ["rx", "tx", "referee"]
+
+[[ports]]
+id = "usart1"
+node = "usart1"
+label = "USART1 / PB7 RX"
+pins = ["PB7"]
+capabilities = ["rx", "sbus"]
+note = "A 板专用 DBUS 接收口。"
+
+[[ports]]
+id = "uart8"
+node = "uart8"
+label = "UART8 / PE0 RX, PE1 TX"
+pins = ["PE0", "PE1"]
+capabilities = ["rx", "tx", "crsf"]
+
+[[ports]]
+id = "usart6"
+node = "usart6"
+label = "USART6 / PG9 RX, PG14 TX"
+pins = ["PG9", "PG14"]
+capabilities = ["rx", "tx", "referee"]

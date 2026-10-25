@@ -25,9 +25,7 @@
 #include "Mpu6500.h"
 #include "RobotMode.h"
 #include "UserLib.h"
-#if defined(CONFIG_BOARD_DM_MC02_H7) || defined(CONFIG_BOARD_DJI_A_F427)
 #include "ImuCalStore.h"
-#endif
 #if defined(CONFIG_BOARD_DJI_A_F427)
 #include "ImuThermalA.h"
 static ImuThermalA InsThermal;
@@ -38,6 +36,9 @@ static ImuThermalA InsThermal;
 #include "RobotConfig.h"
 #include "Watch.h"
 #include "SdLog.h"
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+#include "DetectTask.h"
+#endif
 
 #include <math.h>
 #include <string.h>
@@ -124,6 +125,12 @@ static float ImuSampleDt(void)
 
 static void ImuHeaterUpdate(float temp)
 {
+    if (ImuCalStoreIsWriting()) {
+        InsHeaterPwm = 0u;
+        InsHeaterStable = 0u;
+        imu_pwm_set(0u);
+        return;
+    }
 #if defined(CONFIG_BOARD_DJI_A_F427)
     ImuThermalAUpdate(&InsThermal, temp, k_uptime_get_32(), g_config.imu.imu_temp_pwm_max);
     InsHeaterPwm = InsThermal.pwm;
@@ -132,14 +139,6 @@ static void ImuHeaterUpdate(float temp)
     imu_pwm_set(InsHeaterPwm);
     if (imu_pwm_last_error() != 0) InsHeaterStable = 0u;
     return;
-#endif
-#if defined(CONFIG_BOARD_DM_MC02_H7)
-    if (ImuCalStoreIsWriting()) {
-        InsHeaterPwm = 0u;
-        InsHeaterStable = 0u;
-        imu_pwm_set(0u);
-        return;
-    }
 #endif
 #if defined(CONFIG_ARBATOS_PREFLIGHT_ONLY)
     extern volatile uint32_t MPreflightHeatEnable;
@@ -283,6 +282,10 @@ static uint8_t ImuBootAdjustAllowed(void)
         input.control.sw[INPUT_SW_CHASSIS_MODE], input.semantics.ChassisSafePos);
     return (gimbal_safe != 0u && chassis_safe != 0u) ? 1u : 0u;
 }
+
+#if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY) && ROBOT_TASK_BUILD_IMU
+#include "ImuService.inc"
+#endif
 
 static void ImuGyroCalibrationUpdate(const fp32 gyro_raw[3],
                                      const fp32 accel_raw[3],
@@ -561,12 +564,10 @@ void ImuFusionTask(void const *pvParameters)
     }
     mahony_imu_init(&InsMahony, 0.002f);
     GyroZeroCaliRuntimeReset(&InsGyroCaliState);
-#if defined(CONFIG_BOARD_DM_MC02_H7) || defined(CONFIG_BOARD_DJI_A_F427)
     imu_pwm_set(0u);
     (void)ImuCalStoreLoad(InsGyroOffset);
 #if defined(CONFIG_ARBATOS_PREFLIGHT_ONLY)
     uint8_t offsetQueued = 0u;
-#endif
 #endif
     WatchImuSetStage(WATCH_IMU_STAGE_BMI088_INIT_OK);
 
@@ -587,6 +588,10 @@ void ImuFusionTask(void const *pvParameters)
             InsHeaterStable = 0u;
             imu_pwm_set(0u);
             WatchTaskError(WATCH_TASK_IMU);
+#if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY) && ROBOT_TASK_BUILD_IMU
+            ImuServiceUpdate(gyro_raw, accel_raw, k_uptime_get_32(), 0u);
+            ImuServicePublish(k_uptime_get_32(), 0u);
+#endif
             k_msleep(2);
             continue;
         }
@@ -595,7 +600,12 @@ void ImuFusionTask(void const *pvParameters)
         for (int i = 0; i < 3; ++i) InsGyro[i] += InsGyroOffset[i];
         ImuHeaterUpdate(InsTemp);
         const uint32_t now_ms = k_uptime_get_32();
+#if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY) && ROBOT_TASK_BUILD_IMU
+        ImuServiceUpdate(gyro_raw, accel_raw, now_ms, 1u);
+        if (!ImuOutputHeld) ImuGyroCalibrationUpdate(gyro_raw, accel_raw, now_ms);
+#else
         ImuGyroCalibrationUpdate(gyro_raw, accel_raw, now_ms);
+#endif
 #if defined(CONFIG_ARBATOS_PREFLIGHT_ONLY)
         if (offsetQueued == 0u && ins_is_gyro_boot_calibrated()) {
             ImuCalStoreQueue(InsGyroOffset, InsTemp);
@@ -611,6 +621,14 @@ void ImuFusionTask(void const *pvParameters)
         for (int i = 0; i < 4; ++i) InsQuat[i] = InsMahony.quat[i];
         ImuEulerUpdate();
         InsSnapshotPublishCurrent(now_ms, InsTemp);
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+        /* 只有本轮读取成功才更新离线检测，失败路径不续期。 */
+        DetectHook(BOARD_GYRO_TOE);
+        DetectHook(BOARD_ACCEL_TOE);
+#endif
+#if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY) && ROBOT_TASK_BUILD_IMU
+        ImuServicePublish(now_ms, 1u);
+#endif
 #if defined(CONFIG_ARBATOS_BENCH_TELEMETRY)
         /* 延后打印，采样线程不等待串口；角速度/角度用微弧度，保留零漂分辨率。 */
         static uint32_t lastBenchMs;

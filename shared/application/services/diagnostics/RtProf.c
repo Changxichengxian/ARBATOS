@@ -86,6 +86,13 @@ static const RtProfDesc sRtProfDesc[RtProfCount] = {
      0u,
      "prof.WatchTaskBeat",
      ROBOT_PROFILE_WATCH_TASK_BEAT_BUDGET_US},
+    {RtProfShootLoop,
+     (uint8_t)ROBOT_TASK_MODULE_SHOOT_RM,
+     (uint8_t)ROBOT_TASK_MODULE_NONE,
+     (uint8_t)RtProfKindLoop,
+     (uint8_t)RT_PROF_FAST_PATH,
+     "prof.ShootControlLoop",
+     ROBOT_PROFILE_SHOOT_CONTROL_BUDGET_US},
 };
 
 static uint8_t RtProfIdValid(RtProfId id)
@@ -106,6 +113,7 @@ static RtProfStats sRtProf[RtProfCount] = {
     {0u, 0u, 0u, 0u, ROBOT_PROFILE_SDLOG_BLOCK_WRITE_BUDGET_US, 0u},
     {0u, 0u, 0u, 0u, ROBOT_PROFILE_SDLOG_SYNC_BUDGET_US, 0u},
     {0u, 0u, 0u, 0u, ROBOT_PROFILE_WATCH_TASK_BEAT_BUDGET_US, 0u},
+    {0u, 0u, 0u, 0u, ROBOT_PROFILE_SHOOT_CONTROL_BUDGET_US, 0u},
 };
 
 #endif
@@ -152,6 +160,8 @@ uint32_t RtProfPeriodMs(RtProfId id)
         return (uint32_t)RobotProfileCanCommandTxPeriodMs();
     case RtProfWatchBeat:
         return (uint32_t)ROBOT_PROFILE_WATCH_TASK_BEAT_MIN_PERIOD_MS;
+    case RtProfShootLoop:
+        return (uint32_t)RobotProfileShootControlPeriodMs();
     default:
         return 0u;
     }

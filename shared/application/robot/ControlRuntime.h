@@ -37,6 +37,8 @@ const ControlController *ControlRuntimeController(uint8_t index);
 ControlResult ControlRuntimeStartDefaults(void);
 ControlResult ControlRuntimeRunDomain(ControlDomain domain);
 uint16_t ControlRuntimePeriodMs(ControlDomain domain);
+/* 用实际发布命令确认机构仍可运行；不代表已完成瞄准或机械限位标定。 */
+uint8_t ControlRuntimeOutputReady(ControlDomain domain, uint32_t maxAgeMs);
 
 #ifdef __cplusplus
 }

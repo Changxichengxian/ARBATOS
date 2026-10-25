@@ -1,0 +1,624 @@
+/*
+ * SPDX-FileCopyrightText: 2026 陈轩 <2811158416@qq.com>
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * First published in this repository: 2026-04-06
+ * Use of this file is governed by the LICENSE file in the repository root.
+ */
+
+
+
+#include "DetectTask.h"
+#include "DetectCommon.h"
+#include "cmsis_os.h"
+#include "RobotConfig.h"
+#include "Watch.h"
+#include "ChassisState.h"
+#include "GimbalState.h"
+#include "ShootState.h"
+#include "ManualInputSnapshot.h"
+#include "SdLog.h"
+#include "SdCard.h"
+#include "BspBuzzer.h"
+#include "CpuUsage.h"
+#include "HostLinkTask.h"
+#include "RobotMode.h"
+#include <string.h>
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "main.h"
+
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
+#include "GimbalBehaviour.h"
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
+#include "ChassisBehaviour.h"
+#endif
+#if WATCH_ENABLE_SHOOT_RM
+#include "Shoot.h"
+#endif
+
+#if INCLUDE_uxTaskGetStackHighWaterMark && (WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL)
+extern uint32_t GimbalHighWater;
+#endif
+#if INCLUDE_uxTaskGetStackHighWaterMark && WATCH_ENABLE_LOCOMOTION_CLASSIC
+extern uint32_t ChassisHighWater;
+#endif
+#if INCLUDE_uxTaskGetStackHighWaterMark && ROBOT_TASK_BUILD_CALIBRATION
+extern uint32_t CalibrateTaskStack;
+#endif
+
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
+extern volatile uint32_t GimbalLoopCounter;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
+extern volatile uint32_t ChassisLoopCounter;
+extern ChassisBehaviour ChassisBehaviourMode;
+#endif
+
+#define DETECT_LOG_PERIOD_MS 1000u
+#define SYS_STATS_PERIOD_MS 250u
+
+
+/**
+  * @brief          init Detect working state and configured timing.
+  * @param[in]      time: system time
+  * @retval         none
+  */
+/**
+  * @brief          初始化error_list,赋值 offline_time, online_time, priority
+  * @param[in]      time:系统时间
+  * @retval         none
+  */
+static void DetectInit(uint32_t time);
+
+
+
+
+typedef struct
+{
+    uint8_t fromIsr;
+    UBaseType_t savedMask;
+} DetectCriticalState;
+
+static DetectRuntime g_detect;
+static const DetectConfig *const DetectCfg = &g_config.detect;
+static ManualInputSnapshot s_control_summary_manual_input;
+
+
+#if INCLUDE_uxTaskGetStackHighWaterMark
+uint32_t DetectTaskStack;
+#endif
+
+static DetectCriticalState DetectEnterCritical(void)
+{
+    DetectCriticalState state;
+
+    state.fromIsr = (__get_IPSR() != 0U) ? 1u : 0u;
+    state.savedMask = 0u;
+    if (state.fromIsr != 0u)
+    {
+        state.savedMask = taskENTER_CRITICAL_FROM_ISR();
+    }
+    else
+    {
+        taskENTER_CRITICAL();
+    }
+    return state;
+}
+
+static void DetectExitCritical(DetectCriticalState state)
+{
+    if (state.fromIsr != 0u)
+    {
+        taskEXIT_CRITICAL_FROM_ISR(state.savedMask);
+    }
+    else
+    {
+        taskEXIT_CRITICAL();
+    }
+}
+
+static void DetectRefresh(uint32_t nowMs)
+{
+    for (uint8_t toe = 0u; toe < (uint8_t)DETECT_ERROR_COUNT; toe++)
+    {
+        DetectReceiptFact fact;
+        DetectCriticalState critical = DetectEnterCritical();
+        DetectCommonTakeFact(g_detect.receipt, &fact, (uint8_t)DETECT_ERROR_COUNT, toe);
+        DetectExitCritical(critical);
+        DetectCommonRefreshOne(&g_detect.working[toe], &fact, nowMs);
+    }
+}
+
+static void DetectPublish(uint32_t nowMs)
+{
+    const uint8_t nextIndex = (uint8_t)(g_detect.activeIndex ^ 1u);
+    uint32_t nextSeq = g_detect.publishSeq + 1u;
+    if (nextSeq == 0u)
+    {
+        nextSeq = 1u;
+    }
+    DetectCommonPublish(&g_detect.snapshot[nextIndex],
+                        g_detect.working,
+                        (uint8_t)DETECT_ERROR_COUNT,
+                        nowMs,
+                        nextSeq);
+    g_detect.publishSeq = nextSeq;
+    DetectCriticalState critical = DetectEnterCritical();
+    g_detect.activeIndex = nextIndex;
+    DetectExitCritical(critical);
+}
+
+static void sdlog_pack_detect_summary(sdlog_detect_summary_t *out, uint8_t display_toe)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    memset(out, 0, sizeof(*out));
+    out->display_toe = (display_toe < DETECT_ERROR_COUNT) ? display_toe : 0xFFu;
+
+    const uint8_t n = (uint8_t)DETECT_ERROR_COUNT;
+    for (uint8_t i = 0u; i < n; i++)
+    {
+        const DetectError *e = &g_detect.working[i];
+        const uint16_t bit = (uint16_t)(1u << i);
+
+        if (e->enable != 0u)
+        {
+            out->enable_mask |= bit;
+        }
+        if (e->is_lost != 0u)
+        {
+            out->lost_mask |= bit;
+            if (out->lost_count < 0xFFu)
+            {
+                out->lost_count++;
+            }
+        }
+        if (e->data_is_error != 0u)
+        {
+            out->data_error_mask |= bit;
+            if (out->data_error_count < 0xFFu)
+            {
+                out->data_error_count++;
+            }
+        }
+        if (e->error_exist != 0u)
+        {
+            out->error_exist_mask |= bit;
+            if (out->error_count < 0xFFu)
+            {
+                out->error_count++;
+            }
+        }
+    }
+}
+
+void HealthMonitorTask(void const *pvParameters)
+{
+    DetectTask(pvParameters);
+}
+
+static void sdlog_pack_control_summary(sdlog_control_summary_t *out)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    memset(out, 0, sizeof(*out));
+    if (ManualInputSnapshotRead(&s_control_summary_manual_input) != 0u)
+    {
+        out->manual_source = (s_control_summary_manual_input.online != 0u) ?
+            s_control_summary_manual_input.activeSource :
+            MANUAL_INPUT_SRC_AUTO;
+        out->rc_s0 = (int8_t)s_control_summary_manual_input.manual.rc.s[0];
+        out->rc_s1 = (int8_t)s_control_summary_manual_input.manual.rc.s[1];
+        for (uint8_t i = 0u; i < 4u; i++)
+        {
+            out->rc_ch[i] = s_control_summary_manual_input.manual.rc.ch[i];
+        }
+    }
+    /* 直接读取控制状态快照，关闭调试器镜像后日志仍保留真实数值。 */
+    static union
+    {
+        ChassisState chassis;
+        GimbalState gimbal;
+        ShootState shoot;
+    } state;
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
+    if (ChassisStateRead(&state.chassis) != 0u && state.chassis.valid != 0u)
+    {
+        out->ChassisMode = state.chassis.mode;
+        out->ChassisVxSet = state.chassis.vx_set;
+        out->ChassisVySet = state.chassis.vy_set;
+        out->ChassisWzSet = state.chassis.wz_set;
+        out->ChassisVx = state.chassis.vx;
+        out->ChassisVy = state.chassis.vy;
+        out->ChassisWz = state.chassis.wz;
+    }
+#endif
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
+    if (GimbalStateRead(&state.gimbal) != 0u && state.gimbal.valid != 0u)
+    {
+        const fp32 rad2deg = 57.29577951308232f;
+        if (state.gimbal.yaw.valid != 0u)
+        {
+            out->yaw_mode = state.gimbal.yaw.motor_mode;
+            out->yaw_set_deg = state.gimbal.yaw.angle_set * rad2deg;
+            out->yaw_deg = state.gimbal.yaw.angle * rad2deg;
+            out->yaw_current = state.gimbal.yaw.given_current;
+        }
+        if (state.gimbal.pitch.valid != 0u)
+        {
+            out->pitch_mode = state.gimbal.pitch.motor_mode;
+            out->pitch_set_deg = state.gimbal.pitch.angle_set * rad2deg;
+            out->pitch_deg = state.gimbal.pitch.angle * rad2deg;
+            out->pitch_current = state.gimbal.pitch.given_current;
+        }
+    }
+#endif
+#if WATCH_ENABLE_SHOOT_RM
+    if (ShootStateRead(&state.shoot) != 0u && state.shoot.valid != 0u)
+    {
+        out->ShootMode = state.shoot.mode;
+        out->trigger_current = state.shoot.given_current;
+        out->fric_speed_set_rpm = (int16_t)state.shoot.fric_speed_set;
+    }
+#endif
+}
+
+static void sdlog_emit_event(uint16_t event_id, uint16_t arg0_u16, uint32_t arg1_u32, uint32_t arg2_u32)
+{
+    sdlog_event_t evt = {0};
+    evt.event_id = event_id;
+    evt.arg0_u16 = arg0_u16;
+    evt.arg1_u32 = arg1_u32;
+    evt.arg2_u32 = arg2_u32;
+    SdLogWrite(SDLOG_TAG_EVENT, &evt, (uint16_t)sizeof(evt));
+}
+
+/**
+  * @brief          detect task
+  * @param[in]      pvParameters: NULL
+  * @retval         none
+  */
+/**
+  * @brief          检测任务
+  * @param[in]      pvParameters: NULL
+  * @retval         none
+  */
+void DetectTask(void const *pvParameters)
+{
+    static uint32_t system_time;
+    system_time = xTaskGetTickCount();
+    //init,初始化
+    DetectInit(system_time);
+    //wait a time.空闲一段时间
+    vTaskDelay(DETECT_TASK_INIT_TIME);
+    CpuUsageInit();
+    (void)CpuUsageGetPermille();
+
+    static sdlog_detect_summary_t DetectLog;
+    static uint8_t toe_last_lost[DETECT_ERROR_COUNT] = {0};
+    static uint8_t toe_last_data_err[DETECT_ERROR_COUNT] = {0};
+    static uint8_t ConfigBuf[sizeof(sdlog_config_header_t) + sizeof(g_config)];
+
+    uint8_t sd_mounted_last = (uint8_t)SdcardIsMounted();
+    uint8_t ConfigLogged = 0u;
+    uint32_t sdlog_dropped_last = 0u;
+    uint32_t last_sys_stats_tick = system_time;
+    uint32_t last_bsp_cfg_tick = system_time;
+    uint32_t last_log_snapshot_tick = system_time;
+
+    uint8_t run_variant_last = (uint8_t)robot_mode_variant();
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
+    uint8_t GimbalBehaviourLast = (uint8_t)GimbalBehaviourWatch;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
+    uint8_t ChassisBehaviourLast = (uint8_t)ChassisBehaviourMode;
+#endif
+#if WATCH_ENABLE_SHOOT_RM
+    const ShootControl *ShootWatch = get_shoot_control_point();
+    uint8_t ShootModeLast = (ShootWatch != NULL) ? (uint8_t)ShootWatch->mode : 0u;
+#endif
+    TickType_t last_wake = xTaskGetTickCount();
+
+    for (uint8_t i = 0u; i < (uint8_t)(sizeof(toe_last_lost) / sizeof(toe_last_lost[0])); i++)
+    {
+        toe_last_lost[i] = (uint8_t)g_detect.working[i].is_lost;
+        toe_last_data_err[i] = (uint8_t)g_detect.working[i].data_is_error;
+    }
+
+    while (1)
+    {
+        static uint8_t error_num_display = 0;
+        system_time = xTaskGetTickCount();
+
+        error_num_display = DETECT_ERROR_COUNT;
+        g_detect.working[DETECT_ERROR_COUNT].is_lost = 0;
+        g_detect.working[DETECT_ERROR_COUNT].error_exist = 0;
+
+        DetectRefresh(system_time);
+
+        for (uint8_t i = 0u; i < (uint8_t)DETECT_ERROR_COUNT; i++)
+        {
+            if (g_detect.working[i].enable == 0u || g_detect.working[i].error_exist == 0u)
+            {
+                continue;
+            }
+
+            g_detect.working[DETECT_ERROR_COUNT].error_exist = 1u;
+            if (g_detect.working[i].is_lost != 0u)
+            {
+                g_detect.working[DETECT_ERROR_COUNT].is_lost = 1u;
+            }
+            if (g_detect.working[i].priority > g_detect.working[error_num_display].priority)
+            {
+                error_num_display = i;
+            }
+        }
+        DetectPublish(system_time);
+
+        // Edge-triggered events for link/bus health.
+        for (uint8_t i = 0u; i < (uint8_t)(sizeof(toe_last_lost) / sizeof(toe_last_lost[0])); i++)
+        {
+            const uint8_t lost_now = (uint8_t)g_detect.working[i].is_lost;
+            const uint8_t err_now = (uint8_t)g_detect.working[i].data_is_error;
+
+            if (lost_now && !toe_last_lost[i])
+            {
+                sdlog_emit_event(SDLOG_EVT_TOE_LOST,
+                                 i,
+                                 g_detect.working[i].new_time,
+                                 g_detect.working[i].set_offline_time);
+            }
+            else if (!lost_now && toe_last_lost[i])
+            {
+                sdlog_emit_event(SDLOG_EVT_TOE_RECOVER, i, g_detect.working[i].new_time, 0u);
+            }
+
+            if (err_now && !toe_last_data_err[i])
+            {
+                sdlog_emit_event(SDLOG_EVT_TOE_DATA_ERROR, i, g_detect.working[i].new_time, 0u);
+            }
+
+            toe_last_lost[i] = lost_now;
+            toe_last_data_err[i] = err_now;
+        }
+
+        if ((uint32_t)(system_time - last_log_snapshot_tick) >= (uint32_t)pdMS_TO_TICKS(DETECT_LOG_PERIOD_MS))
+        {
+            last_log_snapshot_tick = system_time;
+
+            sdlog_control_summary_t control_log = {0};
+            sdlog_pack_control_summary(&control_log);
+            SdLogWrite(SDLOG_TAG_CONTROL_SUMMARY, &control_log, (uint16_t)sizeof(control_log));
+
+            sdlog_pack_detect_summary(&DetectLog, error_num_display);
+            SdLogWrite(SDLOG_TAG_DETECT_STATUS, &DetectLog, (uint16_t)sizeof(DetectLog));
+        }
+
+        // Periodic "application -> BSP" config sync (do not rely on SD log state).
+        if ((uint32_t)(system_time - last_bsp_cfg_tick) >= (uint32_t)pdMS_TO_TICKS(1000u))
+        {
+            last_bsp_cfg_tick = system_time;
+
+            uint8_t buz_en = 0u;
+            uint32_t carrier_min_hz = 0u;
+            uint16_t gain_q8 = 0u;
+            taskENTER_CRITICAL();
+            buz_en = g_config.buzzer.enable;
+            carrier_min_hz = g_config.buzzer.pcm.carrier_min_hz;
+            gain_q8 = g_config.buzzer.pcm.gain_q8;
+            taskEXIT_CRITICAL();
+
+            BuzzerSetEnable(buz_en);
+            BuzzerPcmSetCarrierMinHz(carrier_min_hz);
+            BuzzerPcmSetStreamGainQ8(gain_q8);
+        }
+
+        const uint8_t run_variant_now = (uint8_t)robot_mode_variant();
+        if (run_variant_now != run_variant_last)
+        {
+            sdlog_emit_event(SDLOG_EVT_TEST_MODE, run_variant_now, run_variant_last, 0u);
+            run_variant_last = run_variant_now;
+        }
+
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
+        const uint8_t GimbalBehaviourNow = (uint8_t)GimbalBehaviourWatch;
+        if (GimbalBehaviourNow != GimbalBehaviourLast)
+        {
+            sdlog_emit_event(SDLOG_EVT_GIMBAL_BEHAVIOUR, GimbalBehaviourNow, GimbalBehaviourLast, 0u);
+            GimbalBehaviourLast = GimbalBehaviourNow;
+        }
+#endif
+
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
+        const uint8_t ChassisBehaviourNow = (uint8_t)ChassisBehaviourMode;
+        if (ChassisBehaviourNow != ChassisBehaviourLast)
+        {
+            sdlog_emit_event(SDLOG_EVT_CHASSIS_BEHAVIOUR, ChassisBehaviourNow, ChassisBehaviourLast, 0u);
+            ChassisBehaviourLast = ChassisBehaviourNow;
+        }
+#endif
+
+#if WATCH_ENABLE_SHOOT_RM
+        ShootWatch = get_shoot_control_point();
+        const uint8_t ShootModeNow = (ShootWatch != NULL) ? (uint8_t)ShootWatch->mode : 0u;
+        if (ShootModeNow != ShootModeLast)
+        {
+            sdlog_emit_event(SDLOG_EVT_SHOOT_MODE, ShootModeNow, ShootModeLast, 0u);
+            ShootModeLast = ShootModeNow;
+        }
+#endif
+
+        // Log configuration snapshot once after boot (when SD log is active).
+        if (!ConfigLogged && SdLogIsActive())
+        {
+            const uint16_t cfg_size = (uint16_t)sizeof(ConfigBuf);
+            taskENTER_CRITICAL();
+            sdlog_config_header_t *cfg_hdr = (sdlog_config_header_t *)ConfigBuf;
+            cfg_hdr->version = SDLOG_CONFIG_VERSION;
+            cfg_hdr->header_size = (uint16_t)sizeof(*cfg_hdr);
+            cfg_hdr->ConfigSize = (uint16_t)sizeof(g_config);
+            cfg_hdr->flags = 0u;
+            memcpy(ConfigBuf + sizeof(*cfg_hdr), &g_config, sizeof(g_config));
+            taskEXIT_CRITICAL();
+            SdLogWrite(SDLOG_TAG_CONFIG, ConfigBuf, cfg_size);
+            ConfigLogged = 1u;
+        }
+
+        // Periodic system resource / realtime stats.
+        if ((uint32_t)(system_time - last_sys_stats_tick) >= (uint32_t)pdMS_TO_TICKS(SYS_STATS_PERIOD_MS))
+        {
+            last_sys_stats_tick = system_time;
+
+            const uint8_t sd_mounted_now = (uint8_t)SdcardIsMounted();
+            if (sd_mounted_now != sd_mounted_last)
+            {
+                sd_mounted_last = sd_mounted_now;
+                sdlog_emit_event(SDLOG_EVT_SD_CARD_MOUNT, sd_mounted_now, system_time, 0u);
+            }
+
+            SdLogStats s = {0};
+            SdLogGetStats(&s);
+            sdlog_image_link_stats_t image_stats = {0};
+            ImageRemoteLinkGetStats(&image_stats);
+
+            sdlog_sys_stats_t sys = {0};
+            sys.sd_mounted = sd_mounted_now;
+            sys.sdlog_active = s.active;
+            sys.sdlog_dropped = s.dropped;
+            sys.sdlog_ring_used = s.ring_used;
+            sys.sdlog_ring_free = s.ring_free;
+            sys.sdlog_bytes_flushed = s.bytes_flushed;
+            sys.sdlog_last_sync_ms = s.last_sync_ms;
+            sys.sdlog_last_error = s.last_error;
+
+            sys.heap_free = (uint32_t)xPortGetFreeHeapSize();
+            sys.heap_ever_free = (uint32_t)xPortGetMinimumEverFreeHeapSize();
+
+#if INCLUDE_uxTaskGetStackHighWaterMark
+            DetectTaskStack = uxTaskGetStackHighWaterMark(NULL);
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
+            sys.stack_gimbal = GimbalHighWater;
+#elif WATCH_ENABLE_CONTROL_GIMBAL && ROBOT_WATCH_FULL_ENABLED
+            sys.stack_gimbal = g_watch.rtos.stack_gimbal;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
+            sys.stack_chassis = ChassisHighWater;
+#elif WATCH_ENABLE_CONTROL_CHASSIS && ROBOT_WATCH_FULL_ENABLED
+            sys.stack_chassis = g_watch.rtos.stack_chassis;
+#endif
+            sys.stack_detect = DetectTaskStack;
+#if ROBOT_TASK_BUILD_CALIBRATION
+            sys.stack_calibrate = CalibrateTaskStack;
+#endif
+#endif
+
+#if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
+            sys.GimbalLoopCnt = GimbalLoopCounter;
+#elif WATCH_ENABLE_CONTROL_GIMBAL && ROBOT_WATCH_FULL_ENABLED
+            sys.GimbalLoopCnt = g_watch.rtos.task.GimbalControlTask.beat_count;
+#endif
+#if WATCH_ENABLE_LOCOMOTION_CLASSIC
+            sys.ChassisLoopCnt = ChassisLoopCounter;
+#elif WATCH_ENABLE_CONTROL_CHASSIS && ROBOT_WATCH_FULL_ENABLED
+            sys.ChassisLoopCnt = g_watch.rtos.task.ChassisControlTask.beat_count;
+#endif
+            sys.cpu_load_permille = CpuUsageGetPermille();
+
+            SdLogWrite(SDLOG_TAG_SYS_STATS, &sys, (uint16_t)sizeof(sys));
+            SdLogWrite(SDLOG_TAG_IMAGE_LINK_STATS, &image_stats, (uint16_t)sizeof(image_stats));
+
+            if (s.dropped != sdlog_dropped_last)
+            {
+                const uint32_t delta = s.dropped - sdlog_dropped_last;
+                sdlog_dropped_last = s.dropped;
+                sdlog_emit_event(SDLOG_EVT_SDLOG_DROPPED, 0u, s.dropped, delta);
+            }
+        }
+
+        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(DETECT_COMMON_RUNTIME_POLL_MS));
+    }
+}
+
+
+/**
+  * @brief          get toe error status
+  * @param[in]      toe: table of equipment
+  * @retval         true (error) or false (no error)
+  */
+/**
+  * @brief          获取设备对应的错误状态
+  * @param[in]      toe:设备目录
+  * @retval         true(错误) 或者false(没错误)
+  */
+bool_t DetectIsError(uint8_t toe)
+{
+    bool_t result;
+    DetectCriticalState critical = DetectEnterCritical();
+    result = DetectCommonSnapshotIsError(&g_detect.snapshot[g_detect.activeIndex],
+                                         (uint8_t)DETECT_ERROR_COUNT,
+                                         toe);
+    DetectExitCritical(critical);
+    return result;
+}
+
+/**
+  * @brief          record the time
+  * @param[in]      toe: table of equipment
+  * @retval         none
+  */
+/**
+  * @brief          记录时间
+  * @param[in]      toe:设备目录
+  * @retval         none
+  */
+void DetectHook(uint8_t toe)
+{
+    DetectCriticalState critical = DetectEnterCritical();
+    const uint32_t nowMs = (critical.fromIsr != 0u) ?
+                               (uint32_t)xTaskGetTickCountFromISR() :
+                               (uint32_t)xTaskGetTickCount();
+    DetectCommonHook(g_detect.receipt, (uint8_t)DETECT_ERROR_COUNT, toe, nowMs);
+    DetectExitCritical(critical);
+}
+
+uint8_t DetectSnapshotRead(DetectSnapshot *out)
+{
+    uint8_t valid;
+    DetectCriticalState critical = DetectEnterCritical();
+    valid = DetectCommonSnapshotRead(&g_detect.snapshot[g_detect.activeIndex], out);
+    DetectExitCritical(critical);
+    return valid;
+}
+
+uint8_t DetectSummaryRead(DetectSummary *out)
+{
+    uint8_t valid;
+    DetectCriticalState critical = DetectEnterCritical();
+    valid = DetectCommonSummaryRead(&g_detect.snapshot[g_detect.activeIndex], out);
+    DetectExitCritical(critical);
+    return valid;
+}
+
+static void DetectInit(uint32_t time)
+{
+    if (g_detect.writerInitialized != 0u)
+    {
+        return;
+    }
+
+    DetectCommonInitFromConfig(g_detect.working, (uint8_t)DETECT_ERROR_COUNT, DetectCfg, time);
+    DetectCriticalState critical = DetectEnterCritical();
+    DetectCommonSeedBaseline(g_detect.receipt, (uint8_t)DETECT_ERROR_COUNT, time);
+    DetectExitCritical(critical);
+    g_detect.writerInitialized = 1u;
+    DetectPublish(time);
+}

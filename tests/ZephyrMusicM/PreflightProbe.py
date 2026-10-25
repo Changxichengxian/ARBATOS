@@ -14,6 +14,10 @@ p.add_argument("--elf", type=Path, required=True)
 p.add_argument("--path", default="0:/")
 p.add_argument("--output", type=Path, required=True)
 p.add_argument("--stable-link", action="store_true")
+p.add_argument("--probe", default="486655686570")
+p.add_argument("--frequency", type=int, default=1000000)
+p.add_argument("--awake-requests", action="store_true",
+               help="仅保持唤醒且关闭数据缓存的准备版：运行中提交请求，不暂停写卡线程")
 a = p.parse_args()
 with a.elf.open("rb") as f:
     elf = ELFFile(f)
@@ -27,10 +31,16 @@ with a.elf.open("rb") as f:
             break
     else:
         raise RuntimeError("preflight code not found in ELF")
+if a.awake_requests:
+    config = (a.elf.parent / ".config").read_text(encoding="utf-8").splitlines()
+    if ('CONFIG_ARBATOS_PREFLIGHT_AWAKE=y' not in config or
+            'CONFIG_DCACHE=y' in config or 'z_arm_on_enter_cpu_idle' not in symbols):
+        raise RuntimeError("awake requests require the uncached, awake preflight image")
 a.output.parent.mkdir(parents=True, exist_ok=True)
 session = ConnectHelper.session_with_chosen_probe(
-    unique_id="486655686570", target_override="stm32h723xx", frequency=1000000,
+    unique_id=a.probe, target_override="stm32h723xx", frequency=a.frequency,
     options={"connect_mode": "attach", "resume_on_disconnect": False,
+             "cache.enable_memory": False, "cache.enable_register": False,
              "cmsis_dap.limit_packets": True,
              **({"cmsis_dap.deferred_transfers": False,
                  "user_script": str(Path(__file__).with_name("ReceiveDebug.py"))}
@@ -63,7 +73,8 @@ with session:
             raise ValueError("path too long")
         # 静态准备固件没有电机任务。短暂停核后写请求，避免运行/睡眠切换
         # 期间访问系统SRAM；保持连接，写完立即继续运行以处理请求。
-        target.halt()
+        if not a.awake_requests:
+            target.halt()
         try:
             if command == 6:
                 now = datetime.now().astimezone()
@@ -76,7 +87,8 @@ with session:
             target.write32(addr("MPreflightCommand"), command)
             target.flush()
         finally:
-            target.resume()
+            if not a.awake_requests:
+                target.resume()
         deadline = time.monotonic() + 10
         while target.read32(addr("MPreflightCommand")):
             if time.monotonic() > deadline:
@@ -94,6 +106,8 @@ with session:
                 block = request(3, offset)
                 out.write(block)
                 offset += len(block)
+                if offset % 262144 == 0:
+                    print(f"SD read: {offset} bytes", flush=True)
                 if len(block) < symbols["MPreflightData"][1]:
                     break
         print(json.dumps({"path": a.path, "bytes": offset, "output": str(a.output)}))

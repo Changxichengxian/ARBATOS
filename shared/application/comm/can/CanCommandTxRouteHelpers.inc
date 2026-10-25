@@ -679,9 +679,12 @@ static void CanTxRefreshRmGroup(uint8_t bus, uint16_t group_id,
         {
             continue;
         }
-        s_can_tx_cmd_cache_valid[id] = LowCmdGetMotorStamped(id,
-                                                            &s_can_tx_cmd_cache[id],
-                                                            &s_can_tx_owner_cache[id]);
+        if (s_can_tx_cmd_cache_valid[id] == 0u)
+        {
+            s_can_tx_cmd_cache_valid[id] = LowCmdGetMotorStamped(id,
+                                                                &s_can_tx_cmd_cache[id],
+                                                                &s_can_tx_owner_cache[id]);
+        }
         s_can_tx_cmd_expired[id] = 0u;
         s_can_tx_cmd_unlock_blocked[id] = 0u;
         /* 复用原有过期、解锁屏障、权限和协议限幅处理，不放行旧命令。 */
@@ -694,32 +697,40 @@ static void CanTxRefreshRmGroup(uint8_t bus, uint16_t group_id,
 static void CanTxExecInstances(uint8_t output_locked)
 {
     sdlog_actuator_current_t log = {0};
-    const uint8_t count = MotorRouteCount();
+    uint8_t active_count = 0u;
+    uint8_t snapshot_count = 0u;
     uint8_t start_index = 0u;
 
     CanTxClearRmFrames();
-    CanTxCacheLowcmd();
-
-    if (count != 0u)
+    CanTxPrepareRouteCache();
+    for (uint8_t i = 0u; i < s_can_tx_route_count; i++)
     {
-        start_index = (uint8_t)(s_can_tx_route_start_index % count);
-        s_can_tx_route_start_index = (uint8_t)((start_index + 1u) % count);
-    }
+        const MotorRoute *route = s_can_tx_routes[i];
 
-    for (uint8_t i = 0u; i < count; i++)
-    {
-        const uint8_t route_index = (uint8_t)((start_index + i) % count);
-        const MotorRoute *route = MotorRouteGet(route_index);
-        uint8_t allowed;
-
-        if (route == NULL || route->enabled == 0u)
-        {
-            continue;
-        }
         if (CanTxRouteRoleActive(route) == 0u)
         {
             continue;
         }
+        s_can_tx_active_routes[active_count++] = route;
+        if (route->transport != (uint8_t)MotorTransportCAN || route->isRmGroup == 0u)
+        {
+            s_can_tx_cmd_cache_ids[snapshot_count++] = route->motorId;
+        }
+    }
+    CanTxCacheLowcmd(s_can_tx_cmd_cache_ids, snapshot_count);
+
+    if (active_count != 0u)
+    {
+        start_index = (uint8_t)(s_can_tx_route_start_index % active_count);
+        s_can_tx_route_start_index = (uint8_t)((start_index + 1u) % active_count);
+    }
+
+    for (uint8_t i = 0u; i < active_count; i++)
+    {
+        const uint8_t route_index = (uint8_t)((start_index + i) % active_count);
+        const MotorRoute *route = s_can_tx_active_routes[route_index];
+        uint8_t allowed;
+
         if (route->transport == (uint8_t)MotorTransportCAN && route->isRmGroup != 0u)
         {
             /* 这里只登记槽位；命令在该组真正发送前读取，避免遍历期间的正常更新被当作失权。 */

@@ -145,6 +145,12 @@ static WatchTaskDiagEntry *WatchTaskDiagGet(WatchTaskId task_id)
 #else
         return NULL;
 #endif
+    case WATCH_TASK_SHOOT_CONTROL:
+#if WATCH_ENABLE_SHOOT_RM
+        return &g_watch.rtos.task.ShootControlTask;
+#else
+        return NULL;
+#endif
     default:
         return NULL;
     }

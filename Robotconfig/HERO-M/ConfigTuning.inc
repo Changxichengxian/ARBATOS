@@ -214,11 +214,12 @@
 
     .power =
         {
+            .limitMode = ChassisPowerLimitAuto, // 经典四轮底盘限功率策略
             .power_limit = 80.0f,                  // [161] 功率上限：裁判功率阈值，越大越易超限
             .warning_power = 40.0f,                // [162] 告警功率：超过开始线性降流
             .warning_power_buffer = 50.0f,         // [163] 缓冲阈值：缓冲能量低于此值强制限流
-            // 无裁判电流上限：调试用，防止失控。参考（粗略按裁判功率比例）：
-            // 40W≈18000，60W≈27000，80W≈36000，放开测试可用 64000
+            // 四轮命令刻度绝对值之和；36000 沿用调试值，不代表安培或瓦特。
+            // Auto 离线时使用，TotalCommand / ModelAndTotal 始终使用。
             .no_judge_total_current_limit = 36000.0f, // [164]
             .buffer_total_current_limit = 16000.0f,   // [165] 缓冲段电流：最低保底电流
             .power_total_current_limit = 20000.0f,    // [166] 正常段电流：在告警区间线性缩放

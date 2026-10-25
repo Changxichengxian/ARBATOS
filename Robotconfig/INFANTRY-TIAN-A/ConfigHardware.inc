@@ -26,5 +26,3 @@
             .trigger = {MOTOR_MODEL_2006, 7u, .can_bus = 2u},
             .arm = {0},
         },
-    // 参考车 0x211 是超级电容协议，不能当作本工程 0x212 功率计解析。
-    .powerMeter = {.enable = 0u},

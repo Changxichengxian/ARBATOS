@@ -36,7 +36,8 @@ class RobotConfigGenTest(unittest.TestCase):
             row("CONTROL_GIMBAL", 6, "Control", "CAN_COMMAND_TX|CAN_FEEDBACK_RX", "Control.h", "ControlGimbalTask"),
             row("IMU", 7, "Device", header="Imu.h", entry="ImuTask", priority="Realtime"),
             row("WHEELLEG_SERVO", 8, "Control", header="", entry="None"),
-            row("LOGGER", 9, header="Log.h", entry="LogTask", sm=768, so=384)]
+            row("LOGGER", 9, header="Log.h", entry="LogTask", sm=768, so=384),
+            row("SHOOT_RM", 23, "Control", "CAN_COMMAND_TX|CAN_FEEDBACK_RX", "ShootControlTask.h", "ShootControlTask")]
         self.catalog.write_text("\n".join(rows) + "\n" + extra, encoding="utf-8")
 
     def target(self, name, content=None):
@@ -77,8 +78,10 @@ max = 2.0
 ''', encoding="utf-8")
 
     def test_real_old_targets_keep_tasks_and_key_properties(self):
-        expected = {"HERO-M": {"RC_SBUS","HEALTH_MONITOR","SDLOG","BATTERY_MONITOR","REFEREE_RX","CLASSIC_CHASSIS","SINGLE_GIMBAL","CAN_COMMAND_TX","CAN_FEEDBACK_RX","IMU"}, "SENTINEL-M": {"RC_SBUS","HEALTH_MONITOR","SDLOG","HOST_LINK","CLASSIC_CHASSIS","DUAL_YAW_GIMBAL","CAN_COMMAND_TX","CAN_FEEDBACK_RX","IMU"}, "MINIWHEELEG-M": {"RC_SBUS","HEALTH_MONITOR","SDLOG","BATTERY_MONITOR","REFEREE_RX","WHEELLEG_MIT","CAN_COMMAND_TX","CAN_FEEDBACK_RX","IMU"}}
+        expected = {"HERO-M": {"RC_SBUS","ELRS_LINK","HEALTH_MONITOR","SDLOG","BATTERY_MONITOR","CLASSIC_CHASSIS","SINGLE_GIMBAL","CAN_COMMAND_TX","CAN_FEEDBACK_RX","IMU"}, "SENTINEL-M": {"RC_SBUS","HEALTH_MONITOR","SDLOG","HOST_LINK","CLASSIC_CHASSIS","DUAL_YAW_GIMBAL","CAN_COMMAND_TX","CAN_FEEDBACK_RX","IMU"}, "MINIWHEELEG-M": {"RC_SBUS","HEALTH_MONITOR","SDLOG","BATTERY_MONITOR","REFEREE_RX","WHEELLEG_MIT","CAN_COMMAND_TX","CAN_FEEDBACK_RX","IMU"}}
         for name, tasks in expected.items():
+            if name in {"HERO-M", "SENTINEL-M"}:
+                tasks.add("SHOOT_RM")
             rows = {x["symbol"]: x for x in GEN.resolve(REPO, name)["tasks"]}
             self.assertEqual(set(rows), tasks)
             self.assertEqual((rows["CAN_COMMAND_TX"]["stack_words"], rows["CAN_COMMAND_TX"]["priority"]), (512, "AboveNormal"))
@@ -106,6 +109,12 @@ max = 2.0
         self.assertEqual(Path(presets["path"]), canonical / "projects/CMakeUserPresets.json")
         self.assertEqual(presets["added"], ["new-local"])
 
+    def test_create_cleans_only_its_new_directory_when_candidate_is_invalid(self):
+        with self.assertRaisesRegex(GEN.ConfigError, "未支持"):
+            GEN.create_robot(self.root, "INVALID", "BASE", config_text='schema = 1\nboard = "bad"\nservices = []\n')
+        self.assertFalse((self.root / "Robotconfig/INVALID").exists())
+        self.assertTrue((self.root / "Robotconfig/BASE").is_dir())
+
     def test_controller_manifest_rejects_ambiguous_symbols_and_invalid_outputs(self):
         self.plugin()
         manifest = self.root / "shared/controllers/demo/Controller.toml"
@@ -130,6 +139,24 @@ max = 2.0
         for token, file in [("ROBOT_TASK_MODULE_RC", "RobotTargetProfile.inc"), ("ROBOT_TASK_BUILD_RC 1", "RobotTargetConfig.h"), ("ROBOT_RUNTIME_TASK(RC,", "RobotTargetTasks.inc")]:
             self.assertIn(token, (out / file).read_text(encoding="utf-8"))
 
+    def test_diagnostic_switches_default_off_and_follow_selection(self):
+        out = self.root / "diagnostic-out"
+        GEN.generate(self.root, self.resolve(), out)
+        self.assertIn("ROBOT_WATCH_FULL_ENABLED 0", (out / "RobotTargetConfig.h").read_text(encoding="utf-8"))
+        cmake = (out / "RobotTarget.cmake").read_text(encoding="utf-8")
+        self.assertIn('set(ARBATOS_TARGET_HAS_SDLOG "0")', cmake)
+        self.assertIn('set(ARBATOS_TARGET_WATCH_FULL "0")', cmake)
+        self.target("FULL", '''schema = 1
+board = "dm_mc02_h7"
+services = ["RC", "LOGGER"]
+[features]
+watch_full = true
+[build]
+sources = ["RobotConfig.c"]
+''')
+        GEN.generate(self.root, self.resolve("FULL"), out)
+        self.assertIn("ROBOT_WATCH_FULL_ENABLED 1", (out / "RobotTargetConfig.h").read_text(encoding="utf-8"))
+
     def test_unknown_and_duplicate_service(self):
         self.target("BAD", 'schema = 1\nboard = "dm_mc02_h7"\nservices = ["NOPE"]\n[build]\nsources = ["RobotConfig.c"]\n'); self.bad("NOPE")
         self.target("DUP", 'schema = 1\nboard = "dm_mc02_h7"\nservices = ["RC", "RC"]\n[build]\nsources = ["RobotConfig.c"]\n')
@@ -151,9 +178,30 @@ max = 2.0
         self.target("FEATURE", 'schema = 1\nboard = "dm_mc02_h7"\n[features]\nsubboard_music = "yes"\n[build]\nsources = ["RobotConfig.c"]\n')
         with self.assertRaisesRegex(GEN.ConfigError, "只能为 true/false"): self.resolve("FEATURE")
 
-    def test_shoot_requires_its_current_execution_task(self):
-        self.target("BAD", 'schema = 1\nboard = "dm_mc02_h7"\n[controllers.shoot]\ntype = "rm"\n[build]\nsources = ["RobotConfig.c"]\n')
-        self.bad("没有执行入口")
+    def test_shoot_has_independent_execution_task(self):
+        self.target("SHOOT", 'schema = 1\nboard = "dm_mc02_h7"\n[controllers.shoot]\ntype = "rm"\n[build]\nsources = ["RobotConfig.c"]\n')
+        target = self.resolve("SHOOT")
+        self.assertEqual({task["symbol"] for task in target["tasks"]},
+                         {"SHOOT_RM", "CAN_COMMAND_TX", "CAN_FEEDBACK_RX"})
+        out = self.root / "generated"
+        GEN.generate(self.root, target, out)
+        self.assertIn("ShootControlTask", (out / "RobotTargetTasks.inc").read_text(encoding="utf-8"))
+        header = (out / "RobotTargetConfig.h").read_text(encoding="utf-8")
+        self.assertEqual(header.count("#define ROBOT_TASK_BUILD_SHOOT_RM "), 1)
+
+    def test_real_generic_gimbal_can_combine_with_shoot(self):
+        text = (REPO / "Robotconfig/HERO-M/RobotConfig.toml").read_text(encoding="utf-8")
+        text = text.replace('[controllers.gimbal]\ntype = "single"',
+                            '[controllers.gimbal]\ntype = "speed_gimbal"\n'
+                            'motors = ["motor.yaw", "motor.pitch"]\nperiod_ms = 2')
+        target = GEN.resolve(REPO, "HERO-M", text)
+        selected = {task["symbol"] for task in target["tasks"]}
+        self.assertIn("CONTROL_GIMBAL", selected)
+        self.assertIn("SHOOT_RM", selected)
+        self.assertNotIn("SINGLE_GIMBAL", selected)
+        self.assertIn("shared/application/shoot/ShootControlTask.c", target["sources"])
+        with self.assertRaisesRegex(GEN.ConfigError, "20 ms"):
+            GEN.resolve(REPO, "HERO-M", text.replace("period_ms = 2", "period_ms = 21"))
 
     def test_catalog_duplicate_id_and_cycle(self):
         self.write_catalog(row("DUP", 1) + "\n")
@@ -225,6 +273,41 @@ sources = ["RobotConfig.c"]
         self.assertIn("ROBOT_TASK_STACK_RC 333u", header); self.assertIn("RobotModulePriorityHigh", header); self.assertIn("osPriorityHigh, 333u", runtime)
         stamp = (out / "RobotTargetConfig.h").stat().st_mtime_ns; time.sleep(.02); GEN.generate(self.root, self.resolve("OVERRIDE"), out)
         self.assertEqual(stamp, (out / "RobotTargetConfig.h").stat().st_mtime_ns)
+
+    def test_inactive_known_task_override_is_preserved_without_enabling_task(self):
+        disabled = '''schema = 1
+board = "dm_mc02_h7"
+services = ["RC"]
+[tasks.LOGGER]
+stack_words = 2048
+priority = "High"
+[build]
+sources = ["RobotConfig.c"]
+'''
+        self.target("NOLOG", disabled)
+        no_log = self.resolve("NOLOG")
+        self.assertNotIn("LOGGER", {row["symbol"] for row in no_log["tasks"]})
+        self.assertIn("stack_words = 2048", (self.root / "Robotconfig/NOLOG/RobotConfig.toml").read_text(encoding="utf-8"))
+        restored = disabled.replace('services = ["RC"]', 'services = ["RC", "LOGGER"]')
+        self.target("RESTORED", restored)
+        logger = next(row for row in self.resolve("RESTORED")["tasks"] if row["symbol"] == "LOGGER")
+        self.assertEqual((logger["stack_words"], logger["priority"]), (2048, "High"))
+
+    def test_inactive_task_override_rejects_unknown_or_invalid_values(self):
+        base = '''schema = 1
+board = "dm_mc02_h7"
+services = ["RC"]
+[tasks.%s]
+%s
+[build]
+sources = ["RobotConfig.c"]
+'''
+        self.target("UNKNOWN", base % ("MISSING", "stack_words = 512"))
+        self.bad("未知字段", "UNKNOWN")
+        self.target("RANGE", base % ("LOGGER", "stack_words = 1"))
+        self.bad("必须在", "RANGE")
+        self.target("PRIORITY", base % ("LOGGER", 'priority = "Turbo"'))
+        self.bad("未知优先级", "PRIORITY")
 
     def test_create_robot_copies_new_identity_and_safe_motor_mode(self):
         result = GEN.create_robot(self.root, "NEW", "BASE")

@@ -1,0 +1,30 @@
+# C 板新车模板；默认无电机输出，按实际装配修改后再启用。
+schema = 1
+board = "dji_c_f407"
+profile = "infantry"
+services = ["RC_SBUS", "HEALTH_MONITOR", "REFEREE_RX"]
+
+[controllers.chassis]
+type = "classic"
+
+[controllers.gimbal]
+type = "single"
+
+[controllers.shoot]
+type = "rm"
+
+[features]
+imu_mount = true
+watch_full = false
+
+# 日志按需启用；保留栈配置，打开 SDLOG 后自动生效。
+[tasks.SDLOG]
+stack_words = 2048
+
+[build]
+sources = ["RobotConfig.c", "DetectTask.c", "ArmMotorTable.c"]
+shared_sources = ["shared/application/comm/host/HostLinkTaskStub.c"]
+
+[ports]
+rc_sbus = "usart3"
+referee = "usart6"

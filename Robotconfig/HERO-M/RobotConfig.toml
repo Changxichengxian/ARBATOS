@@ -23,6 +23,7 @@ type = "rm"
 subboard_music = true
 imu_mount = true
 external_5v = true
+watch_full = false
 
 # 实机 SD 启动在 2 KiB 栈下触发保护异常；为文件系统调用保留余量。
 [tasks.SDLOG]

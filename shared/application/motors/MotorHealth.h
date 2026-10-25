@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#define MOTOR_HEALTH_MAX_MOTORS 18u
+#define MOTOR_HEALTH_MAX_MOTORS MotorCount
 #define MOTOR_HEALTH_AGE_UNKNOWN 0xFFFFFFFFu
 
 typedef enum
@@ -41,7 +41,7 @@ typedef struct
 } MotorHealthResult;
 
 /*
- * 固定 18 轴的结果约占 1 KiB，只供低频故障汇总、诊断和测试使用。
+ * 按当前车型的命令槽位预留结果，只供低频故障汇总、诊断和测试使用。
  * 1~3 ms 高频任务应逐轴使用 MotorHealthResult；确需批量时由模块持有静态实例，
  * 不要把本结构放进高频任务栈，也不要在高频循环反复清整块内存。
  */

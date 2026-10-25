@@ -31,7 +31,7 @@ static uint8_t last_can1ff_status;
 static uint8_t Locked, EmergencyValid = 1;
 static uint8_t Authorized[MotorCount];
 static unsigned Sent, Queued, Forced;
-static unsigned ScheduleDepth, RefreshEnabled, RevokeDuringRefresh, RouteAllowed = 1;
+static unsigned ScheduleDepth, RefreshEnabled, RevokeDuringRefresh, RouteAllowed = 1, CmdReadCount;
 static MotorRoute TestRoutes[2];
 static MotorCmd Latest[2];
 static struct { uint8_t bus, data[8]; uint16_t id; } Frames[32];
@@ -47,7 +47,7 @@ uint8_t LowCmdOutputSnapshotAuthorized(MotorId id, const MotorCmd *cmd, const Co
 static const MotorRoute *MotorRouteFindByMotor(MotorId id)
 { return RefreshEnabled && id < 2 ? &TestRoutes[id] : NULL; }
 uint8_t LowCmdGetMotorStamped(MotorId id, MotorCmd *cmd, ControlOutputStamp *owner)
-{ assert(ScheduleDepth == 1 && id < 2); *cmd = Latest[id]; memset(owner, 0, sizeof(*owner)); return 1; }
+{ assert(ScheduleDepth == 1 && id < 2); CmdReadCount++; *cmd = Latest[id]; memset(owner, 0, sizeof(*owner)); return 1; }
 static uint8_t CanTxRouteAllowed(const MotorRoute *route) { (void)route; return RouteAllowed; }
 static void CanTxProcessInstance(const MotorRoute *route, uint8_t allowed, sdlog_actuator_current_t *log);
 static void CanTxUpdateApplied(const MotorRoute *r, const MotorCmd *c, int16_t v, uint8_t f)
@@ -215,14 +215,18 @@ int main(void)
         TestRoutes[i] = (MotorRoute){.motorId = (MotorId)i, .bus = 2, .node = &freshNodes[i]};
         Latest[i] = (MotorCmd){.active=1, .mode=MotorModeCurrent, .seq=22, .current=(int16_t)(1200+i*400)};
         s_can_tx_cmd_cache[i] = Latest[i]; s_can_tx_cmd_cache[i].seq = 21;
-        Authorized[i] = s_can_tx_cmd_cache_valid[i] = 1;
+        Authorized[i] = 1; s_can_tx_cmd_cache_valid[i] = 0;
         assert(CanTxStoreRmCurrent(2, &freshNodes[i], 900, (MotorId)i));
         CanTxMarkRmGroupConfigured(2, &freshNodes[i]);
     }
     CanTxEmitRmFrames(NULL, 0);
-    assert(Sent == 1 && ScheduleDepth == 0 && Queued == 2);
+    assert(Sent == 1 && ScheduleDepth == 0 && Queued == 2 && CmdReadCount == 2);
     const uint8_t freshExpected[8] = {0,0,4,0xB0,6,0x40,0,0};
     assert(memcmp(Frames[0].data, freshExpected, 8) == 0);
+    /* 解锁基线已经在本周期快照中时，RM 组不应再读一遍同一轴。 */
+    Sent = Queued = 0;
+    CanTxEmitRmFrames(NULL, 0);
+    assert(Sent == 1 && Queued == 2 && CmdReadCount == 2);
     /* 换算后撤销权限、全车锁定和本轮已锁定均仍发零。 */
     RevokeDuringRefresh = 1; Sent = Queued = 0;
     CanTxEmitRmFrames(NULL, 0);

@@ -35,6 +35,32 @@
 #include "Watch.h"
 #include "WheelLegMsg.h"
 #include "WheelLegOutputPlan.h"
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+#include "WheelLegBench.h"
+#include "WheelLegBenchGate.h"
+volatile uint32_t WheelLegBenchArm;
+volatile uint32_t WheelLegBenchUntilMs;
+volatile uint32_t WheelLegBenchTest = 3u;
+volatile uint32_t WheelLegBenchTestStopMs;
+volatile uint32_t WheelLegBenchPhase;
+static uint8_t MiniBenchStarted;
+static uint8_t MiniBenchFaulted;
+static WheelLegBenchAuto MiniBenchAuto;
+static WheelLegBenchState MiniBenchState;
+static WheelLegBenchOutput MiniBenchOutput;
+/* 保留退出前的整帧，停机清理不能抹掉收腿失败原因。 */
+static volatile WheelLegBenchAuto MiniBenchLastAuto;
+static volatile WheelLegBenchInput MiniBenchLastInput;
+volatile uint32_t MiniBenchRejectSource;
+volatile uint32_t MiniBenchRejectTick;
+volatile struct {
+    uint32_t tick, armed, active, faults, feedbackMask, controlAllowed;
+    float pitch, gyroY, length[2], q[6];
+    uint32_t testDone;
+    float maxHoldError;
+    uint32_t stopFaults;
+} WheelLegBenchDiag;
+#endif
 
 #include <math.h>
 #include <string.h>
@@ -493,6 +519,57 @@ void WheelLegMitTask(void const *pvParameters)
         WheelLegTaskFrame frame;
 
         WheelLegTaskFrameInit(&frame);
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+        static uint32_t lastTest = 3u;
+        if (lastTest != WheelLegBenchTest) {
+            WheelLegBenchArm = 0;
+            WheelLegBenchUntilMs = 0;
+            WheelLegBenchReset(&MiniBenchState);
+            WheelLegBenchAutoReset(&MiniBenchAuto);
+            WheelLegBenchPhase = 0;
+            WheelLegTargetSmoothReset();
+            lastTest = WheelLegBenchTest;
+        }
+        if (WheelLegBenchTest == 3u) {
+            if (frame.manual_on == 0u) {
+                MiniBenchFaulted = 0;
+                WheelLegBenchArm = 0;
+            } else if (WheelLegBenchArm == WHEELLEG_BENCH_ARM_KEY &&
+                       (frame.faults != 0u || frame.control_allowed == 0u ||
+                        frame.control_stage != 0u || frame.operation_test_active != 0u)) {
+                MiniBenchFaulted = 1;
+                WheelLegBenchDiag.stopFaults = frame.faults;
+                WheelLegBenchArm = 0;
+            } else if (!MiniBenchFaulted && frame.enabled && frame.control_allowed &&
+                       frame.control_stage == 0u && !frame.operation_test_active &&
+                       frame.now_ms >= 3000u &&
+                       (WheelLegBenchArm == WHEELLEG_BENCH_ARM_KEY ||
+                        (WheelLegAxisInDeadband(frame.vx_axis, g_config.WheelLegMit.rc_deadband) &&
+                         WheelLegAxisInDeadband(frame.yaw_axis, g_config.WheelLegMit.rc_deadband)))) {
+                MiniBenchStarted = 1;
+                WheelLegBenchArm = WHEELLEG_BENCH_ARM_KEY;
+            }
+        }
+        WheelLegBenchDiag.tick = frame.now_ms;
+        WheelLegBenchDiag.armed = WheelLegBenchArm;
+        WheelLegBenchDiag.active = WheelLegBenchTxOpen(frame.now_ms);
+        WheelLegBenchDiag.faults = frame.faults;
+        if (WheelLegBenchArm == WHEELLEG_BENCH_ARM_KEY && frame.faults != 0u) {
+            WheelLegBenchDiag.stopFaults = frame.faults;
+        }
+        WheelLegBenchDiag.feedbackMask = s_wheelleg.domain_online_mask;
+        WheelLegBenchDiag.controlAllowed = frame.control_allowed;
+        WheelLegBenchDiag.pitch = frame.pitch;
+        WheelLegBenchDiag.gyroY = frame.gyro_wheelleg ? frame.gyro_wheelleg[1] : 0;
+        for (unsigned side = 0; side < 2; side++) {
+            WheelLegBenchDiag.length[side] = s_wheelleg.leg[side].length;
+            WheelLegBenchDiag.q[side*3] = s_wheelleg.front_fb[side].q;
+            WheelLegBenchDiag.q[side*3+1] = s_wheelleg.back_fb[side].q;
+            WheelLegBenchDiag.q[side*3+2] = s_wheelleg.wheel_fb[side].q;
+        }
+        if (WheelLegBenchArm != WHEELLEG_BENCH_ARM_KEY || frame.control_stage != 0u ||
+            frame.operation_test_active != 0u) frame.enabled = 0u;
+#endif
         if (frame.control_allowed == 0u)
         {
             WheelLegHandleDisabledFrame(&frame);

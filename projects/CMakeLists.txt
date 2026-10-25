@@ -35,6 +35,9 @@ include("${ARBATOS_TARGET_GENERATED_DIR}/RobotTarget.cmake")
 if(NOT DEFINED ARBATOS_BOARD OR "${ARBATOS_BOARD}" STREQUAL "")
     message(FATAL_ERROR "RobotTarget.cmake did not provide ARBATOS_BOARD")
 endif()
+if(NOT DEFINED ARBATOS_TARGET_HAS_SDLOG OR NOT DEFINED ARBATOS_TARGET_WATCH_FULL)
+    message(FATAL_ERROR "RobotTarget.cmake is missing diagnostic selection; regenerate the selected Robotconfig")
+endif()
 if(DEFINED BOARD AND NOT "${BOARD}" STREQUAL "${ARBATOS_BOARD}")
     message(FATAL_ERROR "BOARD=${BOARD} conflicts with ${ARBATOS_ROBOT} board ${ARBATOS_BOARD}")
 endif()
@@ -67,11 +70,21 @@ if(DEFINED EXTRA_CONF_FILE)
     endforeach()
 endif()
 list(REMOVE_DUPLICATES ARBATOS_EXTRA_CONF_FILES)
+if(NOT ARBATOS_TARGET_HAS_SDLOG)
+    foreach(ARBATOS_CONF IN LISTS ARBATOS_EXTRA_CONF_FILES)
+        file(STRINGS "${ARBATOS_CONF}" ARBATOS_DIAGNOSTIC_LOG_CONFIG
+            REGEX "^[ \\t]*CONFIG_ARBATOS_(PREFLIGHT_ONLY|RECEIVE_ONLY|BENCH_TELEMETRY)=y")
+        if(ARBATOS_DIAGNOSTIC_LOG_CONFIG)
+            message(FATAL_ERROR "${ARBATOS_CONF} requires the SDLOG service in Robotconfig/${ARBATOS_ROBOT}/RobotConfig.toml; this diagnostic mode must not run with an empty logger")
+        endif()
+    endforeach()
+endif()
 set(EXTRA_CONF_FILE "${ARBATOS_TARGET_CONF};${ARBATOS_EXTRA_CONF_FILES}" CACHE STRING
     "Generated robot configuration followed by optional test fragments" FORCE)
 if(ARBATOS_TARGET_OVERLAY)
     set(ARBATOS_OLD_TARGET_OVERLAY "${CMAKE_CURRENT_SOURCE_DIR}/${ARBATOS_ROBOT}/app.overlay")
-    if(DEFINED DTC_OVERLAY_FILE AND NOT "${DTC_OVERLAY_FILE}" STREQUAL "${ARBATOS_TARGET_OVERLAY}" AND
+    if(DEFINED DTC_OVERLAY_FILE AND NOT "${DTC_OVERLAY_FILE}" STREQUAL "" AND
+       NOT "${DTC_OVERLAY_FILE}" STREQUAL "${ARBATOS_TARGET_OVERLAY}" AND
        NOT "${DTC_OVERLAY_FILE}" STREQUAL "${ARBATOS_OLD_TARGET_OVERLAY}")
         message(FATAL_ERROR "DTC_OVERLAY_FILE=${DTC_OVERLAY_FILE} conflicts with ${ARBATOS_ROBOT} overlay ${ARBATOS_TARGET_OVERLAY}")
     endif()
@@ -148,12 +161,15 @@ if(CONFIG_ARBATOS_LEGACY_SOURCES)
         ${ARBATOS_ROOT}/shared/zephyr/port/subboard/MReceiveCheck.c)
     target_sources_ifdef(CONFIG_ARBATOS_BENCH_TELEMETRY app PRIVATE
         ${ARBATOS_ROOT}/shared/zephyr/port/subboard/MBenchTelemetry.c)
+    target_sources_ifdef(CONFIG_ARBATOS_MINI_BENCH app PRIVATE
+        ${ARBATOS_ROOT}/shared/application/wheelleg/WheelLegBench.c)
 
     if(CONFIG_BOARD_DJI_A_F427)
         target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/sensors/Mpu6500.c
             ${ARBATOS_ROOT}/shared/zephyr/port/sensors/ImuCalStore.c)
     elseif(CONFIG_BOARD_DJI_C_F407)
-        target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/sensors/BspBmi088Port.c ${ARBATOS_ROOT}/shared/zephyr/port/sensors/BspIst8310Port.c)
+        target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/sensors/BspBmi088Port.c ${ARBATOS_ROOT}/shared/zephyr/port/sensors/BspIst8310Port.c
+            ${ARBATOS_ROOT}/shared/zephyr/port/sensors/ImuCalStore.c)
     elseif(CONFIG_BOARD_DM_MC02_H7)
         target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/sensors/BspBmi088Port.c)
     else()

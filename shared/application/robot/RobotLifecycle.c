@@ -124,6 +124,11 @@ static void RobotLifecycleCommit(RobotLifecycleState next_state,
         next_state = ROBOT_LIFECYCLE_FAULT;
         reason = ROBOT_LIFECYCLE_REASON_FATAL_FAULT;
     }
+    else if (g_robot_lifecycle.maintenance_latched != 0u)
+    {
+        next_state = ROBOT_LIFECYCLE_SAFE;
+        reason = ROBOT_LIFECYCLE_REASON_MAINTENANCE;
+    }
 
     if (g_robot_lifecycle.state != next_state)
     {
@@ -286,6 +291,26 @@ void RobotLifecycleEnterFatalFault(void)
     g_robot_lifecycle.fault_latched = 1u;
 
     RobotLifecycleExitCritical(critical);
+}
+
+uint8_t RobotLifecycleEnterMaintenance(void)
+{
+    RobotLifecycleInit();
+    RobotLifecycleCriticalState critical = RobotLifecycleEnterCritical();
+    if (g_robot_lifecycle.fault_latched != 0u || g_robot_lifecycle.output_allowed != 0u) {
+        RobotLifecycleExitCritical(critical);
+        return 0u;
+    }
+    g_robot_lifecycle.maintenance_latched = 1u;
+    g_robot_lifecycle.prev_state = g_robot_lifecycle.state;
+    g_robot_lifecycle.state = ROBOT_LIFECYCLE_SAFE;
+    g_robot_lifecycle.reason = ROBOT_LIFECYCLE_REASON_MAINTENANCE;
+    g_robot_lifecycle.output_allowed = 0u;
+    g_robot_lifecycle.enter_tick = HAL_GetTick();
+    g_robot_lifecycle.update_tick = g_robot_lifecycle.enter_tick;
+    g_robot_lifecycle.transition_count++;
+    RobotLifecycleExitCritical(critical);
+    return 1u;
 }
 
 uint8_t RobotLifecycleFaultLatched(void)

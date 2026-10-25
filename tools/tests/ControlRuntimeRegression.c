@@ -31,6 +31,8 @@ static const MotorInst s_motor[] = {
     {Motor4, 1u},
 };
 static const MotorRoute s_route = {1u};
+static MotorCmd s_commands[MotorCount];
+static ControlOutputStamp s_owners[MotorCount];
 
 void ControlMgrTestEnterCritical(void)
 {
@@ -154,7 +156,9 @@ uint8_t LowStateGetMotor(MotorId id, MotorState *out)
 
 uint8_t LowCmdInhibitManyFrom(const MotorId *ids, uint8_t count, uint16_t writer)
 {
-    (void)ids;
+    for (uint8_t i = 0u; i < count; i++) {
+        s_commands[ids[i]].active = 0u;
+    }
     s_inhibited = (uint8_t)(count == 2u && writer == (uint16_t)LOWCMD_WRITER_SAFETY);
     return s_inhibited;
 }
@@ -177,8 +181,6 @@ uint8_t MotorInstSetIdsWithPermit(const MotorId *ids,
                                   uint8_t count,
                                   const ControlOutputPermit *permit)
 {
-    (void)ids;
-    (void)cmds;
     if (s_revokeOnCommit != 0u)
     {
         s_revokeOnCommit = 0u;
@@ -190,7 +192,31 @@ uint8_t MotorInstSetIdsWithPermit(const MotorId *ids,
     }
     s_commitCount++;
     s_commitAxisCount = count;
+    for (uint8_t i = 0u; i < count; i++) {
+        s_commands[ids[i]] = cmds[i];
+        s_commands[ids[i]].writer = LOWCMD_WRITER_CONTROL;
+        s_commands[ids[i]].tick = s_now;
+        s_commands[ids[i]].timeoutMs = LOWCMD_DEFAULT_TIMEOUT_MS;
+        s_owners[ids[i]] = permit->stamp;
+    }
     return 1u;
+}
+
+uint8_t LowCmdGetMotorManyStamped(const MotorId *ids, MotorCmd *cmds,
+                                  ControlOutputStamp *owners, uint8_t count)
+{
+    for (uint8_t i = 0u; i < count; i++) {
+        cmds[i] = s_commands[ids[i]];
+        owners[i] = s_owners[ids[i]];
+    }
+    return 1u;
+}
+
+uint8_t LowCmdOutputSnapshotAuthorized(MotorId id, const MotorCmd *cmd,
+                                       const ControlOutputStamp *owner)
+{
+    return (uint8_t)(memcmp(cmd, &s_commands[id], sizeof(*cmd)) == 0 &&
+                     ControlMgrOutputStampValid(owner, (uint32_t)1u << id) != 0u);
 }
 
 static ControlAlgorithmResult TestConfigure(void *state,
@@ -327,6 +353,8 @@ static int TestStartWithImu(void)
 
 static void TestStateReset(void)
 {
+    memset(s_commands, 0, sizeof(s_commands));
+    memset(s_owners, 0, sizeof(s_owners));
     memset(&s_manual, 0, sizeof(s_manual));
     memset(s_feedback, 0, sizeof(s_feedback));
     memset(&s_imuSnapshot, 0, sizeof(s_imuSnapshot));
@@ -510,6 +538,28 @@ int main(void)
     TEST_CHECK(ControlRuntimeCount() == 0u);
     TEST_CHECK(ControlRuntimeConfigure(crossDomainSpecs, 2u) == ControlResultResourceBusy);
     TEST_CHECK(ControlRuntimeCount() == 0u);
+
+    TestStateReset();
+    TEST_CHECK(TestStartGimbal() != 0);
+    TEST_CHECK(ControlRuntimeOutputReady(ControlDomainGimbal, 20u) == 0u);
+    TEST_CHECK(ControlRuntimeRunDomain(ControlDomainGimbal) == ControlResultOk);
+    TEST_CHECK(ControlRuntimeOutputReady(ControlDomainGimbal, 20u) == 0u);
+    s_now += 2u;
+    TEST_CHECK(ControlRuntimeRunDomain(ControlDomainGimbal) == ControlResultOk);
+    TEST_CHECK(ControlRuntimeOutputReady(ControlDomainGimbal, 20u) != 0u);
+    TEST_CHECK(ControlRuntimeOutputReady(ControlDomainChassis, 20u) == 0u);
+    s_now += 21u;
+    TEST_CHECK(ControlRuntimeOutputReady(ControlDomainGimbal, 20u) == 0u);
+    s_now -= 21u;
+    s_commands[Motor1].mode = MotorModeDisable;
+    TEST_CHECK(ControlRuntimeOutputReady(ControlDomainGimbal, 20u) == 0u);
+    s_commands[Motor1].mode = MotorModeCurrent;
+    s_lifecycleAllowed = 0u;
+    TEST_CHECK(ControlRuntimeOutputReady(ControlDomainGimbal, 20u) == 0u);
+    s_lifecycleAllowed = 1u;
+    TEST_CHECK(ControlRuntimeOutputReady(ControlDomainGimbal, 20u) != 0u);
+    TEST_CHECK(ControlMgrStop(ControlDomainGimbal, ControlReasonEmergencyStop) == ControlResultOk);
+    TEST_CHECK(ControlRuntimeOutputReady(ControlDomainGimbal, 20u) == 0u);
 
     puts("ControlRuntime regression passed");
     return 0;

@@ -1,0 +1,8 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+#pragma once
+
+#define ARBATOS_TARGET_NAME "SERVO-REGRESSION"
+#define ARBATOS_BOARD_NAME "host"
+#define ROBOT_BOARD_CAN_BUS_COUNT 0u
+#define ROBOT_BOARD_RS485_PORT_COUNT 0u
+#define ROBOT_TASK_BUILD_SERVO 1

@@ -166,6 +166,12 @@ static void WheelLegFaultDomainUpdate(WheelLegTaskFrame *frame)
         {
             domain_safe_mask = 1u << WheelLegFaultDomainDrive;
         }
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+        /* 首次出力前允许接收链启动完成后自动就绪；运行故障仍要求回安全档。 */
+        if (WheelLegBenchTest == 3u && MiniBenchStarted == 0u) {
+            domain_safe_mask = 1u << WheelLegFaultDomainDrive;
+        }
+#endif
         if (result == FaultMgrResultOk)
         {
             result = FaultMgrUpdate(&s_wheelleg.fault_mgr,
@@ -405,6 +411,22 @@ static void WheelLegResetDomainControlState(void)
 
 static void WheelLegHandleDisabledFrame(WheelLegTaskFrame *frame)
 {
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    if (WheelLegBenchTest == 3u) {
+        if (WheelLegBenchArm == WHEELLEG_BENCH_ARM_KEY && frame != NULL &&
+            frame->manual_on != 0u && (frame->faults != 0u || !frame->control_allowed)) {
+            MiniBenchFaulted = 1u;
+            WheelLegBenchDiag.stopFaults = frame->faults;
+        }
+        WheelLegBenchArm = 0u;
+    }
+    if (MiniBenchState.ready != 0u || s_wheelleg.bench_hold_pose_valid != 0u) WheelLegBenchArm = 0u;
+    WheelLegBenchUntilMs = 0u;
+    WheelLegBenchTestStopMs = 0u;
+    WheelLegBenchReset(&MiniBenchState);
+    WheelLegBenchAutoReset(&MiniBenchAuto);
+    WheelLegBenchPhase = 0;
+#endif
     if (frame == NULL)
     {
         return;
@@ -466,10 +488,22 @@ static uint8_t WheelLegCommitFrameOutput(WheelLegTaskFrame *frame)
 
     if (WheelLegOutputCommit(&frame->output_permit) != 0u)
     {
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+        WheelLegBenchUntilMs = WheelLegTickMs() + 15u;
+#endif
         return 1u;
     }
 
     frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    MiniBenchRejectSource = 3u;
+    MiniBenchRejectTick = frame->now_ms;
+    WheelLegBenchUntilMs = 0u;
+    WheelLegBenchArm = 0u;
+    WheelLegBenchReset(&MiniBenchState);
+    if (WheelLegBenchTest == 3u) MiniBenchFaulted = 1u;
+    WheelLegBenchPhase = 0;
+#endif
     s_wheelleg.mode = WHEELLEG_MODE_FAULT;
     (void)WheelLegStopDomainOutputs();
     WheelLegResetDomainControlState();
@@ -538,6 +572,113 @@ static void WheelLegPrepareBalanceFrame(WheelLegTaskFrame *frame)
 
 static void WheelLegRunBenchStage(WheelLegTaskFrame *frame)
 {
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    if (WheelLegBenchTest == 1u) {
+        const uint8_t captured = s_wheelleg.bench_hold_pose_valid;
+        if (!WheelLegBenchHoldCapture()) {
+            frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+            return;
+        }
+        if (!captured) {
+            WheelLegBenchTestStopMs = frame->now_ms + 2000u;
+            WheelLegBenchDiag.testDone = 0;
+            WheelLegBenchDiag.maxHoldError = 0;
+            WheelLegBenchDiag.stopFaults = 0;
+        }
+        if ((int32_t)(WheelLegBenchTestStopMs - frame->now_ms) <= 0) {
+            WheelLegBenchArm = 0;
+            WheelLegBenchUntilMs = 0;
+            WheelLegBenchDiag.testDone = 1;
+            return;
+        }
+        uint8_t count = 0;
+        for (unsigned side = 0; side < 2; side++) {
+            const WheelLegActuatorMap *map = &s_wheelleg.actuator[side];
+            const float error[2] = {
+                s_wheelleg.bench_hold_front_rad[side] - s_wheelleg.front_fb[side].q,
+                s_wheelleg.bench_hold_back_rad[side] - s_wheelleg.back_fb[side].q};
+            const float rate[2] = {s_wheelleg.front_fb[side].dq, s_wheelleg.back_fb[side].dq};
+            const MotorId id[2] = {map->front, map->back};
+            for (unsigned j = 0; j < 2; j++) {
+                if (!isfinite(error[j]) || !isfinite(rate[j]) || fabsf(error[j]) > .12f) {
+                    frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+                    return;
+                }
+                WheelLegBenchDiag.maxHoldError = fmaxf(WheelLegBenchDiag.maxHoldError, fabsf(error[j]));
+                float torque = WheelLegClamp(20.0f * error[j] - .08f * rate[j], -.30f, .30f);
+                count += WheelLegPlanStateCmd(id[j], 0, 0, 0, 0, torque);
+                s_wheelleg.leg[side].joint_torque[j] = torque;
+            }
+            WheelLegPlanDisable(map->wheel);
+            frame->wheel_torque[side] = 0;
+        }
+        frame->controller_active = count == 4u;
+        if (!frame->controller_active) frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+        return;
+    }
+    WheelLegBenchInput input = {0};
+    const float zero[2][2] = {{-1.197642481f, .496490425f},
+                              {.537308309f, -1.273937591f}};
+    const float sign[2][2] = {{-1, 1}, {1, -1}};
+    for (unsigned i = 0; i < 2; i++) {
+        const unsigned side = i == 0 ? WHEELLEG_SIDE_RIGHT : WHEELLEG_SIDE_LEFT;
+        input.joint[i*2] = (s_wheelleg.front_fb[side].q - zero[i][0]) * sign[i][0];
+        input.joint[i*2+1] = (s_wheelleg.back_fb[side].q - zero[i][1]) * sign[i][1];
+        input.jointRate[i*2] = s_wheelleg.front_fb[side].dq * sign[i][0];
+        input.jointRate[i*2+1] = s_wheelleg.back_fb[side].dq * sign[i][1];
+        input.wheel[i] = s_wheelleg.wheel_fb[side].q * (i == 0 ? -1 : 1);
+        input.wheelRate[i] = s_wheelleg.wheel_fb[side].dq * (i == 0 ? -1 : 1);
+    }
+    input.pitch = frame->pitch;
+    input.roll = frame->roll;
+    input.yaw = frame->yaw;
+    if (frame->gyro_wheelleg) memcpy(input.gyro, frame->gyro_wheelleg, sizeof(input.gyro));
+    input.targetV = frame->target_v;
+    input.targetYaw = frame->target_yaw_rate;
+    input.dt = frame->dt;
+    int accepted = WheelLegBenchTest == 3u ?
+        WheelLegBenchAutoStep(&MiniBenchAuto, &input, &MiniBenchOutput) :
+        WheelLegBenchStep(&MiniBenchState, &input, &MiniBenchOutput);
+    WheelLegBenchPhase = WheelLegBenchTest == 3u ? MiniBenchAuto.phase : 3u;
+    if (!accepted) {
+        MiniBenchLastAuto = MiniBenchAuto;
+        MiniBenchLastInput = input;
+        MiniBenchRejectSource = 1u;
+        MiniBenchRejectTick = frame->now_ms;
+        frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+        WheelLegBenchUntilMs = 0;
+        return;
+    }
+    uint8_t planned = 0;
+    for (unsigned i = 0; i < 2; i++) {
+        const unsigned side = i == 0 ? WHEELLEG_SIDE_RIGHT : WHEELLEG_SIDE_LEFT;
+        const WheelLegActuatorMap *map = &s_wheelleg.actuator[side];
+        float front = MiniBenchOutput.torque[i*3] * sign[i][0];
+        float back = MiniBenchOutput.torque[i*3+1] * sign[i][1];
+        frame->wheel_torque[side] = MiniBenchOutput.torque[i*3+2] * (i == 0 ? -1 : 1);
+        planned += WheelLegPlanStateCmd(map->front, 0, 0, 0, MiniBenchOutput.jointDamping, front);
+        planned += WheelLegPlanStateCmd(map->back, 0, 0, 0, MiniBenchOutput.jointDamping, back);
+        if (WheelLegBenchTest == 3u && MiniBenchAuto.phase != 3u) {
+            WheelLegPlanDisable(map->wheel);
+            planned++;
+            frame->wheel_torque[side] = 0;
+        } else {
+            planned += WheelLegPlanStateCmd(map->wheel, 0, 0, 0, 0, frame->wheel_torque[side]);
+        }
+        s_wheelleg.leg[side].joint_torque[0] = front;
+        s_wheelleg.leg[side].joint_torque[1] = back;
+    }
+    s_wheelleg.x_m = MiniBenchOutput.state[2];
+    s_wheelleg.v_mps = MiniBenchOutput.state[3] +
+        (WheelLegBenchTest == 3u ? MiniBenchAuto.balance.speed : MiniBenchState.speed);
+    frame->target_leg = .5f * (MiniBenchOutput.length[0] + MiniBenchOutput.length[1]);
+    frame->controller_active = planned == 6u;
+    if (!frame->controller_active) {
+        MiniBenchRejectSource = 2u;
+        MiniBenchRejectTick = frame->now_ms;
+        frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+    }
+#else
     uint8_t joint_hold_count;
     uint8_t wheel_lqr_ok = 0u;
     uint8_t wheel_plan_count;
@@ -611,6 +752,7 @@ static void WheelLegRunBenchStage(WheelLegTaskFrame *frame)
             frame->faults |= WHEELLEG_FAULT_CONTROLLER;
         }
     }
+#endif
 }
 
 static void WheelLegRunPositionStage(WheelLegTaskFrame *frame)
@@ -791,6 +933,14 @@ static void WheelLegRunBalanceFrame(WheelLegTaskFrame *frame)
 
     if (frame->faults != WHEELLEG_FAULT_NONE)
     {
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+        WheelLegBenchUntilMs = 0u;
+        WheelLegBenchArm = 0u;
+        WheelLegBenchReset(&MiniBenchState);
+        if (WheelLegBenchTest == 3u) MiniBenchFaulted = 1u;
+        WheelLegBenchDiag.stopFaults = frame->faults;
+        WheelLegBenchPhase = 0;
+#endif
         s_wheelleg.mode = WHEELLEG_MODE_FAULT;
         (void)WheelLegStopDomainOutputs();
         WheelLegResetDomainControlState();

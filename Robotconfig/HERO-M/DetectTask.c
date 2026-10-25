@@ -13,6 +13,9 @@
 #include "cmsis_os.h"
 #include "RobotConfig.h"
 #include "Watch.h"
+#include "ChassisState.h"
+#include "GimbalState.h"
+#include "ShootState.h"
 #include "ManualInputSnapshot.h"
 #include "SdLog.h"
 #include "SdCard.h"
@@ -220,30 +223,52 @@ static void sdlog_pack_control_summary(sdlog_control_summary_t *out)
             out->rc_ch[i] = s_control_summary_manual_input.manual.rc.ch[i];
         }
     }
-    /* 未编入的旧控制链没有对应 g_watch 字段，摘要保持清零，不能伪造观测值。 */
+    /* 直接读取控制状态快照，关闭调试器镜像后日志仍保留真实数值。 */
+    static union
+    {
+        ChassisState chassis;
+        GimbalState gimbal;
+        ShootState shoot;
+    } state;
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
-    out->ChassisMode = (uint8_t)g_watch.chassis.mode;
-    out->ChassisVxSet = g_watch.chassis.vx_set;
-    out->ChassisVySet = g_watch.chassis.vy_set;
-    out->ChassisWzSet = g_watch.chassis.wz_set;
-    out->ChassisVx = g_watch.chassis.vx;
-    out->ChassisVy = g_watch.chassis.vy;
-    out->ChassisWz = g_watch.chassis.wz;
+    if (ChassisStateRead(&state.chassis) != 0u && state.chassis.valid != 0u)
+    {
+        out->ChassisMode = state.chassis.mode;
+        out->ChassisVxSet = state.chassis.vx_set;
+        out->ChassisVySet = state.chassis.vy_set;
+        out->ChassisWzSet = state.chassis.wz_set;
+        out->ChassisVx = state.chassis.vx;
+        out->ChassisVy = state.chassis.vy;
+        out->ChassisWz = state.chassis.wz;
+    }
 #endif
 #if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
-    out->yaw_mode = (uint8_t)g_watch.gimbal.yaw_mode;
-    out->pitch_mode = (uint8_t)g_watch.gimbal.pitch_mode;
-    out->yaw_set_deg = g_watch.gimbal.yaw_set_deg;
-    out->yaw_deg = g_watch.gimbal.yaw_angle_deg;
-    out->pitch_set_deg = g_watch.gimbal.pitch_set_deg;
-    out->pitch_deg = g_watch.gimbal.pitch_angle_deg;
-    out->yaw_current = g_watch.gimbal.yaw_current;
-    out->pitch_current = g_watch.gimbal.pitch_current;
+    if (GimbalStateRead(&state.gimbal) != 0u && state.gimbal.valid != 0u)
+    {
+        const fp32 rad2deg = 57.29577951308232f;
+        if (state.gimbal.yaw.valid != 0u)
+        {
+            out->yaw_mode = state.gimbal.yaw.motor_mode;
+            out->yaw_set_deg = state.gimbal.yaw.angle_set * rad2deg;
+            out->yaw_deg = state.gimbal.yaw.angle * rad2deg;
+            out->yaw_current = state.gimbal.yaw.given_current;
+        }
+        if (state.gimbal.pitch.valid != 0u)
+        {
+            out->pitch_mode = state.gimbal.pitch.motor_mode;
+            out->pitch_set_deg = state.gimbal.pitch.angle_set * rad2deg;
+            out->pitch_deg = state.gimbal.pitch.angle * rad2deg;
+            out->pitch_current = state.gimbal.pitch.given_current;
+        }
+    }
 #endif
 #if WATCH_ENABLE_SHOOT_RM
-    out->ShootMode = (uint8_t)g_watch.shoot.mode;
-    out->trigger_current = g_watch.shoot.trigger_current;
-    out->fric_speed_set_rpm = g_watch.shoot.fric_speed_set_rpm;
+    if (ShootStateRead(&state.shoot) != 0u && state.shoot.valid != 0u)
+    {
+        out->ShootMode = state.shoot.mode;
+        out->trigger_current = state.shoot.given_current;
+        out->fric_speed_set_rpm = (int16_t)state.shoot.fric_speed_set;
+    }
 #endif
 }
 
@@ -475,19 +500,19 @@ void DetectTask(void const *pvParameters)
             sys.sdlog_last_sync_ms = s.last_sync_ms;
             sys.sdlog_last_error = s.last_error;
 
-            sys.heap_free = g_watch.rtos.heap_free;
-            sys.heap_ever_free = g_watch.rtos.heap_ever_free;
+            sys.heap_free = (uint32_t)xPortGetFreeHeapSize();
+            sys.heap_ever_free = (uint32_t)xPortGetMinimumEverFreeHeapSize();
 
 #if INCLUDE_uxTaskGetStackHighWaterMark
             DetectTaskStack = uxTaskGetStackHighWaterMark(NULL);
 #if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
             sys.stack_gimbal = GimbalHighWater;
-#elif WATCH_ENABLE_CONTROL_GIMBAL
+#elif WATCH_ENABLE_CONTROL_GIMBAL && ROBOT_WATCH_FULL_ENABLED
             sys.stack_gimbal = g_watch.rtos.stack_gimbal;
 #endif
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
             sys.stack_chassis = ChassisHighWater;
-#elif WATCH_ENABLE_CONTROL_CHASSIS
+#elif WATCH_ENABLE_CONTROL_CHASSIS && ROBOT_WATCH_FULL_ENABLED
             sys.stack_chassis = g_watch.rtos.stack_chassis;
 #endif
             sys.stack_detect = DetectTaskStack;
@@ -498,12 +523,12 @@ void DetectTask(void const *pvParameters)
 
 #if WATCH_ENABLE_GIMBAL_SINGLE || WATCH_ENABLE_GIMBAL_DUAL
             sys.GimbalLoopCnt = GimbalLoopCounter;
-#elif WATCH_ENABLE_CONTROL_GIMBAL
+#elif WATCH_ENABLE_CONTROL_GIMBAL && ROBOT_WATCH_FULL_ENABLED
             sys.GimbalLoopCnt = g_watch.rtos.task.GimbalControlTask.beat_count;
 #endif
 #if WATCH_ENABLE_LOCOMOTION_CLASSIC
             sys.ChassisLoopCnt = ChassisLoopCounter;
-#elif WATCH_ENABLE_CONTROL_CHASSIS
+#elif WATCH_ENABLE_CONTROL_CHASSIS && ROBOT_WATCH_FULL_ENABLED
             sys.ChassisLoopCnt = g_watch.rtos.task.ChassisControlTask.beat_count;
 #endif
             sys.cpu_load_permille = CpuUsageGetPermille();

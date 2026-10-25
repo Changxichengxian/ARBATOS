@@ -29,6 +29,7 @@ typedef enum
     RtProfSdLogBlockWrite,
     RtProfSdLogSync,
     RtProfWatchBeat,
+    RtProfShootLoop,
     RtProfCount
 } RtProfId;
 

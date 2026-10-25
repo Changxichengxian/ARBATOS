@@ -1,0 +1,64 @@
+schema = 1
+board = "dji_c_f407"
+
+[[roles]]
+id = "rc_sbus"
+label = "大疆 DBUS 接收机"
+service = "RC_SBUS"
+required_when_service = true
+default_baud = 100000
+baud_editable = false
+protocols = ["sbus"]
+required_capabilities = ["rx", "sbus"]
+note = "使用现有 DBUS 解析和串口格式配置。默认板载接收口 USART3。"
+
+[[roles]]
+id = "elrs_crsf"
+label = "ELRS / CRSF 接收机"
+service = "ELRS_LINK"
+required_when_service = true
+default_baud = 420000
+baud_editable = false
+protocols = ["crsf"]
+required_capabilities = ["rx", "crsf"]
+note = "默认使用 USART1 的 PB7 RX，接 3.3 V TTL；不复用专用 DBUS 接收口。只接收通道和链路状态，不发送遥测。"
+
+[[roles]]
+id = "referee"
+label = "裁判系统"
+service = "REFEREE_RX"
+required_when_service = true
+default_baud = 115200
+baud_editable = false
+protocols = ["rm_referee"]
+required_capabilities = ["rx", "tx", "referee"]
+
+[[ports]]
+id = "usart3"
+node = "usart3"
+label = "USART3 / PC11 RX, PC10 TX"
+pins = ["PC10", "PC11"]
+capabilities = ["rx", "tx", "sbus"]
+note = "C 板设备树中的专用遥控接口。"
+
+[[ports]]
+id = "usart1"
+node = "usart1"
+label = "USART1 / PB7 RX, PA9 TX"
+pins = ["PB7", "PA9"]
+capabilities = ["rx", "tx", "crsf", "referee"]
+reservations = ["console"]
+
+[[ports]]
+id = "usart6"
+node = "usart6"
+label = "USART6 / PG9 RX, PG14 TX"
+pins = ["PG9", "PG14"]
+capabilities = ["rx", "tx", "crsf", "referee"]
+
+[[resources]]
+id = "console"
+label = "板级串口控制台"
+pins = ["PB7", "PA9"]
+severity = "warning"
+note = "普通固件关闭串口日志；若另行启用控制台，不能同时分配给接收机或裁判。"

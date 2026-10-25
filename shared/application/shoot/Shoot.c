@@ -37,6 +37,7 @@
 #include "MotorInst.h"
 #include "MotorConfig.h"
 #include "GimbalState.h"
+#include "ControlRuntime.h"
 #include "ShootState.h"
 #include "ShootFaultPolicy.h"
 #include "ShootInputPolicy.h"
@@ -604,6 +605,7 @@ void ShootTuneApplyTriggerPid(void)
 
 static ShootGimbalGateAction ShootGimbalGateRead(void)
 {
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL || ROBOT_TASK_BUILD_DUAL_YAW_GIMBAL
     GimbalState state = {0};
     const uint8_t fresh = GimbalStateReadFresh(&state, GIMBAL_STATE_FRESH_TIMEOUT_MS);
 
@@ -611,6 +613,14 @@ static ShootGimbalGateAction ShootGimbalGateRead(void)
                                   state.valid,
                                   state.ShootStop,
                                   state.fire_allowed);
+#elif ROBOT_TASK_BUILD_CONTROL_GIMBAL
+    /* 通用云台只提供运行许可，不伪造经典云台的姿态/跟随状态。 */
+    return ControlRuntimeOutputReady(ControlDomainGimbal, GIMBAL_STATE_FRESH_TIMEOUT_MS) != 0u ?
+               ShootGimbalGateRun : ShootGimbalGateStopDomain;
+#else
+    /* 无云台的独立发射机构仍由输入、生命周期、故障和运行模式限制。 */
+    return ShootGimbalGateRun;
+#endif
 }
 
 static void ShootWriteState(void)
@@ -1097,6 +1107,8 @@ int16_t ShootRuntimeStep(const struct ManualInputSnapshot *manualInput,
     bool_t allow_trigger;
     uint8_t entertain;
 
+    /* 独立任务按发射周期调度；在线调整周期时斜坡时间也必须同步。 */
+    g_shoot.fric_speed_ramp.frame_period = (fp32)ShootTickMs() * 0.001f;
     ShootFrameInputBuild(manualInput, &frame);
     const uint16_t rawSwitch = frame.rawSwitch;
     const uint8_t switchSafe =

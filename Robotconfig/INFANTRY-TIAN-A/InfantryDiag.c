@@ -5,6 +5,9 @@
  * 步兵车 UART6 运行观测；只读取正式运行时快照，不参与控制与 CAN 收发。
  */
 
+#include "RobotTargetConfig.h"
+/* 裁判启用时 USART6 归裁判独占，不同时输出人工调试文本。 */
+#if !ROBOT_TASK_BUILD_REFEREE_RX
 #include "BspCan.h"
 #include "CanTxTask.h"
 #include "ChassisState.h"
@@ -414,3 +417,4 @@ static void InfantryDiagRun(void *a, void *b, void *c)
 }
 
 K_THREAD_DEFINE(InfantryDiagThread, 3072, InfantryDiagRun, NULL, NULL, NULL, 14, 0, 1500);
+#endif

@@ -14,6 +14,9 @@
 #include "ServoControlTask.h"
 #include "cmsis_os.h"
 #include "BspServoPwm.h"
+#include "BspTime.h"
+#include "ControlMgr.h"
+#include "LowCmd.h"
 #include "ManualInputSnapshot.h"
 #include "RobotSafety.h"
 #include "ServoInputPolicy.h"
@@ -31,7 +34,15 @@
     (SERVO1_ADD_PWM_KEY | SERVO2_ADD_PWM_KEY | SERVO3_ADD_PWM_KEY | SERVO4_ADD_PWM_KEY)
 
 static const uint16_t ServoKey[4] = {SERVO1_ADD_PWM_KEY, SERVO2_ADD_PWM_KEY, SERVO3_ADD_PWM_KEY, SERVO4_ADD_PWM_KEY};
+static const MotorId ServoOutputId[LOWCMD_SERVO_COUNT] = {Motor18, Motor19, Motor20, Motor21};
+static MotorCmd ServoCommands[LOWCMD_SERVO_COUNT];
+static MotorCmd ServoSnapshots[LOWCMD_SERVO_COUNT];
+static ControlOutputStamp ServoOwners[LOWCMD_SERVO_COUNT];
+static ServoConfig ServoBoundConfig;
+static uint8_t ServoBoundConfigValid;
+static uint8_t ServoBoundPortMask;
 uint16_t ServoPwm[4];
+fp32 ServoPosition[4];
 /**
   * @brief          servo control task
   * @param[in]      pvParameters: NULL
@@ -49,15 +60,21 @@ void ServoControlTask(void const * argument)
 
     (void)argument;
     ServoInputGateInit(&inputGate);
-    if (g_config.servo.configured == 1u) {
-        for (uint8_t i = 0u; i < 4u; i++) {
-            ServoPwm[i] = g_config.servo.channels[i].centerUs;
+    ServoBoundConfig = g_config.servo;
+    ServoBoundConfigValid = ServoConfigValid(&ServoBoundConfig);
+    ServoBoundPortMask = 0u;
+    for (uint8_t i = 0u; i < LOWCMD_SERVO_COUNT; i++) {
+        ServoPwm[i] = 0u;
+        ServoPosition[i] = 0.0f;
+        if (ServoBoundConfigValid != 0u && ServoBoundConfig.channels[i].enabled != 0u) {
+            ServoBoundPortMask |= (uint8_t)(1u << ServoBoundConfig.channels[i].port);
         }
     }
 
     while(1)
     {
         ManualInputSnapshot manualInput;
+        ControlCtx controlCtx = {0};
         const uint8_t inputValid = ManualInputSnapshotRead(&manualInput);
         const uint8_t output_locked = RobotSafetyOutputLocked();
         const uint8_t modeAllowed = (uint8_t)(robot_mode_current() == ROBOT_RUN_MODE_FULL ||
@@ -83,14 +100,26 @@ void ServoControlTask(void const * argument)
                                 observedKeys);
         const uint8_t servoOutputAllowed =
             (uint8_t)(controlAllowed != 0u && ServoInputGateReady(&inputGate) != 0u);
+        const uint32_t servoMask = (uint32_t)0x0Fu << (uint32_t)LOWCMD_SERVO_FIRST;
+        const uint8_t managerAllowed =
+            (uint8_t)(ControlMgrUpdateDomain(ControlDomainSystem, &controlCtx) == ControlResultOk &&
+                      ControlMgrOutputPermitValid(&controlCtx.outputPermit, servoMask) != 0u);
+        uint8_t published = 0u;
 
-        if (g_config.servo.configured == 1u) {
-            uint16_t pulses[4] = {0u};
+        for (uint8_t i = 0u; i < LOWCMD_SERVO_COUNT; i++) {
+            ServoCommands[i] = (MotorCmd){0};
+            ServoCommands[i].active = 1u;
+            ServoCommands[i].mode = (uint8_t)MotorModeDisable;
+            ServoCommands[i].timeoutMs = 30u;
+        }
+
+        if (ServoBoundConfig.configured == 1u) {
             const uint8_t allowed = (uint8_t)(servoOutputAllowed != 0u && modeAllowed != 0u &&
-                RobotLifecycleOutputAllowed() != 0u && ServoConfigValid(&g_config.servo) != 0u);
+                RobotLifecycleOutputAllowed() != 0u && ServoBoundConfigValid != 0u &&
+                managerAllowed != 0u);
 
             for (uint8_t i = 0u; i < 4u; i++) {
-                const ServoChannelConfig *channel = &g_config.servo.channels[i];
+                const ServoChannelConfig *channel = &ServoBoundConfig.channels[i];
                 if (allowed == 0u || channel->enabled == 0u) {
                     axisReady[i] = 0u;
                     continue;
@@ -102,21 +131,49 @@ void ServoControlTask(void const * argument)
                         if (axis >= -20 && axis <= 20) axisReady[i] = 1u;
                         continue;
                     }
-                    ServoPwm[i] = ServoPulseFromAxis(channel, axis);
+                    ServoPosition[i] = ServoPositionFromAxis(axis);
                 } else {
                     const int8_t direction = (inputKeys & ServoKey[i]) == 0u ? 0 :
                         ((inputKeys & SERVO_MINUS_PWM_KEY) != 0u ? -1 : 1);
-                    ServoPwm[i] = ServoPulseStep(channel, ServoPwm[i], direction);
+                    ServoPosition[i] = ServoPositionStep(channel, ServoPosition[i], direction);
                 }
-                pulses[channel->port] = ServoPwm[i];
+                ServoCommands[i].mode = (uint8_t)MotorModePosVel;
+                ServoCommands[i].q = ServoPosition[i];
             }
-            for (uint8_t port = 0u; port < 4u; port++) ServoPwmSet(pulses[port], port);
-            osDelay(10);
-            continue;
         }
 
-        // 只启用任务但尚未填写舵机表时，四路保持关闭，与客户端默认值一致。
-        for (uint8_t i = 0u; i < 4u; i++) ServoPwmSet(0u, i);
+        if (managerAllowed != 0u) {
+            published = LowCmdSetMotorManyWithPermit(ServoOutputId,
+                                                      ServoCommands,
+                                                      LOWCMD_SERVO_COUNT,
+                                                      &controlCtx.outputPermit);
+        }
+        if (published != 0u) {
+            published = LowCmdGetMotorManyStamped(ServoOutputId,
+                                                   ServoSnapshots,
+                                                   ServoOwners,
+                                                   LOWCMD_SERVO_COUNT);
+        }
+        if (published != 0u && ServoBoundConfigValid != 0u) {
+            const uint32_t nowMs = BspTimeGetTickMs();
+
+            for (uint8_t i = 0u; i < LOWCMD_SERVO_COUNT; i++) {
+                const ServoChannelConfig *channel = &ServoBoundConfig.channels[i];
+
+                if (channel->enabled == 0u) continue;
+                ServoPwm[i] = ServoPwmApply(channel,
+                                            ServoOutputId[i],
+                                            &ServoSnapshots[i],
+                                            &ServoOwners[i],
+                                            nowMs);
+            }
+            for (uint8_t port = 0u; port < 4u; port++) {
+                if ((ServoBoundPortMask & (uint8_t)(1u << port)) == 0u) ServoPwmDisable(port);
+            }
+        } else {
+            for (uint8_t i = 0u; i < LOWCMD_SERVO_COUNT; i++) ServoPwm[i] = 0u;
+            for (uint8_t port = 0u; port < 4u; port++) ServoPwmDisable(port);
+        }
         osDelay(10);
     }
 }

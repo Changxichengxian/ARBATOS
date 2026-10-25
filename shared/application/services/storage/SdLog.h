@@ -131,8 +131,7 @@ typedef enum
     SDLOG_TAG_WHEELLEG_MIT_MOTOR_DIAG = 0x0053u,
     SDLOG_TAG_RESET_EVIDENCE = 0x0054u, // payload: BspResetEvidenceBoot
     SDLOG_TAG_RECEIVE_CHECK = 0x0055u, // payload: MReceiveStatus头部，magic和sequence后为接收诊断
-    SDLOG_TAG_POWER_METER = 0x0056u,
-    SDLOG_TAG_CHASSIS_POWER_MODEL = 0x0057u,
+    /* 0x0056 和 0x0057 已停用，不复用历史记录编号。 */
     SDLOG_TAG_SOURCE_STATE = 0x0058u, // payload: UTF-8 源码状态字符串，不含末尾 NUL
 } sdlog_tag_e;
 
@@ -188,45 +187,6 @@ typedef struct __attribute__((packed))
 } sdlog_vision_to_gimbal_t;
 
 typedef char _check_sdlog_vision_to_gimbal_size[(sizeof(sdlog_vision_to_gimbal_t) == 29) ? 1 : -1];
-
-#define SDLOG_POWER_METER_VERSION 1u
-#define SDLOG_POWER_METER_MAX_SAMPLES 16u
-typedef struct __attribute__((packed))
-{
-    uint32_t rxTickMs;
-    uint32_t sequence;
-    uint16_t rawVoltage;
-    uint16_t rawCurrent;
-    float voltageV;
-    float currentA;
-    float powerW;
-} sdlog_power_meter_sample_t;
-
-typedef struct __attribute__((packed))
-{
-    uint8_t version;
-    uint8_t count;
-    uint8_t canBus;
-    uint8_t reserved8;
-    uint16_t canId;
-    uint16_t reserved16;
-    uint32_t canQueueDropCount;
-    uint32_t logDropCount;
-    sdlog_power_meter_sample_t sample[SDLOG_POWER_METER_MAX_SAMPLES];
-} sdlog_power_meter_batch_t;
-
-#define SDLOG_CHASSIS_POWER_MODEL_VERSION 1u
-typedef struct __attribute__((packed))
-{
-    uint8_t version;
-    uint8_t modelValid;
-    uint16_t reserved16;
-    uint32_t tickMs;
-    uint32_t sequence;
-    int32_t currentCmd[4];
-    float wheelRpm[4];
-    float estimatedPowerW;
-} sdlog_chassis_power_model_t;
 
 // Aux tuning command record: [u32 seq][ASCII bytes...][0]
 typedef struct __attribute__((packed))
@@ -1037,7 +997,8 @@ void SdLogStop(void);
 
 /*
  * 停止接收新记录，写完内存中已有记录，再同步并关闭文件。
- * 只能由 SdLogTask 调用；返回 0 才表示后续不会再写卡且文件已成功关闭。
+ * 只能由唯一写卡线程调用（正式运行 SdLogTask，静态检查 MPreflightThread）。
+ * 返回 0 才表示后续不会再写卡且文件已成功关闭。
  */
 int SdLogQuiesce(void);
 

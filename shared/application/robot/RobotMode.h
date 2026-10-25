@@ -130,8 +130,9 @@ static inline uint8_t robot_mode_allow_shoot_fric(void)
     }
     if (mode == ROBOT_RUN_MODE_SINGLE_TASK)
     {
-        return (uint8_t)(variant == ROBOT_RUN_VARIANT_SHOOT_FRIC_ONLY ||
-                         variant == ROBOT_RUN_VARIANT_SHOOT_COMBO);
+        return (uint8_t)(robot_mode_is_single_task(ROBOT_TASK_MODULE_SHOOT_RM) != 0u &&
+                         (variant == ROBOT_RUN_VARIANT_SHOOT_FRIC_ONLY ||
+                          variant == ROBOT_RUN_VARIANT_SHOOT_COMBO));
     }
 
     return 1u;
@@ -150,8 +151,9 @@ static inline uint8_t robot_mode_allow_shoot_trigger(void)
     }
     if (mode == ROBOT_RUN_MODE_SINGLE_TASK)
     {
-        return (uint8_t)(variant == ROBOT_RUN_VARIANT_SHOOT_TRIGGER_ONLY ||
-                         variant == ROBOT_RUN_VARIANT_SHOOT_COMBO);
+        return (uint8_t)(robot_mode_is_single_task(ROBOT_TASK_MODULE_SHOOT_RM) != 0u &&
+                         (variant == ROBOT_RUN_VARIANT_SHOOT_TRIGGER_ONLY ||
+                          variant == ROBOT_RUN_VARIANT_SHOOT_COMBO));
     }
 
     return 1u;

@@ -14,8 +14,6 @@
 #include "BspCan.h"
 #include "BspTime.h"
 #include "CanReceive.h"
-#include "PowerMeter.h"
-#include "RobotConfig.h"
 #include "Watch.h"
 #include "RtProf.h"
 #include "RobotTaskProfile.h"
@@ -24,10 +22,6 @@ void CanRxTask(void const *pvParameters)
 {
     (void)pvParameters;
 
-    PowerMeterInit(g_config.powerMeter.enable,
-                   g_config.powerMeter.canBus,
-                   g_config.powerMeter.canId,
-                   g_config.powerMeter.freshTimeoutMs);
     BspCanRxAttachTask(xTaskGetCurrentTaskHandle());
 
     BspCanFrame f;
@@ -46,7 +40,6 @@ void CanRxTask(void const *pvParameters)
 
         while (processed < max_frames && BspCanRxPop(&f))
         {
-            PowerMeterCanRx(f.bus, f.std_id, f.dlc, f.flags, f.data, f.rxTickMs);
             CAN_rx_process_frame(f.bus, f.std_id, f.dlc, f.data);
             processed++;
             if (budget_us != 0u &&

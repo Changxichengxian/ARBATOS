@@ -164,59 +164,87 @@ static void CanTxOutputGateSync(uint8_t output_locked)
     }
 }
 
-static void CanTxPrepareCmdCacheIds(void)
+static void CanTxPrepareRouteCache(void)
 {
-    static uint8_t ready = 0u;
+    static uint32_t cached_generation = 0u;
+    const uint32_t generation = MotorRouteGeneration();
 
-    if (ready != 0u)
+    if (cached_generation == generation && generation != 0u)
     {
         return;
     }
 
-    for (uint8_t i = 0u; i < (uint8_t)MotorCount; i++)
+    s_can_tx_route_count = 0u;
+    for (uint8_t i = 0u; i < MotorRouteCount(); i++)
     {
-        s_can_tx_cmd_cache_ids[i] = (MotorId)i;
+        const MotorRoute *route = MotorRouteGet(i);
+
+        if (route == NULL || route->enabled == 0u || route->node == NULL ||
+            CanTxActuatorIdValid(route->motorId) == 0u)
+        {
+            continue;
+        }
+        s_can_tx_routes[s_can_tx_route_count] = route;
+        s_can_tx_route_ids[s_can_tx_route_count] = route->motorId;
+        s_can_tx_route_count++;
     }
-    ready = 1u;
+    cached_generation = generation;
 }
 
-static void CanTxCacheLowcmd(void)
+static void CanTxCacheLowcmd(const MotorId *ids, uint8_t count)
 {
-    CanTxClearCmdCache();
-    CanTxPrepareCmdCacheIds();
+    const MotorId *snapshot_ids = ids;
+    uint8_t snapshot_count = count;
 
-    if (LowCmdGetMotorManyStamped(s_can_tx_cmd_cache_ids,
-                                  s_can_tx_cmd_cache,
-                                  s_can_tx_owner_cache,
-                                  (uint8_t)MotorCount) == 0u)
+    CanTxClearCmdCache();
+    CanTxPrepareRouteCache();
+
+    if (s_can_tx_unlock_barrier_pending != 0u)
+    {
+        /* 所有已配置轴都要跨过同一个解锁边界，包括当前车型模式暂未消费的轴。 */
+        snapshot_ids = s_can_tx_route_ids;
+        snapshot_count = s_can_tx_route_count;
+    }
+
+    if (LowCmdGetMotorManyStampedIndexed(snapshot_ids,
+                                         s_can_tx_cmd_cache,
+                                         s_can_tx_owner_cache,
+                                         snapshot_count) == 0u)
     {
         return;
     }
 
-    (void)memset(s_can_tx_cmd_cache_valid, 1, sizeof(s_can_tx_cmd_cache_valid));
+    for (uint8_t i = 0u; i < snapshot_count; i++)
+    {
+        s_can_tx_cmd_cache_valid[snapshot_ids[i]] = 1u;
+    }
     if (s_can_tx_unlock_barrier_pending != 0u)
     {
-        for (uint8_t i = 0u; i < (uint8_t)MotorCount; i++)
+        for (uint8_t i = 0u; i < snapshot_count; i++)
         {
-            CanTxCmdUnlockBarrierCapture(&s_can_tx_cmd_unlock_barrier[i],
-                                         &s_can_tx_cmd_cache[i]);
+            const MotorId id = snapshot_ids[i];
+
+            CanTxCmdUnlockBarrierCapture(&s_can_tx_cmd_unlock_barrier[id],
+                                         &s_can_tx_cmd_cache[id]);
         }
         s_can_tx_unlock_barrier_pending = 0u;
     }
     if (s_can_tx_unlock_barrier_active != 0u)
     {
-        for (uint8_t i = 0u; i < (uint8_t)MotorCount; i++)
+        for (uint8_t i = 0u; i < snapshot_count; i++)
         {
-            if (CanTxCmdPublishedAfterUnlock(&s_can_tx_cmd_unlock_barrier[i],
-                                             &s_can_tx_cmd_cache[i]) == 0u)
+            const MotorId id = snapshot_ids[i];
+
+            if (CanTxCmdPublishedAfterUnlock(&s_can_tx_cmd_unlock_barrier[id],
+                                             &s_can_tx_cmd_cache[id]) == 0u)
             {
-                CanTxForceDisabledCmd((MotorId)i);
-                s_can_tx_cmd_unlock_blocked[i] = 1u;
+                CanTxForceDisabledCmd(id);
+                s_can_tx_cmd_unlock_blocked[id] = 1u;
             }
             else
             {
                 /* 每轴只需跨过一次解锁边界，随后立即丢弃旧基线。 */
-                s_can_tx_cmd_unlock_barrier[i].valid = 0u;
+                s_can_tx_cmd_unlock_barrier[id].valid = 0u;
             }
         }
     }

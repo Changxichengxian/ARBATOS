@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>ARBATOS · 实测小轮腿</title>
+    <style>{{REFERENCE_STYLE}}</style>
+    <style>
+        .layout { grid-template-columns: minmax(0, 1fr) 330px; }
+        .scene img { width: 100%; display: block; aspect-ratio: 8/5; object-fit: contain; }
+        .scene { background: #181b1e; min-height: 300px; }
+        .telemetry, .controls { padding: 20px; }
+        .metrics { grid-template-columns: 1fr 1fr; }
+        .status-line { margin-top: 16px; }
+        .scene-foot { gap: 20px; }
+        .notes { padding: 10px 4px; color: #99a7b7; line-height: 1.8; font-size: 12px; }
+        .button-row { display: flex; gap: 8px; }
+        .button-row button { flex: 1; white-space: nowrap; font-size: 12px; }
+        .stop { color: #b63636; }
+        .mode-row { display: block; margin-bottom: 10px; font-size: 12px; }
+        .mode-row select { display: block; width: 100%; margin-top: 6px; padding: 8px; color: #e5edf5; background: #202b35; border: 1px solid #3b4854; border-radius: 6px; }
+        .height-controls { margin: 12px 0; padding: 10px; background: #202d38; border: 1px solid #3b4854; border-radius: 8px; }
+        .height-controls .length-row { margin-top: 0; }
+        button:disabled, input:disabled { opacity: .45; cursor: not-allowed; }
+        .layout:has(.scene-panel:fullscreen) { display: block; }
+        .scene-panel:fullscreen { background: #181b1e; }
+        @media(max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<main class="shell">
+    <header class="topbar">
+        <div class="brand"><div class="mark">A</div><div>
+            <h1>ARBATOS · 实测小轮腿</h1>
+            <div class="subtitle">105 mm 小腿 · 70 mm 髋轴距 · MuJoCo 实时仿真</div>
+            <div class="quick-keys">W/S 前后 · A/D 转向 · Q/E 降低/升高 · 空格停车 · T 复位 · X 停止电机</div>
+        </div></div>
+        <div id="connection" class="connection"><span class="dot"></span><span id="connectionText">正在连接</span></div>
+    </header>
+    <div class="layout">
+        <section id="scenePanel" class="panel scene-panel">
+            <div class="scene-heading"><span class="scene-title">实时画面</span><div class="scene-actions">
+                <select id="camera" aria-label="视角"><option value="follow">跟随车头</option><option value="oblique">侧面观察</option></select>
+                <button id="fullscreen" type="button">全屏</button>
+            </div></div>
+            <div class="scene"><img id="frame" alt="MuJoCo 小轮腿实时画面"></div>
+            <div class="scene-foot"><span>实际物理速度与两腿状态</span><span id="frameInfo">等待画面</span></div>
+            <div class="notes">核心总成实测 1.8248 kg；整车暂估 2.2648 kg。四种控制共用同一物理模型，从 100 mm 站姿开始。85～120 mm 是仿真腿长范围，实物行程待核对。</div>
+        </section>
+        <aside class="sidebar">
+            <section class="panel telemetry">
+                <h2 class="section-title">运行状态</h2>
+                <div class="metrics">
+                    <div class="metric"><div class="metric-label">前进速度</div><div class="metric-value"><span id="speed">—</span><small> m/s</small></div></div>
+                    <div class="metric"><div class="metric-label">实际转速</div><div class="metric-value"><span id="yawRate">—</span><small> °/s</small></div></div>
+                    <div class="metric"><div class="metric-label">俯仰</div><div class="metric-value"><span id="pitch">—</span><small> °</small></div></div>
+                    <div class="metric"><div class="metric-label">横滚</div><div class="metric-value"><span id="roll">—</span><small> °</small></div></div>
+                    <div class="metric"><div class="metric-label">两腿前后角度差</div><div class="metric-value"><span id="split">—</span><small> °</small></div></div>
+                    <div class="metric"><div class="metric-label">实时倍率</div><div class="metric-value"><span id="rtf">—</span><small> ×</small></div></div>
+                </div>
+                <div class="status-line"><b id="status">启动中</b><br>左右腿长 <b id="legs">—</b> mm<br>平滑后的目标 <b id="appliedHeight">—</b> mm<br>仿真时间 <b id="simTime">—</b> s</div>
+            </section>
+            <section class="panel controls">
+                <div class="controls-top"><h2 class="section-title">运动控制</h2><span class="key-hint">按住 WASD</span></div>
+                <label class="mode-row">控制模式（切换会复位）<select id="mode">
+                    <option value="vmc">VMC · 固定高度（原版）</option>
+                    <option value="bench">板凳 · 固定高度</option>
+                    <option value="bench-height">板凳 · 可变高度</option>
+                    <option value="vmc-height">VMC · 可变高度</option>
+                </select></label>
+                <div id="modeHint" class="hold-note"></div>
+                <div class="height-controls">
+                    <label class="length-row"><span>目标腿长 <input id="legLength" type="range" min="85" max="120" step="1" value="100" disabled></span><b><span id="heightValue">100</span> mm</b></label>
+                    <div class="button-row"><button class="reset-button" data-key="q" disabled>降低 · Q</button><button class="reset-button" data-key="e" disabled>升高 · E</button></div>
+                    <div class="hold-note">腿长指髋轴中点到轮轴的距离。可变高度模式下，行驶中也能升降。</div>
+                </div>
+                <label class="length-row"><span>行驶速度 <input id="driveSpeed" type="range" min="0.1" max="1" step="0.1" value="0.8"></span><b><span id="driveValue">0.8</span> m/s</b></label>
+                <label class="length-row"><span>转向速度 <input id="turnSpeed" type="range" min="0.2" max="1.2" step="0.1" value="1.2"></span><b><span id="turnValue">69</span> °/s</b></label>
+                <div class="pad" aria-label="按住控制方向">
+                    <button class="control-key" data-key="w" aria-label="前进 W">W</button>
+                    <button class="control-key" data-key="a" aria-label="左转 A">A</button>
+                    <button class="control-key" data-key="s" aria-label="后退 S">S</button>
+                    <button class="control-key" data-key="d" aria-label="右转 D">D</button>
+                </div>
+                <div class="button-row"><button id="brake" class="reset-button">停车 · Space</button><button id="reset" class="reset-button">复位 · T</button></div>
+                <div class="button-row"><button id="motorStop" class="reset-button stop">停止电机 · X</button></div>
+                <div class="hold-note">松开按键会制动并保持平衡。A/D 始终控制车头左/右转。离开页面或通信中断会清零行驶指令；X 会断开支撑，按 T 才恢复。</div>
+            </section>
+        </aside>
+    </div>
+</main>
+<script>
+    const $ = id => document.getElementById(id);
+    const keys = new Set();
+    let sending = false, pending = false, reset = false, motorStop = false;
+    let active = true, ready = false, requestId = 0;
+    function updateMode() {
+        const mode = $('mode').value, variable = mode.endsWith('-height');
+        $('legLength').disabled = !variable;
+        document.querySelectorAll('[data-key="q"], [data-key="e"]').forEach(el => el.disabled = !variable);
+        if (!variable) { keys.delete('q'); keys.delete('e'); $('legLength').value = 100; }
+        $('heightValue').textContent = $('legLength').value;
+        $('modeHint').textContent = mode.startsWith('bench') ?
+            (variable ? '腿长换算成关节角度，位置环控制升降；轮子负责平衡。' : '关节保持初始角度，轮子负责平衡，腿长固定 100 mm。') :
+            'VMC 控制支撑力，轮端与髋部一起维持平衡。';
+        paintKeys();
+    }
+    function paintKeys() {
+        document.querySelectorAll('[data-key]').forEach(el => el.classList.toggle('active', keys.has(el.dataset.key)));
+    }
+    async function send() {
+        if (!ready) return;
+        if (sending) { pending = true; return; }
+        sending = true;
+        const value = {keys: active ? [...keys] : [], drive_speed: +$('driveSpeed').value,
+            turn_speed: +$('turnSpeed').value, mode: $('mode').value, leg_length: +$('legLength').value / 1000, reset, motor_stop: motorStop};
+        reset = motorStop = false;
+        try {
+            const response = await fetch('/command', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(value), signal: AbortSignal.timeout(800)});
+            if (!response.ok) throw Error('指令被拒绝');
+        } catch (_) { keys.clear(); paintKeys(); }
+        finally { sending = false; if (pending) { pending = false; send(); } }
+    }
+    function clearKeys() { keys.clear(); paintKeys(); send(); }
+    function stopMotors() { keys.clear(); motorStop = true; paintKeys(); send(); }
+    function doReset() { keys.clear(); $('legLength').value = 100; updateMode(); reset = true; paintKeys(); send(); }
+    document.addEventListener('keydown', event => {
+        if (event.ctrlKey || event.altKey || event.metaKey) return;
+        const key = event.key.toLowerCase();
+        if (['q','e'].includes(key) && $('legLength').disabled) return;
+        if (['w','a','s','d','q','e',' '].includes(key)) {
+            event.preventDefault(); active = true; keys.add(key); paintKeys(); send();
+        } else if (!event.repeat && key === 't') doReset();
+        else if (!event.repeat && key === 'x') stopMotors();
+    });
+    document.addEventListener('keyup', event => { keys.delete(event.key.toLowerCase()); paintKeys(); send(); });
+    window.addEventListener('blur', () => { active = false; clearKeys(); });
+    window.addEventListener('focus', () => { active = true; clearKeys(); });
+    document.addEventListener('visibilitychange', () => { active = !document.hidden; clearKeys(); });
+    window.addEventListener('pagehide', () => navigator.sendBeacon('/command', new Blob([JSON.stringify({keys: []})], {type:'application/json'})));
+    document.querySelectorAll('[data-key]').forEach(el => {
+        el.addEventListener('pointerdown', event => { event.preventDefault(); active = true; el.setPointerCapture(event.pointerId); keys.add(el.dataset.key); paintKeys(); send(); });
+        for (const name of ['pointerup','pointercancel','lostpointercapture']) el.addEventListener(name, () => { keys.delete(el.dataset.key); paintKeys(); send(); });
+    });
+    $('brake').onclick = clearKeys;
+    $('reset').onclick = doReset;
+    $('motorStop').onclick = stopMotors;
+    $('mode').onchange = () => { doReset(); $('mode').blur(); };
+    $('legLength').oninput = () => { $('heightValue').textContent = $('legLength').value; send(); };
+    $('camera').onchange = () => fetch('/camera', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mode:$('camera').value})});
+    $('fullscreen').onclick = () => document.fullscreenElement ? document.exitFullscreen() : $('scenePanel').requestFullscreen();
+    $('driveSpeed').oninput = () => { $('driveValue').textContent = (+$('driveSpeed').value).toFixed(1); send(); };
+    $('turnSpeed').oninput = () => { $('turnValue').textContent = Math.round(+$('turnSpeed').value * 180 / Math.PI); send(); };
+    setInterval(() => {
+        if (active && !$('legLength').disabled) {
+            const direction = Number(keys.has('e')) - Number(keys.has('q'));
+            if (direction) {
+                $('legLength').value = Math.max(85, Math.min(120, +$('legLength').value + direction * 2));
+                $('heightValue').textContent = $('legLength').value;
+            }
+        }
+        send();
+    }, 80);
+    async function stateLoop() {
+        try {
+            const response = await fetch('/state', {signal:AbortSignal.timeout(1000)});
+            const state = await response.json();
+            if (!ready && state.mode) {
+                $('mode').value = state.mode;
+                $('legLength').value = Math.round(state.target_length * 1000);
+                $('driveSpeed').value = state.drive_speed;
+                $('turnSpeed').value = state.turn_speed;
+                $('driveValue').textContent = Number(state.drive_speed).toFixed(1);
+                $('turnValue').textContent = Math.round(state.turn_speed * 180 / Math.PI);
+                updateMode(); ready = true;
+            }
+            $('connectionText').textContent = state.running ? '已连接' : state.status;
+            $('connection').classList.toggle('online', state.running);
+            for (const key of ['speed','pitch','roll','split','rtf']) $(key).textContent = Number(state[key] || 0).toFixed(key === 'speed' ? 2 : 1);
+            $('yawRate').textContent = (state.yaw_rate * 180 / Math.PI || 0).toFixed(1);
+            $('legs').textContent = (state.legs || []).slice().reverse().map(x => x.toFixed(1)).join(' / ');
+            $('appliedHeight').textContent = (1000 * state.applied_length || 100).toFixed(1);
+            $('simTime').textContent = Number(state.time || 0).toFixed(1);
+            $('status').textContent = state.status;
+            $('frameInfo').textContent = `第 ${state.frame_seq} 帧 · 960 × 600`;
+        } catch (_) { $('connectionText').textContent = '连接断开，行驶指令已清零'; clearKeys(); }
+        setTimeout(stateLoop, 100);
+    }
+    function frameLoop() { $('frame').src = '/frame.jpg?n=' + (++requestId); }
+    $('frame').onload = () => setTimeout(frameLoop, 50);
+    $('frame').onerror = () => setTimeout(frameLoop, 400);
+    updateMode(); stateLoop(); frameLoop();
+</script>
+</body>
+</html>

@@ -17,6 +17,7 @@ static uint32_t s_test_seq;
 static uint32_t s_test_motor_batch_calls;
 static uint32_t s_test_current_batch_calls;
 static uint32_t s_test_clear_batch_calls;
+static uint32_t s_test_inhibit_batch_calls;
 static uint8_t s_test_last_count;
 static uint8_t s_test_force_batch_fail;
 static motor_node_param_t s_test_nodes[MotorCount];
@@ -129,11 +130,25 @@ uint8_t LowCmdClearManyWithPermit(const MotorId *ids,
 
 uint8_t LowCmdGetInhibitWriter(MotorId id, uint16_t *out)
 {
-    if ((uint32_t)id >= (uint32_t)MotorCount || out == NULL)
+    return LowCmdGetInhibitWriters(&id, out, 1u);
+}
+
+uint8_t LowCmdGetInhibitWriters(const MotorId *ids, uint16_t *out, uint8_t count)
+{
+    s_test_inhibit_batch_calls++;
+    if (count > (uint8_t)MotorCount ||
+        (count != 0u && (ids == NULL || out == NULL)))
     {
         return 0u;
     }
-    *out = s_test_inhibit[id];
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if ((uint32_t)ids[i] >= (uint32_t)MotorCount)
+        {
+            return 0u;
+        }
+        out[i] = s_test_inhibit[ids[i]];
+    }
     return 1u;
 }
 
@@ -259,6 +274,7 @@ static void TestReset(void)
     s_test_motor_batch_calls = 0u;
     s_test_current_batch_calls = 0u;
     s_test_clear_batch_calls = 0u;
+    s_test_inhibit_batch_calls = 0u;
     s_test_last_count = 0u;
     s_test_force_batch_fail = 0u;
 
@@ -282,6 +298,7 @@ static void TestReset(void)
     }
     /* Motor6 保留实例但关闭节点；Motor7 及以后没有实例。 */
     s_test_nodes[6].can_id = 0u;
+    MotorRouteRebuild();
 }
 
 static int TestStrictBatchAndInputValidation(void)
@@ -345,7 +362,9 @@ static int TestBestEffortFiltersThenPublishesOnce(void)
     if (!TestCheck(MotorInstSetIdsBestEffortWithPermit(ids, cmds, 5u, &permit) == 2u,
                    "BestEffort 应过滤无实例、关闭和高优先级禁写轴") ||
         !TestCheck(s_test_motor_batch_calls == 1u && s_test_last_count == 2u,
-                   "BestEffort 过滤后应只提交一个批次") ||
+                    "BestEffort 过滤后应只提交一个批次") ||
+        !TestCheck(s_test_inhibit_batch_calls == 1u,
+                   "BestEffort 应一次读取整批禁写状态") ||
         !TestCheck(s_test_cmd[Motor0].seq != 0u &&
                        s_test_cmd[Motor0].seq == s_test_cmd[Motor2].seq &&
                        s_test_cmd[Motor1].seq == 0u,
@@ -379,18 +398,22 @@ static int TestCurrentBindingsAndModeHelpers(void)
 {
     const MotorId ids[2] = {Motor0, Motor2};
     const int16_t currents[5] = {100, 200, 300, 400, 500};
-    const MotorCurrentBind bindings[5] = {
-        {Motor0, 1u},
-        {Motor7, 1u},
-        {Motor1, 1u},
-        {Motor6, 0u},
-        {Motor2, 1u},
-    };
-    const MotorCurrentBind duplicate_bindings[2] = {{Motor0, 1u}, {Motor0, 1u}};
+    MotorCurrentBind bindings[5];
+    MotorCurrentBind duplicate_bindings[2];
     MotorCmd torque_cmds[2];
     ControlOutputPermit permit = TestPermit();
 
     TestReset();
+    bindings[0] = (MotorCurrentBind){Motor0, 1u, (uint8_t)MotorCmdCapCurrent,
+                                     MotorRouteFindByMotor(Motor0)};
+    bindings[1] = (MotorCurrentBind){Motor7, 1u, (uint8_t)MotorCmdCapCurrent, NULL};
+    bindings[2] = (MotorCurrentBind){Motor1, 1u, (uint8_t)MotorCmdCapCurrent,
+                                     MotorRouteFindByMotor(Motor1)};
+    bindings[3] = (MotorCurrentBind){Motor6, 0u, 0u, NULL};
+    bindings[4] = (MotorCurrentBind){Motor2, 1u, (uint8_t)MotorCmdCapCurrent,
+                                     MotorRouteFindByMotor(Motor2)};
+    duplicate_bindings[0] = bindings[0];
+    duplicate_bindings[1] = bindings[0];
     s_test_inhibit[Motor1] = (uint16_t)LOWCMD_WRITER_FAULT;
     if (!TestCheck(MotorInstSetCurrentBindsBestEffortWithPermit(bindings,
                                                                 currents,
@@ -399,7 +422,9 @@ static int TestCurrentBindingsAndModeHelpers(void)
                    "绑定电流 BestEffort 过滤结果不正确") ||
         !TestCheck(s_test_current_batch_calls == 1u && s_test_last_count == 2u &&
                        s_test_cmd[Motor0].seq == s_test_cmd[Motor2].seq,
-                   "绑定电流应一次批量发布") ||
+                    "绑定电流应一次批量发布") ||
+        !TestCheck(s_test_inhibit_batch_calls == 1u,
+                   "绑定热路径应一次读取整批禁写状态") ||
         !TestCheck(MotorInstSetCurrentBindsBestEffortWithPermit(duplicate_bindings,
                                                                 currents,
                                                                 2u,

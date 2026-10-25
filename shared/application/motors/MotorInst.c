@@ -37,6 +37,7 @@ static MotorInstDiag sMotorInstDiag;
 static uint8_t sMotorInstCount = 0u;
 static uint8_t sMotorRouteCount = 0u;
 static uint8_t sMotorInstReady = 0u;
+static uint32_t sMotorRouteGeneration = 0u;
 
 static uint8_t MotorInstNodeCaps(const motor_node_param_t *node);
 
@@ -395,6 +396,11 @@ void MotorInstRefresh(void)
 
     MotorInstFeedbackRebuild();
     MotorRouteRebuild();
+    sMotorRouteGeneration++;
+    if (sMotorRouteGeneration == 0u)
+    {
+        sMotorRouteGeneration = 1u;
+    }
     sMotorInstReady = 1u;
 }
 
@@ -463,6 +469,12 @@ uint8_t MotorRouteCount(void)
     return sMotorRouteCount;
 }
 
+uint32_t MotorRouteGeneration(void)
+{
+    MotorInstEnsure();
+    return sMotorRouteGeneration;
+}
+
 const MotorRoute *MotorRouteGet(uint8_t index)
 {
     MotorInstEnsure();
@@ -528,6 +540,8 @@ uint8_t MotorInstBindCurrent(const char *const *names,
 
         out[i].actuator_id = MotorCount;
         out[i].enabled = 0u;
+        out[i].cmdCaps = 0u;
+        out[i].route = NULL;
 
         if (inst == NULL || MotorInstEnabled(inst) == 0u)
         {
@@ -536,6 +550,8 @@ uint8_t MotorInstBindCurrent(const char *const *names,
 
         out[i].actuator_id = inst->actuator_id;
         out[i].enabled = 1u;
+        out[i].cmdCaps = MotorInstNodeCaps(inst->node);
+        out[i].route = MotorRouteFindByMotor(inst->actuator_id);
         bound++;
     }
 
@@ -781,16 +797,31 @@ static uint8_t MotorInstIdsUnique(const MotorId *ids, uint8_t count)
     return 1u;
 }
 
-static uint8_t MotorInstControlWriteBlocked(MotorId id)
+static uint8_t MotorInstCompactControlIds(MotorId *ids,
+                                          uint8_t count,
+                                          uint8_t *sourceIndex)
 {
-    uint16_t inhibit_writer = (uint16_t)LOWCMD_WRITER_NONE;
+    uint16_t inhibit_writer[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
+    uint8_t kept = 0u;
 
-    if (LowCmdGetInhibitWriter(id, &inhibit_writer) == 0u)
+    if (count > MOTOR_INST_PERMIT_BATCH_CAP ||
+        (count != 0u && (ids == NULL || sourceIndex == NULL)) ||
+        LowCmdGetInhibitWriters(ids, inhibit_writer, count) == 0u)
     {
-        return 1u;
+        return 0u;
     }
 
-    return (inhibit_writer > (uint16_t)LOWCMD_WRITER_CONTROL) ? 1u : 0u;
+    for (uint8_t i = 0u; i < count; i++)
+    {
+        if (inhibit_writer[i] > (uint16_t)LOWCMD_WRITER_CONTROL)
+        {
+            continue;
+        }
+        sourceIndex[kept] = i;
+        ids[kept] = ids[i];
+        kept++;
+    }
+    return kept;
 }
 
 uint8_t MotorInstClearIds(const MotorId *ids, uint8_t count)
@@ -938,6 +969,7 @@ uint8_t MotorInstSetIdsBestEffortWithPermit(const MotorId *ids,
 {
     MotorId writable_ids[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
     MotorCmd writable_cmds[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
+    uint8_t source_index[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
     uint8_t written = 0u;
 
     if (ids == NULL || cmds == NULL || permit == NULL ||
@@ -950,8 +982,7 @@ uint8_t MotorInstSetIdsBestEffortWithPermit(const MotorId *ids,
     for (uint8_t i = 0u; i < count; i++)
     {
         if (MotorInstCmdEnabled(ids[i]) == 0u ||
-            MotorInstModeSupportedId(ids[i], (MotorMode)cmds[i].mode) == 0u ||
-            MotorInstControlWriteBlocked(ids[i]) != 0u)
+            MotorInstModeSupportedId(ids[i], (MotorMode)cmds[i].mode) == 0u)
         {
             continue;
         }
@@ -963,6 +994,18 @@ uint8_t MotorInstSetIdsBestEffortWithPermit(const MotorId *ids,
         writable_ids[written] = ids[i];
         writable_cmds[written] = cmds[i];
         written++;
+    }
+
+    {
+        const uint8_t kept = MotorInstCompactControlIds(writable_ids,
+                                                        written,
+                                                        source_index);
+
+        for (uint8_t i = 0u; i < kept; i++)
+        {
+            writable_cmds[i] = writable_cmds[source_index[i]];
+        }
+        written = kept;
     }
 
     if (written == 0u ||
@@ -1101,6 +1144,7 @@ uint8_t MotorInstSetStateTorqueIdsBestEffortWithPermit(const MotorId *ids,
 {
     MotorId writable_ids[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
     MotorCmd writable_cmds[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
+    uint8_t source_index[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
     uint8_t written = 0u;
 
     if (ids == NULL || cmds == NULL || permit == NULL ||
@@ -1113,8 +1157,7 @@ uint8_t MotorInstSetStateTorqueIdsBestEffortWithPermit(const MotorId *ids,
     for (uint8_t i = 0u; i < count; i++)
     {
         if (MotorInstCmdEnabled(ids[i]) == 0u ||
-            MotorInstModeSupportedId(ids[i], MotorModeStateTorque) == 0u ||
-            MotorInstControlWriteBlocked(ids[i]) != 0u)
+            MotorInstModeSupportedId(ids[i], MotorModeStateTorque) == 0u)
         {
             continue;
         }
@@ -1128,6 +1171,18 @@ uint8_t MotorInstSetStateTorqueIdsBestEffortWithPermit(const MotorId *ids,
         writable_cmds[written].active = 1u;
         writable_cmds[written].mode = (uint8_t)MotorModeStateTorque;
         written++;
+    }
+
+    {
+        const uint8_t kept = MotorInstCompactControlIds(writable_ids,
+                                                        written,
+                                                        source_index);
+
+        for (uint8_t i = 0u; i < kept; i++)
+        {
+            writable_cmds[i] = writable_cmds[source_index[i]];
+        }
+        written = kept;
     }
 
     if (written == 0u ||
@@ -1397,6 +1452,7 @@ uint8_t MotorInstSetCurrentIdsBestEffortWithPermit(const MotorId *ids,
 {
     MotorId writable_ids[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
     int16_t writable_currents[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
+    uint8_t source_index[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
     uint8_t written = 0u;
 
     if (ids == NULL || currents == NULL || permit == NULL ||
@@ -1409,8 +1465,7 @@ uint8_t MotorInstSetCurrentIdsBestEffortWithPermit(const MotorId *ids,
     for (uint8_t i = 0u; i < count; i++)
     {
         if (MotorInstCmdEnabled(ids[i]) == 0u ||
-            MotorInstModeSupportedId(ids[i], MotorModeCurrent) == 0u ||
-            MotorInstControlWriteBlocked(ids[i]) != 0u)
+            MotorInstModeSupportedId(ids[i], MotorModeCurrent) == 0u)
         {
             continue;
         }
@@ -1422,6 +1477,18 @@ uint8_t MotorInstSetCurrentIdsBestEffortWithPermit(const MotorId *ids,
         writable_ids[written] = ids[i];
         writable_currents[written] = currents[i];
         written++;
+    }
+
+    {
+        const uint8_t kept = MotorInstCompactControlIds(writable_ids,
+                                                        written,
+                                                        source_index);
+
+        for (uint8_t i = 0u; i < kept; i++)
+        {
+            writable_currents[i] = writable_currents[source_index[i]];
+        }
+        written = kept;
     }
 
     if (written == 0u ||
@@ -1496,6 +1563,7 @@ uint8_t MotorInstSetCurrentBindsBestEffortWithPermit(const MotorCurrentBind *bin
 {
     MotorId writable_ids[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
     int16_t writable_currents[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
+    uint8_t source_index[ROBOT_CONFIG_DEVICE_BINDING_MAX_OUTPUTS];
     uint8_t written = 0u;
 
     if (bindings == NULL || currents == NULL || permit == NULL ||
@@ -1507,7 +1575,11 @@ uint8_t MotorInstSetCurrentBindsBestEffortWithPermit(const MotorCurrentBind *bin
     for (uint8_t i = 0u; i < count; i++)
     {
         if (bindings[i].enabled == 0u ||
-            (uint32_t)bindings[i].actuator_id >= (uint32_t)MotorCount)
+            (uint32_t)bindings[i].actuator_id >= (uint32_t)MotorCount ||
+            bindings[i].route == NULL ||
+            bindings[i].route->motorId != bindings[i].actuator_id ||
+            bindings[i].route->enabled == 0u ||
+            (bindings[i].cmdCaps & (uint8_t)MotorCmdCapCurrent) == 0u)
         {
             continue;
         }
@@ -1519,12 +1591,6 @@ uint8_t MotorInstSetCurrentBindsBestEffortWithPermit(const MotorCurrentBind *bin
                 return 0u;
             }
         }
-        if (MotorInstCmdEnabled(bindings[i].actuator_id) == 0u ||
-            MotorInstModeSupportedId(bindings[i].actuator_id, MotorModeCurrent) == 0u ||
-            MotorInstControlWriteBlocked(bindings[i].actuator_id) != 0u)
-        {
-            continue;
-        }
         if (written >= MOTOR_INST_PERMIT_BATCH_CAP)
         {
             return 0u;
@@ -1533,6 +1599,18 @@ uint8_t MotorInstSetCurrentBindsBestEffortWithPermit(const MotorCurrentBind *bin
         writable_ids[written] = bindings[i].actuator_id;
         writable_currents[written] = currents[i];
         written++;
+    }
+
+    {
+        const uint8_t kept = MotorInstCompactControlIds(writable_ids,
+                                                        written,
+                                                        source_index);
+
+        for (uint8_t i = 0u; i < kept; i++)
+        {
+            writable_currents[i] = writable_currents[source_index[i]];
+        }
+        written = kept;
     }
 
     if (written == 0u ||

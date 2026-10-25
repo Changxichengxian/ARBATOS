@@ -167,11 +167,12 @@ void arbatos_wheelleg_bridge_config_defaults(arbatos_wheelleg_bridge_config_t *c
 
     (void)memset(config, 0, sizeof(*config));
     config->geometry.l1_m = 0.05000f;
-    config->geometry.l2_m = 0.11404f;
-    config->geometry.l3_m = 0.11404f;
+    config->geometry.l2_m = 0.10500f;
+    config->geometry.l3_m = 0.10500f;
     config->geometry.l4_m = 0.05000f;
-    config->geometry.l5_m = 0.06000f;
+    config->geometry.l5_m = 0.07000f;
     config->wheel_radius_m = 0.03275f;
+    // 默认增益仍来自旧几何和估算质量，不能视为新实测参数下的平衡验证。
     for (i = 0u; i < WHEELLEG_CORE_LQR_ROW_COUNT; i++)
     {
         for (j = 0u; j < WHEELLEG_CORE_LQR_COEFF_COUNT; j++)

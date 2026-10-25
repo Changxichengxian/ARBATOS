@@ -28,6 +28,7 @@ HERE = Path(__file__).resolve().parent
 BRIDGE_SOURCE = HERE / "WheelLegCoreBridge.c"
 DEFAULT_NATIVE_DIR = REPO_ROOT / "local" / "cache" / "mujoco_wheelleg"
 
+# 旧质量假设；核心实测 1.8248 kg 含旋转件，质量拆分见车型安装说明。
 SIM_TOTAL_MASS_KG = 2.25
 SIM_BODY_MASS_KG = 1.81
 SIM_WHEEL_END_MASS_TOTAL_KG = 0.320

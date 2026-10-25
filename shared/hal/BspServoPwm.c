@@ -7,12 +7,18 @@
  */
 
 #include "BspServoPwm.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "RobotLifecycle.h"
+#include "RobotMode.h"
+#include "RobotSafety.h"
+#include "ServoOutputPolicy.h"
 #include "main.h"
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim8;
 
-void ServoPwmSet(uint16_t pwm, uint8_t i)
+static void ServoPwmSetRaw(uint16_t pwm, uint8_t i)
 {
     switch(i)
     {
@@ -33,4 +39,36 @@ void ServoPwmSet(uint16_t pwm, uint8_t i)
             __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_3, pwm);
         }break;
     }
+}
+
+uint16_t ServoPwmApply(const ServoChannelConfig *channel,
+                       MotorId id,
+                       const MotorCmd *cmd,
+                       const ControlOutputStamp *owner,
+                       uint32_t nowMs)
+{
+    uint16_t pulse = 0u;
+
+    if (ServoChannelValid(channel) == 0u)
+    {
+        return 0u;
+    }
+    taskENTER_CRITICAL();
+    if (RobotSafetyOutputLocked() == 0u &&
+        RobotLifecycleOutputAllowed() != 0u &&
+        (robot_mode_current() == ROBOT_RUN_MODE_FULL ||
+         robot_mode_is_single_task(ROBOT_TASK_MODULE_SERVO) != 0u))
+    {
+        (void)ServoCommandPulseBound(channel, id, cmd, owner, nowMs, 0u, &pulse);
+    }
+    ServoPwmSetRaw(pulse, channel->port);
+    taskEXIT_CRITICAL();
+    return pulse;
+}
+
+void ServoPwmDisable(uint8_t port)
+{
+    taskENTER_CRITICAL();
+    ServoPwmSetRaw(0u, port);
+    taskEXIT_CRITICAL();
 }

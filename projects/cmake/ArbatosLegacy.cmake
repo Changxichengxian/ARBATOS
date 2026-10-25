@@ -41,7 +41,6 @@ function(arbatos_add_legacy_sources target)
         shared/application/motors/MotorHealth.c
         shared/application/comm/can/CanReceive.c
         shared/application/comm/can/CanRxTask.c
-        shared/application/comm/can/PowerMeter.c
         shared/application/comm/can/CanTxTask.c
         shared/application/motors/CanMitMotorDriver.c
         shared/application/wheelleg/WheelLegMitTask.c
@@ -52,11 +51,18 @@ function(arbatos_add_legacy_sources target)
         shared/application/chassis/ChassisCtrl.c
         shared/application/gimbal/GimbalBehaviour.c
         shared/application/gimbal/GimbalControlTask.c
+        shared/application/gimbal/GimbalOutput.c
+        shared/application/gimbal/GimbalRuntime.c
+        shared/application/gimbal/GimbalFault.c
+        shared/application/gimbal/GimbalLog.c
+        shared/application/gimbal/GimbalDualYaw.c
+        shared/application/gimbal/GimbalControl.c
+        shared/application/gimbal/GimbalCalibration.c
+        shared/application/gimbal/GimbalTune.c
         shared/application/services/buzzer/BuzzerFilePlayer.c
         shared/application/comm/referee/Referee.c
         shared/application/shoot/Shoot.c
         shared/application/shoot/ShootCtrl.c
-        shared/application/services/diagnostics/Watch.c
         shared/application/services/diagnostics/RobotFaultGuard.c
         shared/components/algorithm/AhrsMiddleware.c
         shared/components/algorithm/KalmanFilter.c
@@ -80,8 +86,6 @@ function(arbatos_add_legacy_sources target)
         shared/application/motors/N6014bMotorDriver.c
         shared/application/services/calibration/PitchCali.c
         shared/application/services/storage/SdCard.c
-        shared/application/services/storage/SdLog.c
-        shared/application/services/storage/SdLogTask.c
         shared/application/comm/referee/RefereeRxTask.c
         shared/application/services/diagnostics/CpuUsage.c
         shared/components/devices/SdSpi.c
@@ -91,9 +95,24 @@ function(arbatos_add_legacy_sources target)
         shared/components/support/fatfs/ffsystem.c
         shared/components/support/fatfs/ffunicode.c
     )
-    # H723 的 IMU 路径不使用 AhrsMiddleware；A 板改用 MPU6500，不能
-    # 编入 BMI088 驱动及其专属设备树端口。
-    if(CONFIG_BOARD_DM_MC02_H7)
+    if(ARBATOS_TARGET_WATCH_FULL)
+        list(APPEND ARBATOS_PORTABLE_RUNTIME
+            shared/application/services/diagnostics/Watch.c)
+    else()
+        list(APPEND ARBATOS_PORTABLE_RUNTIME
+            shared/application/services/diagnostics/WatchLite.c)
+    endif()
+    if(ARBATOS_TARGET_HAS_SDLOG)
+        list(APPEND ARBATOS_PORTABLE_RUNTIME
+            shared/application/services/storage/SdLog.c
+            shared/application/services/storage/SdLogTask.c)
+    else()
+        list(APPEND ARBATOS_PORTABLE_RUNTIME
+            shared/application/services/storage/SdLogDisabled.c)
+    endif()
+    # H723 和 C 板走 BMI088；A 板走 MPU6500。Zephyr 姿态任务直接使用
+    # 公共融合实现，不需要旧 AhrsMiddleware 的板级磁力计依赖。
+    if(CONFIG_BOARD_DM_MC02_H7 OR CONFIG_BOARD_DJI_C_F407)
         list(REMOVE_ITEM ARBATOS_PORTABLE_RUNTIME
             shared/components/algorithm/AhrsMiddleware.c)
         list(APPEND ARBATOS_PORTABLE_RUNTIME

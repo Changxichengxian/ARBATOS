@@ -91,6 +91,16 @@ static inline void RobotControlAuditInventory(ControlActuatorAudit *audit)
         }
     }
 
+#if ROBOT_TASK_BUILD_SERVO
+    /* PWM 适配器占用独立 LowCmd 槽，不经过 MotorInst/CAN/RS485 路由表。 */
+    for (uint8_t i = 0u; i < LOWCMD_SERVO_COUNT; i++)
+    {
+        (void)ControlActuatorAuditAdd(audit,
+                                      &audit->routableMask,
+                                      (uint16_t)((uint32_t)LOWCMD_SERVO_FIRST + i));
+    }
+#endif
+
     for (uint8_t i = 0u; i < RobotConfigDeviceTableCount(); i++)
     {
         const RobotDeviceConfigEntry *entry = &g_config.devices.entry[i];
@@ -325,6 +335,18 @@ static inline uint8_t RobotControlRegisterProfileDefaults(void)
         "motor.right_wheel",
     };
 #endif
+#if ROBOT_TASK_BUILD_SERVO
+    static const ControlController servo = {
+        .id = ControlIdServo,
+        .domain = ControlDomainSystem,
+        .claim_mask = ControlResServoOutput,
+        .actuator_mask = ((uint32_t)0x0Fu << (uint32_t)LOWCMD_SERVO_FIRST),
+        .name = "controller.Servo",
+        .meta = {
+            .period_ms = 10u,
+        },
+    };
+#endif
 
 #if ROBOT_TASK_BUILD_SINGLE_GIMBAL
     static const ControlController single_gimbal = {
@@ -381,6 +403,12 @@ static inline uint8_t RobotControlRegisterProfileDefaults(void)
         },
     };
 #endif
+#if ROBOT_TASK_BUILD_SERVO
+    if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_SERVO) != 0u)
+    {
+        register_ok &= (uint8_t)(ControlMgrRegister(&servo) == ControlResultOk);
+    }
+#endif
 
 #if ROBOT_TASK_BUILD_CLASSIC_CHASSIS
     register_ok &= (uint8_t)(RobotControlRegisterIfEnabled(ChassisCtrlDesc(),
@@ -398,10 +426,11 @@ static inline uint8_t RobotControlRegisterProfileDefaults(void)
                                                            &actuator_audit) == ControlResultOk);
 #endif
 #if ROBOT_TASK_BUILD_SHOOT_RM
-    if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
-        RobotProfileModuleEnabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
+    if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_SHOOT_RM) != 0u)
     {
-        register_ok &= (uint8_t)(RobotControlRegisterNamed(ShootCtrlDesc(), &actuator_audit) ==
+        ControlController shoot = *ShootCtrlDesc();
+        shoot.meta.period_ms = RobotProfileShootControlPeriodMs();
+        register_ok &= (uint8_t)(RobotControlRegisterNamed(&shoot, &actuator_audit) ==
                                  ControlResultOk);
     }
 #endif
@@ -467,8 +496,7 @@ static inline uint8_t RobotControlStartProfileDefaults(void)
     }
 #endif
 #if ROBOT_TASK_BUILD_SHOOT_RM
-    if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_SINGLE_GIMBAL) != 0u ||
-        RobotProfileModuleEnabled(ROBOT_TASK_MODULE_DUAL_YAW_GIMBAL) != 0u)
+    if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_SHOOT_RM) != 0u)
     {
         start_ok &= (uint8_t)(ControlMgrSwitch(ControlIdShoot,
                                                 ControlReasonProfile) == ControlResultOk);
@@ -485,6 +513,13 @@ static inline uint8_t RobotControlStartProfileDefaults(void)
     if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_WHEELLEG_MIT) != 0u)
     {
         start_ok &= (uint8_t)(ControlMgrSwitch(ControlIdWheellegMitBalance,
+                                                ControlReasonProfile) == ControlResultOk);
+    }
+#endif
+#if ROBOT_TASK_BUILD_SERVO
+    if (RobotProfileModuleEnabled(ROBOT_TASK_MODULE_SERVO) != 0u)
+    {
+        start_ok &= (uint8_t)(ControlMgrSwitch(ControlIdServo,
                                                 ControlReasonProfile) == ControlResultOk);
     }
 #endif

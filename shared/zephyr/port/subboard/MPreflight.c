@@ -1,6 +1,9 @@
 /* 上车前静态检查。邮箱只提供日志读取及显式启停限功率加热。 */
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/uart.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include "InsTask.h"
@@ -10,6 +13,14 @@
 #include "fatfs/ff.h"
 
 LOG_MODULE_REGISTER(preflight, LOG_LEVEL_INF);
+
+#if defined(CONFIG_ARBATOS_PREFLIGHT_AWAKE)
+bool z_arm_on_enter_cpu_idle(void)
+{
+    /* 无线 DAP 在 H723 休眠后无法稳定重连；仅静态检查版保持唤醒。 */
+    return false;
+}
+#endif
 
 typedef struct
 {
@@ -47,6 +58,81 @@ K_THREAD_STACK_DEFINE(MPreflightStack, 6144);
 K_THREAD_STACK_DEFINE(MPreflightImuStack, 8192);
 static uint8_t MPreflightLogEnabled;
 
+static int MPreflightStopLog(void)
+{
+    MPreflightLogEnabled = 0u;
+    /* 本模式由当前线程独占写卡；先拒绝其他生产者，再排空并关闭。 */
+    return SdLogQuiesce();
+}
+
+#if defined(CONFIG_ARBATOS_BENCH_TELEMETRY)
+static void MPreflightSerialPoll(void)
+{
+    static char line[144];
+    static uint32_t used;
+    static uint8_t overflow;
+    const struct device *uart = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
+    unsigned char value;
+
+    /* 只允许停止日志和小块读卡；不提供电机、加热或任意内存写入命令。 */
+    for (unsigned n = 0; n < 64u && uart_poll_in(uart, &value) == 0; n++) {
+        if (value != '\n' && value != '\r') {
+            if (used + 1u < sizeof(line)) {
+                line[used++] = (char)value;
+            } else {
+                overflow = 1u;
+            }
+            continue;
+        }
+        line[used] = '\0';
+        if (overflow == 0u && strcmp(line, "SDS") == 0) {
+            int result = MPreflightStopLog();
+            FILINFO info = {0};
+            FRESULT statResult = f_stat(MPreflightLogPath, &info);
+            LOG_INF("@SDS,%d,%u,%lu,%s", result, (unsigned)statResult,
+                    (unsigned long)info.fsize, MPreflightLogPath);
+        } else if (overflow == 0u && strncmp(line, "SDR ", 4u) == 0) {
+            unsigned int offset, length;
+            char path[96];
+            char extra;
+            int fields = sscanf(line, "SDR %u %u %95s %c", &offset, &length, path, &extra);
+            if ((fields == 2 || fields == 3) &&
+                length > 0u && length <= 256u && MPreflightLogEnabled == 0u) {
+                FIL file;
+                UINT count = 0u;
+                uint8_t data[256];
+                FRESULT fr = f_open(&file, fields == 3 ? path : MPreflightLogPath, FA_READ);
+                if (fr == FR_OK) {
+                    fr = f_lseek(&file, offset);
+                    if (fr == FR_OK) {
+                        fr = f_read(&file, data, length, &count);
+                    }
+                    (void)f_close(&file);
+                }
+                LOG_INF("@SDR,%u,%u,%u,%u", offset, length, (unsigned)fr, count);
+                if (fr == FR_OK) {
+                    const char digits[] = "0123456789abcdef";
+                    for (UINT i = 0u; i < count; i += 32u) {
+                        char hex[65];
+                        UINT bytes = MIN(32u, count - i);
+                        for (UINT j = 0u; j < bytes; j++) {
+                            hex[2u * j] = digits[data[i + j] >> 4];
+                            hex[2u * j + 1u] = digits[data[i + j] & 15u];
+                        }
+                        hex[2u * bytes] = '\0';
+                        LOG_INF("@SDB,%u,%s", offset + i, hex);
+                    }
+                }
+            } else {
+                LOG_INF("@SDR,invalid");
+            }
+        }
+        used = 0u;
+        overflow = 0u;
+    }
+}
+#endif
+
 static void MPreflightImu(void *a, void *b, void *c)
 {
     ARG_UNUSED(a); ARG_UNUSED(b); ARG_UNUSED(c);
@@ -63,18 +149,7 @@ static void MPreflightRequest(void)
     MPreflightBytes = 0u;
     MPreflightPath[sizeof(MPreflightPath) - 1u] = '\0';
     if (command == 1u) {
-        MPreflightLogEnabled = 0u;
-        SdLogStats stats;
-        for (uint32_t i = 0u; i < 1500u; i++) {
-            SdLogPoll();
-            SdLogGetStats(&stats);
-            if (stats.ring_used == 0u) {
-                break;
-            }
-            k_msleep(1);
-        }
-        MPreflightResult = stats.ring_used == 0u ? 0 : -ETIMEDOUT;
-        SdLogStop();
+        MPreflightResult = MPreflightStopLog();
     } else if (command == 2u) {
         DIR dir;
         FILINFO info;
@@ -141,6 +216,9 @@ static void MPreflightRun(void *a, void *b, void *c)
     uint32_t nextReport = 0u;
     for (;;) {
         MPreflightRequest();
+#if defined(CONFIG_ARBATOS_BENCH_TELEMETRY)
+        MPreflightSerialPoll();
+#endif
         InsSnapshot snapshot;
         MPreflightDiag.tickMs = k_uptime_get_32();
         MPreflightDiag.imuValid = InsSnapshotRead(&snapshot);

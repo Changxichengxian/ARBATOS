@@ -20,11 +20,12 @@ import numpy as np
 class WheelLegParams:
     # Five-bar geometry for VMC, meters.
     upper_link: float = 0.05000
-    lower_link: float = 0.11404
-    hip_spacing: float = 0.06000
+    lower_link: float = 0.10500
+    hip_spacing: float = 0.07000
 
     # Linear model parameters, meters / kg / kg*m^2.
     wheel_radius: float = 0.03275
+    # 以下质量仍为旧假设；核心实测 1.8248 kg 含旋转件，不能直接替换车体或整车质量。
     total_mass: float = 2.25
     wheel_end_mass_total: float = 0.320
     leg_mass_total: float = 0.120
@@ -261,6 +262,9 @@ def main() -> None:
         "# 3510 小轮腿参数计算报告（LQR）",
         "",
         "本文件由 `tools/WheelLegLqr/ComputeLqr.py` 生成。",
+        "",
+        "质量、质心和惯量仍使用旧假设，本报告不代表实车参数已完成标定。",
+        "实测数据与称重范围见 [车型安装说明](../../Robotconfig/MINIWHEELEG-M/安装说明.md#机械实测与质量拆分)。",
         "",
         "## VMC 几何参数",
         "```c",

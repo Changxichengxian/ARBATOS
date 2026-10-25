@@ -1,0 +1,8 @@
+mainmenu "MC02 CAN bench"
+
+config CAN_BENCH_AWAKE
+    bool "Keep the bench CPU awake for SWD access"
+    default y
+    select ARM_ON_ENTER_CPU_IDLE_HOOK
+
+source "Kconfig.zephyr"

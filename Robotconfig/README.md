@@ -12,6 +12,7 @@
 | `SENTINEL-M` | 哨兵机器人接 MC02 H7 板 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`Mc02Compat.c` |
 | `MINIWHEELEG-M` | H7 接板和机械臂实验 | `RobotConfig.c`、`Config*.inc`、`RobotConfig.h`、`DetectTask.c`、`ArmMotorTable.c` |
 | `INFANTRY-TIAN-A` | A 板步兵，参考 Ackerman_soldier 的 ID 和中位，主体沿用本工程；未上板 | `RobotConfig.toml`、`Config*.inc`、`安装说明.md` |
+| `BASE-C` | C 板经典底盘、普通云台和发射的新车模板，支持 DBUS/ELRS；未上板 | `RobotConfig.toml`、`Config*.inc`、`安装说明.md` |
 
 目标目录采用扁平结构：
 
@@ -78,6 +79,10 @@ AUX 临时调参只改 RAM，重启后恢复配置文件默认值。运行模式
 
 ## 新增车型
 
+桌面端“新建车型”可按板子和机构组组合离线配置，复制各组的硬件装配与参数，再选择电机及遥控器。M 板提供经典底盘、双水平轴云台、轮腿等已有组合；A、C 板提供经典底盘、普通云台和发射，均可选 DBUS/ELRS，并按各自端口目录分配裁判系统。未迁移的板级能力不会出现在可运行选项中；高级入口仍可整车复制。
+
+向导会检查依赖和协议实际地址冲突，新车默认不放行电机。参数来自所选组的模板，机械尺寸、零位、PID 和 IMU 安装位置仍须核对；生成与编译成功不代表已完成运动验证。
+
 新车接入先追求“能证明每一步对”，不要一开始就追求手感和完整功能。最小目标是：能编译、能下载、能观察输入和反馈、能安全地让单个子系统动起来。
 
 ### 1. 选基准
@@ -86,14 +91,14 @@ AUX 临时调参只改 RAM，重启后恢复配置文件默认值。运行模式
 
 | 新目标条件 | 优先复制 |
 |---|---|
-| DJI A F427 | `INFANTRY-TIAN-A`；仅开放 DBUS、健康检测、经典底盘、单云台和 RM 射击依赖 |
-| DJI C F407 | 当前仅保留板级验证；完整机器人运行栈尚未完成迁移 |
+| DJI A F427 | `INFANTRY-TIAN-A`；经典底盘、单云台、RM 发射、DBUS/ELRS、裁判，SD 日志按需启用 |
+| DJI C F407 | `BASE-C`；经典底盘、单云台、RM 发射、DBUS/ELRS、裁判，SD 日志按需启用 |
 | DM MC02 H7 | `HERO-M`、`SENTINEL-M` 或 `MINIWHEELEG-M` |
 | 经典底盘 + 单云台 | `HERO-M` |
 | 双 yaw 云台 | `SENTINEL-M` |
 | MIT 轮腿实验 | `MINIWHEELEG-M` |
 
-A/C 板的 IMU、存储、串口、输出能力与 M 板不同。A 板只允许上述基础任务，其他服务仍由生成器拒绝；C 板仍只保留独立板级验证。板级缺项见[开发板说明](../boards/README.md)。
+A/C 板共用上述经典车型能力表与 IMU 校准入口，引脚和传感器按板级定义区分；两者尚未开放轮腿、双水平轴云台、PWM 舵机和 RS485 组合。板级缺项见[开发板说明](../boards/README.md)。
 
 默认用生成器从 `Robotconfig/<OLD>` 创建 `Robotconfig/<NEW>`；车型接入不再要求修改 `projects/`、CMake 预设或构建工具。正式构建不读取 `.uvprojx`。
 

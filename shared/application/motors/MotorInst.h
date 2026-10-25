@@ -44,7 +44,7 @@ typedef struct
     motor_measure_t *measure;
 } MotorInst;
 
-typedef struct
+typedef struct MotorRoute
 {
     MotorId motorId;
     MotorRole role;
@@ -70,6 +70,8 @@ typedef struct
 {
     MotorId actuator_id;
     uint8_t enabled;
+    uint8_t cmdCaps;
+    const MotorRoute *route;
 } MotorCurrentBind;
 
 typedef struct
@@ -98,6 +100,8 @@ const MotorInst *MotorInstFindByName(const char *name);
 const MotorInst *MotorInstFindFeedback(uint8_t bus, uint16_t std_id);
 uint8_t MotorInstGetDiag(MotorInstDiag *out);
 uint8_t MotorRouteCount(void);
+/* 显式 MotorInstRefresh 会推进代次；发送缓存据此重建，控制器的绑定也必须重新获取。 */
+uint32_t MotorRouteGeneration(void);
 const MotorRoute *MotorRouteGet(uint8_t index);
 const MotorRoute *MotorRouteFindByMotor(MotorId id);
 uint8_t MotorInstResolveIds(const char *const *names, uint8_t count, MotorId *out, uint8_t out_cap);

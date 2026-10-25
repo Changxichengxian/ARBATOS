@@ -221,6 +221,22 @@ static void WheelLegPublish(uint16_t faults,
 
 uint8_t WheelLegUpdateLegKinematics(fp32 pitch, const fp32 gyro[3], fp32 dt)
 {
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    /* 手动近竖直读数只用于近似几何；保持目标始终取本次实际编码器角。 */
+    const float zero[2][2] = {
+        [WHEELLEG_SIDE_RIGHT] = {-1.197642481f, .496490425f},
+        [WHEELLEG_SIDE_LEFT] = {.537308309f, -1.273937591f}};
+    const float sign[2][2] = {[WHEELLEG_SIDE_RIGHT] = {-1, 1},
+                             [WHEELLEG_SIDE_LEFT] = {1, -1}};
+    for (unsigned side = 0; side < 2; side++) {
+        float front = (s_wheelleg.front_fb[side].q - zero[side][0]) * sign[side][0];
+        float back = (s_wheelleg.back_fb[side].q - zero[side][1]) * sign[side][1];
+        if (!isfinite(front) || !isfinite(back) ||
+            !WheelLegCalcKinematics(&s_wheelleg.leg[side], front, back, pitch,
+                gyro ? gyro[1] : 0, 0u, dt)) return 0u;
+    }
+    return 1u;
+#else
     fp32 front_kin_zero;
     fp32 back_kin_zero;
     fp32 right_front_pos;
@@ -268,6 +284,7 @@ uint8_t WheelLegUpdateLegKinematics(fp32 pitch, const fp32 gyro[3], fp32 dt)
         return 0u;
     }
     return 1u;
+#endif
 }
 
 // 板凳模型：关节按位置撑住，轮端只跑 LQR，不发 VMC 关节力矩。

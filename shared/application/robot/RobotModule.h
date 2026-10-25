@@ -213,6 +213,15 @@ static const RobotResourceId sRobotModuleReqGimbal[] = {
 static const RobotResourceId sRobotModuleProGimbal[] = {
     RobotResourceGimbalState,
     RobotResourceGimbalOutput,
+};
+
+static const RobotResourceId sRobotModuleReqShoot[] = {
+    RobotResourceControlInput,
+    RobotResourceMotorInst,
+    RobotResourceLowCmd,
+    RobotResourceControlMgr,
+};
+static const RobotResourceId sRobotModuleProShoot[] = {
     RobotResourceShootOutput,
 };
 
@@ -501,6 +510,8 @@ static inline uint16_t RobotModulePeriodMs(const RobotModuleDesc *desc)
         return RobotProfileGimbalControlPeriodMs();
     case ROBOT_TASK_MODULE_CONTROL_GIMBAL:
         return ROBOT_CONTROL_GIMBAL_PERIOD_MS;
+    case ROBOT_TASK_MODULE_SHOOT_RM:
+        return RobotProfileShootControlPeriodMs();
     default:
         return desc->defaultPeriodMs;
     }

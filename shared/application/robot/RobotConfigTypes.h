@@ -253,13 +253,22 @@ typedef struct
     uint16_t heat_remain_value;         // 发热余量阈值
 } ShootConfig;
 
-// 功率控制参数
+typedef enum
+{
+    ChassisPowerLimitAuto = 0,
+    ChassisPowerLimitTotalCommand,
+    ChassisPowerLimitModel,
+    ChassisPowerLimitModelAndTotal,
+} ChassisPowerLimitMode;
+
+// 功率控制参数（经典四轮底盘）
 typedef struct
 {
+    ChassisPowerLimitMode limitMode; // 默认沿用裁判在线用模型、离线用总指令的策略
     fp32 power_limit;                 // 功率上限
     fp32 warning_power;               // 告警功率阈值
     fp32 warning_power_buffer;        // 告警缓冲阈值
-    fp32 no_judge_total_current_limit; // 无裁判时电流上限
+    fp32 no_judge_total_current_limit; // 四轮命令刻度绝对值之和，不是安培
     fp32 buffer_total_current_limit;  // 缓冲段电流上限
     fp32 power_total_current_limit;   // 正常段电流上限
 } power_config_t;
@@ -307,15 +316,6 @@ typedef struct
     uint16_t lowAlarmDelayMs;  // 连续低压确认时间，避免短时负载触发
     uint8_t lowAlarmEnabled;   // 仅控制低压提示，不影响电压采样
 } voltage_config_t;
-
-// CAN 功率计。电流原值按无符号量保存，方向语义待实车协议确认。
-typedef struct
-{
-    uint8_t enable;
-    uint8_t canBus;
-    uint16_t canId;
-    uint16_t freshTimeoutMs;
-} PowerMeterConfig;
 
 // Buzzer PCM playback config (PWM+DMA, u8 samples on TF/SD).
 // Music mode scans TF/SD root for *.U8 files; file names are not configured here.
@@ -1077,7 +1077,6 @@ typedef struct
     DetectConfig detect;
     imu_config_t imu;
     voltage_config_t voltage;
-    PowerMeterConfig powerMeter;
     BuzzerConfig buzzer;
     led_config_t led;
     ManualInputConfig manual_input;

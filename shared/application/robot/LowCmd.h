@@ -13,6 +13,13 @@
 #include <stdint.h>
 
 #include "ControlOutputPermit.h"
+#if defined(__has_include)
+#if __has_include("RobotTargetConfig.h")
+/* LowCmd.c 也必须看到车型生成结果，保证 Servo 车型各编译单元的槽位数一致。 */
+#include "RobotTargetConfig.h"
+#endif
+#endif
+#include "RobotTaskBuildConfig.h"
 #include "Types.h"
 
 #define LOWCMD_DEFAULT_TIMEOUT_MS 100u
@@ -25,6 +32,7 @@ typedef enum
     LOWCMD_WRITER_MANUAL = 20u,
     LOWCMD_WRITER_HOST = 30u,
     LOWCMD_WRITER_SAFETY = 240u,
+    LOWCMD_WRITER_MAINTENANCE = 241u,
     LOWCMD_WRITER_FAULT = 255u,
 } LowCmdWriter;
 
@@ -48,8 +56,19 @@ typedef enum
     Motor15,
     Motor16,
     Motor17,
+#if ROBOT_TASK_BUILD_SERVO
+    Motor18,
+    Motor19,
+    Motor20,
+    Motor21,
+#endif
     MotorCount
 } MotorId;
+
+#if ROBOT_TASK_BUILD_SERVO
+#define LOWCMD_SERVO_FIRST Motor18
+#define LOWCMD_SERVO_COUNT 4u
+#endif
 
 typedef enum
 {
@@ -89,6 +108,8 @@ typedef enum
     MotorTransportNone = 0u,
     MotorTransportCAN,
     MotorTransportRS485,
+    MotorTransportPWM,
+    MotorTransportUART,
 } MotorTransport;
 
 typedef enum
@@ -114,6 +135,7 @@ typedef struct
     uint32_t seq;
     uint32_t tick;
     int16_t current;
+    /* q 的物理含义由适配器定义；PWM Servo 槽使用 [-1,1] 归一化位置，0 为中点，不是 rad。 */
     fp32 q;
     fp32 dq;
     fp32 kp;
@@ -369,6 +391,7 @@ uint8_t LowCmdRecoverSafetyInhibitManyWithPermit(const MotorId *ids,
                                                   uint8_t count,
                                                   const ControlOutputPermit *permit);
 uint8_t LowCmdGetInhibitWriter(MotorId id, uint16_t *out);
+uint8_t LowCmdGetInhibitWriters(const MotorId *ids, uint16_t *out, uint8_t count);
 uint8_t LowCmdSetMotor(MotorId id, const MotorCmd *cmd);
 uint8_t LowCmdSetMotorMany(const MotorId *ids, const MotorCmd *cmds, uint8_t count);
 /* writer 以 API 参数为准；MotorCmd.writer 是发布后的只读归属信息，不能由载荷提权。 */
@@ -415,6 +438,11 @@ uint8_t LowCmdGetMotorManyStamped(const MotorId *ids,
                                   MotorCmd *cmds,
                                   ControlOutputStamp *owners,
                                   uint8_t count);
+/* 输出数组按 MotorId 索引，供发送层只抓取当前有效路由且保持一次原子快照。 */
+uint8_t LowCmdGetMotorManyStampedIndexed(const MotorId *ids,
+                                         MotorCmd *cmdsById,
+                                         ControlOutputStamp *ownersById,
+                                         uint8_t count);
 /*
  * 物理发送前的最终授权检查。单向安全的 inactive/None/Disable 可直接发送；
  * 其他活动快照必须仍属于当前发布代和当前控制许可。

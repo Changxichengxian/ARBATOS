@@ -18,9 +18,9 @@ def main():
         parser.error("请用 --zig 指定 Zig 编译器")
     out = ROOT / "local/build/host-tests/gimbal-spin-ff"
     out.mkdir(parents=True, exist_ok=True)
-    task = (ROOT / "shared/application/gimbal/GimbalControlTask.c").read_text(encoding="utf-8")
-    definitions = "\n".join(re.findall(r"^#define GIMBAL_YAW_CHASSIS_\w+[^\n]*", task, re.M))
-    body = function("shared/application/gimbal/GimbalCoreControl.inc", "GimbalYawChassisSpinFfCurrent")
+    private = (ROOT / "shared/application/gimbal/GimbalTaskPrivate.h").read_text(encoding="utf-8")
+    definitions = "\n".join(re.findall(r"^#define GIMBAL_YAW_CHASSIS_\w+[^\n]*", private, re.M))
+    body = function("shared/application/gimbal/GimbalControl.c", "GimbalYawChassisSpinFfCurrent")
     fixture = r'''
 #include <assert.h>
 #include <stdint.h>

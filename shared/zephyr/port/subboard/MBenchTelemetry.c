@@ -12,6 +12,32 @@
 
 LOG_MODULE_REGISTER(board_bench, LOG_LEVEL_INF);
 
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+#include "WheelLegBenchGate.h"
+#include "BspCan.h"
+bool z_arm_on_enter_cpu_idle(void)
+{
+    return false;
+}
+
+static void MBenchStopPoll(void)
+{
+    static uint8_t nextId = 1u;
+    static uint8_t nextWheel = 5u;
+    static const uint8_t stop[8] = {255, 255, 255, 255, 255, 255, 255, 253};
+    if (!WheelLegBenchTxOpen(k_uptime_get_32())) {
+        /* 分散请求，避免六台电机同时应答或挤满发送邮箱。 */
+        (void)BspCanTx(1u, nextId, stop, 8u);
+        nextId = (uint8_t)(nextId % 6u + 1u);
+    } else if (WheelLegBenchTest == 1u ||
+               (WheelLegBenchTest == 3u && WheelLegBenchPhase != 3u)) {
+        /* 架空时轮子保持失能，但仍查询反馈，不能误报轮子离线。 */
+        (void)BspCanTx(1u, nextWheel, stop, 8u);
+        nextWheel = nextWheel == 5u ? 6u : 5u;
+    }
+}
+#endif
+
 static void MBenchStack(const struct k_thread *thread, void *context)
 {
     ARG_UNUSED(context);
@@ -27,12 +53,15 @@ static void MBenchStack(const struct k_thread *thread, void *context)
 
 static void MBenchRun(void *a, void *b, void *c)
 {
-    uint8_t slow_divider = 0u;
+    uint16_t slow_divider = 0u;
 
     ARG_UNUSED(a);
     ARG_UNUSED(b);
     ARG_UNUSED(c);
     for (;;) {
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+        MBenchStopPoll();
+#endif
         if (slow_divider == 0u) {
             const float temperature = get_temprate();
             const float battery = get_battery_voltage();
@@ -57,6 +86,8 @@ static void MBenchRun(void *a, void *b, void *c)
             LOG_INF("@UART,%u,%u,%u,%u,%u,%u,%u,%u", k_uptime_get_32(),
                     uart.irqBytes, uart.errors, uart.overrun, uart.framing,
                     uart.parity, uart.noise, uart.lastError);
+#endif
+            /* D-Bus 与 ELRS 共用输入快照，单独使用 D-Bus 也要能核对开关。 */
             ManualInputSnapshot input;
             if (ManualInputSnapshotRead(&input) != 0u) {
                 LOG_INF("@INPUT,%u,%u,%u,%u,%d,%d,%d,%d,%d,%u,%u", k_uptime_get_32(),
@@ -65,7 +96,6 @@ static void MBenchRun(void *a, void *b, void *c)
                         input.manual.rc.ch[3], input.manual.rc.ch[4],
                         (unsigned)input.manual.rc.s[0], (unsigned)input.manual.rc.s[1]);
             }
-#endif
         }
 #if ROBOT_TASK_BUILD_ELRS_LINK
         ElrsChannelSnapshot channel;
@@ -77,8 +107,13 @@ static void MBenchRun(void *a, void *b, void *c)
                 channel.channel[8], channel.channel[9], channel.channel[10], channel.channel[11],
                 channel.channel[12], channel.channel[13], channel.channel[14], channel.channel[15]);
 #endif
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+        slow_divider = (uint16_t)((slow_divider + 1u) % 500u);
+        k_msleep(2);
+#else
         slow_divider = (uint8_t)((slow_divider + 1u) % 10u);
         k_msleep(100);
+#endif
     }
 }
 

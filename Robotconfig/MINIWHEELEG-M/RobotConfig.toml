@@ -3,8 +3,16 @@ board = "dm_mc02_h7"
 profile = "wheelleg"
 services = ["RC_SBUS", "HEALTH_MONITOR", "SDLOG", "BATTERY_MONITOR", "REFEREE_RX"]
 
+[features]
+imu_mount = true
+watch_full = false
+
 [controllers.wheelleg]
 type = "mit"
+
+# 文件系统启动会超过默认 2 KiB 栈，保留与 HERO-M 一致的余量。
+[tasks.SDLOG]
+stack_words = 2048
 
 [build]
 sources = ["RobotConfig.c", "Mc02Compat.c", "DetectTask.c", "ArmMotorTable.c"]

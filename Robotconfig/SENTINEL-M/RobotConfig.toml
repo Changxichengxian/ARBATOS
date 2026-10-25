@@ -3,6 +3,10 @@ board = "dm_mc02_h7"
 profile = "sentry"
 services = ["RC_SBUS", "HEALTH_MONITOR", "SDLOG", "HOST_LINK"]
 
+[features]
+imu_mount = true
+watch_full = false
+
 [controllers.chassis]
 type = "classic"
 

@@ -14,12 +14,8 @@
 #include <math.h>
 #include "DetectTask.h"
 #include "RobotConfig.h"
-#include "SdLog.h"
 #include "ChassisPowerLimiter.h"
 #include "RobotTaskProfile.h"
-#include "BspTime.h"
-#include "FreeRTOS.h"
-#include "task.h"
 
 #define CHASSIS_POWER_BUFFER_FILTER_TAU_S      0.08f
 #define CHASSIS_POWER_LIMIT_FILTER_TAU_S       0.12f
@@ -45,21 +41,6 @@ typedef struct
 } ChassisPowerRuntimeState;
 
 static ChassisPowerRuntimeState s_chassis_power_runtime = {0};
-static ChassisPowerModelSnapshot s_chassis_power_model = {0};
-static uint32_t s_chassis_power_model_last_tick_ms = 0u;
-
-uint8_t ChassisPowerModelReadSnapshot(ChassisPowerModelSnapshot *out)
-{
-    if (out == NULL)
-    {
-        return 0u;
-    }
-    taskENTER_CRITICAL();
-    *out = s_chassis_power_model;
-    taskEXIT_CRITICAL();
-    return (out->sequence != 0u) ? 1u : 0u;
-}
-
 static fp32 ChassisPowerClamp(fp32 value, fp32 min_value, fp32 max_value)
 {
     if (value < min_value)
@@ -473,8 +454,14 @@ void ChassisPowerControl(ChassisMove *ChassisPowerControl, uint32_t activeMotorM
     fp32 runtime_power_limit = power_cfg->power_limit;
     fp32 power_budget = 0.0f;
     uint8_t RefereeOffline = (uint8_t)DetectIsError(REFEREE_TOE);
+    const uint8_t referee_available =
+        (uint8_t)(!RefereeOffline && robot_id != RED_ENGINEER && robot_id != BLUE_ENGINEER && robot_id != 0u);
+    const uint8_t configured_model =
+        (uint8_t)(power_cfg->limitMode == ChassisPowerLimitModel ||
+                  power_cfg->limitMode == ChassisPowerLimitModelAndTotal);
     uint8_t use_total_current_fallback =
-        (uint8_t)(RefereeOffline || robot_id == RED_ENGINEER || robot_id == BLUE_ENGINEER || robot_id == 0u);
+        (uint8_t)(power_cfg->limitMode == ChassisPowerLimitTotalCommand ||
+                  (configured_model == 0u && referee_available == 0u));
     fp32 currents[4] = {0};
     fp32 power_model_currents[4] = {0};
     int16_t wheel_rpm[4] = {0};
@@ -485,10 +472,18 @@ void ChassisPowerControl(ChassisMove *ChassisPowerControl, uint32_t activeMotorM
         const uint8_t active = ((activeMotorMask & (1u << i)) != 0u) ? 1u : 0u;
 
         currents[i] = (active != 0u) ? ChassisPowerControl->motor_speed_pid[i].out : 0.0f;
-        power_model_currents[i] = currents[i] * (fp32)g_config.chassis.motor_dir[i];
         wheel_rpm[i] = (active != 0u && ChassisPowerControl->motor_chassis[i].measureValid != 0u) ?
                            ChassisPowerControl->motor_chassis[i].measure.speed_rpm :
                            0;
+    }
+    /* 先约束总指令，再做模型限幅，最终输出同时满足两项约束。 */
+    if (power_cfg->limitMode == ChassisPowerLimitModelAndTotal)
+    {
+        (void)ChassisPowerLimiterScaleCurrents(currents, power_cfg->no_judge_total_current_limit, NULL);
+    }
+    for (uint8_t i = 0u; i < 4u; i++)
+    {
+        power_model_currents[i] = currents[i] * (fp32)g_config.chassis.motor_dir[i];
     }
     if (use_total_current_fallback != 0u)
     {
@@ -499,40 +494,50 @@ void ChassisPowerControl(ChassisMove *ChassisPowerControl, uint32_t activeMotorM
     }
     else
     {
-        const uint8_t power_model_ready =
+        uint8_t power_model_ready =
             ChassisPowerLimiterIsPowerModelReady(g_config.motor.chassis, activeMotorMask);
 
-        get_chassis_power_and_buffer((fp32 *)0, &ChassisPowerBuffer);
-        runtime_power_limit = (fp32)get_chassis_power_limit();
-        ChassisPowerUpdateRuntimeState(runtime_power_limit,
+        if (referee_available != 0u)
+        {
+            get_chassis_power_and_buffer((fp32 *)0, &ChassisPowerBuffer);
+            runtime_power_limit = (fp32)get_chassis_power_limit();
+            ChassisPowerUpdateRuntimeState(runtime_power_limit,
                                            ChassisPowerBuffer,
                                            &runtime_power_limit,
                                            &ChassisPowerBuffer);
+        }
+        /* 手动选择模型时，配置瓦数始终是上限；离线不使用失效的裁判缓冲数据。 */
+        if (configured_model != 0u)
+        {
+            if (!isfinite(power_cfg->power_limit) || power_cfg->power_limit <= 0.0f)
+            {
+                power_model_ready = 0u;
+            }
+            else if (runtime_power_limit > power_cfg->power_limit)
+            {
+                runtime_power_limit = power_cfg->power_limit;
+            }
+        }
         limiter_cfg = ChassisPowerBuildRuntimeCfg(runtime_power_limit);
 
         if (power_model_ready != 0u)
         {
-            /* Estimate desired chassis power first, then apply demand-aware allocation
-             * before the existing whole-chassis model clamp. */
-            (void)ChassisPowerLimiterScaleCurrentsByPowerModel(power_model_currents,
+            /* 只有裁判缓冲预算依赖需求功率；离线固定瓦数不重复估算四轮。 */
+            if (referee_available != 0u)
+            {
+                (void)ChassisPowerLimiterScaleCurrentsByPowerModel(power_model_currents,
                                                                       g_config.motor.chassis,
                                                                       wheel_rpm,
                                                                       activeMotorMask,
                                                                       FLT_MAX,
                                                                       &ChassisPower);
+            }
 
-            power_budget = ChassisPowerLimiterCalcPowerBudget(&limiter_cfg,
+            power_budget = (referee_available == 0u) ? limiter_cfg.power_limit :
+                               ChassisPowerLimiterCalcPowerBudget(&limiter_cfg,
                                                                    ChassisPower,
                                                                    ChassisPowerBuffer,
                                                                    s_chassis_power_runtime.buffer_limit_active);
-            if (limiter_cfg.power_limit > 0.0f)
-            {
-                const fp32 nominal_total_current_limit =
-                    limiter_cfg.buffer_total_current_limit + limiter_cfg.power_total_current_limit;
-                const fp32 budget_ratio = ChassisPowerClamp(power_budget / limiter_cfg.power_limit, 0.0f, 1.0f);
-                total_current_limit = nominal_total_current_limit * budget_ratio;
-            }
-
             (void)ChassisPowerLimitCurrentsByDemand(currents,
                                                          power_model_currents,
                                                          wheel_rpm,
@@ -569,11 +574,23 @@ void ChassisPowerControl(ChassisMove *ChassisPowerControl, uint32_t activeMotorM
                 const fp32 budget_ratio = ChassisPowerClamp(power_budget / limiter_cfg.power_limit, 0.0f, 1.0f);
                 total_current_limit = nominal_total_current_limit * budget_ratio;
             }
+            if (configured_model != 0u)
+            {
+                total_current_limit = power_cfg->no_judge_total_current_limit;
+                if (!isfinite(total_current_limit) || total_current_limit <= 0.0f)
+                {
+                    for (uint8_t i = 0u; i < 4u; i++)
+                    {
+                        currents[i] = 0.0f;
+                    }
+                }
+            }
             (void)ChassisPowerLimiterScaleCurrents(currents, total_current_limit, NULL);
             s_chassis_power_runtime.model_fallback_active = 1u;
         }
 
-        motion_target_scale = ChassisPowerBudgetToMotionScale(power_budget, limiter_cfg.power_limit);
+        motion_target_scale = (configured_model != 0u && power_model_ready == 0u) ? 1.0f :
+                                  ChassisPowerBudgetToMotionScale(power_budget, limiter_cfg.power_limit);
     }
 
     ChassisPowerUpdateMotionScale(motion_target_scale);
@@ -583,72 +600,4 @@ void ChassisPowerControl(ChassisMove *ChassisPowerControl, uint32_t activeMotorM
         ChassisPowerControl->motor_speed_pid[i].out = currents[i];
     }
 
-    if (g_config.powerMeter.enable != 0u)
-    {
-        const uint32_t now_ms = BspTimeGetTickMs();
-        if ((uint32_t)(now_ms - s_chassis_power_model_last_tick_ms) >= 10u)
-        {
-            ChassisPowerModelSnapshot sample = {0};
-            fp32 model_currents[4] = {0};
-            uint32_t feedback_mask = 0u;
-            uint8_t inputs_finite = 1u;
-            uint8_t valid;
-
-            s_chassis_power_model_last_tick_ms = now_ms;
-            sample.tickMs = now_ms;
-            sample.activeMotorMask = activeMotorMask;
-            for (uint8_t i = 0u; i < 4u; i++)
-            {
-                if ((activeMotorMask & (1u << i)) != 0u &&
-                    ChassisPowerControl->motor_chassis[i].measureValid != 0u)
-                {
-                    feedback_mask |= (1u << i);
-                }
-                if (!isfinite(currents[i]))
-                {
-                    inputs_finite = 0u;
-                    sample.currentCmd[i] = 0;
-                }
-                else if (currents[i] >= 2147483648.0f)
-                {
-                    sample.currentCmd[i] = INT32_MAX;
-                }
-                else if (currents[i] < -2147483648.0f)
-                {
-                    sample.currentCmd[i] = INT32_MIN;
-                }
-                else
-                {
-                    sample.currentCmd[i] = (int32_t)currents[i];
-                }
-                sample.wheelRpm[i] = (float)wheel_rpm[i];
-                model_currents[i] = currents[i] * (fp32)g_config.chassis.motor_dir[i];
-            }
-            valid = (uint8_t)(inputs_finite != 0u && feedback_mask == activeMotorMask &&
-                              ChassisPowerLimiterIsPowerModelReady(g_config.motor.chassis, activeMotorMask) != 0u);
-            sample.modelValid = valid;
-            if (valid != 0u)
-            {
-                (void)ChassisPowerLimiterScaleCurrentsByPowerModel(model_currents,
-                                                                     g_config.motor.chassis,
-                                                                     wheel_rpm,
-                                                                     activeMotorMask,
-                                                                     FLT_MAX,
-                                                                     &sample.estimatedPowerW);
-                if (!isfinite(sample.estimatedPowerW))
-                {
-                    sample.modelValid = 0u;
-                    sample.estimatedPowerW = NAN;
-                }
-            }
-            else
-            {
-                sample.estimatedPowerW = NAN;
-            }
-            taskENTER_CRITICAL();
-            sample.sequence = s_chassis_power_model.sequence + 1u;
-            s_chassis_power_model = sample;
-            taskEXIT_CRITICAL();
-        }
-    }
 }

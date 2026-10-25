@@ -25,6 +25,8 @@ extern USART_TypeDef Rs485TestUarts[2];
 extern uint32_t Rs485TestPrimask;
 
 #define RCC (&Rs485TestRccRegs)
+#define USART2 (&Rs485TestUarts[0])
+#define USART3 (&Rs485TestUarts[1])
 #define RCC_APB1LENR_USART2EN (1u << 17)
 #define RCC_APB1LENR_USART3EN (1u << 18)
 #define USART_CR1_UE (1u << 0)

@@ -65,6 +65,7 @@ typedef enum
     ControlIdWheellegMitBalance,
     ControlIdWheellegMitJump,
     ControlIdWheellegMitRecovery,
+    ControlIdServo,
     ControlIdCustomBase = 128
 } ControlId;
 
@@ -123,6 +124,7 @@ enum
     ControlResWheellegRightLeg = (1ul << 7),
     ControlResWheellegLeftWheel = (1ul << 8),
     ControlResWheellegRightWheel = (1ul << 9),
+    ControlResServoOutput = (1ul << 10),
 };
 
 typedef struct

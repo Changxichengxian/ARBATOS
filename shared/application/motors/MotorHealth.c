@@ -7,8 +7,8 @@
 
 #include <string.h>
 
-typedef char MotorHealthMotorCountFits[
-    ((uint32_t)MotorCount <= (uint32_t)MOTOR_HEALTH_MAX_MOTORS) ? 1 : -1];
+typedef char MotorHealthMaskFits[
+    ((uint32_t)MOTOR_HEALTH_MAX_MOTORS <= 32u) ? 1 : -1];
 
 static uint8_t MotorHealthIdValid(MotorId id)
 {

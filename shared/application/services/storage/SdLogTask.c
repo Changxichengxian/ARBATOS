@@ -17,8 +17,6 @@
 #include "RtProf.h"
 #include "RobotTaskProfile.h"
 #include "RobotMode.h"
-#include "PowerMeter.h"
-#include "ChassisPowerControl.h"
 #if defined(ARBATOS_BUILD_INFO_AUTOGEN_AVAILABLE)
 #include "build_info_autogen.h"
 #endif
@@ -35,8 +33,6 @@
 #define SDLOG_TASK_MOUNT_RETRY_START_MS 200u
 #define SDLOG_TASK_MOUNT_RETRY_MAX_MS 2000u
 
-static uint32_t s_power_meter_log_drop_count = 0u;
-static uint32_t s_chassis_power_model_sequence = 0u;
 static uint8_t s_flash_pause_latched = 0u;
 
 const volatile uint32_t g_sdLogFlashMailboxGuard = SDLOG_FLASH_MAILBOX_GUARD;
@@ -47,6 +43,78 @@ const uint8_t g_sdLogFlashBuildFingerprint[SDLOG_FLASH_BUILD_FINGERPRINT_SIZE]
 /* DTCM 不经过数据缓存，调试器和任务能直接看到彼此写入的状态。 */
 __attribute__((section("DTCM"))) volatile uint32_t g_sdLogFlashPauseRequest;
 __attribute__((section("DTCM"))) volatile uint32_t g_sdLogFlashPauseReady;
+
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+#include "WheelLegBenchGate.h"
+#include "ff.h"
+#include <stdio.h>
+#include <string.h>
+
+/* 仅停机、关日志后读取原始证据；单次底层读取不超过半扇区。 */
+volatile struct {
+    uint32_t request, operation, offset, length, result, count, size;
+    char path[96];
+    uint8_t data[4096];
+} MiniBenchRead;
+
+static void SdLogBenchRead(void)
+{
+    if (MiniBenchRead.request != 0x53445251u) return;
+    MiniBenchRead.count = 0;
+    MiniBenchRead.size = 0;
+    MiniBenchRead.result = FR_DENIED;
+    if (WheelLegBenchTest != 0u || WheelLegBenchArm != 0u ||
+        g_sdLogFlashPauseReady != SDLOG_FLASH_PAUSE_READY || SdLogIsActive()) {
+        MiniBenchRead.request = 0;
+        return;
+    }
+    char path[96];
+    for (unsigned i = 0; i < sizeof(path); i++) path[i] = MiniBenchRead.path[i];
+    path[sizeof(path)-1] = 0;
+    uint32_t length = MiniBenchRead.length;
+    if (length > sizeof(MiniBenchRead.data)) length = sizeof(MiniBenchRead.data);
+    if (MiniBenchRead.operation == 1u) {
+        FIL file;
+        FRESULT result = f_open(&file, path, FA_READ);
+        if (result == FR_OK) {
+            MiniBenchRead.size = (uint32_t)f_size(&file);
+            result = f_lseek(&file, MiniBenchRead.offset);
+            while (result == FR_OK && MiniBenchRead.count < length) {
+                uint8_t chunk[256];
+                UINT count = 0;
+                UINT wanted = (UINT)(length - MiniBenchRead.count);
+                if (wanted > sizeof(chunk)) wanted = sizeof(chunk);
+                result = f_read(&file, chunk, wanted, &count);
+                for (UINT i = 0; i < count; i++) MiniBenchRead.data[MiniBenchRead.count+i] = chunk[i];
+                MiniBenchRead.count += count;
+                if (count < wanted) break;
+            }
+            (void)f_close(&file);
+        }
+        MiniBenchRead.result = (uint32_t)result;
+    } else if (MiniBenchRead.operation == 2u) {
+        DIR dir;
+        FILINFO info;
+        FRESULT result = f_opendir(&dir, "0:/");
+        if (result == FR_OK) {
+            uint32_t index = 0;
+            while ((result = f_readdir(&dir, &info)) == FR_OK && info.fname[0] != 0) {
+                if (index++ < MiniBenchRead.offset) continue;
+                char line[128];
+                int count = snprintf(line, sizeof(line), "%s,%lu\n", info.fname, (unsigned long)info.fsize);
+                if (count <= 0 || (unsigned)count >= sizeof(line) ||
+                    MiniBenchRead.count + (unsigned)count > length) break;
+                for (int i = 0; i < count; i++) MiniBenchRead.data[MiniBenchRead.count+(unsigned)i] = (uint8_t)line[i];
+                MiniBenchRead.count += (unsigned)count;
+                MiniBenchRead.size = index;
+            }
+            (void)f_closedir(&dir);
+        }
+        MiniBenchRead.result = (uint32_t)result;
+    }
+    MiniBenchRead.request = 0;
+}
+#endif
 
 static uint8_t SdLogHandleFlashPause(void)
 {
@@ -72,6 +140,9 @@ static uint8_t SdLogHandleFlashPause(void)
         }
     }
 
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    if (s_flash_pause_latched && SdcardIsMounted()) SdLogBenchRead();
+#endif
     return s_flash_pause_latched;
 }
 
@@ -82,68 +153,6 @@ static uint8_t SdLogEntertainPause(void)
     if (RobotFaultZephyrBootLocked() != 0u) { return 0u; }
 #endif
     return robot_mode_is_entertain();
-}
-
-static uint16_t SdLogWritePowerMeterBatch(void)
-{
-    PowerMeterSample samples[SDLOG_POWER_METER_MAX_SAMPLES];
-    sdlog_power_meter_batch_t batch = {0};
-    PowerMeterStats stats = {0};
-    const uint16_t count = PowerMeterPopBatch(samples, SDLOG_POWER_METER_MAX_SAMPLES);
-
-    if (count == 0u)
-    {
-        return 0u;
-    }
-    PowerMeterGetStats(&stats);
-    batch.version = SDLOG_POWER_METER_VERSION;
-    batch.count = (uint8_t)count;
-    batch.canBus = g_config.powerMeter.canBus;
-    batch.canId = g_config.powerMeter.canId;
-    batch.canQueueDropCount = stats.queueDropCount;
-    batch.logDropCount = s_power_meter_log_drop_count;
-    for (uint16_t i = 0u; i < count; i++)
-    {
-        batch.sample[i].rxTickMs = samples[i].rxTickMs;
-        batch.sample[i].sequence = samples[i].sequence;
-        batch.sample[i].rawVoltage = samples[i].rawVoltage;
-        batch.sample[i].rawCurrent = samples[i].rawCurrent;
-        batch.sample[i].voltageV = samples[i].voltageV;
-        batch.sample[i].currentA = samples[i].currentA;
-        batch.sample[i].powerW = samples[i].powerW;
-    }
-    if (SdLogTryWrite(SDLOG_TAG_POWER_METER, &batch,
-                      (uint16_t)(16u + count * sizeof(sdlog_power_meter_sample_t))) == 0u)
-    {
-        s_power_meter_log_drop_count += count;
-    }
-    return count;
-}
-
-static void SdLogWriteChassisPowerModel(void)
-{
-    ChassisPowerModelSnapshot snapshot = {0};
-    sdlog_chassis_power_model_t record = {0};
-
-    if (ChassisPowerModelReadSnapshot(&snapshot) == 0u || snapshot.sequence == s_chassis_power_model_sequence)
-    {
-        return;
-    }
-    record.version = SDLOG_CHASSIS_POWER_MODEL_VERSION;
-    record.modelValid = snapshot.modelValid;
-    record.reserved16 = (uint16_t)snapshot.activeMotorMask;
-    record.tickMs = snapshot.tickMs;
-    record.sequence = snapshot.sequence;
-    for (uint8_t i = 0u; i < 4u; i++)
-    {
-        record.currentCmd[i] = snapshot.currentCmd[i];
-        record.wheelRpm[i] = snapshot.wheelRpm[i];
-    }
-    record.estimatedPowerW = snapshot.estimatedPowerW;
-    if (SdLogTryWrite(SDLOG_TAG_CHASSIS_POWER_MODEL, &record, (uint16_t)sizeof(record)) != 0u)
-    {
-        s_chassis_power_model_sequence = snapshot.sequence;
-    }
 }
 
 static uint8_t sdlog_time_reached(uint32_t now_ms, uint32_t deadline_ms)
@@ -307,19 +316,6 @@ void SdLogTask(void const *argument)
         {
             lastRtProfLogMs = now_ms;
             SdLogWriteRtProfSample();
-        }
-
-        if (g_config.powerMeter.enable != 0u)
-        {
-            for (uint8_t batch = 0u; batch < 4u; batch++)
-            {
-                if (SdLogWritePowerMeterBatch() == 0u)
-                {
-                    break;
-                }
-                SdLogPoll();
-            }
-            SdLogWriteChassisPowerModel();
         }
 
         uint32_t backlog_polls = 0u;

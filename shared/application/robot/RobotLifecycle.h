@@ -28,6 +28,7 @@ typedef enum
     ROBOT_LIFECYCLE_REASON_FATAL_FAULT = 5u,
     ROBOT_LIFECYCLE_REASON_STARTUP_SAFE_REQUIRED = 6u,
     ROBOT_LIFECYCLE_REASON_UPDATE_STALE = 7u,
+    ROBOT_LIFECYCLE_REASON_MAINTENANCE = 8u,
 } RobotLifecycleReason;
 
 typedef struct
@@ -42,6 +43,7 @@ typedef struct
     uint8_t manual_safe;
     uint8_t fault_latched;
     uint8_t startup_safe_seen;
+    uint8_t maintenance_latched;
     uint32_t update_tick;
     uint32_t manual_semantics_seq;
     uint32_t manual_authority_seq;
@@ -53,6 +55,8 @@ RobotLifecycleState RobotLifecycleCurrent(void);
 uint8_t RobotLifecycleOutputAllowed(void);
 uint8_t RobotLifecycleGetSnapshot(RobotLifecycleSnapshot *out);
 void RobotLifecycleEnterFatalFault(void);
+/* 手动校准停机；本次启动内没有解除接口。 */
+uint8_t RobotLifecycleEnterMaintenance(void);
 uint8_t RobotLifecycleFaultLatched(void);
 const char *RobotLifecycleName(RobotLifecycleState state);
 

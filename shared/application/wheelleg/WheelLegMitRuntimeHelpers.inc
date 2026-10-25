@@ -139,23 +139,38 @@ static void WheelLegClearJointTestCmds(void)
     (void)WheelLegStopDomainOutputs();
 }
 
-static void WheelLegBenchHoldPrepareDefault(void)
+static uint8_t WheelLegBenchHoldCapture(void)
 {
-    const WheelLegMitConfig *cfg = &g_config.WheelLegMit;
+    uint8_t side;
+    const uint32_t now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
 
-    s_wheelleg.bench_hold_front_rad[WHEELLEG_SIDE_LEFT] = cfg->left_front_zero_rad;
-    s_wheelleg.bench_hold_back_rad[WHEELLEG_SIDE_LEFT] = cfg->left_back_zero_rad;
-    s_wheelleg.bench_hold_front_rad[WHEELLEG_SIDE_RIGHT] = cfg->right_front_zero_rad;
-    s_wheelleg.bench_hold_back_rad[WHEELLEG_SIDE_RIGHT] = cfg->right_back_zero_rad;
-
-    s_wheelleg.bench_hold_front_valid[WHEELLEG_SIDE_LEFT] = 1u;
-    s_wheelleg.bench_hold_back_valid[WHEELLEG_SIDE_LEFT] = 1u;
-    s_wheelleg.bench_hold_front_valid[WHEELLEG_SIDE_RIGHT] = 1u;
-    s_wheelleg.bench_hold_back_valid[WHEELLEG_SIDE_RIGHT] = 1u;
+    if (s_wheelleg.bench_hold_pose_valid != 0u)
+    {
+        return 1u;
+    }
+    /* 固定板凳只锁定本次进入时的原始角度；旧几何零位不能作为上电运动目标。 */
+    for (side = 0u; side < WHEELLEG_SIDE_COUNT; side++)
+    {
+        const WheelLegActuatorMap *map = &s_wheelleg.actuator[side];
+        if (WheelLegFeedbackFresh(map->front, &s_wheelleg.front_fb[side], now_ms) == 0u ||
+            WheelLegFeedbackFresh(map->back, &s_wheelleg.back_fb[side], now_ms) == 0u ||
+            !isfinite(s_wheelleg.front_fb[side].q) || !isfinite(s_wheelleg.back_fb[side].q))
+        {
+            return 0u;
+        }
+    }
+    for (side = 0u; side < WHEELLEG_SIDE_COUNT; side++)
+    {
+        s_wheelleg.bench_hold_front_rad[side] = s_wheelleg.front_fb[side].q;
+        s_wheelleg.bench_hold_back_rad[side] = s_wheelleg.back_fb[side].q;
+        s_wheelleg.bench_hold_front_valid[side] = 1u;
+        s_wheelleg.bench_hold_back_valid[side] = 1u;
+    }
 
     s_wheelleg.bench_hold_target_leg_m = WheelLegBenchDefaultLegM();
     s_wheelleg.bench_hold_target_foot_x_m = WHEELLEG_BENCH_TARGET_FOOT_X_M;
     s_wheelleg.bench_hold_pose_valid = 1u;
+    return 1u;
 }
 
 static uint8_t WheelLegBenchHoldApplyJoints(void)
@@ -166,7 +181,10 @@ static uint8_t WheelLegBenchHoldApplyJoints(void)
     uint8_t side;
     uint8_t sent = 0u;
 
-    WheelLegBenchHoldPrepareDefault();
+    if (WheelLegBenchHoldCapture() == 0u)
+    {
+        return 0u;
+    }
 
     for (side = 0u; side < WHEELLEG_SIDE_COUNT; side++)
     {
@@ -197,7 +215,7 @@ static uint8_t WheelLegBenchHoldApplyJoints(void)
 
 static void WheelLegBenchHoldUpdatePoseTarget(void)
 {
-    WheelLegBenchHoldPrepareDefault();
+    (void)WheelLegBenchHoldCapture();
 }
 
 static MotorId WheelLegSingleTestActuator(void)

@@ -329,10 +329,11 @@ static const MotorModelDbEntry s_MotorModelDb[MOTOR_MODEL__COUNT] =
                                MOTOR_MODEL_CAP_ENABLE_CMD),
             .mit_limits = {
                 .position_max = 12.5f,
-                .velocity_max = 100.0f,
+                /* 本车 ID 5/6 读参范围；0.45 N·m 控制限幅另在车型中设置。 */
+                .velocity_max = 280.0f,
                 .kp_max = 500.0f,
                 .kd_max = 5.0f,
-                .torque_max = 0.45f,
+                .torque_max = 1.0f,
             },
             .cmd_current_range_abs = 0,
             .torque_current_range_a = 0.0f,

@@ -302,6 +302,47 @@ static int TestEmergencyLockRejectsSafetyClear(void)
                      "急停锁拒绝诊断信息错误");
 }
 
+static int TestEmergencyWriterPriorityCannotDowngrade(void)
+{
+    LowCmdDiag before;
+    LowCmdDiag after;
+    const uint32_t seq_before_fault = LowCmdSeq();
+
+    LowCmdClearAll();
+    if (!TestCheck(LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_FAULT) != 0u &&
+                       LowCmdGetDiag(&before) != 0u &&
+                       before.emergency_active != 0u &&
+                       before.emergency_writer == (uint16_t)LOWCMD_WRITER_FAULT,
+                   "准备 FAULT 急停失败")) return 0;
+    if (!TestCheck(LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_MAINTENANCE) == 0u &&
+                       LowCmdGetDiag(&after) != 0u &&
+                       after.emergency_writer == (uint16_t)LOWCMD_WRITER_FAULT &&
+                       LowCmdSeq() == before.seq,
+                   "MAINTENANCE 不得把已有 FAULT 急停降级或推进命令代")) return 0;
+    if (!TestCheck(LowCmdClearEmergencyStop((uint16_t)LOWCMD_WRITER_FAULT) != 0u,
+                   "清理 FAULT 急停失败")) return 0;
+
+    if (!TestCheck(LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_MAINTENANCE) != 0u &&
+                       LowCmdGetDiag(&before) != 0u &&
+                       before.emergency_writer == (uint16_t)LOWCMD_WRITER_MAINTENANCE,
+                   "进入 MAINTENANCE 急停失败")) return 0;
+    if (!TestCheck(LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_SAFETY) == 0u &&
+                       LowCmdGetDiag(&after) != 0u &&
+                       after.emergency_writer == (uint16_t)LOWCMD_WRITER_MAINTENANCE &&
+                       after.seq == before.seq,
+                   "SAFETY 不得把 MAINTENANCE 急停降级")) return 0;
+    if (!TestCheck(LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_FAULT) != 0u &&
+                       LowCmdGetDiag(&after) != 0u &&
+                       after.emergency_writer == (uint16_t)LOWCMD_WRITER_FAULT,
+                   "FAULT 应能提升 MAINTENANCE 急停优先级")) return 0;
+    if (!TestCheck(LowCmdEnterEmergencyStop((uint16_t)LOWCMD_WRITER_MAINTENANCE) == 0u,
+                   "FAULT 提升后不得再由 MAINTENANCE 降级")) return 0;
+    if (!TestCheck(LowCmdClearEmergencyStop((uint16_t)LOWCMD_WRITER_FAULT) != 0u,
+                   "优先级测试结束时清理急停失败")) return 0;
+    return TestCheck(LowCmdSeq() > seq_before_fault,
+                     "合法的急停进入必须推进命令代");
+}
+
 static int TestZeroCountIsNoOp(void)
 {
     const MotorCmd cmd = TestCurrentCmd(777);
@@ -754,7 +795,7 @@ static int TestWriterAuthorityComesFromApi(void)
 {
     MotorCmd cmd = TestCurrentCmd(1234);
     MotorCmd stored;
-    const uint16_t invalid_writers[] = {1u, 9u, 11u, 239u, 241u, 254u, 256u, 65535u};
+    const uint16_t invalid_writers[] = {1u, 9u, 11u, 239u, 242u, 254u, 256u, 65535u};
     LowCmd before;
     LowCmd after;
 
@@ -1698,6 +1739,44 @@ static int TestLowCmdVersionWrapIsExact(void)
     return 1;
 }
 
+static int TestIndexedSnapshotAndBatchInhibitRead(void)
+{
+    const MotorId ids[2] = {Motor2, Motor17};
+    const MotorId inhibit_ids[2] = {Motor17, Motor2};
+    MotorCmd cmds[2] = {TestCurrentCmd(222), TestCurrentCmd(-717)};
+    MotorCmd indexed[MotorCount];
+    ControlOutputStamp owners[MotorCount];
+    uint16_t inhibit[2] = {0u, 0u};
+
+    LowCmdClearAll();
+    (void)memset(indexed, 0, sizeof(indexed));
+    (void)memset(owners, 0, sizeof(owners));
+    if (!TestCheck(LowCmdSetMotorManyFrom(ids,
+                                          cmds,
+                                          2u,
+                                          (uint16_t)LOWCMD_WRITER_CONTROL) != 0u &&
+                       LowCmdGetMotorManyStampedIndexed(ids,
+                                                        indexed,
+                                                        owners,
+                                                        2u) != 0u &&
+                       indexed[Motor2].current == 222 &&
+                       indexed[Motor17].current == -717 &&
+                       indexed[Motor0].active == 0u,
+                   "按 MotorId 索引的有效路由快照不正确")) return 0;
+
+    if (!TestCheck(LowCmdInhibitManyFrom(&ids[1],
+                                         1u,
+                                         (uint16_t)LOWCMD_WRITER_SAFETY) != 0u &&
+                       LowCmdGetInhibitWriters(inhibit_ids, inhibit, 2u) != 0u &&
+                       inhibit[0] == (uint16_t)LOWCMD_WRITER_SAFETY &&
+                       inhibit[1] == (uint16_t)LOWCMD_WRITER_NONE,
+                   "整批禁写状态读取结果不正确")) return 0;
+
+    return TestCheck(LowCmdGetMotorManyStampedIndexed(NULL, NULL, NULL, 0u) != 0u &&
+                         LowCmdGetInhibitWriters(NULL, NULL, 0u) != 0u,
+                     "空的批量读取应保持无副作用成功");
+}
+
 int main(void)
 {
     if (!TestClearManySuccess()) return 1;
@@ -1705,6 +1784,7 @@ int main(void)
     if (!TestPriorityRejectIsAtomic()) return 1;
     if (!TestSafetyMayClearControl()) return 1;
     if (!TestEmergencyLockRejectsSafetyClear()) return 1;
+    if (!TestEmergencyWriterPriorityCannotDowngrade()) return 1;
     if (!TestZeroCountIsNoOp()) return 1;
     if (!TestInhibitClearsAndBlocksLowerWriters()) return 1;
     if (!TestInhibitAcquireRejectIsAtomic()) return 1;
@@ -1727,6 +1807,7 @@ int main(void)
     if (!TestLowStateCopiesLastEcd()) return 1;
     if (!TestTxReceiptTracksPhysicalCompletion()) return 1;
     if (!TestLowCmdVersionWrapIsExact()) return 1;
+    if (!TestIndexedSnapshotAndBatchInhibitRead()) return 1;
     if (!TestCheck(s_test_critical_depth == 0 &&
                        s_test_critical_error_count == 0u &&
                        s_test_permit_validate_outside_critical_count == 0u &&

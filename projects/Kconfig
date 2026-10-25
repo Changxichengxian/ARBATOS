@@ -47,7 +47,7 @@ config ARBATOS_M_BOARD_IO
 
 config ARBATOS_A_IMU_CAL
     bool
-    default y if BOARD_DJI_A_F427 && ARBATOS_LEGACY_SOURCES
+    default y if (BOARD_DJI_A_F427 || BOARD_DJI_C_F407) && ARBATOS_LEGACY_SOURCES
     select CRC
     select FLASH
     select FLASH_MAP
@@ -86,13 +86,23 @@ config ARBATOS_PREFLIGHT_ONLY
       CAN transmit, robot control and external servo tasks remain inactive.
 
 config ARBATOS_RECEIVE_ONLY
-    bool "HERO-M receive checks with command transmission blocked"
-    depends on ARBATOS_PREFLIGHT_ONLY && ARBATOS_ROBOT_NAME = "HERO-M"
+    bool "M board receive checks with command transmission blocked"
+    depends on ARBATOS_PREFLIGHT_ONLY
+    depends on ARBATOS_ROBOT_NAME = "HERO-M" || ARBATOS_ROBOT_NAME = "MINIWHEELEG-M"
     default n
     help
       Receive CAN feedback and remote input alongside preflight IMU checks.
       CAN hardware acknowledges frames, but application CAN and UART sends
       are rejected. No motion task is started; diagnostics use debug RAM.
+
+config ARBATOS_PREFLIGHT_AWAKE
+    bool "Keep stationary checks awake for wireless SWD access"
+    depends on ARBATOS_PREFLIGHT_ONLY
+    select ARM_ON_ENTER_CPU_IDLE_HOOK
+    default n
+    help
+      Avoids idle sleep on probes that lose access to a sleeping H723.
+      Only available in the stationary check image, without motor tasks.
 
 config ARBATOS_BENCH_TELEMETRY
     bool "Stream stationary IMU and receiver diagnostics"
@@ -101,6 +111,16 @@ config ARBATOS_BENCH_TELEMETRY
     help
       Adds deferred UART logging for bench measurements without halting the
       IMU task. This does not disable motor outputs in the normal firmware.
+
+config ARBATOS_MINI_BENCH
+    bool "Measured small wheel-leg fixed-height bench bring-up"
+    depends on ARBATOS_ROBOT_NAME = "MINIWHEELEG-M" && !ARBATOS_PREFLIGHT_ONLY
+    select ARM_ON_ENTER_CPU_IDLE_HOOK
+    select ARBATOS_BENCH_TELEMETRY
+    default n
+    help
+      Uses the measured-model controller. Motor output starts locked and
+      requires an explicit RAM arm request plus the normal remote controls.
 
 config ARBATOS_FREERTOS_MAX_TASKS
     int "Maximum legacy task count"
@@ -127,6 +147,7 @@ config ARBATOS_CMSIS_MUTEX_COUNT
 
 config ARBATOS_LEGACY_HEAP_SIZE
     int "Bounded legacy application heap size in bytes"
+    default 16384 if BOARD_DJI_C_F407 && ARBATOS_LEGACY_SOURCES
     default 32768 if ARBATOS_LEGACY_SOURCES
     default 8192
     range 4096 65536

@@ -67,6 +67,10 @@ __weak uint8_t CanTxProcessExtraItem(uint8_t bus,
 static MotorCmd s_can_tx_cmd_cache[MotorCount];
 static ControlOutputStamp s_can_tx_owner_cache[MotorCount];
 static MotorId s_can_tx_cmd_cache_ids[MotorCount];
+static MotorId s_can_tx_route_ids[MotorCount];
+static const MotorRoute *s_can_tx_routes[MotorCount];
+static const MotorRoute *s_can_tx_active_routes[MotorCount];
+static uint8_t s_can_tx_route_count;
 static uint8_t s_can_tx_cmd_cache_valid[MotorCount];
 static uint8_t s_can_tx_cmd_expired[MotorCount];
 static uint8_t s_can_tx_cmd_unlock_blocked[MotorCount];
