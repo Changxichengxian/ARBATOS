@@ -1,0 +1,352 @@
+{
+  "zephyr_version": "4.4.0",
+  "zephyr_commit": "684c9e8f32e4373a21098559f748f06915f950c9",
+  "sdk_version": "1.0.1",
+  "modules": [
+    {
+      "name": "manifest",
+      "path": "zephyr",
+      "manifest_revision": "HEAD",
+      "checked_out_commit": "684c9e8f32e4373a21098559f748f06915f950c9",
+      "local_patch": "manifest-本地驱动补丁.patch"
+    },
+    {
+      "name": "acpica",
+      "path": "modules/lib/acpica",
+      "manifest_revision": "8d24867bc9c9d81c81eeac59391cda59333affd4"
+    },
+    {
+      "name": "cmsis",
+      "path": "modules/hal/cmsis",
+      "manifest_revision": "512cc7e895e8491696b61f7ba8066b4a182569b8",
+      "checked_out_commit": "512cc7e895e8491696b61f7ba8066b4a182569b8"
+    },
+    {
+      "name": "cmsis-dsp",
+      "path": "modules/lib/cmsis-dsp",
+      "manifest_revision": "97512610ec92058f0119450b9e743eeb7e95b5c8"
+    },
+    {
+      "name": "cmsis-nn",
+      "path": "modules/lib/cmsis-nn",
+      "manifest_revision": "d20117c9e88cf9018d6fa06744dddac700c3e3a1"
+    },
+    {
+      "name": "cmsis_6",
+      "path": "modules/hal/cmsis_6",
+      "manifest_revision": "30a859f44ef8ab4dc8f84b03ed586fd16ccf9d74",
+      "checked_out_commit": "30a859f44ef8ab4dc8f84b03ed586fd16ccf9d74"
+    },
+    {
+      "name": "dhara",
+      "path": "modules/lib/dhara",
+      "manifest_revision": "6f163ca05e174b168b4d148160b50eeaeeb561fc"
+    },
+    {
+      "name": "edtt",
+      "path": "tools/edtt",
+      "manifest_revision": "c282625e694f0b53ea53e13231ea6d2f49411768"
+    },
+    {
+      "name": "fatfs",
+      "path": "modules/fs/fatfs",
+      "manifest_revision": "f4ead3bf4a6dab3a07d7b5f5315795c073db568d"
+    },
+    {
+      "name": "hal_adi",
+      "path": "modules/hal/adi",
+      "manifest_revision": "44545c0b31a765c702132f22e797271c3f111eae"
+    },
+    {
+      "name": "hal_afbr",
+      "path": "modules/hal/afbr",
+      "manifest_revision": "1abf6947457380934e27f92508ec5532ddedfc6d"
+    },
+    {
+      "name": "hal_ambiq",
+      "path": "modules/hal/ambiq",
+      "manifest_revision": "21565be7baa02f03d27a734bf9939c0dcb3cfec9"
+    },
+    {
+      "name": "hal_atmel",
+      "path": "modules/hal/atmel",
+      "manifest_revision": "8cd575049f04131e333558072484bfc6334c19c4"
+    },
+    {
+      "name": "hal_bouffalolab",
+      "path": "modules/hal/bouffalolab",
+      "manifest_revision": "c71e1197e7e9e0fd7be801844e09533c030b56a9"
+    },
+    {
+      "name": "hal_espressif",
+      "path": "modules/hal/espressif",
+      "manifest_revision": "b7953b8019361d09e613f7011d2ccc41b984d087"
+    },
+    {
+      "name": "hal_ethos_u",
+      "path": "modules/hal/ethos_u",
+      "manifest_revision": "03567073fe2b9802c0bd73f9534da6f8a03924d1"
+    },
+    {
+      "name": "hal_gigadevice",
+      "path": "modules/hal/gigadevice",
+      "manifest_revision": "ee0e31302c21b2a465dc303b3ced8c606c2167c8"
+    },
+    {
+      "name": "hal_infineon",
+      "path": "modules/hal/infineon",
+      "manifest_revision": "3ae25facf70c296145f6e12aa10b4810d49c2b33"
+    },
+    {
+      "name": "hal_intel",
+      "path": "modules/hal/intel",
+      "manifest_revision": "2ddab7fe5bfe85c7af8b87a490c4a0e560dc1078"
+    },
+    {
+      "name": "hal_microchip",
+      "path": "modules/hal/microchip",
+      "manifest_revision": "86f3ea6b389d860332bd81ae8b97543def619395"
+    },
+    {
+      "name": "hal_nordic",
+      "path": "modules/hal/nordic",
+      "manifest_revision": "44fd3d44b15cb75f80a25b4679f91d2787e28664"
+    },
+    {
+      "name": "hal_nuvoton",
+      "path": "modules/hal/nuvoton",
+      "manifest_revision": "fe26f3a5b3b85fb6b61cc3f744f195e3ab391194"
+    },
+    {
+      "name": "hal_nxp",
+      "path": "modules/hal/nxp",
+      "manifest_revision": "2c2f28ac333e995d7279777409817c4b4f92c1ec"
+    },
+    {
+      "name": "hal_openisa",
+      "path": "modules/hal/openisa",
+      "manifest_revision": "eabd530a64d71de91d907bad257cd61aacf607bc"
+    },
+    {
+      "name": "hal_quicklogic",
+      "path": "modules/hal/quicklogic",
+      "manifest_revision": "bad894440fe72c814864798c8e3a76d13edffb6c"
+    },
+    {
+      "name": "hal_realtek",
+      "path": "modules/hal/realtek",
+      "manifest_revision": "84a7fd556d95a411ee3cbf4ed29478eced58fb35"
+    },
+    {
+      "name": "hal_renesas",
+      "path": "modules/hal/renesas",
+      "manifest_revision": "06282060fa20cbd21d4ebbc7d46a1fc9533fd24e"
+    },
+    {
+      "name": "hal_rpi_pico",
+      "path": "modules/hal/rpi_pico",
+      "manifest_revision": "562b41e10a1d8b1a761b253b107c5c6a84cf4535"
+    },
+    {
+      "name": "hal_sifli",
+      "path": "modules/hal/sifli",
+      "manifest_revision": "86fa0e9433fda1a760e0077c19b8407ecceea2f9"
+    },
+    {
+      "name": "hal_silabs",
+      "path": "modules/hal/silabs",
+      "manifest_revision": "f5201210afa1319ed8dd8dbe21682bcb63b25771"
+    },
+    {
+      "name": "hal_st",
+      "path": "modules/hal/st",
+      "manifest_revision": "7a792882847223c72944791e0c48eed6101e6569"
+    },
+    {
+      "name": "hal_stm32",
+      "path": "modules/hal/stm32",
+      "manifest_revision": "39130f29ae37c1db34095478ca02b6419b70dcdc",
+      "checked_out_commit": "39130f29ae37c1db34095478ca02b6419b70dcdc"
+    },
+    {
+      "name": "hal_tdk",
+      "path": "modules/hal/tdk",
+      "manifest_revision": "fa54cb65535b0ed69564423c9e0bf4e7ee47dcb1"
+    },
+    {
+      "name": "hal_telink",
+      "path": "modules/hal/telink",
+      "manifest_revision": "4226c7fc17d5a34e557d026d428fc766191a0800"
+    },
+    {
+      "name": "hal_ti",
+      "path": "modules/hal/ti",
+      "manifest_revision": "afbcfffd393be03ca2c9b41f9ce8d94a4c2f2fbd"
+    },
+    {
+      "name": "hal_wch",
+      "path": "modules/hal/wch",
+      "manifest_revision": "dd3855ea624b05de7e6e95584789615d2058a0f3"
+    },
+    {
+      "name": "hal_wurthelektronik",
+      "path": "modules/hal/wurthelektronik",
+      "manifest_revision": "7c1297ea071d03289112eb24e789c89c7095c0a2"
+    },
+    {
+      "name": "hal_xtensa",
+      "path": "modules/hal/xtensa",
+      "manifest_revision": "0495a1afd300b644d3ec8dd2c3bd11007e69a892"
+    },
+    {
+      "name": "hostap",
+      "path": "modules/lib/hostap",
+      "manifest_revision": "aa993679725360c1e370c9695960c6730cb07e8b"
+    },
+    {
+      "name": "liblc3",
+      "path": "modules/lib/liblc3",
+      "manifest_revision": "48bbd3eacd36e99a57317a0a4867002e0b09e183"
+    },
+    {
+      "name": "libmctp",
+      "path": "modules/lib/libmctp",
+      "manifest_revision": "b97860e78998551af99931ece149eeffc538bdb1"
+    },
+    {
+      "name": "libmetal",
+      "path": "modules/hal/libmetal",
+      "manifest_revision": "66e084293b2a7ced5a73fbd247deddba8915883a"
+    },
+    {
+      "name": "libsbc",
+      "path": "modules/lib/libsbc",
+      "manifest_revision": "8e1beda02acb8972e29e6edbb423f7cafe16e445"
+    },
+    {
+      "name": "littlefs",
+      "path": "modules/fs/littlefs",
+      "manifest_revision": "8f5ca347843363882619d8f96c00d8dbd88a8e79"
+    },
+    {
+      "name": "lora-basics-modem",
+      "path": "modules/lib/lora-basics-modem",
+      "manifest_revision": "a8ddc544043e72807cf7db532478e1dda734ae7c"
+    },
+    {
+      "name": "loramac-node",
+      "path": "modules/lib/loramac-node",
+      "manifest_revision": "fb00b383072518c918e2258b0916c996f2d4eebe"
+    },
+    {
+      "name": "lvgl",
+      "path": "modules/lib/gui/lvgl",
+      "manifest_revision": "85aa60d18b3d5e5588d7b247abf90198f07c8a63"
+    },
+    {
+      "name": "mbedtls",
+      "path": "modules/crypto/mbedtls",
+      "manifest_revision": "a3e190fe44c78d1ba67f55979e1257328cc7d0d8"
+    },
+    {
+      "name": "mbedtls-3.6",
+      "path": "modules/crypto/mbedtls-3.6",
+      "manifest_revision": "a00e23de17b6b0a0de28e180cb186da6f0008836"
+    },
+    {
+      "name": "mcuboot",
+      "path": "bootloader/mcuboot",
+      "manifest_revision": "ee39e2d694bd827ffd1bebbce2f571a9154e6ec2"
+    },
+    {
+      "name": "mipi-sys-t",
+      "path": "modules/debug/mipi-sys-t",
+      "manifest_revision": "5a9d6055b62edc54566d6d0034d9daec91749b98"
+    },
+    {
+      "name": "mldsa-native",
+      "path": "modules/crypto/mldsa-native",
+      "manifest_revision": "3fc19982839305d305071f0de0c540bc9c9bea8a"
+    },
+    {
+      "name": "nanopb",
+      "path": "modules/lib/nanopb",
+      "manifest_revision": "5499fd4c9a478f8139eeb07a82c3b4468d6067f7"
+    },
+    {
+      "name": "net-tools",
+      "path": "tools/net-tools",
+      "manifest_revision": "64d7acc661ae2772282570f21beab85d02f2f35c"
+    },
+    {
+      "name": "nrf_hw_models",
+      "path": "modules/bsim_hw_models/nrf_hw_models",
+      "manifest_revision": "158b9710d6e10c57b2c623f8f4178f0bbc85c23f"
+    },
+    {
+      "name": "nrf_wifi",
+      "path": "modules/lib/nrf_wifi",
+      "manifest_revision": "cebea8e27ceb91a7d4580d17db65f93669befe72"
+    },
+    {
+      "name": "open-amp",
+      "path": "modules/lib/open-amp",
+      "manifest_revision": "5efe7974f9546582e99f5a842a816ea4b65f5227"
+    },
+    {
+      "name": "openthread",
+      "path": "modules/lib/openthread",
+      "manifest_revision": "e4d97681c53ec1cc34af1404ad2960adda4ba691"
+    },
+    {
+      "name": "percepio",
+      "path": "modules/debug/percepio",
+      "manifest_revision": "f9159fe3c79578e8d90c8593e83f9862d9b8962c"
+    },
+    {
+      "name": "picolibc",
+      "path": "modules/lib/picolibc",
+      "manifest_revision": "01254932e8e81085817ed61fd858648584ffe37c"
+    },
+    {
+      "name": "psa-arch-tests",
+      "path": "modules/tee/tf-m/psa-arch-tests",
+      "manifest_revision": "6e8219237435112df33bbcf37b7f5657fcfb9cff"
+    },
+    {
+      "name": "segger",
+      "path": "modules/debug/segger",
+      "manifest_revision": "50892fdbcf2f570e67baa72b8894a66b16946f72"
+    },
+    {
+      "name": "tf-m-tests",
+      "path": "modules/tee/tf-m/tf-m-tests",
+      "manifest_revision": "cde5b6ed540d3ff5a09564fded6b39b0a70ad3bf"
+    },
+    {
+      "name": "tf-psa-crypto",
+      "path": "modules/crypto/tf-psa-crypto",
+      "manifest_revision": "dc575a2ddcc8cb16275d24c42a52eaf79ebe2231"
+    },
+    {
+      "name": "trusted-firmware-a",
+      "path": "modules/tee/tf-a/trusted-firmware-a",
+      "manifest_revision": "4aef38a5bf03edfa615c1f8af5a49e7065f9fb3f"
+    },
+    {
+      "name": "trusted-firmware-m",
+      "path": "modules/tee/tf-m/trusted-firmware-m",
+      "manifest_revision": "9a4cb1a280b63a5e66bd469e82eb75f2b3e05a78"
+    },
+    {
+      "name": "uoscore-uedhoc",
+      "path": "modules/lib/uoscore-uedhoc",
+      "manifest_revision": "dc0ab6345450668de3f9597320a48c5a2d409bb6"
+    },
+    {
+      "name": "zcbor",
+      "path": "modules/lib/zcbor",
+      "manifest_revision": "9164bd18dcd88ff9d9ef98279501fc1093571017"
+    }
+  ]
+}
