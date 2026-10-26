@@ -59,6 +59,11 @@ int main(void)
         const uint8_t expected[8] = {0x80, 0x00, 0x80, 0x00, 0x00, 0x14, 0x88, 0x28};
         assert(CanMitMotorSendCmd(1u, 5u, joint, &damped) == 0);
         assert(memcmp(captured, expected, sizeof(expected)) == 0);
+        /* 固定角度保持必须同时送出本地 Kp/Kd，不能退化为零力矩。 */
+        const CanMitMotorCmd hold = {.kp = 8.0f, .kd = 0.4f};
+        const uint8_t hold_bytes[8] = {0x80, 0x00, 0x80, 0x00, 0x42, 0x14, 0x88, 0x00};
+        assert(CanMitMotorSendCmd(1u, 5u, joint, &hold) == 0);
+        assert(memcmp(captured, hold_bytes, sizeof(hold_bytes)) == 0);
     }
     puts("MIT protocol: wheel bytes, feedback scale, joint ranges and local damping passed");
     return 0;

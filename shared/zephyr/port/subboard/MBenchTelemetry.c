@@ -13,29 +13,11 @@
 LOG_MODULE_REGISTER(board_bench, LOG_LEVEL_INF);
 
 #if defined(CONFIG_ARBATOS_MINI_BENCH)
-#include "WheelLegBenchGate.h"
-#include "BspCan.h"
 bool z_arm_on_enter_cpu_idle(void)
 {
     return false;
 }
 
-static void MBenchStopPoll(void)
-{
-    static uint8_t nextId = 1u;
-    static uint8_t nextWheel = 5u;
-    static const uint8_t stop[8] = {255, 255, 255, 255, 255, 255, 255, 253};
-    if (!WheelLegBenchTxOpen(k_uptime_get_32())) {
-        /* 分散请求，避免六台电机同时应答或挤满发送邮箱。 */
-        (void)BspCanTx(1u, nextId, stop, 8u);
-        nextId = (uint8_t)(nextId % 6u + 1u);
-    } else if (WheelLegBenchTest == 1u ||
-               (WheelLegBenchTest == 3u && WheelLegBenchPhase != 3u)) {
-        /* 架空时轮子保持失能，但仍查询反馈，不能误报轮子离线。 */
-        (void)BspCanTx(1u, nextWheel, stop, 8u);
-        nextWheel = nextWheel == 5u ? 6u : 5u;
-    }
-}
 #endif
 
 static void MBenchStack(const struct k_thread *thread, void *context)
@@ -59,9 +41,6 @@ static void MBenchRun(void *a, void *b, void *c)
     ARG_UNUSED(b);
     ARG_UNUSED(c);
     for (;;) {
-#if defined(CONFIG_ARBATOS_MINI_BENCH)
-        MBenchStopPoll();
-#endif
         if (slow_divider == 0u) {
             const float temperature = get_temprate();
             const float battery = get_battery_voltage();

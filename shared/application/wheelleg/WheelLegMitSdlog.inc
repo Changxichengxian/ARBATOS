@@ -207,6 +207,21 @@ static void WheelLegSdLogWriteStatus(uint16_t faults,
     log.lqr_output[3] = s_wheelleg.leg[WHEELLEG_SIDE_LEFT].tp;
     log.overrun_count = s_wheelleg.overrun_count;
 
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    /* 板凳内核使用本车重新标定的方向，不能记录旧通用运动学的腿长和状态。 */
+    log.target_leg_length_m = .090f;
+    memcpy(log.lqr_error, MiniBenchOutput.state, sizeof(log.lqr_error));
+    /* 固定腿姿整体倾斜目标；取负即本帧实际使用的俯仰修正量。 */
+    log.target_leg_theta_rad = WheelLegBenchPhase == 3u ? MiniBenchOutput.state[4] - pitch : 0;
+    for (unsigned i = 0; i < 2; i++) {
+        const unsigned benchSide = i == 0 ? WHEELLEG_SIDE_RIGHT : WHEELLEG_SIDE_LEFT;
+        log.leg_length_m[benchSide] = MiniBenchOutput.length[i];
+        log.leg_theta_rad[benchSide] = MiniBenchOutput.alpha[i] - pitch;
+        log.leg_d_length_mps[benchSide] = NAN;
+        log.leg_d_theta_radps[benchSide] = NAN;
+    }
+#endif
+
     SdLogWrite(SDLOG_TAG_WHEELLEG_MIT_STATUS, &log, (uint16_t)sizeof(log));
     WheelLegSdLogWriteMotorDiag(now_ms);
 }

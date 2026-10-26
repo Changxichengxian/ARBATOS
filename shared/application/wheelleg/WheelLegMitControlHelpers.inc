@@ -134,13 +134,13 @@ static fp32 WheelLegPitchTrimVelocityError(fp32 v_mps, fp32 deadband_mps)
     return (v_mps > 0.0f) ? (v_mps - deadband_mps) : (v_mps + deadband_mps);
 }
 
-static void WheelLegPitchTrimUpdate(fp32 dt,
+static void WheelLegPitchTrimUpdateConfigured(const WheelLegMitConfig *cfg,
+                                       fp32 dt,
                                        int16_t vx_axis,
                                        int16_t yaw_axis,
                                        fp32 target_v,
                                        fp32 target_yaw_rate)
 {
-    const WheelLegMitConfig *cfg = &g_config.WheelLegMit;
     const fp32 max_offset =
         WheelLegCfgPositiveOrDefault(cfg->pitch_trim_max_rad,
                                          WHEELLEG_PITCH_TRIM_MAX_RAD_DEFAULT,
@@ -189,6 +189,13 @@ static void WheelLegPitchTrimUpdate(fp32 dt,
     rate = WheelLegClamp(gain * v_err, -max_rate, max_rate);
     s_wheelleg.pitch_auto_offset_rad =
         WheelLegClamp(s_wheelleg.pitch_auto_offset_rad + rate * dt, -max_offset, max_offset);
+}
+
+static void WheelLegPitchTrimUpdate(fp32 dt, int16_t vx_axis, int16_t yaw_axis,
+                                   fp32 target_v, fp32 target_yaw_rate)
+{
+    WheelLegPitchTrimUpdateConfigured(&g_config.WheelLegMit, dt, vx_axis, yaw_axis,
+                                     target_v, target_yaw_rate);
 }
 
 static void WheelLegLqrFillSideState(uint8_t side,
