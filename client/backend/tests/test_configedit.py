@@ -32,17 +32,25 @@ class ConfigEditTest(unittest.TestCase):
     def fields(detail):
         return {field["id"]: field for group in detail["groups"] for field in group["fields"]}
 
-    def test_sine_spin_settings_and_hero_power_meter_route(self):
-        for target in ("HERO-M", "INFANTRY-TIAN-A"):
+    def test_sine_spin_settings(self):
+        for target, period_ms, min_scale in (("HERO-M", 2000, 0.5), ("INFANTRY-TIAN-A", 1500, 0.65)):
             fields = self.fields(self.get(target))
             self.assertEqual(fields["tuning.chassis.spinSineRc"]["value"], 1)
-            self.assertEqual(fields["tuning.chassis.spinSinePeriodMs"]["value"], 2000)
-            self.assertEqual(fields["tuning.chassis.spinSineMinScale"]["value"], 0.5)
-        source = (self.root / "Robotconfig/HERO-M/ConfigHardware.inc").read_text(encoding="utf-8")
-        meter = source.split(".powerMeter =", 1)[1]
-        self.assertIn(".enable = 1u", meter)
-        self.assertIn(".canBus = 1u", meter)
-        self.assertIn(".canId = 0x212u", meter)
+            self.assertEqual(fields["tuning.chassis.spinSinePeriodMs"]["value"], period_ms)
+            self.assertEqual(fields["tuning.chassis.spinSineMinScale"]["value"], min_scale)
+
+    def test_power_modes_roundtrip_preserves_motor_tuning(self):
+        detail = self.get()
+        field = self.fields(detail)["tuning.power.limitMode"]
+        self.assertEqual(field["type"], "enum")
+        self.assertEqual(field["value"], "ChassisPowerLimitAuto")
+        self.assertEqual(len(field["options"]), 4)
+        hardware = self.root / "Robotconfig/HERO-M/ConfigHardware.inc"
+        original = hardware.read_bytes()
+        saved = self.workspace.dispatch("config.update", {"target": "HERO-M", "revision": detail["revision"],
+            "changes": {"tuning.power.limitMode": "ChassisPowerLimitModelAndTotal"}})
+        self.assertEqual(self.fields(saved)["tuning.power.limitMode"]["value"], "ChassisPowerLimitModelAndTotal")
+        self.assertEqual(hardware.read_bytes(), original)
 
     def test_contract_covers_real_targets_and_requested_sections(self):
         for target in ("HERO-M", "SENTINEL-M", "MINIWHEELEG-M"):

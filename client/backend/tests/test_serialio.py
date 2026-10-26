@@ -201,6 +201,24 @@ class SerialServiceTest(unittest.TestCase):
             service.dispatch("serial.send", {"text": "12345678", "lineEnding": "LF"})
         service.shutdown()
 
+    def test_imu_command_requires_safe_fresh_telemetry_and_writes_protocol(self):
+        factory = Factory()
+        service = SerialService(factory, ports, clock=lambda: time.time())
+        service.dispatch("serial.open", {"port": "COM7", "baud": 115200, "format": "text", "channels": 1})
+        with self.assertRaisesRegex(SerialError, "安全模式"):
+            service.dispatch("serial.imu", {"action": "calibrate", "id": 7, "target": "HERO-M"})
+        with self.assertRaisesRegex(SerialError, "1 到"):
+            service.dispatch("serial.imu", {"action": "watch", "id": 0})
+        row = b"@IMU2,HERO-M,100,0,0,0,0,4,3,25000,40000,0,0,0,0,0,0,0,0,9810,0,0,0,1,2,3\n"
+        factory.instances[-1].input.put(row)
+        wait_cursor(service)
+        with self.assertRaisesRegex(SerialError, "车型不一致"):
+            service.dispatch("serial.imu", {"action": "calibrate", "id": 7, "target": "SENTINEL-M"})
+        service.dispatch("serial.imu", {"action": "calibrate", "id": 7, "target": "HERO-M"})
+        service.dispatch("serial.imu", {"action": "watch", "id": 7})
+        self.assertEqual(factory.instances[-1].writes, [b"!IMU2,calibrate,7\n", b"!IMU2,watch,7\n"])
+        service.shutdown()
+
     def test_csv_uses_optional_timestamp_and_rejects_nonfinite(self):
         factory = Factory()
         service = SerialService(factory, ports)
@@ -253,6 +271,8 @@ class SerialServiceTest(unittest.TestCase):
         port = factory.instances[-1]
         port.input.put(b"@ELRS,10,1,2,99,3,4,5,6,7,8,9,10\n")
         self.assertIsNotNone(wait_cursor(service)["receiver"]["link"])
+        port.input.put(b"@IMU2,HERO-M,100,0,0,0,0,4,3,25000,40000,0,0,0,0,0,0,0,0,9810,0,0,0,1,2,3\n")
+        self.assertIsNotNone(wait_cursor(service, 2)["imu"]["last"])
         port.input.put(OSError("device removed"))
         deadline = time.monotonic() + 1
         while service.dispatch("serial.status")["connected"] and time.monotonic() < deadline:
@@ -261,6 +281,7 @@ class SerialServiceTest(unittest.TestCase):
         self.assertFalse(status["connected"])
         self.assertIn("device removed", status["error"])
         self.assertIsNone(status["receiver"]["link"])
+        self.assertIsNone(status["imu"]["last"])
         self.assertTrue(service.dispatch("serial.open", params)["connected"])
         self.assertEqual(len(factory.instances), 2)
         threads = [threading.Thread(target=lambda: service.dispatch("serial.close")) for _ in range(3)]

@@ -56,6 +56,12 @@ def _motor_id_max(model: str) -> int:
     return 255
 
 ENUM_OPTIONS = {
+    "limitMode": [
+        ("ChassisPowerLimitAuto", "自动：裁判在线用模型，离线用总指令"),
+        ("ChassisPowerLimitTotalCommand", "仅四轮总指令限制"),
+        ("ChassisPowerLimitModel", "模型功率限制"),
+        ("ChassisPowerLimitModelAndTotal", "模型功率 + 四轮总指令限制"),
+    ],
     "wheel_type": [
         ("CHASSIS_WHEEL_TYPE_MECANUM", "麦克纳姆轮"),
         ("CHASSIS_WHEEL_TYPE_XDRIVE", "X 型全向轮"),
@@ -96,7 +102,7 @@ GROUP_LABELS = {
     "imu": "IMU 与温控", "voltage": "电压参数", "buzzer": "蜂鸣器",
     "led": "指示灯", "WheelLegMit": "轮腿 MIT", "WheelLegServo": "轮腿舵机",
     "ArmJ0Unitree": "机械臂 J0", "manual_input": "手动输入", "operation": "运行模式",
-    "powerMeter": "功率计", "sdlog": "SD 日志", "AuxTelem": "辅助遥测",
+    "sdlog": "SD 日志", "AuxTelem": "辅助遥测",
 }
 PID_LABELS = ("比例 P（kp）", "积分 I（ki）", "微分 D（kd）", "输出上限（max_out）", "积分上限（max_iout）")
 
@@ -384,6 +390,7 @@ def _enum_options(path: str):
     elif name == "fusion_mode": key = "fusion_mode"
     elif name == "active_source": key = "active_source"
     elif name == "mix_mode": key = "mix_mode"
+    elif name == "limitMode" and path == "tuning.power.limitMode": key = "limitMode"
     elif name.endswith("Pos") or name.endswith("_pos"): key = "switch_pos"
     elif name == "mode" and path.startswith("operation."): key = "run_mode"
     else: return None
@@ -497,6 +504,12 @@ class ConfigEditor:
         else:
             public = {"id": path, "label": _label(node.key, desc), "value": value, "type": "text", "editable": False}
         if desc: public["description"] = desc
+        if node.key == "no_judge_total_current_limit":
+            public["label"] = "四轮总指令上限"
+            public["description"] = "经典四轮底盘的电流指令绝对值之和，单位为命令刻度，不是安培或瓦特。自动模式在无有效裁判时使用；总指令模式和组合模式始终使用。0 关闭这一项缩放，单电机限幅保留。36000 是调试值，不是模型推导的功率上限。"
+        elif path == "tuning.power.limitMode":
+            public["label"] = "经典底盘限功率策略"
+            public["description"] = "模型模式离线按配置瓦数限功率，裁判在线同时服从裁判功率与缓冲限制。模型不可用时退回总指令上限；若备用上限也未配置则该底盘零输出。轮腿控制器不使用此策略。"
         output.append(public)
 
     def _motor_groups(self, source, groups, fields):

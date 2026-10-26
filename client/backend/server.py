@@ -24,12 +24,12 @@ from converters import ConverterService
 
 
 WORKSPACE_METHODS = {
-    "workspace.summary", "robot.get", "robot.validate", "robot.update", "robot.create", "file.read", "file.write",
-    "config.get", "config.update", "ports.get",
+    "workspace.summary", "robot.get", "robot.validate", "robot.update", "robot.create", "vehicle_setup.catalog", "imu.mount", "imu.mount.update", "file.read", "file.write",
+    "config.get", "config.update", "ports.get", "firmware.memory",
 }
 JOB_METHODS = {"job.start", "job.get", "job.cancel", "job.plan_flash"}
-SERIAL_METHODS = {"serial.ports", "serial.open", "serial.close", "serial.status", "serial.read", "serial.send"}
-WRITE_METHODS = {"robot.update", "robot.create", "file.write", "config.update"}
+SERIAL_METHODS = {"serial.ports", "serial.open", "serial.close", "serial.status", "serial.read", "serial.send", "serial.imu"}
+WRITE_METHODS = {"robot.update", "robot.create", "file.write", "config.update", "imu.mount.update"}
 TOOLS_METHODS = {"tools.capabilities", "tools.sdlog", "tools.audio"}
 MAX_BODY = 34 * 1024 * 1024
 

@@ -71,6 +71,7 @@ const serviceNames: Record<string, string> = {
 const featureLabels: Record<string, string> = {
     subboard_music: "副板音乐",
     imu_mount: "使用 IMU 安装变换",
+    watch_full: "完整 Watch 变量镜像",
 };
 
 function clone(value: Record<string, unknown>) {
@@ -153,9 +154,9 @@ function commit() {
     emit("update:modelValue", clone(local.value));
 }
 const featureNames = computed(() =>
-    Object.keys(local.value.features ?? {}).filter(
+    [...new Set(["watch_full", ...Object.keys(local.value.features ?? {}).filter(
         (key) => typeof local.value.features[key] === "boolean",
-    ),
+    )])],
 );
 </script>
 
@@ -274,7 +275,8 @@ const featureNames = computed(() =>
         <div class="form-two-col">
             <section class="panel">
                 <h2>主动启用的服务</h2>
-                <p class="muted">控制器所需依赖会自动加入，无需重复勾选。</p>
+                <p class="muted">控制器所需依赖会自动加入，无需重复勾选。关闭 SD 卡日志会移除日志任务和缓存；音乐等功能仍可使用 SD 卡。</p>
+                <p v-if="!(local.services ?? []).includes('SDLOG')" class="muted">未选择 SD 日志：发生致命异常后仍保留故障重启锁，需人工读取并处理备份证据，单纯重启不会清锁。</p>
                 <label
                     v-for="service in services"
                     :key="service.symbol"
@@ -318,7 +320,7 @@ const featureNames = computed(() =>
                     ><input
                         type="checkbox"
                         :disabled="disabled"
-                        :checked="local.features[name]"
+                        :checked="local.features?.[name] ?? false"
                         @change="
                             setFeature(
                                 name,
@@ -330,6 +332,9 @@ const featureNames = computed(() =>
                         ><small>{{ name }}</small></span
                     ></label
                 >
+                <p class="muted">
+                    完整 Watch 用于调试器集中查看变量；关闭后保留启动阶段和故障处理，减少变量镜像及周期复制。功能开关需重新编译并烧录后生效。
+                </p>
                 <p class="muted">
                     接线、电机和遥控映射可在“参数与设备”页修改；原文件仍可直接编辑。
                 </p>

@@ -10,15 +10,21 @@ import {
 import { rpc } from "./api";
 import RobotConfigPanel from "./components/RobotConfigPanel.vue";
 import TelemetryChart from "./components/TelemetryChart.vue";
-import ConfigValuesPanel, { type ConfigValues } from "./components/ConfigValuesPanel.vue";
+import ConfigValuesPanel from "./components/ConfigValuesPanel.vue";
 import ToolsPanel from "./components/ToolsPanel.vue";
-import PortConfigPanel, { type PortOptions } from "./components/PortConfigPanel.vue";
+import PortConfigPanel from "./components/PortConfigPanel.vue";
 import ReceiverPanel from "./components/ReceiverPanel.vue";
 import ChassisPanel from "./components/ChassisPanel.vue";
-import type { MotorSnapshot } from "./chassis";
-import type { ReceiverSnapshot } from "./receiver";
+import MemoryPanel from "./components/MemoryPanel.vue";
+import TaskPlanPanel from "./components/TaskPlanPanel.vue";
+import VehicleSetupPanel, { type VehicleSetupCatalog } from "./components/VehicleSetupPanel.vue";
+import ImuPanel from "./components/ImuPanel.vue";
+import { useSerial } from "./useSerial";
+import { useBuild } from "./useBuild";
+import { useConfigEditor } from "./useConfigEditor";
+import type { Job, Robot } from "./types";
 
-type Tab = "overview" | "robot" | "chassis" | "receiver" | "parameters" | "files" | "serial" | "tools" | "build";
+type Tab = "overview" | "robot" | "chassis" | "receiver" | "imu" | "parameters" | "files" | "serial" | "tools" | "build" | "memory";
 type Summary = {
     root: string;
     targets: { name: string; board: string; preset: string }[];
@@ -49,18 +55,6 @@ type Service = {
     dependencies: string[];
     available: boolean;
 };
-type Robot = {
-    name: string;
-    config: Record<string, unknown> | null;
-    revision: string;
-    files: { name: string }[];
-    resolved: {
-        tasks?: unknown[];
-        controllers?: unknown[];
-        [key: string]: unknown;
-    } | null;
-    validation: { ok: boolean; errors: string[] };
-};
 type FileData = {
     name: string;
     content: string;
@@ -68,29 +62,6 @@ type FileData = {
     encoding: string;
     newline: string;
 };
-type Job = {
-    id: string;
-    target: string;
-    action: "check" | "build" | "rebuild" | "flash";
-    status: "running" | "succeeded" | "failed" | "cancelled";
-    exitCode?: number;
-    startedAt: number | string;
-    finishedAt?: number | string;
-    lines: { seq: number; text: string }[];
-    lastSeq: number;
-};
-type SerialStatus = {
-    connected: boolean;
-    port?: string;
-    baud?: number;
-    format?: string;
-    rxBytes: number;
-    txBytes: number;
-    error?: string;
-    receiver?: ReceiverSnapshot;
-    motors?: MotorSnapshot;
-};
-
 const icon = (name: string) =>
     ({
         overview:
@@ -100,8 +71,10 @@ const icon = (name: string) =>
         files: '<path d="M4 3h10l6 6v12H4V3Zm10 0v6h6M8 14h8M8 18h5"/>',
         serial: '<path d="M6 3v4m12-4v4M8 7h8v5a4 4 0 0 1-8 0V7Zm4 9v5m-3 0h6"/>',
         build: '<path d="m14 4 6 6-9 9H5v-6l9-9Zm-2 2 6 6M4 21h16"/>',
+        memory: '<path d="M5 5h14v14H5V5Zm3 3h8v8H8V8ZM8 2v3m8-3v3M8 19v3m8-3v3M2 8h3m-3 8h3m14-8h3m-3 8h3"/>',
         parameters: '<path d="M5 3v18M12 3v18M19 3v18M2 8h6m1 8h6m1-10h6"/>',
         receiver: '<path d="M4 9h16v12H4V9Zm3-6 3 6m7-6-3 6M7 15h4m-2-2v4m6-2h2"/>',
+        imu: '<path d="M12 3v3m0 12v3M3 12h3m12 0h3M6 6l2 2m8 8 2 2m0-12-2 2m-8 8-2 2"/><circle cx="12" cy="12" r="5"/>',
         tools: '<path d="M4 4h16v16H4V4Zm4 3v6m4-4v8m4-5v5"/>',
         refresh: '<path d="M20 11a8 8 0 1 0 2 5M20 4v7h-7"/>',
         search: '<circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/>',
@@ -121,64 +94,43 @@ const toast = ref("");
 const error = ref("");
 const pendingTab = ref<Tab | null>(null);
 const pendingFile = ref("");
-const dirtyConfig = ref(false);
-const configDraft = ref<Record<string, unknown>>({});
-const portOptions = ref<PortOptions | null>(null);
-let portPreviewTimer: number | undefined;
-let portPreviewSeq = 0;
-const validationPreview = ref<{ ok: boolean; errors: string[] } | null>(null);
 const selectedFile = ref("");
 const file = ref<FileData | null>(null);
 const fileText = ref("");
 const dirtyFile = ref(false);
-const configValues = ref<ConfigValues | null>(null);
-const valuesLoading = ref(false);
-let valuesRequestSeq = 0;
-const valueChanges = ref<Record<string, unknown>>({});
-const dirtyValues = computed(() => Object.keys(valueChanges.value).length > 0);
 const toolsBusy = ref(false);
+const disposed = ref(false);
+const configState = useConfigEditor({
+    target, activeTab, robot, busy, disposed,
+    isInterfaceBusy: () => interfaceBusy.value,
+    fail, clearError: () => { error.value = ""; }, showToast,
+    refreshSummary: async () => refreshSummary(),
+});
+const {
+    configDraft, dirtyConfig, portOptions, validationPreview, configValues,
+    valuesLoading, valueChanges, dirtyValues, changeConfig, loadPortOptions,
+    loadValues, changeValue, saveValues, saveConfig, validateConfig, resetDraft,
+} = configState;
 const anyDirty = computed(() => dirtyConfig.value || dirtyFile.value || dirtyValues.value);
 const interfaceBusy = computed(() => busy.value || toolsBusy.value || valuesLoading.value);
 const query = ref("");
 const editor = ref<HTMLTextAreaElement | null>(null);
 const lineNumbers = ref<HTMLPreElement | null>(null);
 const cursorLine = ref(1);
-const job = ref<Job | null>(null);
-const serial = ref<SerialStatus>({ connected: false, rxBytes: 0, txBytes: 0 });
-const ports = ref<{ device: string; description: string; hwid: string }[]>([]);
-const port = ref("");
-const baud = ref(115200);
-const serialFormat = ref<"text" | "csv" | "justfloat">("text");
-const channels = ref(1);
-const serialCursor = ref(0);
-const serialLines = ref<{ seq: number; time: number | string; text: string }[]>(
-    [],
-);
-const samples = ref<{ seq: number; time: number | string; values: number[] }[]>(
-    [],
-);
-const serialInput = ref("");
-const paused = ref(false);
-const offlineReplay = ref(false);
-const clearAt = ref(0);
 const createDialog = ref(false);
+const setupCatalog = ref<VehicleSetupCatalog | null>(null);
+const setupLoading = ref(false);
+const setupError = ref("");
 const newTargetName = ref("");
 const newTargetSource = ref("");
-const confirmFlash = ref<{
-    target: string;
-    artifactRevision: string;
-    path: string;
-    sha: string;
-    buildTime?: string;
-    warnings: string[];
-    ready: boolean;
-    reason?: string;
-} | null>(null);
-let jobTimer: number | undefined;
-let serialTimer: number | undefined;
-let serialPollingSession: number | null = null;
-let serialSession = 0;
-let disposed = false;
+const serialState = useSerial({ fail, showToast, disposed });
+const {
+    serial, ports, port, baud, serialFormat, channels, serialCursor, serialLines,
+    samples, serialInput, paused, offlineReplay, refreshPorts, refreshStatus, pollSerial,
+    serialToggle, observationToggle, sendSerial, clearSerial, importCsv,
+} = serialState;
+const buildState = useBuild({ target, busy, anyDirty, disposed, fail, showToast });
+const { job, confirmFlash, startJob, planFlash, doFlash, cancelJob } = buildState;
 let requestId = 0;
 const targetSelect = ref<HTMLSelectElement | null>(null);
 
@@ -187,11 +139,13 @@ const nav: { key: Tab; label: string; hint: string }[] = [
     { key: "robot", label: "车型与接口", hint: "控制器、服务、串口分配" },
     { key: "chassis", label: "底盘装配", hint: "四轮位置、ID、方向与手转识别" },
     { key: "receiver", label: "接收机", hint: "ELRS 通道、功能与拨杆模式" },
+    { key: "imu", label: "IMU", hint: "方向、零漂与手动零偏校准" },
     { key: "parameters", label: "参数与设备", hint: "PID、中位、电机、遥控器" },
     { key: "files", label: "文件编辑", hint: "车型现有文件" },
     { key: "serial", label: "串口与曲线", hint: "真实串口数据" },
     { key: "tools", label: "日志与音频", hint: "日志解析、歌曲转 u8" },
     { key: "build", label: "编译与烧录", hint: "检查、构建、下载" },
+    { key: "memory", label: "内存与 Flash", hint: "构建占用、模块分布与剩余空间" },
 ];
 const currentTarget = computed(() =>
     summary.value?.targets.find((x) => x.name === target.value),
@@ -309,15 +263,9 @@ function leaveUnsaved(save: boolean) {
         return;
     }
     if (dirtyFile.value && file.value) fileText.value = file.value.content;
-    if (dirtyConfig.value && robot.value)
-        configDraft.value = JSON.parse(
-            JSON.stringify(robot.value.config ?? {}),
-        );
     dirtyFile.value = false;
-    dirtyConfig.value = false;
-    valueChanges.value = {};
+    resetDraft();
     loadPortOptions();
-    validationPreview.value = null;
     error.value = "";
     pendingTarget.value = "";
     pendingTab.value = null;
@@ -341,116 +289,23 @@ function switchTab(tab: Tab) {
     }
     activeTab.value = tab;
 }
-function changeConfig(value: Record<string, unknown>) {
-    configDraft.value = value;
-    dirtyConfig.value = true;
-    validationPreview.value = null;
-    error.value = "";
-    if (portPreviewTimer) window.clearTimeout(portPreviewTimer);
-    portPreviewTimer = window.setTimeout(loadPortOptions, 300);
-}
-async function loadPortOptions() {
-    const seq = ++portPreviewSeq;
-    const expected = target.value;
-    if (!expected || activeTab.value !== "robot") return;
-    try {
-        const result = await rpc<PortOptions>("ports.get", { target: expected, config: configDraft.value });
-        if (seq === portPreviewSeq && expected === target.value) portOptions.value = result;
-    } catch (e) {
-        if (!portOptions.value && seq === portPreviewSeq) fail(e);
+async function createTarget() {
+    const name = newTargetName.value.trim();
+    if (!name || !newTargetSource.value) {
+        showToast("请输入新车型名称并选择一个模板车型。");
+        return;
     }
-}
-async function loadValues() {
-    const expectedTarget = target.value;
-    if (!expectedTarget || dirtyValues.value) return;
-    const seq = ++valuesRequestSeq;
-    valuesLoading.value = true;
     try {
-        const result = await rpc<ConfigValues>("config.get", { target: expectedTarget });
-        if (target.value !== expectedTarget || seq !== valuesRequestSeq || disposed || dirtyValues.value) return;
-        configValues.value = result;
-        valueChanges.value = {};
-    } catch (e) { if (seq === valuesRequestSeq && !disposed) fail(e); }
-    finally { if (seq === valuesRequestSeq) valuesLoading.value = false; }
-}
-function changeValue(id: string, value: unknown) {
-    if (interfaceBusy.value) return;
-    const original = configValues.value?.groups.flatMap(group => group.fields).find(field => field.id === id);
-    if (!original || original.editable === false) return;
-    const next = { ...valueChanges.value };
-    const unchanged = original.automatic === true && id.endsWith(".feedback_id")
-        ? value === -1 : Object.is(value, original.value);
-    if (unchanged) delete next[id];
-    else next[id] = value;
-    valueChanges.value = next;
-    error.value = "";
-}
-async function saveValues(): Promise<boolean> {
-    if (!configValues.value || !dirtyValues.value) return false;
-    busy.value = true;
-    try {
-        configValues.value = await rpc<ConfigValues>("config.update", {
-            target: target.value, revision: configValues.value.revision, changes: valueChanges.value,
+        const result = await rpc<{ name: string }>("robot.create", {
+            name,
+            source: newTargetSource.value,
         });
-        valueChanges.value = {};
-        error.value = "";
+        createDialog.value = false;
         await refreshSummary();
-        showToast("参数已保存到车型文件，重新编译并烧录后生效。");
-        return true;
-    } catch (e) { fail(e); return false; }
-    finally { busy.value = false; }
-}
-async function saveConfig(): Promise<boolean> {
-    if (!robot.value) return false;
-    busy.value = true;
-    try {
-        const updated = await rpc<Robot>("robot.update", {
-            target: target.value,
-            revision: robot.value.revision,
-            config: configDraft.value,
-        });
-        if (updated.name === target.value) {
-            robot.value = updated;
-            configDraft.value = JSON.parse(
-                JSON.stringify(updated.config ?? {}),
-            );
-            dirtyConfig.value = false;
-            loadPortOptions();
-            validationPreview.value = null;
-            error.value = "";
-            showToast("车型配置已保存。");
-            return true;
-        }
-        return false;
+        await chooseTarget(result.name);
+        showToast(`已创建车型 ${result.name}。`);
     } catch (e) {
         fail(e);
-        return false;
-    } finally {
-        busy.value = false;
-    }
-}
-async function validateConfig() {
-    if (!robot.value || busy.value) return;
-    busy.value = true;
-    error.value = "";
-    try {
-        validationPreview.value = await rpc<{ ok: boolean; errors: string[] }>(
-            "robot.validate",
-            {
-                target: target.value,
-                revision: robot.value.revision,
-                config: configDraft.value,
-            },
-        );
-        showToast(
-            validationPreview.value.ok
-                ? "修改后的配置检查通过。"
-                : "配置检查发现问题。",
-        );
-    } catch (e) {
-        fail(e);
-    } finally {
-        busy.value = false;
     }
 }
 async function openFile(name: string) {
@@ -510,279 +365,40 @@ async function saveFile(): Promise<boolean> {
         busy.value = false;
     }
 }
-async function startJob(action: Job["action"]) {
-    if (!target.value) return;
-    if (anyDirty.value) {
-        showToast("请先保存或放弃当前修改，再编译，避免构建旧文件内容。");
-        return;
+async function openCreateDialog() {
+    createDialog.value = true;
+    setupError.value = "";
+    if (setupCatalog.value || setupLoading.value) return;
+    setupLoading.value = true;
+    try {
+        setupCatalog.value = await rpc<VehicleSetupCatalog>("vehicle_setup.catalog");
+    } catch (e) {
+        setupError.value = e instanceof Error ? e.message : String(e);
+    } finally {
+        setupLoading.value = false;
     }
+}
+async function createVehicleFromSetup(name: string, setup: { board: string; template: string; mechanisms: string[]; radio: string; motors?: Record<string, string[]>; power?: { limit_mode: string } }) {
+    setupError.value = "";
     busy.value = true;
     try {
-        job.value = await rpc<Job>("job.start", {
-            target: target.value,
-            action,
-        });
-        pollJob();
-    } catch (e) {
-        fail(e);
-    } finally {
-        busy.value = false;
-    }
-}
-async function planFlash() {
-    if (busy.value) return;
-    if (anyDirty.value) {
-        showToast("请先保存或放弃当前修改，再检查烧录产物。");
-        return;
-    }
-    busy.value = true;
-    try {
-        confirmFlash.value = await rpc<typeof confirmFlash.value>(
-            "job.plan_flash",
-            { target: target.value },
-        );
-    } catch (e) {
-        fail(e);
-    } finally {
-        busy.value = false;
-    }
-}
-async function doFlash() {
-    if (!confirmFlash.value || busy.value) return;
-    busy.value = true;
-    try {
-        job.value = await rpc<Job>("job.start", {
-            target: target.value,
-            action: "flash",
-            confirmation: {
-                target: confirmFlash.value.target,
-                artifactRevision: confirmFlash.value.artifactRevision,
-            },
-        });
-        confirmFlash.value = null;
-        pollJob();
-    } catch (e) {
-        fail(e);
-    } finally {
-        busy.value = false;
-    }
-}
-async function pollJob() {
-    if (disposed || !job.value || job.value.status !== "running") return;
-    try {
-        const newer = await rpc<Job>("job.get", {
-            id: job.value.id,
-            after: job.value.lastSeq,
-        });
-        if (disposed) return;
-        job.value = {
-            ...newer,
-            lines: newer.lines?.length
-                ? [...(job.value?.lines ?? []), ...newer.lines].slice(-1500)
-                : (job.value?.lines ?? []),
-        };
-        if (job.value.status === "running")
-            jobTimer = window.setTimeout(pollJob, 700);
-    } catch (e) {
-        fail(e);
-    }
-}
-async function cancelJob() {
-    if (!job.value) return;
-    try {
-        job.value = await rpc<Job>("job.cancel", { id: job.value.id });
-    } catch (e) {
-        fail(e);
-    }
-}
-async function refreshPorts() {
-    try {
-        ports.value = await rpc<typeof ports.value>("serial.ports");
-        if (!port.value) port.value = ports.value[0]?.device ?? "";
-    } catch (e) {
-        fail(e);
-    }
-}
-async function serialToggle() {
-    const session = ++serialSession;
-    try {
-        if (serial.value.connected) {
-            if (serialTimer) window.clearTimeout(serialTimer);
-            serial.value = await rpc<SerialStatus>("serial.close");
-        } else {
-            offlineReplay.value = false;
-            paused.value = false;
-            serial.value = await rpc<SerialStatus>("serial.open", {
-                port: port.value,
-                baud: baud.value,
-                format: serialFormat.value,
-                channels: channels.value,
-            });
-            serialCursor.value = 0;
-            clearAt.value = 0;
-            serialLines.value = [];
-            samples.value = [];
-            if (session === serialSession) pollSerial(session);
-        }
-    } catch (e) {
-        fail(e);
-    }
-}
-async function observationToggle() {
-    if (!serial.value.connected) {
-        serialFormat.value = "text";
-        baud.value = 115200;
-    }
-    await serialToggle();
-}
-async function pollSerial(session = serialSession) {
-    if (disposed || session !== serialSession) return;
-    if (
-        serialPollingSession === session ||
-        !serial.value.connected ||
-        paused.value
-    )
-        return;
-    serialPollingSession = session;
-    try {
-        const data = await rpc<{
-            status: SerialStatus;
-            lines: { seq: number; time: number | string; text: string }[];
-            samples: { seq: number; time: number | string; values: number[] }[];
-            cursor: number;
-            dropped: number;
-        }>("serial.read", { after: serialCursor.value });
-        if (disposed || session !== serialSession) return;
-        serial.value = data.status;
-        serialCursor.value = data.cursor;
-        serialLines.value = [
-            ...serialLines.value,
-            ...data.lines.filter((x) => x.seq > clearAt.value),
-        ].slice(-300);
-        samples.value = [
-            ...samples.value,
-            ...data.samples.filter((x) => x.seq > clearAt.value),
-        ].slice(-600);
-    } catch (e) {
-        fail(e);
-    } finally {
-        if (serialPollingSession === session) serialPollingSession = null;
-        if (
-            !disposed &&
-            session === serialSession &&
-            serial.value.connected &&
-            !paused.value
-        )
-            serialTimer = window.setTimeout(() => pollSerial(session), 160);
-    }
-}
-async function sendSerial() {
-    if (!serialInput.value.trim()) return;
-    try {
-        serial.value = await rpc<SerialStatus>("serial.send", {
-            text: serialInput.value,
-            lineEnding: "LF",
-        });
-        serialInput.value = "";
-    } catch (e) {
-        fail(e);
-    }
-}
-function clearSerial() {
-    clearAt.value = serialCursor.value;
-    serialLines.value = [];
-    samples.value = [];
-}
-async function importCsv(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const csv = input.files?.[0];
-    if (!csv) return;
-    try {
-        if (serial.value.connected)
-            throw new Error("请先断开真实串口，再导入离线 CSV 回放。");
-        if (csv.size > 5 * 1024 * 1024) throw new Error("CSV 不能超过 5 MB");
-        const rows = (await csv.text())
-            .split(/\r?\n/)
-            .map((row) => row.trim())
-            .filter(Boolean);
-        if (rows.length > 100001) throw new Error("CSV 最多 100000 行");
-        if (!rows.length) throw new Error("CSV 是空文件，无法回放。");
-        const first = rows[0].split(",").map((x) => x.trim());
-        const firstName = first[0].toLowerCase();
-        const timeColumn = [
-            "time",
-            "time_s",
-            "timestamp",
-            "tick_ms",
-            "time_ms",
-        ].includes(firstName);
-        const isNumber = (value: string) =>
-            value !== "" && Number.isFinite(Number(value));
-        const hasHeader = timeColumn || first.some((cell) => !isNumber(cell));
-        const start = hasHeader ? 1 : 0;
-        const columns = first.length - (timeColumn ? 1 : 0);
-        if (columns < 1 || columns > 16)
-            throw new Error("CSV 必须有 1 至 16 个数值通道");
-        const parsed: {
-            seq: number;
-            time: number | string;
-            values: number[];
-        }[] = [];
-        for (const [i, row] of rows.slice(start).entries()) {
-            const cells = row.split(",").map((x) => x.trim());
-            if (cells.length !== columns + (timeColumn ? 1 : 0))
-                throw new Error(`第 ${i + start + 1} 行列数不一致`);
-            if (cells.some((cell) => cell === ""))
-                throw new Error(`第 ${i + start + 1} 行存在空单元格`);
-            const values = cells.slice(timeColumn ? 1 : 0).map(Number);
-            if (values.some((n) => !Number.isFinite(n)))
-                throw new Error(`第 ${i + start + 1} 行包含非数值通道`);
-            let time: number | string = `#${i + 1}`;
-            if (timeColumn) {
-                const rawTime = Number(cells[0]);
-                if (!Number.isFinite(rawTime))
-                    throw new Error(`第 ${i + start + 1} 行时间无效`);
-                time =
-                    firstName === "tick_ms" || firstName === "time_ms"
-                        ? rawTime / 1000
-                        : rawTime;
-                if (i > 0 && Number(time) < Number(parsed[i - 1].time))
-                    throw new Error(`第 ${i + start + 1} 行时间倒退`);
-            }
-            parsed.push({ seq: i + 1, time, values });
-        }
-        if (!parsed.length) throw new Error("CSV 没有数据行");
-        serialSession++;
-        if (serialTimer) window.clearTimeout(serialTimer);
-        samples.value = parsed.slice(-100000);
-        serialLines.value = [];
-        channels.value = columns;
-        offlineReplay.value = true;
-        paused.value = true;
-        showToast(`已加载 ${parsed.length} 行离线 CSV 数据。`);
-    } catch (e) {
-        fail(e);
-    } finally {
-        input.value = "";
-    }
-}
-async function createTarget() {
-    const name = newTargetName.value.trim();
-    if (!name || !newTargetSource.value) {
-        showToast("请输入新车型名称并选择一个模板车型。");
-        return;
-    }
-    try {
-        const result = await rpc<{ name: string }>("robot.create", {
-            name,
-            source: newTargetSource.value,
-        });
-        createDialog.value = false;
+        const result = await rpc<{ name: string; validation?: { ok: boolean; errors: string[] } }>("robot.create", { name, setup });
         await refreshSummary();
-        await chooseTarget(result.name);
-        showToast(`已创建车型 ${result.name}。`);
+        createDialog.value = false;
+        busy.value = false;
+        if (anyDirty.value) {
+            pendingTarget.value = result.name;
+            pendingTab.value = "chassis";
+        } else {
+            target.value = result.name;
+            activeTab.value = "chassis";
+            await loadRobot();
+        }
+        showToast(result.validation?.ok === false ? `已创建 ${result.name}，仍有配置问题需要处理。` : `已创建 ${result.name}。下一步核对电机总线、地址和方向。`);
     } catch (e) {
-        fail(e);
+        setupError.value = e instanceof Error ? e.message : String(e);
+    } finally {
+        busy.value = false;
     }
 }
 function updateCursor() {
@@ -796,6 +412,9 @@ function syncEditorScroll() {
     if (lineNumbers.value && editor.value)
         lineNumbers.value.scrollTop = editor.value.scrollTop;
 }
+function updateSerialStatus(value: unknown) {
+    serial.value = (value as { status: typeof serial.value }).status;
+}
 watch(target, () => {
     if (target.value && !robot.value) loadRobot();
 });
@@ -803,18 +422,10 @@ watch(activeTab, (tab) => {
     window.scrollTo(0, 0);
     if (tab === "robot") loadPortOptions();
     if (["parameters", "receiver", "chassis"].includes(tab)) loadValues();
-    if (["serial", "receiver", "chassis"].includes(tab)) {
+    if (["serial", "receiver", "chassis", "imu"].includes(tab)) {
         refreshPorts();
-        rpc<SerialStatus>("serial.status")
-            .then((x) => {
-                serial.value = x;
-                if (x.connected) pollSerial(serialSession);
-            })
-            .catch(fail);
+        refreshStatus();
     }
-});
-watch(paused, (value) => {
-    if (!value && serial.value.connected) pollSerial(serialSession);
 });
 function preventUnload(event: BeforeUnloadEvent) {
     if (
@@ -827,18 +438,14 @@ function preventUnload(event: BeforeUnloadEvent) {
     }
 }
 onMounted(async () => {
-    disposed = false;
+    disposed.value = false;
     window.addEventListener("beforeunload", preventUnload);
     await Promise.all([refreshSummary(), refreshPorts()]);
     await loadRobot();
 });
 onBeforeUnmount(() => {
-    disposed = true;
-    serialSession++;
+    disposed.value = true;
     window.removeEventListener("beforeunload", preventUnload);
-    if (jobTimer) window.clearTimeout(jobTimer);
-    if (serialTimer) window.clearTimeout(serialTimer);
-    if (portPreviewTimer) window.clearTimeout(portPreviewTimer);
 });
 </script>
 
@@ -1047,11 +654,7 @@ onBeforeUnmount(() => {
                         <button
                             class="button"
                             :disabled="busy"
-                            @click="
-                                newTargetSource = target;
-                                newTargetName = '';
-                                createDialog = true;
-                            "
+                            @click="openCreateDialog"
                         >
                             新建车型</button
                         ><button
@@ -1104,9 +707,16 @@ onBeforeUnmount(() => {
                 />
                 <PortConfigPanel :model-value="configDraft" :data="portOptions" :disabled="busy"
                     @update:model-value="changeConfig" />
+                <TaskPlanPanel :resolved="validationPreview?.resolved ?? robot?.resolved ?? null"
+                    :draft="!!validationPreview?.resolved" :pending="dirtyConfig && !validationPreview?.resolved" />
                 <p class="muted tuning-note">
                     调参只写入离线配置；可先用“检查”验证修改。串口已实现，在线参数保存和控制输出通路尚未接入。
                 </p>
+            </section>
+            <section v-else-if="activeTab === 'memory'" class="view"><MemoryPanel :target="target" /></section>
+            <section v-else-if="activeTab === 'imu'" class="view">
+                <ImuPanel :target="target" :connected="serial.connected" :imu="serial.imu"
+                    @status="updateSerialStatus" @error="fail" />
             </section>
             <section v-else-if="activeTab === 'chassis'" class="view">
                 <div class="title-row">
@@ -1430,31 +1040,10 @@ onBeforeUnmount(() => {
             </section>
         </div>
         <div v-if="createDialog" class="dialog-backdrop">
-            <section class="dialog">
-                <h2>新建车型</h2>
-                <label class="dialog-field"
-                    >名称<input
-                        v-model="newTargetName"
-                        placeholder="例如 HERO-M-TEST" /></label
-                ><label class="dialog-field"
-                    >复制来源<select v-model="newTargetSource">
-                        <option value="" disabled>选择模板车型</option>
-                        <option
-                            v-for="t in summary?.targets ?? []"
-                            :key="t.name"
-                            :value="t.name"
-                        >
-                            {{ t.name }}
-                        </option>
-                    </select></label
-                >
-                <div>
-                    <button class="button" @click="createDialog = false">
-                        取消</button
-                    ><button class="button primary" @click="createTarget">
-                        创建
-                    </button>
-                </div>
+            <section class="dialog vehicle-setup-dialog">
+                <VehicleSetupPanel :catalog="setupCatalog" :busy="busy || setupLoading" :error="setupError"
+                    @cancel="createDialog = false" @submit="createVehicleFromSetup" />
+                <details class="advanced-copy"><summary>高级选项：按已有车型复制</summary><p>用于保留某个现有车型文件的完整副本；常规新车请使用上面的向导。</p><label class="dialog-field">名称<input v-model="newTargetName" placeholder="例如 HERO-M-TEST" /></label><label class="dialog-field">复制来源<select v-model="newTargetSource"><option value="" disabled>选择模板车型</option><option v-for="t in summary?.targets ?? []" :key="t.name" :value="t.name">{{ t.name }}</option></select></label><button class="button" :disabled="busy" @click="createTarget">按副本创建</button></details>
             </section>
         </div>
         <div v-if="confirmFlash" class="dialog-backdrop">

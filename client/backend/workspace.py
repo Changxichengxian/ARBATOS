@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -25,6 +26,19 @@ CONFIGEDIT = importlib.util.module_from_spec(_config_spec)
 assert _config_spec.loader is not None
 sys.modules[_config_spec.name] = CONFIGEDIT
 _config_spec.loader.exec_module(CONFIGEDIT)
+_memory_spec = importlib.util.spec_from_file_location("arbatos_memory_report", Path(__file__).with_name("memory_report.py"))
+MEMORY_REPORT = importlib.util.module_from_spec(_memory_spec)
+assert _memory_spec.loader is not None
+_memory_spec.loader.exec_module(MEMORY_REPORT)
+_setup_spec = importlib.util.spec_from_file_location("arbatos_vehicle_setup", Path(__file__).with_name("vehicle_setup.py"))
+VEHICLE_SETUP = importlib.util.module_from_spec(_setup_spec)
+assert _setup_spec.loader is not None
+sys.modules[_setup_spec.name] = VEHICLE_SETUP
+_setup_spec.loader.exec_module(VEHICLE_SETUP)
+_imu_mount_spec = importlib.util.spec_from_file_location("arbatos_imu_mount", Path(__file__).with_name("imu_mount.py"))
+IMU_MOUNT = importlib.util.module_from_spec(_imu_mount_spec)
+assert _imu_mount_spec.loader is not None
+_imu_mount_spec.loader.exec_module(IMU_MOUNT)
 
 TEXT_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".inc", ".toml", ".md", ".overlay"}
 MAX_TEXT_BYTES = 1024 * 1024
@@ -52,10 +66,14 @@ class Workspace:
             "robot.get": self.robot_get,
             "robot.update": self.robot_update,
             "robot.create": self.robot_create,
+            "vehicle_setup.catalog": self.vehicle_setup_catalog,
+            "imu.mount": self.imu_mount_get,
+            "imu.mount.update": self.imu_mount_update,
             "robot.validate": self.robot_validate,
             "config.get": self.config_get,
             "config.update": self.config_update,
             "ports.get": self.ports_get,
+            "firmware.memory": self.firmware_memory,
             "file.read": self.file_read,
             "file.write": self.file_write,
         }
@@ -245,8 +263,22 @@ class Workspace:
     def config_get(self, target):
         return self._config_editor.public_get(target)
 
+    def firmware_memory(self, target):
+        _directory, target_name = self._target_dir(target)
+        return MEMORY_REPORT.build_memory_report(self.root, target_name)
+
     def config_update(self, target, revision, changes):
         return self._config_editor.update(target, revision, changes)
+
+    @staticmethod
+    def vehicle_setup_catalog():
+        return VEHICLE_SETUP.catalog()
+
+    def imu_mount_get(self, target):
+        return IMU_MOUNT.get(self, target)
+
+    def imu_mount_update(self, target, axes, revision):
+        return IMU_MOUNT.update(self, target, axes, revision)
 
     def ports_get(self, target, config=None):
         config_text = tomlkit.dumps(config) if isinstance(config, dict) else None
@@ -338,10 +370,40 @@ class Workspace:
             self._write_atomic(path, data)
             return self._file_detail(path, Path(name).as_posix())
 
-    def robot_create(self, name, source):
+    def robot_create(self, name, source=None, setup=None):
         with self._lock:
-            result = GEN.create_robot(self.root, name, source)
+            if setup is None:
+                if not isinstance(source, str):
+                    raise ValueError("复制车型时必须指定 source")
+                result = GEN.create_robot(self.root, name, source)
+            else:
+                if source is not None:
+                    raise ValueError("向导创建不接受 source；请只提交 setup")
+                prepared = VEHICLE_SETUP.prepare(setup)
+                origin = self._robot_toml(prepared["source"])
+                original, bom, newline = self._text_info(origin.read_bytes())
+                config_text = VEHICLE_SETUP.apply_to_config(original, prepared)
+                if newline == "CRLF":
+                    config_text = config_text.replace("\r\n", "\n").replace("\n", "\r\n")
+                if bom:
+                    config_text = "\ufeff" + config_text
+                result = GEN.create_robot(self.root, name, prepared["source"], config_text=config_text,
+                                          post_create=lambda destination: VEHICLE_SETUP.apply_files(destination, prepared))
+                try:
+                    changes = VEHICLE_SETUP.motor_changes(prepared)
+                    if changes:
+                        detail = self._config_editor.public_get(name)
+                        self._config_editor.update(name, detail["revision"], changes)
+                    result["setup"] = {key: value for key, value in prepared.items() if key not in {"draft"}}
+                    result["setup"]["direction_check_required"] = True
+                    result["detail"] = self._robot_detail(name)
+                    result["validation"] = result["detail"]["validation"]
+                except BaseException:
+                    shutil.rmtree(self.root / "Robotconfig" / name)
+                    raise
+                return result
             result["detail"] = self._robot_detail(name)
+            result["validation"] = result["detail"]["validation"]
             return result
 
     def robot_validate(self, target, config, revision=None):
@@ -353,7 +415,7 @@ class Workspace:
         try:
             document = tomlkit.document()
             self._apply_toml(document, config)
-            GEN.resolve(self.root, target, config_text=tomlkit.dumps(document))
-            return {"ok": True, "errors": []}
+            resolved = GEN.resolve(self.root, target, config_text=tomlkit.dumps(document))
+            return {"ok": True, "errors": [], "resolved": self._clean_resolved(resolved)}
         except (GEN.ConfigError, ValueError, TypeError) as exc:
             return {"ok": False, "errors": [str(exc)]}

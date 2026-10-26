@@ -12,6 +12,7 @@ from typing import Any, Callable, Iterable
 
 from motor_observation import MotorObservation
 from receiver import ReceiverTelemetry
+from imu_telemetry import ImuTelemetry
 
 try:
     import serial
@@ -51,6 +52,7 @@ class SerialService:
         self._clock = clock or time.time
         self._motors = MotorObservation(self._clock)
         self._receiver = ReceiverTelemetry(self._clock)
+        self._imu = ImuTelemetry(self._clock)
         self._lock = threading.RLock()
         self._write_lock = threading.Lock()
         self._stop = threading.Event()
@@ -89,6 +91,8 @@ class SerialService:
             return self._read(params)
         if method == "serial.send":
             return self._send(params)
+        if method == "serial.imu":
+            return self._imu_command(params)
         raise SerialError(f"不支持的串口方法：{method}")
 
     def shutdown(self) -> None:
@@ -203,6 +207,7 @@ class SerialService:
         self._send_times.clear()
         self._receiver.reset()
         self._motors.reset()
+        self._imu.reset()
 
     def _close(self) -> dict[str, Any]:
         with self._lock:
@@ -217,6 +222,7 @@ class SerialService:
         with self._lock:
             self._receiver.reset()
             self._motors.reset()
+            self._imu.reset()
             if error:
                 self._error = error
             return self._status_locked()
@@ -248,6 +254,7 @@ class SerialService:
             "error": self._error,
             "receiver": self._receiver.snapshot(),
             "motors": self._motors.snapshot(),
+            "imu": self._imu.snapshot(),
         }
 
     def _read(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -263,6 +270,7 @@ class SerialService:
                 "dropped": after < self._dropped_through,
                 "receiver": self._receiver.snapshot(),
                 "motors": self._motors.snapshot(),
+                "imu": self._imu.snapshot(),
             }
 
     def _send(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -305,6 +313,28 @@ class SerialService:
             self._tx_bytes += len(payload)
             return self._status_locked()
 
+    def _imu_command(self, params: dict[str, Any]) -> dict[str, Any]:
+        action = params.get("action")
+        request_id = params.get("id")
+        if action == "reset":
+            with self._lock:
+                self._imu.reset_statistics()
+                return {"status": self._status_locked(), "imu": self._imu.snapshot()}
+        if action not in {"watch", "stop", "calibrate", "cancel"}:
+            raise SerialError("IMU 操作只能是 watch、stop、calibrate、cancel 或 reset")
+        if isinstance(request_id, bool) or not isinstance(request_id, int) or not 1 <= request_id <= 0xFFFFFFFF:
+            raise SerialError("IMU 请求编号必须是 1 到 4294967295 的整数")
+        if action == "calibrate":
+            with self._lock:
+                snapshot = self._imu.snapshot()
+            if not snapshot["healthy"] or not snapshot["safeToStart"]:
+                raise SerialError("需要新鲜、健康且处于安全模式的 IMU 遥测，才可开始校准")
+            target = params.get("target")
+            if not isinstance(target, str) or snapshot["last"]["target"] != target:
+                raise SerialError("当前连接设备与所选车型不一致，已拒绝校准")
+        status = self._send({"text": f"!IMU2,{action},{request_id}", "lineEnding": "LF"})
+        return {"status": status, "imu": status["imu"]}
+
     def _reader_loop(self, generation: int, handle: Any, stop: threading.Event) -> None:
         while not stop.is_set():
             try:
@@ -334,6 +364,7 @@ class SerialService:
                 self._stop.set()
                 self._receiver.reset()
                 self._motors.reset()
+                self._imu.reset()
         try:
             handle.close()
         except Exception:
@@ -369,6 +400,7 @@ class SerialService:
                 continue
             self._receiver.feed(text)
             self._motors.feed(text, received)
+            self._imu.feed(text, received)
             if self._format == "csv":
                 self._parse_csv_locked(text, received)
 
