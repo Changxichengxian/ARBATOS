@@ -2,6 +2,8 @@
 
 面向 STM32 开发板的机器人固件，使用 Zephyr。底盘、云台、射击、轮腿、机械臂和通信代码共用，每台车单独配置电机、参数和安装方向。
 
+仓库同时维护车端固件、桌面配置与调试客户端，以及配置估算和轮腿物理仿真工具。它们共用部分配置与算法，运行入口和验证结果分别记录。
+
 **作者：** 陈轩 <2811158416@qq.com>
 
 **仓库：** <https://github.com/Changxichengxian/ARBATOS.git>
@@ -12,13 +14,14 @@
 - 当前车型为 M 板的 HERO-M、SENTINEL-M、MINIWHEELEG-M，以及 A 板的 INFANTRY-TIAN-A。C 板新增 BASE-C 新车模板，桌面向导可组合经典底盘、普通云台、RM 发射与 DBUS/ELRS；模板默认未放行电机，参数与机械安装仍需实车确认。
 - 使用 CLion、Zephyr 4.4、Zephyr SDK、CMake、Ninja、OpenOCD 和 ARM GDB；当前流程不需要 Keil 或 CubeCLT。
 - HERO-M 已有整车正常运动结果，包括底盘和云台俯仰；当前接线为 M 板 + V2 副板。旧 HERO-C 的接线和实测结论不适用于现车。
-- 2026-09-08 目录整理后的构建尚未再次上车。其他车辆、全部外设、长期负载、致命故障停机和 CLion 图形调试仍需分别验收，具体限制写在对应开发板、接口和测试说明中。
+- MINIWHEELEG-M 已于 2026-10-27 确认 90 mm 固定板凳平衡成功，使用专用 `bench.conf` 和 `WheelLegBench.c`；结论只覆盖固定短腿原地站立，见[最新实车记录](Robotconfig/MINIWHEELEG-M/安装说明.md#2026-10-27-独立板凳调平记录)。变高度、行驶转向、抗推及长期运行仍需分别验证。
+- 各车型、外设、长期负载、致命故障停机和 CLion 图形调试按各自条件验收，具体限制写在对应车型、开发板、接口和测试说明中；不沿用其他车辆或历史构建的结论。
 - 已引入 ExpressLRS 4.1.0 源码，为 MC02 通过 SPI 连接 SX1281 副板做准备；当前未编入固件，接线条件和待移植部分见[ELRS 说明](shared/README.md#elrs-与-sx1281)。
 - 构建自动记录版本和源码指纹；H723 已接入致命异常停机、备份 SRAM 重启记录及故障后输出锁，见[调试与日志](manual/调试与日志.md#异常停机与重启记录)。功率计验证结束后已移除车端接收和对照采样，原有限功率模型继续保留。
 
 ## 开始使用
 
-在仓库根目录双击 [打开工程.cmd](打开工程.cmd)，会找到本机 CLion 并打开 `projects`。三个车型共用同一个工程；默认沿用当前的 `hero-m-local`，构建目标选择 `zephyr_final`。
+在仓库根目录双击 [打开工程.cmd](打开工程.cmd)，会找到本机 CLion 并打开 `projects`。各车型和 BASE-C 模板共用同一个工程；默认沿用当前的 `hero-m-local`，构建目标选择 `zephyr_final`。
 
 双击 [编译固件.cmd](编译固件.cmd)，按菜单选择车型，直接回车编译 HERO-M。这个入口只编译，结束后保留结果窗口；默认并行数为 2，日常增量构建。换车型的 CLion 配置和其他操作见[CLion 开发指南](manual/CLion开发指南.md)。
 
@@ -53,13 +56,15 @@ pwsh -NoProfile -File .\tools\build.ps1 -Project HERO-M
 | 查独立测试的操作和结果 | `tests/` |
 | 本机环境、构建产物、日志和参考资料 | `local/`，不作为正式文档入口 |
 
-编译开关、车型任务表和启动清单统一由 `RobotConfig.toml` 生成，运行模式另行限制输出。普通接车只改 `Robotconfig/`；新增一种可复用底盘或云台，在 `shared/controllers/` 写一次算法和声明，其他车型即可直接选用。具体操作见[车型配置](Robotconfig/README.md)和[可复用底盘与云台](shared/controllers/README.md)。
+编译开关、车型任务表和启动清单统一由 `RobotConfig.toml` 生成，运行模式另行限制输出。普通接车只改 `Robotconfig/`；新增一种可复用底盘或云台，在 `shared/controllers/` 写一次算法和声明，支持该扩展方式的板级车型即可选用。具体操作见[车型配置](Robotconfig/README.md)和[可复用底盘与云台](shared/controllers/README.md)。
 
 ## 为什么这样拆分
 
 车型配置回答“这台车装了什么、选哪种控制”；控制算法回答“给定输入和反馈，应该怎样运动”；共用执行流程负责绑定电机、检查失联、管理输出权限和发送命令。把这些职责分开，作者写新机构时就不用重新实现遥控解析、CAN 协议和急停逻辑。
 
 `ControlAlgorithm` 是只依赖标准 C 的算法接口，`ControlRuntime` 是执行它的共用流程；名字直接对应职责。现有控制权仍由 `ControlMgr` 管理，发送仍走 `MotorInst → LowCmd → CanTxTask`。现有经典底盘、单云台、双 yaw、轮腿控制保留原控制链；差速底盘和双轴转速云台示例用于验证新的扩展方式，尚未实车调参。
+
+当前正式车型主要使用专用控制任务，通用执行流程尚未替代这些任务。两种方式共用控制权和命令输出基础；通用方式进一步集中输入与反馈检查、执行器绑定和算法调用，使新算法更容易复用及独立测试。迁移现有机构时，仍要保留功率限制、校准、双轴协同、故障恢复和日志等行为，不能只替换任务入口，也不代表控制效果或执行速度自动提高。任务拆分与模块边界见[程序运行结构](manual/开发与代码规范.md#程序运行结构)。
 
 任务入口、稳定编号、默认栈和优先级只在 `RobotTaskCatalog.def` 登记一次，生成器根据车型选择补齐依赖。`local/build/<车型>/generated/robotconfig/robot-config.json` 列出实际选择及原因，查问题时可直接顺着清单找到任务和算法。`shared/hal/` 保留历史接口，系统适配在 `shared/zephyr/`。
 
