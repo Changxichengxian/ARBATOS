@@ -54,6 +54,8 @@ int WheelLegBenchWheelObserve(WheelLegBenchWheel *state, float raw, float report
         state->previous = raw;
         state->position = state->rate = 0;
         state->tick = tick;
+        state->guardTick = tick;
+        state->guardDelta = 0;
         state->ready = 1u;
         return 1;
     }
@@ -78,15 +80,27 @@ int WheelLegBenchWheelObserve(WheelLegBenchWheel *state, float raw, float report
     const float delta = remainderf(raw - state->previous, 25.0f);
     /* 接收任务的毫秒时间不是电机采样时间。0042 中 1 ms 的接收间隔
      * 对应约 3 ms 的角度变化；短间隔先合并到下一帧，不把除法尖峰当超速。
-     * 不推进 previous/tick，累计位移仍受原 35 rad/s 及 80 ms 保护检查。 */
+     * 明显角跳变仍立即拒绝；短间隔最多容许 2 ms 接收时序误差。 */
     if (elapsed < 3u) {
-        if (fabsf(delta) > 35.0f * (dt + .002f) + .001f) {
+        if (fabsf(delta) > 50.0f * (dt + .002f) + .001f) {
             state->reject = 5; state->rejectValue = delta/dt; return 0;
         }
         return 1;
     }
-    if (fabsf(delta) > 35.0f * dt + .001f) {
+    if (fabsf(delta) > 50.0f * dt + .001f) {
         state->reject = 5; state->rejectValue = delta/dt; return 0;
+    }
+    /* 0046 的 5 ms 单帧角差可达 38.5 rad/s，10~22 ms 平均仅 24~27。
+     * 每段至少累计 10 ms 再核对 35 上限；跨 -12.5/12.5 的角差已在上面展开。
+     * 短帧未推进 previous，合并后的角差在这里恰好只累计一次。 */
+    state->guardDelta += delta;
+    if ((uint32_t)(tick - state->guardTick) >= 10u) {
+        const float guardDt = (float)(tick - state->guardTick) * .001f;
+        if (fabsf(state->guardDelta) > 35.0f * guardDt + .001f) {
+            state->reject = 5; state->rejectValue = state->guardDelta / guardDt; return 0;
+        }
+        state->guardDelta = 0;
+        state->guardTick = tick;
     }
     state->position += delta;
     /* 电机速度估计在出力时会快速摆动；角度差使用帧间隔，滤掉编码量化台阶。 */
@@ -430,9 +444,11 @@ int WheelLegBenchStep(WheelLegBenchState *state, const WheelLegBenchInput *in,
     const float high = fminf(fmaxf((limitHeight-.080f)/.040f, 0.0f), 1.0f);
     float wantedAcceleration = BenchClip(speedError / .25f, .75f-.25f*high);
     const float trackingError = state->speed-velocity;
-    if (wantedAcceleration*trackingError > 0.0f) {
+    if (fabsf(velocity) > .10f && wantedAcceleration*velocity < 0.0f &&
+        wantedAcceleration*trackingError > 0.0f) {
         /* 0044 高腿反打时速度目标先跑开约 0.47 m/s，随后力矩饱和。
-         * 只减缓目标继续跑开的趋势，不把测速振动直接写回速度目标。 */
+         * 只在刹车/反打时减缓目标跑开；0046 显示正常起步也受此限制，
+         * 会把已有前后跟踪差放大。起步仍保留上面的加速度与变化率限制。 */
         wantedAcceleration *= fminf(fmaxf((.25f-.05f*high-fabsf(trackingError))/.08f, 0.0f), 1.0f);
     }
     state->acceleration += BenchClip(wantedAcceleration - state->acceleration, 6.0f * in->dt);

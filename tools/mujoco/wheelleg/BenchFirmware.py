@@ -31,7 +31,8 @@ class Wheel(C.Structure):
     _fields_ = [('previous', C.c_float), ('position', C.c_float), ('rate', C.c_float),
                ('tick', C.c_uint32), ('ready', C.c_uint32),
                ('reject', C.c_uint32), ('rejectValue', C.c_float),
-               ('overspeedTick', C.c_uint32), ('overspeed', C.c_uint32)]
+               ('overspeedTick', C.c_uint32), ('overspeed', C.c_uint32),
+               ('guardTick', C.c_uint32), ('guardDelta', C.c_float)]
 
 root = sim.ROOT
 folder = root / 'local/build/host-tests/bench-firmware'

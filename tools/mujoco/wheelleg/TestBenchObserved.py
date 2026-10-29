@@ -40,7 +40,60 @@ for direction in (-1, 1):
     assert not lib.WheelLegBenchWheelObserve(C.byref(wheel), direction*.2, 0, 101)
     wheel = Wheel()
     assert lib.WheelLegBenchWheelObserve(C.byref(wheel), 0, 0, 100)
-    assert not lib.WheelLegBenchWheelObserve(C.byref(wheel), direction*.1081, 0, 103)
+    assert not lib.WheelLegBenchWheelObserve(C.byref(wheel), direction*.152, 0, 103)
+    assert wheel.reject == 5
+    wheel = Wheel()
+    assert lib.WheelLegBenchWheelObserve(C.byref(wheel), 0, 0, 100)
+    assert not lib.WheelLegBenchWheelObserve(C.byref(wheel), direction*.252, 0, 105)
+    assert wheel.reject == 5
+
+# 0046 两次右轮保护触发前的真实反馈；最后 5 ms 单帧分别算出 38.5 和 36.4 rad/s。
+# 角差在较长的实际接收间隔内没有持续越过 35，且完整位移须保留。
+for rows in (
+    ((144071, -3.304151, 0), (144073, -3.270962, 12.923),
+     (144077, -3.208400, 16.752), (144083, -3.019951, 37.402),
+     (144085, -2.988670, 15.111), (144090, -2.923057, 19.077),
+     (144095, -2.730412, 39.043)),
+    ((301091, 1.767567, 0), (301093, 1.808385, 18.256),
+     (301097, 1.873236, 13.333), (301103, 2.048715, 30.564),
+     (301105, 2.093728, 19.214), (301110, 2.167735, 16.615),
+     (301115, 2.349699, 33.162)),
+):
+    wheel = Wheel()
+    for tick, raw, report in rows:
+        assert lib.WheelLegBenchWheelObserve(C.byref(wheel), raw, report, tick), (tick, wheel.reject)
+    assert abs(wheel.position - (rows[-1][1] - rows[0][1])) < 2e-6
+    assert wheel.reject == 0
+
+# 一直以 36 rad/s 转动时，即使上报速度为零，也必须在累计到 12 ms 时拒绝。
+# 同时覆盖 +/-12.5 跨界、重复接收时间和 uint32 毫秒计时翻转。
+for direction in (-1, 1):
+    wheel = Wheel()
+    start_tick = 0xfffffff6
+    start_raw = 12.49 * direction
+    assert lib.WheelLegBenchWheelObserve(C.byref(wheel), start_raw, 0, start_tick)
+    for i in range(1, 4):
+        tick = (start_tick + 3*i) & 0xffffffff
+        raw = (start_raw + direction*.108*i + 12.5) % 25 - 12.5
+        assert lib.WheelLegBenchWheelObserve(C.byref(wheel), raw, 0, tick), (i, wheel.reject)
+        if i == 2:
+            before = bytes(wheel)
+            assert lib.WheelLegBenchWheelObserve(C.byref(wheel), raw+.03*direction, 0, tick)
+            assert bytes(wheel) == before
+    tick = (start_tick + 12) & 0xffffffff
+    raw = (start_raw + direction*.432 + 12.5) % 25 - 12.5
+    assert not lib.WheelLegBenchWheelObserve(C.byref(wheel), raw, 0, tick)
+    assert wheel.reject == 5 and abs(wheel.rejectValue) > 35
+
+# 持续超速恰好从检查段末尾开始时，下一段仍能抓到，避免重置边界漏检。
+wheel = Wheel()
+assert lib.WheelLegBenchWheelObserve(C.byref(wheel), 0, 0, 100)
+assert lib.WheelLegBenchWheelObserve(C.byref(wheel), 0, 0, 109)
+assert lib.WheelLegBenchWheelObserve(C.byref(wheel), .108, 0, 112)
+for tick, raw in ((115, .216), (118, .324), (121, .432)):
+    assert lib.WheelLegBenchWheelObserve(C.byref(wheel), raw, 0, tick)
+assert not lib.WheelLegBenchWheelObserve(C.byref(wheel), .540, 0, 124)
+assert wheel.reject == 5
 
 # 0044 的单帧上报尖峰不再立刻撤掉平衡；持续超速仍须在 12 ms 确认。
 for direction in (-1, 1):

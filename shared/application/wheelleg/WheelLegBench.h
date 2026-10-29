@@ -22,6 +22,8 @@ typedef struct
     uint32_t reject;
     float rejectValue;
     uint32_t overspeedTick, overspeed;
+    uint32_t guardTick;
+    float guardDelta;
 } WheelLegBenchWheel;
 
 /* 使用同一帧的编码器角度和接收时间；reportedRate 只用于独立异常保护。 */
