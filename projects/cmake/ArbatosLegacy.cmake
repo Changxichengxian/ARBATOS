@@ -44,6 +44,7 @@ function(arbatos_add_legacy_sources target)
         shared/application/comm/can/CanTxTask.c
         shared/application/motors/CanMitMotorDriver.c
         shared/application/wheelleg/WheelLegMitTask.c
+        shared/application/wheelleg/WheelLegVmc.c
         shared/application/services/diagnostics/RtProf.c
         shared/application/chassis/ChassisBehaviour.c
         shared/application/chassis/ChassisPowerControl.c

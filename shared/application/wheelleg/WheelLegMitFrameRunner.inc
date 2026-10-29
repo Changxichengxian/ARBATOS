@@ -957,13 +957,19 @@ static void WheelLegRunVmcStage(WheelLegTaskFrame *frame)
         frame->target_leg = s_wheelleg.target_leg_smooth;
         frame->target_foot_x = s_wheelleg.target_foot_x_smooth;
         frame->target_foot_y = s_wheelleg.target_foot_y_smooth;
-        WheelLegUpdateObserver(frame->dt, frame->gyro_wheelleg);
+        if (WheelLegUpdateObserver(frame->dt, frame->gyro_wheelleg) == 0u)
+        {
+            frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+            return;
+        }
+#if !defined(CONFIG_ARBATOS_MINI_BENCH)
         WheelLegBalanceIdleReset(frame->vx_axis, frame->yaw_axis, frame->yaw);
         WheelLegPitchTrimUpdate(frame->dt,
                                    frame->vx_axis,
                                    frame->yaw_axis,
                                    frame->target_v,
                                    frame->target_yaw_rate);
+#endif
         if (WheelLegControllerStep(frame->dt,
                                      frame->pitch,
                                      frame->roll,

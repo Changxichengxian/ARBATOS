@@ -195,11 +195,6 @@ static uint8_t WheelLegCalcKinematics(WheelLegLegCalc *leg,
     return WheelLegCoreCalcKinematics(&geo, leg, front_pos, back_pos, pitch, gyro_y, left_side, dt);
 }
 
-static uint8_t WheelLegCalcVmc(WheelLegLegCalc *leg)
-{
-    return WheelLegCoreCalcVmc(leg);
-}
-
 static uint8_t WheelLegOutputAxisResolve(MotorId id, WheelLegOutputAxis *axis_out)
 {
     uint8_t i;

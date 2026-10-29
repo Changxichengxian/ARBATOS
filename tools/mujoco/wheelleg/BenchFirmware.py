@@ -6,6 +6,7 @@ import re
 import subprocess
 from pathlib import Path
 import RunMeasuredWheelLeg as sim
+from MotorProtocol import MotorBank
 
 F2, F3, F4, F6 = (C.c_float * n for n in (2, 3, 4, 6))
 class Input(C.Structure):
@@ -125,6 +126,10 @@ class Controller:
             raise ValueError('当前实车板凳控制周期固定为 3 ms')
         self.model, self.profile, self.mode = model, profile, mode
         self.model.actuator_ctrlrange[[2, 5]] = [-1., 1.]
+        self.protocol = profile['assumed'].get('protocol_quantization', True)
+        self.motors = MotorBank()
+        if self.protocol:
+            self.model.actuator_ctrlrange[[0, 1, 3, 4]] = [-10., 10.]
         self.core = sim.Core(profile, sim.ROOT / 'local/cache/measured-wheelleg-native')
         self.variable_height = mode.endswith('-height')
         self.native, self.output = State(), Output()
@@ -144,6 +149,10 @@ class Controller:
         if not self.enabled:
             return
         values = observe(data, target_speed, target_yaw)
+        if self.protocol:
+            for i, motor in enumerate((0, 1, 3, 4)):
+                values.joint[i], values.jointRate[i] = self.motors.feedback_joint(
+                    motor, values.joint[i], values.jointRate[i])
         values.pitch += self.pitch_bias
         values.pitchTrim = self.trim
         values.targetRoll = float(roll_axis) * math.radians(10)
@@ -151,8 +160,13 @@ class Controller:
             self.origins = list(values.wheel)
         tick = round(float(data.time)*1000) & 0xffffffff
         for i, wheel in enumerate(self.wheels):
-            raw = (values.wheel[i] - self.origins[i] + 24.99) % 25 - 12.5
-            raw = round((raw+12.5)*65535/25)*25/65535-12.5
+            if self.protocol:
+                raw, values.wheelRate[i] = self.motors.feedback_wheel(
+                    i*3+2, values.wheel[i], values.wheelRate[i])
+                raw *= -1 if i == 0 else 1
+            else:
+                raw = (values.wheel[i] - self.origins[i] + 24.99) % 25 - 12.5
+                raw = round((raw+12.5)*65535/25)*25/65535-12.5
             if not lib.WheelLegBenchWheelObserve(C.byref(wheel), raw, values.wheelRate[i], tick):
                 self.enabled = False
                 return
@@ -187,9 +201,21 @@ class Controller:
         self.length = float(lib.WheelLegBenchGetHeight(C.byref(self.native)))
         self.saturated += int(any(abs(self.output.torque[i]) >= .44999 for i in (2, 5)))
         self.samples += 1
+        if self.protocol:
+            out = self.output
+            self.motors.set_commands(
+                [out.jointTarget[0], out.jointTarget[1], 0,
+                 out.jointTarget[2], out.jointTarget[3], 0],
+                [0, 0, out.wheelTargetRate[0], 0, 0, out.wheelTargetRate[1]],
+                [out.jointStiffness, out.jointStiffness, 0] * 2,
+                [out.jointDamping, out.jointDamping, out.wheelDamping] * 2,
+                list(out.torque))
 
     def apply(self, data):
         if self.enabled:
-            apply(data, self.output)
+            if self.protocol:
+                self.motors.apply(data)
+            else:
+                apply(data, self.output)
         else:
             data.ctrl[:] = 0

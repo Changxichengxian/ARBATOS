@@ -18,8 +18,41 @@ static fp32 WheelLegObserverWheelVelocity(uint8_t side)
     return (side == WHEELLEG_SIDE_RIGHT) ? -raw_velocity : raw_velocity;
 }
 
-static void WheelLegUpdateObserver(fp32 dt, const fp32 gyro[3])
+static uint8_t WheelLegUpdateObserver(fp32 dt, const fp32 gyro[3])
 {
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    if (s_wheelleg.control_stage >= WHEELLEG_CONTROL_STAGE_VMC_HEIGHT_LQR)
+    {
+        fp32 wheel_rate[WHEELLEG_SIDE_COUNT];
+        fp32 x = s_wheelleg.x_m;
+        fp32 v = s_wheelleg.v_mps;
+        for (uint8_t i = 0u; i < WHEELLEG_SIDE_COUNT; i++)
+        {
+            const uint8_t side = (i == 0u) ? WHEELLEG_SIDE_RIGHT : WHEELLEG_SIDE_LEFT;
+            const fp32 direction = (i == 0u) ? -1.0f : 1.0f;
+            const MotorState *wheel = &s_wheelleg.wheel_fb[side];
+            if (WheelLegBenchWheelObserve(&s_wheelleg.vmc_wheel[i],
+                                           wheel->q * direction,
+                                           wheel->dq * direction,
+                                           wheel->lastRxTick) == 0)
+            {
+                return 0u;
+            }
+            wheel_rate[side] = s_wheelleg.vmc_wheel[i].rate;
+        }
+        if (WheelLegVmcObserveRates(&s_wheelleg.vmc_observer, s_wheelleg.leg,
+                                    wheel_rate, s_wheelleg.vmc_rod_rate,
+                                    (gyro != NULL) ? gyro[INS_GYRO_Y_ADDRESS_OFFSET] : 0.0f,
+                                    g_config.WheelLegMit.wheel_radius_m,
+                                    g_config.WheelLegMit.observer_lpf, dt, &x, &v) == 0u)
+        {
+            return 0u;
+        }
+        s_wheelleg.x_m = x;
+        s_wheelleg.v_mps = v;
+        return 1u;
+    }
+#endif
     WheelLegLegCalc *left = &s_wheelleg.leg[WHEELLEG_SIDE_LEFT];
     WheelLegLegCalc *right = &s_wheelleg.leg[WHEELLEG_SIDE_RIGHT];
     WheelLegCoreObserver observer;
@@ -39,6 +72,7 @@ static void WheelLegUpdateObserver(fp32 dt, const fp32 gyro[3])
                                   dt);
     s_wheelleg.x_m = observer.x_m;
     s_wheelleg.v_mps = observer.v_mps;
+    return 1u;
 }
 
 static void WheelLegPublish(uint16_t faults,
@@ -222,18 +256,24 @@ static void WheelLegPublish(uint16_t faults,
 uint8_t WheelLegUpdateLegKinematics(fp32 pitch, const fp32 gyro[3], fp32 dt)
 {
 #if defined(CONFIG_ARBATOS_MINI_BENCH)
-    /* 手动近竖直读数只用于近似几何；保持目标始终取本次实际编码器角。 */
-    const float zero[2][2] = {
-        [WHEELLEG_SIDE_RIGHT] = {-1.197642481f, .496490425f},
-        [WHEELLEG_SIDE_LEFT] = {.537308309f, -1.273937591f}};
-    const float sign[2][2] = {[WHEELLEG_SIDE_RIGHT] = {-1, 1},
-                             [WHEELLEG_SIDE_LEFT] = {1, -1}};
-    for (unsigned side = 0; side < 2; side++) {
-        float front = (s_wheelleg.front_fb[side].q - zero[side][0]) * sign[side][0];
-        float back = (s_wheelleg.back_fb[side].q - zero[side][1]) * sign[side][1];
-        if (!isfinite(front) || !isfinite(back) ||
-            !WheelLegCalcKinematics(&s_wheelleg.leg[side], front, back, pitch,
-                gyro ? gyro[1] : 0, 0u, dt)) return 0u;
+    /* 与稳定板凳的关节读数共用同一零位和方向，避免控制器看到镜像几何。 */
+    const WheelLegCoreGeometry geo = WheelLegCoreGeometryFromConfig();
+    for (unsigned i = 0; i < WHEELLEG_SIDE_COUNT; i++) {
+        const unsigned side = (i == 0u) ? WHEELLEG_SIDE_RIGHT : WHEELLEG_SIDE_LEFT;
+        float front = WheelLegBenchJointFromRaw(i * 2u, s_wheelleg.front_fb[side].q);
+        float back = WheelLegBenchJointFromRaw(i * 2u + 1u, s_wheelleg.back_fb[side].q);
+        const float gyro_y = (gyro != NULL) ? gyro[INS_GYRO_Y_ADDRESS_OFFSET] : 0.0f;
+        if (!isfinite(front) || !isfinite(back)) return 0u;
+        if (s_wheelleg.control_stage >= WHEELLEG_CONTROL_STAGE_VMC_HEIGHT_LQR) {
+            const float front_rate = s_wheelleg.front_fb[side].dq * WheelLegBenchJointDir(i * 2u);
+            const float back_rate = s_wheelleg.back_fb[side].dq * WheelLegBenchJointDir(i * 2u + 1u);
+            if (!WheelLegVmcKinematics(&geo, &s_wheelleg.leg[side], front, back,
+                                      front_rate, back_rate, pitch, gyro_y, dt,
+                                      &s_wheelleg.vmc_rod_rate[side])) return 0u;
+        } else if (!WheelLegCalcKinematics(&s_wheelleg.leg[side], front, back,
+                                           pitch, gyro_y, 0u, dt)) {
+            return 0u;
+        }
     }
     return 1u;
 #else
@@ -380,30 +420,22 @@ uint8_t WheelLegBenchLqrStep(fp32 dt,
 }
 
 static uint8_t WheelLegControllerStep(fp32 dt,
-                                        fp32 pitch,
-                                        fp32 roll,
-                                        fp32 yaw,
-                                        const fp32 gyro[3],
-                                        fp32 target_v,
-                                        fp32 target_leg,
-                                        fp32 target_foot_x,
-                                        fp32 target_yaw_rate,
-                                        uint8_t use_lqr_hip,
-                                        fp32 wheel_torque[WHEELLEG_SIDE_COUNT])
+                                       fp32 pitch,
+                                       fp32 roll,
+                                       fp32 yaw,
+                                       const fp32 gyro[3],
+                                       fp32 target_v,
+                                       fp32 target_leg,
+                                       fp32 target_foot_x,
+                                       fp32 target_yaw_rate,
+                                       uint8_t use_lqr_hip,
+                                       fp32 wheel_torque[WHEELLEG_SIDE_COUNT])
 {
-    fp32 k_right[12];
-    fp32 k_left[12];
-    WheelLegLqrSideState right_state;
-    WheelLegLqrSideState left_state;
-    fp32 yaw_gyro = (gyro != NULL) ? gyro[INS_GYRO_Z_ADDRESS_OFFSET] : 0.0f;
-    fp32 roll_gyro = (gyro != NULL) ? gyro[INS_GYRO_X_ADDRESS_OFFSET] : 0.0f;
-    fp32 turn_t;
-    fp32 roll_f0;
-    fp32 split_tp;
-    fp32 cos_theta;
-    const fp32 target_theta = WheelLegTargetThetaFromFootX(target_foot_x, target_leg);
-    const fp32 wheel_scale = WheelLegLqrWheelScale();
-    const fp32 hip_scale = (use_lqr_hip != 0u) ? WheelLegLqrHipScale() : 0.0f;
+    const WheelLegMitConfig *cfg = &g_config.WheelLegMit;
+    WheelLegVmcConfig vmc_cfg = {0};
+    WheelLegVmcInput in = {0};
+    WheelLegVmcState state;
+    uint8_t ok;
     uint8_t i;
 
     if (wheel_torque == NULL)
@@ -411,142 +443,97 @@ static uint8_t WheelLegControllerStep(fp32 dt,
         return 0u;
     }
 
-    WheelLegEvalLqr(s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].length, k_right);
-    WheelLegEvalLqr(s_wheelleg.leg[WHEELLEG_SIDE_LEFT].length, k_left);
+    vmc_cfg.lqrPoly = cfg->lqr_poly;
+    vmc_cfg.minLegM = cfg->min_leg_length_m;
+    vmc_cfg.maxLegM = cfg->max_leg_length_m;
+    vmc_cfg.wheelScale = cfg->lqr_wheel_torque_scale;
+    vmc_cfg.hipScale = cfg->lqr_hip_torque_scale;
+    vmc_cfg.supportBiasN = cfg->support_bias_n;
+    vmc_cfg.maxSupportN = cfg->max_support_force_n;
+    vmc_cfg.maxJointNm = cfg->max_joint_torque_nm;
+    vmc_cfg.maxWheelNm = cfg->max_wheel_torque_nm;
+    vmc_cfg.turnKp = cfg->turn_pid.kp;
+    vmc_cfg.turnKd = cfg->turn_pid.kd;
+    vmc_cfg.turnMax = cfg->turn_pid.max_out;
+    vmc_cfg.rollKp = cfg->roll_pid.kp;
+    vmc_cfg.rollKd = cfg->roll_pid.kd;
+    vmc_cfg.rollMax = cfg->roll_pid.max_out;
+    vmc_cfg.pitchOffsetRad[WHEELLEG_SIDE_RIGHT] = cfg->pitch_balance_offset_right_rad;
+    vmc_cfg.pitchOffsetRad[WHEELLEG_SIDE_LEFT] = cfg->pitch_balance_offset_left_rad;
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    /* 板凳腿和轮统一使用前向坐标；实际 VMC 仍受现有阶段开关限制。 */
+    vmc_cfg.commonForward = 1u;
+    vmc_cfg.trimEnable = cfg->pitch_trim_enable;
+    vmc_cfg.trimGain = cfg->pitch_trim_gain;
+    vmc_cfg.trimMaxRad = cfg->pitch_trim_max_rad;
+    vmc_cfg.trimRateRadps = cfg->pitch_trim_rate_radps;
+    vmc_cfg.trimVDeadbandMps = cfg->pitch_trim_v_deadband_mps;
+    vmc_cfg.trimLpf = cfg->pitch_trim_lpf;
+#endif
 
-    if (s_wheelleg.yaw_inited == 0u)
-    {
-        s_wheelleg.yaw_set = yaw;
-        s_wheelleg.last_yaw = yaw;
-        s_wheelleg.yaw_inited = 1u;
-    }
-    s_wheelleg.yaw_set += target_yaw_rate * dt;
-    turn_t = WheelLegCoreTurnTorque(s_wheelleg.yaw_set,
-                                       yaw,
-                                       yaw_gyro,
-                                       g_config.WheelLegMit.turn_pid.kp,
-                                       g_config.WheelLegMit.turn_pid.kd,
-                                       g_config.WheelLegMit.turn_pid.max_out);
-
-    roll_f0 = WheelLegCoreRollForce(0.0f,
-                                       roll,
-                                       roll_gyro,
-                                       g_config.WheelLegMit.roll_pid.kp,
-                                       g_config.WheelLegMit.roll_pid.kd,
-                                       g_config.WheelLegMit.roll_pid.max_out);
-
-    if (use_lqr_hip != 0u)
-    {
-        split_tp = WheelLegPidCalc(&s_wheelleg.split_pid,
-                                     s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].theta +
-                                         s_wheelleg.leg[WHEELLEG_SIDE_LEFT].theta,
-                                     2.0f * target_theta);
-    }
-    else
-    {
-        split_tp = 0.0f;
-        WheelLegPidClear(&s_wheelleg.split_pid);
-    }
-
-    WheelLegLqrFillSideState(WHEELLEG_SIDE_RIGHT,
-                            pitch,
-                            gyro,
-                            target_theta,
-                            target_v,
-                            target_yaw_rate,
-                            &right_state);
-    WheelLegLqrFillSideState(WHEELLEG_SIDE_LEFT,
-                            pitch,
-                            gyro,
-                            target_theta,
-                            target_v,
-                            target_yaw_rate,
-                            &left_state);
-
-    wheel_torque[WHEELLEG_SIDE_RIGHT] =
-        WheelLegCoreLqrWheelOutput(k_right,
-                                       right_state.theta_err,
-                                       right_state.d_theta,
-                                       right_state.x_err,
-                                       right_state.v_err,
-                                       right_state.pitch_err,
-                                       right_state.gyro_y);
-    s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].tp = 0.0f;
-    if (use_lqr_hip != 0u)
-    {
-        s_wheelleg.leg[WHEELLEG_SIDE_RIGHT].tp =
-            hip_scale * WheelLegCoreLqrHipOutput(k_right,
-                                                     right_state.theta_err,
-                                                     right_state.d_theta,
-                                                     right_state.x_err,
-                                                     right_state.v_err,
-                                                     right_state.pitch_err,
-                                                     right_state.gyro_y,
-                                                     split_tp);
-    }
-
-    wheel_torque[WHEELLEG_SIDE_LEFT] =
-        WheelLegCoreLqrWheelOutput(k_left,
-                                       left_state.theta_err,
-                                       left_state.d_theta,
-                                       left_state.x_err,
-                                       left_state.v_err,
-                                       left_state.pitch_err,
-                                       left_state.gyro_y);
-    s_wheelleg.leg[WHEELLEG_SIDE_LEFT].tp = 0.0f;
-    if (use_lqr_hip != 0u)
-    {
-        s_wheelleg.leg[WHEELLEG_SIDE_LEFT].tp =
-            hip_scale * WheelLegCoreLqrHipOutput(k_left,
-                                                     left_state.theta_err,
-                                                     left_state.d_theta,
-                                                     left_state.x_err,
-                                                     left_state.v_err,
-                                                     left_state.pitch_err,
-                                                     left_state.gyro_y,
-                                                     split_tp);
-    }
+    in.dt = dt;
+    in.pitch = pitch;
+    in.roll = roll;
+    in.yaw = yaw;
+    in.gyroX = (gyro != NULL) ? gyro[INS_GYRO_X_ADDRESS_OFFSET] : 0.0f;
+    in.gyroY = (gyro != NULL) ? gyro[INS_GYRO_Y_ADDRESS_OFFSET] : 0.0f;
+    in.gyroZ = (gyro != NULL) ? gyro[INS_GYRO_Z_ADDRESS_OFFSET] : 0.0f;
+    in.xM = s_wheelleg.x_m;
+    in.vMps = s_wheelleg.v_mps;
+    in.pitchAutoOffsetRad = s_wheelleg.pitch_auto_offset_rad;
+    in.targetV = target_v;
+    in.targetLeg = target_leg;
+    in.targetFootX = target_foot_x;
+    in.targetYawRate = target_yaw_rate;
+    in.useLqrHip = use_lqr_hip;
 
     for (i = 0u; i < WHEELLEG_SIDE_COUNT; i++)
     {
-        cos_theta = cosf(s_wheelleg.leg[i].theta);
-        if (WheelLegAbs(cos_theta) < 0.1f)
-        {
-            cos_theta = (cos_theta >= 0.0f) ? 0.1f : -0.1f;
-        }
-        s_wheelleg.leg[i].f0 = g_config.WheelLegMit.support_bias_n / cos_theta +
-                               WheelLegPidCalc(&s_wheelleg.leg_pid[i],
-                                                 s_wheelleg.leg[i].length,
-                                                 target_leg);
-        if (i == WHEELLEG_SIDE_RIGHT)
-        {
-            s_wheelleg.leg[i].f0 += roll_f0;
-        }
-        else
-        {
-            s_wheelleg.leg[i].f0 -= roll_f0;
-        }
-        s_wheelleg.leg[i].f0 = WheelLegClamp(s_wheelleg.leg[i].f0,
-                                              -g_config.WheelLegMit.max_support_force_n,
-                                              g_config.WheelLegMit.max_support_force_n);
-        s_wheelleg.leg[i].tp = WheelLegClamp(s_wheelleg.leg[i].tp,
-                                              -g_config.WheelLegMit.max_joint_torque_nm,
-                                              g_config.WheelLegMit.max_joint_torque_nm);
-        wheel_torque[i] = WheelLegLqrWheelTorqueToMotor(i, wheel_torque[i], wheel_scale, turn_t);
-        s_wheelleg.leg[i].contact = (s_wheelleg.leg[i].f0 * cosf(s_wheelleg.leg[i].theta) > 3.0f) ? 1u : 0u;
-        if (WheelLegCalcVmc(&s_wheelleg.leg[i]) == 0u)
-        {
-            return 0u;
-        }
-        s_wheelleg.leg[i].joint_torque[0] =
-            WheelLegClamp(s_wheelleg.leg[i].joint_torque[0],
-                           -g_config.WheelLegMit.max_joint_torque_nm,
-                           g_config.WheelLegMit.max_joint_torque_nm);
-        s_wheelleg.leg[i].joint_torque[1] =
-            WheelLegClamp(s_wheelleg.leg[i].joint_torque[1],
-                           -g_config.WheelLegMit.max_joint_torque_nm,
-                           g_config.WheelLegMit.max_joint_torque_nm);
+        state.legPid[i] = s_wheelleg.leg_pid[i];
     }
+    state.splitPid = s_wheelleg.split_pid;
+    state.observer = s_wheelleg.vmc_observer;
+    state.yawSet = s_wheelleg.yaw_set;
+    state.lastYaw = s_wheelleg.last_yaw;
+    state.yawInited = s_wheelleg.yaw_inited;
+    state.holdXM = s_wheelleg.vmc_hold_x_m;
+    state.parkIntegral = s_wheelleg.vmc_park_integral;
+    state.parkSpeed = s_wheelleg.vmc_park_speed;
+    state.motionSpeed = s_wheelleg.vmc_motion_speed;
+    state.motionAccel = s_wheelleg.vmc_motion_accel;
+    state.yawRate = s_wheelleg.vmc_yaw_rate;
+    state.pitchAutoOffsetRad = s_wheelleg.pitch_auto_offset_rad;
+    state.trimVFiltered = s_wheelleg.pitch_trim_v_lpf_mps;
+    state.holdInited = s_wheelleg.vmc_hold_inited;
+    state.wasDriving = s_wheelleg.vmc_was_driving;
 
-    return 1u;
+    ok = WheelLegVmcStep(&vmc_cfg, &in, &state, s_wheelleg.leg, wheel_torque);
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    /* 右轮电机正方向与物理前向相反。 */
+    if (ok != 0u)
+    {
+        wheel_torque[WHEELLEG_SIDE_RIGHT] = -wheel_torque[WHEELLEG_SIDE_RIGHT];
+    }
+#endif
+
+    for (i = 0u; i < WHEELLEG_SIDE_COUNT; i++)
+    {
+        s_wheelleg.leg_pid[i] = state.legPid[i];
+    }
+    s_wheelleg.split_pid = state.splitPid;
+    s_wheelleg.vmc_observer = state.observer;
+    s_wheelleg.yaw_set = state.yawSet;
+    s_wheelleg.last_yaw = state.lastYaw;
+    s_wheelleg.yaw_inited = state.yawInited;
+    s_wheelleg.vmc_hold_x_m = state.holdXM;
+    s_wheelleg.vmc_park_integral = state.parkIntegral;
+    s_wheelleg.vmc_park_speed = state.parkSpeed;
+    s_wheelleg.vmc_motion_speed = state.motionSpeed;
+    s_wheelleg.vmc_motion_accel = state.motionAccel;
+    s_wheelleg.vmc_yaw_rate = state.yawRate;
+    s_wheelleg.pitch_auto_offset_rad = state.pitchAutoOffsetRad;
+    s_wheelleg.pitch_trim_v_lpf_mps = state.trimVFiltered;
+    s_wheelleg.vmc_hold_inited = state.holdInited;
+    s_wheelleg.vmc_was_driving = state.wasDriving;
+    return ok;
 }

@@ -10,6 +10,7 @@
 
 #include "WheelLegMitTask.h"
 #include "WheelLegCore.h"
+#include "WheelLegVmc.h"
 
 #include "FreeRTOS.h"
 #include "cmsis_os.h"
@@ -305,8 +306,19 @@ typedef struct
     WheelLegLegCalc leg[WHEELLEG_SIDE_COUNT];
     WheelLegPid leg_pid[WHEELLEG_SIDE_COUNT];
     WheelLegPid split_pid;
+    WheelLegVmcObserveState vmc_observer;
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    WheelLegBenchWheel vmc_wheel[WHEELLEG_SIDE_COUNT];
+#endif
+    fp32 vmc_rod_rate[WHEELLEG_SIDE_COUNT];
     fp32 x_m;
     fp32 v_mps;
+    fp32 vmc_hold_x_m;
+    fp32 vmc_park_integral;
+    fp32 vmc_park_speed;
+    fp32 vmc_motion_speed;
+    fp32 vmc_motion_accel;
+    fp32 vmc_yaw_rate;
     fp32 target_leg_smooth;
     fp32 target_foot_x_smooth;
     fp32 target_foot_y_smooth;
@@ -314,6 +326,8 @@ typedef struct
     fp32 last_yaw;
     uint8_t target_smooth_valid;
     uint8_t yaw_inited;
+    uint8_t vmc_hold_inited;
+    uint8_t vmc_was_driving;
     uint8_t balance_idle_latched;
     uint8_t ever_commanded;
     uint8_t control_stage;

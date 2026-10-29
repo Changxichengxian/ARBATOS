@@ -63,7 +63,7 @@
             <section class="panel controls">
                 <div class="controls-top"><h2 class="section-title">运动控制</h2><span class="key-hint">按住 WASD</span></div>
                 <label class="mode-row">控制模式（切换会复位）<select id="mode">
-                    <option value="vmc">VMC · 固定高度（原版）</option>
+                    <option value="vmc">VMC · 固定高度</option>
                     <option value="bench">板凳 · 固定高度</option>
                     <option value="bench-height" selected>板凳 · 可变高度</option>
                     <option value="vmc-height">VMC · 可变高度</option>
@@ -114,7 +114,7 @@
         $('heightValue').textContent = $('legLength').value;
         $('modeHint').textContent = mode.startsWith('bench') ?
             (variable ? '待验证板凳控制，10 mm/s 升降；两腿分别找平，轮子负责平衡和驻坡。' : '平均高度指令 60 mm，两腿仍可分别找平和侧倾。') :
-            'VMC 控制支撑力，轮端与髋部一起维持平衡。';
+            'VMC 与固件共用控制核心和车型参数，轮端与髋部一起平衡；当前仍为仿真验证阶段。';
         paintKeys();
     }
     function paintKeys() {

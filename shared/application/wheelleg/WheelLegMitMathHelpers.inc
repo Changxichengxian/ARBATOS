@@ -5,21 +5,6 @@
  * Private implementation chunk included by WheelLegMitTask.c.
  */
 
-static const fp32 s_default_lqr_poly[12][4] = {
-    {-243.932f, 105.148f, -19.1838f, -0.199759f},
-    {-6.33721f, 2.6174f, -1.08798f, -0.0047227f},
-    {-43.8763f, 16.3233f, -2.10154f, -0.127721f},
-    {-52.0411f, 19.3719f, -2.60375f, -0.168927f},
-    {-805.793f, 328.293f, -48.8092f, 2.92903f},
-    {-40.1396f, 16.7832f, -2.61208f, 0.17602f},
-    {-962.682f, 417.508f, -67.9889f, 4.84346f},
-    {-89.4595f, 37.3246f, -5.80403f, 0.414703f},
-    {-618.557f, 251.264f, -37.1404f, 2.18751f},
-    {-800.904f, 324.39f, -47.7682f, 2.80481f},
-    {3575.2f, -1332.91f, 172.196f, 9.48315f},
-    {202.812f, -76.6035f, 10.1013f, 0.345984f},
-};
-
 static fp32 WheelLegClamp(fp32 value, fp32 min_value, fp32 max_value)
 {
     return WheelLegCoreClamp(value, min_value, max_value);
@@ -134,6 +119,19 @@ static void WheelLegBalanceStateReset(void)
     WheelLegTargetSmoothReset();
     s_wheelleg.x_m = 0.0f;
     s_wheelleg.v_mps = 0.0f;
+    (void)memset(&s_wheelleg.vmc_observer, 0, sizeof(s_wheelleg.vmc_observer));
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    (void)memset(s_wheelleg.vmc_wheel, 0, sizeof(s_wheelleg.vmc_wheel));
+#endif
+    (void)memset(s_wheelleg.vmc_rod_rate, 0, sizeof(s_wheelleg.vmc_rod_rate));
+    s_wheelleg.vmc_hold_x_m = 0.0f;
+    s_wheelleg.vmc_park_integral = 0.0f;
+    s_wheelleg.vmc_park_speed = 0.0f;
+    s_wheelleg.vmc_motion_speed = 0.0f;
+    s_wheelleg.vmc_motion_accel = 0.0f;
+    s_wheelleg.vmc_yaw_rate = 0.0f;
+    s_wheelleg.vmc_hold_inited = 0u;
+    s_wheelleg.vmc_was_driving = 0u;
     s_wheelleg.pitch_auto_offset_rad = 0.0f;
     s_wheelleg.pitch_trim_v_lpf_mps = 0.0f;
     s_wheelleg.balance_idle_latched = 0u;
@@ -300,16 +298,6 @@ static void WheelLegPidClear(WheelLegPid *pid)
     WheelLegCorePidClear(pid);
 }
 
-static fp32 WheelLegPidCalc(WheelLegPid *pid, fp32 ref, fp32 set)
-{
-    return WheelLegCorePidCalc(pid, ref, set);
-}
-
-static fp32 WheelLegPoly(const fp32 coe[4], fp32 len)
-{
-    return WheelLegCorePoly4(coe, len);
-}
-
 static uint8_t WheelLegLqrRowIsZero(const fp32 coe[4])
 {
     return WheelLegCoreLqrRowIsZero(coe);
@@ -317,37 +305,18 @@ static uint8_t WheelLegLqrRowIsZero(const fp32 coe[4])
 
 static const fp32 *WheelLegLqrRow(uint8_t index)
 {
-    const fp32 *configured;
-
-    if (index >= 12u)
-    {
-        return &s_default_lqr_poly[0][0];
-    }
-    configured = &g_config.WheelLegMit.lqr_poly[index][0];
-    return (WheelLegLqrRowIsZero(configured) == 0u) ? configured : &s_default_lqr_poly[index][0];
+    WheelLegVmcConfig cfg = {0};
+    cfg.lqrPoly = g_config.WheelLegMit.lqr_poly;
+    return WheelLegVmcLqrRow(&cfg, index);
 }
 
 static void WheelLegEvalLqr(fp32 leg_length, fp32 out[12])
 {
-    uint8_t i;
-    fp32 length = leg_length;
-
-    if (out == NULL)
-    {
-        return;
-    }
-
-    if (g_config.WheelLegMit.min_leg_length_m < g_config.WheelLegMit.max_leg_length_m)
-    {
-        length = WheelLegClamp(length,
-                                g_config.WheelLegMit.min_leg_length_m,
-                                g_config.WheelLegMit.max_leg_length_m);
-    }
-
-    for (i = 0u; i < 12u; i++)
-    {
-        out[i] = WheelLegPoly(WheelLegLqrRow(i), length);
-    }
+    WheelLegVmcConfig cfg = {0};
+    cfg.lqrPoly = g_config.WheelLegMit.lqr_poly;
+    cfg.minLegM = g_config.WheelLegMit.min_leg_length_m;
+    cfg.maxLegM = g_config.WheelLegMit.max_leg_length_m;
+    WheelLegVmcEvalLqr(&cfg, leg_length, out);
 }
 
 static uint8_t WheelLegManualEnabledFromSnapshot(

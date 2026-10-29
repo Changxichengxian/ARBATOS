@@ -121,16 +121,27 @@ static uint8_t WheelLegPlanWheelTorques(const fp32 wheel_torque[WHEELLEG_SIDE_CO
 
 static uint8_t WheelLegPlanVmcJointTorques(void)
 {
+#if !defined(CONFIG_ARBATOS_MINI_BENCH)
     const WheelLegMitConfig *cfg = &g_config.WheelLegMit;
+#endif
     WheelLegCoreOutput out;
 
     WheelLegCoreOutputClear(&out);
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    WheelLegCoreSetVmcJointTorques(&out,
+                                  s_wheelleg.leg,
+                                  (int8_t)WheelLegBenchJointDir(0u),
+                                  (int8_t)WheelLegBenchJointDir(1u),
+                                  (int8_t)WheelLegBenchJointDir(2u),
+                                  (int8_t)WheelLegBenchJointDir(3u));
+#else
     WheelLegCoreSetVmcJointTorques(&out,
                                         s_wheelleg.leg,
                                         cfg->right_front_dir,
                                         cfg->right_back_dir,
                                         cfg->left_front_dir,
                                         cfg->left_back_dir);
+#endif
     return WheelLegPlanCoreOutput(&out);
 }
 

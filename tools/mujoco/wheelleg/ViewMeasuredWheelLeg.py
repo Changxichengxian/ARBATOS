@@ -25,8 +25,10 @@ class LiveSimulation:
         self.model = mujoco.MjModel.from_xml_string(self.xml)
         self.core = sim.Core(profile, sim.ROOT / "local/cache/measured-wheelleg-native")
         self.cfg = sim.make_config(profile)
-        self.designed = sim.design(self.model, self.cfg, self.core, profile, profile["control"]["leg_length_m"])
-        self.schedule = sim.design_modes(self.model, self.cfg, self.core, profile)
+        length = profile['control']['leg_length_m']
+        self.designed = {'length_m': length,
+                         'qpos': sim.pose(self.model, self.cfg, length, np.zeros(3)).tolist()}
+        self.schedule = None
         self.data = mujoco.MjData(self.model)
         self.lock = threading.Lock()
         self.stop = threading.Event()
@@ -46,16 +48,24 @@ class LiveSimulation:
         self.reset(self.mode)
         (output / "model.xml").write_text(self.xml, encoding="utf-8")
         sim.write_json(output / "parameters.json", profile)
-        sim.write_json(output / "controller.json", {'vmc_design': self.designed,
+        sim.write_json(output / "controller.json", {
+            'vmc_source': 'shared/application/wheelleg/WheelLegVmc.c',
+            'vmc_config': 'Robotconfig/MINIWHEELEG-M/ConfigTuning.inc',
+            'vmc_gains': 'Robotconfig/MINIWHEELEG-M/ConfigVmcGains.inc',
             'bench_source': 'shared/application/wheelleg/WheelLegBench.c',
             'bench_gains': 'shared/application/wheelleg/WheelLegBenchGains.inc',
-            'note': '板凳直接调用 C 控制器；height_gains 中的板凳设计表仅供离线比较。'})
-        sim.write_json(output / "height_gains.json", self.schedule)
+            'note': '两种模式直接调用固件 C 核心；VMC 对应第3阶段。尚未模拟完整任务调度、通信延迟、SD与启停流程。'})
         sim.write_json(output / "sources.json", {p.name: sim.hashlib.sha256(p.read_bytes()).hexdigest()
                        for p in (Path(__file__), sim.HERE / "RunMeasuredWheelLeg.py", sim.HERE / "MeasuredWheelLegViewer.html", sim.PROFILE,
                            sim.HERE / 'BenchFirmware.py', sim.ROOT / 'shared/application/wheelleg/WheelLegBench.c',
                            sim.ROOT / 'shared/application/wheelleg/WheelLegBench.h',
-                           sim.ROOT / 'shared/application/wheelleg/WheelLegBenchGains.inc')})
+                           sim.ROOT / 'shared/application/wheelleg/WheelLegBenchGains.inc',
+                           sim.HERE / 'VmcFirmware.py', sim.HERE / 'MeasuredVmcBridge.c',
+                           sim.HERE / 'MotorProtocol.py',
+                           sim.ROOT / 'shared/application/wheelleg/WheelLegVmc.c',
+                           sim.ROOT / 'shared/application/wheelleg/WheelLegVmc.h',
+                           sim.ROOT / 'Robotconfig/MINIWHEELEG-M/ConfigTuning.inc',
+                           sim.ROOT / 'Robotconfig/MINIWHEELEG-M/ConfigVmcGains.inc')})
 
     def reset(self, mode="vmc", terrain=None):
         terrain = self.terrain if terrain is None else terrain

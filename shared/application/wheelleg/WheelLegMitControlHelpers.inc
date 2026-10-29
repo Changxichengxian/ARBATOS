@@ -43,17 +43,6 @@ static fp32 WheelLegLqrWheelScale(void)
     return WheelLegClamp(scale, 0.0f, 2.0f);
 }
 
-static fp32 WheelLegLqrHipScale(void)
-{
-    fp32 scale = g_config.WheelLegMit.lqr_hip_torque_scale;
-
-    if (scale <= 0.0f)
-    {
-        scale = WHEELLEG_LQR_HIP_TORQUE_SCALE_DEFAULT;
-    }
-    return WheelLegClamp(scale, 0.0f, 2.0f);
-}
-
 static fp32 WheelLegLqrLengthForSide(uint8_t side, uint8_t use_measured_leg_length)
 {
     fp32 length = g_config.WheelLegMit.min_leg_length_m;
