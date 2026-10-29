@@ -254,6 +254,8 @@ typedef struct
     int16_t speedRpm;
     int16_t current;
     uint8_t temperature;
+    uint8_t coilTemperature;
+    uint8_t mitTemperatureValid; // MIT 的 temperature 为驱动器温度，coilTemperature 为线圈温度。
 } MotorState;
 
 typedef struct

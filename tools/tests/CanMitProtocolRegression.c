@@ -49,6 +49,12 @@ int main(void)
     assert(state.state == 1u && state.motor_id == 5u && state.last_rx_tick == 1234u);
     assert(fabsf(state.velocity - 140.0f) < 0.1f);
     assert(fabsf(state.torque - 0.5f) < 0.001f);
+    assert(state.temperature_valid && state.mos_temperature == 25u && state.coil_temperature == 26u);
+    /* 短反馈没有温度，必须清除上次的有效标记。 */
+    assert(CanMitMotorUpdateFeedback(5u, 5u, limits, 6u, feedback, &state));
+    assert(!state.temperature_valid && state.mos_temperature == 0u && state.coil_temperature == 0u);
+    assert(CanMitMotorUpdateFeedback(5u, 5u, limits, 5u, feedback + 1, &state));
+    assert(!state.temperature_valid);
     /* 四个关节继续使用原有的 12.5 / 30 / 10 量程。 */
     const MotorModel joints[] = {MOTOR_MODEL_DM_J4310_2EC_V11, MOTOR_MODEL_DM_J4310_2EC_V12};
     for (unsigned i = 0; i < 2u; i++) {

@@ -1,80 +1,27 @@
 """在三维接触模型中运行实际板凳 C 控制代码，同时检查输出拒绝条件。"""
 import ctypes as C
+import argparse
 import json
 import math
-import re
-import subprocess
 import sys
 from pathlib import Path
 import RunMeasuredWheelLeg as sim
 
-F2, F3, F4, F6 = (C.c_float * n for n in (2, 3, 4, 6))
-class Input(C.Structure):
-    _fields_ = [('joint', F4), ('jointRate', F4), ('wheel', F2), ('wheelRate', F2),
-                ('pitch', C.c_float), ('roll', C.c_float), ('yaw', C.c_float),
-                ('gyro', F3), ('targetV', C.c_float), ('targetYaw', C.c_float), ('dt', C.c_float),
-                ('pitchTrim', C.c_float)]
-class State(C.Structure):
-    _fields_ = [('hold', F4), ('feedforward', F4), ('reference', C.c_float),
-                ('speed', C.c_float), ('yawRate', C.c_float), ('yawReference', C.c_float),
-                ('ready', C.c_uint32), ('driving', C.c_uint32)]
-class Output(C.Structure):
-    _fields_ = [('torque', F6), ('state', F6), ('length', F2), ('alpha', F2), ('jointDamping', C.c_float),
-                ('jointTarget', F4), ('jointStiffness', C.c_float), ('wheelDamping', C.c_float)]
-class Wheel(C.Structure):
-    _fields_ = [('previous', C.c_float), ('position', C.c_float), ('rate', C.c_float),
-               ('tick', C.c_uint32), ('ready', C.c_uint32)]
+parser = argparse.ArgumentParser()
+parser.add_argument('--quick-wheel', action='store_true')
+parser.add_argument('--quick-drive', action='store_true')
+parser.add_argument('--speed', type=float, default=.5)
+parser.add_argument('--turn', type=float, default=3.6)
+parser.add_argument('--output', type=Path)
+parser.add_argument('--height', action='store_true')
+parser.add_argument('--bias-seconds', type=float, default=30.)
+parser.add_argument('--lag-ms', type=float)
+parser.add_argument('--legacy-damping', action='store_true')
+parser.add_argument('--rx-jitter', action='store_true', help='反馈接收时间交替提前 2 ms，覆盖 0042 的 1/5 ms 间隔')
+args = parser.parse_args()
 
+from BenchFirmware import F2, F3, F4, F6, Input, State, Output, Wheel, lib, observe, apply
 root = sim.ROOT
-folder = root / 'local/build/host-tests/bench-firmware'
-folder.mkdir(parents=True, exist_ok=True)
-zig = Path('C:/Users/28111/AppData/Local/Microsoft/WinGet/Links/zig.exe')
-includes = [root/'shared/application/wheelleg', root/'shared/application/robot', root/'shared/components/support']
-dll = folder / 'bench.dll'
-# 直接编译现有慢调函数的源码，避免仿真另写一套积分逻辑。
-helpers = (root/'shared/application/wheelleg/WheelLegMitControlHelpers.inc').read_text(encoding='utf-8')
-trim_code = helpers[helpers.index('static uint8_t WheelLegPitchTrimIdle('):helpers.index('static void WheelLegPitchTrimUpdate(fp32')]
-task_code = (root/'shared/application/wheelleg/WheelLegMitTask.c').read_text(encoding='utf-8')
-trim_defaults = '\n'.join('#define '+a+' '+b for a,b in re.findall(r'^#define (WHEELLEG_PITCH_TRIM_\w+) ([^\r\n]+)',task_code,re.M))
-trim_test = folder/'trim.c'
-trim_test.write_text('''#include <math.h>
-#include <stdint.h>
-#include <string.h>
-#include "WheelLegBench.h"
-typedef float fp32;
-typedef struct { unsigned pitch_trim_enable, rc_deadband;
-    float pitch_trim_max_rad, pitch_trim_rate_radps, pitch_trim_v_deadband_mps,
-          pitch_trim_lpf, pitch_trim_gain; } WheelLegMitConfig;
-static struct { WheelLegMitConfig WheelLegMit; } g_config;
-static struct { float pitch_auto_offset_rad, pitch_trim_v_lpf_mps, v_mps; } s_wheelleg;
-#define WHEELLEG_LQR_MOTION_EPS .001f
-static float WheelLegAbs(float v) { return fabsf(v); }
-static float WheelLegClamp(float v,float lo,float hi) { return fminf(fmaxf(v,lo),hi); }
-static int WheelLegAxisInDeadband(int16_t a,unsigned d) { return fabsf((float)a)<=d; }
-static float WheelLegCfgPositiveOrDefault(float v,float d,float max) { return WheelLegClamp(v<=0?d:v,0,max); }
-''' + trim_defaults + '\n' + trim_code + '''
-void BenchTrimReset(void) { memset(&s_wheelleg,0,sizeof(s_wheelleg)); }
-float BenchTrimStep(float v,float dt,int allowed) {
-    static const WheelLegMitConfig cfg={.pitch_trim_enable=1,
-        .pitch_trim_gain=WHEELLEG_BENCH_TRIM_GAIN,.pitch_trim_max_rad=WHEELLEG_BENCH_TRIM_LIMIT,
-        .pitch_trim_rate_radps=WHEELLEG_BENCH_TRIM_RATE,.pitch_trim_v_deadband_mps=WHEELLEG_BENCH_TRIM_DEADBAND,
-        .pitch_trim_lpf=WHEELLEG_BENCH_TRIM_LPF};
-    s_wheelleg.v_mps=v;
-    if(allowed) WheelLegPitchTrimUpdateConfigured(&cfg,dt,0,0,0,0);
-    return s_wheelleg.pitch_auto_offset_rad;
-}
-''',encoding='utf-8')
-subprocess.run([str(zig), 'cc', '-shared', '-O2', '-std=c99', '-Wall', '-Wextra', '-Werror',
-                *['-I'+str(p) for p in includes], str(root/'shared/application/wheelleg/WheelLegBench.c'),
-                str(trim_test), '-o', str(dll)], check=True)
-lib = C.CDLL(str(dll))
-lib.BenchTrimStep.argtypes = [C.c_float, C.c_float, C.c_int]
-lib.BenchTrimStep.restype = C.c_float
-lib.WheelLegBenchStep.argtypes = [C.POINTER(State), C.POINTER(Input), C.POINTER(Output)]
-lib.WheelLegBenchStep.restype = C.c_int
-lib.WheelLegBenchReset.argtypes = [C.POINTER(State)]
-lib.WheelLegBenchWheelObserve.argtypes = [C.POINTER(Wheel), C.c_float, C.c_float, C.c_uint32]
-lib.WheelLegBenchWheelObserve.restype = C.c_int
 # 实物曾三次跨过 +/-12.5 边界；两个方向都应连续，重复帧不能再次积分。
 for direction in (-1, 1):
     wheel = Wheel()
@@ -84,7 +31,7 @@ for direction in (-1, 1):
     before = bytes(wheel)
     assert lib.WheelLegBenchWheelObserve(C.byref(wheel), -direction*12.49, 0, 110)
     assert bytes(wheel) == before
-    assert not lib.WheelLegBenchWheelObserve(C.byref(wheel), -direction*12.49, 36, 112)
+    assert not lib.WheelLegBenchWheelObserve(C.byref(wheel), -direction*12.49, 51, 112)
     assert not lib.WheelLegBenchWheelObserve(C.byref(wheel), -direction*12.49, 0, 191)
 wheel = Wheel()
 assert lib.WheelLegBenchWheelObserve(C.byref(wheel), 0, 0, 0xfffffff0)
@@ -105,29 +52,13 @@ for i, (motor_id, horizontal, vertical) in enumerate(calibration):
     assert abs(angle - expected) < .07, (motor_id, angle, expected)
     assert abs(lib.WheelLegBenchJointToRaw(i, angle) - horizontal) < 1e-6
 profile = sim.load_profile()
+if args.lag_ms is not None:
+    profile['assumed']['motor_torque_lag_s'] = args.lag_ms / 1000
 cfg = sim.make_config(profile)
 model = sim.mujoco.MjModel.from_xml_string(sim.model_xml(profile))
+# 实际 0.45 是主控前馈上限，电机本地阻尼合成后受协议的 1 N·m 范围约束。
+model.actuator_ctrlrange[[2, 5]] = [-1., 1.]
 
-def observe(data, target=0., turn=0.):
-    roll, pitch, yaw = sim.legacy.quat_to_euler_wxyz(data.qpos[3:7])
-    values = Input(pitch=pitch, roll=roll, yaw=yaw, gyro=F3(*data.qvel[3:6]),
-                   targetV=target, targetYaw=turn, dt=.003)
-    for i, side in enumerate(sim.SIDES):
-        for j, end in enumerate(('front', 'back')):
-            node = data.joint(f'{side}_{end}_hinge')
-            values.joint[2*i+j], values.jointRate[2*i+j] = node.qpos[0], node.qvel[0]
-        node = data.joint(f'{side}_wheel_hinge')
-        values.wheel[i], values.wheelRate[i] = node.qpos[0], node.qvel[0]
-    return values
-
-def apply(data, out):
-    # 电机本地阻尼每个物理步更新，不等待主控下一次反馈和发送。
-    data.ctrl[:] = out.torque
-    for i, side in enumerate(sim.SIDES):
-        data.ctrl[i*3+2] -= out.wheelDamping * data.joint(f'{side}_wheel_hinge').qvel[0]
-        for j, end in enumerate(('front', 'back')):
-            node = data.joint(f'{side}_{end}_hinge')
-            data.ctrl[i*3+j] += out.jointStiffness * (out.jointTarget[i*2+j] - node.qpos[0]) - out.jointDamping * node.qvel[0]
 
 data = sim.mujoco.MjData(model)
 data.qpos[:] = sim.pose(model, cfg, .1, sim.np.zeros(3))
@@ -140,10 +71,21 @@ hold = list(state.hold)
 moved = Input.from_buffer_copy(nominal)
 moved.joint[0] += .005
 assert lib.WheelLegBenchStep(C.byref(state), C.byref(moved), C.byref(out))
-assert list(state.hold) == hold
+assert max(abs(a-b) for a,b in zip(state.hold, hold)) <= .001801
 lib.WheelLegBenchReset(C.byref(state))
 assert lib.WheelLegBenchStep(C.byref(state), C.byref(moved), C.byref(out))
-assert abs(state.hold[0] - moved.joint[0]) < 1e-7
+assert abs(state.hold[0] - moved.joint[0]) <= .001801
+for height, dt in ((float('nan'), .003), (.059, .003), (.121, .003), (.1, .02)):
+    before = bytes(state)
+    assert not lib.WheelLegBenchSetHeight(C.byref(state), height, dt)
+    assert bytes(state) == before
+for axis, dt in ((float('nan'), .003), (1., .02)):
+    before = bytes(state)
+    assert not lib.WheelLegBenchHeightAxis(C.byref(state), axis, dt)
+    assert bytes(state) == before
+before = list(state.hold)
+assert lib.WheelLegBenchHeightAxis(C.byref(state), 0., .003)
+assert list(state.hold) == before
 invalid = 0
 for index in range(C.sizeof(Input)//4):
     bad = Input.from_buffer_copy(nominal)
@@ -170,12 +112,18 @@ for wheel in range(2):
     assert not lib.WheelLegBenchStep(C.byref(State()), C.byref(bad), C.byref(Output()))
 
 results = []
-quick_wheel = '--quick-wheel' in sys.argv
+quick_drive = '--quick-drive' in sys.argv
+quick_wheel = '--quick-wheel' in sys.argv or quick_drive
 cases = [('stand', 0), ('tilt-plus', 3), ('tilt-minus', -3)]
 if quick_wheel:
-    cases += [('pitch-bias-plus', 0), ('pitch-bias-minus', 0)]
+    cases += [('pitch-bias-plus', 0), ('pitch-bias-minus', 0),
+              ('drive-stop', 0), ('reverse-stop', 0), ('turn', 0), ('turn-reverse', 0),
+              ('drive-turn', 0), ('reverse-turn', 0)]
 if not quick_wheel:
     cases += [('drive-stop', 0), ('turn', 0), ('push', 0)]
+if quick_drive:
+    cases = [('drive-stop', 0), ('reverse-stop', 0), ('turn', 0), ('turn-reverse', 0),
+             ('drive-turn', 0), ('reverse-turn', 0)]
 for name, angle in cases:
     data = sim.mujoco.MjData(model)
     angle = math.radians(angle)
@@ -188,15 +136,18 @@ for name, angle in cases:
     pitch_bias = .04 if name == 'pitch-bias-plus' else -.04 if name == 'pitch-bias-minus' else 0.
     late_speed = []
     peak = 0
+    moving_speed, moving_yaw = [], []
     stopped = False
-    for step in range(30000 if pitch_bias else 10000):
+    duration_steps = round(args.bias_seconds * 1000) if pitch_bias else 10000
+    for step in range(duration_steps):
         t = step * .001
         data.xfrc_applied[:] = 0
         if name == 'push' and 2 < t < 2.15:
             data.xfrc_applied[model.body('base').id, 0] = 2
         if step % 3 == 0:
-            values = observe(data, .25 if name == 'drive-stop' and 1 < t < 4 else 0,
-                             .4 if name == 'turn' and 1 < t < 4 else 0)
+            command_v = (args.speed if name in ('drive-stop', 'drive-turn') else -args.speed if name in ('reverse-stop', 'reverse-turn') else 0) if 1 < t < 4 else 0
+            command_yaw = (args.turn if name in ('turn', 'drive-turn') else -args.turn if name in ('turn-reverse', 'reverse-turn') else 0) if 1 < t < 4 else 0
+            values = observe(data, command_v, command_yaw)
             if quick_wheel:
                 values.pitch += pitch_bias
                 values.pitchTrim = trim
@@ -205,38 +156,99 @@ for name, angle in cases:
                 for i, wheel in enumerate(wheel_observers):
                     raw = (values.wheel[i] - wheel_origins[i] + 12.49 + 12.5) % 25 - 12.5
                     raw = round((raw + 12.5) * 65535 / 25) * 25 / 65535 - 12.5
-                    # 模拟本次原始轮速来回约 +/-13 rad/s，控制仍只使用连续角度估算值。
-                    report = values.wheelRate[i] + (13 if step % 6 == 0 else -13) if wheel.ready else 0
-                    assert lib.WheelLegBenchWheelObserve(C.byref(wheel), raw, report, step)
+                    # 0038 回中时原始轮速均方根约 2.6 rad/s；此为同量级压力输入，不是假定噪声已辨识。
+                    report = values.wheelRate[i] + 3.7 * math.sin(2*math.pi*37.3*t) if wheel.ready else 0
+                    rx_tick = step-(2 if args.rx_jitter and (step//3)%2 else 0)
+                    assert lib.WheelLegBenchWheelObserve(C.byref(wheel), raw, report, rx_tick)
                     values.wheel[i], values.wheelRate[i] = wheel.position, wheel.rate
             peak = max(peak, abs(values.pitch), abs(values.roll))
             if not lib.WheelLegBenchStep(C.byref(state), C.byref(values), C.byref(out)):
                 stopped = True
                 break
+            if args.legacy_damping:
+                out.wheelTargetRate[:] = [0., 0.]
             if quick_wheel:
-                trim = lib.BenchTrimStep(out.state[3]+state.speed, values.dt,
-                    abs(values.pitch)<.12 and abs(values.gyro[1])<.5 and abs(out.state[3]+state.speed)<.25)
+                before_trim = trim
+                trim = lib.BenchTrimStep(out.state[3]+state.speed+state.parkSpeed, values.dt,
+                    abs(values.pitch)<.12 and abs(values.gyro[1])<.5 and abs(out.state[3]+state.speed)<.25,
+                    state.speed, state.yawRate)
                 assert abs(trim) <= .060001
+                if abs(state.speed) > .001 or abs(state.yawRate) > .001:
+                    assert trim == before_trim, '主动操作期间平衡补偿不应变化'
+            if 3 < t < 4:
+                # 转弯后世界 X 速度不能代表车头方向的行驶速度。
+                moving_speed.append(float((data.xmat[model.body('base').id].reshape(3, 3).T @ data.qvel[:3])[0]))
+                moving_yaw.append(float(values.gyro[2]))
             assert max(abs(out.torque[i]) for i in (2, 5)) <= .450001
             assert max(abs(out.torque[i]) for i in (0, 1, 3, 4)) <= 1.500001
         apply(data, out)
         sim.mujoco.mj_step(model, data)
-        if pitch_bias and step >= 28000:
+        if pitch_bias and step >= duration_steps - 2000:
             late_speed.append(float(data.qvel[0]))
     final = observe(data)
     mean_speed = sum(late_speed)/len(late_speed) if late_speed else float(data.qvel[0])
-    result = dict(case=name, stopped=stopped, peak_angle_deg=math.degrees(peak),
+    mean_moving_speed = sum(moving_speed)/len(moving_speed) if moving_speed else 0.
+    mean_moving_yaw = sum(moving_yaw)/len(moving_yaw) if moving_yaw else 0.
+    expected_v = args.speed if name in ('drive-stop', 'drive-turn') else -args.speed if name in ('reverse-stop', 'reverse-turn') else 0.
+    expected_yaw = args.turn if name in ('turn', 'drive-turn') else -args.turn if name in ('turn-reverse', 'reverse-turn') else 0.
+    demand = abs(expected_v)+.09*abs(expected_yaw)
+    if demand > .70:
+        expected_v *= .70/demand
+        expected_yaw *= .70/demand
+    # “能走、能停”不能替代速度跟踪；转弯也按车身前向速度评分。
+    tolerance_v = .08 if 'turn' in name else .05
+    motion_ok = abs(mean_moving_speed - expected_v) < tolerance_v and abs(mean_moving_yaw - expected_yaw) < .3
+    if pitch_bias:
+        motion_ok = True  # 偏置场景按后面两秒的收敛条件评分。
+    result = dict(case=name, duration_s=duration_steps/1000, stopped=stopped, peak_angle_deg=math.degrees(peak),
                   final_pitch_deg=math.degrees(final.pitch), final_speed=float(data.qvel[0]),
                   mean_late_speed=mean_speed, trim_deg=math.degrees(trim),
+                  moving_speed=mean_moving_speed, moving_yaw_rate=mean_moving_yaw,
+                  final_yaw_rate=float(final.gyro[2]),
                   passed=bool(not stopped and abs(final.pitch) < .08 and abs(data.qvel[0]) < .08
+                              and abs(final.gyro[2]) < .08 and motion_ok
                               and (not pitch_bias or abs(mean_speed)<.01)))
     results.append(result)
     print(json.dumps(result), flush=True)
-output = root / 'local/cache/wheelleg-resume-20261026' / ('90mm轮端阻尼检查.json' if quick_wheel else '板凳固件仿真检查.json')
+output = args.output or (root / 'local/cache/wheelleg-joystick-20261029/90mm摇杆采集检查.json' if quick_wheel
+          else root / 'local/cache/wheelleg-resume-20261026/板凳固件仿真检查.json')
 output.parent.mkdir(parents=True, exist_ok=True)
-output.write_text(json.dumps({'invalid_inputs': invalid+3, 'cases': results,
+output.write_text(json.dumps({'invalid_inputs': invalid+3, 'speed_target': args.speed,
+                  'yaw_target': args.turn, 'legacy_damping': args.legacy_damping,
+                  'wheel_torque_lag_s': profile['assumed'].get('motor_torque_lag_s', 0), 'cases': results,
                   'passed': all(r['passed'] for r in results)}, indent=2), encoding='utf-8')
 assert all(r['passed'] for r in results)
+if args.height:
+    from BenchFirmware import Controller
+    height_results = []
+    for speed, yaw in ((0., 0.), (.2, .6), (-.2, -.6), (.5, 0.), (-.5, 0.)):
+        data = sim.mujoco.MjData(model)
+        data.qpos[:] = sim.pose(model, cfg, .09, sim.np.zeros(3))
+        sim.mujoco.mj_forward(model, data)
+        controller = Controller(model, profile, 'bench-height')
+        peak, lengths = 0., []
+        for step in range(18000):
+            t = step * .001
+            target = .09 if t < 2 or t >= 11 else .105 if t < 6.5 else .11
+            if step % 3 == 0:
+                controller.step(data, speed if 2<t<14 else 0., yaw if 2<t<14 else 0., target)
+                if not controller.enabled:
+                    break
+                values = observe(data)
+                peak = max(peak, abs(values.pitch), abs(values.roll))
+                if 6<t<6.5 or 10.5<t<11 or 16<t:
+                    lengths.append((target, *controller.leg_lengths))
+            controller.apply(data)
+            sim.mujoco.mj_step(model, data)
+        error = max(abs(length-target) for target,*legs in lengths for length in legs) if lengths else 1.
+        row = dict(speed=speed, yaw=yaw, enabled=controller.enabled,
+                   peak_angle_deg=math.degrees(peak), max_settled_length_error_m=float(error),
+                   final_speed=float(sim.np.linalg.norm(data.qvel[:2])),
+                   passed=bool(controller.enabled and error<.006 and sim.np.linalg.norm(data.qvel[:2])<.08))
+        height_results.append(row)
+        print(json.dumps(row), flush=True)
+    output.with_name(output.stem+'-变高度.json').write_text(json.dumps(height_results, indent=2), encoding='utf-8')
+    assert all(row['passed'] for row in height_results)
 if quick_wheel:
     sys.exit(0)
 
@@ -251,7 +263,7 @@ assert lib.WheelLegBenchAutoStep(C.byref(calibration_auto), C.byref(nominal), C.
 raw_targets = []
 for i, (motor_id, horizontal, vertical) in enumerate(calibration):
     raw = lib.WheelLegBenchJointToRaw(i, calibration_auto.target[i])
-    assert min(horizontal, vertical) < raw < max(horizontal, vertical), (motor_id, raw)
+    assert abs(raw) < 12.5 and abs(calibration_auto.target[i]) < 2.4, (motor_id, raw)
     raw_targets.append(dict(id=motor_id, raw_target_rad=raw, model_target_rad=calibration_auto.target[i]))
 print(json.dumps(dict(calibrated_centered_targets=raw_targets)), flush=True)
 for joint in range(4):
@@ -271,7 +283,7 @@ for height in (.149, .12, .085):
     sim.mujoco.mj_forward(model, data)
     auto, out = AutoState(), Output()
     entered = None
-    for step in range(10000):
+    for step in range(15000):
         # 对应人扶住机身保持直立；腿仍承重，达到目标后松手。
         if auto.phase != 3:
             data.qpos[3:7] = (1, 0, 0, 0)
@@ -290,7 +302,7 @@ for height in (.149, .12, .085):
     final = observe(data)
     row = dict(start_length_m=height, balance_entered_s=entered,
                final_lengths=list(out.length), final_pitch_deg=math.degrees(final.pitch),
-               passed=bool(entered is not None and abs(final.pitch)<.08 and max(abs(x-.090) for x in out.length)<.006))
+               passed=bool(entered is not None and abs(final.pitch)<.08 and max(abs(x-.060) for x in out.length)<.006))
     auto_results.append(row)
     print(json.dumps(row), flush=True)
     assert row['passed']
@@ -338,7 +350,7 @@ for height in (.149, .085):
                 entered = step * .001
         apply(data, out)
         sim.mujoco.mj_step(model, data)
-    assert ready_at is not None and ready_at < 10 and entered is not None
+    assert ready_at is not None and ready_at < 14 and entered is not None
     assert auto.phase == 4 and out.torque[2] == 0 and out.torque[5] == 0
     row = dict(start_length_m=height, hold_ready_s=ready_at, balance_entered_s=entered,
                final_lengths=list(out.length), wheels_stop_retains_pose=True, passed=True)

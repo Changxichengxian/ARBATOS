@@ -5,6 +5,76 @@
  * Private implementation chunk included by WheelLegMitTask.c.
  */
 
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+static WheelLegBenchTrace WheelLegBenchTraceMake(const WheelLegTaskFrame *frame)
+{
+    WheelLegBenchTrace log = {0};
+    const WheelLegBenchState *state = WheelLegBenchTest == 3u ? &MiniBenchAuto.balance : &MiniBenchState;
+    log.version = 1;
+    log.computed = MiniBenchFrameComputed;
+    log.sequence = MiniBenchFrameSequence;
+    log.tick = frame->now_ms;
+    log.stopSequence = MiniBenchFirstStop.stopSequence;
+    log.stopTick = MiniBenchFirstStop.stopTick;
+    log.source = MiniBenchFirstStop.source;
+    log.detail = MiniBenchFirstStop.detail;
+    log.value = MiniBenchFirstStop.value;
+    log.faults = frame->faults;
+    log.dropped = SdLogDropped();
+    log.lostEvents = MiniBenchStopQueue.lost;
+    log.phase = WheelLegBenchPhase;
+    log.input = MiniBenchFrameInput;
+    log.output = MiniBenchOutput;
+    if (!log.computed) {
+        memset(&log.input, 0, sizeof(log.input));
+        memset(&log.output, 0, sizeof(log.output));
+        log.input.pitch = frame->pitch;
+        log.input.roll = frame->roll;
+        log.input.yaw = frame->yaw;
+        log.input.dt = frame->dt;
+        if (frame->gyro_wheelleg) memcpy(log.input.gyro, frame->gyro_wheelleg, sizeof(log.input.gyro));
+        for (unsigned i = 0; i < 2; i++) {
+            const unsigned side = i == 0 ? WHEELLEG_SIDE_RIGHT : WHEELLEG_SIDE_LEFT;
+            log.input.joint[i*2] = WheelLegBenchJointFromRaw(i*2, s_wheelleg.front_fb[side].q);
+            log.input.joint[i*2+1] = WheelLegBenchJointFromRaw(i*2+1, s_wheelleg.back_fb[side].q);
+            log.input.jointRate[i*2] = s_wheelleg.front_fb[side].dq * WheelLegBenchJointDir(i*2);
+            log.input.jointRate[i*2+1] = s_wheelleg.back_fb[side].dq * WheelLegBenchJointDir(i*2+1);
+            log.input.wheel[i] = s_wheelleg.wheel_fb[side].q * (i == 0 ? -1.0f : 1.0f);
+            log.input.wheelRate[i] = s_wheelleg.wheel_fb[side].dq * (i == 0 ? -1.0f : 1.0f);
+        }
+    }
+    const float control[8] = {state->speed, state->yawRate, state->height, state->rollTarget,
+        state->supportDelta, state->rollBias, state->parkSpeed, state->acceleration};
+    memcpy(log.control, control, sizeof(control));
+    return log;
+}
+
+static void WheelLegBenchTraceFlush(void)
+{
+    while (MiniBenchStopQueue.count != 0u) {
+        const WheelLegBenchTrace *log = &MiniBenchStopQueue.records[MiniBenchStopQueue.first];
+        if (!SdLogTryWrite(SDLOG_TAG_WHEELLEG_BENCH_TRACE, log, sizeof(*log))) break;
+        WheelLegBenchTracePop(&MiniBenchStopQueue);
+    }
+}
+
+static void WheelLegBenchCaptureStop(const WheelLegTaskFrame *frame, uint32_t source,
+                                     uint32_t detail, float value)
+{
+    if (MiniBenchStopLatched) return;
+    MiniBenchStopLatched = 1;
+    MiniBenchFirstStop = WheelLegBenchTraceMake(frame);
+    MiniBenchFirstStop.kind = 1;
+    MiniBenchFirstStop.stopSequence = ++MiniBenchStopSequence;
+    MiniBenchFirstStop.stopTick = frame->now_ms;
+    MiniBenchFirstStop.source = source;
+    MiniBenchFirstStop.detail = detail;
+    MiniBenchFirstStop.value = value;
+    (void)WheelLegBenchTracePush(&MiniBenchStopQueue, &MiniBenchFirstStop);
+    WheelLegBenchTraceFlush();
+}
+#endif
+
 static void WheelLegSdLogCopyPid(sdlog_pid_param_t *out, const PidParam *pid)
 {
     if (out == NULL || pid == NULL)
@@ -118,8 +188,10 @@ static void WheelLegSdLogWriteStatus(uint16_t faults,
                                         uint32_t now_ms)
 {
     sdlog_wheelleg_mit_status_t log;
+#if !defined(CONFIG_ARBATOS_MINI_BENCH)
     const uint32_t log_period_ms = (uint32_t)WHEELLEG_SDLOG_BASE_PERIOD_MS *
                                    (uint32_t)SdLogHighRateDiv();
+#endif
     const fp32 lqr_x_err = WheelLegLqrXError(target_v, target_yaw_rate);
     uint8_t side;
 
@@ -132,11 +204,13 @@ static void WheelLegSdLogWriteStatus(uint16_t faults,
 
     WheelLegSdLogWriteConfigOnce();
 
+#if !defined(CONFIG_ARBATOS_MINI_BENCH)
     if (s_wheelleg_sdlog_last_status_ms != 0u &&
         (uint32_t)(now_ms - s_wheelleg_sdlog_last_status_ms) < log_period_ms)
     {
         return;
     }
+#endif
     s_wheelleg_sdlog_last_status_ms = now_ms;
 
     (void)memset(&log, 0, sizeof(log));
@@ -209,7 +283,7 @@ static void WheelLegSdLogWriteStatus(uint16_t faults,
 
 #if defined(CONFIG_ARBATOS_MINI_BENCH)
     /* 板凳内核使用本车重新标定的方向，不能记录旧通用运动学的腿长和状态。 */
-    log.target_leg_length_m = .090f;
+    log.target_leg_length_m = WheelLegBenchPhase == 3u ? target_leg : WHEELLEG_BENCH_START_HEIGHT;
     memcpy(log.lqr_error, MiniBenchOutput.state, sizeof(log.lqr_error));
     /* 固定腿姿整体倾斜目标；取负即本帧实际使用的俯仰修正量。 */
     log.target_leg_theta_rad = WheelLegBenchPhase == 3u ? MiniBenchOutput.state[4] - pitch : 0;
@@ -289,6 +363,9 @@ static void WheelLegSdLogFillMotorDiag(sdlog_wheelleg_mit_motor_diag_entry_t *en
         entry->fb_position_rad = fb->q;
         entry->fb_velocity_radps = fb->dq;
         entry->fb_torque_nm = fb->tauEst;
+        entry->fb_mos_temperature_c = fb->temperature;
+        entry->fb_coil_temperature_c = fb->coilTemperature;
+        entry->fb_temperature_valid = (fb->mitTemperatureValid != 0u && entry->fresh != 0u) ? 1u : 0u;
     }
 
     if (LowCmdGetMotor(id, &cmd) != 0u)

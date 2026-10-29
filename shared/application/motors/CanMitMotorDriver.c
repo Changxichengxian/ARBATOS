@@ -213,8 +213,9 @@ uint8_t CanMitMotorUpdateFeedback(uint16_t std_id,
     feedback->rx_id = std_id;
     feedback->motor_id = feedback_motor_id;
     feedback->state = feedback_state;
-    feedback->mos_temperature = (dlc >= 8u && payload_off == 1u) ? data[6] : 0u;
-    feedback->coil_temperature = (dlc >= 8u && payload_off == 1u) ? data[7] : 0u;
+    feedback->temperature_valid = (dlc >= 8u && payload_off == 1u) ? 1u : 0u;
+    feedback->mos_temperature = feedback->temperature_valid ? data[6] : 0u;
+    feedback->coil_temperature = feedback->temperature_valid ? data[7] : 0u;
     feedback->rx_count++;
     feedback->last_rx_tick = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
     feedback->position = CanMitMotorUintToFloat(p_int,

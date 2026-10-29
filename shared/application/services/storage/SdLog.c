@@ -44,7 +44,10 @@
 #include "task.h"
 
 #ifndef SDLOG_BUF_SIZE
-#if defined(STM32H723xx) || defined(STM32H7xx) || defined(STM32H7)
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+/* 覆盖写卡短暂停顿；逐帧数据仍不抽样，溢出计数继续保留。 */
+#define SDLOG_BUF_SIZE (128u * 1024u)
+#elif defined(STM32H723xx) || defined(STM32H7xx) || defined(STM32H7)
 #define SDLOG_BUF_SIZE (64u * 1024u)
 #elif defined(STM32F407xx)
 #define SDLOG_BUF_SIZE (16u * 1024u)
@@ -54,7 +57,10 @@
 #endif
 
 #ifndef SDLOG_FLUSH_CHUNK_MAX
-#if defined(STM32F407xx)
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+/* 每控制帧记录约 1 KiB，批量写卡，仍由低优先级线程执行。 */
+#define SDLOG_FLUSH_CHUNK_MAX (16u * 1024u)
+#elif defined(STM32F407xx)
 #define SDLOG_FLUSH_CHUNK_MAX 512u
 #else
 #define SDLOG_FLUSH_CHUNK_MAX (2u * 1024u)
@@ -74,7 +80,12 @@
 #endif
 
 #ifndef SDLOG_ENABLE_COMPRESSION
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+/* 低优先级写卡任务无损压缩重复字段，控制线程只复制原始记录。 */
+#define SDLOG_ENABLE_COMPRESSION 1u
+#else
 #define SDLOG_ENABLE_COMPRESSION 0u
+#endif
 #endif
 
 #ifndef ARBATOS_TARGET_NAME
@@ -118,6 +129,9 @@ static char sdlog_path[96];
 static volatile uint8_t sdlog_active = 0u;
 static volatile uint32_t sdlog_dropped = 0u;
 static uint32_t sdlog_last_sync_ms = 0u;
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+static uint32_t sdlog_last_flush_ms = 0u;
+#endif
 static volatile uint32_t sdlog_bytes_flushed = 0u;
 static volatile int32_t sdlog_last_error = 0;
 static uint16_t sdlog_prev_error_reason = 0u;
@@ -668,6 +682,9 @@ static int SdLogWrite_block(const uint8_t *raw, uint32_t raw_len)
     }
     RtProfEnd(RtProfSdLogBlockWrite, block_write_start_us);
     sdlog_bytes_flushed += (uint32_t)bw;
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    sdlog_last_flush_ms = BspTimeGetTickMs();
+#endif
     return 0;
 }
 
@@ -1174,6 +1191,9 @@ static int sdlog_open_next_file(void)
             }
 
             sdlog_last_sync_ms = BspTimeGetTickMs();
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+            sdlog_last_flush_ms = sdlog_last_sync_ms;
+#endif
             sdlog_bytes_flushed = 0u;
             sdlog_last_error = 0;
             sdlog_prev_error_reason = 0u;
@@ -1480,6 +1500,17 @@ void SdLogPoll(void)
             taskEXIT_CRITICAL();
             break;
         }
+
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+        /* 正常采集凑足一批再压缩；低流量最多等待 50 ms，不删减记录。
+         * 仅增大数组而继续逐小块写入，无法减少 0044 中的写卡停顿。 */
+        if (used < SDLOG_FLUSH_CHUNK_MAX &&
+            (uint32_t)(BspTimeGetTickMs()-sdlog_last_flush_ms) < 50u)
+        {
+            taskEXIT_CRITICAL();
+            break;
+        }
+#endif
 
         chunk = used;
         if (chunk > SDLOG_FLUSH_CHUNK_MAX)

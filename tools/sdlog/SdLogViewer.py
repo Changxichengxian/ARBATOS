@@ -62,6 +62,7 @@ TAG_NAMES: dict[int, str] = {
     0x0056: "POWER_METER",
     0x0057: "CHASSIS_POWER_MODEL",
     0x0058: "SOURCE_STATE",
+    0x0059: "WHEELLEG_BENCH_TRACE",
 }
 
 ROBOT_FAULT_REASON_NAMES: dict[int, str] = {
@@ -79,7 +80,7 @@ ROBOT_FAULT_REASON_NAMES: dict[int, str] = {
     11: "DEFAULT_INTERRUPT",
 }
 
-RT_PROFILER_NAMES: dict[int, str] = {
+RT_PROFILER_LEGACY_NAMES: dict[int, str] = {
     0: "GIMBAL_CONTROL_LOOP",
     1: "CHASSIS_CONTROL_LOOP",
     2: "CAN_COMMAND_TX_LOOP",
@@ -89,6 +90,13 @@ RT_PROFILER_NAMES: dict[int, str] = {
     6: "SDLOG_BLOCK_WRITE",
     7: "SDLOG_SYNC",
     8: "WATCH_TASK_BEAT",
+}
+
+RT_PROFILER_NAMES: dict[int, str] = {
+    0: "GIMBAL_CONTROL_LOOP", 1: "CHASSIS_CONTROL_LOOP", 2: "WHEELLEG_CONTROL_LOOP",
+    3: "CAN_COMMAND_TX_LOOP", 4: "CAN_FEEDBACK_RX_WAKE", 5: "SDLOG_WRITE",
+    6: "SDLOG_COMPRESS", 7: "SDLOG_BLOCK_WRITE", 8: "SDLOG_SYNC",
+    9: "WATCH_TASK_BEAT", 10: "SHOOT_CONTROL_LOOP",
 }
 
 PROFILE_KIND_NAMES: dict[int, str] = {
@@ -315,6 +323,7 @@ class Dataset:
         self.series: dict[str, Series] = {}
         self.unknown_tag_counts: dict[int, int] = {}
         self.unknown_records: list[UnknownRecord] = []
+        self.profiler_names = RT_PROFILER_NAMES
 
     def add_record(self, tick_ms: int, tag: int, payload: bytes) -> None:
         extracted = extract_records(tick_ms, tag, payload)
@@ -324,11 +333,35 @@ class Dataset:
             return
 
         for sample_tick_ms, key, name, values in extracted:
+            if key == "BUILD_INFO" and values.get("rtProfCount") == 9:
+                self.profiler_names = RT_PROFILER_LEGACY_NAMES
+            if tag == 0x004E:
+                profiler_id = values["id"]
+                key = "RT_PROFILER."+self.profiler_names.get(profiler_id, f"ID_{profiler_id}")
             s = self.series.get(key)
             if s is None:
                 s = Series(key=key, name=name)
                 self.series[key] = s
             s.add(sample_tick_ms, values)
+
+    def bench_integrity(self) -> dict[str, Any]:
+        frames = self.series.get("WHEELLEG_BENCH_FRAME")
+        if frames is None or not frames.ticks_ms:
+            return {"available": False, "reason": "旧日志没有逐控制帧序号，不能证明没有漏帧"}
+        seq = frames.fields["sequence"]
+        steps = [(b-a) & 0xffffffff for a,b in zip(seq,seq[1:])]
+        missing = sum(d-1 for d in steps if 1 < d < 0x80000000)
+        bad_order = sum(d == 0 or d >= 0x80000000 for d in steps)
+        stops = self.series.get("WHEELLEG_BENCH_STOP")
+        present = set(stops.fields["stop_sequence"]) if stops else set()
+        expected = {n for n,t in zip(frames.fields["stop_sequence"],frames.fields["stop_tick_ms"])
+                    if n and frames.ticks_ms[0] <= t <= frames.ticks_ms[-1]}
+        dropped = max(frames.fields["sd_dropped"])-frames.fields["sd_dropped"][0]
+        lost = max(frames.fields["lost_events"])
+        return {"available": True, "frames":len(seq), "missing_frames":missing,
+                "bad_order":bad_order, "sd_dropped_during_window":dropped,
+                "lost_stop_events":lost, "missing_stop_sequences":sorted(expected-present),
+                "complete_within_recorded_window": not (missing or bad_order or dropped or lost or expected-present)}
 
     def tag_index_json(self) -> bytes:
         tags = []
@@ -352,6 +385,7 @@ class Dataset:
                 "file_header_size": self.file_header_size,
                 "tags": tags,
                 "unknown": unknown,
+                "bench_integrity": self.bench_integrity(),
             },
             ensure_ascii=False,
         ).encode("utf-8")
@@ -581,6 +615,36 @@ def _extract_imu_base_stream_records(payload: bytes) -> list[tuple[int, str, str
 
 
 def extract_records(tick_ms: int, tag: int, payload: bytes) -> list[tuple[int, str, str, dict[str, Any]]] | None:
+    if tag == 0x0059:
+        if len(payload) != 272 or payload[0] != 1 or payload[1] > 1:
+            return None
+        head = struct.unpack_from("<4B10If", payload)
+        keys = ("version", "kind", "computed", "reserved", "sequence", "tick_ms", "stop_sequence",
+                "stop_tick_ms", "source", "detail", "faults", "sd_dropped", "lost_events", "phase", "reject_value")
+        fields = dict(zip(keys, head))
+        names = ([f"joint_{x}_rad" for x in ("RF", "RB", "LF", "LB")]
+                 + [f"joint_{x}_radps" for x in ("RF", "RB", "LF", "LB")]
+                 + ["wheel_R_pos", "wheel_L_pos", "wheel_R_rate", "wheel_L_rate", "pitch", "roll", "yaw",
+                    "gyro_x", "gyro_y", "gyro_z", "target_v", "target_yaw", "dt", "pitch_trim", "target_roll"]
+                 + [f"out_torque_{x}" for x in ("RF", "RB", "RW", "LF", "LB", "LW")]
+                 + [f"state_{i}" for i in range(6)]
+                 + ["right_length", "left_length", "right_alpha", "left_alpha", "joint_kd"]
+                 + [f"joint_target_{x}" for x in ("RF", "RB", "LF", "LB")]
+                 + ["joint_kp", "wheel_kd", "wheel_target_R", "wheel_target_L",
+                    "speed", "yaw_rate", "height", "roll_target", "support_delta", "roll_bias", "park_speed", "acceleration"])
+        fields.update(zip(names, struct.unpack_from("<56f", payload, 48)))
+        fields["source_name"] = {0:"NONE", 1:"CONTROL_REJECT", 2:"PLAN_REJECT", 3:"COMMIT_REJECT",
+            4:"WHEEL_FEEDBACK_REJECT", 5:"HEIGHT_REJECT", 10:"FRAME_GUARD", 11:"CONTROL_FAULT",
+            12:"DISABLED", 13:"COMMAND_EXPIRED", 14:"REMOTE_GATE"}.get(fields["source"], "UNKNOWN")
+        name = "WHEELLEG_BENCH_STOP" if fields["kind"] else "WHEELLEG_BENCH_FRAME"
+        return [(fields["tick_ms"], name, name, fields)]
+    if tag == 0x0046:
+        if len(payload) != 48:
+            return None
+        values = struct.unpack("<4B16h4B3hH", payload)
+        names = ["source", "proto", "range_mode", "channel_count"] + [f"ch{i}" for i in range(16)]
+        names += ["sw0", "sw1", "mouse_btns", "reserved", "mouse_x", "mouse_y", "mouse_z", "key_value"]
+        return [(tick_ms, "MANUAL_INPUT_RAW", "MANUAL_INPUT_RAW", dict(zip(names, values)))]
     if tag == 0x0056:
         if len(payload) < 16:
             return None
@@ -866,10 +930,12 @@ def _extract_runtime_device(name: str, payload: bytes) -> list[tuple[str, str, d
 
 
 def _extract_wheelleg_mit_motor_diag(name: str, payload: bytes) -> list[tuple[str, str, dict[str, Any]]] | None:
-    if len(payload) not in (496, 528, 552):
+    if len(payload) not in (496, 528, 552, 570):
         return None
 
     version, count, _reserved16 = struct.unpack_from("<BBH", payload, 0)
+    if {1: 496, 2: 528, 3: 552, 4: 570}.get(version) != len(payload) or not 1 <= count <= 6:
+        return None
     off = 4
     can_fields: dict[str, Any] = {}
     if len(payload) >= 528:
@@ -897,7 +963,10 @@ def _extract_wheelleg_mit_motor_diag(name: str, payload: bytes) -> list[tuple[st
         }
 
     has_tx_id_count = len(payload) >= 552
+    has_temperature = version >= 4
     entry_fmt = "<18B4H6I9f" if has_tx_id_count else "<18B4H5I9f"
+    if has_temperature:
+        entry_fmt += "3B"
     entry_size = struct.calcsize(entry_fmt)
     rows: list[tuple[str, str, dict[str, Any]]] = []
     if can_fields:
@@ -940,6 +1009,7 @@ def _extract_wheelleg_mit_motor_diag(name: str, payload: bytes) -> list[tuple[st
         "fb_position_rad",
         "fb_velocity_radps",
         "fb_torque_nm",
+        *(["fb_mos_temperature_c", "fb_coil_temperature_c", "fb_temperature_valid"] if has_temperature else []),
     ]
 
     available = min(int(count), 6)
@@ -949,6 +1019,9 @@ def _extract_wheelleg_mit_motor_diag(name: str, payload: bytes) -> list[tuple[st
         fields = {"version": version, "count": count}
         fields.update(can_fields)
         fields.update({k: v for k, v in zip(field_names, values) if k != "reserved8"})
+        if has_temperature and not fields["fb_temperature_valid"]:
+            fields["fb_mos_temperature_c"] = float("nan")
+            fields["fb_coil_temperature_c"] = float("nan")
         role = int(fields.get("role", i))
         role_name = WHEELLEG_MIT_MOTOR_ROLE_NAMES.get(role, f"ROLE_{role}")
         fields["role_name"] = role_name

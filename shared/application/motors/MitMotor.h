@@ -29,6 +29,7 @@ typedef struct
     uint8_t state;
     uint8_t mos_temperature;
     uint8_t coil_temperature;
+    uint8_t temperature_valid; // 完整的带 ID 反馈才包含两路温度。
     uint32_t rx_count;
     uint32_t last_rx_tick;
     fp32 position;

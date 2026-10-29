@@ -380,6 +380,8 @@ static uint8_t CanRxProcessMitNodeFrame(motor_measure_t *measure,
         fb.q = MotorTransPositionToOutput(mit.position, external_ratio);
         fb.dq = MotorTransVelocityToOutput(mit.velocity, external_ratio);
         fb.tauEst = MotorTransTorqueToOutput(mit.torque, external_ratio);
+        fb.coilTemperature = mit.coil_temperature;
+        fb.mitTemperatureValid = mit.temperature_valid;
         if (measure != NULL)
         {
             fb.lastEcd = (uint16_t)measure->last_ecd;

@@ -248,6 +248,10 @@ static void WheelLegTaskFrameInit(WheelLegTaskFrame *frame)
     }
 
     (void)memset(frame, 0, sizeof(*frame));
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    MiniBenchFrameSequence++;
+    MiniBenchFrameComputed = 0;
+#endif
     WatchTaskBeat(WATCH_TASK_WHEELLEG_MIT);
 
     frame->loop_start_ms = WheelLegTickMs();
@@ -359,6 +363,13 @@ static void WheelLegTaskFinishFrame(const WheelLegTaskFrame *frame,
         return;
     }
 
+#if defined(CONFIG_ARBATOS_MINI_BENCH)
+    WheelLegBenchTraceFlush();
+    if (SdLogIsActive()) {
+        const WheelLegBenchTrace log = WheelLegBenchTraceMake(frame);
+        (void)SdLogTryWrite(SDLOG_TAG_WHEELLEG_BENCH_TRACE, &log, sizeof(log));
+    }
+#endif
     WheelLegPublish(publish_faults,
                      s_wheelleg.mode,
                      frame->pitch,
@@ -406,6 +417,10 @@ static void WheelLegResetDomainControlState(void)
 static void WheelLegHandleDisabledFrame(WheelLegTaskFrame *frame)
 {
 #if defined(CONFIG_ARBATOS_MINI_BENCH)
+    if (frame != NULL && WheelLegBenchArm == WHEELLEG_BENCH_ARM_KEY) {
+        WheelLegBenchCaptureStop(frame, 12u, (uint32_t)frame->manual_on |
+            ((uint32_t)frame->control_allowed << 1), 0);
+    }
     if (WheelLegBenchTest == 3u) {
         if (WheelLegBenchArm == WHEELLEG_BENCH_ARM_KEY && frame != NULL &&
             frame->manual_on != 0u && (frame->faults != 0u || !frame->control_allowed)) {
@@ -494,6 +509,7 @@ static uint8_t WheelLegCommitFrameOutput(WheelLegTaskFrame *frame)
 #if defined(CONFIG_ARBATOS_MINI_BENCH)
     MiniBenchRejectSource = 3u;
     MiniBenchRejectTick = frame->now_ms;
+    WheelLegBenchCaptureStop(frame, 3u, 0, 0);
     WheelLegBenchUntilMs = 0u;
     WheelLegBenchArm = 0u;
     WheelLegBenchReset(&MiniBenchState);
@@ -612,9 +628,9 @@ static void WheelLegRunBenchStage(WheelLegTaskFrame *frame)
         if (!frame->controller_active) frame->faults |= WHEELLEG_FAULT_CONTROLLER;
         return;
     }
-    /* 当前只做原地板凳，摇杆不能掺入速度和转向目标。 */
-    frame->target_v = 0;
-    frame->target_yaw_rate = 0;
+    /* 摇杆和控制内核共用目标范围，避免外层放开后仍被内层截断。 */
+    frame->target_v = WheelLegAxisToFp32(frame->vx_axis,
+        fminf(g_config.WheelLegMit.max_v_mps, WHEELLEG_BENCH_MAX_SPEED), g_config.WheelLegMit.rc_deadband);
     WheelLegBenchInput input = {0};
     for (unsigned i = 0; i < 2; i++) {
         const unsigned side = i == 0 ? WHEELLEG_SIDE_RIGHT : WHEELLEG_SIDE_LEFT;
@@ -624,16 +640,8 @@ static void WheelLegRunBenchStage(WheelLegTaskFrame *frame)
         input.jointRate[i*2+1] = s_wheelleg.back_fb[side].dq * WheelLegBenchJointDir(i*2+1);
         const float direction = i == 0 ? -1.0f : 1.0f;
         const MotorState *wheel = &s_wheelleg.wheel_fb[side];
-        if (!WheelLegBenchWheelObserve(&MiniBenchWheel[i], wheel->q * direction,
-                                      wheel->dq * direction, wheel->lastRxTick)) {
-            MiniBenchRejectSource = 4u;
-            MiniBenchRejectTick = frame->now_ms;
-            frame->faults |= WHEELLEG_FAULT_CONTROLLER;
-            WheelLegBenchUntilMs = 0;
-            return;
-        }
-        input.wheel[i] = MiniBenchWheel[i].position;
-        input.wheelRate[i] = MiniBenchWheel[i].rate;
+        input.wheel[i] = wheel->q * direction;
+        input.wheelRate[i] = wheel->dq * direction;
     }
     input.pitch = frame->pitch;
     input.roll = frame->roll;
@@ -643,6 +651,43 @@ static void WheelLegRunBenchStage(WheelLegTaskFrame *frame)
     input.targetYaw = frame->target_yaw_rate;
     input.dt = frame->dt;
     input.pitchTrim = s_wheelleg.pitch_auto_offset_rad;
+    input.targetRoll = WheelLegAxisToFp32(
+        WheelLegInputAxisFromSnapshot(&frame->manual_input_snapshot, INPUT_AXIS_CALIB_2),
+        WHEELLEG_BENCH_MAX_ROLL, g_config.WheelLegMit.rc_deadband);
+    MiniBenchFrameInput = input;
+    MiniBenchFrameComputed = 1;
+    memset(&MiniBenchOutput, 0, sizeof(MiniBenchOutput));
+    for (unsigned i = 0; i < 2; i++) {
+        const unsigned side = i == 0 ? WHEELLEG_SIDE_RIGHT : WHEELLEG_SIDE_LEFT;
+        if (!WheelLegBenchWheelObserve(&MiniBenchWheel[i], input.wheel[i], input.wheelRate[i],
+                                      s_wheelleg.wheel_fb[side].lastRxTick)) {
+            MiniBenchRejectSource = 4u;
+            MiniBenchRejectTick = frame->now_ms;
+            frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+            WheelLegBenchCaptureStop(frame, 4u, i*10u+MiniBenchWheel[i].reject, MiniBenchWheel[i].rejectValue);
+            WheelLegBenchUntilMs = 0;
+            return;
+        }
+        input.wheel[i] = MiniBenchWheel[i].position;
+        input.wheelRate[i] = MiniBenchWheel[i].rate;
+    }
+    MiniBenchFrameInput = input;
+    if (WheelLegBenchTest == 3u && MiniBenchAuto.phase == 3u) {
+        const float heightAxis = WheelLegAxisToFp32(frame->leg_axis, 1.0f,
+                                                    g_config.WheelLegMit.rc_deadband);
+        if (!WheelLegBenchHeightAxis(&MiniBenchAuto.balance, heightAxis, frame->dt)) {
+            MiniBenchLastAuto = MiniBenchAuto;
+            MiniBenchLastInput = input;
+            MiniBenchRejectSource = 5u;
+            MiniBenchRejectTick = frame->now_ms;
+            frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+            WheelLegBenchCaptureStop(frame, 5u, 0, heightAxis);
+            WheelLegBenchUntilMs = 0;
+            return;
+        }
+        /* 单独关闭轮子时继续抱住当前高度，不跳回启动角度。 */
+        memcpy(MiniBenchAuto.target, MiniBenchAuto.balance.hold, sizeof(MiniBenchAuto.target));
+    }
     int accepted = WheelLegBenchTest == 3u ?
         WheelLegBenchPoseStep(&MiniBenchAuto, &input, &MiniBenchOutput,
                              WheelLegBenchWheels == WHEELLEG_BENCH_WHEELS_KEY) :
@@ -654,6 +699,9 @@ static void WheelLegRunBenchStage(WheelLegTaskFrame *frame)
         MiniBenchRejectSource = 1u;
         MiniBenchRejectTick = frame->now_ms;
         frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+        const WheelLegBenchState *balance = WheelLegBenchTest == 3u ? &MiniBenchAuto.balance : &MiniBenchState;
+        WheelLegBenchCaptureStop(frame, 1u, balance->reject ? balance->reject : 1000u+MiniBenchAuto.reject,
+                                 balance->reject ? balance->rejectValue : MiniBenchAuto.rejectValue);
         WheelLegBenchUntilMs = 0;
         return;
     }
@@ -675,7 +723,8 @@ static void WheelLegRunBenchStage(WheelLegTaskFrame *frame)
             planned++;
             frame->wheel_torque[side] = 0;
         } else {
-            planned += WheelLegPlanStateCmd(map->wheel, 0, 0, 0,
+            planned += WheelLegPlanStateCmd(map->wheel, 0,
+                MiniBenchOutput.wheelTargetRate[i] * (i == 0 ? -1 : 1), 0,
                 MiniBenchOutput.wheelDamping, frame->wheel_torque[side]);
         }
         s_wheelleg.leg[side].joint_torque[0] = front;
@@ -683,13 +732,19 @@ static void WheelLegRunBenchStage(WheelLegTaskFrame *frame)
     }
     s_wheelleg.x_m = MiniBenchOutput.state[2];
     s_wheelleg.v_mps = MiniBenchOutput.state[3] +
-        (WheelLegBenchTest == 3u ? MiniBenchAuto.balance.speed : MiniBenchState.speed);
+        (WheelLegBenchTest == 3u ? MiniBenchAuto.balance.speed + MiniBenchAuto.balance.parkSpeed :
+                                 MiniBenchState.speed + MiniBenchState.parkSpeed);
     frame->target_leg = .5f * (MiniBenchOutput.length[0] + MiniBenchOutput.length[1]);
+    if (WheelLegBenchTest == 3u && MiniBenchAuto.phase == 3u) {
+        frame->target_leg = WheelLegBenchGetHeight(&MiniBenchAuto.balance);
+    }
     frame->controller_active = planned == 6u;
     if (frame->controller_active && WheelLegBenchPhase == 3u &&
+        WheelLegAxisInDeadband(frame->leg_axis, g_config.WheelLegMit.rc_deadband) &&
+        fabsf(input.targetRoll) < .001f && fabsf(input.gyro[0]) < .1f &&
         fabsf(input.pitch) < .12f && fabsf(input.gyro[1]) < .5f &&
         fabsf(s_wheelleg.v_mps) < .25f) {
-        /* 复用既有漂移修正；原地板凳采用较小范围和与模型一致的前向符号。 */
+        /* 主动行驶和回中减速期间冻结补偿，避免把操作指令当作漂移。 */
         static const WheelLegMitConfig trim = {
             .pitch_trim_enable = 1u,
             .pitch_trim_gain = WHEELLEG_BENCH_TRIM_GAIN,
@@ -698,12 +753,16 @@ static void WheelLegRunBenchStage(WheelLegTaskFrame *frame)
             .pitch_trim_v_deadband_mps = WHEELLEG_BENCH_TRIM_DEADBAND,
             .pitch_trim_lpf = WHEELLEG_BENCH_TRIM_LPF,
         };
-        WheelLegPitchTrimUpdateConfigured(&trim, frame->dt, 0, 0, 0, 0);
+        const WheelLegBenchState *balance = WheelLegBenchTest == 3u ?
+            &MiniBenchAuto.balance : &MiniBenchState;
+        WheelLegPitchTrimUpdateConfigured(&trim, frame->dt,
+            frame->vx_axis, frame->yaw_axis, balance->speed, balance->yawRate);
     }
     if (!frame->controller_active) {
         MiniBenchRejectSource = 2u;
         MiniBenchRejectTick = frame->now_ms;
         frame->faults |= WHEELLEG_FAULT_CONTROLLER;
+        WheelLegBenchCaptureStop(frame, 2u, planned, 0);
     }
 #else
     uint8_t joint_hold_count;
@@ -961,6 +1020,7 @@ static void WheelLegRunBalanceFrame(WheelLegTaskFrame *frame)
     if (frame->faults != WHEELLEG_FAULT_NONE)
     {
 #if defined(CONFIG_ARBATOS_MINI_BENCH)
+        WheelLegBenchCaptureStop(frame, 11u, frame->faults, 0);
         WheelLegBenchUntilMs = 0u;
         WheelLegBenchArm = 0u;
         WheelLegBenchReset(&MiniBenchState);

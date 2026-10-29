@@ -28,6 +28,8 @@ PROFILE = HERE / "小轮腿实测参数.json"
 SIDES = ("right", "left")
 MODES = {"vmc": "VMC · 固定高度", "bench": "板凳 · 固定高度",
          "bench-height": "板凳 · 可变高度", "vmc-height": "VMC · 可变高度"}
+TERRAINS = {"flat": "平地", "left-ramp": "左轮上坡 · 12 mm", "right-ramp": "右轮上坡 · 12 mm",
+            "cross": "横坡 · 4°", "uphill": "上坡驻车 · 6°", "downhill": "下坡驻车 · 6°"}
 Float5 = ctypes.c_float * 5
 Float6 = ctypes.c_float * 6
 Float8 = ctypes.c_float * 8
@@ -122,7 +124,7 @@ def make_config(profile):
     return cfg
 
 
-def model_xml(profile):
+def model_xml(profile, terrain="flat"):
     m, a, c = profile["measured"], profile["assumed"], profile["control"]
     cfg = make_config(profile)
     tree = ET.fromstring(legacy.build_fivebar_model_xml(cfg, c["leg_length_m"] + a["wheel_radius_m"]))
@@ -179,6 +181,29 @@ def model_xml(profile):
     for actuator in tree.find("actuator"):
         limit = c["wheel_torque_limit_nm"] if "wheel" in actuator.get("name") else c["joint_torque_limit_nm"]
         actuator.set("ctrlrange", f"{-limit} {limit}")
+        if 'wheel' in actuator.get('name') and a.get('motor_torque_lag_s', 0) > 0:
+            # 响应时间是待辨识假设；不能把 CAN 指令当作瞬时真实力矩。
+            actuator.tag = 'general'
+            actuator.set('dyntype', 'filterexact')
+            actuator.set('dynprm', str(a['motor_torque_lag_s']))
+    if terrain not in TERRAINS:
+        raise ValueError("未知地形")
+    ground = tree.find("worldbody/geom")
+    if terrain in ("cross", "uphill", "downhill"):
+        ground.set("euler", {"cross": "0.06981317 0 0", "uphill": "0 -0.10471976 0",
+                             "downhill": "0 0.10471976 0"}[terrain])
+    if terrain in ("left-ramp", "right-ramp"):
+        y0, y1 = (.02, .30) if terrain == "left-ramp" else (-.30, -.02)
+        for index, (x0, x1, h0, h1) in enumerate(((.15, .55, 0., .012),
+                                                 (.55, 1.05, .012, .012),
+                                                 (1.05, 1.45, .012, 0.))):
+            name = f"ramp_{index}"
+            vertices = [(x, y, z) for x, h in ((x0, h0), (x1, h1))
+                        for y in (y0, y1) for z in (-.02, h)]
+            ET.SubElement(tree.find("asset"), "mesh", name=name,
+                          vertex=" ".join(str(v) for point in vertices for v in point))
+            ET.SubElement(tree.find("worldbody"), "geom", name=name, type="mesh", mesh=name,
+                          contype="2", conaffinity="1", rgba="0.32 0.47 0.53 1")
     return ET.tostring(tree, encoding="unicode")
 
 
@@ -340,6 +365,14 @@ def geometry_checks(model, cfg, core, profile):
 
 
 class Controller:
+    def __new__(cls, model, core, profile, design_result, mode="vmc", schedule=None):
+        if mode not in MODES:
+            raise ValueError("未知控制模式")
+        if mode.startswith("bench"):
+            from BenchFirmware import Controller as FirmwareController
+            return FirmwareController(model, profile, mode)
+        return super().__new__(cls)
+
     def __init__(self, model, core, profile, design_result, mode="vmc", schedule=None):
         if mode not in MODES:
             raise ValueError("未知控制模式")

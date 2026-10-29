@@ -45,13 +45,13 @@
             .axis =
                 {
                     [INPUT_AXIS_CHASSIS_X] = {.rc_ch = 1u, .invert = 0u},     // [320] ch1 forward/back
-                    [INPUT_AXIS_CHASSIS_Y] = {.rc_ch = 3u, .invert = 0u},     // [322] ch3 reserved; bench mode does not move legs
+                    [INPUT_AXIS_CHASSIS_Y] = {.rc_ch = 3u, .invert = 0u},     // [322] ch3 推高升、拉低降，回中保持板凳高度
                     [INPUT_AXIS_CHASSIS_WZ] = {.rc_ch = 0u, .invert = 0u},    // [324] ch [325] invert
                     [INPUT_AXIS_GIMBAL_YAW] = {.rc_ch = 0u, .invert = 0u},    // [326] ch [327] invert
                     [INPUT_AXIS_GIMBAL_PITCH] = {.rc_ch = 1u, .invert = 0u},  // [328] ch [329] invert
                     [INPUT_AXIS_CALIB_0] = {.rc_ch = 0u, .invert = 0u},       // [330] ch [331] invert
                     [INPUT_AXIS_CALIB_1] = {.rc_ch = 1u, .invert = 0u},       // [332] ch [333] invert
-                    [INPUT_AXIS_CALIB_2] = {.rc_ch = 2u, .invert = 0u},       // [334] ch2 reserved; bench mode does not move legs
+                    [INPUT_AXIS_CALIB_2] = {.rc_ch = 2u, .invert = 0u},       // [334] ch2 左右侧倾，回中水平，板凳正负 10 度
                     [INPUT_AXIS_CALIB_3] = {.rc_ch = 3u, .invert = 0u},       // [336] ch [337] invert
                 },
             .sw =

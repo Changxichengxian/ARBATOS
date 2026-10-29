@@ -31,8 +31,9 @@ class LiveSimulation:
         self.lock = threading.Lock()
         self.stop = threading.Event()
         self.keys = set()
-        self.drive_speed, self.turn_speed = .8, 1.2
-        self.mode = "vmc"
+        self.drive_speed, self.turn_speed = .5, 3.6
+        self.mode = "bench-height"
+        self.terrain = self.loaded_terrain = "flat"
         self.target_length = profile["control"]["leg_length_m"]
         self.input_time = 0.0
         self.reset_requested = False
@@ -42,28 +43,51 @@ class LiveSimulation:
         self.camera = "follow"
         self.state = {"status": "正在启动", "running": False}
         self.render_qpos = np.array(self.designed["qpos"])
-        self.reset()
+        self.reset(self.mode)
         (output / "model.xml").write_text(self.xml, encoding="utf-8")
         sim.write_json(output / "parameters.json", profile)
-        sim.write_json(output / "controller.json", self.designed)
+        sim.write_json(output / "controller.json", {'vmc_design': self.designed,
+            'bench_source': 'shared/application/wheelleg/WheelLegBench.c',
+            'bench_gains': 'shared/application/wheelleg/WheelLegBenchGains.inc',
+            'note': '板凳直接调用 C 控制器；height_gains 中的板凳设计表仅供离线比较。'})
         sim.write_json(output / "height_gains.json", self.schedule)
         sim.write_json(output / "sources.json", {p.name: sim.hashlib.sha256(p.read_bytes()).hexdigest()
-                       for p in (Path(__file__), sim.HERE / "RunMeasuredWheelLeg.py", sim.HERE / "MeasuredWheelLegViewer.html", sim.PROFILE)})
+                       for p in (Path(__file__), sim.HERE / "RunMeasuredWheelLeg.py", sim.HERE / "MeasuredWheelLegViewer.html", sim.PROFILE,
+                           sim.HERE / 'BenchFirmware.py', sim.ROOT / 'shared/application/wheelleg/WheelLegBench.c',
+                           sim.ROOT / 'shared/application/wheelleg/WheelLegBench.h',
+                           sim.ROOT / 'shared/application/wheelleg/WheelLegBenchGains.inc')})
 
-    def reset(self, mode="vmc"):
+    def reset(self, mode="vmc", terrain=None):
+        terrain = self.terrain if terrain is None else terrain
+        if terrain != self.loaded_terrain:
+            self.xml = sim.model_xml(self.profile, terrain)
+            self.model = mujoco.MjModel.from_xml_string(self.xml)
+            self.data = mujoco.MjData(self.model)
+            self.loaded_terrain = terrain
         mujoco.mj_resetData(self.model, self.data)
+        # 板凳前馈仍限 0.45，电机本地环合成后的力矩不能再按同一值截断。
+        limit = 1.0 if mode.startswith('bench') else self.profile['control']['wheel_torque_limit_nm']
+        self.model.actuator_ctrlrange[[2, 5]] = [-limit, limit]
         self.data.qpos[:] = self.designed["qpos"]
+        if terrain == "cross":
+            self.data.qpos[3:7] = [math.cos(math.radians(2)), math.sin(math.radians(2)), 0, 0]
         mujoco.mj_forward(self.model, self.data)
         self.controller = sim.Controller(self.model, self.core, self.profile, self.designed, mode, self.schedule)
+        with self.lock:
+            self.render_qpos = self.data.qpos.copy()
+            self.render_xml = self.xml
 
     def command(self, value):
         keys = value.get("keys", [])
-        if not isinstance(keys, list) or any(not isinstance(k, str) or k not in ("w", "a", "s", "d", "q", "e", " ") for k in keys):
+        if not isinstance(keys, list) or any(not isinstance(k, str) or k not in ("w", "a", "s", "d", "q", "e", "j", "l", " ") for k in keys):
             raise ValueError("无效按键")
-        speed, turn = value.get("drive_speed", .8), value.get("turn_speed", 1.2)
+        speed, turn = value.get("drive_speed", .5), value.get("turn_speed", 3.6)
         if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in (speed, turn)):
             raise ValueError("速度必须为有限数值")
         mode, length = value.get("mode"), value.get("leg_length")
+        terrain = value.get("terrain")
+        if terrain is not None and (not isinstance(terrain, str) or terrain not in sim.TERRAINS):
+            raise ValueError("无效地形")
         if mode is not None and (not isinstance(mode, str) or mode not in sim.MODES):
             raise ValueError("无效控制模式")
         if length is not None and (isinstance(length, bool) or not isinstance(length, (int, float)) or not math.isfinite(length)):
@@ -77,6 +101,9 @@ class LiveSimulation:
                 self.target_length = float(np.clip(length, *self.profile["control"]["leg_range_m"]))
             if mode is not None and mode != self.mode:
                 self.mode = mode
+                self.reset_requested = True
+            if terrain is not None and terrain != self.terrain:
+                self.terrain = terrain
                 self.reset_requested = True
             if value.get("reset") is True or self.reset_requested:
                 self.keys.clear()
@@ -100,9 +127,9 @@ class LiveSimulation:
                         self.reset_requested = self.motor_stop_requested = False
                         keys = self.keys.copy() if now - self.input_time < .35 else set()
                         speed, turn = self.drive_speed, self.turn_speed
-                        mode, length = self.mode, self.target_length
+                        mode, length, terrain = self.mode, self.target_length, self.terrain
                     if reset:
-                        self.reset(mode)
+                        self.reset(mode, terrain)
                         keys = set()
                     if motor_stop:
                         self.controller.enabled = False
@@ -111,7 +138,13 @@ class LiveSimulation:
                     if " " in keys:
                         target_v = target_yaw = 0.0
                     if step % stride == 0:
-                        self.controller.step(self.data, target_v, target_yaw, length)
+                        if mode.startswith('bench'):
+                            self.controller.step(self.data, target_v, target_yaw, length,
+                                roll_axis=0. if " " in keys else int("l" in keys)-int("j" in keys))
+                        else:
+                            self.controller.step(self.data, target_v, target_yaw, length)
+                    if hasattr(self.controller, 'apply'):
+                        self.controller.apply(self.data)
                     mujoco.mj_step(self.model, self.data)
                     step += 1
                     if step % 30 == 0:
@@ -125,6 +158,8 @@ class LiveSimulation:
                                  "torques": self.data.ctrl.tolist(), "rtf": step * dt / max(.001, now - started),
                                  "mode": self.controller.mode, "target_length": self.controller.target_length,
                                  "applied_length": self.controller.length, "height_range": self.profile["control"]["leg_range_m"],
+                                 "terrain": self.loaded_terrain,
+                                 "roll_target": math.degrees(self.controller.native.rollTarget) if mode.startswith('bench') else 0.,
                                  "drive_speed": speed, "turn_speed": turn,
                                  "status": sim.MODES[self.controller.mode] if self.controller.enabled else "电机已停止，按 T 复位",
                                  "keys": sorted(keys)}
@@ -147,35 +182,44 @@ class LiveSimulation:
 
     def render(self):
         # 与大轮腿入口一样，渲染使用独立数据，浏览器取图不阻塞控制周期。
-        model = mujoco.MjModel.from_xml_string(self.xml)
-        model.vis.headlight.ambient[:] = [.45, .45, .45]
-        data = mujoco.MjData(model)
         camera = mujoco.MjvCamera()
+        renderer, scene_xml = None, None
         try:
-            with mujoco.Renderer(model, height=600, width=960) as renderer:
-                while not self.stop.is_set():
-                    started = time.monotonic()
-                    with self.lock:
-                        data.qpos[:] = self.render_qpos
-                        mode = self.camera
-                    mujoco.mj_forward(model, data)
-                    _, _, yaw = sim.legacy.quat_to_euler_wxyz(data.qpos[3:7])
-                    camera.distance, camera.elevation = .62, -22
-                    camera.azimuth = math.degrees(yaw) + (25 if mode == "follow" else 130)
-                    camera.lookat[:] = [data.qpos[0], data.qpos[1], .10]
-                    renderer.update_scene(data, camera=camera)
-                    renderer.scene.flags[mujoco.mjtRndFlag.mjRND_REFLECTION] = 0
-                    buffer = io.BytesIO()
-                    Image.fromarray(renderer.render()).save(buffer, "JPEG", quality=90)
-                    with self.lock:
-                        self.frame = buffer.getvalue()
-                        self.frame_seq += 1
-                    self.stop.wait(max(0, .05 - (time.monotonic() - started)))
+            while not self.stop.is_set():
+                started = time.monotonic()
+                with self.lock:
+                    qpos, xml = self.render_qpos.copy(), self.render_xml
+                    mode = self.camera
+                if xml != scene_xml:
+                    if renderer is not None:
+                        renderer.close()
+                    model = mujoco.MjModel.from_xml_string(xml)
+                    model.vis.headlight.ambient[:] = [.45, .45, .45]
+                    data = mujoco.MjData(model)
+                    renderer = mujoco.Renderer(model, height=600, width=960)
+                    scene_xml = xml
+                data.qpos[:] = qpos
+                mujoco.mj_forward(model, data)
+                _, _, yaw = sim.legacy.quat_to_euler_wxyz(data.qpos[3:7])
+                camera.distance, camera.elevation = .62, -22
+                camera.azimuth = math.degrees(yaw) + (25 if mode == "follow" else 130)
+                camera.lookat[:] = [data.qpos[0], data.qpos[1], .10]
+                renderer.update_scene(data, camera=camera)
+                renderer.scene.flags[mujoco.mjtRndFlag.mjRND_REFLECTION] = 0
+                buffer = io.BytesIO()
+                Image.fromarray(renderer.render()).save(buffer, "JPEG", quality=90)
+                with self.lock:
+                    self.frame = buffer.getvalue()
+                    self.frame_seq += 1
+                self.stop.wait(max(0, .05 - (time.monotonic() - started)))
         except Exception as exc:
             with self.lock:
                 self.state.update(status=f"渲染失败：{exc}", running=False)
             self.stop.set()
             raise
+        finally:
+            if renderer is not None:
+                renderer.close()
 
 
 def make_handler(live):

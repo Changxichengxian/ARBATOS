@@ -311,13 +311,6 @@ void SdLogTask(void const *argument)
         }
 
         static uint32_t lastRtProfLogMs = 0u;
-        const uint32_t now_ms = BspTimeGetTickMs();
-        if ((uint32_t)(now_ms - lastRtProfLogMs) >= SDLOG_TASK_RT_PROFILER_PERIOD_MS)
-        {
-            lastRtProfLogMs = now_ms;
-            SdLogWriteRtProfSample();
-        }
-
         uint32_t backlog_polls = 0u;
         while (1)
         {
@@ -328,10 +321,21 @@ void SdLogTask(void const *argument)
                 break;
             }
 
+            /* 写卡积压期间仍保存耗时统计，避免最慢的一段缺少诊断。 */
+            const uint32_t now_ms = BspTimeGetTickMs();
+            if ((uint32_t)(now_ms - lastRtProfLogMs) >= SDLOG_TASK_RT_PROFILER_PERIOD_MS)
+            {
+                lastRtProfLogMs = now_ms;
+                SdLogWriteRtProfSample();
+            }
+
+            SdLogGetStats(&stats);
+            const uint32_t before_flush = stats.bytes_flushed;
             SdLogPoll();
             SdLogGetStats(&stats);
 
-            if (stats.active == 0u || stats.ring_used == 0u)
+            /* 等待凑批时返回休眠，不能带着少量数据在这里空转。 */
+            if (stats.active == 0u || stats.ring_used == 0u || stats.bytes_flushed == before_flush)
             {
                 break;
             }

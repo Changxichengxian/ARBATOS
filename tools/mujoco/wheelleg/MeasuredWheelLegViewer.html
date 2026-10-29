@@ -33,7 +33,7 @@
         <div class="brand"><div class="mark">A</div><div>
             <h1>ARBATOS · 实测小轮腿</h1>
             <div class="subtitle">105 mm 小腿 · 70 mm 髋轴距 · MuJoCo 实时仿真</div>
-            <div class="quick-keys">W/S 前后 · A/D 转向 · Q/E 降低/升高 · 空格停车 · T 复位 · X 停止电机</div>
+            <div class="quick-keys">W/S 前后 · A/D 转向 · Q/E 升降 · J/L 左右侧倾 · 空格停车 · T 复位</div>
         </div></div>
         <div id="connection" class="connection"><span class="dot"></span><span id="connectionText">正在连接</span></div>
     </header>
@@ -45,7 +45,7 @@
             </div></div>
             <div class="scene"><img id="frame" alt="MuJoCo 小轮腿实时画面"></div>
             <div class="scene-foot"><span>实际物理速度与两腿状态</span><span id="frameInfo">等待画面</span></div>
-            <div class="notes">核心总成实测 1.8248 kg；整车暂估 2.2648 kg。四种控制共用同一物理模型，从 100 mm 站姿开始。85～120 mm 是仿真腿长范围，实物行程待核对。</div>
+            <div class="notes">从 60 mm 站姿开始，升降 60～120 mm。侧倾回中找平。实车日志发现输出先停后倒，仿真速度余量不能覆盖该问题；当前修订尚待实车验证。</div>
         </section>
         <aside class="sidebar">
             <section class="panel telemetry">
@@ -58,24 +58,32 @@
                     <div class="metric"><div class="metric-label">两腿前后角度差</div><div class="metric-value"><span id="split">—</span><small> °</small></div></div>
                     <div class="metric"><div class="metric-label">实时倍率</div><div class="metric-value"><span id="rtf">—</span><small> ×</small></div></div>
                 </div>
-                <div class="status-line"><b id="status">启动中</b><br>左右腿长 <b id="legs">—</b> mm<br>平滑后的目标 <b id="appliedHeight">—</b> mm<br>仿真时间 <b id="simTime">—</b> s</div>
+                <div class="status-line"><b id="status">启动中</b><br>左右腿长 <b id="legs">—</b> mm<br>平均高度指令 <b id="appliedHeight">—</b> mm<br>侧倾目标 <b id="rollTarget">0</b> °<br>仿真时间 <b id="simTime">—</b> s</div>
             </section>
             <section class="panel controls">
                 <div class="controls-top"><h2 class="section-title">运动控制</h2><span class="key-hint">按住 WASD</span></div>
                 <label class="mode-row">控制模式（切换会复位）<select id="mode">
                     <option value="vmc">VMC · 固定高度（原版）</option>
                     <option value="bench">板凳 · 固定高度</option>
-                    <option value="bench-height">板凳 · 可变高度</option>
+                    <option value="bench-height" selected>板凳 · 可变高度</option>
                     <option value="vmc-height">VMC · 可变高度</option>
                 </select></label>
                 <div id="modeHint" class="hold-note"></div>
+                <label class="mode-row">地形（切换会复位）<select id="terrain">
+                    <option value="flat">平地</option><option value="left-ramp">左轮上坡 · 12 mm</option>
+                    <option value="right-ramp">右轮上坡 · 12 mm</option><option value="cross">横坡 · 4°</option>
+                    <option value="uphill">上坡驻车 · 6°</option><option value="downhill">下坡驻车 · 6°</option>
+                </select></label>
                 <div class="height-controls">
-                    <label class="length-row"><span>目标腿长 <input id="legLength" type="range" min="85" max="120" step="1" value="100" disabled></span><b><span id="heightValue">100</span> mm</b></label>
+                    <label class="length-row"><span>目标腿长 <input id="legLength" type="range" min="60" max="120" step="1" value="60" disabled></span><b><span id="heightValue">60</span> mm</b></label>
                     <div class="button-row"><button class="reset-button" data-key="q" disabled>降低 · Q</button><button class="reset-button" data-key="e" disabled>升高 · E</button></div>
                     <div class="hold-note">腿长指髋轴中点到轮轴的距离。可变高度模式下，行驶中也能升降。</div>
                 </div>
-                <label class="length-row"><span>行驶速度 <input id="driveSpeed" type="range" min="0.1" max="1" step="0.1" value="0.8"></span><b><span id="driveValue">0.8</span> m/s</b></label>
-                <label class="length-row"><span>转向速度 <input id="turnSpeed" type="range" min="0.2" max="1.2" step="0.1" value="1.2"></span><b><span id="turnValue">69</span> °/s</b></label>
+                <div class="button-row"><button class="reset-button" data-key="j">左倾 · J</button><button class="reset-button" data-key="l">右倾 · L</button></div>
+                <div class="hold-note">对应遥控器 ch2，按住侧倾，松开恢复水平；目标最多 ±10°、8°/秒，行程不足时平均高度会让出空间。</div>
+                <label class="length-row"><span>行驶速度 <input id="driveSpeed" type="range" min="0.1" max="0.7" step="0.02" value="0.5"></span><b><span id="driveValue">0.5</span> m/s</b></label>
+                <div class="hold-note">直行上限：60～80 mm 为 0.70 m/s，之后逐渐降低，120 mm 为 0.50 m/s。侧倾从 4° 加大时同步降速，10° 时最高 0.30 m/s、转向 1.20 rad/s；回正恢复。</div>
+                <label class="length-row"><span>转向速度 <input id="turnSpeed" type="range" min="0.2" max="3.6" step="0.1" value="3.6"></span><b><span id="turnValue">206</span> °/s</b></label>
                 <div class="pad" aria-label="按住控制方向">
                     <button class="control-key" data-key="w" aria-label="前进 W">W</button>
                     <button class="control-key" data-key="a" aria-label="左转 A">A</button>
@@ -98,10 +106,14 @@
         const mode = $('mode').value, variable = mode.endsWith('-height');
         $('legLength').disabled = !variable;
         document.querySelectorAll('[data-key="q"], [data-key="e"]').forEach(el => el.disabled = !variable);
-        if (!variable) { keys.delete('q'); keys.delete('e'); $('legLength').value = 100; }
+        $('legLength').min = 60;
+        $('legLength').max = 120;
+        document.querySelectorAll('[data-key="j"], [data-key="l"]').forEach(el => el.disabled = !mode.startsWith('bench'));
+        $('legLength').value = Math.max(+$('legLength').min, Math.min(+$('legLength').max, +$('legLength').value));
+        if (!variable) { keys.delete('q'); keys.delete('e'); $('legLength').value = 60; }
         $('heightValue').textContent = $('legLength').value;
         $('modeHint').textContent = mode.startsWith('bench') ?
-            (variable ? '腿长换算成关节角度，位置环控制升降；轮子负责平衡。' : '关节保持初始角度，轮子负责平衡，腿长固定 100 mm。') :
+            (variable ? '待验证板凳控制，10 mm/s 升降；两腿分别找平，轮子负责平衡和驻坡。' : '平均高度指令 60 mm，两腿仍可分别找平和侧倾。') :
             'VMC 控制支撑力，轮端与髋部一起维持平衡。';
         paintKeys();
     }
@@ -113,7 +125,8 @@
         if (sending) { pending = true; return; }
         sending = true;
         const value = {keys: active ? [...keys] : [], drive_speed: +$('driveSpeed').value,
-            turn_speed: +$('turnSpeed').value, mode: $('mode').value, leg_length: +$('legLength').value / 1000, reset, motor_stop: motorStop};
+            turn_speed: +$('turnSpeed').value, mode: $('mode').value, terrain: $('terrain').value,
+            leg_length: +$('legLength').value / 1000, reset, motor_stop: motorStop};
         reset = motorStop = false;
         try {
             const response = await fetch('/command', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(value), signal: AbortSignal.timeout(800)});
@@ -123,12 +136,13 @@
     }
     function clearKeys() { keys.clear(); paintKeys(); send(); }
     function stopMotors() { keys.clear(); motorStop = true; paintKeys(); send(); }
-    function doReset() { keys.clear(); $('legLength').value = 100; updateMode(); reset = true; paintKeys(); send(); }
+    function doReset() { keys.clear(); $('legLength').value = 90; updateMode(); reset = true; paintKeys(); send(); }
     document.addEventListener('keydown', event => {
         if (event.ctrlKey || event.altKey || event.metaKey) return;
         const key = event.key.toLowerCase();
         if (['q','e'].includes(key) && $('legLength').disabled) return;
-        if (['w','a','s','d','q','e',' '].includes(key)) {
+        if (['j','l'].includes(key) && !$('mode').value.startsWith('bench')) return;
+        if (['w','a','s','d','q','e','j','l',' '].includes(key)) {
             event.preventDefault(); active = true; keys.add(key); paintKeys(); send();
         } else if (!event.repeat && key === 't') doReset();
         else if (!event.repeat && key === 'x') stopMotors();
@@ -146,16 +160,17 @@
     $('reset').onclick = doReset;
     $('motorStop').onclick = stopMotors;
     $('mode').onchange = () => { doReset(); $('mode').blur(); };
+    $('terrain').onchange = () => { doReset(); $('terrain').blur(); };
     $('legLength').oninput = () => { $('heightValue').textContent = $('legLength').value; send(); };
     $('camera').onchange = () => fetch('/camera', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mode:$('camera').value})});
     $('fullscreen').onclick = () => document.fullscreenElement ? document.exitFullscreen() : $('scenePanel').requestFullscreen();
-    $('driveSpeed').oninput = () => { $('driveValue').textContent = (+$('driveSpeed').value).toFixed(1); send(); };
+    $('driveSpeed').oninput = () => { $('driveValue').textContent = (+$('driveSpeed').value).toFixed(2); send(); };
     $('turnSpeed').oninput = () => { $('turnValue').textContent = Math.round(+$('turnSpeed').value * 180 / Math.PI); send(); };
     setInterval(() => {
         if (active && !$('legLength').disabled) {
             const direction = Number(keys.has('e')) - Number(keys.has('q'));
             if (direction) {
-                $('legLength').value = Math.max(85, Math.min(120, +$('legLength').value + direction * 2));
+                $('legLength').value = Math.max(+$('legLength').min, Math.min(+$('legLength').max, +$('legLength').value + direction * 2));
                 $('heightValue').textContent = $('legLength').value;
             }
         }
@@ -167,10 +182,11 @@
             const state = await response.json();
             if (!ready && state.mode) {
                 $('mode').value = state.mode;
+                $('terrain').value = state.terrain || 'flat';
                 $('legLength').value = Math.round(state.target_length * 1000);
                 $('driveSpeed').value = state.drive_speed;
                 $('turnSpeed').value = state.turn_speed;
-                $('driveValue').textContent = Number(state.drive_speed).toFixed(1);
+                $('driveValue').textContent = Number(state.drive_speed).toFixed(2);
                 $('turnValue').textContent = Math.round(state.turn_speed * 180 / Math.PI);
                 updateMode(); ready = true;
             }
@@ -179,7 +195,8 @@
             for (const key of ['speed','pitch','roll','split','rtf']) $(key).textContent = Number(state[key] || 0).toFixed(key === 'speed' ? 2 : 1);
             $('yawRate').textContent = (state.yaw_rate * 180 / Math.PI || 0).toFixed(1);
             $('legs').textContent = (state.legs || []).slice().reverse().map(x => x.toFixed(1)).join(' / ');
-            $('appliedHeight').textContent = (1000 * state.applied_length || 100).toFixed(1);
+            $('appliedHeight').textContent = (1000 * state.applied_length || 90).toFixed(1);
+            $('rollTarget').textContent = Number(state.roll_target || 0).toFixed(1);
             $('simTime').textContent = Number(state.time || 0).toFixed(1);
             $('status').textContent = state.status;
             $('frameInfo').textContent = `第 ${state.frame_seq} 帧 · 960 × 600`;

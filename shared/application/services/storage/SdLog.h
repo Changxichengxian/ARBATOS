@@ -133,6 +133,7 @@ typedef enum
     SDLOG_TAG_RECEIVE_CHECK = 0x0055u, // payload: MReceiveStatus头部，magic和sequence后为接收诊断
     /* 0x0056 和 0x0057 已停用，不复用历史记录编号。 */
     SDLOG_TAG_SOURCE_STATE = 0x0058u, // payload: UTF-8 源码状态字符串，不含末尾 NUL
+    SDLOG_TAG_WHEELLEG_BENCH_TRACE = 0x0059u, // payload: WheelLegBenchTrace，每控制帧及停机首因
 } sdlog_tag_e;
 
 typedef enum
@@ -526,7 +527,7 @@ typedef struct __attribute__((packed))
 
 #define SDLOG_WHEELLEG_MIT_CONFIG_VERSION 1u
 #define SDLOG_WHEELLEG_MIT_STATUS_VERSION 1u
-#define SDLOG_WHEELLEG_MIT_MOTOR_DIAG_VERSION 3u
+#define SDLOG_WHEELLEG_MIT_MOTOR_DIAG_VERSION 4u
 #define SDLOG_WHEELLEG_MIT_MOTOR_DIAG_COUNT 6u
 
 typedef struct __attribute__((packed))
@@ -681,6 +682,9 @@ typedef struct __attribute__((packed))
     float fb_position_rad;
     float fb_velocity_radps;
     float fb_torque_nm;
+    uint8_t fb_mos_temperature_c;
+    uint8_t fb_coil_temperature_c;
+    uint8_t fb_temperature_valid; // 含温度字段且反馈未过期；无效值不能按 0 摄氏度使用。
 } sdlog_wheelleg_mit_motor_diag_entry_t;
 
 typedef struct __attribute__((packed))
@@ -699,8 +703,8 @@ typedef struct __attribute__((packed))
     sdlog_wheelleg_mit_motor_diag_entry_t motor[SDLOG_WHEELLEG_MIT_MOTOR_DIAG_COUNT];
 } sdlog_wheelleg_mit_motor_diag_t;
 
-typedef char _check_sdlog_wheelleg_mit_motor_diag_entry_size[(sizeof(sdlog_wheelleg_mit_motor_diag_entry_t) == 86) ? 1 : -1];
-typedef char _check_sdlog_wheelleg_mit_motor_diag_size[(sizeof(sdlog_wheelleg_mit_motor_diag_t) == 552) ? 1 : -1];
+typedef char _check_sdlog_wheelleg_mit_motor_diag_entry_size[(sizeof(sdlog_wheelleg_mit_motor_diag_entry_t) == 89) ? 1 : -1];
+typedef char _check_sdlog_wheelleg_mit_motor_diag_size[(sizeof(sdlog_wheelleg_mit_motor_diag_t) == 570) ? 1 : -1];
 
 typedef enum
 {

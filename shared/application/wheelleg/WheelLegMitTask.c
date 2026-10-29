@@ -37,6 +37,7 @@
 #include "WheelLegOutputPlan.h"
 #if defined(CONFIG_ARBATOS_MINI_BENCH)
 #include "WheelLegBench.h"
+#include "WheelLegBenchTrace.h"
 #include "WheelLegBenchGate.h"
 volatile uint32_t WheelLegBenchArm;
 volatile uint32_t WheelLegBenchUntilMs;
@@ -83,6 +84,13 @@ static WheelLegBenchAuto MiniBenchAuto;
 static WheelLegBenchState MiniBenchState;
 static WheelLegBenchOutput MiniBenchOutput;
 static WheelLegBenchWheel MiniBenchWheel[2];
+static WheelLegBenchInput MiniBenchFrameInput;
+static uint8_t MiniBenchFrameComputed;
+static uint32_t MiniBenchFrameSequence;
+static WheelLegBenchTrace MiniBenchFirstStop;
+static uint8_t MiniBenchStopLatched;
+static uint32_t MiniBenchStopSequence;
+static WheelLegBenchTraceQueue MiniBenchStopQueue;
 /* 保留退出前的整帧，停机清理不能抹掉收腿失败原因。 */
 static volatile WheelLegBenchAuto MiniBenchLastAuto;
 static volatile WheelLegBenchInput MiniBenchLastInput;
@@ -554,10 +562,13 @@ void WheelLegMitTask(void const *pvParameters)
         WheelLegTaskFrame frame;
 
 #if defined(CONFIG_ARBATOS_MINI_BENCH)
+        const uint8_t expired = (uint8_t)(WheelLegBenchArm == WHEELLEG_BENCH_ARM_KEY &&
+            WheelLegBenchPhase != 0u && !WheelLegBenchTxOpen(WheelLegTickMs()));
         WheelLegBenchPoll(WheelLegTickMs());
 #endif
         WheelLegTaskFrameInit(&frame);
 #if defined(CONFIG_ARBATOS_MINI_BENCH)
+        if (expired) WheelLegBenchCaptureStop(&frame, 13u, WheelLegBenchUntilMs, 0);
         static uint32_t lastTest = 3u;
         if (lastTest != WheelLegBenchTest) {
             WheelLegBenchArm = 0;
@@ -579,12 +590,17 @@ void WheelLegMitTask(void const *pvParameters)
                         frame.control_stage != 0u || frame.operation_test_active != 0u)) {
                 MiniBenchFaulted = 1;
                 WheelLegBenchDiag.stopFaults = frame.faults;
+                WheelLegBenchCaptureStop(&frame, 10u, frame.faults, (float)frame.control_allowed);
             }
             const int remoteReady = WheelLegBenchRemoteReady(&MiniBenchSafeSeen,
                 frame.manual_on, frame.recovery_input_safe,
                 MiniBenchFaulted || frame.faults != 0u || !frame.control_allowed ||
                 frame.control_stage != 0u || frame.operation_test_active != 0u);
             if (!remoteReady) {
+                if (WheelLegBenchArm == WHEELLEG_BENCH_ARM_KEY) {
+                    WheelLegBenchCaptureStop(&frame, 14u, (uint32_t)frame.manual_on |
+                        ((uint32_t)frame.recovery_input_safe << 1), 0);
+                }
                 WheelLegBenchArm = 0;
                 WheelLegBenchWheels = 0;
             } else if (frame.enabled && frame.control_allowed &&
@@ -593,6 +609,7 @@ void WheelLegMitTask(void const *pvParameters)
                        (WheelLegBenchArm == WHEELLEG_BENCH_ARM_KEY ||
                         (WheelLegAxisInDeadband(frame.vx_axis, g_config.WheelLegMit.rc_deadband) &&
                          WheelLegAxisInDeadband(frame.yaw_axis, g_config.WheelLegMit.rc_deadband)))) {
+                if (WheelLegBenchArm != WHEELLEG_BENCH_ARM_KEY) MiniBenchStopLatched = 0;
                 WheelLegBenchArm = WHEELLEG_BENCH_ARM_KEY;
                 WheelLegBenchWheels = WHEELLEG_BENCH_WHEELS_KEY;
             }
