@@ -8,6 +8,41 @@
 
 #include "CpuUsage.h"
 
+#ifdef __ZEPHYR__
+#include <zephyr/kernel.h>
+
+static uint64_t cpu_last_total_cycles;
+static uint64_t cpu_last_busy_cycles;
+static uint16_t cpu_last_permille;
+
+void CpuUsageInit(void)
+{
+    k_thread_runtime_stats_t stats;
+    if (k_thread_runtime_stats_cpu_get(0, &stats) == 0)
+    {
+        cpu_last_total_cycles = stats.execution_cycles;
+        cpu_last_busy_cycles = stats.total_cycles;
+    }
+    cpu_last_permille = 0u;
+}
+
+uint16_t CpuUsageGetPermille(void)
+{
+    k_thread_runtime_stats_t stats;
+    uint64_t total, busy;
+    if (k_thread_runtime_stats_cpu_get(0, &stats) != 0) return cpu_last_permille;
+    total = stats.execution_cycles - cpu_last_total_cycles;
+    busy = stats.total_cycles - cpu_last_busy_cycles;
+    cpu_last_total_cycles = stats.execution_cycles;
+    cpu_last_busy_cycles = stats.total_cycles;
+    if (total != 0u)
+    {
+        if (busy > total) busy = total;
+        cpu_last_permille = (uint16_t)((busy * 1000u) / total);
+    }
+    return cpu_last_permille;
+}
+#else
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -85,3 +120,4 @@ uint16_t CpuUsageGetPermille(void)
     cpu_last_permille = (uint16_t)permille;
     return cpu_last_permille;
 }
+#endif

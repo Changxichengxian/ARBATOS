@@ -78,6 +78,16 @@ static void FaultPwmStop(void)
     if ((RCC->APB1LENR & RCC_APB1LENR_TIM2EN) != 0u) { TIM2->CCER = 0u; }
     if ((RCC->APB1LENR & RCC_APB1LENR_TIM3EN) != 0u) { TIM3->CCER = 0u; }
     if ((RCC->APB1LENR & RCC_APB1LENR_TIM12EN) != 0u) { TIM12->CCER = 0u; }
+#elif defined(CONFIG_BOARD_DJI_C_F407)
+    /* C 板四路舵机分属两个高级定时器；故障时绕过驱动直接断开全部通道。 */
+    if ((RCC->APB2ENR & RCC_APB2ENR_TIM1EN) != 0u) {
+        TIM1->CCER = 0u;
+        TIM1->BDTR &= ~TIM_BDTR_MOE;
+    }
+    if ((RCC->APB2ENR & RCC_APB2ENR_TIM8EN) != 0u) {
+        TIM8->CCER = 0u;
+        TIM8->BDTR &= ~TIM_BDTR_MOE;
+    }
 #endif
     __DSB();
 }

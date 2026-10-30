@@ -137,6 +137,11 @@ typedef struct
   * @retval         none
   */
 extern void cali_param_init(void);
+#ifdef __ZEPHYR__
+/* 保存状态为 0 表示尚未成功保存或最近一次保存失败。 */
+uint8_t CalibrateReady(void);
+uint8_t CalibrateLastSaveOk(void);
+#endif
 /**
   * @brief          get imu control temperature, unit ℃
   * @param[in]      none

@@ -25,6 +25,13 @@ int main(void)
     CHECK(robot_mode_allow_shoot_fric() != 0u && robot_mode_allow_shoot_trigger() != 0u);
     g_config.operation.mode = ROBOT_RUN_MODE_CALIBRATION;
     CHECK(robot_mode_allow_shoot_fric() == 0u && robot_mode_allow_shoot_trigger() == 0u);
+    g_config.operation.cali_target = ROBOT_CALI_TARGET_GIMBAL;
+    CHECK(robot_mode_gimbal_cali() != 0u && robot_mode_gimbal_pitch_cali() == 0u);
+    CHECK(robot_mode_allow_chassis() == 0u);
+    g_config.operation.cali_target = ROBOT_CALI_TARGET_PITCH;
+    CHECK(robot_mode_gimbal_cali() == 0u && robot_mode_gimbal_pitch_cali() != 0u);
+    g_config.operation.cali_target = ROBOT_CALI_TARGET_NONE;
+    CHECK(robot_mode_gimbal_cali() == 0u);
     g_config.operation.mode = ROBOT_RUN_MODE_SINGLE_MOTOR;
     CHECK(robot_mode_allow_shoot_fric() == 0u && robot_mode_allow_shoot_trigger() == 0u);
     puts("PASS: independent shoot task mode regression");

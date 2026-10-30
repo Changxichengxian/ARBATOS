@@ -124,6 +124,8 @@ config ARBATOS_MINI_BENCH
 
 config ARBATOS_FREERTOS_MAX_TASKS
     int "Maximum legacy task count"
+    # C 板最多 16 个车型任务，另有默认诊断和音乐线程；预留额外兼容任务。
+    default 24 if BOARD_DJI_C_F407 && ARBATOS_LEGACY_SOURCES
     default 32
     range 16 64
     help
@@ -132,8 +134,10 @@ config ARBATOS_FREERTOS_MAX_TASKS
 
 config ARBATOS_THREAD_STACK_POOL_SIZE
     int "Static legacy thread stack pool size in bytes"
+    # C 板车型和音乐文件线程均自带栈，备用池留给额外兼容线程。
+    default 2048 if BOARD_DJI_C_F407 && ARBATOS_LEGACY_SOURCES
     default 8192
-    range 4096 16384
+    range 2048 16384
     help
       Fallback pool used only when osThreadNew is called without a caller
       supplied stack.  ARBATOS runtime tasks keep their explicit static

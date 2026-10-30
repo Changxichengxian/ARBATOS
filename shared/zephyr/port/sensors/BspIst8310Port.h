@@ -15,5 +15,7 @@ void ist8310_delay_ms(uint16_t ms);
 void ist8310_delay_us(uint16_t us);
 void ist8310_RST_H(void);
 void ist8310_RST_L(void);
+/* 0=新样本，-EAGAIN=尚无新数据，其他负数=总线错误。 */
+int BspIst8310Read(float mag[3]);
 
 #endif

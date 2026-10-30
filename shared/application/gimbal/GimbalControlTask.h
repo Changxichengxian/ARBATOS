@@ -157,7 +157,9 @@ typedef struct
     uint16_t min_yaw_ecd;
     uint16_t max_pitch_ecd;
     uint16_t min_pitch_ecd;
-    uint8_t step;
+    volatile uint8_t step;
+    uint16_t stableTicks;
+    uint32_t startedMs;
 } GimbalStepCali;
 
 typedef struct
@@ -168,6 +170,7 @@ typedef struct
     uint32_t semantics_seq;
     robot_run_variant_e run_variant;
     uint8_t PitchCaliMode;
+    uint8_t GimbalCaliMode;
     uint8_t mode_sw;
     uint8_t safe_pos;
     uint8_t active_source;
@@ -253,6 +256,16 @@ extern void set_cali_gimbal_hook(
     const fp32 max_pitch,
     const fp32 min_pitch
 );
+
+/* 新手势发起请求；轮询接口不会自行重启取消的校准。 */
+uint8_t GimbalCalibrationRequest(void);
+uint8_t GimbalCalibrationPending(void);
+uint8_t GimbalCalibrationOutputAllowed(void);
+uint8_t GimbalCalibrationControlReady(void);
+uint8_t GimbalCalibrationRestoreAllowed(void);
+uint8_t GimbalCalibrationRestore(uint16_t yawOffset, uint16_t pitchOffset,
+                                  fp32 maxYaw, fp32 minYaw, fp32 maxPitch, fp32 minPitch);
+void GimbalCalibrationCancel(void);
 
 extern volatile uint32_t GimbalLoopCounter;
 extern volatile int16_t GimbalWatchYawCurrent;

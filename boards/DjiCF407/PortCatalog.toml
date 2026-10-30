@@ -24,6 +24,26 @@ required_capabilities = ["rx", "crsf"]
 note = "默认使用 USART1 的 PB7 RX，接 3.3 V TTL；不复用专用 DBUS 接收口。只接收通道和链路状态，不发送遥测。"
 
 [[roles]]
+id = "tuning_aux"
+label = "调参 AUX"
+service = "HOST_LINK"
+default_baud = 230400
+baud_editable = false
+protocols = ["arbatos_aux"]
+required_capabilities = ["rx", "tx", "aux"]
+note = "复用 USART1 或 USART6 的 AuxPort/AuxTune 参数与遥测协议，需要启用 HOST_LINK。"
+
+[[roles]]
+id = "image_remote"
+label = "图传遥控"
+service = "HOST_LINK"
+default_baud = 921600
+baud_editable = false
+protocols = ["image_remote"]
+required_capabilities = ["rx", "tx", "aux"]
+note = "使用 USART1 或 USART6 的图传遥控链路，需要启用 HOST_LINK。"
+
+[[roles]]
 id = "referee"
 label = "裁判系统"
 service = "REFEREE_RX"
@@ -46,7 +66,7 @@ id = "usart1"
 node = "usart1"
 label = "USART1 / PB7 RX, PA9 TX"
 pins = ["PB7", "PA9"]
-capabilities = ["rx", "tx", "crsf", "referee"]
+capabilities = ["rx", "tx", "crsf", "referee", "aux"]
 reservations = ["console"]
 
 [[ports]]
@@ -54,7 +74,7 @@ id = "usart6"
 node = "usart6"
 label = "USART6 / PG9 RX, PG14 TX"
 pins = ["PG9", "PG14"]
-capabilities = ["rx", "tx", "crsf", "referee"]
+capabilities = ["rx", "tx", "crsf", "referee", "aux"]
 
 [[resources]]
 id = "console"

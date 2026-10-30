@@ -2,6 +2,7 @@
 #include "BspCanFaultPort.h"
 
 #include <soc.h>
+#include <stddef.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/can/can_mcan.h>
 #include <zephyr/sys/sys_io.h>
@@ -102,6 +103,125 @@ int BspCanFaultPortSend(uint8_t bus, uint16_t id, const uint8_t *data, uint8_t d
         }
     }
     sys_write32(mask, port->regs + CAN_MCAN_TXBCR);
+    return 3;
+}
+
+uint8_t BspCanFaultPortSupported(void)
+{
+    return 1u;
+}
+#elif defined(CONFIG_SOC_SERIES_STM32F4X) && defined(CONFIG_CAN_STM32_BXCAN)
+
+#define CAN_FAULT_POLL_LIMIT 60000u
+#define CAN_FAULT_BX_EMPTY (CAN_TSR_TME0 | CAN_TSR_TME1 | CAN_TSR_TME2)
+#define CAN_FAULT_BX_ABORT (CAN_TSR_ABRQ0 | CAN_TSR_ABRQ1 | CAN_TSR_ABRQ2)
+#define CAN_FAULT_BX_COMPLETE (CAN_TSR_RQCP0 | CAN_TSR_RQCP1 | CAN_TSR_RQCP2)
+#define CAN_FAULT_BX_REG(port, member) ((port) + offsetof(CAN_TypeDef, member))
+
+static const uintptr_t FaultBxPorts[] = {
+    DT_REG_ADDR(DT_ALIAS(can_primary)),
+    DT_REG_ADDR(DT_ALIAS(can_secondary)),
+};
+static uint8_t FaultBxOwned[2];
+
+static uint8_t CanFaultBxClock(uintptr_t port)
+{
+    uint32_t required;
+    if (port == CAN1_BASE) {
+        required = RCC_APB1ENR_CAN1EN;
+    } else if (port == CAN2_BASE) {
+        /* bxCAN2 的公共逻辑仍依赖 CAN1 时钟。 */
+        required = RCC_APB1ENR_CAN1EN | RCC_APB1ENR_CAN2EN;
+    } else {
+        return 0u;
+    }
+    return (uint8_t)((RCC->APB1ENR & required) == required);
+}
+
+static uint8_t CanFaultBxReady(uintptr_t port)
+{
+    return (uint8_t)(CanFaultBxClock(port) != 0u &&
+        (sys_read32(CAN_FAULT_BX_REG(port, MCR)) & (CAN_MCR_INRQ | CAN_MCR_SLEEP)) == 0u &&
+        (sys_read32(CAN_FAULT_BX_REG(port, MSR)) & (CAN_MSR_INAK | CAN_MSR_SLAK)) == 0u &&
+        (sys_read32(CAN_FAULT_BX_REG(port, ESR)) & CAN_ESR_BOFF) == 0u &&
+        (sys_read32(CAN_FAULT_BX_REG(port, BTR)) & (CAN_BTR_LBKM | CAN_BTR_SILM)) == 0u);
+}
+
+static uint8_t CanFaultBxIdle(uintptr_t port)
+{
+    if ((sys_read32(CAN_FAULT_BX_REG(port, TSR)) & CAN_FAULT_BX_EMPTY) != CAN_FAULT_BX_EMPTY) return 0u;
+    for (uint8_t slot = 0u; slot < 3u; slot++) {
+        uintptr_t mailbox = CAN_FAULT_BX_REG(port, sTxMailBox[0].TIR) + slot * sizeof(CAN_TxMailBox_TypeDef);
+        if ((sys_read32(mailbox) & CAN_TI0R_TXRQ) != 0u) return 0u;
+    }
+    return 1u;
+}
+
+void BspCanFaultPortAbort(void)
+{
+    if (__get_PRIMASK() == 0u) return;
+    for (uint32_t i = 0u; i < ARRAY_SIZE(FaultBxPorts); i++) {
+        const uintptr_t port = FaultBxPorts[i];
+        FaultBxOwned[i] = 0u;
+        if (CanFaultBxClock(port) == 0u) continue;
+        sys_write32(0u, CAN_FAULT_BX_REG(port, IER));
+        /* TSR 的完成位写1清除，禁止读改写混入旧的完成/成功状态。 */
+        sys_write32(CAN_FAULT_BX_ABORT, CAN_FAULT_BX_REG(port, TSR));
+        __DSB();
+        for (uint32_t n = 0u; n < CAN_FAULT_POLL_LIMIT; n++) {
+            if (CanFaultBxIdle(port) != 0u) {
+                FaultBxOwned[i] = 1u;
+                sys_write32(CAN_FAULT_BX_COMPLETE, CAN_FAULT_BX_REG(port, TSR));
+                break;
+            }
+        }
+    }
+    __DSB();
+}
+
+int BspCanFaultPortSend(uint8_t bus, uint16_t id, const uint8_t *data, uint8_t dlc)
+{
+    if (__get_PRIMASK() == 0u || bus == 0u || bus > ARRAY_SIZE(FaultBxPorts) ||
+        id > 0x7ffu || data == NULL || dlc > 8u) return 1;
+    const uintptr_t port = FaultBxPorts[bus - 1u];
+    if (FaultBxOwned[bus - 1u] == 0u || CanFaultBxReady(port) == 0u ||
+        CanFaultBxIdle(port) == 0u) return 1;
+
+    const uint32_t terminal = CAN_TSR_RQCP0 | CAN_TSR_TXOK0 | CAN_TSR_ALST0 | CAN_TSR_TERR0;
+    sys_write32(CAN_TSR_RQCP0, CAN_FAULT_BX_REG(port, TSR));
+    __DSB();
+    if ((sys_read32(CAN_FAULT_BX_REG(port, TSR)) & terminal) != 0u) {
+        FaultBxOwned[bus - 1u] = 0u;
+        return 1;
+    }
+    uint32_t words[2] = {0u, 0u};
+    for (uint8_t i = 0u; i < dlc; i++) {
+        words[i / 4u] |= (uint32_t)data[i] << ((i % 4u) * 8u);
+    }
+    /* 只复用已确认空闲的邮箱0，不借用驱动的锁或发送队列。 */
+    sys_write32((uint32_t)id << 21u, CAN_FAULT_BX_REG(port, sTxMailBox[0].TIR));
+    sys_write32(dlc, CAN_FAULT_BX_REG(port, sTxMailBox[0].TDTR));
+    sys_write32(words[0], CAN_FAULT_BX_REG(port, sTxMailBox[0].TDLR));
+    sys_write32(words[1], CAN_FAULT_BX_REG(port, sTxMailBox[0].TDHR));
+    __DSB();
+    sys_write32(((uint32_t)id << 21u) | CAN_TI0R_TXRQ,
+                CAN_FAULT_BX_REG(port, sTxMailBox[0].TIR));
+    __DSB();
+    for (uint32_t n = 0u; n < CAN_FAULT_POLL_LIMIT; n++) {
+        uint32_t status = sys_read32(CAN_FAULT_BX_REG(port, TSR));
+        if ((status & (CAN_TSR_RQCP0 | CAN_TSR_TME0)) == (CAN_TSR_RQCP0 | CAN_TSR_TME0) &&
+            (sys_read32(CAN_FAULT_BX_REG(port, sTxMailBox[0].TIR)) & CAN_TI0R_TXRQ) == 0u) {
+            sys_write32(CAN_TSR_RQCP0, CAN_FAULT_BX_REG(port, TSR));
+            return (status & (CAN_TSR_TXOK0 | CAN_TSR_ALST0 | CAN_TSR_TERR0)) == CAN_TSR_TXOK0 ? 0 : 1;
+        }
+    }
+    /* 无ACK或卡住时取消本次请求；失败总线不再接受下一条停机帧。 */
+    FaultBxOwned[bus - 1u] = 0u;
+    sys_write32(CAN_TSR_ABRQ0, CAN_FAULT_BX_REG(port, TSR));
+    for (uint32_t n = 0u; n < CAN_FAULT_POLL_LIMIT; n++) {
+        if ((sys_read32(CAN_FAULT_BX_REG(port, TSR)) & CAN_TSR_TME0) != 0u &&
+            (sys_read32(CAN_FAULT_BX_REG(port, sTxMailBox[0].TIR)) & CAN_TI0R_TXRQ) == 0u) break;
+    }
     return 3;
 }
 

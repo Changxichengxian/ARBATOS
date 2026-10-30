@@ -39,6 +39,14 @@ static void BMI088_diag_set_init_fail(uint8_t reg, uint8_t expect, uint8_t actua
         BMI088_ACCEL_NS_H();                    \
     }
 //#define BMI088_accel_write_muli_reg( reg,  data, len) { BMI088_ACCEL_NS_L(); BMI088_write_muli_reg(reg, data, len); BMI088_ACCEL_NS_H(); }
+#if defined(__ZEPHYR__)
+#define BMI088_accel_read_muli_reg(reg, data, len) \
+    do { \
+        BMI088_ACCEL_NS_L(); \
+        Bmi088PortReadBytes((reg) | 0x80u, (data), (len), 1u); \
+        BMI088_ACCEL_NS_H(); \
+    } while (0)
+#else
 #define BMI088_accel_read_muli_reg(reg, data, len) \
     {                                              \
         BMI088_ACCEL_NS_L();                       \
@@ -46,6 +54,7 @@ static void BMI088_diag_set_init_fail(uint8_t reg, uint8_t expect, uint8_t actua
         BMI088_read_muli_reg(reg, data, len);      \
         BMI088_ACCEL_NS_H();                       \
     }
+#endif
 
 #define BMI088_gyro_write_single_reg(reg, data) \
     {                                           \
@@ -599,6 +608,9 @@ static void BMI088_read_single_reg(uint8_t reg, uint8_t *return_data)
 
 static void BMI088_read_muli_reg(uint8_t reg, uint8_t *buf, uint8_t len)
 {
+#if defined(__ZEPHYR__)
+    Bmi088PortReadBytes(reg | 0x80u, buf, len, 0u);
+#else
     BMI088_read_write_byte(reg | 0x80);
 
     while (len != 0)
@@ -608,6 +620,7 @@ static void BMI088_read_muli_reg(uint8_t reg, uint8_t *buf, uint8_t len)
         buf++;
         len--;
     }
+#endif
 }
 #elif defined(BMI088_USE_IIC)
 

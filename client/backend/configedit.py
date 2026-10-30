@@ -94,6 +94,12 @@ ENUM_OPTIONS = {
         ("ROBOT_RUN_MODE_CALIBRATION", "校准"),
         ("ROBOT_RUN_MODE_ENTERTAIN", "娱乐演示"),
     ],
+    "cali_target": [
+        ("ROBOT_CALI_TARGET_NONE", "无"),
+        ("ROBOT_CALI_TARGET_PITCH", "俯仰补偿"),
+        ("ROBOT_CALI_TARGET_IMU_GYRO", "陀螺仪"),
+        ("ROBOT_CALI_TARGET_GIMBAL", "云台限位与零点"),
+    ],
 }
 
 GROUP_LABELS = {
@@ -393,6 +399,7 @@ def _enum_options(path: str):
     elif name == "limitMode" and path == "tuning.power.limitMode": key = "limitMode"
     elif name.endswith("Pos") or name.endswith("_pos"): key = "switch_pos"
     elif name == "mode" and path.startswith("operation."): key = "run_mode"
+    elif path == "operation.operation.cali_target": key = "cali_target"
     else: return None
     return [{"value": value, "label": label} for value, label in ENUM_OPTIONS[key]]
 

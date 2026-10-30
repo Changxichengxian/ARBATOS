@@ -627,6 +627,19 @@ static void ArbUartIrqCallback(const struct device *dev, void *user_data)
     }
 }
 
+static uint32_t ArbUartGetBaudrate(ArbUartPort *port)
+{
+    struct uart_config config;
+
+    /* AuxPort 先按速率选择协议，再启动接收；首次查询不能依赖接收初始化。 */
+    if (port->baudrate == 0u && port->dev != NULL && device_is_ready(port->dev) &&
+        uart_config_get(port->dev, &config) == 0)
+    {
+        port->baudrate = config.baudrate;
+    }
+    return port->baudrate;
+}
+
 static int ArbUartSetBaudrate(ArbUartPort *port, uint32_t baudrate)
 {
     struct uart_config config;
@@ -905,7 +918,7 @@ void BspAuxLinkSetErrorCb(BspAuxLinkErrorCb cb)
 {
     k_spinlock_key_t key = k_spin_lock(&ArbAuxPort.lock); ArbAuxPort.aux_error_cb = cb; k_spin_unlock(&ArbAuxPort.lock, key);
 }
-uint32_t BspAuxLinkGetBaudrate(void) { return ArbAuxPort.baudrate; }
+uint32_t BspAuxLinkGetBaudrate(void) { return ArbUartGetBaudrate(&ArbAuxPort); }
 int BspAuxLinkSetBaudrate(uint32_t baudrate) { return ArbUartSetBaudrate(&ArbAuxPort, baudrate); }
 int BspAuxLinkTxDma(const uint8_t *data, uint16_t len) { return ArbUartTxStart(&ArbAuxPort, data, len, ARB_UART_TX_MAX_LEN); }
 uint8_t BspAuxLinkTxReady(void) { return (ArbAuxPort.tx_busy == 0u) ? 1u : 0u; }
@@ -959,7 +972,7 @@ void BspElrsLinkSetErrorCb(BspAuxLinkErrorCb cb)
     ArbElrsPort.aux_error_cb = cb;
     k_spin_unlock(&ArbElrsPort.lock, key);
 }
-uint32_t BspElrsLinkGetBaudrate(void) { return ArbElrsPort.baudrate; }
+uint32_t BspElrsLinkGetBaudrate(void) { return ArbUartGetBaudrate(&ArbElrsPort); }
 uint8_t BspElrsLinkRxHasDma(void)
 {
     return (ArbUartPrepare(&ArbElrsPort) == 0 && ArbElrsPort.async_ok != 0u) ? 1u : 0u;
@@ -1020,7 +1033,7 @@ void BspExternalImuLinkSetErrorCb(BspAuxLinkErrorCb cb)
     ArbExternalImuPort.aux_error_cb = cb;
     k_spin_unlock(&ArbExternalImuPort.lock, key);
 }
-uint32_t BspExternalImuLinkGetBaudrate(void) { return ArbExternalImuPort.baudrate; }
+uint32_t BspExternalImuLinkGetBaudrate(void) { return ArbUartGetBaudrate(&ArbExternalImuPort); }
 uint8_t BspExternalImuLinkRxHasDma(void)
 {
     return (ArbUartPrepare(&ArbExternalImuPort) == 0 && ArbExternalImuPort.async_ok != 0u) ? 1u : 0u;

@@ -7,7 +7,7 @@
 typedef struct
 {
     uint8_t enabled;
-    uint8_t port;         // P11 从 0 开始的物理 PWM 口
+    uint8_t port;         // 板级 servo-pwms 从 0 开始的物理 PWM 口
     uint8_t inputMode;    // 0=键盘步进，1=统一手动输入逻辑轴
     uint8_t inputChannel; // 统一输入轴 0..4，ELRS 通道先由输入映射转换
     uint8_t invert;

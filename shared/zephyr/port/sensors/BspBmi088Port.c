@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "BspBmi088Port.h"
 #include "SensorsDt.h"
+#include <errno.h>
+#include <string.h>
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
@@ -22,6 +24,32 @@ static const struct spi_config Bmi088SpiCfg = {
 };
 static volatile uint32_t Bmi088PortErrors;
 
+#if DT_NODE_HAS_PROP(ARBATOS_SENSORS_NODE, bmi088_gyro_drdy_gpios)
+static const struct gpio_dt_spec Bmi088Ready = GPIO_DT_SPEC_GET(ARBATOS_SENSORS_NODE, bmi088_gyro_drdy_gpios);
+static struct gpio_callback Bmi088ReadyCallback;
+static uint8_t Bmi088ReadyConfigured;
+K_SEM_DEFINE(Bmi088ReadySem, 0, 1);
+
+static void Bmi088OnReady(const struct device *port, struct gpio_callback *cb, gpio_port_pins_t pins)
+{
+    ARG_UNUSED(port);
+    ARG_UNUSED(cb);
+    ARG_UNUSED(pins);
+    k_sem_give(&Bmi088ReadySem);
+}
+#endif
+
+int Bmi088PortWaitSample(uint32_t timeoutMs)
+{
+#if DT_NODE_HAS_PROP(ARBATOS_SENSORS_NODE, bmi088_gyro_drdy_gpios)
+    if (!Bmi088ReadyConfigured) return -ENODEV;
+    return k_sem_take(&Bmi088ReadySem, K_MSEC(timeoutMs));
+#else
+    ARG_UNUSED(timeoutMs);
+    return -ENOTSUP;
+#endif
+}
+
 uint32_t Bmi088PortErrorCount(void) { return Bmi088PortErrors; }
 
 void BMI088_GPIO_init(void)
@@ -31,6 +59,19 @@ void BMI088_GPIO_init(void)
     }
     (void)gpio_pin_configure_dt(&Bmi088AccelCs, GPIO_OUTPUT_INACTIVE);
     (void)gpio_pin_configure_dt(&Bmi088GyroCs, GPIO_OUTPUT_INACTIVE);
+#if DT_NODE_HAS_PROP(ARBATOS_SENSORS_NODE, bmi088_gyro_drdy_gpios)
+    if (!Bmi088ReadyConfigured && gpio_is_ready_dt(&Bmi088Ready) &&
+        gpio_pin_configure_dt(&Bmi088Ready, GPIO_INPUT) == 0) {
+        gpio_init_callback(&Bmi088ReadyCallback, Bmi088OnReady, BIT(Bmi088Ready.pin));
+        if (gpio_add_callback(Bmi088Ready.port, &Bmi088ReadyCallback) == 0) {
+            if (gpio_pin_interrupt_configure_dt(&Bmi088Ready, GPIO_INT_EDGE_TO_ACTIVE) == 0) {
+                Bmi088ReadyConfigured = 1u;
+            } else {
+                (void)gpio_remove_callback(Bmi088Ready.port, &Bmi088ReadyCallback);
+            }
+        }
+    }
+#endif
 }
 
 void BMI088_com_init(void) { BMI088_GPIO_init(); }
@@ -54,4 +95,25 @@ uint8_t BMI088_read_write_byte(uint8_t txdata)
         return 0;
     }
     return rxdata;
+}
+
+void Bmi088PortReadBytes(uint8_t command, uint8_t *data, uint8_t len, uint8_t dummy)
+{
+    uint8_t txBytes[18] = {0}, rxBytes[18] = {0};
+    if (data == NULL || len == 0u || len > 16u || dummy > 1u) {
+        Bmi088PortErrors++;
+        return;
+    }
+    /* 一次事务传完整寄存器块，避免逐字节进入Zephyr SPI驱动。片选仍由调用方保持。 */
+    txBytes[0] = command;
+    struct spi_buf tx = {.buf = txBytes, .len = len + 1u + dummy};
+    struct spi_buf rx = {.buf = rxBytes, .len = len + 1u + dummy};
+    const struct spi_buf_set txSet = {.buffers = &tx, .count = 1};
+    const struct spi_buf_set rxSet = {.buffers = &rx, .count = 1};
+    if (spi_transceive(Bmi088Spi, &Bmi088SpiCfg, &txSet, &rxSet) != 0) {
+        Bmi088PortErrors++;
+        memset(data, 0, len);
+        return;
+    }
+    memcpy(data, rxBytes + 1u + dummy, len);
 }

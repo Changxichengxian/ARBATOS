@@ -635,6 +635,13 @@ void GimbalSnapshotCapture(GimbalTaskContext *ctx,
                                  0u;
         fast.run_variant = snapshot->run_variant;
         fast.PitchCaliMode = snapshot->PitchCaliMode;
+        fast.GimbalCaliMode = (uint8_t)(robot_mode_gimbal_cali() != 0u &&
+            snapshot->run_variant == ROBOT_RUN_VARIANT_NORMAL &&
+            RobotProfileNeedSingleGimbalControlTask() != 0u &&
+            RobotProfileNeedDualGimbalControlTask() == 0u &&
+            snapshot->imu_online != 0u && snapshot->yaw_health.healthy != 0u &&
+            snapshot->pitch_health.healthy != 0u && snapshot->feedback_transition_pending == 0u &&
+            snapshot->feedback_mode == (uint8_t)GIMBAL_FEEDBACK_IMU_NORMAL);
         fast.safe_pos = (snapshot->manual_input != NULL) ?
                             snapshot->manual_input->semantics.GimbalSafePos :
                             MANUAL_INPUT_SWITCH_POS_UP;
@@ -674,6 +681,17 @@ void GimbalApplyOperationMode(GimbalTaskContext *ctx,
 {
     const robot_run_variant_e variant = (snapshot != NULL) ? snapshot->run_variant : robot_mode_variant();
     const uint8_t PitchCaliMode = (snapshot != NULL) ? snapshot->PitchCaliMode : robot_mode_gimbal_pitch_cali();
+
+    if ((robot_mode_current() == ROBOT_RUN_MODE_CALIBRATION && robot_mode_gimbal_pitch_cali() == 0u) ||
+        (snapshot != NULL && snapshot->run_mode == ROBOT_RUN_MODE_CALIBRATION && snapshot->PitchCaliMode == 0u))
+    {
+        if (GimbalBehaviourWatch != GIMBAL_CALI || GimbalCalibrationOutputAllowed() == 0u)
+        {
+            *yaw_current = 0;
+            *pitch_current = 0;
+        }
+        return;
+    }
 
     if (GimbalBehaviourWatch == GIMBAL_ZERO_FORCE)
     {

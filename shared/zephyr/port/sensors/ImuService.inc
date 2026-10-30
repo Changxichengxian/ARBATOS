@@ -14,6 +14,7 @@ static ImuCommand ImuPendingCommand;
 static uint32_t ImuPendingId;
 static uint32_t ImuRequestId, ImuStartedMs, ImuWritingMs;
 static uint8_t ImuState, ImuOutputHeld;
+static uint8_t ImuModeSelected, ImuModePending, ImuModeOwned;
 static int ImuError;
 static GyroZeroCaliSampleState ImuSamples;
 static GyroZeroCaliTempState ImuStable;
@@ -86,6 +87,21 @@ static void ImuServiceFail(int error)
     ImuState = 5u;
 }
 
+static void ImuServiceModeUpdate(uint8_t selected)
+{
+    selected = selected != 0u;
+    if (selected && !ImuModeSelected) ImuModePending = 1u;
+    if (!selected && ImuModeSelected) {
+        ImuModePending = 0u;
+        if (ImuModeOwned && ImuState >= 1u && ImuState <= 3u) {
+            ImuState = 6u;
+            ImuError = 0;
+        }
+        ImuModeOwned = 0u;
+    }
+    ImuModeSelected = selected;
+}
+
 static void ImuServiceUpdate(const fp32 raw[3], const fp32 accel[3], uint32_t now, uint8_t healthy)
 {
     uint32_t id;
@@ -94,13 +110,22 @@ static void ImuServiceUpdate(const fp32 raw[3], const fp32 accel[3], uint32_t no
     id = ImuPendingId;
     ImuPendingCommand = ImuCmdNone;
     k_spin_unlock(&ImuCommandLock, key);
-    if (command != ImuCmdNone && id != ImuRequestId) {
+    uint8_t modeStart = ImuModePending;
+    ImuModePending = 0u;
+    if (command == ImuCmdNone && modeStart && !(ImuState >= 1u && ImuState <= 3u)) {
+        command = ImuCmdCalibrate;
+    } else {
+        modeStart = 0u;
+    }
+    if (command != ImuCmdNone && (modeStart || id != ImuRequestId)) {
         if (command == ImuCmdCancel) {
             ImuRequestId = id;
+            ImuModeOwned = 0u;
             ImuState = 6u;
             ImuError = 0;
         } else if (command == ImuCmdCalibrate && !(ImuState >= 1u && ImuState <= 3u)) {
-            ImuRequestId = id;
+            if (!modeStart) ImuRequestId = id;
+            ImuModeOwned = modeStart;
             ImuError = 0;
             if (!healthy || !ImuServiceStartAllowed()) {
                 ImuServiceFail(-EPERM);
@@ -132,6 +157,7 @@ static void ImuServiceUpdate(const fp32 raw[3], const fp32 accel[3], uint32_t no
         if (result != 0) ImuServiceFail(result);
         else {
             ImuApplyGyroOffset(offset);
+            ImuCalibrationSampleDone(&ImuSamples, NULL);
             InsGyroCaliState.boot_adjust_finished = 1u;
             InsGyroCaliState.calibrated = 1u;
             InsGyroCaliState.calibrating = 0u;

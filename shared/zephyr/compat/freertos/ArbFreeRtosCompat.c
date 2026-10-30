@@ -797,11 +797,12 @@ BaseType_t xTaskNotifyWait(uint32_t clear_on_entry,
         pending = (uint32_t)atomic_get(&slot->notify_bits);
     }
 
+    /* 读取与清除必须是同一次原子操作，避免清掉读取后到达的通知。 */
+    pending = (uint32_t)atomic_and(&slot->notify_bits, (atomic_val_t)~clear_on_exit);
     if (value != NULL)
     {
         *value = pending;
     }
-    atomic_and(&slot->notify_bits, (atomic_val_t)~clear_on_exit);
     if (atomic_get(&slot->notify_bits) != 0)
     {
         k_sem_give(&slot->bits_notify);

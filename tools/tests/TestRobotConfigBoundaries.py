@@ -72,15 +72,61 @@ class RobotConfigBoundariesTest(unittest.TestCase):
         self.assertFalse(target["features"]["watch_full"])
         with_sdlog = GEN.resolve(REPO, "BASE-C", text.replace('"REFEREE_RX"]', '"REFEREE_RX", "SDLOG"]'))
         self.assertEqual(next(row["stack_words"] for row in with_sdlog["tasks"] if row["symbol"] == "SDLOG"), 2048)
-        for unsupported in ("SERVO", "BATTERY_MONITOR"):
+        for unsupported in ("ARM",):
+            addition = ('\n[controllers.arm]\ntype = "standard"\n' if unsupported == "ARM" else "")
             with self.subTest(task=unsupported), self.assertRaisesRegex(GEN.ConfigError, "未迁移模块"):
-                GEN.resolve(REPO, "BASE-C", text.replace('"REFEREE_RX"]', f'"REFEREE_RX", "{unsupported}"]'))
+                GEN.resolve(REPO, "BASE-C", text + addition if addition else
+                            text.replace('"REFEREE_RX"]', f'"REFEREE_RX", "{unsupported}"]'))
+
+    def test_c_board_recovered_services_do_not_require_sdlog_task(self):
+        text = (REPO / "Robotconfig/BASE-C/RobotConfig.toml").read_text(encoding="utf-8")
+        names = ("CALIBRATION", "STATUS_LED", "BATTERY_MONITOR", "STARTUP_SERVICE", "SERVO")
+        text = text.replace('"REFEREE_RX"]', '"REFEREE_RX", ' +
+                            ", ".join(f'"{name}"' for name in names) + "]")
+        target = GEN.resolve(REPO, "BASE-C", text)
+        tasks = {row["symbol"] for row in target["tasks"]}
+        self.assertTrue(set(names).issubset(tasks))
+        self.assertNotIn("SDLOG", tasks)
+        a_text = (REPO / "Robotconfig/INFANTRY-TIAN-A/RobotConfig.toml").read_text(encoding="utf-8")
+        for name in names:
+            with self.subTest(task=name), self.assertRaisesRegex(GEN.ConfigError, "未迁移模块"):
+                GEN.resolve(REPO, "INFANTRY-TIAN-A", a_text.replace(
+                    'services = [', f'services = ["{name}", ', 1))
 
     def test_c_board_rejects_receiver_and_referee_sharing_uart(self):
         text = (REPO / "Robotconfig/BASE-C/RobotConfig.toml").read_text(encoding="utf-8")
         text = text.replace('"RC_SBUS"', '"ELRS_LINK"').replace('rc_sbus = "usart3"', 'elrs_crsf = "usart6"')
         with self.assertRaisesRegex(GEN.ConfigError, "占用|冲突"):
             GEN.resolve(REPO, "BASE-C", text)
+
+    def test_c_board_tuning_aux_uses_real_host_link(self):
+        text = (REPO / "Robotconfig/BASE-C/RobotConfig.toml").read_text(encoding="utf-8")
+        text = text.replace('"REFEREE_RX"]', '"REFEREE_RX", "HOST_LINK"]')
+        text += '\ntuning_aux = "usart1"\n'
+        target = GEN.resolve(REPO, "BASE-C", text)
+        self.assertIn("HOST_LINK", {row["symbol"] for row in target["tasks"]})
+        self.assertIn("shared/application/comm/host/HostLinkTask.c", target["sources"])
+        self.assertNotIn("shared/application/comm/host/HostLinkTaskStub.c", target["sources"])
+
+    def test_c_board_image_remote_selects_aux_at_921600(self):
+        text = (REPO / "Robotconfig/BASE-C/RobotConfig.toml").read_text(encoding="utf-8")
+        text = text.replace('"REFEREE_RX"]', '"REFEREE_RX", "HOST_LINK"]')
+        text += '\nimage_remote = "usart1"\n'
+        target = GEN.resolve(REPO, "BASE-C", text)
+        self.assertEqual(target["ports"]["assignments"]["image_remote"]["baud"], 921600)
+        self.assertIn("shared/application/input/ImageRemoteLink.c", target["sources"])
+        self.assertNotIn("shared/application/comm/host/HostLinkTaskStub.c", target["sources"])
+        with tempfile.TemporaryDirectory() as directory:
+            GEN.generate(REPO, target, Path(directory))
+            header = (Path(directory) / "RobotTargetConfig.h").read_text(encoding="utf-8")
+            self.assertIn("#define ARB_UART_AUX_NODE DT_NODELABEL(usart1)", header)
+            self.assertIn("#define ARB_UART_AUX_BAUD 921600u", header)
+            self.assertNotIn("ARB_UART_AUX_DISABLED", header)
+        with self.assertRaisesRegex(GEN.ConfigError, "不能同时启用"):
+            GEN.resolve(REPO, "BASE-C", text.replace('"REFEREE_RX", ', "") +
+                        'tuning_aux = "usart6"\n')
+        with self.assertRaisesRegex(GEN.ConfigError, "必须启用 HOST_LINK"):
+            GEN.resolve(REPO, "BASE-C", text.replace(', "HOST_LINK"', ""))
 
     def test_source_policy_preserves_zephyr_adapters_and_blocks_old_platform(self):
         for source in ("shared/hal/BspCan.c", "boards/DmMc02H7/bsp/BspBoard.c",

@@ -40,5 +40,13 @@
 	usb_otg_fs_dm_pa11: usb_otg_fs_dm_pa11 { pinmux = <STM32_PINMUX('A', 11, AF10)>; };
 	usb_otg_fs_dp_pa12: usb_otg_fs_dp_pa12 { pinmux = <STM32_PINMUX('A', 12, AF10)>; };
 	tim4_ch3_pd14: tim4_ch3_pd14 { pinmux = <STM32_PINMUX('D', 14, AF2)>; };
+	tim5_ch1_ph10: tim5_ch1_ph10 { pinmux = <STM32_PINMUX('H', 10, AF2)>; };
+	tim5_ch2_ph11: tim5_ch2_ph11 { pinmux = <STM32_PINMUX('H', 11, AF2)>; };
+	tim5_ch3_ph12: tim5_ch3_ph12 { pinmux = <STM32_PINMUX('H', 12, AF2)>; };
+	adc3_in8_pf10: adc3_in8_pf10 { pinmux = <STM32_PINMUX('F', 10, ANALOG)>; };
 	tim10_ch1_pf6: tim10_ch1_pf6 { pinmux = <STM32_PINMUX('F', 6, AF3)>; };
+	tim8_ch2_pi6: tim8_ch2_pi6 { pinmux = <STM32_PINMUX('I', 6, AF3)>; };
+	tim8_ch1_pc6: tim8_ch1_pc6 { pinmux = <STM32_PINMUX('C', 6, AF3)>; };
+	tim1_ch4_pe14: tim1_ch4_pe14 { pinmux = <STM32_PINMUX('E', 14, AF1)>; };
+	tim1_ch3_pe13: tim1_ch3_pe13 { pinmux = <STM32_PINMUX('E', 13, AF1)>; };
 };

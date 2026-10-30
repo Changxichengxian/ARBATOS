@@ -39,6 +39,18 @@ class ConfigEditTest(unittest.TestCase):
             self.assertEqual(fields["tuning.chassis.spinSinePeriodMs"]["value"], period_ms)
             self.assertEqual(fields["tuning.chassis.spinSineMinScale"]["value"], min_scale)
 
+    def test_gimbal_calibration_target_roundtrip(self):
+        detail = self.get("BASE-C")
+        field = self.fields(detail)["operation.operation.cali_target"]
+        self.assertEqual(field["type"], "enum")
+        self.assertIn("ROBOT_CALI_TARGET_GIMBAL", [item["value"] for item in field["options"]])
+        saved = self.workspace.dispatch("config.update", {
+            "target": "BASE-C", "revision": detail["revision"],
+            "changes": {"operation.operation.cali_target": "ROBOT_CALI_TARGET_GIMBAL"},
+        })
+        self.assertEqual(self.fields(saved)["operation.operation.cali_target"]["value"],
+                         "ROBOT_CALI_TARGET_GIMBAL")
+
     def test_power_modes_roundtrip_preserves_motor_tuning(self):
         detail = self.get()
         field = self.fields(detail)["tuning.power.limitMode"]

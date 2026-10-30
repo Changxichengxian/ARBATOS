@@ -29,6 +29,8 @@
 #include "PitchCali.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "RobotMode.h"
+#include "BspTime.h"
 
 #include "UserLib.h"
 
@@ -85,7 +87,7 @@
   */
 #define GimbalCaliGyroJudge(gyro, cmd_time, angle_set, angle, ecd_set, ecd, step) \
     {                                                                                \
-        if ((gyro) < GIMBAL_CALI_GYRO_LIMIT)                                         \
+        if (fabsf(gyro) < GIMBAL_CALI_GYRO_LIMIT)                                    \
         {                                                                            \
             (cmd_time)++;                                                            \
             if ((cmd_time) > GIMBAL_CALI_STEP_TIME)                                  \
@@ -95,6 +97,10 @@
                 (ecd_set) = (ecd);                                                   \
                 (step)++;                                                            \
             }                                                                        \
+        }                                                                            \
+        else                                                                         \
+        {                                                                            \
+            (cmd_time) = 0;                                                           \
         }                                                                            \
     }
 
@@ -476,6 +482,29 @@ static void GimbalBehavourSet(GimbalControl *GimbalModeSet)
     const bool_t yaw_easy_test_mode = fast->run_variant == ROBOT_RUN_VARIANT_GIMBAL_YAW_EASY;
     const bool_t PitchCaliMode = fast->PitchCaliMode != 0u;
 
+    /* 校准模式只执行本次显式手势请求，不借机进入回中或普通角度控制。 */
+    if (robot_mode_current() == ROBOT_RUN_MODE_CALIBRATION && robot_mode_gimbal_pitch_cali() == 0u)
+    {
+        if (fast->GimbalCaliMode == 0u || manual_offline || switch_safe ||
+            fast->control_allowed == 0u || GimbalCalibrationPending() == 0u)
+        {
+            GimbalCalibrationCancel();
+            s_gimbal_behaviour = GIMBAL_ZERO_FORCE;
+        }
+        else
+        {
+            s_gimbal_behaviour = (GimbalModeSet->GimbalCali.step != 0u &&
+                GimbalModeSet->GimbalCali.step != GIMBAL_CALI_END_STEP) ? GIMBAL_CALI : GIMBAL_ZERO_FORCE;
+        }
+        return;
+    }
+    if (GimbalModeSet->GimbalCali.step != 0u || s_gimbal_behaviour == GIMBAL_CALI)
+    {
+        GimbalCalibrationCancel();
+        s_gimbal_behaviour = GIMBAL_ZERO_FORCE;
+        return;
+    }
+
     // 安全模式最高优先级：遥控上档或离线直接降为零力矩
     if (manual_offline || switch_safe)
     {
@@ -499,18 +528,9 @@ static void GimbalBehavourSet(GimbalControl *GimbalModeSet)
     }
     //in cali mode, return
     //校准行为，return 不会设置其他的模式
-    if (s_gimbal_behaviour == GIMBAL_CALI && GimbalModeSet->GimbalCali.step != GIMBAL_CALI_END_STEP)
-    {
-        return;
-    }
 
     //if other operate make step change to start, means enter cali mode
     //如果外部使得校准步骤从0 变成 start，则进入校准模式
-    if (GimbalModeSet->GimbalCali.step == GIMBAL_CALI_START_STEP && !manual_offline)
-    {
-        s_gimbal_behaviour = GIMBAL_CALI;
-        return;
-    }
 
     //init mode, judge if gimbal is in middle place
     //初始化模式判断是否到达中值位置
@@ -672,7 +692,16 @@ static void GimbalCaliControl(fp32 *yaw, fp32 *pitch, GimbalControl *GimbalContr
     {
         return;
     }
-    static uint16_t cali_time = 0;
+    uint16_t *cali_time = &GimbalControlSet->GimbalCali.stableTicks;
+    *yaw = 0.0f;
+    *pitch = 0.0f;
+    /* 限位未到达或反馈异常不能无限顶住机械挡块；取消后需重新做手势。 */
+    if (GimbalCalibrationPending() == 0u ||
+        (uint32_t)(BspTimeGetTickMs() - GimbalControlSet->GimbalCali.startedMs) > 60000u)
+    {
+        GimbalCalibrationCancel();
+        return;
+    }
 
     if (GimbalControlSet->GimbalCali.step == GIMBAL_CALI_PITCH_MAX_STEP)
     {
@@ -681,7 +710,7 @@ static void GimbalCaliControl(fp32 *yaw, fp32 *pitch, GimbalControl *GimbalContr
         *yaw = 0;
 
         //判断陀螺仪数据， 并记录最大最小角度数据
-        GimbalCaliGyroJudge(GimbalControlSet->GimbalPitchMotor.motor_gyro, cali_time, GimbalControlSet->GimbalCali.max_pitch,
+        GimbalCaliGyroJudge(GimbalControlSet->GimbalPitchMotor.motor_gyro, *cali_time, GimbalControlSet->GimbalCali.max_pitch,
                                GimbalControlSet->GimbalPitchMotor.angle, GimbalControlSet->GimbalCali.max_pitch_ecd,
                                GimbalControlSet->GimbalPitchMotor.GimbalMotorMeasure->ecd, GimbalControlSet->GimbalCali.step);
     }
@@ -690,7 +719,7 @@ static void GimbalCaliControl(fp32 *yaw, fp32 *pitch, GimbalControl *GimbalContr
         *pitch = -GIMBAL_CALI_MOTOR_SET;
         *yaw = 0;
 
-        GimbalCaliGyroJudge(GimbalControlSet->GimbalPitchMotor.motor_gyro, cali_time, GimbalControlSet->GimbalCali.min_pitch,
+        GimbalCaliGyroJudge(GimbalControlSet->GimbalPitchMotor.motor_gyro, *cali_time, GimbalControlSet->GimbalCali.min_pitch,
                                GimbalControlSet->GimbalPitchMotor.angle, GimbalControlSet->GimbalCali.min_pitch_ecd,
                                GimbalControlSet->GimbalPitchMotor.GimbalMotorMeasure->ecd, GimbalControlSet->GimbalCali.step);
     }
@@ -699,7 +728,7 @@ static void GimbalCaliControl(fp32 *yaw, fp32 *pitch, GimbalControl *GimbalContr
         *pitch = 0;
         *yaw = GIMBAL_CALI_MOTOR_SET;
 
-        GimbalCaliGyroJudge(GimbalControlSet->GimbalYawMotor.motor_gyro, cali_time, GimbalControlSet->GimbalCali.max_yaw,
+        GimbalCaliGyroJudge(GimbalControlSet->GimbalYawMotor.motor_gyro, *cali_time, GimbalControlSet->GimbalCali.max_yaw,
                                GimbalControlSet->GimbalYawMotor.angle, GimbalControlSet->GimbalCali.max_yaw_ecd,
                                GimbalControlSet->GimbalYawMotor.GimbalMotorMeasure->ecd, GimbalControlSet->GimbalCali.step);
     }
@@ -709,13 +738,13 @@ static void GimbalCaliControl(fp32 *yaw, fp32 *pitch, GimbalControl *GimbalContr
         *pitch = 0;
         *yaw = -GIMBAL_CALI_MOTOR_SET;
 
-        GimbalCaliGyroJudge(GimbalControlSet->GimbalYawMotor.motor_gyro, cali_time, GimbalControlSet->GimbalCali.min_yaw,
+        GimbalCaliGyroJudge(GimbalControlSet->GimbalYawMotor.motor_gyro, *cali_time, GimbalControlSet->GimbalCali.min_yaw,
                                GimbalControlSet->GimbalYawMotor.angle, GimbalControlSet->GimbalCali.min_yaw_ecd,
                                GimbalControlSet->GimbalYawMotor.GimbalMotorMeasure->ecd, GimbalControlSet->GimbalCali.step);
     }
     else if (GimbalControlSet->GimbalCali.step == GIMBAL_CALI_END_STEP)
     {
-        cali_time = 0;
+        *cali_time = 0;
     }
 }
 

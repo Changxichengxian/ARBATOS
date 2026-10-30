@@ -20,6 +20,15 @@
 #include "InsTask.h"
 #include "GimbalControlTask.h"
 #include "RobotTaskProfile.h"
+#include "RobotTaskBuildConfig.h"
+#ifdef __ZEPHYR__
+#include "RobotMode.h"
+#include "SdCard.h"
+#include "ff.h"
+#include <zephyr/sys/atomic.h>
+#include <math.h>
+#include <stddef.h>
+#endif
 
 
 //include head,gimbal,gyro,accel,mag. gyro,accel and mag have the same data struct. total 5(CALI_LIST_LENGTH) devices, need data length + 5 * 4 bytes(name[3]+cali)
@@ -62,7 +71,7 @@ static void cali_data_read(void);
   * @param[in]      none
   * @retval         none
   */
-static void cali_data_write(void);
+static bool_t cali_data_write(void);
 
 
 /**
@@ -170,6 +179,57 @@ static imu_cali_t      mag_cali;        //mag cali data
 
 static uint8_t flash_write_buf[FLASH_WRITE_BUF_LENGTH];
 
+#ifdef __ZEPHYR__
+typedef struct
+{
+    uint32_t magic;
+    uint32_t version;
+    uint32_t sequence;
+    uint8_t payload[FLASH_WRITE_BUF_LENGTH];
+    uint32_t checksum;
+} CaliFileRecord;
+
+static uint32_t CaliSequence;
+static atomic_t CaliReady;
+static atomic_t CaliSaveOk;
+static uint8_t CaliReadOk;
+
+static uint32_t CaliChecksum(const void *data, uint32_t len)
+{
+    const uint8_t *bytes = data;
+    uint32_t crc = 0xffffffffu;
+    for (uint32_t i = 0; i < len; i++)
+    {
+        crc ^= bytes[i];
+        for (uint8_t bit = 0; bit < 8u; bit++)
+            crc = (crc >> 1) ^ (0xedb88320u & (0u - (crc & 1u)));
+    }
+    return ~crc;
+}
+
+static const char *CaliPath(uint32_t slot)
+{
+    return slot == 0u ? "0:/cali0.bin" : "0:/cali1.bin";
+}
+
+static int8_t CaliFileRead(uint32_t slot, CaliFileRecord *record)
+{
+    FIL file;
+    UINT count = 0u;
+    FRESULT open_result = f_open(&file, CaliPath(slot), FA_READ);
+    if (open_result == FR_NO_FILE) return 0;
+    if (open_result != FR_OK) return -1;
+    FRESULT result = f_read(&file, record, sizeof(*record), &count);
+    FRESULT close_result = f_close(&file);
+    return (result == FR_OK && close_result == FR_OK && count == sizeof(*record) &&
+            record->magic == 0x43414c49u && record->version == 1u &&
+            record->checksum == CaliChecksum(record, offsetof(CaliFileRecord, checksum))) ? 1 : -1;
+}
+
+uint8_t CalibrateReady(void) { return (uint8_t)atomic_get(&CaliReady); }
+uint8_t CalibrateLastSaveOk(void) { return (uint8_t)atomic_get(&CaliSaveOk); }
+#endif
+
 cali_sensor_t cali_sensor[CALI_LIST_LENGTH];
 
 static const uint8_t cali_name[CALI_LIST_LENGTH][3] = {
@@ -198,8 +258,16 @@ static uint8_t manual_cali_buzzer_enable = 0u;
 
 static uint8_t cali_gimbal_profile_enabled(void)
 {
+#ifdef __ZEPHYR__
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL
+    return RobotProfileNeedSingleGimbalControlTask();
+#else
+    return 0u;
+#endif
+#else
     return (uint8_t)(RobotProfileNeedSingleGimbalControlTask() ||
                      RobotProfileNeedDualGimbalControlTask());
+#endif
 }
 
 
@@ -217,9 +285,46 @@ void CalibrateTask(void const *pvParameters)
 {
     static uint8_t i = 0;
 
+#ifdef __ZEPHYR__
+    while (SdcardIsMounted() == 0 && SdcardMount() != 0)
+    {
+        osDelay(1000u);
+    }
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL
+    while (RobotProfileNeedSingleGimbalControlTask() && !GimbalCalibrationControlReady())
+    {
+        osDelay(10u);
+    }
+    while (RobotProfileNeedSingleGimbalControlTask() && !GimbalCalibrationRestoreAllowed())
+    {
+        osDelay(10u);
+    }
+#endif
+    do
+    {
+        cali_param_init();
+        if (!CaliReadOk) osDelay(1000u);
+    } while (!CaliReadOk);
+    atomic_set(&CaliReady, 1);
+#endif
 
     while (1)
     {
+#if defined(__ZEPHYR__) && ROBOT_TASK_BUILD_SINGLE_GIMBAL
+        ManualInputSnapshot input;
+        if (!robot_mode_is_calibration(ROBOT_CALI_TARGET_GIMBAL) ||
+            !ManualInputSnapshotRead(&input) || !input.online ||
+            (cali_sensor[CALI_GIMBAL].cali_cmd != 0u && !GimbalCalibrationPending()))
+        {
+            if (cali_sensor[CALI_GIMBAL].cali_cmd != 0u)
+            {
+                cali_sensor[CALI_GIMBAL].cali_cmd = 0u;
+                GimbalCalibrationCancel();
+                cali_buzzer_off();
+                manual_cali_buzzer_enable = 0u;
+            }
+        }
+#endif
         RC_cmd_to_calibrate();
 
         for (i = 0; i < CALI_LIST_LENGTH; i++)
@@ -240,7 +345,11 @@ void CalibrateTask(void const *pvParameters)
 
                         cali_sensor[i].cali_cmd = 0;
                         //write
-                        cali_data_write();
+#ifdef __ZEPHYR__
+                        atomic_set(&CaliSaveOk, cali_data_write());
+#else
+                        (void)cali_data_write();
+#endif
                     }
                 }
             }
@@ -340,7 +449,11 @@ static void RC_cmd_to_calibrate(void)
     }
 
     /* 离线帧不能延续上一段长按计时，也不能在恢复时补触发校准。 */
-    if (inputValid == 0u || manualInput.online == 0u)
+    if (inputValid == 0u || manualInput.online == 0u
+#ifdef __ZEPHYR__
+        || !robot_mode_is_calibration(ROBOT_CALI_TARGET_GIMBAL)
+#endif
+        )
     {
         BuzzerTime = 0u;
         rc_cmd_time = 0u;
@@ -383,7 +496,15 @@ static void RC_cmd_to_calibrate(void)
         //gimbal cali,
         rc_action_flag = 0;
         rc_cmd_time = 0;
-        if (cali_gimbal_profile_enabled() != 0u)
+        if (cali_gimbal_profile_enabled() != 0u
+#ifdef __ZEPHYR__
+#if ROBOT_TASK_BUILD_SINGLE_GIMBAL
+            && robot_mode_is_calibration(ROBOT_CALI_TARGET_GIMBAL) && GimbalCalibrationRequest()
+#else
+            && 0u
+#endif
+#endif
+            )
         {
             cali_sensor[CALI_GIMBAL].cali_cmd = 1;
             manual_cali_buzzer_enable = 1u;
@@ -398,6 +519,7 @@ static void RC_cmd_to_calibrate(void)
     {
         rc_action_flag = 0;
         rc_cmd_time = 0;
+#ifndef __ZEPHYR__
         if (RobotProfileNeedClassicChassisControlTask() != 0u)
         {
             //send CAN reset ID cmd to M3508
@@ -406,6 +528,7 @@ static void RC_cmd_to_calibrate(void)
             CAN_cmd_chassis_reset_ID();
             CAN_cmd_chassis_reset_ID();
         }
+#endif
         if (rc_buzzer_owned != 0u)
         {
             cali_buzzer_off();
@@ -523,12 +646,25 @@ void cali_param_init(void)
 
     cali_data_read();
 
+#ifdef __ZEPHYR__
+    if (!CaliReadOk) return;
+#endif
     for (i = 0; i < CALI_LIST_LENGTH; i++)
     {
         if (cali_sensor[i].cali_done == CALIED_FLAG)
         {
             if (cali_sensor[i].cali_hook != NULL)
             {
+#if defined(__ZEPHYR__) && ROBOT_TASK_BUILD_SINGLE_GIMBAL
+                if (i == CALI_GIMBAL)
+                {
+                    CaliReadOk = GimbalCalibrationRestore(s_gimbal_cal_data.yaw_offset,
+                        s_gimbal_cal_data.pitch_offset, s_gimbal_cal_data.yaw_max_angle,
+                        s_gimbal_cal_data.yaw_min_angle, s_gimbal_cal_data.pitch_max_angle,
+                        s_gimbal_cal_data.pitch_min_angle);
+                    continue;
+                }
+#endif
                 //if has been calibrated, set to init
                 cali_sensor[i].cali_hook(cali_sensor_buf[i], CALI_FUNC_CMD_INIT);
             }
@@ -548,6 +684,39 @@ void cali_param_init(void)
   */
 static void cali_data_read(void)
 {
+#ifdef __ZEPHYR__
+    CaliFileRecord first, second;
+    const int8_t first_ok = CaliFileRead(0u, &first);
+    const int8_t second_ok = CaliFileRead(1u, &second);
+    const CaliFileRecord *record = NULL;
+    uint16_t offset = 0u;
+    CaliReadOk = (uint8_t)(first_ok >= 0 && second_ok >= 0);
+    if (first_ok == 1) record = &first;
+    if (second_ok == 1 && (first_ok != 1 || (int32_t)(second.sequence - first.sequence) > 0)) record = &second;
+    if (record != NULL) CaliReadOk = 1u;
+    if (record == NULL) return;
+    CaliSequence = record->sequence;
+    for (uint8_t i = 0u; i < CALI_LIST_LENGTH; i++)
+    {
+        const uint16_t size = cali_sensor[i].flash_len * 4u;
+        memcpy(cali_sensor[i].flash_buf, record->payload + offset, size);
+        offset += size;
+        memcpy(cali_sensor[i].name, record->payload + offset, 3u);
+        cali_sensor[i].cali_done = record->payload[offset + 3u];
+        if (memcmp(cali_sensor[i].name, cali_name[i], 3u) != 0) cali_sensor[i].cali_done = 0u;
+        offset += 4u;
+    }
+    /* 校验文件以外还要检查控制量，避免有效但异常的数值进入控制器。 */
+    if (!isfinite(s_gimbal_cal_data.yaw_max_angle) || !isfinite(s_gimbal_cal_data.yaw_min_angle) ||
+        !isfinite(s_gimbal_cal_data.pitch_max_angle) || !isfinite(s_gimbal_cal_data.pitch_min_angle) ||
+        s_gimbal_cal_data.yaw_max_angle <= s_gimbal_cal_data.yaw_min_angle ||
+        s_gimbal_cal_data.pitch_max_angle <= s_gimbal_cal_data.pitch_min_angle ||
+        fabsf(s_gimbal_cal_data.yaw_max_angle) > 1000.0f || fabsf(s_gimbal_cal_data.yaw_min_angle) > 1000.0f ||
+        fabsf(s_gimbal_cal_data.pitch_max_angle) > 1000.0f || fabsf(s_gimbal_cal_data.pitch_min_angle) > 1000.0f)
+        cali_sensor[CALI_GIMBAL].cali_done = 0u;
+    /* IMU 在 Zephyr 使用独立双副本，不能被旧格式覆盖。 */
+    cali_sensor[CALI_GYRO].cali_done = 0u;
+#else
     uint8_t flash_read_buf[CALI_SENSOR_HEAD_LEGHT * 4];
     uint8_t i = 0;
     uint16_t offset = 0;
@@ -574,6 +743,7 @@ static void cali_data_read(void)
             cali_sensor[i].cali_cmd = 1;
         }
     }
+#endif
 }
 
 
@@ -587,7 +757,7 @@ static void cali_data_read(void)
   * @param[in]      none
   * @retval         none
   */
-static void cali_data_write(void)
+static bool_t cali_data_write(void)
 {
     uint8_t i = 0;
     uint16_t offset = 0;
@@ -604,12 +774,35 @@ static void cali_data_write(void)
         offset += CALI_SENSOR_HEAD_LEGHT * 4;
     }
 
+#ifdef __ZEPHYR__
+    CaliFileRecord record = {0};
+    FIL file;
+    UINT count = 0u;
+    FRESULT result;
+    if (!CalibrateReady() || !SdcardIsMounted()) return 0;
+    record.magic = 0x43414c49u;
+    record.version = 1u;
+    record.sequence = CaliSequence + 1u;
+    memcpy(record.payload, flash_write_buf, sizeof(record.payload));
+    record.checksum = CaliChecksum(&record, offsetof(CaliFileRecord, checksum));
+    result = f_open(&file, CaliPath(record.sequence & 1u), FA_CREATE_ALWAYS | FA_WRITE);
+    if (result != FR_OK) return 0;
+    result = f_write(&file, &record, sizeof(record), &count);
+    if (result == FR_OK && count == sizeof(record)) result = f_sync(&file);
+    else result = FR_DISK_ERR;
+    if (f_close(&file) != FR_OK) result = FR_DISK_ERR;
+    if (result != FR_OK) return 0;
+    CaliSequence = record.sequence;
+    return 1;
+#else
     //erase the page
     cali_flash_erase(FLASH_USER_ADDR,1);
     //write data
-    cali_flash_write(FLASH_USER_ADDR, (uint32_t *)flash_write_buf, (FLASH_WRITE_BUF_LENGTH + 3) / 4);
+    return (bool_t)(cali_flash_write(FLASH_USER_ADDR, (uint32_t *)flash_write_buf, (FLASH_WRITE_BUF_LENGTH + 3) / 4) == 0);
+#endif
 }
 
+#ifndef __ZEPHYR__
 bool_t CalibrateGyroOffsetSave(const fp32 offset[3])
 {
     if (offset == NULL)
@@ -635,9 +828,9 @@ bool_t CalibrateGyroOffsetSave(const fp32 offset[3])
     cali_sensor[CALI_GYRO].cali_cmd = 0u;
 
     gyro_set_cali(gyro_cali.scale, gyro_cali.offset);
-    cali_data_write();
-    return 1;
+    return cali_data_write();
 }
+#endif
 
 
 /**

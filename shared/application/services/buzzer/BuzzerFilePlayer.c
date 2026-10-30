@@ -12,10 +12,18 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#if defined(__ZEPHYR__) && defined(CONFIG_BOARD_DJI_C_F407)
+#include <zephyr/kernel.h>
+#include <zephyr/linker/section_tags.h>
+#include "cmsis_os2.h"
+#endif
 
 #include "fatfs/ff.h"
 
 #include "BspBuzzer.h"
+#if defined(CONFIG_BOARD_DJI_C_F407)
+#include "BspBuzzerC.h"
+#endif
 #include "SdCard.h"
 
 #define BUZZER_PCM_FILE_TASK_STACK_WORDS 512u
@@ -42,7 +50,22 @@ typedef struct
 
 static TaskHandle_t g_buzzer_pcm_file_task_handle = NULL;
 static StaticTask_t g_buzzer_pcm_file_task_tcb;
+#if defined(__ZEPHYR__) && defined(CONFIG_BOARD_DJI_C_F407)
+/* C 板播放线程使用完整的静态栈，避免兼容层再从备用池分配一份。 */
+static struct z_thread_stack_element g_buzzer_pcm_file_task_stack[
+    K_KERNEL_STACK_LEN(BUZZER_PCM_FILE_TASK_STACK_WORDS * sizeof(StackType_t))]
+    __aligned(Z_KERNEL_STACK_OBJ_ALIGN) __dtcm_bss_section;
+static const osThreadAttr_t g_buzzer_pcm_file_task_attr = {
+    .name = "BuzzerFile",
+    .priority = osPriorityLow,
+    .stack_mem = g_buzzer_pcm_file_task_stack,
+    .stack_size = sizeof(g_buzzer_pcm_file_task_stack),
+    .cb_mem = &g_buzzer_pcm_file_task_tcb,
+    .cb_size = sizeof(g_buzzer_pcm_file_task_tcb),
+};
+#else
 static StackType_t g_buzzer_pcm_file_task_stack[BUZZER_PCM_FILE_TASK_STACK_WORDS];
+#endif
 static volatile int32_t g_buzzer_pcm_file_last_error = 0;
 static BuzzerPcmFileCmd g_buzzer_pcm_file_cmd;
 static uint8_t g_buzzer_pcm_file_read_buf[BUZZER_PCM_FILE_READ_CHUNK];
@@ -248,7 +271,12 @@ static void BuzzerPcmFileTask(void *argument)
                     }
 
                     // Drain buffered samples, then stop.
+#if defined(CONFIG_BOARD_DJI_C_F407)
+                    BuzzerPcmStreamFinish();
+                    while (BuzzerPcmIsRunning() != 0u)
+#else
                     while (BuzzerPcmIsRunning() != 0u && BuzzerPcmIsStreamMode() != 0u && BuzzerPcmStreamGetUsed() != 0u)
+#endif
                     {
                         uint32_t ev2 = 0u;
                         if (xTaskNotifyWait(0u, 0xFFFFFFFFu, &ev2, 0u) == pdPASS)
@@ -342,6 +370,10 @@ int BuzzerPcmPlayFileU8(const char *path, uint32_t sample_rate_hz, uint8_t loop,
     // Lazy-create file playback task so we don't need CubeMX to register a new thread.
     if (g_buzzer_pcm_file_task_handle == NULL)
     {
+#if defined(__ZEPHYR__) && defined(CONFIG_BOARD_DJI_C_F407)
+        g_buzzer_pcm_file_task_handle =
+            (TaskHandle_t)osThreadNew(BuzzerPcmFileTask, NULL, &g_buzzer_pcm_file_task_attr);
+#else
         g_buzzer_pcm_file_task_handle =
             xTaskCreateStatic(BuzzerPcmFileTask,
                               "BuzzerFile",
@@ -350,6 +382,7 @@ int BuzzerPcmPlayFileU8(const char *path, uint32_t sample_rate_hz, uint8_t loop,
                               tskIDLE_PRIORITY + 1,
                               g_buzzer_pcm_file_task_stack,
                               &g_buzzer_pcm_file_task_tcb);
+#endif
         if (g_buzzer_pcm_file_task_handle == NULL)
         {
             g_buzzer_pcm_file_task_handle = NULL;

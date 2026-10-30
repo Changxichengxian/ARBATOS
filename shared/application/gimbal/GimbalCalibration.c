@@ -12,6 +12,8 @@
 #include "arm_math.h"
 #include "MotorConfig.h"
 #include "UserLib.h"
+#include "BspTime.h"
+#include <math.h>
 
 
 static void GimbalCalcCali(const GimbalStepCali *GimbalCali,
@@ -71,13 +73,18 @@ bool_t GimbalCalibrationStep(GimbalControl *control,
                              fp32 *max_pitch,
                              fp32 *min_pitch)
 {
-    if (control == NULL)
+    if (control == NULL || yaw_offset == NULL || pitch_offset == NULL || max_yaw == NULL ||
+        min_yaw == NULL || max_pitch == NULL || min_pitch == NULL ||
+        control->GimbalYawMotor.GimbalMotorMeasure == NULL ||
+        control->GimbalPitchMotor.GimbalMotorMeasure == NULL)
     {
         return 0;
     }
     if (control->GimbalCali.step == 0)
     {
         control->GimbalCali.step             = GIMBAL_CALI_START_STEP;
+        control->GimbalCali.stableTicks = 0u;
+        control->GimbalCali.startedMs = BspTimeGetTickMs();
         control->GimbalCali.max_pitch        = control->GimbalPitchMotor.angle;
         control->GimbalCali.max_pitch_ecd    = control->GimbalPitchMotor.GimbalMotorMeasure->ecd;
         control->GimbalCali.max_yaw          = control->GimbalYawMotor.angle;
@@ -95,6 +102,12 @@ bool_t GimbalCalibrationStep(GimbalControl *control,
         (*min_yaw) += GIMBAL_CALI_REDUNDANT_ANGLE;
         (*max_pitch) -= GIMBAL_CALI_REDUNDANT_ANGLE;
         (*min_pitch) += GIMBAL_CALI_REDUNDANT_ANGLE;
+        if (!isfinite(*max_yaw) || !isfinite(*min_yaw) || !isfinite(*max_pitch) ||
+            !isfinite(*min_pitch) || *max_yaw <= *min_yaw || *max_pitch <= *min_pitch)
+        {
+            GimbalCalibrationCancel();
+            return 0;
+        }
         control->GimbalYawMotor.offset_ecd              = *yaw_offset;
         control->GimbalYawMotor.max_angle      = *max_yaw;
         control->GimbalYawMotor.min_angle      = *min_yaw;

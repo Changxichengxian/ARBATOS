@@ -5,6 +5,7 @@
 #include "dji_c_f407-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/pwm/pwm.h>
+#include <zephyr/dt-bindings/dma/stm32_dma.h>
 
 / {
 	model = "DJI C Board with STM32F407";
@@ -44,6 +45,7 @@
 		bmi088-spi = <&spi1>;
 		bmi088-accel-cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
 		bmi088-gyro-cs-gpios = <&gpiob 0 GPIO_ACTIVE_LOW>;
+		bmi088-gyro-drdy-gpios = <&gpioc 5 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 		bmi088-spi-hz = <8000000>;
 		ist8310-i2c = <&i2c3>;
 		ist8310-reset-gpios = <&gpiog 6 GPIO_ACTIVE_LOW>;
@@ -54,7 +56,19 @@
 	arbatos_platform: arbatos-platform {
 		compatible = "arbatos,platform";
 		key-gpios = <&gpiog 0 GPIO_ACTIVE_LOW>;
+		shoot-trig-gpios = <&gpioi 7 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+		hardware-version-gpios = <&gpioc 0 GPIO_ACTIVE_HIGH>,
+		                         <&gpioc 1 GPIO_ACTIVE_HIGH>,
+		                         <&gpioc 2 GPIO_ACTIVE_HIGH>;
 		buzzer-pwms = <&pwm4 3 PWM_USEC(100) PWM_POLARITY_NORMAL>;
+		/* 保留旧 ServoPwmSet 下标顺序：PI6、PC6、PE14、PE13。 */
+		servo-pwms = <&pwm8 2 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+			<&pwm8 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+			<&pwm1 4 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+			<&pwm1 3 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+		rgb-pwms = <&pwm5 1 PWM_USEC(780) PWM_POLARITY_NORMAL>,
+		           <&pwm5 2 PWM_USEC(780) PWM_POLARITY_NORMAL>,
+		           <&pwm5 3 PWM_USEC(780) PWM_POLARITY_NORMAL>;
 	};
 };
 
@@ -123,10 +137,37 @@ zephyr_udc0: &usbotg_fs {
 
 &timers4 {
 	status = "okay";
+	/* TIM4_CH3 独占 DMA1 Stream7 / Channel2；不能再分配给其他外设。 */
+	dmas = <&dma1 7 2 (STM32_DMA_MEMORY_TO_PERIPH | STM32_DMA_MEM_INC |
+		STM32_DMA_PERIPH_16BITS | STM32_DMA_MEM_16BITS | STM32_DMA_PRIORITY_HIGH) 0>;
+	dma-names = "buzzer";
 	pwm4: pwm { status = "okay"; pinctrl-0 = <&tim4_ch3_pd14>; pinctrl-names = "default"; };
 };
+
+&dma1 { status = "okay"; };
+
+&timers5 {
+	status = "okay";
+	pwm5: pwm { status = "okay"; pinctrl-0 = <&tim5_ch1_ph10 &tim5_ch2_ph11 &tim5_ch3_ph12>; pinctrl-names = "default"; };
+};
+
+&adc1 { st,adc-prescaler = <6>; status = "okay"; };
+&adc3 { st,adc-prescaler = <6>; pinctrl-0 = <&adc3_in8_pf10>; pinctrl-names = "default"; status = "okay"; };
 
 &timers10 {
 	status = "okay";
 	pwm10: pwm { status = "okay"; pinctrl-0 = <&tim10_ch1_pf6>; pinctrl-names = "default"; };
+};
+
+/* 168 MHz / 168 = 1 MHz，20 ms 周期可放入16位计数器，脉宽单位仍为微秒。 */
+&timers1 {
+	status = "okay";
+	st,prescaler = <167>;
+	pwm1: pwm { status = "okay"; pinctrl-0 = <&tim1_ch4_pe14 &tim1_ch3_pe13>; pinctrl-names = "default"; };
+};
+
+&timers8 {
+	status = "okay";
+	st,prescaler = <167>;
+	pwm8: pwm { status = "okay"; pinctrl-0 = <&tim8_ch2_pi6 &tim8_ch1_pc6>; pinctrl-names = "default"; };
 };

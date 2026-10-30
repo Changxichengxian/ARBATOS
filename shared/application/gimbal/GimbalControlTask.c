@@ -53,6 +53,9 @@
 #include "RobotTaskProfile.h"
 #include "ControlMgr.h"
 #include "RobotLifecycle.h"
+#if ROBOT_TASK_BUILD_CALIBRATION
+#include "CalibrateTask.h"
+#endif
 
 #include <string.h>
 
@@ -91,6 +94,100 @@ static void GimbalStackSampleMaybe(void)
 #endif
 
 static GimbalTaskContext s_gimbalTaskContext;
+static volatile uint8_t GimbalCaliRequested;
+static volatile uint8_t GimbalCaliControlReady;
+static uint32_t GimbalCaliAuthoritySeq;
+static uint32_t GimbalCaliSemanticsSeq;
+
+static uint8_t GimbalCalibrationInputReady(ManualInputSnapshot *input)
+{
+    return (uint8_t)(robot_mode_gimbal_cali() != 0u &&
+        RobotLifecycleOutputAllowed() != 0u &&
+        s_gimbalTaskContext.control.fast.GimbalCaliMode != 0u &&
+        ManualInputSnapshotRead(input) != 0u && input->online != 0u && input->dataValid != 0u &&
+        input->sourceTimeoutMs != 0u && input->sourceAgeMs <= input->sourceTimeoutMs &&
+        ControlInputSwitchIsPos(input->control.sw[INPUT_SW_GIMBAL_MODE], input->semantics.GimbalSafePos) == 0u);
+}
+
+void GimbalCalibrationCancel(void)
+{
+    taskENTER_CRITICAL();
+    const uint8_t wasRequested = GimbalCaliRequested;
+    GimbalCaliRequested = 0u;
+    s_gimbalTaskContext.control.GimbalCali.step = 0u;
+    s_gimbalTaskContext.control.GimbalCali.stableTicks = 0u;
+    if (wasRequested != 0u) {
+        /* 同时撤销已发布命令，拦住取消前算完、取消后才提交的电流。 */
+        GimbalControlInhibitOutputs(&s_gimbalTaskContext, s_gimbalTaskContext.outputBindings,
+                                    GIMBAL_OUTPUT_MOTOR_COUNT);
+    }
+    taskEXIT_CRITICAL();
+}
+
+uint8_t GimbalCalibrationRequest(void)
+{
+    ManualInputSnapshot input;
+    if (GimbalCalibrationInputReady(&input) == 0u || GimbalCaliRequested != 0u) {
+        return 0u;
+    }
+    taskENTER_CRITICAL();
+    s_gimbalTaskContext.control.GimbalCali.step = 0u;
+    s_gimbalTaskContext.control.GimbalCali.stableTicks = 0u;
+    GimbalCaliAuthoritySeq = input.authoritySeq;
+    GimbalCaliSemanticsSeq = input.semanticsSeq;
+    GimbalCaliRequested = 1u;
+    taskEXIT_CRITICAL();
+    return 1u;
+}
+
+uint8_t GimbalCalibrationPending(void)
+{
+    return GimbalCaliRequested;
+}
+
+uint8_t GimbalCalibrationControlReady(void)
+{
+    return GimbalCaliControlReady;
+}
+
+uint8_t GimbalCalibrationRestoreAllowed(void)
+{
+    ManualInputSnapshot input;
+    if (GimbalCaliControlReady == 0u || GimbalCaliRequested != 0u ||
+        GimbalWatchYawCurrent != 0 || GimbalWatchPitchCurrent != 0)
+    {
+        return 0u;
+    }
+    if (robot_mode_gimbal_cali() != 0u) {
+        return 1u;
+    }
+    return (uint8_t)(ManualInputSnapshotRead(&input) != 0u &&
+        (input.online == 0u || input.dataValid == 0u ||
+         ControlInputSwitchIsPos(input.control.sw[INPUT_SW_GIMBAL_MODE], input.semantics.GimbalSafePos) != 0u));
+}
+
+uint8_t GimbalCalibrationRestore(uint16_t yawOffset, uint16_t pitchOffset,
+                                  fp32 maxYaw, fp32 minYaw, fp32 maxPitch, fp32 minPitch)
+{
+    uint8_t restored = 0u;
+    taskENTER_CRITICAL();
+    if (GimbalCalibrationRestoreAllowed() != 0u) {
+        GimbalCalibrationSet(&s_gimbalTaskContext.control, yawOffset, pitchOffset,
+                             maxYaw, minYaw, maxPitch, minPitch);
+        restored = 1u;
+    }
+    taskEXIT_CRITICAL();
+    return restored;
+}
+
+uint8_t GimbalCalibrationOutputAllowed(void)
+{
+    ManualInputSnapshot input;
+    const uint8_t step = s_gimbalTaskContext.control.GimbalCali.step;
+    return (uint8_t)(GimbalCaliRequested != 0u && step != 0u && step != GIMBAL_CALI_END_STEP &&
+        GimbalCalibrationInputReady(&input) != 0u && input.authoritySeq == GimbalCaliAuthoritySeq &&
+        input.semanticsSeq == GimbalCaliSemanticsSeq);
+}
 
 volatile uint32_t GimbalLoopCounter = 0;
 
@@ -122,13 +219,29 @@ bool_t cmd_cali_gimbal_hook(uint16_t *yaw_offset,
                             fp32 *max_pitch,
                             fp32 *min_pitch)
 {
-    return GimbalCalibrationStep(&s_gimbalTaskContext.control,
+    ManualInputSnapshot input;
+    bool_t done;
+    if (GimbalCaliRequested == 0u) {
+        return 0;
+    }
+    if (GimbalCalibrationInputReady(&input) == 0u || input.authoritySeq != GimbalCaliAuthoritySeq ||
+        input.semanticsSeq != GimbalCaliSemanticsSeq) {
+        GimbalCalibrationCancel();
+        return 0;
+    }
+    taskENTER_CRITICAL();
+    done = GimbalCalibrationStep(&s_gimbalTaskContext.control,
                                  yaw_offset,
                                  pitch_offset,
                                  max_yaw,
                                  min_yaw,
                                  max_pitch,
                                  min_pitch);
+    if (done != 0) {
+        GimbalCaliRequested = 0u;
+    }
+    taskEXIT_CRITICAL();
+    return done;
 }
 
 const GimbalMotor *get_yaw_motor_point(void)
@@ -213,6 +326,7 @@ void GimbalControlTask(void const *pvParameters)
     GimbalFaultInit(&s_gimbalTaskContext);
     GimbalWriteState(&s_gimbalTaskContext.control, &s_gimbalTaskContext.fault, NULL);
     PitchCaliBootLoad();
+    GimbalCaliControlReady = 1u;
     last_wake = xTaskGetTickCount();
     while (1)
     {
@@ -236,6 +350,21 @@ void GimbalControlTask(void const *pvParameters)
                                                          &snapshot,
                                                          &output_permit);
         snapshot.control_allowed = gimbal_allowed;
+#if ROBOT_TASK_BUILD_CALIBRATION
+        if (robot_mode_gimbal_cali() != 0u && CalibrateReady() == 0u) {
+            gimbal_allowed = 0u;
+            snapshot.control_allowed = 0u;
+        }
+#endif
+        if (GimbalCaliRequested != 0u) {
+            ManualInputSnapshot caliInput;
+            if (gimbal_allowed == 0u || s_gimbalTaskContext.fault.blockingMask != 0u ||
+                GimbalCalibrationInputReady(&caliInput) == 0u ||
+                caliInput.authoritySeq != GimbalCaliAuthoritySeq ||
+                caliInput.semanticsSeq != GimbalCaliSemanticsSeq) {
+                GimbalCalibrationCancel();
+            }
+        }
         GimbalSingleMitRouteObserve(&s_gimbalTaskContext, &snapshot);
         GimbalFeedbackRouteDebtObserve(&s_gimbalTaskContext, &snapshot,
                                        s_gimbalTaskContext.outputBindings,

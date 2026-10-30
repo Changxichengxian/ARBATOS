@@ -56,9 +56,12 @@ F4_CLASSIC_ALLOWED_TASKS = {
     "SHOOT_RM",
     "IMU",
 }
-# A/C 都有 DBUS、外接 CRSF、裁判、SD、经典底盘、单云台和 RM 发射控制链。
+# A/C 都有 DBUS、外接 CRSF、裁判、主机通信、SD 和经典控制链。
 # 没有声明 PWM 舵机引脚、RS485 收发器或轮腿适配时，不自动开放这些服务。
-F4_CLASSIC_ALLOWED_TASKS |= {"ELRS_LINK", "REFEREE_RX"}
+F4_CLASSIC_ALLOWED_TASKS |= {"ELRS_LINK", "REFEREE_RX", "HOST_LINK"}
+C_BOARD_ALLOWED_TASKS = F4_CLASSIC_ALLOWED_TASKS | {
+    "CALIBRATION", "STATUS_LED", "BATTERY_MONITOR", "STARTUP_SERVICE", "SERVO",
+}
 
 
 class ConfigError(ValueError):
@@ -377,6 +380,8 @@ def resolve_port_config(root, target, data, selected):
 
     if explicit and "external_imu" in assignments:
         require("IMU" in services, "ports.external_imu 已选择时必须启用 IMU 服务")
+    if explicit and "image_remote" in assignments:
+        require("HOST_LINK" in services, "ports.image_remote 已选择时必须启用 HOST_LINK 服务")
 
     for role in catalog["roles"]:
         service = role.get("service")
@@ -425,6 +430,8 @@ def resolve_port_config(root, target, data, selected):
 
     require("rs485_1" not in active or "rs485_0" in active,
             "ports.rs485_1 不能在 rs485_0 未分配时单独启用")
+    require(not {"tuning_aux", "image_remote"}.issubset(active),
+            "调参与图传共用 AUX 链路，不能同时启用")
 
     result = _port_view(catalog, explicit, assignments, services, [])
     result["active_roles"] = sorted(active)
@@ -579,15 +586,15 @@ def resolve(root, requested, config_text=None):
     if target["board"] == "dji_a_f427":
         unsupported = sorted(set(selected) - F4_CLASSIC_ALLOWED_TASKS)
         require(not unsupported,
-                "dji_a_f427 当前支持 DBUS/ELRS、健康检测、SD 日志、裁判、经典底盘、单云台和 RM 射击控制链；"
+                "dji_a_f427 当前支持 DBUS/ELRS、健康检测、SD 日志、裁判、主机通信、经典底盘、单云台和 RM 射击控制链；"
                 "未迁移模块: " + ", ".join(unsupported))
     if target["board"] == "dji_c_f407":
-        unsupported = sorted(set(selected) - F4_CLASSIC_ALLOWED_TASKS)
+        unsupported = sorted(set(selected) - C_BOARD_ALLOWED_TASKS)
         require(not unsupported,
-                "dji_c_f407 当前支持 DBUS/ELRS、健康检测、SD 日志、裁判、经典底盘、单云台和 RM 射击控制链；"
+                "dji_c_f407 当前支持遥控、健康检测、存储、裁判、主机通信、校准、指示灯、电池和经典控制链；"
                 "未迁移模块: " + ", ".join(unsupported))
-    require(target["board"] == "dm_mc02_h7" or "SERVO" not in selected,
-            "SERVO 需要 M 板 P11 的四路 servo-pwms；当前开发板没有该资源")
+    require(target["board"] in {"dm_mc02_h7", "dji_c_f407"} or "SERVO" not in selected,
+            "SERVO 需要板级四路 servo-pwms；当前开发板没有该资源")
     if "SHOOT_RM" in selected:
         for control in resolved_controls:
             if control["domain"] == "gimbal" and not control["builtin"]:
@@ -644,9 +651,9 @@ def resolve(root, requested, config_text=None):
     if "external_imu" in port_config["active_roles"]:
         port_sources.append(inside(root, "shared/zephyr/port/sensors/Hi14Parser.c", {".c"})
                             .relative_to(root).as_posix())
-    tuning_aux_active = (port_config["explicit"] and
-                         "tuning_aux" in port_config["active_roles"])
-    if tuning_aux_active:
+    host_aux_active = (port_config["explicit"] and
+                       bool({"tuning_aux", "image_remote"} & set(port_config["active_roles"])))
+    if host_aux_active:
         # 显式选择调参 AUX 时，使用真正的 AuxPort/AuxTune 任务实现，并移除车型占位实现。
         target_sources = [source for source in target_sources
                           if not source.endswith("/UsbHostLinkTask.c")]
@@ -668,7 +675,7 @@ def resolve(root, requested, config_text=None):
         if not source:
             require(False, f"{task['symbol']} 尚未迁移实现源，不能选择")
         if source.startswith("@target/"):
-            if task["symbol"] == "HOST_LINK" and tuning_aux_active:
+            if task["symbol"] == "HOST_LINK" and host_aux_active:
                 continue
             require(any(path.endswith("/" + source[8:]) for path in target_sources),
                     f"{task['symbol']} 需要车型实现 {source[8:]}")
@@ -727,6 +734,8 @@ def write_port_generation(target, out, header):
         "rs485_1": "RS485_1",
     }
     active = set(config["active_roles"])
+    if "image_remote" in active:
+        macro_by_role["image_remote"] = macro_by_role.pop("tuning_aux")
     header.append("#define ARB_UART_ROLES_EXPLICIT 1")
     for role_id, macro in macro_by_role.items():
         if role_id not in active:

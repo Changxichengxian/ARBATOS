@@ -976,7 +976,7 @@ uint8_t BspCanZephyrFaultTxSupported(void)
 
 const char *BspCanZephyrFaultTxReason(void)
 {
-    return BspCanFaultPortSupported() ? "STM32H723 raw CAN TX with bounded completion check" :
+    return BspCanFaultPortSupported() ? "STM32 raw CAN TX with bounded completion check" :
                                        "No raw fault CAN port for this board";
 }
 

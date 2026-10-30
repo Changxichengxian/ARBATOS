@@ -25,7 +25,18 @@
 #include "Mpu6500.h"
 #include "RobotMode.h"
 #include "UserLib.h"
+#include "ImuAttitude.h"
 #include "ImuCalStore.h"
+#if defined(CONFIG_BOARD_DJI_C_F407)
+#include "BspIst8310Port.h"
+#include "Ist8310Driver.h"
+#include "Pid.h"
+static PidTypeDef InsTempPid;
+static uint8_t InsTempPidReady, InsHeaterMode;
+static uint16_t InsWarmSamples;
+static uint8_t InsMagReady;
+static uint32_t InsMagTick;
+#endif
 #if defined(CONFIG_BOARD_DJI_A_F427)
 #include "ImuThermalA.h"
 static ImuThermalA InsThermal;
@@ -36,7 +47,7 @@ static ImuThermalA InsThermal;
 #include "RobotConfig.h"
 #include "Watch.h"
 #include "SdLog.h"
-#if defined(CONFIG_ARBATOS_MINI_BENCH)
+#if ROBOT_TASK_BUILD_HEALTH_MONITOR || defined(CONFIG_ARBATOS_MINI_BENCH)
 #include "DetectTask.h"
 #endif
 
@@ -64,10 +75,11 @@ static fp32 InsTemp;
 static uint16_t InsHeaterPwm;
 static fp32 InsHeaterPidOut;
 #if !ROBOT_EXTERNAL_IMU_HI14
-static mahony_imu_t InsMahony;
+static ImuAttitude InsAttitude;
 static fp32 InsGyroOffset[3];
 static GyroZeroCaliRuntimeState InsGyroCaliState;
 static uint8_t InsHeaterStable;
+static uint8_t InsGyroApplyDelta;
 #endif
 
 __weak int8_t get_control_temperature(void)
@@ -89,18 +101,14 @@ __weak int8_t get_control_temperature(void)
 #undef INS_gyro
 #undef INS_quat
 
+#if ROBOT_EXTERNAL_IMU_HI14
 static void ImuEulerUpdate(void)
 {
     get_angle(InsQuat, &INS_angle[0], &INS_angle[2], &INS_angle[1]);
 }
+#endif
 
 #if !ROBOT_EXTERNAL_IMU_HI14
-static bool_t ImuAccelHealthy(const fp32 a[3])
-{
-    const float g2 = (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]) / (IMU_G * IMU_G);
-    return (g2 > 0.81f && g2 < 1.21f) ? 1u : 0u;
-}
-
 static void ImuRotateVector(fp32 rotated[3], const fp32 raw[3])
 {
     ImuFrameRotate(rotated, raw);
@@ -177,8 +185,27 @@ static void ImuHeaterUpdate(float temp)
         if (temp >= target + 1.0f) { InsHeaterPidOut = 0; integral = 0; }
         InsHeaterPwm = (uint16_t)InsHeaterPidOut;
     }
+#elif defined(CONFIG_BOARD_DJI_C_F407)
+    if (!InsTempPidReady) {
+        const float gains[3] = {g_config.imu.temperature_pid.kp,
+                               g_config.imu.temperature_pid.ki,
+                               g_config.imu.temperature_pid.kd};
+        PID_init(&InsTempPid, PID_POSITION, gains,
+                 g_config.imu.temperature_pid_max_out, g_config.imu.temperature_pid_max_iout);
+        InsTempPidReady = 1u;
+    }
+    /* C板沿用预热→PID稳温；所有阶段仍服从配置及板级PWM上限。
+     * M板24V加热器和A板的专用稳温保护保留各自实现。 */
+    if (!InsHeaterMode) {
+        InsWarmSamples = temp > target ? InsWarmSamples + 1u : 0u;
+        if (InsWarmSamples > 200u) {
+            InsHeaterMode = 1u;
+            InsTempPid.Iout = fminf(max * 0.5f, g_config.imu.temperature_pid_max_iout);
+        }
+    }
+    InsHeaterPidOut = InsHeaterMode ? PID_calc(&InsTempPid, temp, target) : max;
+    InsHeaterPwm = (uint16_t)fminf(fmaxf(InsHeaterPidOut, 0.0f), max);
 #else
-    /* 原 PID 仍由控制层提供；这里先保留硬件安全的比例加热边界。 */
     InsHeaterPidOut = err * g_config.imu.temperature_pid.kp;
     if (InsHeaterPidOut < 0.0f) InsHeaterPidOut = 0.0f;
     if (InsHeaterPidOut > max) InsHeaterPidOut = max;
@@ -242,24 +269,30 @@ static void ImuApplyGyroOffset(const fp32 offset[3])
 
 __weak bool_t CalibrateGyroOffsetSave(const fp32 offset[3])
 {
-#if defined(CONFIG_BOARD_DM_MC02_H7)
     bool_t saved = ImuCalStoreSave(offset, InsTemp) == 0;
     if (saved) ImuApplyGyroOffset(offset);
     return saved;
-#else
-    /*
-     * Zephyr 迁移阶段尚未开放 Flash 写入。先应用本次运行的零偏，并如实返回
-     * “未持久保存”；开机静止修正仍可完成，主动校准则会报告保存失败。
-     */
-    ImuApplyGyroOffset(offset);
-    return 0u;
-#endif
 }
 
 static void ImuApplyGyroOffsetCallback(const fp32 offset[3], void *ctx)
 {
     ARG_UNUSED(ctx);
-    ImuApplyGyroOffset(offset);
+    if (InsGyroApplyDelta) {
+        for (unsigned i = 0; i < 3; ++i) InsGyroOffset[i] += offset[i];
+    } else {
+        ImuApplyGyroOffset(offset);
+    }
+}
+
+static void ImuCopyCorrected(fp32 rotated[3], const fp32 corrected[3])
+{
+    memcpy(rotated, corrected, 3u * sizeof(fp32));
+}
+
+static void ImuCalibrationSampleDone(const GyroZeroCaliSampleState *samples, void *ctx)
+{
+    ARG_UNUSED(ctx);
+    ImuAttitudeSetAccRef(&InsAttitude, GyroZeroCaliAccelNormAvg(samples, IMU_G));
 }
 
 static bool_t ImuSaveGyroOffsetCallback(const fp32 offset[3], void *ctx)
@@ -291,22 +324,89 @@ static void ImuGyroCalibrationUpdate(const fp32 gyro_raw[3],
                                      const fp32 accel_raw[3],
                                      uint32_t now_ms)
 {
+    const uint8_t test = robot_mode_is_calibration(ROBOT_CALI_TARGET_IMU_GYRO);
+    InsGyroApplyDelta = !test;
     const GyroZeroCaliRuntimeCfg cfg = {
-        .test_mode_active = robot_mode_is_calibration(ROBOT_CALI_TARGET_IMU_GYRO),
+        .test_mode_active = test,
         .temp_c = InsTemp,
         .target_temp_c = (fp32)get_control_temperature(),
         .heater_stable = InsHeaterStable,
         .boot_adjust_allowed = ImuBootAdjustAllowed(),
         .now_ms = now_ms,
-        .rotate_gyro = ImuRotateVector,
+        .rotate_gyro = test ? ImuRotateVector : ImuCopyCorrected,
         .rotate_accel = ImuRotateVector,
         .apply_offset = ImuApplyGyroOffsetCallback,
         .save_offset = ImuSaveGyroOffsetCallback,
-        .sample_done = NULL,
+        .sample_done = ImuCalibrationSampleDone,
         .ctx = NULL,
     };
-    GyroZeroCaliRuntimeUpdate(&InsGyroCaliState, &cfg, gyro_raw, accel_raw);
+    GyroZeroCaliRuntimeUpdate(&InsGyroCaliState, &cfg, test ? gyro_raw : InsGyro, accel_raw);
+    InsGyroApplyDelta = 0u;
 }
+
+#if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY) && ROBOT_TASK_BUILD_SDLOG
+static struct {
+    sdlog_imu_base_stream_header_t header;
+    sdlog_imu_base_sample_t samples[16];
+} InsLogStream;
+static uint32_t InsLogLastTick;
+static uint16_t InsLogDivCount;
+
+static void ImuLogFlush(void)
+{
+    if (InsLogStream.header.sample_count != 0u) {
+        const uint16_t size = sizeof(InsLogStream.header) +
+            InsLogStream.header.sample_count * sizeof(InsLogStream.samples[0]);
+        SdLogWrite(SDLOG_TAG_IMU_BASE_STREAM, &InsLogStream, size);
+        InsLogStream.header.sample_count = 0u;
+    }
+}
+
+static void ImuLogSample(uint32_t now, float dt)
+{
+    const uint8_t div = SdLogHighRateDiv();
+    if (div > 1u && InsLogDivCount++ % div != 0u) return;
+    const uint32_t period = (uint32_t)(dt * 1000000.0f + 0.5f) * (div ? div : 1u);
+    if (InsLogStream.header.sample_count &&
+        (period != InsLogStream.header.period_us ||
+         now - InsLogLastTick != (period + 999u) / 1000u)) {
+        /* 实际周期变化就分包，不能把丢样伪装成等间隔采样。 */
+        ImuLogFlush();
+    }
+    if (InsLogStream.header.sample_count == 0u) {
+        InsLogStream.header.start_tick_ms = now;
+        InsLogStream.header.period_us = period > UINT16_MAX ? UINT16_MAX : period;
+        InsLogStream.header.version = SDLOG_IMU_BASE_STREAM_VERSION;
+    }
+    SdLogImuBaseSampleSet(&InsLogStream.samples[InsLogStream.header.sample_count++],
+                         InsQuat, InsGyro, InsAccel, InsTemp);
+    InsLogLastTick = now;
+    if (InsLogStream.header.sample_count == 16u) ImuLogFlush();
+}
+
+static void ImuLogTrust(uint32_t now)
+{
+    static uint32_t last;
+    if (now - last < 10u) return;
+    last = now;
+    const ImuAccTrust *acc = &InsAttitude.acc;
+    const sdlog_imu_trust_t trust = {
+        .acc_norm_g = acc->accNormG, .acc_ref_g = acc->accRefG,
+        .norm_err_g = acc->normErrG, .angle_deg = acc->angleDeg,
+        .trust = acc->trust, .kp_gain = acc->kpGain,
+        .gyro_norm_dps = sqrtf(InsGyro[0] * InsGyro[0] + InsGyro[1] * InsGyro[1] +
+                               InsGyro[2] * InsGyro[2]) / IMU_DEG_TO_RAD,
+        .acc_healthy = acc->healthy, .acc_rejected = acc->rejected,
+        .fusion_mode = InsAttitude.mode,
+    };
+    SdLogWrite(SDLOG_TAG_IMU_TRUST, &trust, sizeof(trust));
+    const sdlog_pid_runtime_t temperature = {
+        .PidId = SDLOG_PID_IMU_TEMP, .mode = 0u,
+        .set = get_control_temperature(), .fdb = InsTemp, .out = InsHeaterPidOut,
+    };
+    SdLogWrite(SDLOG_TAG_PID, &temperature, sizeof(temperature));
+}
+#endif
 #endif
 
 #if ROBOT_EXTERNAL_IMU_HI14
@@ -562,16 +662,39 @@ void ImuFusionTask(void const *pvParameters)
         init = BMI088_init();
 #endif
     }
-    mahony_imu_init(&InsMahony, 0.002f);
+    ImuAttitudeInit(&InsAttitude);
     GyroZeroCaliRuntimeReset(&InsGyroCaliState);
     imu_pwm_set(0u);
     (void)ImuCalStoreLoad(InsGyroOffset);
+#if defined(CONFIG_BOARD_DJI_C_F407)
+    /* 六轴工作不因磁力计缺失而停住；九轴只使用读成功且未过期的磁场。 */
+    InsMagReady = ist8310_init() == IST8310_NO_ERROR;
+#endif
 #if defined(CONFIG_ARBATOS_PREFLIGHT_ONLY)
     uint8_t offsetQueued = 0u;
 #endif
     WatchImuSetStage(WATCH_IMU_STAGE_BMI088_INIT_OK);
 
     for (;;) {
+#if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY) && ROBOT_TASK_BUILD_IMU
+        ImuServiceModeUpdate(robot_mode_is_calibration(ROBOT_CALI_TARGET_IMU_GYRO));
+#endif
+#if defined(CONFIG_BOARD_DJI_C_F407)
+        /* C板沿用陀螺数据就绪触发；超时不把旧寄存器值当新姿态发布。 */
+        if (Bmi088PortWaitSample(20u) != 0) {
+            InsHeaterPwm = 0u;
+            InsHeaterStable = 0u;
+            imu_pwm_set(0u);
+            WatchTaskError(WATCH_TASK_IMU);
+#if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY) && ROBOT_TASK_BUILD_IMU
+            const fp32 invalid[3] = {0};
+            ImuServiceUpdate(invalid, invalid, k_uptime_get_32(), 0u);
+            ImuServicePublish(k_uptime_get_32(), 0u);
+#endif
+            k_msleep(1);
+            continue;
+        }
+#endif
         fp32 gyro_raw[3] = {0};
         fp32 accel_raw[3] = {0};
 #if defined(CONFIG_BOARD_DJI_A_F427)
@@ -580,6 +703,9 @@ void ImuFusionTask(void const *pvParameters)
         const int read = ImuReadBmi(gyro_raw, accel_raw, &InsTemp);
 #endif
         if (read != 0) {
+#if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY) && ROBOT_TASK_BUILD_SDLOG
+            ImuLogFlush();
+#endif
             /* 读失败不能继续沿用加热占空比，也不能把未初始化值发布为姿态。 */
 #if defined(CONFIG_BOARD_DJI_A_F427)
             InsThermal = (ImuThermalA){0};
@@ -597,12 +723,19 @@ void ImuFusionTask(void const *pvParameters)
         }
         ImuRotateVector(InsGyro, gyro_raw);
         ImuRotateVector(InsAccel, accel_raw);
+#if ROBOT_TASK_BUILD_HEALTH_MONITOR || defined(CONFIG_ARBATOS_MINI_BENCH)
+        /* 仅成功读取的新数据续期；加速度可信度拒绝不等于设备离线。 */
+        DetectHook(BOARD_GYRO_TOE);
+        DetectHook(BOARD_ACCEL_TOE);
+#endif
         for (int i = 0; i < 3; ++i) InsGyro[i] += InsGyroOffset[i];
         ImuHeaterUpdate(InsTemp);
         const uint32_t now_ms = k_uptime_get_32();
 #if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY) && ROBOT_TASK_BUILD_IMU
         ImuServiceUpdate(gyro_raw, accel_raw, now_ms, 1u);
-        if (!ImuOutputHeld) ImuGyroCalibrationUpdate(gyro_raw, accel_raw, now_ms);
+        if (!ImuOutputHeld && !robot_mode_is_calibration(ROBOT_CALI_TARGET_IMU_GYRO)) {
+            ImuGyroCalibrationUpdate(gyro_raw, accel_raw, now_ms);
+        }
 #else
         ImuGyroCalibrationUpdate(gyro_raw, accel_raw, now_ms);
 #endif
@@ -612,19 +745,36 @@ void ImuFusionTask(void const *pvParameters)
             offsetQueued = 1u;
         }
 #endif
-        mahony_imu_update(&InsMahony,
-                          ImuSampleDt(),
-                          InsGyro,
-                          InsAccel,
-                          ImuAccelHealthy(InsAccel),
-                          0.25f);
-        for (int i = 0; i < 4; ++i) InsQuat[i] = InsMahony.quat[i];
-        ImuEulerUpdate();
+        const fp32 *mag = NULL;
+#if defined(CONFIG_BOARD_DJI_C_F407)
+        static uint32_t lastMagRead;
+        if (InsMagReady && now_ms - lastMagRead >= 5u) {
+            fp32 rawMag[3];
+            lastMagRead = now_ms;
+            if (BspIst8310Read(rawMag) == 0) {
+                /* C板两颗芯片的原生轴不同，先转到BMI088原生轴再套车型安装矩阵。 */
+                const fp32 bmiAxes[3] = {-rawMag[1], rawMag[0], rawMag[2]};
+                ImuRotateVector(InsMag, bmiAxes);
+                InsMagTick = now_ms;
+#if ROBOT_TASK_BUILD_HEALTH_MONITOR
+                DetectHook(BOARD_MAG_TOE);
+#endif
+            }
+        }
+        if (InsMagTick != 0u && now_ms - InsMagTick <= 100u) mag = InsMag;
+#endif
+        const float dt = ImuSampleDt();
+        if (!ImuAttitudeUpdate(&InsAttitude, dt, now_ms, InsGyro, InsAccel, mag, g_config.imu.fusion_mode)) {
+            WatchTaskError(WATCH_TASK_IMU);
+            k_msleep(1);
+            continue;
+        }
+        memcpy(InsQuat, InsAttitude.quat, sizeof(InsQuat));
+        memcpy(INS_angle, InsAttitude.angle, sizeof(INS_angle));
         InsSnapshotPublishCurrent(now_ms, InsTemp);
-#if defined(CONFIG_ARBATOS_MINI_BENCH)
-        /* 只有本轮读取成功才更新离线检测，失败路径不续期。 */
-        DetectHook(BOARD_GYRO_TOE);
-        DetectHook(BOARD_ACCEL_TOE);
+#if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY) && ROBOT_TASK_BUILD_SDLOG
+        ImuLogSample(now_ms, dt);
+        ImuLogTrust(now_ms);
 #endif
 #if !defined(CONFIG_ARBATOS_PREFLIGHT_ONLY) && ROBOT_TASK_BUILD_IMU
         ImuServicePublish(now_ms, 1u);
@@ -661,7 +811,9 @@ void ImuFusionTask(void const *pvParameters)
 #endif
         WatchImuSetStage(WATCH_IMU_STAGE_FUSION_LOOP);
         WatchTaskBeat(WATCH_TASK_IMU);
+#if !defined(CONFIG_BOARD_DJI_C_F407)
         k_sleep(K_MSEC(1));
+#endif
     }
 #endif
 }
@@ -674,7 +826,14 @@ const fp32 *get_accel_data_point(void) { return InsAccel; }
 const fp32 *get_mag_data_point(void) { return InsMag; }
 fp32 ins_get_imu_temperature_c(void) { return InsTemp; }
 uint16_t ins_get_imu_heater_pwm(void) { return InsHeaterPwm; }
-uint8_t ins_get_imu_heater_mode(void) { return InsHeaterPwm > 0 ? 1u : 0u; }
+uint8_t ins_get_imu_heater_mode(void)
+{
+#if defined(CONFIG_BOARD_DJI_C_F407) && !ROBOT_EXTERNAL_IMU_HI14
+    return InsHeaterMode;
+#else
+    return InsHeaterPwm > 0 ? 1u : 0u;
+#endif
+}
 fp32 ins_get_imu_heater_pid_out(void) { return InsHeaterPidOut; }
 #if ROBOT_EXTERNAL_IMU_HI14
 __weak bool_t CalibrateGyroOffsetSave(const fp32 offset[3])

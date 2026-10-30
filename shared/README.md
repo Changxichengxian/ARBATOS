@@ -38,7 +38,7 @@ shared/zephyr/port/algorithm/ArmMathZephyr.c
 
 `BspCanTx*()` 返回 0 只代表 Zephyr 接受帧并分配邮箱。发送完成回调才生成 `BspCanTxCompletion`：0 为 `Complete`，停止或取消为 `Aborted`，已定义错误为 `Failed`，其他驱动错误为 `Unknown`。中断回调只更新状态、写固定环形队列并通知接收任务，不分配内存；完成队列满时终态先留在发送槽，之后由轮询接口搬运。
 
-H723 的 `BspCanFaultPort.c` 为当前 `st,stm32h7-fdcan` 驱动提供原始寄存器紧急发送：异常锁住普通输出，申请取消旧发送，核对设备树 MRAM/邮箱配置后，以有限轮询确认安全帧发送结果。此路径要求中断已关闭，不调用 CAN 驱动锁；A/C 板尚无对应实现，明确返回不支持。时钟故障、Bus-Off、无 ACK 或无法取消旧帧会返回失败，不能保证执行器实际停止，仍须实测独立断能措施。`LastErrorCode`、`DataLastErrorCode`、控制器 activity 与 FDCAN error logging count 暂无公共 API，当前返回 0；普通运行的错误计数和控制器状态来自 `can_get_state()`。
+`BspCanFaultPort.c` 为 H723 FDCAN 和 A/C 板 bxCAN 提供原始寄存器紧急发送：异常锁住普通输出，取消旧发送，核对设备树地址及外设状态后，以有限轮询确认停机帧结果。此路径要求中断已关闭，不调用 CAN 驱动锁或动态内存。F4 分支只有成功接管全部邮箱才能发送，并清除旧完成位，避免把上一帧的成功当成本次结果；超时后停止使用该总线。时钟故障、Bus-Off、无 ACK 或无法取消旧帧会返回失败，不能保证执行器实际停止，仍须实测独立断能措施。`LastErrorCode`、`DataLastErrorCode`、控制器 activity 与 FDCAN error logging count 暂无公共 API，当前返回 0；普通运行的错误计数和控制器状态来自 `can_get_state()`。
 
 仍需验证多路满载的回调归属与顺序、Classic/FD/BRS、无 ACK/仲裁丢失/Bus-Off、RX 与完成队列满、速率重配中的票据终态，以及断电、看门狗、HardFault 时执行器能由 CAN 外的措施可靠断能。
 
@@ -90,15 +90,40 @@ CONFIG_UART_LINE_CTRL=y
 
 ## 平台资源与传感器
 
-`zephyr/port/platform/` 通过 `/arbatos_platform` 描述 GPIO/PWM，属性以 `boards/dts/bindings/arbatos,platform.yaml` 为准：`key-gpios`、`led0-gpios`、`buzzer-pwms`、`servo-pwms`、`shoot-trig-gpios`。`ArbatosPlatformInit()` 缺资源会返回错误，调用者必须处理。M 板 ADC1 通道 4、19 用 16 位和标称 3.3 V 换算，电池电压是索引 0 通道乘 11，精度还需按 VDDA 与分压校准；采样失败返回 `NAN`。A/C 通用 ADC 后端还不能提供真实测量，芯片温度未实现，硬件版本返回 `0xff`。M 板的供电 GPIO、蜂鸣器和舵机是否带载可用仍取决于车型和实测。`BspResetEvidence.c` 在 H723 使用备份 SRAM，保存致命摘要并在下次启动读出；SD 同步成功才清除，备份域失电的保留能力取决于供电。故障后的输出锁和恢复步骤见[日志说明](../manual/调试与日志.md#异常停机与重启记录)。
+`zephyr/port/platform/` 通过 `/arbatos_platform` 描述 GPIO/PWM，属性以 `boards/dts/bindings/arbatos,platform.yaml` 为准。`ArbatosPlatformInit()` 缺资源会返回错误，调用者必须处理。M 板 ADC1 通道 4、19 用 16 位和标称 3.3 V 换算，电池电压是索引 0 通道乘 11；C 板恢复 ADC3/PF10 通道 8、电池分压比 10.0909，并用 ADC1 内部参考及温度通道换算。两者精度仍需实测校准，采样失败返回 `NAN`。C 板 PC0/1/2 无上下拉输入读取硬件版本，失败返回 `0xff`；A 板 ADC 仍未适配。`BspResetEvidence.c` 在 H723 使用备份 SRAM，保存致命摘要并在下次启动读出；SD 同步成功才清除，备份域失电的保留能力取决于供电。故障后的输出锁和恢复步骤见[日志说明](../manual/调试与日志.md#异常停机与重启记录)。
 
 `/arbatos_platform` 当前只绑定上述按键、灯、蜂鸣器、舵机和射击触发资源，**没有 ADC 属性**；不能在该节点填写不存在的 ADC 属性来配置通道。
 
-`zephyr/port/sensors/` 提供 BMI088、IST8310、MPU6500 与 IMU 加热兼容接口，使用 Zephyr SPI、I2C、GPIO、PWM。传感器由 `/arbatos_sensors` 及车型 overlay 选择：A 板 MPU6500/SPI5，磁力计在 AUX 总线且未完成九轴；C 板 BMI088/SPI1 和 IST8310/I2C3；M 板 BMI088/SPI2，默认未绑磁力计。BMI088 是 mode 3，MPU6500 是 mode 0；旧 DMA 接口目前只是同步 SPI 事务，未启用 Zephyr async SPI/DMA。IST8310 旧接口不返回错误，读数为零时需结合 WHO_AM_I 判断。
+`zephyr/port/sensors/` 提供 BMI088、IST8310、MPU6500 与 IMU 加热兼容接口，使用 Zephyr SPI、I2C、GPIO、PWM。传感器由 `/arbatos_sensors` 及车型 overlay 选择：A 板 MPU6500/SPI5，磁力计在 AUX 总线且未完成九轴；C 板 BMI088/SPI1 和 IST8310/I2C3；M 板 BMI088/SPI2，默认未绑磁力计。BMI088 是 mode 3，MPU6500 是 mode 0。C 板用 PC5 数据就绪中断唤醒，BMI088 一次事务读完整批数据；SPI 仍为同步事务，没有照搬 HAL DMA 调度。超时或读取失败关闭加热，不发布新姿态。C 板磁力计读取检查就绪位和总线错误，超过 100 ms 未更新时九轴自动退回六轴。
 
 IMU 加热接口接收旧定时器的 CCR 比较值，**不是百分比**；按 `imu-heater-period-cycles` 换算占空比，当前 A/C/M 板分别为 50、5000、10000。
 
-M 板 IMU 校准区为 `0x080C0000–0x080FFFFF`，两个 128 KiB 扇区各保存一份含 UID、版本、序号和 CRC 的记录；128 KiB 是扇区大小。正式固件只读，`CONFIG_ARBATOS_PREFLIGHT_ONLY` 准备模式才允许写入。HERO-M 使用其车型 `ImuMount.h`，更改安装方向要同时核对旧零偏坐标系。准备模式默认不加热；现有温控目标 40℃、41℃停热、最大 2% 占空比。保存中断电和损坏副本的故障注入尚未测试。
+A 板 IMU 校准区为 `0x081C0000–0x081FFFFF`，C/M 板为 `0x080C0000–0x080FFFFF`，两个独立扇区保存含 UID、版本、序号和 CRC 的记录。正式固件通过 USB 或显式 `IMU_GYRO` 模式进入维护状态，确认停机、关闭加热并暂停 SD 日志后才能保存；完成或取消后仍锁住输出，人工重启恢复。`CONFIG_ARBATOS_PREFLIGHT_ONLY` 准备模式保留独立入口。更改安装方向要核对车型 `ImuMount.h`；记录保存传感器原始坐标。M 板现有 40℃目标、41℃停热及 2% 占空比限制保持不变。
+
+### 旧 C 板迁移核对
+
+2026-10-30 按迁移前 `92cec84^` 的 HERO-C 工程、板级实现及当前实际调用链核对，补回以下功能：
+
+| 范围 | 本次承接内容 |
+| --- | --- |
+| 姿态融合 | 二阶加速度滤波、实测加速度与预测重力混合、幅值/方向可信度、干扰后 180 ms 拒绝、静止增益切换、连续 yaw 与 60 Hz 输出滤波、斜放初始化、六/九轴选择 |
+| IMU 配套 | 已有零偏上的开机残差修正、校准重力参考、C 板预热与 PID 稳温、磁力计坐标转换、新鲜数据离线检测、高频样本与可信度日志 |
+| 校准服务 | 单云台限位/零点、明确模式和遥控手势启动、取消和反馈异常停机、校准参数恢复、SD 双文件校验与保存失败反馈 |
+| 板级外设 | 按键中断消抖、TIM5 三色灯、ADC 电池/芯片温度、硬件版本、PI7 射击微动输入、低压检测、四路普通 PWM 舵机 |
+| 音频 | TIM4 CH3 + DMA1 Stream7/Channel2 的 PCM 双半缓冲、流音频尾段、音量与旧音调参数；DMA 缓冲位于普通 SRAM |
+| 通信与运行 | C 板调参 230400 与图传遥控 921600 的角色选择、AUX 启动波特率读取、主机任务开放、运行统计、任务通知取值和清位的并发修正 |
+| 异常停机 | A/C 的 bxCAN 取消旧帧及停机发送、C 板 TIM1/TIM8 舵机输出关闭 |
+
+保留的差异和边界：
+
+- `AHRS.lib` 没有源码，九轴仍使用现有 `AhrsZephyr.c`，不声称与闭源库逐位一致。加速度二阶滤波保留旧 1 ms 系数，其他采样周期下的频响需要实测；M 板加热保护和 A 板专用温控不改用 C 板参数。
+- 云台校准只开放给经典单云台，并要求新鲜输入、正常惯性反馈及电机健康；未保存过参数时不会自动顶限位。普通运行不因无 SD 卡被锁住，显式云台校准需存储准备完成。
+- 云台参数改存 SD；旧 Flash 第 9 扇区已属于当前程序分区，不能直接继续擦写，也不会自动导入旧记录。需要保留原值时应从旧固件导出，否则重新校准。
+- C 板舵机顺序为 PI6/TIM8 CH2、PC6/TIM8 CH1、PE14/TIM1 CH4、PE13/TIM1 CH3，周期 20 ms；沿用当前统一输出授权和超时保护，默认车型不自动启用舵机。
+- C 板完整服务使用 8 KiB 日志缓存、4 KiB PCM 队列和最多 24 个兼容任务。减小缓存保留溢出计数，但写卡停顿余量降低；控制任务栈未缩减。任务通知修复覆盖当前按位通知的使用方式，不宣称所有 FreeRTOS 通知语义完全一致。
+- 旧 C 工程未实际调用的摩擦轮 PWM 接口、旧源码自身未实现的能力，不作为新功能启用。SPI/SD/UART 的吞吐和调度时序仍按 Zephyr 实测；本次主机回归和固件构建不能代替接线、温控、运动及断电测试。
+
+软件验证：HERO-M、INFANTRY-TIAN-A 以及从 BASE-C 复制的临时 PARITY-C 均编译链接通过。PARITY-C 在模板上启用 `CALIBRATION`、`STATUS_LED`、`BATTERY_MONITOR`、`STARTUP_SERVICE`、`HOST_LINK`、`SDLOG`、`SERVO`，调参选 USART1，裁判选 USART6；默认电机和舵机输出仍关闭。该完整配置普通 RAM 余 2748 字节、CCM 余 2440 字节，需要实测栈水位及负载。临时车型不提交。`tools/tests` 的 84 项 Python 回归、36 组压缩往返、IMU 服务回归和配置编辑器 22 项回归通过；故障取消、校准写入失败和 DMA 回调顺序使用主机模拟覆盖，未连接实车。
 
 ## SD 卡与 M 板副板
 

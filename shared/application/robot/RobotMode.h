@@ -117,6 +117,11 @@ static inline uint8_t robot_mode_gimbal_pitch_cali(void)
     return robot_mode_is_calibration(ROBOT_CALI_TARGET_PITCH);
 }
 
+static inline uint8_t robot_mode_gimbal_cali(void)
+{
+    return robot_mode_is_calibration(ROBOT_CALI_TARGET_GIMBAL);
+}
+
 static inline uint8_t robot_mode_allow_shoot_fric(void)
 {
     const robot_run_mode_e mode = robot_mode_current();

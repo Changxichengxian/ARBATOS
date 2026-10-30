@@ -6,6 +6,9 @@
 #include <stdint.h>
 
 #include <zephyr/kernel.h>
+#if defined(CONFIG_SOC_SERIES_STM32F4X)
+#include <soc.h>
+#endif
 
 #include "BspCrc32.h"
 #include "BspDelay.h"
@@ -133,16 +136,24 @@ void append_crc32_check_sum(uint32_t *data, uint32_t len)
 
 void BspPwrPvdInit(void)
 {
-    /*
-     * 复位原因由早期启动保存；低压位保持“当前不可用”，
-     * 由 ADC 电池监测承担运行期判断。
-     */
     BspResetEvidenceCaptureBoot();
+#if defined(CONFIG_SOC_SERIES_STM32F4X)
+    /* 保留旧 F4 的约 2.9 V 检测阈值，只轮询状态，不接管电源中断。 */
+    unsigned int key = irq_lock();
+    RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+    (void)RCC->APB1ENR;
+    PWR->CR = (PWR->CR & ~PWR_CR_PLS) | PWR_CR_PLS | PWR_CR_PVDE;
+    irq_unlock(key);
+#endif
 }
 
 uint8_t BspPwrPvdVddLow(void)
 {
+#if defined(CONFIG_SOC_SERIES_STM32F4X)
+    return ((PWR->CSR & PWR_CSR_PVDO) != 0u) ? 1u : 0u;
+#else
     return 0u;
+#endif
 }
 
 uint32_t BspPwrRccCsr(void)

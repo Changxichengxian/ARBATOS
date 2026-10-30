@@ -44,7 +44,10 @@
 #include "task.h"
 
 #ifndef SDLOG_BUF_SIZE
-#if defined(CONFIG_ARBATOS_MINI_BENCH)
+#if defined(__ZEPHYR__) && defined(CONFIG_BOARD_DJI_C_F407)
+/* C 板完整功能需留出线程和 DMA 空间；写卡停顿余量相比 16 KiB 减半。 */
+#define SDLOG_BUF_SIZE (8u * 1024u)
+#elif defined(CONFIG_ARBATOS_MINI_BENCH)
 /* 覆盖写卡短暂停顿；逐帧数据仍不抽样，溢出计数继续保留。 */
 #define SDLOG_BUF_SIZE (128u * 1024u)
 #elif defined(STM32H723xx) || defined(STM32H7xx) || defined(STM32H7)

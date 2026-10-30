@@ -64,6 +64,7 @@ static char TestLastTx[512];
 static unsigned TestSaveCalls;
 static int TestSaveResult;
 static unsigned TestApplyCalls;
+static unsigned TestSampleDoneCalls;
 
 volatile uint32_t g_sdLogFlashPauseRequest;
 volatile uint32_t g_sdLogFlashPauseReady;
@@ -171,6 +172,12 @@ static void ImuApplyGyroOffset(const fp32 offset[3])
 {
     (void)offset;
     TestApplyCalls++;
+}
+static void ImuCalibrationSampleDone(const GyroZeroCaliSampleState *samples, void *ctx)
+{
+    (void)samples;
+    (void)ctx;
+    TestSampleDoneCalls++;
 }
 
 uint8_t CDC_Transmit_FS(uint8_t *buf, uint16_t len)
@@ -378,6 +385,7 @@ static void TestPrepareWriting(uint32_t now, uint32_t writingMs)
     TestSaveCalls = 0u;
     TestSaveResult = 0;
     TestApplyCalls = 0u;
+    TestSampleDoneCalls = 0u;
     g_sdLogFlashPauseReady = 0u;
     (void)memset(&InsGyroCaliState, 0, sizeof(InsGyroCaliState));
 }
@@ -407,7 +415,7 @@ static int TestWritingGatesAndResult(void)
     TestPrepareWriting(1600u, 1000u);
     g_sdLogFlashPauseReady = SDLOG_FLASH_PAUSE_READY;
     ImuServiceUpdate(zero, zero, TestNow, 1u);
-    if (!TestCheck(TestSaveCalls == 1u && TestApplyCalls == 1u && ImuState == 4u &&
+    if (!TestCheck(TestSaveCalls == 1u && TestApplyCalls == 1u && TestSampleDoneCalls == 1u && ImuState == 4u &&
                        InsGyroCaliState.result == GYRO_ZERO_CALI_RESULT_SUCCESS &&
                        InsGyroCaliState.calibrated != 0u && InsGyroCaliState.boot_adjust_finished != 0u,
                    "写入门槛全部满足后应保存、应用并发布成功状态")) return 0;
@@ -427,6 +435,45 @@ static int TestWritingGatesAndResult(void)
                      "写入前收到取消命令时必须先取消且不得调用 Flash 保存");
 }
 
+static int TestModeRequest(void)
+{
+    const fp32 zero[3] = {0};
+    TestResetReceiver();
+    ImuState = 0u; ImuRequestId = 0u; ImuModeSelected = 0u;
+    ImuModePending = 0u; ImuModeOwned = 0u; ImuOutputHeld = 0u;
+    TestEmergency = 0u; TestOutputLocked = 1u; TestLifecycleFault = 0u;
+    TestInputReadOk = 1u; TestInput.online = 0u;
+    ImuServiceModeUpdate(1u);
+    ImuServiceUpdate(zero, zero, 100u, 1u);
+    if (!TestCheck(ImuState == 1u && ImuModeOwned && ImuOutputHeld && TestEmergency,
+                   "校准模式应走维护锁和急停")) return 0;
+    ImuServiceModeUpdate(0u);
+    if (!TestCheck(ImuState == 6u && ImuOutputHeld && TestEmergency,
+                   "退出模式应取消采样并保持停机")) return 0;
+    ImuServiceModeUpdate(1u);
+    ImuServiceUpdate(zero, zero, 102u, 0u);
+    if (!TestCheck(ImuState == 5u, "不健康时校准请求必须失败")) return 0;
+    ImuServiceModeUpdate(1u);
+    ImuServiceUpdate(zero, zero, 104u, 1u);
+    if (!TestCheck(ImuState == 5u, "持续选择模式不得自动重试")) return 0;
+    ImuServiceModeUpdate(0u);
+    ImuState = 0u; ImuOutputHeld = 0u; TestEmergency = 0u;
+    TestFeedText("!IMU2,calibrate,101\n");
+    ImuServiceUpdate(zero, zero, 106u, 1u);
+    ImuServiceModeUpdate(1u);
+    ImuServiceUpdate(zero, zero, 108u, 1u);
+    ImuServiceModeUpdate(0u);
+    if (!TestCheck(ImuState == 1u && !ImuModeOwned,
+                   "切换模式不得取消 USB 发起的校准")) return 0;
+    TestPrepareWriting(1600u, 1000u);
+    g_sdLogFlashPauseReady = SDLOG_FLASH_PAUSE_READY;
+    ImuModeSelected = 1u; ImuModeOwned = 1u;
+    ImuServiceModeUpdate(0u);
+    ImuServiceUpdate(zero, zero, TestNow, 1u);
+    return TestCheck(ImuState == 6u && TestSaveCalls == 0u && TestSampleDoneCalls == 0u,
+                     "切出模式后不得保存待写入的数据");
+}
+
 int main(void)
 {
     if (!TestSplitAndQueuePolicy()) return 1;
@@ -436,6 +483,7 @@ int main(void)
     if (!TestStartRequiresReadableSafeInput()) return 1;
     if (!TestWatchLease()) return 1;
     if (!TestWritingGatesAndResult()) return 1;
+    if (!TestModeRequest()) return 1;
     (void)puts("PASS: IMU service receive and state regression");
     return 0;
 }

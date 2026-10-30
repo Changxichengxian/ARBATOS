@@ -120,6 +120,7 @@ target_sources_ifdef(CONFIG_ARBATOS_LEGACY_SOURCES app PRIVATE
     ${ARBATOS_ROOT}/shared/zephyr/port/uart/BspRs485FaultPort.c
     ${ARBATOS_ROOT}/shared/zephyr/port/sensors/BspImuPwm.c
     ${ARBATOS_ROOT}/shared/zephyr/port/sensors/ImuFusionTask.c
+    ${ARBATOS_ROOT}/shared/zephyr/port/sensors/ImuAttitude.c
     ${ARBATOS_ROOT}/shared/zephyr/port/storage/BspZephyrDiskio.c
     ${ARBATOS_ROOT}/shared/zephyr/port/storage/BspZephyrSdSpiPort.c
     ${ARBATOS_ROOT}/shared/zephyr/port/platform/ArbatosPlatform.c
@@ -150,6 +151,8 @@ if(CONFIG_ARBATOS_LEGACY_SOURCES)
     if(CONFIG_BOARD_DM_MC02_H7)
         target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/platform/BspBuzzerM.c ${ARBATOS_ROOT}/shared/zephyr/port/platform/MBoardIo.c
             ${ARBATOS_ROOT}/shared/zephyr/port/platform/BspAdcM.c ${ARBATOS_ROOT}/shared/zephyr/port/sensors/ImuCalStore.c)
+    elseif(CONFIG_BOARD_DJI_C_F407)
+        target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/platform/BspBuzzerC.c ${ARBATOS_ROOT}/shared/zephyr/port/platform/BspAdc.c)
     else()
         target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/platform/BspBuzzer.c ${ARBATOS_ROOT}/shared/zephyr/port/platform/BspAdc.c)
     endif()
@@ -169,6 +172,7 @@ if(CONFIG_ARBATOS_LEGACY_SOURCES)
             ${ARBATOS_ROOT}/shared/zephyr/port/sensors/ImuCalStore.c)
     elseif(CONFIG_BOARD_DJI_C_F407)
         target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/sensors/BspBmi088Port.c ${ARBATOS_ROOT}/shared/zephyr/port/sensors/BspIst8310Port.c
+            ${ARBATOS_ROOT}/shared/components/devices/Ist8310Driver.c
             ${ARBATOS_ROOT}/shared/zephyr/port/sensors/ImuCalStore.c)
     elseif(CONFIG_BOARD_DM_MC02_H7)
         target_sources(app PRIVATE ${ARBATOS_ROOT}/shared/zephyr/port/sensors/BspBmi088Port.c)

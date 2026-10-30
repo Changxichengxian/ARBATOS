@@ -16,5 +16,7 @@ void BMI088_GYRO_NS_L(void);
 void BMI088_GYRO_NS_H(void);
 uint8_t BMI088_read_write_byte(uint8_t txdata);
 uint32_t Bmi088PortErrorCount(void);
+void Bmi088PortReadBytes(uint8_t command, uint8_t *data, uint8_t len, uint8_t dummy);
+int Bmi088PortWaitSample(uint32_t timeoutMs);
 
 #endif

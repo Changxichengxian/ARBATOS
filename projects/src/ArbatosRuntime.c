@@ -156,10 +156,6 @@ ArbatosRuntimeStatus ArbatosRuntimeStart(void)
     ManualInputInit();
     BuzzerSetEnable(1u);
 
-#if ROBOT_TASK_BUILD_CALIBRATION
-    cali_param_init();
-#endif
-
 #if ROBOT_TASK_BUILD_HOST_LINK || ROBOT_TASK_BUILD_IMU
     /* HostLink/VisionLink uses USB CDC even when StartupServiceTask is absent. */
     BspUsbDeviceInit();
